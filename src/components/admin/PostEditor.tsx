@@ -13,6 +13,7 @@ import {
   publishPost,
   deletePost,
   uploadImage,
+  translatePost,
   type EditorInput,
 } from "@/app/admin/editor/actions";
 
@@ -199,6 +200,23 @@ export function PostEditor({
     });
   };
 
+  const onTranslate = () => {
+    if (!initial.originalSlug) {
+      alert("먼저 임시 저장하세요.");
+      return;
+    }
+    if (!confirm("이 글을 영어로 번역합니다. 1~2분 걸려요. 진행할까요?")) return;
+    startTransition(async () => {
+      try {
+        await translatePost(initial.originalSlug!);
+        alert("영어 번역 완료. /en/posts/" + initial.originalSlug + " 에서 확인.");
+        router.refresh();
+      } catch (e) {
+        alert(`번역 실패: ${(e as Error).message}`);
+      }
+    });
+  };
+
   const onDelete = () => {
     if (!initial.originalSlug) return;
     if (!confirm("정말 삭제할까요? 되돌릴 수 없습니다.")) return;
@@ -227,6 +245,9 @@ export function PostEditor({
           <Link href={`/posts/${slug}`} target="_blank">
             <Button variant="ghost" size="sm">미리보기</Button>
           </Link>
+        )}
+        {initial.originalSlug && (
+          <Button variant="ghost" size="sm" onClick={onTranslate} disabled={pending}>EN 번역</Button>
         )}
         {initial.originalSlug && (
           <Button variant="ghost" size="sm" onClick={onDelete}>삭제</Button>

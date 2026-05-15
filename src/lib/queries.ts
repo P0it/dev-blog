@@ -6,6 +6,7 @@ import type {
   CategoryGroup,
   ThumbKind,
   ChipVariant,
+  Locale,
 } from "@/lib/types";
 
 // "2026-05-04T00:00:00Z" → "2026.05.04"
@@ -38,6 +39,10 @@ type PostRow = {
   featured_chips: { variant: ChipVariant; label: string }[];
   status: string;
   published_at: string | null;
+  title_en?: string | null;
+  excerpt_en?: string | null;
+  body_md_en?: string | null;
+  translated_at?: string | null;
 };
 
 type ProjectRow = {
@@ -77,6 +82,23 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     year: date.slice(0, 4),
     bodyMd: row.body_md,
     status: (row.status === "published" ? "published" : "draft"),
+    titleEn: row.title_en ?? null,
+    excerptEn: row.excerpt_en ?? null,
+    bodyMdEn: row.body_md_en ?? null,
+    translatedAt: row.translated_at ?? null,
+  };
+}
+
+// 로케일에 맞춰 표시 필드를 결정. EN이 없으면 KO로 폴백.
+export function localize(post: Post, locale: Locale): Post {
+  if (locale !== "en") return post;
+  const hasEn = !!(post.titleEn && post.titleEn.trim());
+  if (!hasEn) return post;
+  return {
+    ...post,
+    title: post.titleEn!,
+    excerpt: post.excerptEn ?? post.excerpt,
+    bodyMd: post.bodyMdEn ?? post.bodyMd,
   };
 }
 

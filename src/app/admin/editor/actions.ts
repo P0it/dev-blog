@@ -1,5 +1,6 @@
 "use server";
 
+import { spawn } from "node:child_process";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -104,6 +105,80 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
   revalidatePath("/posts");
   revalidatePath(`/posts/${slug}`);
   return { slug };
+}
+
+// claude CLI subprocess — 한국어 글을 영어로 번역해 JSON으로 반환.
+// /admin은 로컬 전용이라 mac에 설치된 claude CLI를 그대로 사용.
+function callClaude(prompt: string, timeoutMs = 120_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("claude", ["-p", prompt], { stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    let err = "";
+    const t = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("claude CLI 타임아웃"));
+    }, timeoutMs);
+    child.stdout.on("data", (d) => { out += d.toString(); });
+    child.stderr.on("data", (d) => { err += d.toString(); });
+    child.on("error", (e) => { clearTimeout(t); reject(e); });
+    child.on("close", (code) => {
+      clearTimeout(t);
+      if (code !== 0) reject(new Error(`claude exit ${code}: ${err}`));
+      else resolve(out);
+    });
+  });
+}
+
+export async function translatePost(slug: string): Promise<{ ok: true }> {
+  await guard();
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("posts")
+    .select("title,excerpt,body_md")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("글을 찾을 수 없음");
+
+  const prompt = `다음 한국어 글을 자연스러운 영어로 번역하세요. 마크다운 형식과 코드 블록은 그대로 유지하세요. 결과는 다른 텍스트 없이 JSON 한 개만 출력하세요:
+
+{"title": "...", "excerpt": "...", "body_md": "..."}
+
+[제목]
+${data.title}
+
+[요약]
+${data.excerpt ?? ""}
+
+[본문]
+${data.body_md ?? ""}`;
+
+  const raw = await callClaude(prompt);
+  // raw에서 첫 { ~ 마지막 } 추출
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end < 0) throw new Error("claude 응답에 JSON이 없음");
+  let parsed: { title: string; excerpt: string; body_md: string };
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1));
+  } catch (e) {
+    throw new Error(`JSON 파싱 실패: ${(e as Error).message}`);
+  }
+
+  const { error: upErr } = await sb
+    .from("posts")
+    .update({
+      title_en: parsed.title,
+      excerpt_en: parsed.excerpt,
+      body_md_en: parsed.body_md,
+      translated_at: new Date().toISOString(),
+    })
+    .eq("slug", slug);
+  if (upErr) throw upErr;
+
+  revalidatePath(`/posts/${slug}`);
+  revalidatePath(`/en/posts/${slug}`);
+  return { ok: true };
 }
 
 export async function uploadImage(formData: FormData): Promise<{ url: string }> {

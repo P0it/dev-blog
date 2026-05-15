@@ -1,25 +1,39 @@
 import Link from "next/link";
 import { FolderTree, FlaskConical, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import type { Locale } from "@/lib/types";
+import { pathFor } from "@/lib/i18n";
 
 type Active = "home" | "categories" | "lab" | "";
 
-export function PublicNav({ active = "home" }: { active?: Active }) {
+export function PublicNav({
+  active = "home",
+  locale = "ko",
+  // EN 토글이 가리킬 KO 기준 경로. 예: 디테일 페이지에서는 /posts/<slug>.
+  switchPath = "/",
+}: {
+  active?: Active;
+  locale?: Locale;
+  switchPath?: string;
+}) {
+  const otherLocale: Locale = locale === "ko" ? "en" : "ko";
+  const switchHref = pathFor(otherLocale, switchPath);
+
   return (
     <div className="nav">
       <div className="nav-left">
-        <Link href="/" className="nav-brand" aria-label="홈으로">
+        <Link href={pathFor(locale, "/")} className="nav-brand" aria-label="hyunwoo.blog">
           <span className="dot" />
           <span>hyunwoo</span>
         </Link>
         <div className="nav-links">
-          <Link href="/categories" className={active === "categories" ? "active" : ""}>
+          <Link href={pathFor(locale, "/categories")} className={active === "categories" ? "active" : ""}>
             <FolderTree size={14} style={{ color: "var(--fg-alternative)" }} />
-            카테고리
+            {locale === "ko" ? "카테고리" : "Categories"}
           </Link>
-          <Link href="/lab" className={active === "lab" ? "active" : ""}>
+          <Link href={pathFor(locale, "/lab")} className={active === "lab" ? "active" : ""}>
             <FlaskConical size={14} style={{ color: "var(--fg-alternative)" }} />
-            실험실
+            {locale === "ko" ? "실험실" : "Lab"}
           </Link>
         </div>
       </div>
@@ -28,10 +42,10 @@ export function PublicNav({ active = "home" }: { active?: Active }) {
           <Search size={18} />
         </button>
         <ThemeToggle />
-        <div className="lang-toggle" aria-label="언어 선택">
-          <span className="on">KR</span>
-          <span>EN</span>
-        </div>
+        <Link href={switchHref} className="lang-toggle" aria-label="언어 선택" style={{ textDecoration: "none" }}>
+          <span className={locale === "ko" ? "on" : ""}>KR</span>
+          <span className={locale === "en" ? "on" : ""}>EN</span>
+        </Link>
       </div>
     </div>
   );

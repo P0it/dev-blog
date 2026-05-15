@@ -15,12 +15,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/lab`, changeFrequency: "monthly", priority: 0.5 },
   ];
 
-  const postRoutes: MetadataRoute.Sitemap = posts.map((p) => ({
-    url: `${base}/posts/${p.slug}`,
-    lastModified: p.date.replace(/\./g, "-"),
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  const postRoutes: MetadataRoute.Sitemap = posts.flatMap((p) => {
+    const entries: MetadataRoute.Sitemap = [
+      {
+        url: `${base}/posts/${p.slug}`,
+        lastModified: p.date.replace(/\./g, "-"),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      },
+    ];
+    if (p.titleEn) {
+      entries.push({
+        url: `${base}/en/posts/${p.slug}`,
+        lastModified: p.translatedAt ?? p.date.replace(/\./g, "-"),
+        changeFrequency: "weekly",
+        priority: 0.6,
+      });
+    }
+    return entries;
+  });
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
     url: c.parent_slug

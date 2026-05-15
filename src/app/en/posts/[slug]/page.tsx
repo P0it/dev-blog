@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getAllPostSlugs, getPostBySlug } from "@/lib/queries";
+import { notFound, redirect } from "next/navigation";
+import { getAllPostSlugs, getPostBySlug, localize } from "@/lib/queries";
 import { PostDetailView } from "@/components/page/PostDetailView";
 import { SITE } from "@/lib/site";
 
@@ -19,29 +19,27 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) return {};
-  const url = `${SITE.url}/posts/${post.slug}`;
-  const hasEn = !!post.titleEn;
+  const localized = localize(post, "en");
+  const url = `${SITE.url}/en/posts/${post.slug}`;
   return {
-    title: post.title,
-    description: post.excerpt || undefined,
+    title: localized.title,
+    description: localized.excerpt || undefined,
     alternates: {
       canonical: url,
-      languages: hasEn ? { en: `${SITE.url}/en/posts/${post.slug}` } : undefined,
+      languages: { ko: `${SITE.url}/posts/${post.slug}` },
     },
     openGraph: {
       type: "article",
       url,
-      title: post.title,
-      description: post.excerpt || undefined,
-      publishedTime: post.date.replace(/\./g, "-"),
-      authors: [SITE.author],
-      tags: post.tags,
+      locale: "en_US",
+      title: localized.title,
+      description: localized.excerpt || undefined,
     },
-    twitter: { card: "summary_large_image", title: post.title, description: post.excerpt || undefined },
+    twitter: { card: "summary_large_image", title: localized.title, description: localized.excerpt || undefined },
   };
 }
 
-export default async function PostDetailPage({
+export default async function EnPostDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -49,5 +47,7 @@ export default async function PostDetailPage({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
-  return <PostDetailView post={post} locale="ko" />;
+  // 번역 없는 글은 KO 페이지로 보냄
+  if (!post.titleEn) redirect(`/posts/${slug}`);
+  return <PostDetailView post={localize(post, "en")} locale="en" />;
 }

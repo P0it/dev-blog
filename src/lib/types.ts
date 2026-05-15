@@ -17,7 +17,13 @@ export type Post = {
   year: string;
   bodyMd?: string | null;
   status?: "draft" | "published";
+  titleEn?: string | null;
+  excerptEn?: string | null;
+  bodyMdEn?: string | null;
+  translatedAt?: string | null;
 };
+
+export type Locale = "ko" | "en";
 
 export type Project = {
   k: ThumbKind;
