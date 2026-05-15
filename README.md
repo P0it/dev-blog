@@ -29,9 +29,9 @@ npm run lint     # ESLint
 2. **Project Settings → API**에서 URL과 두 키를 복사한다.
 3. `.env.local.example`을 `.env.local`로 복사하고 값을 채운다.
    ```
-   NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-   SUPABASE_SERVICE_ROLE_KEY=...      # 시드/관리용. 서버 전용
+   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   SUPABASE_SECRET_KEY=sb_secret_...      # 시드/관리용. 서버 전용
    ```
 4. SQL 마이그레이션을 적용한다. 가장 단순한 방법은 **Dashboard → SQL Editor**에 `supabase/migrations/0001_init.sql`을 붙여넣고 실행. CLI를 쓰려면 `supabase db push`.
 5. 기존 mock 데이터를 DB에 시드한다:

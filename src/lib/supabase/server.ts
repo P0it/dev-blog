@@ -5,9 +5,9 @@ import { requireSupabaseEnv } from "./env";
 // Use inside Server Components, route handlers, and server actions.
 // The cookie store is request-scoped; never cache the returned client across requests.
 export async function createSupabaseServerClient() {
-  const { url, anonKey } = requireSupabaseEnv();
+  const { url, publishableKey } = requireSupabaseEnv();
   const cookieStore = await cookies();
-  return createServerClient(url, anonKey, {
+  return createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
