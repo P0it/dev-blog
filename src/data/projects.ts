@@ -1,0 +1,48 @@
+import type { Project } from "@/lib/types";
+
+export const projects: Project[] = [
+  {
+    k: "c",
+    name: "News Briefing",
+    year: "2025",
+    desc: "매일 06:00 KST에 카카오톡으로 받는 1인용 뉴스레터. 시사·경제·테크 8개 섹션을 Claude가 정리해서 보내준다.",
+    plan: "정보 과잉의 반대 — 매일 같은 시간, 한 메시지로 끝내는 브리핑. 읽는 데 5분.",
+    build: "macOS launchd 크론 → Claude Max로 섹션별 요약 → KakaoTalk 알림톡 API로 전송.",
+    stack: ["Next.js", "Claude Max", "launchd", "KakaoTalk API"],
+    url: "news-briefing.vercel.app",
+    host: "vercel",
+  },
+  {
+    k: "a",
+    name: "hyunwoo.blog",
+    year: "2026",
+    desc: "지금 보고 있는 이 블로그. 로컬 어드민 + Vercel 독자 사이트 구조. AI 자동 초안과 영어 자동 번역이 붙어 있다.",
+    plan: "쓰기는 Mac에서만, 읽기는 어디서나. 워커·큐 없이 가장 단순한 1인 블로그.",
+    build: "Next.js + Supabase, Claude Code subprocess로 초안 생성. Vercel에 정적 + ISR 배포.",
+    stack: ["Next.js", "Supabase", "Claude Code", "Vercel"],
+    url: "hyunwoo-blog.vercel.app",
+    host: "vercel",
+  },
+  {
+    k: "b",
+    name: "MCP Probe",
+    year: "2026",
+    desc: "MCP 서버를 붙여보고 어떤 도구가 노출되는지, 어떤 호출이 실패하는지 보여주는 디버그 콘솔.",
+    plan: "MCP 스펙을 읽으면서 직접 만져보는 도구. 한 화면에서 connect → list → call → 응답.",
+    build: "Cloudflare Workers로 MCP 서버 프록시, 브라우저에서 stdio·sse 두 전송 모두 시뮬레이션.",
+    stack: ["TypeScript", "Cloudflare Workers", "MCP SDK"],
+    url: "mcp-probe.pages.dev",
+    host: "cloudflare",
+  },
+  {
+    k: "e",
+    name: "Routines Notebook",
+    year: "2026",
+    desc: "Claude Routines로 무엇이 되고 무엇이 안 되는지 직접 테스트해보는 노트북. 검증한 패턴은 글로 정리한다.",
+    plan: "스펙 문서와 실제 동작의 차이를 빠르게 확인하는 작업장. 통과한 케이스만 글로.",
+    build: "Anthropic API를 호출하는 셀 기반 노트북. 케이스별 결과를 markdown으로 export.",
+    stack: ["Anthropic API", "TypeScript", "Cloudflare Pages"],
+    url: "routines-notebook.pages.dev",
+    host: "cloudflare",
+  },
+];
