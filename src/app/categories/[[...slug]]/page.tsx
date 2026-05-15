@@ -4,6 +4,9 @@ import { CategoryTree } from "@/components/category/CategoryTree";
 import { Thumb } from "@/components/diagram/Thumb";
 import { Chip } from "@/components/ui/Chip";
 import type { ThumbKind } from "@/lib/types";
+import { getCategoryGroups } from "@/lib/queries";
+
+export const revalidate = 60;
 
 const sampleBookNotes: { kind: ThumbKind; title: string; date: string; min: string }[] = [
   { kind: "a", title: "「일의 언어들」 — 일을 하는 사람에게 남고 싶은 문장들", date: "2026.05.02", min: "6분" },
@@ -19,6 +22,7 @@ export default async function CategoryPage({
   params: Promise<{ slug?: string[] }>;
 }) {
   await params;
+  const groups = await getCategoryGroups();
 
   return (
     <>
@@ -40,7 +44,7 @@ export default async function CategoryPage({
         >
           <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
             <div className="t-overline" style={{ marginBottom: 12 }}>전체 카테고리</div>
-            <CategoryTree activeChildSlug="notes" />
+            <CategoryTree groups={groups} activeChildSlug="notes" />
           </aside>
 
           <div>

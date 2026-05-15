@@ -6,20 +6,24 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { StatCard } from "@/components/admin/StatCard";
 import { VisitorsChart } from "@/components/admin/VisitorsChart";
+import { getAdminStats, getRecentDrafts } from "@/lib/queries";
 
-const stats = [
-  { label: "발행 글", num: "54", delta: "+3 이번 달" },
-  { label: "이번 달 조회", num: "12,408", delta: "+18.2%" },
-  { label: "작성 중", num: "7", delta: "마지막 저장: 14분 전" },
-  { label: "진행 시리즈", num: "3", delta: "에이전트 인프라 외 2" },
-];
+export const dynamic = "force-dynamic";
 
-const recentDrafts: { t: string; s: "Draft" | "Published"; d: string }[] = [
-  { t: "Claude Code subprocess 패턴", s: "Draft", d: "14분 전" },
-  { t: "MCP 도구 발견 메커니즘", s: "Published", d: "3일 전" },
-  { t: "News Briefing 운영기 — 100일", s: "Draft", d: "5일 전" },
-  { t: "AI 에이전트의 tool calling", s: "Published", d: "1주 전" },
-];
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "방금 전";
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}주 전`;
+  const mo = Math.floor(day / 30);
+  return `${mo}개월 전`;
+}
 
 const quickActions = [
   { icon: Sparkles, t: "AI 초안 생성", d: "URL → 마크다운 초안" },
@@ -28,7 +32,23 @@ const quickActions = [
   { icon: Globe, t: "영어 번역 재실행", d: "미번역 글 보기" },
 ];
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const [{ published, drafts }, recent] = await Promise.all([
+    getAdminStats(),
+    getRecentDrafts(6),
+  ]);
+
+  const stats = [
+    { label: "발행 글", num: String(published), delta: "" },
+    { label: "작성 중", num: String(drafts), delta: drafts > 0 ? "검토 대기" : "없음" },
+    { label: "이번 달 조회", num: "—", delta: "곧 연결" },
+    { label: "진행 시리즈", num: "—", delta: "곧 연결" },
+  ];
+
+  const today = new Date();
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][today.getDay()];
+  const todayStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")} · ${weekday}요일`;
+
   return (
     <>
       <AdminTopbar>
@@ -47,7 +67,7 @@ export default function AdminDashboardPage() {
       <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", minHeight: "calc(100vh - 56px)" }}>
         <AdminSidebar active="dashboard" />
         <div style={{ padding: "32px 40px", overflow: "auto" }}>
-          <div className="meta">2026.05.10 · 토요일</div>
+          <div className="meta">{todayStr}</div>
           <h1 style={{ fontSize: 28, margin: "4px 0 0", letterSpacing: "-0.015em" }}>
             안녕하세요, 현우님.
           </h1>
@@ -90,9 +110,12 @@ export default function AdminDashboardPage() {
             <div className="card" style={{ padding: 22 }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>최근 작성</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {recentDrafts.map((p, i) => (
+                {recent.length === 0 && (
+                  <div className="meta">아직 글이 없습니다.</div>
+                )}
+                {recent.map((p, i) => (
                   <div
-                    key={p.t}
+                    key={p.slug}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -112,11 +135,11 @@ export default function AdminDashboardPage() {
                           textOverflow: "ellipsis",
                         }}
                       >
-                        {p.t}
+                        {p.title}
                       </div>
-                      <div className="meta" style={{ marginTop: 2 }}>{p.d}</div>
+                      <div className="meta" style={{ marginTop: 2 }}>{relativeTime(p.updated_at)}</div>
                     </div>
-                    <Chip variant={p.s === "Draft" ? "purple" : "blue"}>{p.s}</Chip>
+                    <Chip variant={p.status === "Draft" ? "purple" : "blue"}>{p.status}</Chip>
                   </div>
                 ))}
               </div>

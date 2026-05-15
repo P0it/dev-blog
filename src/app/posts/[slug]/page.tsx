@@ -2,14 +2,17 @@ import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
-import { getPostBySlug, allPosts } from "@/data/posts";
+import { getAllPostSlugs, getPostBySlug } from "@/lib/queries";
 import {
   ClaudeSubprocessBody,
   claudeSubprocessTOC,
 } from "@/data/post-content";
 
-export function generateStaticParams() {
-  return allPosts.map((p) => ({ slug: p.slug }));
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const slugs = await getAllPostSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export default async function PostDetailPage({
@@ -18,7 +21,7 @@ export default async function PostDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) notFound();
 
   return (

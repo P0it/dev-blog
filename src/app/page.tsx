@@ -3,9 +3,16 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { FeaturedCard } from "@/components/post/FeaturedCard";
 import { PostCard } from "@/components/post/PostCard";
-import { featuredPosts, recentPosts } from "@/data/posts";
+import { getFeaturedPosts, getRecentPosts } from "@/lib/queries";
 
-export default function HomePage() {
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const [featuredPosts, recentPosts] = await Promise.all([
+    getFeaturedPosts(),
+    getRecentPosts(6),
+  ]);
+
   return (
     <>
       <PublicNav active="home" />

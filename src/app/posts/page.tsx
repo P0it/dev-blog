@@ -1,60 +1,43 @@
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
-import {
-  featuredPosts,
-  recentPosts,
-  archive2026Extra,
-  archive2025,
-} from "@/data/posts";
+import { getAllPosts, getCategoryGroups } from "@/lib/queries";
+
+export const revalidate = 60;
 
 type ArchiveItem = { date: string; slug: string; title: string; category: string };
 
-function buildArchive(): { year: string; items: ArchiveItem[] }[] {
-  const items2026: ArchiveItem[] = [
-    ...recentPosts.map((p) => ({
+export default async function ArchivePage() {
+  const [posts, groups] = await Promise.all([getAllPosts(), getCategoryGroups()]);
+
+  // year → items
+  const byYear = new Map<string, ArchiveItem[]>();
+  for (const p of posts) {
+    const list = byYear.get(p.year) ?? [];
+    list.push({
       date: p.date.slice(5),
       slug: p.slug,
       title: p.title,
       category: p.category,
-    })),
-    ...featuredPosts.map((p) => ({
-      date: p.date.slice(5),
-      slug: p.slug,
-      title: p.title,
-      category: p.category,
-    })),
-    ...archive2026Extra.map((p) => ({
-      date: p.date.slice(5),
-      slug: p.slug,
-      title: p.title,
-      category: p.category,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
+    });
+    byYear.set(p.year, list);
+  }
+  const yearGroups = [...byYear.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([year, items]) => ({ year, items }));
 
-  const items2025: ArchiveItem[] = archive2025.map((p) => ({
-    date: p.date.slice(5),
-    slug: p.slug,
-    title: p.title,
-    category: p.category,
-  }));
-
-  return [
-    { year: "2026", items: items2026 },
-    { year: "2025", items: items2025 },
-  ];
-}
-
-export default function ArchivePage() {
-  const groups = buildArchive();
-  const total = groups.reduce((acc, g) => acc + g.items.length, 0);
+  // 상위 카테고리 칩 — 자식 포함 count로 상위 3개
+  const topCats = [...groups]
+    .filter((g) => g.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 
   return (
     <>
       <PublicNav active="home" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>
-          아카이브 · {total}편
+          아카이브 · {posts.length}편
         </div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>모든 글</h1>
         <p
@@ -79,16 +62,19 @@ export default function ArchivePage() {
           }}
         >
           <Chip variant="blue">전체</Chip>
-          <Chip>2026</Chip>
-          <Chip>2025</Chip>
+          {yearGroups.map((g) => (
+            <Chip key={g.year}>{g.year}</Chip>
+          ))}
           <span style={{ flex: 1 }} />
-          <Chip variant="outline">에이전트 · 14</Chip>
-          <Chip variant="outline">개발자 도구 · 11</Chip>
-          <Chip variant="outline">실험 · 7</Chip>
+          {topCats.map((c) => (
+            <Chip key={c.slug} variant="outline">
+              {c.label} · {c.count}
+            </Chip>
+          ))}
         </div>
 
         <div style={{ marginTop: 32 }}>
-          {groups.map((g) => (
+          {yearGroups.map((g) => (
             <div key={g.year} style={{ marginBottom: 48 }}>
               <div
                 style={{

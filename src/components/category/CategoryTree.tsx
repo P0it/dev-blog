@@ -1,9 +1,15 @@
-import { categoryGroups } from "@/data/categories";
+import type { CategoryGroup } from "@/lib/types";
 
-export function CategoryTree({ activeChildSlug }: { activeChildSlug?: string }) {
+export function CategoryTree({
+  groups,
+  activeChildSlug,
+}: {
+  groups: CategoryGroup[];
+  activeChildSlug?: string;
+}) {
   return (
     <div className="tree">
-      {categoryGroups.map((g, i) => (
+      {groups.map((g, i) => (
         <div key={g.slug} className="group" style={i > 0 ? { marginTop: 12 } : undefined}>
           <div className="node">
             <span>

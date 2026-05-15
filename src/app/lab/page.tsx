@@ -1,9 +1,13 @@
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { ProjectCard } from "@/components/project/ProjectCard";
-import { projects } from "@/data/projects";
+import { getProjects } from "@/lib/queries";
 
-export default function LabPage() {
+export const revalidate = 60;
+
+export default async function LabPage() {
+  const projects = await getProjects();
+
   return (
     <>
       <PublicNav active="lab" />
