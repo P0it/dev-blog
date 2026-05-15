@@ -67,6 +67,7 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     title: row.title,
     excerpt: row.excerpt ?? "",
     category: row.category_slug ? labels.get(row.category_slug) ?? row.category_slug : "",
+    categorySlug: row.category_slug,
     tags: row.tags ?? [],
     date,
     readingMin: row.reading_min ?? "",
@@ -74,6 +75,8 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     isFeatured: row.is_featured,
     featuredChips: row.featured_chips,
     year: date.slice(0, 4),
+    bodyMd: row.body_md,
+    status: (row.status === "published" ? "published" : "draft"),
   };
 }
 
@@ -130,6 +133,32 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   return rowToPost(data as PostRow, labels);
 }
 
+// 어드민 에디터용: status 필터 없음 (draft도 가져옴)
+export async function getPostForEditor(slug: string): Promise<Post | null> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  const { data, error } = await sb
+    .from("posts")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return rowToPost(data as PostRow, labels);
+}
+
+export async function getAllCategoriesFlat(): Promise<
+  { slug: string; label: string; parent_slug: string | null }[]
+> {
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("categories")
+    .select("slug,label,parent_slug")
+    .order("sort_order");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getAllPostSlugs(): Promise<string[]> {
   const sb = supabaseServer();
   const { data, error } = await sb
@@ -178,6 +207,40 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
       children: myChildren,
     };
   });
+}
+
+export async function getCategoryBySlug(
+  slug: string,
+): Promise<{ slug: string; label: string; parent_slug: string | null } | null> {
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("categories")
+    .select("slug,label,parent_slug")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
+// 어떤 카테고리에 속한 글들. slug가 부모면 자식 카테고리 글까지 포함.
+export async function getPostsByCategorySlug(slug: string): Promise<Post[]> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+
+  const { data: children } = await sb
+    .from("categories")
+    .select("slug")
+    .eq("parent_slug", slug);
+  const slugs = [slug, ...(children ?? []).map((c) => c.slug)];
+
+  const { data, error } = await sb
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .in("category_slug", slugs)
+    .order("published_at", { ascending: false });
+  if (error) throw error;
+  return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
 
 export async function getProjects(): Promise<Project[]> {

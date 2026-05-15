@@ -114,14 +114,17 @@ export default async function AdminDashboardPage() {
                   <div className="meta">아직 글이 없습니다.</div>
                 )}
                 {recent.map((p, i) => (
-                  <div
+                  <Link
                     key={p.slug}
+                    href={`/admin/editor?slug=${encodeURIComponent(p.slug)}`}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                       padding: "10px 0",
                       borderTop: i ? "1px solid var(--line-subtle)" : "none",
+                      color: "inherit",
+                      textDecoration: "none",
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
@@ -140,7 +143,7 @@ export default async function AdminDashboardPage() {
                       <div className="meta" style={{ marginTop: 2 }}>{relativeTime(p.updated_at)}</div>
                     </div>
                     <Chip variant={p.status === "Draft" ? "purple" : "blue"}>{p.status}</Chip>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -3,10 +3,8 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { getAllPostSlugs, getPostBySlug } from "@/lib/queries";
-import {
-  ClaudeSubprocessBody,
-  claudeSubprocessTOC,
-} from "@/data/post-content";
+import { PostBody } from "@/components/post/PostBody";
+import { extractToc } from "@/lib/markdown";
 
 export const revalidate = 60;
 
@@ -23,6 +21,7 @@ export default async function PostDetailPage({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
+  const toc = extractToc(post.bodyMd);
 
   return (
     <>
@@ -88,24 +87,28 @@ export default async function PostDetailPage({
               </div>
             </div>
 
-            <ClaudeSubprocessBody />
+            <PostBody md={post.bodyMd} />
           </div>
 
           <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
-            <div className="t-overline" style={{ marginBottom: 12 }}>
-              목차
-            </div>
-            <nav className="toc">
-              {claudeSubprocessTOC.map((t) => (
-                <a
-                  key={t.id}
-                  href={`#${t.id}`}
-                  className={`${t.active ? "active" : ""} ${t.sub ? "sub" : ""}`.trim()}
-                >
-                  {t.label}
-                </a>
-              ))}
-            </nav>
+            {toc.length > 0 && (
+              <>
+                <div className="t-overline" style={{ marginBottom: 12 }}>
+                  목차
+                </div>
+                <nav className="toc">
+                  {toc.map((t) => (
+                    <a
+                      key={t.id}
+                      href={`#${t.id}`}
+                      className={t.sub ? "sub" : ""}
+                    >
+                      {t.label}
+                    </a>
+                  ))}
+                </nav>
+              </>
+            )}
           </aside>
         </div>
       </div>

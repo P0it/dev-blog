@@ -7,6 +7,7 @@ export type Post = {
   title: string;
   excerpt: string;
   category: string;
+  categorySlug?: string | null;
   tags: string[];
   date: string;
   readingMin: string;
@@ -14,6 +15,8 @@ export type Post = {
   isFeatured?: boolean;
   featuredChips?: { variant: ChipVariant; label: string }[];
   year: string;
+  bodyMd?: string | null;
+  status?: "draft" | "published";
 };
 
 export type Project = {
