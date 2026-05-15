@@ -21,6 +21,27 @@ npm run build    # production 빌드
 npm run lint     # ESLint
 ```
 
+## Supabase
+
+데이터 레이어는 Supabase(Postgres + Auth)를 사용합니다. 처음 셋업할 때:
+
+1. [supabase.com](https://supabase.com)에서 프로젝트를 만든다.
+2. **Project Settings → API**에서 URL과 두 키를 복사한다.
+3. `.env.local.example`을 `.env.local`로 복사하고 값을 채운다.
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   SUPABASE_SERVICE_ROLE_KEY=...      # 시드/관리용. 서버 전용
+   ```
+4. SQL 마이그레이션을 적용한다. 가장 단순한 방법은 **Dashboard → SQL Editor**에 `supabase/migrations/0001_init.sql`을 붙여넣고 실행. CLI를 쓰려면 `supabase db push`.
+5. 기존 mock 데이터를 DB에 시드한다:
+   ```bash
+   npm run db:seed
+   ```
+   `posts`, `categories`, `tags`, `projects` 테이블이 채워집니다. idempotent — 다시 돌려도 안전.
+
+서비스 롤 키는 절대 클라이언트에 노출하지 말 것. `.env.local`은 `.gitignore`로 제외돼 있습니다.
+
 ## Routes
 
 | 경로 | 페이지 |
