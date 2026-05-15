@@ -106,6 +106,28 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
   return { slug };
 }
 
+export async function uploadImage(formData: FormData): Promise<{ url: string }> {
+  await guard();
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("file 누락");
+  if (!file.type.startsWith("image/")) throw new Error(`이미지 아님: ${file.type}`);
+  if (file.size > 5 * 1024 * 1024) throw new Error("5MB 초과");
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || file.type.split("/")[1] || "bin";
+  const stamp = new Date().toISOString().slice(0, 10);
+  const id = crypto.randomUUID().slice(0, 8);
+  const path = `${stamp}/${id}.${ext}`;
+
+  const sb = supabaseServer();
+  const { error } = await sb.storage
+    .from("post-images")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+
+  const { data } = sb.storage.from("post-images").getPublicUrl(path);
+  return { url: data.publicUrl };
+}
+
 export async function deletePost(slug: string): Promise<void> {
   await guard();
   const sb = supabaseServer();
