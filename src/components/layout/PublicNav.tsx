@@ -38,9 +38,9 @@ export function PublicNav({
         </div>
       </div>
       <div className="nav-right">
-        <button className="icon-btn" aria-label="검색">
+        <Link href="/search" className="icon-btn" aria-label="검색">
           <Search size={18} />
-        </button>
+        </Link>
         <ThemeToggle />
         <Link href={switchHref} className="lang-toggle" aria-label="언어 선택" style={{ textDecoration: "none" }}>
           <span className={locale === "ko" ? "on" : ""}>KR</span>

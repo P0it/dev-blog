@@ -231,6 +231,36 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   });
 }
 
+export async function searchPosts(rawQuery: string): Promise<Post[]> {
+  const q = rawQuery.trim();
+  if (!q) return [];
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+
+  // %, _, , 등 이스케이프
+  const esc = q.replace(/[%_,]/g, "\\$&");
+  const pattern = `%${esc}%`;
+
+  const { data, error } = await sb
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .or(
+      [
+        `title.ilike.${pattern}`,
+        `excerpt.ilike.${pattern}`,
+        `body_md.ilike.${pattern}`,
+        `title_en.ilike.${pattern}`,
+        `excerpt_en.ilike.${pattern}`,
+        `body_md_en.ilike.${pattern}`,
+      ].join(","),
+    )
+    .order("published_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data as PostRow[]).map((r) => rowToPost(r, labels));
+}
+
 export async function getCategoryBySlug(
   slug: string,
 ): Promise<{ slug: string; label: string; parent_slug: string | null } | null> {
