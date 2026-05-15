@@ -1,10 +1,26 @@
 import type { Metadata } from "next";
 import { ThemeProvider, themeInitScript } from "@/lib/theme";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "hyunwoo.blog",
-  description: "에이전트가 어떻게 생각하는지 궁금한 사람의 기록.",
+  metadataBase: new URL(SITE.url),
+  title: { default: SITE.name, template: `%s — ${SITE.name}` },
+  description: SITE.description,
+  openGraph: {
+    type: "website",
+    siteName: SITE.name,
+    locale: SITE.locale,
+    url: SITE.url,
+    title: SITE.name,
+    description: SITE.description,
+  },
+  alternates: {
+    canonical: SITE.url,
+    types: {
+      "application/rss+xml": [{ url: `${SITE.url}/rss.xml`, title: SITE.name }],
+    },
+  },
 };
 
 export default function RootLayout({

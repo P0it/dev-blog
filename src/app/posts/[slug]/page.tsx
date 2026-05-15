@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
@@ -5,12 +6,43 @@ import { Chip } from "@/components/ui/Chip";
 import { getAllPostSlugs, getPostBySlug } from "@/lib/queries";
 import { PostBody } from "@/components/post/PostBody";
 import { extractToc } from "@/lib/markdown";
+import { SITE } from "@/lib/site";
 
 export const revalidate = 60;
 
 export async function generateStaticParams() {
   const slugs = await getAllPostSlugs();
   return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
+  if (!post) return {};
+  const url = `${SITE.url}/posts/${post.slug}`;
+  return {
+    title: post.title,
+    description: post.excerpt || undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      url,
+      title: post.title,
+      description: post.excerpt || undefined,
+      publishedTime: post.date.replace(/\./g, "-"),
+      authors: [SITE.author],
+      tags: post.tags,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt || undefined,
+    },
+  };
 }
 
 export default async function PostDetailPage({
