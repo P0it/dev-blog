@@ -1,6 +1,4 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import { MarkdownView } from "@/components/post/MarkdownView";
 
 export function PostBody({ md, fallback = "본문 준비 중입니다." }: { md: string | null | undefined; fallback?: string }) {
   if (!md || !md.trim()) {
@@ -10,11 +8,5 @@ export function PostBody({ md, fallback = "본문 준비 중입니다." }: { md:
       </div>
     );
   }
-  return (
-    <div className="prose post-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>
-        {md}
-      </ReactMarkdown>
-    </div>
-  );
+  return <MarkdownView md={md} />;
 }
