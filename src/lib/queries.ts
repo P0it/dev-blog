@@ -300,10 +300,15 @@ export async function searchPosts(rawQuery: string): Promise<Post[]> {
   const sb = supabaseServer();
   const labels = await categoryLabelMap();
 
-  // %, _, , 등 이스케이프
+  // 1순위: pg_trgm 유사도 랭킹 RPC (0004 마이그레이션 후)
+  const rpc = await sb.rpc("search_posts", { q });
+  if (!rpc.error && rpc.data) {
+    return (rpc.data as PostRow[]).map((r) => rowToPost(r, labels));
+  }
+
+  // 폴백: 단순 ILIKE (RPC 없을 때)
   const esc = q.replace(/[%_,]/g, "\\$&");
   const pattern = `%${esc}%`;
-
   const { data, error } = await sb
     .from("posts")
     .select("*")

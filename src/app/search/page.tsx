@@ -6,6 +6,30 @@ import { searchPosts } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
+function highlight(text: string, q: string): React.ReactNode {
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx < 0) return text;
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  let pos = idx;
+  while (pos >= 0) {
+    parts.push(text.slice(i, pos));
+    parts.push(
+      <mark
+        key={pos}
+        style={{ background: "var(--bg-emphasized)", color: "var(--fg-strong)", borderRadius: 3, padding: "0 2px" }}
+      >
+        {text.slice(pos, pos + q.length)}
+      </mark>,
+    );
+    i = pos + q.length;
+    pos = text.toLowerCase().indexOf(q.toLowerCase(), i);
+  }
+  parts.push(text.slice(i));
+  return parts;
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -77,9 +101,9 @@ export default async function SearchPage({
                   </span>
                 </div>
                 <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
-                  <h3>{p.title}</h3>
+                  <h3>{highlight(p.title, q)}</h3>
                 </Link>
-                {p.excerpt && <p>{p.excerpt}</p>}
+                {p.excerpt && <p>{highlight(p.excerpt, q)}</p>}
                 {p.tags.length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {p.tags.map((t) => (
