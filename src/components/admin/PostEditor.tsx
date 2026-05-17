@@ -3,9 +3,7 @@
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import { MarkdownView } from "@/components/post/MarkdownView";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
 import {
@@ -475,19 +473,21 @@ export function PostEditor({
           />
         </div>
 
-        {/* 라이브 프리뷰 */}
+        {/* 라이브 프리뷰 — 발행 페이지와 동일 렌더러 (Mermaid 포함) */}
         <div style={{ padding: "32px 36px", overflow: "auto", background: "var(--bg-base)" }}>
-          <div className="prose post-body">
-            <h1 style={{ fontSize: 28, margin: "0 0 12px", lineHeight: 1.2 }}>
-              {title || "(제목 없음)"}
-            </h1>
-            {excerpt && (
-              <blockquote style={{ margin: "0 0 24px" }}>{excerpt}</blockquote>
-            )}
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>
-              {bodyMd}
-            </ReactMarkdown>
-          </div>
+          <h1 className="prose" style={{ fontSize: 28, margin: "0 0 12px", lineHeight: 1.2 }}>
+            {title || "(제목 없음)"}
+          </h1>
+          {excerpt && (
+            <p style={{ fontSize: 15, color: "var(--fg-neutral)", lineHeight: 1.6, margin: "0 0 24px" }}>
+              {excerpt}
+            </p>
+          )}
+          {bodyMd.trim() ? (
+            <MarkdownView md={bodyMd} />
+          ) : (
+            <div className="prose" style={{ color: "var(--fg-alternative)" }}>본문 미리보기</div>
+          )}
         </div>
       </div>
     </>
