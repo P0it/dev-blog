@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
@@ -62,6 +63,16 @@ export function PostDetailView({ post, locale }: { post: Post; locale: Locale })
             </div>
 
             <PostBody md={post.bodyMd} fallback={t.bodyPending} />
+
+            {post.tags.length > 0 && locale === "ko" && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 40 }}>
+                {post.tags.map((tag) => (
+                  <Link key={tag} href={`/tags/${encodeURIComponent(tag)}`}>
+                    <Chip>{tag}</Chip>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>

@@ -231,6 +231,37 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   });
 }
 
+export async function getAllTags(): Promise<{ tag: string; count: number }[]> {
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("posts")
+    .select("tags")
+    .eq("status", "published");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    for (const t of (row.tags as string[]) ?? []) {
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+export async function getPostsByTag(tag: string): Promise<Post[]> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  const { data, error } = await sb
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .contains("tags", [tag])
+    .order("published_at", { ascending: false });
+  if (error) throw error;
+  return (data as PostRow[]).map((r) => rowToPost(r, labels));
+}
+
 export async function searchPosts(rawQuery: string): Promise<Post[]> {
   const q = rawQuery.trim();
   if (!q) return [];
