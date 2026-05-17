@@ -3,6 +3,7 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
+import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
 import type { Locale, Post } from "@/lib/types";
@@ -124,6 +125,8 @@ export function PostDetailView({
                 </div>
               </div>
             )}
+
+            <Comments term={post.slug} />
           </div>
 
           <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
