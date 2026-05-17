@@ -5,8 +5,7 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { StatCard } from "@/components/admin/StatCard";
-import { VisitorsChart } from "@/components/admin/VisitorsChart";
-import { getAdminStats, getRecentDrafts } from "@/lib/queries";
+import { getAdminStats, getRecentDrafts, getViewStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -33,16 +32,25 @@ const quickActions = [
 ];
 
 export default async function AdminDashboardPage() {
-  const [{ published, drafts }, recent] = await Promise.all([
+  const [{ published, drafts }, recent, viewStats] = await Promise.all([
     getAdminStats(),
     getRecentDrafts(6),
+    getViewStats(),
   ]);
 
   const stats = [
     { label: "발행 글", num: String(published), delta: "" },
     { label: "작성 중", num: String(drafts), delta: drafts > 0 ? "검토 대기" : "없음" },
-    { label: "이번 달 조회", num: "—", delta: "곧 연결" },
-    { label: "진행 시리즈", num: "—", delta: "곧 연결" },
+    {
+      label: "이번 달 조회",
+      num: viewStats.monthly == null ? "—" : viewStats.monthly.toLocaleString(),
+      delta: viewStats.monthly == null ? "마이그레이션 필요" : "page_views",
+    },
+    {
+      label: "누적 조회",
+      num: viewStats.total == null ? "—" : viewStats.total.toLocaleString(),
+      delta: viewStats.total == null ? "0002 SQL 실행" : "전체 기간",
+    },
   ];
 
   const today = new Date();
@@ -99,12 +107,54 @@ export default async function AdminDashboardPage() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "baseline",
+                  marginBottom: 12,
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: 16 }}>방문자 — 최근 7일</h3>
-                <div className="meta">유니크 / 일</div>
+                <h3 style={{ margin: 0, fontSize: 16 }}>인기 글 — 이번 달</h3>
+                <div className="meta">조회수</div>
               </div>
-              <VisitorsChart />
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {viewStats.topPosts.length === 0 && (
+                  <div className="meta">
+                    {viewStats.monthly == null
+                      ? "page_views 테이블이 아직 없습니다 (0002 마이그레이션 실행)."
+                      : "이번 달 집계된 조회가 없습니다."}
+                  </div>
+                )}
+                {viewStats.topPosts.map((p, i) => (
+                  <Link
+                    key={p.slug}
+                    href={`/posts/${p.slug}`}
+                    target="_blank"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "8px 0",
+                      borderTop: i ? "1px solid var(--line-subtle)" : "none",
+                      color: "inherit",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: "var(--fg-strong)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {i + 1}. {p.title}
+                    </span>
+                    <span className="meta" style={{ whiteSpace: "nowrap" }}>
+                      {p.views.toLocaleString()}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <div className="card" style={{ padding: 22 }}>

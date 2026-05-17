@@ -386,6 +386,79 @@ export async function getAdminStats(): Promise<{
   return { published: published ?? 0, drafts: drafts ?? 0 };
 }
 
+function monthStartIso(): string {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+}
+
+// page_views 테이블이 아직 없으면(마이그레이션 전) null 반환.
+export async function getViewStats(): Promise<{
+  monthly: number | null;
+  total: number | null;
+  topPosts: { slug: string; title: string; views: number }[];
+}> {
+  const sb = supabaseServer();
+  try {
+    const [{ count: monthly, error: e1 }, { count: total, error: e2 }] = await Promise.all([
+      sb
+        .from("page_views")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", monthStartIso()),
+      sb.from("page_views").select("*", { count: "exact", head: true }),
+    ]);
+    if (e1 || e2) return { monthly: null, total: null, topPosts: [] };
+
+    const { data: rows } = await sb
+      .from("page_views")
+      .select("slug")
+      .not("slug", "is", null)
+      .gte("created_at", monthStartIso())
+      .limit(5000);
+
+    const counts = new Map<string, number>();
+    for (const r of rows ?? []) {
+      if (!r.slug) continue;
+      counts.set(r.slug, (counts.get(r.slug) ?? 0) + 1);
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    let titles = new Map<string, string>();
+    if (top.length > 0) {
+      const { data: posts } = await sb
+        .from("posts")
+        .select("slug,title")
+        .in("slug", top.map(([s]) => s));
+      titles = new Map((posts ?? []).map((p) => [p.slug, p.title]));
+    }
+
+    return {
+      monthly: monthly ?? 0,
+      total: total ?? 0,
+      topPosts: top.map(([slug, views]) => ({
+        slug,
+        title: titles.get(slug) ?? slug,
+        views,
+      })),
+    };
+  } catch {
+    return { monthly: null, total: null, topPosts: [] };
+  }
+}
+
+export async function getPostViews(slug: string): Promise<number | null> {
+  const sb = supabaseServer();
+  try {
+    const { count, error } = await sb
+      .from("page_views")
+      .select("*", { count: "exact", head: true })
+      .eq("slug", slug);
+    if (error) return null;
+    return count ?? 0;
+  } catch {
+    return null;
+  }
+}
+
 export async function getRecentDrafts(limit = 6): Promise<
   { slug: string; title: string; status: "Draft" | "Published"; updated_at: string }[]
 > {

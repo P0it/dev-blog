@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAllPostSlugs, getPostBySlug, getRelatedPosts } from "@/lib/queries";
+import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews } from "@/lib/queries";
 import { PostDetailView } from "@/components/page/PostDetailView";
 import { SITE } from "@/lib/site";
 
@@ -49,6 +49,9 @@ export default async function PostDetailPage({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
-  const related = await getRelatedPosts(post, 4);
-  return <PostDetailView post={post} locale="ko" related={related} />;
+  const [related, views] = await Promise.all([
+    getRelatedPosts(post, 4),
+    getPostViews(slug),
+  ]);
+  return <PostDetailView post={post} locale="ko" related={related} views={views} />;
 }

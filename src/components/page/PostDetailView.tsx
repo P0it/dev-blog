@@ -3,6 +3,7 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
+import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
 import type { Locale, Post } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
@@ -11,16 +12,19 @@ export function PostDetailView({
   post,
   locale,
   related = [],
+  views = null,
 }: {
   post: Post;
   locale: Locale;
   related?: Post[];
+  views?: number | null;
 }) {
   const toc = extractToc(post.bodyMd);
   const t = tFor(locale);
   const postsBase = locale === "en" ? "/en/posts" : "/posts";
   return (
     <>
+      <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
       <div className="container-wide" style={{ paddingTop: 56 }}>
         <div
@@ -67,6 +71,9 @@ export function PostDetailView({
                 <div className="meta">
                   {post.date}
                   {post.readingMin && (<> · {post.readingMin}</>)}
+                  {views != null && views > 0 && (
+                    <> · {locale === "ko" ? "조회" : "views"} {views.toLocaleString()}</>
+                  )}
                 </div>
               </div>
             </div>
