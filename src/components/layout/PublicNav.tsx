@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FolderTree, FlaskConical, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { MobileMenu } from "@/components/layout/MobileMenu";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
@@ -38,14 +39,20 @@ export function PublicNav({
         </div>
       </div>
       <div className="nav-right">
-        <Link href="/search" className="icon-btn" aria-label="검색">
+        <Link href="/search" className="icon-btn nav-desktop-only" aria-label="검색">
           <Search size={18} />
         </Link>
         <ThemeToggle />
-        <Link href={switchHref} className="lang-toggle" aria-label="언어 선택" style={{ textDecoration: "none" }}>
+        <Link
+          href={switchHref}
+          className="lang-toggle nav-desktop-only"
+          aria-label="언어 선택"
+          style={{ textDecoration: "none" }}
+        >
           <span className={locale === "ko" ? "on" : ""}>KR</span>
           <span className={locale === "en" ? "on" : ""}>EN</span>
         </Link>
+        <MobileMenu locale={locale} switchHref={switchHref} />
       </div>
     </div>
   );
