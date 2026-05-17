@@ -13,6 +13,7 @@ export const LABELS = {
     toc: "목차",
     bodyPending: "본문 준비 중입니다.",
     related: "연관 글",
+    series: "시리즈",
     switchTo: "EN",
   },
   en: {
@@ -27,6 +28,7 @@ export const LABELS = {
     toc: "Contents",
     bodyPending: "Translation in progress.",
     related: "Related",
+    series: "Series",
     switchTo: "KO",
   },
 } satisfies Record<Locale, Record<string, string>>;

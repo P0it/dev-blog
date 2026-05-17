@@ -7,6 +7,7 @@ import type {
   ThumbKind,
   ChipVariant,
   Locale,
+  SeriesContext,
 } from "@/lib/types";
 
 // "2026-05-04T00:00:00Z" → "2026.05.04"
@@ -43,6 +44,8 @@ type PostRow = {
   excerpt_en?: string | null;
   body_md_en?: string | null;
   translated_at?: string | null;
+  series_slug?: string | null;
+  series_order?: number | null;
 };
 
 type ProjectRow = {
@@ -86,6 +89,8 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     excerptEn: row.excerpt_en ?? null,
     bodyMdEn: row.body_md_en ?? null,
     translatedAt: row.translated_at ?? null,
+    seriesSlug: row.series_slug ?? null,
+    seriesOrder: row.series_order ?? null,
   };
 }
 
@@ -351,6 +356,91 @@ export async function getPostsByCategorySlug(slug: string): Promise<Post[]> {
     .order("published_at", { ascending: false });
   if (error) throw error;
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
+}
+
+// 시리즈 목록 (post 수 포함). series 테이블 없으면 [].
+export async function getAllSeries(): Promise<
+  { slug: string; title: string; description: string | null; count: number }[]
+> {
+  const sb = supabaseServer();
+  try {
+    const { data: series, error } = await sb
+      .from("series")
+      .select("slug,title,description")
+      .order("created_at");
+    if (error || !series) return [];
+    const { data: posts } = await sb
+      .from("posts")
+      .select("series_slug")
+      .eq("status", "published")
+      .not("series_slug", "is", null);
+    const counts = new Map<string, number>();
+    for (const p of posts ?? []) {
+      if (p.series_slug) counts.set(p.series_slug, (counts.get(p.series_slug) ?? 0) + 1);
+    }
+    return series.map((s) => ({ ...s, count: counts.get(s.slug) ?? 0 }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getAllSeriesFlat(): Promise<{ slug: string; title: string }[]> {
+  const sb = supabaseServer();
+  try {
+    const { data, error } = await sb.from("series").select("slug,title").order("created_at");
+    if (error) return [];
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// 한 시리즈의 메타 + 정렬된 글 목록. 없으면 null.
+export async function getSeriesContext(seriesSlug: string): Promise<SeriesContext | null> {
+  const sb = supabaseServer();
+  try {
+    const { data: s, error } = await sb
+      .from("series")
+      .select("slug,title,description")
+      .eq("slug", seriesSlug)
+      .maybeSingle();
+    if (error || !s) return null;
+    const { data: posts } = await sb
+      .from("posts")
+      .select("slug,title,series_order")
+      .eq("status", "published")
+      .eq("series_slug", seriesSlug)
+      .order("series_order", { ascending: true, nullsFirst: false });
+    return {
+      slug: s.slug,
+      title: s.title,
+      description: s.description,
+      items: (posts ?? []).map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        order: p.series_order,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getSeriesPosts(seriesSlug: string): Promise<Post[]> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  try {
+    const { data, error } = await sb
+      .from("posts")
+      .select("*")
+      .eq("status", "published")
+      .eq("series_slug", seriesSlug)
+      .order("series_order", { ascending: true, nullsFirst: false });
+    if (error) return [];
+    return (data as PostRow[]).map((r) => rowToPost(r, labels));
+  } catch {
+    return [];
+  }
 }
 
 export async function getProjects(): Promise<Project[]> {

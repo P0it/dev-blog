@@ -21,9 +21,18 @@ export type Post = {
   excerptEn?: string | null;
   bodyMdEn?: string | null;
   translatedAt?: string | null;
+  seriesSlug?: string | null;
+  seriesOrder?: number | null;
 };
 
 export type Locale = "ko" | "en";
+
+export type SeriesContext = {
+  slug: string;
+  title: string;
+  description: string | null;
+  items: { slug: string; title: string; order: number | null }[];
+};
 
 export type Project = {
   k: ThumbKind;

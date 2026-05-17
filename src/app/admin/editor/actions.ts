@@ -17,6 +17,9 @@ export type EditorInput = {
   thumbKind: string;
   isFeatured: boolean;
   readingMin: string;
+  seriesSlug: string | null;
+  seriesOrder: number | null;
+  seriesTitle: string; // 새 시리즈 생성 시 제목
 };
 
 function slugify(s: string): string {
@@ -32,10 +35,27 @@ async function guard() {
   if (!(await isAdmin())) throw new Error("unauthorized");
 }
 
+// series_slug가 있으면 series row를 보장(upsert)하고 post에 넣을 필드 반환.
+async function seriesFields(
+  input: EditorInput,
+): Promise<{ series_slug: string | null; series_order: number | null }> {
+  if (!input.seriesSlug) return { series_slug: null, series_order: null };
+  const sb = supabaseServer();
+  const { error } = await sb
+    .from("series")
+    .upsert(
+      { slug: input.seriesSlug, title: input.seriesTitle || input.seriesSlug },
+      { onConflict: "slug" },
+    );
+  if (error) throw error;
+  return { series_slug: input.seriesSlug, series_order: input.seriesOrder };
+}
+
 export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
   await guard();
   const slug = (input.slug || slugify(input.title) || `draft-${Date.now()}`).trim();
   const sb = supabaseServer();
+  const series = await seriesFields(input);
 
   const row = {
     slug,
@@ -48,6 +68,7 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     reading_min: input.readingMin || null,
     is_featured: input.isFeatured,
     status: "draft" as const,
+    ...series,
   };
 
   if (input.originalSlug && input.originalSlug !== slug) {
@@ -77,6 +98,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     publishedAt = data?.published_at ?? null;
   }
   if (!publishedAt) publishedAt = new Date().toISOString();
+  const series = await seriesFields(input);
 
   const row = {
     slug,
@@ -90,6 +112,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     is_featured: input.isFeatured,
     status: "published" as const,
     published_at: publishedAt,
+    ...series,
   };
 
   if (input.originalSlug && input.originalSlug !== slug) {

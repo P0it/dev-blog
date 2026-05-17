@@ -31,7 +31,11 @@ type Initial = {
   isFeatured: boolean;
   readingMin: string;
   status: "draft" | "published";
+  seriesSlug: string | null;
+  seriesOrder: number | null;
 };
+
+type Series = { slug: string; title: string };
 
 const inputBox: React.CSSProperties = {
   padding: "10px 12px",
@@ -48,9 +52,11 @@ const inputBox: React.CSSProperties = {
 export function PostEditor({
   initial,
   categories,
+  series,
 }: {
   initial: Initial;
   categories: Category[];
+  series: Series[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -66,6 +72,13 @@ export function PostEditor({
   const [thumbKind, setThumbKind] = useState(initial.thumbKind);
   const [isFeatured, setIsFeatured] = useState(initial.isFeatured);
   const [readingMin, setReadingMin] = useState(initial.readingMin);
+  const [seriesSlug, setSeriesSlug] = useState(initial.seriesSlug ?? "");
+  const [seriesTitle, setSeriesTitle] = useState(
+    series.find((s) => s.slug === initial.seriesSlug)?.title ?? "",
+  );
+  const [seriesOrder, setSeriesOrder] = useState<string>(
+    initial.seriesOrder != null ? String(initial.seriesOrder) : "",
+  );
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -158,8 +171,11 @@ export function PostEditor({
       thumbKind,
       isFeatured,
       readingMin,
+      seriesSlug: seriesSlug.trim() || null,
+      seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : null,
+      seriesTitle,
     }),
-    [initial.originalSlug, slug, title, excerpt, bodyMd, categorySlug, tagsText, thumbKind, isFeatured, readingMin],
+    [initial.originalSlug, slug, title, excerpt, bodyMd, categorySlug, tagsText, thumbKind, isFeatured, readingMin, seriesSlug, seriesOrder, seriesTitle],
   );
 
   const onSave = () => {
@@ -341,6 +357,47 @@ export function PostEditor({
               placeholder="예: 8분"
             />
           </Field>
+
+          <Field label="시리즈 슬러그 (선택)">
+            <input
+              style={{ ...inputBox, fontFamily: "var(--font-mono)" }}
+              list="series-list"
+              value={seriesSlug}
+              onChange={(e) => {
+                setSeriesSlug(e.target.value);
+                const found = series.find((s) => s.slug === e.target.value);
+                if (found) setSeriesTitle(found.title);
+              }}
+              placeholder="agent-infra"
+            />
+            <datalist id="series-list">
+              {series.map((s) => (
+                <option key={s.slug} value={s.slug}>{s.title}</option>
+              ))}
+            </datalist>
+          </Field>
+
+          {seriesSlug.trim() && (
+            <>
+              <Field label="시리즈 제목 (새 시리즈일 때)">
+                <input
+                  style={inputBox}
+                  value={seriesTitle}
+                  onChange={(e) => setSeriesTitle(e.target.value)}
+                  placeholder="에이전트 인프라"
+                />
+              </Field>
+              <Field label="시리즈 순서">
+                <input
+                  type="number"
+                  style={inputBox}
+                  value={seriesOrder}
+                  onChange={(e) => setSeriesOrder(e.target.value)}
+                  placeholder="1"
+                />
+              </Field>
+            </>
+          )}
 
           <Field label="옵션">
             <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>

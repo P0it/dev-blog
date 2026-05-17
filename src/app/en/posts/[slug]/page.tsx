@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews, localize } from "@/lib/queries";
+import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews, getSeriesContext, localize } from "@/lib/queries";
 import { PostDetailView } from "@/components/page/PostDetailView";
 import { SITE } from "@/lib/site";
 
@@ -49,10 +49,19 @@ export default async function EnPostDetailPage({
   if (!post) notFound();
   // 번역 없는 글은 KO 페이지로 보냄
   if (!post.titleEn) redirect(`/posts/${slug}`);
-  const [relatedRaw, views] = await Promise.all([
+  const [relatedRaw, views, series] = await Promise.all([
     getRelatedPosts(post, 4),
     getPostViews(slug),
+    post.seriesSlug ? getSeriesContext(post.seriesSlug) : Promise.resolve(null),
   ]);
   const related = relatedRaw.map((r) => localize(r, "en"));
-  return <PostDetailView post={localize(post, "en")} locale="en" related={related} views={views} />;
+  return (
+    <PostDetailView
+      post={localize(post, "en")}
+      locale="en"
+      related={related}
+      views={views}
+      series={series}
+    />
+  );
 }

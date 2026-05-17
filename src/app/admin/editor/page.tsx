@@ -1,5 +1,5 @@
 import { PostEditor } from "@/components/admin/PostEditor";
-import { getAllCategoriesFlat, getPostForEditor } from "@/lib/queries";
+import { getAllCategoriesFlat, getAllSeriesFlat, getPostForEditor } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,10 @@ export default async function EditorPage({
   searchParams: Promise<{ slug?: string }>;
 }) {
   const { slug } = await searchParams;
-  const categories = await getAllCategoriesFlat();
+  const [categories, series] = await Promise.all([
+    getAllCategoriesFlat(),
+    getAllSeriesFlat(),
+  ]);
 
   const post = slug ? await getPostForEditor(slug) : null;
 
@@ -26,6 +29,8 @@ export default async function EditorPage({
         isFeatured: post.isFeatured ?? false,
         readingMin: post.readingMin,
         status: post.status ?? "draft",
+        seriesSlug: post.seriesSlug ?? null,
+        seriesOrder: post.seriesOrder ?? null,
       }
     : {
         originalSlug: null,
@@ -39,7 +44,9 @@ export default async function EditorPage({
         isFeatured: false,
         readingMin: "",
         status: "draft" as const,
+        seriesSlug: null,
+        seriesOrder: null,
       };
 
-  return <PostEditor initial={initial} categories={categories} />;
+  return <PostEditor initial={initial} categories={categories} series={series} />;
 }

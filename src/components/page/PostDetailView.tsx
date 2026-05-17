@@ -6,7 +6,7 @@ import { PostBody } from "@/components/post/PostBody";
 import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
-import type { Locale, Post } from "@/lib/types";
+import type { Locale, Post, SeriesContext } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
 
 export function PostDetailView({
@@ -14,11 +14,13 @@ export function PostDetailView({
   locale,
   related = [],
   views = null,
+  series = null,
 }: {
   post: Post;
   locale: Locale;
   related?: Post[];
   views?: number | null;
+  series?: SeriesContext | null;
 }) {
   const toc = extractToc(post.bodyMd);
   const t = tFor(locale);
@@ -78,6 +80,46 @@ export function PostDetailView({
                 </div>
               </div>
             </div>
+
+            {series && series.items.length > 0 && (
+              <div
+                style={{
+                  margin: "8px 0 32px",
+                  padding: "18px 20px",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--line-subtle)",
+                  borderRadius: 12,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+                  <Link
+                    href={`/series/${series.slug}`}
+                    style={{ fontWeight: 700, fontSize: 15, color: "var(--fg-strong)", textDecoration: "none" }}
+                  >
+                    {t.series}: {series.title}
+                  </Link>
+                  <span className="meta">
+                    {series.items.findIndex((it) => it.slug === post.slug) + 1} / {series.items.length}
+                  </span>
+                </div>
+                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {series.items.map((it) => {
+                    const current = it.slug === post.slug;
+                    return (
+                      <li key={it.slug} style={{ fontSize: 14, lineHeight: 1.5 }}>
+                        {current ? (
+                          <span style={{ fontWeight: 700, color: "var(--fg-strong)" }}>{it.title}</span>
+                        ) : (
+                          <Link href={`${postsBase}/${it.slug}`} style={{ color: "var(--fg-neutral)" }}>
+                            {it.title}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            )}
 
             <PostBody md={post.bodyMd} fallback={t.bodyPending} />
 
