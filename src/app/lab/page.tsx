@@ -27,7 +27,7 @@ export default async function LabPage() {
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
+        <div className="lab-grid">
           {projects.map((p) => (
             <ProjectCard key={p.name} p={p} />
           ))}

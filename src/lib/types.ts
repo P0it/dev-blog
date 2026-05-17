@@ -36,11 +36,13 @@ export type SeriesContext = {
 
 export type Project = {
   k: ThumbKind;
+  slug: string;
   name: string;
   year: string;
   desc: string;
   plan: string;
   build: string;
+  body: string;
   stack: string[];
   url: string;
   host: "vercel" | "cloudflare";

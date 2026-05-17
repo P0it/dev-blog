@@ -49,17 +49,35 @@ type PostRow = {
 };
 
 type ProjectRow = {
+  slug: string;
   name: string;
   year: string;
   description: string | null;
   plan: string | null;
   build_note: string | null;
+  body_md: string | null;
   stack: string[];
   thumb_kind: string;
   url: string | null;
   host: string | null;
   sort_order: number;
 };
+
+function rowToProject(r: ProjectRow): Project {
+  return {
+    k: (r.thumb_kind as ThumbKind) ?? "a",
+    slug: r.slug,
+    name: r.name,
+    year: r.year,
+    desc: r.description ?? "",
+    plan: r.plan ?? "",
+    build: r.build_note ?? "",
+    body: r.body_md ?? "",
+    stack: r.stack ?? [],
+    url: r.url ?? "",
+    host: (r.host as Project["host"]) ?? "vercel",
+  };
+}
 
 async function categoryLabelMap(): Promise<Map<string, string>> {
   const sb = supabaseServer();
@@ -455,17 +473,30 @@ export async function getProjects(): Promise<Project[]> {
     .select("*")
     .order("sort_order");
   if (error) throw error;
-  return (data as ProjectRow[]).map((r) => ({
-    k: (r.thumb_kind as ThumbKind) ?? "a",
-    name: r.name,
-    year: r.year,
-    desc: r.description ?? "",
-    plan: r.plan ?? "",
-    build: r.build_note ?? "",
-    stack: r.stack ?? [],
-    url: r.url ?? "",
-    host: (r.host as Project["host"]) ?? "vercel",
-  }));
+  return (data as ProjectRow[]).map(rowToProject);
+}
+
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("projects")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  // 마이그레이션 전 slug 컬럼 부재 시 404 처리 (사이트는 계속 동작).
+  if (error) return null;
+  if (!data) return null;
+  return rowToProject(data as ProjectRow);
+}
+
+export async function getAllProjectSlugs(): Promise<string[]> {
+  const sb = supabaseServer();
+  const { data, error } = await sb.from("projects").select("slug");
+  // 0005_project_detail 마이그레이션 적용 전에는 slug 컬럼이 없다.
+  // 그 경우 빈 목록을 반환해 사이트 전체 빌드는 통과시키고,
+  // /lab/[slug]는 마이그레이션 후 동작한다.
+  if (error) return [];
+  return (data as { slug: string }[]).map((r) => r.slug);
 }
 
 // 어드민 대시보드용 집계

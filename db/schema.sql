@@ -51,11 +51,13 @@ create trigger posts_set_updated_at
 -- ============================================================
 create table if not exists projects (
   id          uuid primary key default gen_random_uuid(),
+  slug        text unique not null,
   name        text not null,
   year        text not null,
   description text,
   plan        text,
   build_note  text,
+  body_md     text,                          -- 개발기 본문 마크다운
   stack       text[] not null default '{}',
   thumb_kind  text not null default 'a',
   url         text,

@@ -30,30 +30,12 @@ export function PostDetailView({
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
       <div className="container-wide" style={{ paddingTop: 56 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 220px",
-            gap: 64,
-            alignItems: "start",
-          }}
-        >
+        <div className="post-layout">
           <div style={{ maxWidth: 720, justifySelf: "end", width: "100%" }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <Chip variant="blue">{post.category}</Chip>
             </div>
-            <h1
-              className="prose"
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 44,
-                lineHeight: 1.15,
-                letterSpacing: "-0.025em",
-                margin: "0 0 16px",
-              }}
-            >
-              {post.title}
-            </h1>
+            <h1 className="prose post-title">{post.title}</h1>
             {post.excerpt && (
               <p style={{ fontSize: 17, color: "var(--fg-neutral)", lineHeight: 1.6, margin: "0 0 24px" }}>
                 {post.excerpt}
@@ -171,7 +153,7 @@ export function PostDetailView({
             <Comments term={post.slug} />
           </div>
 
-          <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
+          <aside className="post-toc">
             {toc.length > 0 && (
               <>
                 <div className="t-overline" style={{ marginBottom: 12 }}>{t.toc}</div>
