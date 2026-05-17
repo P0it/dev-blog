@@ -7,9 +7,18 @@ import { extractToc } from "@/lib/markdown";
 import type { Locale, Post } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
 
-export function PostDetailView({ post, locale }: { post: Post; locale: Locale }) {
+export function PostDetailView({
+  post,
+  locale,
+  related = [],
+}: {
+  post: Post;
+  locale: Locale;
+  related?: Post[];
+}) {
   const toc = extractToc(post.bodyMd);
   const t = tFor(locale);
+  const postsBase = locale === "en" ? "/en/posts" : "/posts";
   return (
     <>
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
@@ -71,6 +80,41 @@ export function PostDetailView({ post, locale }: { post: Post; locale: Locale })
                     <Chip>{tag}</Chip>
                   </Link>
                 ))}
+              </div>
+            )}
+
+            {related.length > 0 && (
+              <div
+                style={{
+                  marginTop: 64,
+                  paddingTop: 32,
+                  borderTop: "1px solid var(--line-subtle)",
+                }}
+              >
+                <div className="t-overline" style={{ marginBottom: 16 }}>{t.related}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {related.map((r) => (
+                    <Link
+                      key={r.slug}
+                      href={`${postsBase}/${r.slug}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                        gap: 16,
+                        padding: "14px 0",
+                        borderBottom: "1px solid var(--line-subtle)",
+                        color: "inherit",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <span style={{ fontSize: 16, fontWeight: 500, color: "var(--fg-strong)" }}>
+                        {r.title}
+                      </span>
+                      <span className="meta" style={{ whiteSpace: "nowrap" }}>{r.date}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>

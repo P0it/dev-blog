@@ -12,6 +12,7 @@ export const LABELS = {
     archiveLead: "시간순으로 정렬한 전체 글. 연도와 카테고리로 필터하세요.",
     toc: "목차",
     bodyPending: "본문 준비 중입니다.",
+    related: "연관 글",
     switchTo: "EN",
   },
   en: {
@@ -25,6 +26,7 @@ export const LABELS = {
     archiveLead: "All posts sorted by date. Filter by year and category.",
     toc: "Contents",
     bodyPending: "Translation in progress.",
+    related: "Related",
     switchTo: "KO",
   },
 } satisfies Record<Locale, Record<string, string>>;

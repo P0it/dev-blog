@@ -231,6 +231,33 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   });
 }
 
+// 같은 카테고리 + 태그 겹침 점수로 연관 글 추천.
+export async function getRelatedPosts(post: Post, limit = 3): Promise<Post[]> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  const { data, error } = await sb
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .neq("slug", post.slug)
+    .order("published_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+
+  const tagSet = new Set(post.tags);
+  const scored = (data as PostRow[])
+    .map((r) => {
+      const sharedTags = (r.tags ?? []).filter((t) => tagSet.has(t)).length;
+      const sameCat = r.category_slug && r.category_slug === post.categorySlug ? 1 : 0;
+      return { row: r, score: sharedTags * 2 + sameCat };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map((x) => rowToPost(x.row, labels));
+}
+
 export async function getAllTags(): Promise<{ tag: string; count: number }[]> {
   const sb = supabaseServer();
   const { data, error } = await sb
