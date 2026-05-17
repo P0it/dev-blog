@@ -6,7 +6,7 @@ export function AdminTopbar({ children }: { children?: React.ReactNode }) {
       <div className="nav-left" style={{ gap: 16 }}>
         <Link href="/admin" className="nav-brand" aria-label="어드민 홈">
           <span className="dot" />
-          <span>hyunwoo</span>
+          <span>hyun</span>
         </Link>
         <span
           className="meta"
