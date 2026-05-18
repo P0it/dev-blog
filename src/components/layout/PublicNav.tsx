@@ -23,9 +23,9 @@ export function PublicNav({
   return (
     <div className="nav">
       <div className="nav-left">
-        <Link href={pathFor(locale, "/")} className="nav-brand" aria-label="hyun.blog">
+        <Link href={pathFor(locale, "/")} className="nav-brand" aria-label="hynu.blog">
           <span className="dot" />
-          <span>hyun</span>
+          <span>hynu</span>
         </Link>
         <div className="nav-links">
           <Link href={pathFor(locale, "/categories")} className={active === "categories" ? "active" : ""}>

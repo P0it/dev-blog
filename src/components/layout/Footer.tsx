@@ -19,7 +19,7 @@ export function Footer() {
           color: "var(--fg-alternative)",
         }}
       >
-        <span style={{ fontFamily: "var(--font-mono)" }}>© 2026 hyun.blog</span>
+        <span style={{ fontFamily: "var(--font-mono)" }}>© 2026 hynu.blog</span>
         <span>RSS · Sitemap</span>
       </div>
     </footer>
