@@ -20,32 +20,31 @@ export function AdminSidebar({ active = "dashboard" }: { active?: Active }) {
         <LayoutDashboard size={16} />
         대시보드
       </Link>
-      <Link href="/admin/editor" className={cls("posts")}>
+      <Link href="/admin/posts" className={cls("posts")}>
         <FileText size={16} />
         글
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--fg-alternative)" }}>54</span>
       </Link>
-      <a className={cls("categories")}>
+      <Link href="/admin/categories" className={cls("categories")}>
         <FolderTree size={16} />
         카테고리
-      </a>
-      <a className={cls("tags")}>
+      </Link>
+      <Link href="/admin/tags" className={cls("tags")}>
         <Hash size={16} />
         태그
-      </a>
-      <a className={cls("series")}>
+      </Link>
+      <Link href="/admin/series" className={cls("series")}>
         <Layers size={16} />
         시리즈
-      </a>
+      </Link>
       <div className="t-overline" style={{ padding: "16px 12px 8px" }}>분석</div>
-      <a className={cls("stats")}>
+      <Link href="/admin/stats" className={cls("stats")}>
         <BarChart3 size={16} />
         통계
-      </a>
-      <a className={cls("settings")}>
+      </Link>
+      <Link href="/admin/settings" className={cls("settings")}>
         <Settings size={16} />
         설정
-      </a>
+      </Link>
     </div>
   );
 }

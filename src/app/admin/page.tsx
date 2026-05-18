@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles, Plus, FolderPlus, Upload, Globe } from "lucide-react";
+import { Sparkles, Plus, FolderPlus, Layers, BarChart3 } from "lucide-react";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Button } from "@/components/ui/Button";
@@ -25,10 +25,10 @@ function relativeTime(iso: string): string {
 }
 
 const quickActions = [
-  { icon: Sparkles, t: "AI 초안 생성", d: "URL → 마크다운 초안" },
-  { icon: FolderPlus, t: "카테고리 추가", d: "트리 관리" },
-  { icon: Upload, t: "이미지 일괄 업로드", d: "Supabase Storage" },
-  { icon: Globe, t: "영어 번역 재실행", d: "미번역 글 보기" },
+  { icon: Sparkles, t: "URL로 초안", d: "AI 초안 요청", href: "/admin/posts" },
+  { icon: FolderPlus, t: "카테고리 관리", d: "추가·정렬·삭제", href: "/admin/categories" },
+  { icon: Layers, t: "시리즈 관리", d: "묶음 CRUD", href: "/admin/series" },
+  { icon: BarChart3, t: "통계", d: "글별 조회수", href: "/admin/stats" },
 ];
 
 export default async function AdminDashboardPage() {
@@ -211,11 +211,22 @@ export default async function AdminDashboardPage() {
               {quickActions.map((a) => {
                 const Icon = a.icon;
                 return (
-                  <div key={a.t} className="card" style={{ padding: 18, cursor: "pointer" }}>
+                  <Link
+                    key={a.t}
+                    href={a.href}
+                    className="card"
+                    style={{
+                      padding: 18,
+                      cursor: "pointer",
+                      display: "block",
+                      color: "inherit",
+                      textDecoration: "none",
+                    }}
+                  >
                     <Icon size={18} style={{ color: "var(--fg-strong)" }} />
                     <div style={{ fontWeight: 600, fontSize: 14, marginTop: 8 }}>{a.t}</div>
                     <div className="meta" style={{ marginTop: 2 }}>{a.d}</div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

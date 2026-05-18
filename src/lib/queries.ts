@@ -204,6 +204,36 @@ export async function getAllCategoriesFlat(): Promise<
   return data ?? [];
 }
 
+export type AdminCategory = {
+  slug: string;
+  label: string;
+  parent_slug: string | null;
+  sort_order: number;
+  postCount: number;
+};
+
+// 어드민 카테고리 관리용 — 전체 + 카테고리별 글 수(발행 기준).
+export async function getCategoriesForAdmin(): Promise<AdminCategory[]> {
+  const sb = supabaseServer();
+  const [{ data: cats, error: e1 }, { data: posts, error: e2 }] = await Promise.all([
+    sb.from("categories").select("slug,label,parent_slug,sort_order").order("sort_order"),
+    sb.from("posts").select("category_slug").eq("status", "published"),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const counts = new Map<string, number>();
+  for (const p of posts ?? []) {
+    if (p.category_slug) counts.set(p.category_slug, (counts.get(p.category_slug) ?? 0) + 1);
+  }
+  return (cats ?? []).map((c) => ({
+    slug: c.slug,
+    label: c.label,
+    parent_slug: c.parent_slug,
+    sort_order: c.sort_order,
+    postCount: counts.get(c.slug) ?? 0,
+  }));
+}
+
 export async function getAllPostSlugs(): Promise<string[]> {
   const sb = supabaseServer();
   const { data, error } = await sb
@@ -601,4 +631,178 @@ export async function getRecentDrafts(limit = 6): Promise<
     status: r.status === "published" ? "Published" : "Draft",
     updated_at: r.updated_at,
   }));
+}
+
+export type AdminPostRow = {
+  slug: string;
+  title: string;
+  status: "draft" | "published";
+  updatedAt: string;
+  category: string;
+  isFeatured: boolean;
+  aiStatus: "pending" | "processing" | "done" | "error" | null;
+};
+
+// 어드민 글 목록 — draft + published 전체, 최근 수정순.
+// 각 글의 최신 ai_jobs 상태를 함께 매핑(테이블 없으면 null).
+export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  const { data, error } = await sb
+    .from("posts")
+    .select("slug,title,status,updated_at,category_slug,is_featured")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  const rows = data ?? [];
+
+  const aiBySlug = new Map<string, AdminPostRow["aiStatus"]>();
+  try {
+    const { data: jobs, error: jErr } = await sb
+      .from("ai_jobs")
+      .select("post_slug,status,created_at")
+      .order("created_at", { ascending: false });
+    if (!jErr) {
+      for (const j of jobs ?? []) {
+        if (j.post_slug && !aiBySlug.has(j.post_slug)) {
+          aiBySlug.set(j.post_slug, j.status as AdminPostRow["aiStatus"]);
+        }
+      }
+    }
+  } catch {
+    /* ai_jobs 마이그레이션 전이면 무시 */
+  }
+
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    status: r.status === "published" ? "published" : "draft",
+    updatedAt: r.updated_at,
+    category: r.category_slug ? labels.get(r.category_slug) ?? r.category_slug : "",
+    isFeatured: r.is_featured,
+    aiStatus: aiBySlug.get(r.slug) ?? null,
+  }));
+}
+
+// 어드민 태그 관리용 — draft 포함 전체에서 집계.
+export async function getAllTagsForAdmin(): Promise<{ tag: string; count: number }[]> {
+  const sb = supabaseServer();
+  const { data, error } = await sb.from("posts").select("tags");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    for (const t of (row.tags as string[]) ?? []) {
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+// 글별 조회수 표 (전체 + 이번 달). page_views 없으면 [].
+export async function getPostViewTable(): Promise<
+  { slug: string; title: string; total: number; monthly: number }[]
+> {
+  const sb = supabaseServer();
+  try {
+    const { data: views, error } = await sb
+      .from("page_views")
+      .select("slug,created_at")
+      .not("slug", "is", null)
+      .limit(50000);
+    if (error || !views) return [];
+    const since = monthStartIso();
+    const total = new Map<string, number>();
+    const monthly = new Map<string, number>();
+    for (const v of views) {
+      if (!v.slug) continue;
+      total.set(v.slug, (total.get(v.slug) ?? 0) + 1);
+      if (v.created_at >= since) monthly.set(v.slug, (monthly.get(v.slug) ?? 0) + 1);
+    }
+    const { data: posts } = await sb.from("posts").select("slug,title");
+    const titles = new Map((posts ?? []).map((p) => [p.slug, p.title]));
+    return [...total.entries()]
+      .map(([slug, t]) => ({
+        slug,
+        title: titles.get(slug) ?? slug,
+        total: t,
+        monthly: monthly.get(slug) ?? 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  } catch {
+    return [];
+  }
+}
+
+export type OpsInfo = {
+  env: { key: string; set: boolean }[];
+  db: boolean;
+  counts: { published: number; drafts: number; categories: number; series: number };
+  aiJobs: {
+    available: boolean;
+    recent: {
+      id: number;
+      type: string;
+      post_slug: string | null;
+      status: string;
+      result: string | null;
+      created_at: string;
+    }[];
+  };
+};
+
+// 설정 = 읽기 전용 운영 정보. 새 테이블 없음.
+export async function getOpsInfo(): Promise<OpsInfo> {
+  const sb = supabaseServer();
+  const envKeys = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "ADMIN_PASSWORD",
+    "NEXT_PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_GISCUS_REPO",
+  ];
+  const env = envKeys.map((key) => ({ key, set: !!process.env[key] }));
+
+  let db = true;
+  let published = 0;
+  let drafts = 0;
+  let categories = 0;
+  let series = 0;
+  try {
+    const [p, d, c, s] = await Promise.all([
+      sb.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+      sb.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
+      sb.from("categories").select("*", { count: "exact", head: true }),
+      sb.from("series").select("*", { count: "exact", head: true }),
+    ]);
+    published = p.count ?? 0;
+    drafts = d.count ?? 0;
+    categories = c.count ?? 0;
+    series = s.count ?? 0;
+    if (p.error) db = false;
+  } catch {
+    db = false;
+  }
+
+  let aiAvailable = true;
+  let recent: OpsInfo["aiJobs"]["recent"] = [];
+  try {
+    const { data, error } = await sb
+      .from("ai_jobs")
+      .select("id,type,post_slug,status,result,created_at")
+      .order("created_at", { ascending: false })
+      .limit(15);
+    if (error) aiAvailable = false;
+    else recent = data ?? [];
+  } catch {
+    aiAvailable = false;
+  }
+
+  return {
+    env,
+    db,
+    counts: { published, drafts, categories, series },
+    aiJobs: { available: aiAvailable, recent },
+  };
 }
