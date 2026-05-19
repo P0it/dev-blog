@@ -1,6 +1,13 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-export function AdminTopbar({ children }: { children?: React.ReactNode }) {
+export function AdminTopbar({
+  children,
+  left,
+}: {
+  children?: React.ReactNode;
+  left?: React.ReactNode;
+}) {
   return (
     <div className="nav" style={{ height: 56, padding: "0 24px" }}>
       <div className="nav-left" style={{ gap: 16 }}>
@@ -18,8 +25,10 @@ export function AdminTopbar({ children }: { children?: React.ReactNode }) {
         >
           localhost
         </span>
+        {left}
       </div>
       <div className="nav-right" style={{ gap: 12 }}>
+        <ThemeToggle />
         {children}
       </div>
     </div>

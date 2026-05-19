@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { SquarePen } from "lucide-react";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ export default async function AdminPostsPage() {
       <AdminTopbar>
         <Link href="/admin/editor">
           <Button variant="primary" size="sm">
-            <Plus size={14} />새 글
+            <SquarePen size={14} />새 글 쓰기
           </Button>
         </Link>
       </AdminTopbar>

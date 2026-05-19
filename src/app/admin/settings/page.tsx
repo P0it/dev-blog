@@ -6,15 +6,9 @@ import { getOpsInfo } from "@/lib/queries";
 export const dynamic = "force-dynamic";
 
 function jobChip(status: string) {
-  if (status === "pending")
+  if (status === "pending" || status === "processing")
     return (
-      <Chip variant="outline">
-        <span className="ai-spinner" />대기중
-      </Chip>
-    );
-  if (status === "processing")
-    return (
-      <Chip variant="purple">
+      <Chip variant="blue">
         <span className="ai-spinner" />생성중
       </Chip>
     );

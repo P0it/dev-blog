@@ -36,15 +36,9 @@ function fmtDate(iso: string): string {
 
 function AiBadge({ status }: { status: AdminPostRow["aiStatus"] }) {
   if (!status) return null;
-  if (status === "pending")
+  if (status === "pending" || status === "processing")
     return (
-      <Chip variant="outline">
-        <span className="ai-spinner" />대기중
-      </Chip>
-    );
-  if (status === "processing")
-    return (
-      <Chip variant="purple">
+      <Chip variant="blue">
         <span className="ai-spinner" />생성중
       </Chip>
     );
@@ -102,7 +96,7 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
   const filters: { k: StatusFilter; label: string }[] = [
     { k: "all", label: "전체" },
-    { k: "draft", label: "초안" },
+    { k: "draft", label: "작성중" },
     { k: "published", label: "발행" },
   ];
 
@@ -172,15 +166,27 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
             >
               <div
                 style={{
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: "var(--fg-strong)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  minWidth: 0,
                 }}
               >
-                {p.title}
+                {p.status !== "published" && (
+                  <Chip variant="purple">작성중</Chip>
+                )}
+                <span
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 14,
+                    color: "var(--fg-strong)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {p.title}
+                </span>
               </div>
               <div className="meta" style={{ marginTop: 3 }}>
                 {p.category && `${p.category} · `}
@@ -190,9 +196,6 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
             <div style={{ display: "flex", gap: 6, alignItems: "center", flex: "0 0 auto" }}>
               <AiBadge status={p.aiStatus} />
-              <Chip variant={p.status === "published" ? "blue" : "purple"}>
-                {p.status === "published" ? "발행" : "초안"}
-              </Chip>
               <Button
                 variant="ghost"
                 size="sm"

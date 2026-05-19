@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MarkdownView } from "@/components/post/MarkdownView";
+import { PostBody } from "@/components/post/PostBody";
+import { deriveReadingMin } from "@/lib/markdown";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
 import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
 import {
   saveDraft,
   publishPost,
-  deletePost,
   uploadImage,
   type EditorInput,
 } from "@/app/admin/editor/actions";
@@ -62,7 +62,6 @@ export function PostEditor({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [status, setStatus] = useState<"draft" | "published">(initial.status);
 
   const [slug, setSlug] = useState(initial.slug);
@@ -73,7 +72,6 @@ export function PostEditor({
   const [tagsText, setTagsText] = useState(initial.tags.join(", "));
   const [thumbKind, setThumbKind] = useState(initial.thumbKind);
   const [isFeatured, setIsFeatured] = useState(initial.isFeatured);
-  const [readingMin, setReadingMin] = useState(initial.readingMin);
   const [seriesSlug, setSeriesSlug] = useState(initial.seriesSlug ?? "");
   const [seriesTitle, setSeriesTitle] = useState(
     series.find((s) => s.slug === initial.seriesSlug)?.title ?? "",
@@ -85,6 +83,9 @@ export function PostEditor({
   const [dragOver, setDragOver] = useState(false);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [aiReviseOpen, setAiReviseOpen] = useState(false);
+  // 메타데이터는 상단 토글 패널로 — 새 글이면 펼친 채 시작(입력 필요),
+  // 기존 글이면 접은 채 시작해 에디터+프리뷰가 화면을 꽉 채우게.
+  const [metaOpen, setMetaOpen] = useState(!initial.originalSlug);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertAtCursor = useCallback((text: string) => {
@@ -174,12 +175,13 @@ export function PostEditor({
         .filter(Boolean),
       thumbKind,
       isFeatured,
-      readingMin,
+      // 읽는 시간은 본문 분량에서 자동 계산 — 수동 입력 폐지
+      readingMin: deriveReadingMin(bodyMd),
       seriesSlug: seriesSlug.trim() || null,
       seriesOrder: seriesOrder.trim() ? Number(seriesOrder) : null,
       seriesTitle,
     }),
-    [initial.originalSlug, slug, title, excerpt, bodyMd, categorySlug, tagsText, thumbKind, isFeatured, readingMin, seriesSlug, seriesOrder, seriesTitle],
+    [initial.originalSlug, slug, title, excerpt, bodyMd, categorySlug, tagsText, thumbKind, isFeatured, seriesSlug, seriesOrder, seriesTitle],
   );
 
   // 미저장 변경 추적: 마운트 시점 입력을 기준선으로, 저장/발행 성공 시 갱신.
@@ -211,7 +213,6 @@ export function PostEditor({
       startTransition(async () => {
         try {
           await saveDraft(input);
-          setSavedAt(new Date());
           markClean();
         } catch {
           /* 자동저장 실패는 조용히 — 수동 '임시 저장'으로 커버 */
@@ -226,7 +227,6 @@ export function PostEditor({
     startTransition(async () => {
       try {
         const res = await saveDraft(input);
-        setSavedAt(new Date());
         setStatus("draft");
         markClean();
         if (res.slug !== initial.originalSlug) {
@@ -248,7 +248,6 @@ export function PostEditor({
     startTransition(async () => {
       try {
         const res = await publishPost(input);
-        setSavedAt(new Date());
         setStatus("published");
         markClean();
         if (res.slug !== initial.originalSlug) {
@@ -258,18 +257,6 @@ export function PostEditor({
         }
       } catch (e) {
         alert(`발행 실패: ${(e as Error).message}`);
-      }
-    });
-  };
-
-  const onDelete = () => {
-    if (!initial.originalSlug) return;
-    if (!confirm("정말 삭제할까요? 되돌릴 수 없습니다.")) return;
-    startTransition(async () => {
-      try {
-        await deletePost(initial.originalSlug!);
-      } catch (e) {
-        alert(`삭제 실패: ${(e as Error).message}`);
       }
     });
   };
@@ -301,29 +288,25 @@ export function PostEditor({
     });
   };
 
-  const savedLabel = pending
-    ? "저장 중…"
-    : savedAt
-      ? `저장됨 · ${savedAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
-      : initial.originalSlug
-        ? `상태: ${status === "published" ? "Published" : "Draft"}`
-        : "새 글";
-
   return (
     <>
-      <AdminTopbar>
-        <Link href="/admin/posts">
-          <Button variant="ghost" size="sm">← 목록</Button>
-        </Link>
-        <span className="meta">{savedLabel}</span>
-        {initial.originalSlug && status === "published" && (
-          <Link href={`/posts/${slug}`} target="_blank">
-            <Button variant="ghost" size="sm">미리보기</Button>
-          </Link>
-        )}
-        {initial.originalSlug && (
-          <Button variant="ghost" size="sm" onClick={onDelete}>삭제</Button>
-        )}
+      <AdminTopbar
+        left={
+          <>
+            <Link href="/admin/posts">
+              <Button variant="ghost" size="sm">← 목록</Button>
+            </Link>
+            <Button
+              variant={metaOpen ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setMetaOpen((v) => !v)}
+              aria-expanded={metaOpen}
+            >
+              메타데이터 {metaOpen ? "▴" : "▾"}
+            </Button>
+          </>
+        }
+      >
         {initial.originalSlug ? (
           <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
             AI 개선
@@ -340,25 +323,27 @@ export function PostEditor({
       </AdminTopbar>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "300px 1fr 1fr",
+          display: "flex",
+          flexDirection: "column",
           height: "calc(100vh - 56px)",
         }}
       >
-        {/* 메타 패널 */}
-        <div
-          style={{
-            padding: "24px 20px",
-            overflow: "auto",
-            borderRight: "1px solid var(--line-subtle)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-          }}
-        >
-          <div className="t-overline">메타데이터</div>
-
-          <Field label="제목">
+        {/* 메타데이터 — 상단 토글 패널. 접으면 에디터+프리뷰가 화면을 꽉 채운다 */}
+        {metaOpen && (
+          <div
+            style={{
+              padding: "20px 24px",
+              overflow: "auto",
+              maxHeight: "44vh",
+              borderBottom: "1px solid var(--line-subtle)",
+              background: "var(--bg-subtle)",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              gap: "16px 20px",
+              alignItems: "start",
+            }}
+          >
+          <Field label="제목" span={2}>
             <input style={inputBox} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="제목" />
           </Field>
 
@@ -374,7 +359,7 @@ export function PostEditor({
             </div>
           </Field>
 
-          <Field label="요약">
+          <Field label="요약" span={2}>
             <textarea
               style={{ ...inputBox, minHeight: 70, resize: "vertical", lineHeight: 1.5 }}
               value={excerpt}
@@ -412,15 +397,6 @@ export function PostEditor({
                 <option key={k} value={k}>{k}</option>
               ))}
             </select>
-          </Field>
-
-          <Field label="읽는 시간">
-            <input
-              style={inputBox}
-              value={readingMin}
-              onChange={(e) => setReadingMin(e.target.value)}
-              placeholder="예: 8분"
-            />
           </Field>
 
           <Field label="시리즈 슬러그 (선택)">
@@ -470,8 +446,18 @@ export function PostEditor({
               에디터 추천 (홈 큐레이션)
             </label>
           </Field>
-        </div>
+          </div>
+        )}
 
+        {/* 에디터 + 프리뷰 — 화면을 꽉 채우는 분할 뷰 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
         {/* 마크다운 입력 */}
         <div
           style={{
@@ -479,6 +465,7 @@ export function PostEditor({
             flexDirection: "column",
             borderRight: "1px solid var(--line-subtle)",
             position: "relative",
+            minWidth: 0,
           }}
         >
           <div
@@ -540,21 +527,23 @@ export function PostEditor({
           />
         </div>
 
-        {/* 라이브 프리뷰 — 발행 페이지와 동일 렌더러 (Mermaid 포함) */}
-        <div style={{ padding: "32px 36px", overflow: "auto", background: "var(--bg-base)" }}>
-          <h1 className="prose" style={{ fontSize: 28, margin: "0 0 12px", lineHeight: 1.2 }}>
-            {title || "(제목 없음)"}
-          </h1>
-          {excerpt && (
-            <p style={{ fontSize: 15, color: "var(--fg-neutral)", lineHeight: 1.6, margin: "0 0 24px" }}>
-              {excerpt}
-            </p>
-          )}
-          {bodyMd.trim() ? (
-            <MarkdownView md={bodyMd} />
-          ) : (
-            <div className="prose" style={{ color: "var(--fg-alternative)" }}>본문 미리보기</div>
-          )}
+        {/* 라이브 프리뷰 — 실제 발행 페이지와 동일한 폭(최대 720px)·렌더러.
+            가로 패딩은 스크롤 컨테이너에 둬서 본문 측정폭이 발행 페이지와 정확히 일치한다 */}
+        <div
+          style={{
+            overflow: "auto",
+            background: "var(--bg-base)",
+            minWidth: 0,
+            padding: "48px 40px 96px",
+          }}
+        >
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            {/* excerpt는 카드·검색·SEO 전용 — 상세/프리뷰엔 노출 안 함 (POSTING.md).
+                독자가 보는 요약은 본문 맨 위 `>` 인용구가 담당 */}
+            <h1 className="prose post-title">{title || "(제목 없음)"}</h1>
+            <PostBody md={bodyMd} fallback="본문 미리보기" />
+          </div>
+        </div>
         </div>
       </div>
       {aiDraftOpen && (
@@ -576,9 +565,17 @@ export function PostEditor({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  span,
+  children,
+}: {
+  label: string;
+  span?: number;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
+    <div style={span ? { gridColumn: `span ${span}` } : undefined}>
       <div style={{ fontSize: 12, color: "var(--fg-neutral)", fontWeight: 600, marginBottom: 6 }}>
         {label}
       </div>
