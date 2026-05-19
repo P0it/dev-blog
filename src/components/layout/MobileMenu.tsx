@@ -8,10 +8,8 @@ import { pathFor } from "@/lib/i18n";
 
 export function MobileMenu({
   locale,
-  switchHref,
 }: {
   locale: Locale;
-  switchHref: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -43,13 +41,6 @@ export function MobileMenu({
             <Link href="/search" onClick={close}>
               <Search size={16} style={{ color: "var(--fg-alternative)" }} />
               {locale === "ko" ? "검색" : "Search"}
-            </Link>
-            <Link
-              href={switchHref}
-              onClick={close}
-              style={{ textDecoration: "none" }}
-            >
-              {locale === "ko" ? "English" : "한국어"}
             </Link>
           </nav>
         </>

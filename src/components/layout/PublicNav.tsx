@@ -10,16 +10,12 @@ type Active = "home" | "categories" | "lab" | "";
 export function PublicNav({
   active = "home",
   locale = "ko",
-  // EN 토글이 가리킬 KO 기준 경로. 예: 디테일 페이지에서는 /posts/<slug>.
-  switchPath = "/",
 }: {
   active?: Active;
   locale?: Locale;
+  // 다국어 비활성. 호출부 호환을 위해 prop만 유지(미사용).
   switchPath?: string;
 }) {
-  const otherLocale: Locale = locale === "ko" ? "en" : "ko";
-  const switchHref = pathFor(otherLocale, switchPath);
-
   return (
     <div className="nav">
       <div className="nav-left">
@@ -43,16 +39,7 @@ export function PublicNav({
           <Search size={18} />
         </Link>
         <ThemeToggle />
-        <Link
-          href={switchHref}
-          className="lang-toggle nav-desktop-only"
-          aria-label="언어 선택"
-          style={{ textDecoration: "none" }}
-        >
-          <span className={locale === "ko" ? "on" : ""}>KR</span>
-          <span className={locale === "en" ? "on" : ""}>EN</span>
-        </Link>
-        <MobileMenu locale={locale} switchHref={switchHref} />
+        <MobileMenu locale={locale} />
       </div>
     </div>
   );

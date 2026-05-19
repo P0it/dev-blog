@@ -20,13 +20,11 @@ export async function generateMetadata({
   const post = await getPostBySlug(slug);
   if (!post) return {};
   const url = `${SITE.url}/posts/${post.slug}`;
-  const hasEn = !!post.titleEn;
   return {
     title: post.title,
     description: post.excerpt || undefined,
     alternates: {
       canonical: url,
-      languages: hasEn ? { en: `${SITE.url}/en/posts/${post.slug}` } : undefined,
     },
     openGraph: {
       type: "article",
