@@ -198,10 +198,29 @@ export async function getAllCategoriesFlat(): Promise<
   const sb = supabaseServer();
   const { data, error } = await sb
     .from("categories")
-    .select("slug,label,parent_slug")
+    .select("slug,label,parent_slug,sort_order")
     .order("sort_order");
   if (error) throw error;
-  return data ?? [];
+  const rows = data ?? [];
+  // 트리 순서로 평탄화: 최상위(정렬순) 바로 뒤에 그 자식들(정렬순).
+  // sort_order는 '형제 그룹 내 순서'라 그룹별로 잘라야 정확하다(전역 정렬해도
+  // 그룹 내 상대 순서는 보존되므로 마이그레이션 적용 전에도 안전).
+  type Flat = { slug: string; label: string; parent_slug: string | null };
+  const pick = (c: (typeof rows)[number]): Flat => ({
+    slug: c.slug,
+    label: c.label,
+    parent_slug: c.parent_slug,
+  });
+  const out: Flat[] = [];
+  for (const t of rows.filter((c) => !c.parent_slug)) {
+    out.push(pick(t));
+    for (const ch of rows.filter((c) => c.parent_slug === t.slug))
+      out.push(pick(ch));
+  }
+  // 부모가 사라진 고아 자식도 누락 없이 뒤에 붙인다(방어)
+  const seen = new Set(out.map((c) => c.slug));
+  for (const c of rows) if (!seen.has(c.slug)) out.push(pick(c));
+  return out;
 }
 
 export type AdminCategory = {
