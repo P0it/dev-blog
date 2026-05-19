@@ -110,40 +110,6 @@ export async function renameCategory(
   return { ok: true };
 }
 
-// 슬러그는 PK이자 FK 대상이라 불변. label / parent만 수정 + 2단계 가드.
-export async function updateCategory(input: {
-  slug: string;
-  label: string;
-  parentSlug: string | null;
-}): Promise<{ ok: true }> {
-  await guard();
-  const label = input.label.trim();
-  if (!label) throw new Error("이름을 입력하세요");
-  const parentSlug = input.parentSlug || null;
-
-  const sb = supabaseServer();
-  const { data: all, error: e0 } = await sb
-    .from("categories")
-    .select("slug,parent_slug");
-  if (e0) throw e0;
-  // 자식을 가진 항목은 최상위여야 한다(자식이 손자가 되는 것 방지)
-  if (parentSlug && (all ?? []).some((c) => c.parent_slug === input.slug))
-    throw new Error("하위 카테고리가 있는 항목은 최상위여야 합니다");
-
-  const finalParent = new Map<string, string | null>();
-  for (const c of all ?? []) finalParent.set(c.slug, c.parent_slug ?? null);
-  finalParent.set(input.slug, parentSlug);
-  assertTwoLevel(finalParent);
-
-  const { error } = await sb
-    .from("categories")
-    .update({ label, parent_slug: parentSlug })
-    .eq("slug", input.slug);
-  if (error) throw error;
-  revalidate();
-  return { ok: true };
-}
-
 // FK: posts.category_slug / categories.parent_slug 모두 ON DELETE SET NULL.
 // 삭제 시 해당 글은 미분류, 자식 카테고리는 최상위가 된다.
 export async function deleteCategory(slug: string): Promise<{ ok: true }> {
@@ -151,34 +117,6 @@ export async function deleteCategory(slug: string): Promise<{ ok: true }> {
   const sb = supabaseServer();
   const { error } = await sb.from("categories").delete().eq("slug", slug);
   if (error) throw error;
-  revalidate();
-  return { ok: true };
-}
-
-// 전역 sort_order 기준 인접 항목과 교환(↑↓). 신 UI(드래그 트리)로 대체 예정.
-export async function moveCategoryOrder(
-  slug: string,
-  dir: "up" | "down",
-): Promise<{ ok: true }> {
-  await guard();
-  const sb = supabaseServer();
-  const { data: all, error } = await sb
-    .from("categories")
-    .select("slug,sort_order")
-    .order("sort_order");
-  if (error) throw error;
-  const list = all ?? [];
-  const i = list.findIndex((c) => c.slug === slug);
-  if (i < 0) throw new Error("카테고리를 찾을 수 없습니다");
-  const j = dir === "up" ? i - 1 : i + 1;
-  if (j < 0 || j >= list.length) return { ok: true }; // 끝 — 변화 없음
-
-  const a = list[i];
-  const b = list[j];
-  const r1 = await sb.from("categories").update({ sort_order: b.sort_order }).eq("slug", a.slug);
-  if (r1.error) throw r1.error;
-  const r2 = await sb.from("categories").update({ sort_order: a.sort_order }).eq("slug", b.slug);
-  if (r2.error) throw r2.error;
   revalidate();
   return { ok: true };
 }
