@@ -2,12 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
+import { AiReviseModal } from "@/components/admin/AiModals";
 import {
-  requestDraftFromUrl,
   requestRevision,
   deletePostFromList,
 } from "@/app/admin/posts/actions";
@@ -37,8 +36,18 @@ function fmtDate(iso: string): string {
 
 function AiBadge({ status }: { status: AdminPostRow["aiStatus"] }) {
   if (!status) return null;
-  if (status === "pending") return <Chip variant="outline">AI 대기</Chip>;
-  if (status === "processing") return <Chip variant="purple">AI 처리중</Chip>;
+  if (status === "pending")
+    return (
+      <Chip variant="outline">
+        <span className="ai-spinner" />대기중
+      </Chip>
+    );
+  if (status === "processing")
+    return (
+      <Chip variant="purple">
+        <span className="ai-spinner" />생성중
+      </Chip>
+    );
   if (status === "done") return <Chip variant="green">AI 완료</Chip>;
   return (
     <span className="chip" style={{ color: "#d33", borderColor: "#d33" }}>
@@ -53,7 +62,6 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [q, setQ] = useState("");
-  const [draftOpen, setDraftOpen] = useState(false);
   const [reviseSlug, setReviseSlug] = useState<string | null>(null);
 
   const shown = useMemo(() => {
@@ -66,18 +74,6 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
   }, [posts, filter, q]);
 
   const fail = (e: unknown) => alert(`에러: ${(e as Error).message}`);
-
-  const onCreateDraft = (v: { url: string; note: string }) => {
-    startTransition(async () => {
-      try {
-        await requestDraftFromUrl(v);
-        setDraftOpen(false);
-        router.refresh();
-      } catch (e) {
-        fail(e);
-      }
-    });
-  };
 
   const onRevise = (feedback: string) => {
     if (!reviseSlug) return;
@@ -140,12 +136,6 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
           placeholder="제목 검색"
           style={{ ...inputBox, width: 220, flex: "0 0 auto" }}
         />
-        <div style={{ marginLeft: "auto" }}>
-          <Button variant="primary" size="sm" onClick={() => setDraftOpen(true)}>
-            <Sparkles size={14} />
-            URL로 초안
-          </Button>
-        </div>
       </div>
 
       {/* 목록 */}
@@ -226,13 +216,6 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
         ))}
       </div>
 
-      {draftOpen && (
-        <AiDraftModal
-          busy={pending}
-          onClose={() => setDraftOpen(false)}
-          onSubmit={onCreateDraft}
-        />
-      )}
       {reviseSlug && (
         <AiReviseModal
           busy={pending}

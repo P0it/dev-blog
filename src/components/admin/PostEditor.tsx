@@ -12,13 +12,11 @@ import {
   publishPost,
   deletePost,
   uploadImage,
-  translatePost,
   type EditorInput,
 } from "@/app/admin/editor/actions";
 import {
   requestRevision,
   requestDraftFromUrl,
-  requestDraftIntoPost,
 } from "@/app/admin/posts/actions";
 
 type Category = { slug: string; label: string; parent_slug: string | null };
@@ -204,6 +202,26 @@ export function PostEditor({
     baselineRef.current = JSON.stringify(input);
   };
 
+  // 기존 draft 자동 임시저장(4s 디바운스). 새 글은 제외(저장 시 슬러그 이동이
+  // 입력을 끊음). 슬러그 변경 중에도 제외(조용한 리네임 방지 — 수동 저장으로).
+  useEffect(() => {
+    if (!initial.originalSlug || !dirty || pending) return;
+    if (slug !== initial.slug) return;
+    const t = setTimeout(() => {
+      startTransition(async () => {
+        try {
+          await saveDraft(input);
+          setSavedAt(new Date());
+          markClean();
+        } catch {
+          /* 자동저장 실패는 조용히 — 수동 '임시 저장'으로 커버 */
+        }
+      });
+    }, 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputKey, dirty, pending, initial.originalSlug, initial.slug, slug]);
+
   const onSave = () => {
     startTransition(async () => {
       try {
@@ -244,23 +262,6 @@ export function PostEditor({
     });
   };
 
-  const onTranslate = () => {
-    if (!initial.originalSlug) {
-      alert("먼저 임시 저장하세요.");
-      return;
-    }
-    if (!confirm("이 글을 영어로 번역합니다. 1~2분 걸려요. 진행할까요?")) return;
-    startTransition(async () => {
-      try {
-        await translatePost(initial.originalSlug!);
-        alert("영어 번역 완료. /en/posts/" + initial.originalSlug + " 에서 확인.");
-        router.refresh();
-      } catch (e) {
-        alert(`번역 실패: ${(e as Error).message}`);
-      }
-    });
-  };
-
   const onDelete = () => {
     if (!initial.originalSlug) return;
     if (!confirm("정말 삭제할까요? 되돌릴 수 없습니다.")) return;
@@ -287,23 +288,13 @@ export function PostEditor({
     });
   };
 
+  // URL→초안은 새 글에서만. 요청 후 그 draft 슬러그로 이동.
   const onAiDraft = (v: { url: string; note: string }) => {
     startTransition(async () => {
       try {
-        if (initial.originalSlug) {
-          await requestDraftIntoPost({
-            slug: initial.originalSlug,
-            url: v.url,
-            note: v.note,
-          });
-          setAiDraftOpen(false);
-          alert("URL 초안을 요청했습니다. 워커가 처리하면 새로고침해 확인하세요.");
-          router.refresh();
-        } else {
-          const res = await requestDraftFromUrl(v);
-          setAiDraftOpen(false);
-          router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
-        }
+        const res = await requestDraftFromUrl(v);
+        setAiDraftOpen(false);
+        router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
       } catch (e) {
         alert(`요청 실패: ${(e as Error).message}`);
       }
@@ -321,6 +312,9 @@ export function PostEditor({
   return (
     <>
       <AdminTopbar>
+        <Link href="/admin/posts">
+          <Button variant="ghost" size="sm">← 목록</Button>
+        </Link>
         <span className="meta">{savedLabel}</span>
         {initial.originalSlug && status === "published" && (
           <Link href={`/posts/${slug}`} target="_blank">
@@ -328,20 +322,12 @@ export function PostEditor({
           </Link>
         )}
         {initial.originalSlug && (
-          <Button variant="ghost" size="sm" onClick={onTranslate} disabled={pending}>EN 번역</Button>
-        )}
-        {initial.originalSlug && (
           <Button variant="ghost" size="sm" onClick={onDelete}>삭제</Button>
         )}
         {initial.originalSlug ? (
-          <>
-            <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
-              AI 개선
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
-              URL 채우기
-            </Button>
-          </>
+          <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
+            AI 개선
+          </Button>
         ) : (
           <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
             URL로 초안
@@ -574,13 +560,6 @@ export function PostEditor({
       {aiDraftOpen && (
         <AiDraftModal
           busy={pending}
-          title={initial.originalSlug ? "URL로 채우기" : "URL로 초안 생성"}
-          desc={
-            initial.originalSlug
-              ? "이 글을 URL 내용으로 채웁니다. 기존 본문은 워커가 덮어씁니다."
-              : "링크를 넣으면 로컬 AI 워커가 새 초안을 만듭니다."
-          }
-          submitLabel={initial.originalSlug ? "URL로 채우기" : "초안 요청"}
           onClose={() => setAiDraftOpen(false)}
           onSubmit={onAiDraft}
         />

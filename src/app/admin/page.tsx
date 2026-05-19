@@ -5,7 +5,6 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { StatCard } from "@/components/admin/StatCard";
-import { DraftQuickCard } from "@/components/admin/DraftQuickCard";
 import { getAdminStats, getRecentDrafts, getViewStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -202,7 +201,6 @@ export default async function AdminDashboardPage() {
                 gap: 12,
               }}
             >
-              <DraftQuickCard />
               {quickActions.map((a) => {
                 const Icon = a.icon;
                 return (
