@@ -18,7 +18,7 @@ export function FeaturedCard({ post, hrefBase = "/posts" }: { post: Post; hrefBa
         <h3>{post.title}</h3>
         <p>{post.excerpt}</p>
         <div className="meta">
-          {post.date} <span className="dot-sep" /> {post.readingMin}
+          {post.date}
         </div>
       </div>
     </Link>

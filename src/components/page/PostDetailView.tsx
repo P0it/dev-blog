@@ -36,11 +36,8 @@ export function PostDetailView({
               <Chip variant="blue">{post.category}</Chip>
             </div>
             <h1 className="prose post-title">{post.title}</h1>
-            {post.excerpt && (
-              <p style={{ fontSize: 17, color: "var(--fg-neutral)", lineHeight: 1.6, margin: "0 0 24px" }}>
-                {post.excerpt}
-              </p>
-            )}
+            {/* excerpt는 카드/검색/SEO/OG 전용 — 본문 맨 위 인용구가 페이지상 요약을 담당하므로
+                상세 페이지에는 노출하지 않는다(요약 중복 방지). */}
             <div
               style={{
                 display: "flex",
@@ -55,7 +52,6 @@ export function PostDetailView({
                 <div style={{ fontWeight: 600, fontSize: 14 }}>정현우</div>
                 <div className="meta">
                   {post.date}
-                  {post.readingMin && (<> · {post.readingMin}</>)}
                   {views != null && views > 0 && (
                     <> · {locale === "ko" ? "조회" : "views"} {views.toLocaleString()}</>
                   )}

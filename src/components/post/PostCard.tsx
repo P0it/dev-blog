@@ -11,8 +11,6 @@ export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?:
           <Chip variant="outline">{post.category}</Chip>
           <span className="meta">
             {post.date}
-            <span className="dot-sep" />
-            {post.readingMin}
           </span>
         </div>
         <Link href={`${hrefBase}/${post.slug}`} style={{ color: "inherit" }}>

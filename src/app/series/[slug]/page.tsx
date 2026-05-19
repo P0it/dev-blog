@@ -59,7 +59,6 @@ export default async function SeriesPage({
                   <Chip variant="outline">{p.category}</Chip>
                   <span className="meta">
                     {p.date}
-                    {p.readingMin && (<><span className="dot-sep" />{p.readingMin}</>)}
                   </span>
                 </div>
                 <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
