@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MarkdownView } from "@/components/post/MarkdownView";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
+import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
 import {
   saveDraft,
   publishPost,
@@ -14,6 +15,11 @@ import {
   translatePost,
   type EditorInput,
 } from "@/app/admin/editor/actions";
+import {
+  requestRevision,
+  requestDraftFromUrl,
+  requestDraftIntoPost,
+} from "@/app/admin/posts/actions";
 
 type Category = { slug: string; label: string; parent_slug: string | null };
 
@@ -79,6 +85,8 @@ export function PostEditor({
   );
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [aiDraftOpen, setAiDraftOpen] = useState(false);
+  const [aiReviseOpen, setAiReviseOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertAtCursor = useCallback((text: string) => {
@@ -176,12 +184,33 @@ export function PostEditor({
     [initial.originalSlug, slug, title, excerpt, bodyMd, categorySlug, tagsText, thumbKind, isFeatured, readingMin, seriesSlug, seriesOrder, seriesTitle],
   );
 
+  // 미저장 변경 추적: 마운트 시점 입력을 기준선으로, 저장/발행 성공 시 갱신.
+  const baselineRef = useRef<string | null>(null);
+  const inputKey = JSON.stringify(input);
+  if (baselineRef.current === null) baselineRef.current = inputKey;
+  const dirty = baselineRef.current !== inputKey;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
+
+  const markClean = () => {
+    baselineRef.current = JSON.stringify(input);
+  };
+
   const onSave = () => {
     startTransition(async () => {
       try {
         const res = await saveDraft(input);
         setSavedAt(new Date());
         setStatus("draft");
+        markClean();
         if (res.slug !== initial.originalSlug) {
           router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
         } else {
@@ -203,6 +232,7 @@ export function PostEditor({
         const res = await publishPost(input);
         setSavedAt(new Date());
         setStatus("published");
+        markClean();
         if (res.slug !== initial.originalSlug) {
           router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
         } else {
@@ -243,6 +273,43 @@ export function PostEditor({
     });
   };
 
+  const onAiRevise = (feedback: string) => {
+    if (!initial.originalSlug) return;
+    startTransition(async () => {
+      try {
+        await requestRevision({ slug: initial.originalSlug!, feedback });
+        setAiReviseOpen(false);
+        alert("AI 개선을 요청했습니다. 워커가 처리하면 새로고침해 확인하세요.");
+        router.refresh();
+      } catch (e) {
+        alert(`요청 실패: ${(e as Error).message}`);
+      }
+    });
+  };
+
+  const onAiDraft = (v: { url: string; note: string }) => {
+    startTransition(async () => {
+      try {
+        if (initial.originalSlug) {
+          await requestDraftIntoPost({
+            slug: initial.originalSlug,
+            url: v.url,
+            note: v.note,
+          });
+          setAiDraftOpen(false);
+          alert("URL 초안을 요청했습니다. 워커가 처리하면 새로고침해 확인하세요.");
+          router.refresh();
+        } else {
+          const res = await requestDraftFromUrl(v);
+          setAiDraftOpen(false);
+          router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
+        }
+      } catch (e) {
+        alert(`요청 실패: ${(e as Error).message}`);
+      }
+    });
+  };
+
   const savedLabel = pending
     ? "저장 중…"
     : savedAt
@@ -265,6 +332,20 @@ export function PostEditor({
         )}
         {initial.originalSlug && (
           <Button variant="ghost" size="sm" onClick={onDelete}>삭제</Button>
+        )}
+        {initial.originalSlug ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
+              AI 개선
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
+              URL 채우기
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
+            URL로 초안
+          </Button>
         )}
         <Button variant="outline" size="sm" onClick={onSave} disabled={pending}>임시 저장</Button>
         <Button variant="primary" size="sm" onClick={onPublish} disabled={pending}>
@@ -490,6 +571,28 @@ export function PostEditor({
           )}
         </div>
       </div>
+      {aiDraftOpen && (
+        <AiDraftModal
+          busy={pending}
+          title={initial.originalSlug ? "URL로 채우기" : "URL로 초안 생성"}
+          desc={
+            initial.originalSlug
+              ? "이 글을 URL 내용으로 채웁니다. 기존 본문은 워커가 덮어씁니다."
+              : "링크를 넣으면 로컬 AI 워커가 새 초안을 만듭니다."
+          }
+          submitLabel={initial.originalSlug ? "URL로 채우기" : "초안 요청"}
+          onClose={() => setAiDraftOpen(false)}
+          onSubmit={onAiDraft}
+        />
+      )}
+      {aiReviseOpen && (
+        <AiReviseModal
+          busy={pending}
+          targetLabel={initial.originalSlug ?? slug}
+          onClose={() => setAiReviseOpen(false)}
+          onSubmit={onAiRevise}
+        />
+      )}
     </>
   );
 }

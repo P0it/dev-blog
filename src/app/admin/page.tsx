@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Sparkles, Plus, FolderPlus, Layers, BarChart3 } from "lucide-react";
+import { Plus, FolderPlus, Layers, BarChart3 } from "lucide-react";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { StatCard } from "@/components/admin/StatCard";
+import { DraftQuickCard } from "@/components/admin/DraftQuickCard";
 import { getAdminStats, getRecentDrafts, getViewStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,6 @@ function relativeTime(iso: string): string {
 }
 
 const quickActions = [
-  { icon: Sparkles, t: "URL로 초안", d: "AI 초안 요청", href: "/admin/posts" },
   { icon: FolderPlus, t: "카테고리 관리", d: "추가·정렬·삭제", href: "/admin/categories" },
   { icon: Layers, t: "시리즈 관리", d: "묶음 CRUD", href: "/admin/series" },
   { icon: BarChart3, t: "통계", d: "글별 조회수", href: "/admin/stats" },
@@ -60,12 +60,6 @@ export default async function AdminDashboardPage() {
   return (
     <>
       <AdminTopbar>
-        <Link href="/admin/editor?ai=1">
-          <Button variant="outline" size="sm">
-            <Sparkles size={14} />
-            URL로 초안
-          </Button>
-        </Link>
         <Link href="/admin/editor">
           <Button variant="primary" size="sm">
             <Plus size={14} />새 글
@@ -208,6 +202,7 @@ export default async function AdminDashboardPage() {
                 gap: 12,
               }}
             >
+              <DraftQuickCard />
               {quickActions.map((a) => {
                 const Icon = a.icon;
                 return (

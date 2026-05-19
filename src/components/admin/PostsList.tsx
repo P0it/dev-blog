@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
 import {
   requestDraftFromUrl,
   requestRevision,
@@ -52,13 +53,8 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [q, setQ] = useState("");
-
   const [draftOpen, setDraftOpen] = useState(false);
-  const [url, setUrl] = useState("");
-  const [note, setNote] = useState("");
-
   const [reviseSlug, setReviseSlug] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState("");
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -71,13 +67,11 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
   const fail = (e: unknown) => alert(`에러: ${(e as Error).message}`);
 
-  const onCreateDraft = () => {
+  const onCreateDraft = (v: { url: string; note: string }) => {
     startTransition(async () => {
       try {
-        await requestDraftFromUrl({ url, note });
+        await requestDraftFromUrl(v);
         setDraftOpen(false);
-        setUrl("");
-        setNote("");
         router.refresh();
       } catch (e) {
         fail(e);
@@ -85,13 +79,12 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
     });
   };
 
-  const onRevise = () => {
+  const onRevise = (feedback: string) => {
     if (!reviseSlug) return;
     startTransition(async () => {
       try {
         await requestRevision({ slug: reviseSlug, feedback });
         setReviseSlug(null);
-        setFeedback("");
         router.refresh();
       } catch (e) {
         fail(e);
@@ -214,10 +207,7 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
                 variant="ghost"
                 size="sm"
                 disabled={pending}
-                onClick={() => {
-                  setReviseSlug(p.slug);
-                  setFeedback("");
-                }}
+                onClick={() => setReviseSlug(p.slug)}
                 title="AI 개선 요청"
               >
                 <Wand2 size={14} />
@@ -236,84 +226,20 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
         ))}
       </div>
 
-      {/* URL로 초안 모달 */}
       {draftOpen && (
-        <div className="modal-scrim" onClick={() => setDraftOpen(false)}>
-          <div
-            className="modal"
-            style={{ padding: 24 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>URL로 초안 생성</h3>
-            <div className="meta" style={{ marginBottom: 16 }}>
-              YouTube·Anthropic 등 링크를 넣으면 로컬 AI 워커가 포스팅 초안을 만듭니다.
-            </div>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              autoFocus
-              style={{ ...inputBox, marginBottom: 10 }}
-            />
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="요청 메모(선택) — 강조할 점, 톤 등"
-              rows={3}
-              style={{ ...inputBox, resize: "vertical", marginBottom: 16 }}
-            />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Button variant="outline" size="sm" onClick={() => setDraftOpen(false)}>
-                취소
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={pending || !url.trim()}
-                onClick={onCreateDraft}
-              >
-                {pending ? "요청 중..." : "초안 요청"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <AiDraftModal
+          busy={pending}
+          onClose={() => setDraftOpen(false)}
+          onSubmit={onCreateDraft}
+        />
       )}
-
-      {/* AI 개선 모달 */}
       {reviseSlug && (
-        <div className="modal-scrim" onClick={() => setReviseSlug(null)}>
-          <div
-            className="modal"
-            style={{ padding: 24 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>AI 개선 요청</h3>
-            <div className="meta" style={{ marginBottom: 16 }}>
-              {reviseSlug} — 피드백을 적으면 워커가 그대로 반영해 다시 작성합니다.
-            </div>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="예) 도입 인용구를 더 짧게, 마지막 헤드라인은 시사점 중심으로"
-              rows={5}
-              autoFocus
-              style={{ ...inputBox, resize: "vertical", marginBottom: 16 }}
-            />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Button variant="outline" size="sm" onClick={() => setReviseSlug(null)}>
-                취소
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={pending || !feedback.trim()}
-                onClick={onRevise}
-              >
-                {pending ? "요청 중..." : "개선 요청"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <AiReviseModal
+          busy={pending}
+          targetLabel={reviseSlug}
+          onClose={() => setReviseSlug(null)}
+          onSubmit={onRevise}
+        />
       )}
     </div>
   );
