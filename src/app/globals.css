@@ -128,7 +128,31 @@
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", monospace;
 
   --nav-bg: rgba(255, 255, 255, 0.82);
-  --code-bg: #0d0e10;
+  /* 코드블록은 사이트 테마와 무관하게 항상 Night Owl 톤 (#011627 base) */
+  --code-bg: #011627;
+  --code-border: rgba(214, 222, 235, 0.08);
+  --code-head-bg: #0b2942;
+  --code-head-fg: #d6deeb;
+  --code-line-no: #4b6479;
+
+  /* Diagram (mermaid) — 클래스별 soft fill / strong border 페어.
+     light: *-50 톤 (이미 부드러움) / dark: 같은 hue 18% alpha. */
+  --diag-blue-fill:    var(--blue-50);
+  --diag-blue-stroke:  var(--blue-600);
+  --diag-purple-fill:  var(--purple-50);
+  --diag-purple-stroke: var(--purple-600);
+  --diag-teal-fill:    var(--teal-50);
+  --diag-teal-stroke:  var(--teal-500);
+  --diag-green-fill:   var(--green-50);
+  --diag-green-stroke: var(--green-600);
+  --diag-yellow-fill:  var(--yellow-50);
+  --diag-yellow-stroke: var(--yellow-600);
+  --diag-red-fill:     var(--red-50);
+  --diag-red-stroke:   var(--red-500);
+  --diag-mute-fill:    var(--neutral-100);
+  --diag-mute-stroke:  var(--neutral-400);
+  --diag-edge:         var(--neutral-500);
+  --diag-cluster-bg:   var(--neutral-50);
 }
 
 [data-theme="dark"] {
@@ -151,7 +175,25 @@
   --line-strong:    rgba(255,255,255,0.16);
 
   --nav-bg: rgba(18, 18, 20, 0.78);
-  --code-bg: #0a0b0d;
+  /* 코드블록 변수는 :root에 정의되어 라이트/다크 공통으로 그대로 적용됨 */
+
+  /* Diagram — dark: hue 살린 저채도 fill, stroke는 한 단계 밝게. */
+  --diag-blue-fill:    rgba(51, 133, 255, 0.18);
+  --diag-blue-stroke:  rgb(102, 168, 255);
+  --diag-purple-fill:  rgba(151, 71, 255, 0.20);
+  --diag-purple-stroke: rgb(178, 132, 255);
+  --diag-teal-fill:    rgba(0, 178, 208, 0.20);
+  --diag-teal-stroke:  rgb(80, 200, 220);
+  --diag-green-fill:   rgba(0, 191, 64, 0.18);
+  --diag-green-stroke: rgb(80, 210, 130);
+  --diag-yellow-fill:  rgba(255, 193, 7, 0.18);
+  --diag-yellow-stroke: rgb(255, 210, 80);
+  --diag-red-fill:     rgba(255, 66, 66, 0.18);
+  --diag-red-stroke:   rgb(255, 120, 120);
+  --diag-mute-fill:    rgba(255, 255, 255, 0.06);
+  --diag-mute-stroke:  rgba(255, 255, 255, 0.28);
+  --diag-edge:         rgb(152, 155, 162);
+  --diag-cluster-bg:   rgba(255, 255, 255, 0.03);
 }
 
 /* ============================================================
@@ -261,6 +303,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   letter-spacing: -0.02em; color: var(--fg-strong);
 }
 .nav-brand .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--blue-600); }
+.nav-brand:hover { text-decoration: none; }
 .nav-links { display: flex; gap: 24px; }
 .nav-links a {
   display: inline-flex; align-items: center; gap: 6px;
@@ -358,8 +401,36 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .post-card h3 { font-size: 20px; line-height: 1.35; margin: 8px 0; letter-spacing: -0.01em; color: var(--fg-strong); }
 .post-card p  { font-size: 14px; line-height: 1.55; color: var(--fg-neutral); margin: 0 0 12px; }
 
+/* 연관 글 카드 그리드 */
+.related-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+}
+.related-card {
+  display: flex; flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-subtle);
+  border-radius: 14px; overflow: hidden;
+  color: inherit; text-decoration: none;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.related-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -16px rgba(0,0,0,0.18);
+}
+.related-card .thumb { height: 140px; position: relative; }
+.related-card .body { padding: 14px 16px 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.related-card h3 {
+  margin: 0; font-size: 16px; line-height: 1.4;
+  letter-spacing: -0.01em; color: var(--fg-strong);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.related-card .meta { font-size: 12.5px; color: var(--fg-neutral); }
+
 /* 콘텐츠 카드: hover 시 제목 밑줄 안 생기게 */
-.post-card a:hover, .featured-card:hover, .featured-card a:hover { text-decoration: none; }
+.post-card a:hover, .featured-card:hover, .featured-card a:hover,
+.related-card:hover, .related-card:hover h3 { text-decoration: none; }
 
 .thumb { position: relative; overflow: hidden; }
 
@@ -368,15 +439,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    ============================================================ */
 
 .prose h1 { font-size: 40px; line-height: 1.15; letter-spacing: -0.025em; margin: 0 0 16px; color: var(--fg-strong); }
-.prose h2 { font-size: 26px; line-height: 1.3; margin: 48px 0 16px; letter-spacing: -0.015em; color: var(--fg-strong); }
-.prose h3 { font-size: 20px; line-height: 1.4; margin: 32px 0 12px; color: var(--fg-strong); }
+.prose h2 { font-size: 26px; line-height: 1.3; margin: 48px 0 16px; letter-spacing: -0.015em; color: var(--fg-strong); scroll-margin-top: 96px; }
+.prose h3 { font-size: 20px; line-height: 1.4; margin: 32px 0 12px; color: var(--fg-strong); scroll-margin-top: 96px; }
 .prose p  { font-size: 17px; line-height: 1.75; color: var(--fg-normal); margin: 0 0 20px; font-weight: 400; }
 .prose blockquote {
   margin: 24px 0; padding: 4px 0 4px 20px;
   border-left: 3px solid var(--line-strong);
   color: var(--fg-neutral); font-style: normal;
 }
-.prose code { font-family: var(--font-mono); font-size: 14px; background: var(--bg-muted); padding: 2px 6px; border-radius: 6px; }
+.prose :not(pre) > code { font-family: var(--font-mono); font-size: 14px; background: var(--bg-muted); padding: 2px 6px; border-radius: 6px; }
 .prose ul { padding-left: 22px; margin: 0 0 20px; }
 .prose ul li { font-size: 17px; line-height: 1.75; color: var(--fg-normal); margin-bottom: 8px; }
 .prose strong { color: var(--fg-strong); font-weight: 700; }
@@ -397,32 +468,75 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   -webkit-box-decoration-break: clone;
 }
 .prose del, .prose s { color: var(--fg-alternative); text-decoration-thickness: 1.5px; }
+.prose img,
+.prose video,
+.prose iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 24px auto;
+  border-radius: var(--radius-md);
+}
 
 /* ============================================================
-   Code block
+   Code block — Shiki (rehype-pretty-code) dual theme
    ============================================================ */
 
-.codeblock {
-  background: var(--code-bg); color: #e5e7eb;
-  border-radius: 12px; overflow: hidden;
-  font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7;
+.prose figure[data-rehype-pretty-code-figure] {
   margin: 24px 0;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 12px;
+  overflow: hidden;
 }
-.codeblock-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  font-size: 12px; color: #9ca3af; font-weight: 500;
+.prose figure[data-rehype-pretty-code-figure] figcaption[data-rehype-pretty-code-title] {
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--code-head-fg);
+  background: var(--code-head-bg);
+  border-bottom: 1px solid var(--code-border);
 }
-.codeblock-head .filename { display: flex; align-items: center; gap: 8px; }
-.codeblock-body { padding: 16px 18px; overflow-x: auto; }
-.codeblock-body .ln { color: #4b5563; user-select: none; display: inline-block; width: 28px; text-align: right; padding-right: 16px; }
-.tok-key  { color: #c084fc; }
-.tok-fn   { color: #60a5fa; }
-.tok-str  { color: #86efac; }
-.tok-com  { color: #6b7280; font-style: italic; }
-.tok-num  { color: #fbbf24; }
-.tok-pun  { color: #cbd5e1; }
+.prose figure[data-rehype-pretty-code-figure] pre {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.prose figure[data-rehype-pretty-code-figure] pre code {
+  display: grid;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  counter-reset: line;
+}
+.prose figure[data-rehype-pretty-code-figure] pre code [data-line] {
+  padding: 0 4px;
+  border-left: 2px solid transparent;
+}
+.prose figure[data-rehype-pretty-code-figure] pre code[data-line-numbers] {
+  counter-reset: line;
+}
+.prose figure[data-rehype-pretty-code-figure] pre code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1.6rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: var(--code-line-no);
+}
+
+/* 단일 night-owl 테마 — 토큰 색은 Shiki가 인라인 style로 직접 박는다.
+   일부 토큰(연산자·괄호·기본 텍스트)은 color 지정이 없을 수 있어 fallback fg 지정. */
+.prose figure[data-rehype-pretty-code-figure] pre code {
+  color: #d6deeb;
+}
 
 /* ============================================================
    TOC
@@ -430,13 +544,27 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .toc { font-size: 13px; }
 .toc a {
-  display: block; padding: 6px 0 6px 12px;
-  color: var(--fg-neutral); border-left: 2px solid var(--line-subtle);
-  margin-left: -2px; line-height: 1.5;
+  position: relative;
+  display: block;
+  padding: 6px 0 6px 18px;
+  color: var(--fg-neutral);
+  line-height: 1.55;
+  transition: color 120ms ease;
 }
 .toc a:hover { color: var(--fg-strong); text-decoration: none; }
-.toc a.active { color: var(--fg-strong); border-color: var(--fg-strong); font-weight: 600; }
-.toc a.sub { padding-left: 24px; font-size: 12.5px; }
+.toc a.active { color: var(--fg-strong); font-weight: 600; }
+.toc a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--fg-strong);
+  border-radius: 2px;
+}
+.toc a.sub { padding-left: 30px; font-size: 12.5px; }
+.toc a.sub.active::before { left: 12px; }
 
 /* ============================================================
    Category tree
@@ -549,11 +677,30 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .post-layout {
   display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 64px;
+  /* 좌측 TOC + 본문 + 우측 고스트로 본문을 뷰포트 중앙에 맞춤 */
+  grid-template-columns: 240px minmax(0, 640px) 240px;
+  gap: 0;
   align-items: start;
+  justify-content: center;
 }
-.post-toc { position: sticky; top: 96px; align-self: start; }
+.post-toc {
+  grid-column: 1;
+  grid-row: 1;
+  padding-right: 40px;
+  position: sticky;
+  top: 96px;
+  align-self: start;
+}
+.post-main { grid-column: 2; grid-row: 1; min-width: 0; }
+
+@media (max-width: 1199px) {
+  .post-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 48px;
+  }
+  .post-toc { grid-column: 1; grid-row: 1; padding-right: 0; }
+  .post-main { grid-column: 2; grid-row: 1; }
+}
 
 .lab-grid {
   display: grid;
@@ -601,7 +748,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   }
   .post-card .thumb { order: -1; height: 180px; }
 
+  .related-grid { grid-template-columns: 1fr; gap: 14px; }
+  .related-card .thumb { height: 160px; }
+
   .post-layout { grid-template-columns: 1fr; gap: 0; }
+  .post-main { grid-column: 1; }
   .post-toc { display: none; }
   .post-title { font-size: 28px; line-height: 1.2; }
 
