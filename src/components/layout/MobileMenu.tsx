@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FolderTree, FlaskConical, Search, Menu, X } from "lucide-react";
+import { Newspaper, FlaskConical, Search, Menu, X } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
@@ -30,13 +30,13 @@ export function MobileMenu({
         <>
           <div className="mobile-menu-scrim" onClick={close} />
           <nav className="mobile-menu-panel">
-            <Link href={pathFor(locale, "/categories")} onClick={close}>
-              <FolderTree size={16} style={{ color: "var(--fg-alternative)" }} />
-              {locale === "ko" ? "카테고리" : "Categories"}
+            <Link href={pathFor(locale, "/posts")} onClick={close}>
+              <Newspaper size={16} style={{ color: "var(--fg-alternative)" }} />
+              Posts
             </Link>
             <Link href={pathFor(locale, "/lab")} onClick={close}>
               <FlaskConical size={16} style={{ color: "var(--fg-alternative)" }} />
-              {locale === "ko" ? "실험실" : "Lab"}
+              Labs
             </Link>
             <Link href="/search" onClick={close}>
               <Search size={16} style={{ color: "var(--fg-alternative)" }} />

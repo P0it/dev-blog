@@ -19,7 +19,8 @@ function slugify(s: string): string {
 
 function revalidate() {
   revalidatePath("/admin/categories");
-  revalidatePath("/categories");
+  revalidatePath("/posts");
+  revalidatePath("/posts/c", "layout");
   revalidatePath("/");
 }
 

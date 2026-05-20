@@ -12,7 +12,7 @@ export function CategoryTree({
     <div className="tree">
       {groups.map((g, i) => (
         <div key={g.slug} className="group" style={i > 0 ? { marginTop: 12 } : undefined}>
-          <Link href={`/categories/${g.slug}`} className="node" style={{ color: "inherit", textDecoration: "none" }}>
+          <Link href={`/posts/c/${g.slug}`} className="node" style={{ color: "inherit", textDecoration: "none" }}>
             <span>
               {g.label} {g.expanded ? "▾" : "▸"}
             </span>
@@ -23,7 +23,7 @@ export function CategoryTree({
               {g.children.map((c) => (
                 <Link
                   key={c.slug}
-                  href={`/categories/${g.slug}/${c.slug}`}
+                  href={`/posts/c/${g.slug}/${c.slug}`}
                   className={`node ${activeChildSlug === c.slug ? "active" : ""}`}
                   style={{ color: "inherit", textDecoration: "none" }}
                 >

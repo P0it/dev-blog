@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { FolderTree, FlaskConical, Search } from "lucide-react";
+import { Newspaper, FlaskConical, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
-type Active = "home" | "categories" | "lab" | "";
+type Active = "home" | "posts" | "lab" | "";
 
 export function PublicNav({
   active = "home",
@@ -24,13 +24,13 @@ export function PublicNav({
           <span>hynu</span>
         </Link>
         <div className="nav-links">
-          <Link href={pathFor(locale, "/categories")} className={active === "categories" ? "active" : ""}>
-            <FolderTree size={14} style={{ color: "var(--fg-alternative)" }} />
-            {locale === "ko" ? "카테고리" : "Categories"}
+          <Link href={pathFor(locale, "/posts")} className={active === "posts" ? "active" : ""}>
+            <Newspaper size={14} style={{ color: "var(--fg-alternative)" }} />
+            Posts
           </Link>
           <Link href={pathFor(locale, "/lab")} className={active === "lab" ? "active" : ""}>
             <FlaskConical size={14} style={{ color: "var(--fg-alternative)" }} />
-            {locale === "ko" ? "실험실" : "Lab"}
+            Labs
           </Link>
         </div>
       </div>

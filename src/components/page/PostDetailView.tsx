@@ -3,11 +3,14 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
+import { TocNav } from "@/components/post/TocNav";
+import { Thumb } from "@/components/diagram/Thumb";
 import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
 import type { Locale, Post, SeriesContext } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
+import { SITE } from "@/lib/site";
 
 export function PostDetailView({
   post,
@@ -31,7 +34,7 @@ export function PostDetailView({
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
       <div className="container-wide" style={{ paddingTop: 56 }}>
         <div className="post-layout">
-          <div style={{ maxWidth: 720, justifySelf: "end", width: "100%" }}>
+          <div className="post-main">
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <Chip variant="blue">{post.category}</Chip>
             </div>
@@ -47,9 +50,19 @@ export function PostDetailView({
                 borderBottom: "1px solid var(--line-subtle)",
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-emphasized)" }} />
+              {SITE.avatarUrl ? (
+                <img
+                  src={SITE.avatarUrl}
+                  alt={SITE.author}
+                  width={36}
+                  height={36}
+                  style={{ width: 36, height: 36, borderRadius: 999, objectFit: "cover", background: "var(--bg-emphasized)" }}
+                />
+              ) : (
+                <div style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-emphasized)" }} />
+              )}
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>정현우</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{SITE.author}</div>
                 <div className="meta">
                   {post.date}
                   {views != null && views > 0 && (
@@ -120,26 +133,15 @@ export function PostDetailView({
                 }}
               >
                 <div className="t-overline" style={{ marginBottom: 16 }}>{t.related}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div className="related-grid">
                   {related.map((r) => (
-                    <Link
-                      key={r.slug}
-                      href={`${postsBase}/${r.slug}`}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "baseline",
-                        gap: 16,
-                        padding: "14px 0",
-                        borderBottom: "1px solid var(--line-subtle)",
-                        color: "inherit",
-                        textDecoration: "none",
-                      }}
-                    >
-                      <span style={{ fontSize: 16, fontWeight: 500, color: "var(--fg-strong)" }}>
-                        {r.title}
-                      </span>
-                      <span className="meta" style={{ whiteSpace: "nowrap" }}>{r.date}</span>
+                    <Link key={r.slug} href={`${postsBase}/${r.slug}`} className="related-card">
+                      <Thumb kind={r.thumbKind} />
+                      <div className="body">
+                        <Chip variant="outline">{r.category}</Chip>
+                        <h3>{r.title}</h3>
+                        <div className="meta">{r.date}</div>
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -153,13 +155,7 @@ export function PostDetailView({
             {toc.length > 0 && (
               <>
                 <div className="t-overline" style={{ marginBottom: 12 }}>{t.toc}</div>
-                <nav className="toc">
-                  {toc.map((tt) => (
-                    <a key={tt.id} href={`#${tt.id}`} className={tt.sub ? "sub" : ""}>
-                      {tt.label}
-                    </a>
-                  ))}
-                </nav>
+                <TocNav items={toc} />
               </>
             )}
           </aside>

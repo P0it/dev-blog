@@ -1,22 +1,63 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { CategoryTree } from "@/components/category/CategoryTree";
 import { Chip } from "@/components/ui/Chip";
 import { Thumb } from "@/components/diagram/Thumb";
-import { getAllPosts, getCategoryGroups } from "@/lib/queries";
+import {
+  getCategoryBySlug,
+  getCategoryGroups,
+  getPostsByCategorySlug,
+} from "@/lib/queries";
 
 export const revalidate = 60;
 
-export default async function PostsPage() {
-  const [posts, groups] = await Promise.all([getAllPosts(), getCategoryGroups()]);
+export default async function PostsByCategoryPage({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}) {
+  const { slug } = await params;
+  const segments = slug ?? [];
+  if (segments.length === 0) notFound();
+
+  const groups = await getCategoryGroups();
+  const targetSlug = segments[segments.length - 1];
+  const cat = await getCategoryBySlug(targetSlug);
+  if (!cat) notFound();
+
+  const posts = await getPostsByCategorySlug(cat.slug);
+  const parentLabel = cat.parent_slug
+    ? groups.find((g) => g.slug === cat.parent_slug)?.label
+    : null;
+  const activeChildSlug = cat.parent_slug ? cat.slug : undefined;
+
+  const crumbs: { href: string; label: string }[] = [
+    { href: "/posts", label: "Posts" },
+  ];
+  if (cat.parent_slug) {
+    crumbs.push({ href: `/posts/c/${cat.parent_slug}`, label: parentLabel ?? cat.parent_slug });
+  }
+  crumbs.push({ href: `/posts/c/${segments.join("/")}`, label: cat.label });
 
   return (
     <>
       <PublicNav active="posts" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
-        <div className="meta" style={{ marginBottom: 6 }}>Posts</div>
-        <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>전체 글</h1>
+        <div className="meta" style={{ marginBottom: 8 }}>
+          {crumbs.map((c, i) => (
+            <span key={c.href}>
+              {i > 0 && " / "}
+              {i < crumbs.length - 1 ? (
+                <Link href={c.href} style={{ color: "inherit" }}>{c.label}</Link>
+              ) : (
+                c.label
+              )}
+            </span>
+          ))}
+        </div>
+        <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>{cat.label}</h1>
         <p style={{ color: "var(--fg-neutral)", fontSize: 15, marginTop: 8, maxWidth: 640 }}>
           {posts.length === 0 ? "아직 글이 없습니다." : `${posts.length}편의 글.`}
         </p>
@@ -31,7 +72,7 @@ export default async function PostsPage() {
         >
           <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
             <div className="t-overline" style={{ marginBottom: 12 }}>카테고리</div>
-            <CategoryTree groups={groups} />
+            <CategoryTree groups={groups} activeChildSlug={activeChildSlug} />
           </aside>
 
           <div>

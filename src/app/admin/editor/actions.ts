@@ -126,6 +126,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/posts");
+  revalidatePath("/posts/c", "layout");
   revalidatePath(`/posts/${slug}`);
   return { slug };
 }
