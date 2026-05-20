@@ -1,4 +1,7 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import Link from "next/link";
+import { User } from "lucide-react";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
@@ -11,6 +14,12 @@ import { extractToc } from "@/lib/markdown";
 import type { Locale, Post, SeriesContext } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
+
+function hasAvatarFile(url: string): boolean {
+  if (!url) return false;
+  if (!url.startsWith("/")) return true; // 외부 URL은 그대로 신뢰
+  return existsSync(path.join(process.cwd(), "public", url.replace(/^\//, "")));
+}
 
 export function PostDetailView({
   post,
@@ -50,7 +59,7 @@ export function PostDetailView({
                 borderBottom: "1px solid var(--line-subtle)",
               }}
             >
-              {SITE.avatarUrl ? (
+              {hasAvatarFile(SITE.avatarUrl) ? (
                 <img
                   src={SITE.avatarUrl}
                   alt={SITE.author}
@@ -59,7 +68,21 @@ export function PostDetailView({
                   style={{ width: 36, height: 36, borderRadius: 999, objectFit: "cover", background: "var(--bg-emphasized)" }}
                 />
               ) : (
-                <div style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-emphasized)" }} />
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 999,
+                    background: "var(--bg-emphasized)",
+                    color: "var(--fg-muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  aria-label={SITE.author}
+                >
+                  <User size={20} strokeWidth={1.75} />
+                </div>
               )}
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{SITE.author}</div>

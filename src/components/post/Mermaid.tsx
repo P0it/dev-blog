@@ -51,7 +51,7 @@ function buildConfig(t: Tokens) {
     theme: "base" as const,
     fontFamily,
     flowchart: {
-      curve: "basis",
+      curve: "basis" as const,
       padding: 20,
       nodeSpacing: 50,
       rankSpacing: 60,
@@ -106,24 +106,46 @@ function buildConfig(t: Tokens) {
     // 라이트/다크 양쪽에서 토큰이 살아 있는 var()로 후처리.
     // mermaid는 themeCSS를 SVG <style>에 그대로 주입하므로 CSS 변수 cascade가 작동.
     themeCSS: `
-      .node rect, .node polygon, .node circle, .node ellipse, .node path { stroke-width: 1.5px; }
-      .node .label, .node text, .node foreignObject div { fill: var(--fg-strong); color: var(--fg-strong); font-weight: 500; }
-      .edgeLabel, .edgeLabel foreignObject div { background-color: var(--bg-base); color: var(--fg-normal); padding: 2px 6px; }
+      /* 보더 굵게, 코너 둥글게. 컬러 보더가 시각의 중심이 된다. */
+      .node rect, .node polygon, .node circle, .node ellipse, .node path { stroke-width: 2px; }
+      .node rect { rx: 10; ry: 10; }
+      .node .label, .node text, .node foreignObject div { fill: var(--fg-strong); color: var(--fg-strong); font-weight: 500; line-height: 1.5; }
+
+      /* markdown 문자열에서 **굵게** → <strong>. 첫 줄을 타이틀로 쓰면
+         클래스 색이 자동으로 입혀진다. 본문은 흰색/검은색(--fg-strong). */
+      .node foreignObject strong { display: block; font-weight: 700; font-size: 1.05em; letter-spacing: -0.005em; margin-bottom: 6px; }
+      .node foreignObject em { font-style: italic; font-weight: 600; }
+      .node foreignObject p { margin: 0; }
+
+      .edgeLabel, .edgeLabel foreignObject div { background-color: var(--bg-base); color: var(--fg-normal); padding: 2px 8px; border-radius: 4px; font-weight: 500; }
       .edgeLabel rect { fill: var(--bg-base); }
       .flowchart-link, .messageLine0, .messageLine1 { stroke: var(--diag-edge); }
       marker, marker path { fill: var(--diag-edge); stroke: var(--diag-edge); }
-      .cluster rect { fill: var(--diag-cluster-bg); stroke: var(--line-normal); }
-      .cluster .label, .cluster text { fill: var(--fg-strong); }
+      .cluster rect { fill: var(--diag-cluster-bg); stroke: var(--line-normal); stroke-dasharray: 4 4; rx: 12; ry: 12; }
+      .cluster .label, .cluster text { fill: var(--fg-strong); font-weight: 600; }
 
-      /* 클래스별 팔레트 — POSTING.md가 이 이름을 약속한다.
-         class A,B primary 처럼 노드에 부여하면 색이 적용된다. */
+      /* 클래스별 팔레트 — 보더·타이틀 색 동시 적용.
+         POSTING.md가 이 이름을 약속한다(class A,B primary). */
       .node.primary rect, .node.primary polygon, .node.primary circle, .node.primary ellipse, .node.primary path { fill: var(--diag-blue-fill); stroke: var(--diag-blue-stroke); }
+      .node.primary foreignObject strong { color: var(--diag-blue-stroke); }
+
       .node.accent  rect, .node.accent  polygon, .node.accent  circle, .node.accent  ellipse, .node.accent  path { fill: var(--diag-purple-fill); stroke: var(--diag-purple-stroke); }
+      .node.accent  foreignObject strong { color: var(--diag-purple-stroke); }
+
       .node.info    rect, .node.info    polygon, .node.info    circle, .node.info    ellipse, .node.info    path { fill: var(--diag-teal-fill); stroke: var(--diag-teal-stroke); }
+      .node.info    foreignObject strong { color: var(--diag-teal-stroke); }
+
       .node.success rect, .node.success polygon, .node.success circle, .node.success ellipse, .node.success path { fill: var(--diag-green-fill); stroke: var(--diag-green-stroke); }
+      .node.success foreignObject strong { color: var(--diag-green-stroke); }
+
       .node.warn    rect, .node.warn    polygon, .node.warn    circle, .node.warn    ellipse, .node.warn    path { fill: var(--diag-yellow-fill); stroke: var(--diag-yellow-stroke); }
+      .node.warn    foreignObject strong { color: var(--diag-yellow-stroke); }
+
       .node.danger  rect, .node.danger  polygon, .node.danger  circle, .node.danger  ellipse, .node.danger  path { fill: var(--diag-red-fill); stroke: var(--diag-red-stroke); }
+      .node.danger  foreignObject strong { color: var(--diag-red-stroke); }
+
       .node.mute    rect, .node.mute    polygon, .node.mute    circle, .node.mute    ellipse, .node.mute    path { fill: var(--diag-mute-fill); stroke: var(--diag-mute-stroke); }
+      .node.mute    foreignObject strong { color: var(--diag-mute-stroke); }
     `,
   };
 }
@@ -181,11 +203,8 @@ export function Mermaid({ code }: { code: string }) {
       style={{
         display: "flex",
         justifyContent: "center",
-        margin: "28px 0",
-        padding: "20px",
-        background: "var(--bg-subtle)",
-        border: "1px solid var(--line-subtle)",
-        borderRadius: 12,
+        margin: "32px 0",
+        padding: "8px 0",
         overflowX: "auto",
       }}
     />
