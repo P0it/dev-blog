@@ -8,6 +8,7 @@ import { deriveReadingMin } from "@/lib/markdown";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
 import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
+import { TagInput } from "@/components/admin/TagInput";
 import {
   saveDraft,
   publishPost,
@@ -44,7 +45,8 @@ export function PostEditor({
   const [title, setTitle] = useState(initial.title);
   const [bodyMd, setBodyMd] = useState(initial.bodyMd);
   const [categorySlug, setCategorySlug] = useState<string | "">(initial.categorySlug ?? "");
-  const [tagsText, setTagsText] = useState(initial.tags.join(", "));
+  const [tags, setTags] = useState<string[]>(initial.tags);
+  const [tagDraft, setTagDraft] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
@@ -113,20 +115,20 @@ export function PostEditor({
     [doUpload],
   );
 
-  const input: EditorInput = useMemo(
-    () => ({
+  const input: EditorInput = useMemo(() => {
+    // 아직 badge로 확정 안 한 입력값도 저장 시 누락되지 않게 포함
+    const pending = tagDraft.trim();
+    const allTags =
+      pending && !tags.includes(pending) ? [...tags, pending] : tags;
+    return {
       originalSlug: initial.originalSlug,
       title,
       bodyMd,
       categorySlug: categorySlug || null,
-      tags: tagsText
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: allTags,
       readingMin: deriveReadingMin(bodyMd),
-    }),
-    [initial.originalSlug, title, bodyMd, categorySlug, tagsText],
-  );
+    };
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -300,20 +302,11 @@ export function PostEditor({
                 borderRadius: 2,
               }}
             />
-            <input
-              value={tagsText}
-              onChange={(e) => setTagsText(e.target.value)}
-              placeholder="태그를 입력하세요 (쉼표로 구분)"
-              style={{
-                width: "100%",
-                border: "none",
-                outline: "none",
-                fontSize: 16,
-                fontFamily: "inherit",
-                background: "transparent",
-                color: "var(--fg-neutral)",
-                padding: "4px 0",
-              }}
+            <TagInput
+              tags={tags}
+              draft={tagDraft}
+              onTagsChange={setTags}
+              onDraftChange={setTagDraft}
             />
             <select
               value={categorySlug}
