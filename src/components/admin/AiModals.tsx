@@ -32,7 +32,7 @@ const confirmDiscard = () =>
 export function AiDraftModal({
   busy,
   title = "URL로 초안 생성",
-  desc = "YouTube·Anthropic 등 링크를 넣으면 로컬 AI 워커가 포스팅 초안을 만듭니다.",
+  desc = "YouTube·GitHub·Anthropic 등 링크를 넣으면 로컬 AI 워커가 포스팅 초안을 만듭니다.",
   submitLabel = "초안 요청",
   onClose,
   onSubmit,
