@@ -14,15 +14,14 @@ export const ACCENTS = [
 export const accentSchema = z.enum(ACCENTS);
 export type Accent = (typeof ACCENTS)[number];
 
-const themeSchema = z.enum(["light", "dark"]);
-export type Theme = z.infer<typeof themeSchema>;
+/** 워커가 라이트·다크 두 벌을 굽는다 — spec 에는 theme 을 적지 않는다. */
+export type Theme = "light" | "dark";
 
 const baseFields = {
   alt: z.string().min(1),
   eyebrow: z.string().max(60).optional(),
   title: z.string().max(80).optional(),
   accent: accentSchema.default("primary"),
-  theme: themeSchema.default("light"),
 };
 
 /* ---------- step-card ---------- */
@@ -53,6 +52,7 @@ const statSchema = z.object({
   value: z.string().min(1).max(16),
   label: z.string().min(1).max(20),
   caption: z.string().max(28).optional(),
+  icon: z.string().min(1).optional(),
   accent: accentSchema.optional(),
   delta: deltaSchema.optional(),
 });

@@ -61,6 +61,23 @@ function StatBox({ stat, accent }: { stat: StatSpec; accent: Accent }) {
   const t = ACCENT_TOKENS[stat.accent ?? accent];
   return (
     <div style={statBoxStyle}>
+      {stat.icon && (
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 11,
+            marginBottom: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: t.fill,
+            color: t.strong,
+          }}
+        >
+          <VisualIcon name={stat.icon} size={19} />
+        </div>
+      )}
       <div
         style={{
           fontFamily: "var(--font-display)",

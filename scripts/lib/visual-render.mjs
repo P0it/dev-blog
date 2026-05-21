@@ -31,15 +31,16 @@ export async function closeBrowser() {
 
 /**
  * 시각자료 spec 하나를 PNG 버퍼로 렌더한다.
- * @param {{ baseUrl: string, pattern: string, spec: object, token?: string }} args
+ * @param {{ baseUrl: string, pattern: string, spec: object, token?: string,
+ *           theme?: "light"|"dark" }} args
  * @returns {Promise<Buffer>}
  */
-export async function renderVisual({ baseUrl, pattern, spec, token }) {
+export async function renderVisual({ baseUrl, pattern, spec, token, theme = "light" }) {
   const browser = await getBrowser();
   const context = await browser.newContext({
     viewport: { width: 1600, height: 1000 },
     deviceScaleFactor: 2,
-    colorScheme: spec?.theme === "dark" ? "dark" : "light",
+    colorScheme: theme === "dark" ? "dark" : "light",
   });
   const page = await context.newPage();
   try {
