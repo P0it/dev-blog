@@ -21,6 +21,7 @@ import {
   requestRevision,
   requestDraftFromUrl,
 } from "@/app/admin/posts/actions";
+import type { ThumbKind } from "@/lib/types";
 
 type Category = { slug: string; label: string; parent_slug: string | null };
 
@@ -31,6 +32,7 @@ type Initial = {
   categorySlug: string | null;
   tags: string[];
   coverImage: string | null;
+  thumbKind: ThumbKind | null;
   status: "draft" | "published";
 };
 
@@ -50,6 +52,7 @@ export function PostEditor({
   const [categorySlug, setCategorySlug] = useState<string | "">(initial.categorySlug ?? "");
   const [tags, setTags] = useState<string[]>(initial.tags);
   const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
+  const [thumbKind, setThumbKind] = useState<ThumbKind | null>(initial.thumbKind);
   const [tagDraft, setTagDraft] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -131,9 +134,10 @@ export function PostEditor({
       categorySlug: categorySlug || null,
       tags: allTags,
       coverImage,
+      thumbKind,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -239,13 +243,10 @@ export function PostEditor({
 
   return (
     <>
-      <AdminTopbar
-        left={
-          <Link href="/admin/posts">
-            <Button variant="ghost" size="sm">← 목록</Button>
-          </Link>
-        }
-      >
+      <AdminTopbar>
+        <Link href="/admin/posts">
+          <Button variant="ghost" size="sm">← 목록</Button>
+        </Link>
         {initial.originalSlug ? (
           <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
             AI 개선
@@ -268,7 +269,7 @@ export function PostEditor({
           minHeight: 0,
         }}
       >
-        {/* 왼쪽 — 작성 영역. velog 스타일: 큰 제목 → 짧은 밑줄 → 태그 → 카테고리 → 본문. */}
+        {/* 왼쪽 — 작성 영역. 카테고리·태그·썸네일 → 큰 제목 → 짧은 밑줄 → 본문. */}
         <div
           style={{
             display: "flex",
@@ -278,7 +279,38 @@ export function PostEditor({
             position: "relative",
           }}
         >
-          <div style={{ padding: "40px 48px 0" }}>
+          <div style={{ padding: "20px 48px 0" }}>
+            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다. */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <CategoryPicker
+                categories={categories}
+                value={categorySlug}
+                onChange={setCategorySlug}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <TagInput
+                  tags={tags}
+                  draft={tagDraft}
+                  onTagsChange={setTags}
+                  onDraftChange={setTagDraft}
+                />
+              </div>
+              <ThumbnailField
+                coverImage={coverImage}
+                thumbKind={thumbKind}
+                onChange={(next) => {
+                  setCoverImage(next.coverImage);
+                  setThumbKind(next.thumbKind);
+                }}
+              />
+            </div>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -303,34 +335,10 @@ export function PostEditor({
                 height: 4,
                 background: "var(--fg-strong)",
                 marginTop: 18,
-                marginBottom: 18,
+                marginBottom: 0,
                 borderRadius: 2,
               }}
             />
-            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다. */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginTop: 14,
-              }}
-            >
-              <CategoryPicker
-                categories={categories}
-                value={categorySlug}
-                onChange={setCategorySlug}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <TagInput
-                  tags={tags}
-                  draft={tagDraft}
-                  onTagsChange={setTags}
-                  onDraftChange={setTagDraft}
-                />
-              </div>
-              <ThumbnailField value={coverImage} onChange={setCoverImage} />
-            </div>
           </div>
           <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
           <textarea
@@ -377,13 +385,15 @@ export function PostEditor({
           )}
         </div>
 
-        {/* 오른쪽 — 실제 발행 페이지와 동일한 폭(720px)·렌더러로 라이브 프리뷰. */}
+        {/* 오른쪽 — 실제 발행 페이지와 동일한 폭(720px)·렌더러로 라이브 프리뷰.
+            padding-top은 왼쪽 편집 칼럼의 메타 행 + 제목 + 밑줄 높이를 상쇄해,
+            본문 textarea와 프리뷰 본문의 시작 높이를 맞춘다. */}
         <div
           style={{
             overflow: "auto",
             background: "var(--bg-base)",
             minWidth: 0,
-            padding: "48px 40px 96px",
+            padding: "80px 40px 96px",
           }}
         >
           <div style={{ maxWidth: 720, margin: "0 auto" }}>

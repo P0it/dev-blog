@@ -1,4 +1,6 @@
-export type ThumbKind = "a" | "b" | "c" | "d" | "e" | "f";
+export type ThumbKind =
+  | "a" | "b" | "c" | "d" | "e" | "f"
+  | "g" | "h" | "i" | "j" | "k" | "l";
 
 export type ChipVariant = "default" | "blue" | "purple" | "green" | "outline";
 

@@ -16,9 +16,6 @@ export function AdminTopbar({
           <span className="dot" />
           <span>hynu</span>
         </Link>
-        {left}
-      </div>
-      <div className="nav-right" style={{ gap: 12 }}>
         <Link
           href="/"
           target="_blank"
@@ -33,6 +30,9 @@ export function AdminTopbar({
           <ExternalLink size={13} />
           블로그
         </Link>
+        {left}
+      </div>
+      <div className="nav-right" style={{ gap: 12 }}>
         <ThemeToggle />
         {children}
       </div>

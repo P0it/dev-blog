@@ -6,10 +6,13 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth";
 import { deriveExcerpt } from "@/lib/markdown";
+import { thumbKindFromSlug } from "@/lib/thumb";
+import type { ThumbKind } from "@/lib/types";
 
 // velog식 미니멀 입력: 제목·태그·카테고리·썸네일·본문.
 // 슬러그(제목→slugify) / 읽는시간(본문 분량) / 요약(본문 첫 `>`)은 자동.
-// 썸네일은 직접 지정(coverImage) — 미지정 시 슬러그 해시 패턴(thumb_kind)으로 폴백.
+// 썸네일은 업로드 이미지(coverImage)가 우선, 없으면 패턴(thumbKind).
+// thumbKind 가 null 이면 슬러그 해시로 패턴을 자동 결정한다.
 // 시리즈·추천 등 미사용 필드는 row에 포함하지 않아 기존 값이 보존된다.
 export type EditorInput = {
   originalSlug: string | null; // null = 신규
@@ -18,6 +21,7 @@ export type EditorInput = {
   categorySlug: string | null;
   tags: string[];
   coverImage: string | null;
+  thumbKind: ThumbKind | null; // null = 슬러그 해시로 자동
   readingMin: string;
 };
 
@@ -28,14 +32,6 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9가-힣\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
-}
-
-// 슬러그를 a–f 6개 썸네일 변형으로 결정적 매핑(카드 단조로움 방지).
-// 새 글에만 적용 — 기존 글의 thumb_kind는 update row에 포함하지 않아 보존된다.
-function thumbKindFromSlug(slug: string): string {
-  let h = 0;
-  for (const c of slug) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return "abcdef"[h % 6];
 }
 
 async function guard() {
@@ -64,15 +60,6 @@ async function resolveExcerpt(input: EditorInput): Promise<string | null> {
   return data?.excerpt ?? null;
 }
 
-// 신규 글에 한해 row에 포함되는 자동 필드(슬러그 해시 기반 썸네일).
-// 업데이트 시엔 row에서 빠져 기존 thumb_kind/시리즈/추천이 그대로 보존된다.
-function newPostExtras(slug: string): {
-  thumb_kind: string;
-  is_featured: boolean;
-} {
-  return { thumb_kind: thumbKindFromSlug(slug), is_featured: false };
-}
-
 export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
   await guard();
   const slug = resolveSlug(input, "draft");
@@ -87,16 +74,17 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     category_slug: input.categorySlug || null,
     tags: input.tags,
     cover_image: input.coverImage || null,
+    thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
     status: "draft" as const,
   };
 
   if (input.originalSlug) {
-    // 업데이트 — thumb_kind/series/is_featured는 row에서 제외해 기존 값 유지.
+    // 업데이트 — series/is_featured는 row에서 제외해 기존 값 유지.
     const { error } = await sb.from("posts").update(baseRow).eq("slug", input.originalSlug);
     if (error) throw error;
   } else {
-    const { error } = await sb.from("posts").insert({ ...baseRow, ...newPostExtras(slug) });
+    const { error } = await sb.from("posts").insert({ ...baseRow, is_featured: false });
     if (error) throw error;
   }
 
@@ -128,6 +116,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     category_slug: input.categorySlug || null,
     tags: input.tags,
     cover_image: input.coverImage || null,
+    thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
     status: "published" as const,
     published_at: publishedAt,
@@ -137,7 +126,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     const { error } = await sb.from("posts").update(baseRow).eq("slug", input.originalSlug);
     if (error) throw error;
   } else {
-    const { error } = await sb.from("posts").insert({ ...baseRow, ...newPostExtras(slug) });
+    const { error } = await sb.from("posts").insert({ ...baseRow, is_featured: false });
     if (error) throw error;
   }
 
