@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Thumb } from "@/components/diagram/Thumb";
+import { CoverThumb } from "@/components/post/CoverThumb";
 import { Chip } from "@/components/ui/Chip";
 import type { Post } from "@/lib/types";
 
@@ -24,7 +24,7 @@ export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?:
         </div>
       </div>
       <Link href={`${hrefBase}/${post.slug}`} aria-label={post.title} style={{ display: "block" }}>
-        <Thumb kind={post.thumbKind} />
+        <CoverThumb post={post} />
       </Link>
     </div>
   );

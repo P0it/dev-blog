@@ -3,7 +3,7 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { CategoryTree } from "@/components/category/CategoryTree";
 import { Chip } from "@/components/ui/Chip";
-import { Thumb } from "@/components/diagram/Thumb";
+import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllPosts, getCategoryGroups } from "@/lib/queries";
 
 export const revalidate = 60;
@@ -55,7 +55,7 @@ export default async function PostsPage() {
                   )}
                 </div>
                 <Link href={`/posts/${p.slug}`} aria-label={p.title}>
-                  <Thumb kind={p.thumbKind} />
+                  <CoverThumb post={p} />
                 </Link>
               </div>
             ))}

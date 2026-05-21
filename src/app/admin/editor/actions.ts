@@ -7,8 +7,9 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth";
 import { deriveExcerpt } from "@/lib/markdown";
 
-// velog식 미니멀 입력: 제목·태그·카테고리·본문만.
-// 슬러그(제목→slugify) / 썸네일(슬러그 해시) / 읽는시간(본문 분량) / 요약(본문 첫 `>`)은 자동.
+// velog식 미니멀 입력: 제목·태그·카테고리·썸네일·본문.
+// 슬러그(제목→slugify) / 읽는시간(본문 분량) / 요약(본문 첫 `>`)은 자동.
+// 썸네일은 직접 지정(coverImage) — 미지정 시 슬러그 해시 패턴(thumb_kind)으로 폴백.
 // 시리즈·추천 등 미사용 필드는 row에 포함하지 않아 기존 값이 보존된다.
 export type EditorInput = {
   originalSlug: string | null; // null = 신규
@@ -16,6 +17,7 @@ export type EditorInput = {
   bodyMd: string;
   categorySlug: string | null;
   tags: string[];
+  coverImage: string | null;
   readingMin: string;
 };
 
@@ -84,6 +86,7 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
     tags: input.tags,
+    cover_image: input.coverImage || null,
     reading_min: input.readingMin || null,
     status: "draft" as const,
   };
@@ -124,6 +127,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
     tags: input.tags,
+    cover_image: input.coverImage || null,
     reading_min: input.readingMin || null,
     status: "published" as const,
     published_at: publishedAt,

@@ -19,6 +19,7 @@ export default async function EditorPage({
         bodyMd: post.bodyMd ?? "",
         categorySlug: post.categorySlug ?? null,
         tags: post.tags,
+        coverImage: post.coverImage ?? null,
         status: post.status ?? "draft",
       }
     : {
@@ -27,6 +28,7 @@ export default async function EditorPage({
         bodyMd: "",
         categorySlug: null,
         tags: [],
+        coverImage: null,
         status: "draft" as const,
       };
 

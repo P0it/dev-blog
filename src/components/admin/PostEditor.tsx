@@ -9,6 +9,8 @@ import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
 import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
 import { TagInput } from "@/components/admin/TagInput";
+import { CategoryPicker } from "@/components/admin/CategoryPicker";
+import { ThumbnailField } from "@/components/admin/ThumbnailField";
 import {
   saveDraft,
   publishPost,
@@ -28,6 +30,7 @@ type Initial = {
   bodyMd: string;
   categorySlug: string | null;
   tags: string[];
+  coverImage: string | null;
   status: "draft" | "published";
 };
 
@@ -46,6 +49,7 @@ export function PostEditor({
   const [bodyMd, setBodyMd] = useState(initial.bodyMd);
   const [categorySlug, setCategorySlug] = useState<string | "">(initial.categorySlug ?? "");
   const [tags, setTags] = useState<string[]>(initial.tags);
+  const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
   const [tagDraft, setTagDraft] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -126,9 +130,10 @@ export function PostEditor({
       bodyMd,
       categorySlug: categorySlug || null,
       tags: allTags,
+      coverImage,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -308,28 +313,12 @@ export function PostEditor({
               onTagsChange={setTags}
               onDraftChange={setTagDraft}
             />
-            <select
+            <CategoryPicker
+              categories={categories}
               value={categorySlug}
-              onChange={(e) => setCategorySlug(e.target.value)}
-              style={{
-                marginTop: 12,
-                padding: "6px 10px",
-                border: "1px solid var(--line-subtle)",
-                borderRadius: 8,
-                fontSize: 13,
-                background: "transparent",
-                color: "var(--fg-neutral)",
-                fontFamily: "inherit",
-                outline: "none",
-              }}
-            >
-              <option value="">카테고리 없음</option>
-              {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>
-                  {c.parent_slug ? `  ${c.label}` : c.label}
-                </option>
-              ))}
-            </select>
+              onChange={setCategorySlug}
+            />
+            <ThumbnailField value={coverImage} onChange={setCoverImage} />
           </div>
           <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
           <textarea

@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
 import { TocNav } from "@/components/post/TocNav";
-import { Thumb } from "@/components/diagram/Thumb";
+import { CoverThumb } from "@/components/post/CoverThumb";
 import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
@@ -159,7 +159,7 @@ export function PostDetailView({
                 <div className="related-grid">
                   {related.map((r) => (
                     <Link key={r.slug} href={`${postsBase}/${r.slug}`} className="related-card">
-                      <Thumb kind={r.thumbKind} />
+                      <CoverThumb post={r} />
                       <div className="body">
                         <Chip variant="outline">{r.category}</Chip>
                         <h3>{r.title}</h3>

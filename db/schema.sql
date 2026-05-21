@@ -23,7 +23,8 @@ create table if not exists posts (
   body_md        text,                       -- 원본 마크다운
   category_slug  text references categories(slug) on delete set null,
   tags           text[] not null default '{}',
-  thumb_kind     text not null default 'a',  -- 'a'..'f'
+  thumb_kind     text not null default 'a',  -- 'a'..'f' (cover_image 없을 때 폴백 패턴)
+  cover_image    text,                       -- 카드 썸네일 이미지 URL (없으면 thumb_kind)
   reading_min    text,                       -- "12분" 등 표시용
   is_featured    boolean not null default false,
   featured_chips jsonb not null default '[]'::jsonb,

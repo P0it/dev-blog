@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Thumb } from "@/components/diagram/Thumb";
+import { CoverThumb } from "@/components/post/CoverThumb";
 import { Chip } from "@/components/ui/Chip";
 import type { Post } from "@/lib/types";
 
 export function FeaturedCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?: string }) {
   return (
     <Link href={`${hrefBase}/${post.slug}`} className="featured-card" style={{ color: "inherit" }}>
-      <Thumb kind={post.thumbKind} />
+      <CoverThumb post={post} />
       <div className="body">
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
           {(post.featuredChips ?? []).map((c, i) => (

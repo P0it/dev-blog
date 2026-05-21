@@ -4,7 +4,7 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { CategoryTree } from "@/components/category/CategoryTree";
 import { Chip } from "@/components/ui/Chip";
-import { Thumb } from "@/components/diagram/Thumb";
+import { CoverThumb } from "@/components/post/CoverThumb";
 import {
   getCategoryBySlug,
   getCategoryGroups,
@@ -96,7 +96,7 @@ export default async function PostsByCategoryPage({
                   )}
                 </div>
                 <Link href={`/posts/${p.slug}`} aria-label={p.title}>
-                  <Thumb kind={p.thumbKind} />
+                  <CoverThumb post={p} />
                 </Link>
               </div>
             ))}

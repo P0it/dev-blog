@@ -35,6 +35,7 @@ type PostRow = {
   category_slug: string | null;
   tags: string[];
   thumb_kind: string;
+  cover_image: string | null;
   reading_min: string | null;
   is_featured: boolean;
   featured_chips: { variant: ChipVariant; label: string }[];
@@ -98,6 +99,7 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     date,
     readingMin: row.reading_min ?? "",
     thumbKind: (row.thumb_kind as ThumbKind) ?? "a",
+    coverImage: row.cover_image ?? null,
     isFeatured: row.is_featured,
     featuredChips: row.featured_chips,
     year: date.slice(0, 4),
