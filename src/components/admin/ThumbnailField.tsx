@@ -1,26 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, ImageUp, X } from "lucide-react";
 import { uploadImage } from "@/app/admin/editor/actions";
 
-const pillBtn: React.CSSProperties = {
+const pill: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 4,
-  padding: "4px 8px",
-  border: "none",
-  borderRadius: 6,
-  background: "rgba(0,0,0,0.62)",
-  color: "#fff",
-  fontSize: 12,
+  border: "1px solid var(--line-subtle)",
+  borderRadius: 8,
+  fontSize: 13,
   fontFamily: "inherit",
-  cursor: "pointer",
-  backdropFilter: "blur(4px)",
+  whiteSpace: "nowrap",
 };
 
-// 어드민 에디터 — 카드 썸네일 전용 슬롯. 클릭 또는 드래그로 이미지 업로드.
-// 미지정(null)이면 카드는 thumb_kind 해시 패턴으로 자동 폴백한다.
+// 어드민 에디터 — 카드 썸네일 슬롯. 미리보기 없이 버튼만.
+// 클릭하면 이미지를 업로드/교체, × 로 제거. 미지정(null)이면 thumb_kind 패턴 폴백.
 export function ThumbnailField({
   value,
   onChange,
@@ -30,7 +25,6 @@ export function ThumbnailField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
 
   const pick = () => inputRef.current?.click();
 
@@ -54,85 +48,83 @@ export function ThumbnailField({
     }
   };
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    upload(Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/")));
-  };
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/*"
+      hidden
+      onChange={(e) => upload(e.target.files?.[0])}
+    />
+  );
 
-  const box: React.CSSProperties = {
-    width: 220,
-    aspectRatio: "5 / 3",
-    borderRadius: 10,
-    overflow: "hidden",
-  };
+  if (!value) {
+    return (
+      <button
+        type="button"
+        onClick={pick}
+        disabled={busy}
+        style={{
+          ...pill,
+          gap: 6,
+          padding: "6px 10px",
+          background: "transparent",
+          color: "var(--fg-neutral)",
+          cursor: "pointer",
+        }}
+      >
+        {fileInput}
+        <ImagePlus size={14} style={{ color: "var(--fg-alternative)" }} />
+        {busy ? "업로드 중…" : "썸네일"}
+      </button>
+    );
+  }
 
+  // 지정됨 — 변경(클릭) + 제거(×) 두 영역을 한 pill 안에.
   return (
-    <div style={{ marginTop: 16 }}>
-      <div className="meta" style={{ marginBottom: 6 }}>
-        썸네일{value ? "" : " — 미지정 시 자동 패턴"}
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => upload(e.target.files?.[0])}
-      />
-      {value ? (
-        <div
-          style={{ ...box, position: "relative", border: "1px solid var(--line-subtle)" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={value}
-            alt="썸네일 미리보기"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-          <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 6 }}>
-            <button type="button" onClick={pick} disabled={busy} style={pillBtn}>
-              {busy ? "업로드 중…" : "변경"}
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              aria-label="썸네일 제거"
-              style={{ ...pillBtn, padding: "4px 6px" }}
-            >
-              <X size={13} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={pick}
-          disabled={busy}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          style={{
-            ...box,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            border: `1px dashed ${dragOver ? "var(--fg-strong)" : "var(--line-strong)"}`,
-            background: dragOver ? "var(--bg-muted)" : "var(--bg-subtle)",
-            color: "var(--fg-neutral)",
-            fontSize: 12.5,
-            fontFamily: "inherit",
-            cursor: "pointer",
-          }}
-        >
-          <ImagePlus size={20} style={{ color: "var(--fg-alternative)" }} />
-          {busy ? "업로드 중…" : "썸네일 업로드 · 드래그"}
-        </button>
-      )}
-    </div>
+    <span style={{ ...pill, color: "var(--fg-strong)" }}>
+      {fileInput}
+      <button
+        type="button"
+        onClick={pick}
+        disabled={busy}
+        title="썸네일 변경"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 6px 6px 10px",
+          background: "none",
+          border: "none",
+          font: "inherit",
+          color: "inherit",
+          cursor: "pointer",
+        }}
+      >
+        <ImageUp size={14} style={{ color: "var(--fg-primary)" }} />
+        {busy ? "업로드 중…" : "썸네일"}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        disabled={busy}
+        aria-label="썸네일 제거"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 18,
+          height: 18,
+          marginRight: 4,
+          border: "none",
+          borderRadius: 999,
+          background: "transparent",
+          color: "var(--fg-alternative)",
+          cursor: "pointer",
+        }}
+      >
+        <X size={13} strokeWidth={2.5} />
+      </button>
+    </span>
   );
 }

@@ -63,7 +63,6 @@ export function CategoryPicker({
         type="button"
         onClick={() => setOpen(true)}
         style={{
-          marginTop: 12,
           display: "inline-flex",
           alignItems: "center",
           gap: 8,

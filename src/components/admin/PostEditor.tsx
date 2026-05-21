@@ -307,18 +307,30 @@ export function PostEditor({
                 borderRadius: 2,
               }}
             />
-            <TagInput
-              tags={tags}
-              draft={tagDraft}
-              onTagsChange={setTags}
-              onDraftChange={setTagDraft}
-            />
-            <CategoryPicker
-              categories={categories}
-              value={categorySlug}
-              onChange={setCategorySlug}
-            />
-            <ThumbnailField value={coverImage} onChange={setCoverImage} />
+            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다. */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginTop: 14,
+              }}
+            >
+              <CategoryPicker
+                categories={categories}
+                value={categorySlug}
+                onChange={setCategorySlug}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <TagInput
+                  tags={tags}
+                  draft={tagDraft}
+                  onTagsChange={setTags}
+                  onDraftChange={setTagDraft}
+                />
+              </div>
+              <ThumbnailField value={coverImage} onChange={setCoverImage} />
+            </div>
           </div>
           <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
           <textarea
