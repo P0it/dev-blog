@@ -30,12 +30,13 @@ export async function closeBrowser() {
 }
 
 /**
- * 시각자료 spec 하나를 PNG 버퍼로 렌더한다.
- * @param {{ baseUrl: string, pattern: string, spec: object, token?: string,
- *           theme?: "light"|"dark" }} args
+ * 시각자료 하나를 PNG 버퍼로 렌더한다.
+ * 카탈로그는 `spec`(JSON 직렬화), illustration 은 `data`(raw SVG 문자열)를 넘긴다.
+ * @param {{ baseUrl: string, pattern: string, spec?: object, data?: string,
+ *           token?: string, theme?: "light"|"dark" }} args
  * @returns {Promise<Buffer>}
  */
-export async function renderVisual({ baseUrl, pattern, spec, token, theme = "light" }) {
+export async function renderVisual({ baseUrl, pattern, spec, data, token, theme = "light" }) {
   const browser = await getBrowser();
   const context = await browser.newContext({
     viewport: { width: 1600, height: 1000 },
@@ -44,9 +45,8 @@ export async function renderVisual({ baseUrl, pattern, spec, token, theme = "lig
   });
   const page = await context.newPage();
   try {
-    const encoded = Buffer.from(JSON.stringify(spec), "utf-8").toString(
-      "base64url",
-    );
+    const payload = data ?? JSON.stringify(spec);
+    const encoded = Buffer.from(payload, "utf-8").toString("base64url");
     const params = new URLSearchParams({ data: encoded });
     if (token) params.set("t", token);
     const url = `${baseUrl}/internal/visual/${pattern}?${params.toString()}`;

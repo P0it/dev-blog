@@ -174,6 +174,7 @@
 - **과정·순서·파이프라인** → `step-card` (사용자 요청 → 컨텍스트 수집 → 실행 → … 같은 단계)
 - **숫자·지표 강조** → `stat-card` (벤치마크 점수, 금액, 점유율 등 1~4개 지표)
 - **핵심 인사이트 박스** → `callout-card` (한 문장으로 못 박는 결론·경고·요점)
+- **개념·은유 그림** → ` ```illustration ` (구조 스케치, 비유적 그림 — 정확한 수치가 아니라 직관을 그릴 때)
 
 본문에 이미 한 문장으로 충분히 전달된 사실은 시각자료로 또 옮기지 않는다. **본문이
 설명한 구조·결론을 한눈에 보이게 압축**할 때만 쓴다. 시각자료에서 새 사실·추측을
@@ -257,6 +258,47 @@
 | `icon` | string | Lucide 아이콘 이름 |
 | `heading` | string | 한 문장 결론 (40자 이내) |
 | `body` | string? | 한두 문장 부연 (120자 이내) |
+
+### ` ```illustration ` — 개념 일러스트 (SVG 직접)
+
+다이어그램·카드로는 안 되는 **개념·은유·구조 스케치**(이해를 돕는 그림)는
+` ```illustration ` 블록에 **SVG를 직접** 그린다. 카탈로그(JSON)와 달리 raw
+SVG를 그대로 적는다 — 워커가 라이트·다크 두 벌 PNG로 굽는 흐름은 동일하다.
+
+글마다 일러스트가 **한 가족처럼** 보이도록 아래 스타일을 반드시 지킨다.
+
+- **스타일: 플랫 라인 일러스트.** 면은 옅게 채우고 윤곽은 선으로. 그라데이션·
+  그림자·사실적 묘사·3D ✗.
+- **`viewBox="0 0 800 450"` 고정**(16:9). `width`/`height` 속성은 쓰지 않는다.
+- **선 두께 2.5**, `stroke-linecap="round"`·`stroke-linejoin="round"`.
+- **색은 디자인 토큰을 `style`로 지정한다.** `stroke="..."` 같은 프리젠테이션
+  속성이 아니라 `style="stroke: var(--fg-strong)"` 형태여야 라이트/다크가 자동
+  대응된다.
+  - 윤곽선: `var(--fg-strong)`, 보조선: `var(--fg-neutral)`
+  - 면 채움: `var(--diag-blue-fill)` 등 (위 accent 7색 토큰의 `*-fill`)
+  - 강조 윤곽: `var(--diag-blue-stroke)` 등 (`*-stroke`)
+- 한 일러스트에 **3색 이내** (메인 + accent 1~2개).
+- 첫 자식으로 **`<title>설명</title>`** — 접근성 alt로 쓰인다. 필수.
+- SVG 안 글자는 최소화(라벨 한두 개까지). 설명은 본문이 한다.
+- `<script>`·외부 참조·`<image>`(래스터) ✗.
+- 글당 1개. 정말 그림이 이해를 돕는 곳에만.
+
+````markdown
+```illustration
+<svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+  <title>요청 하나가 여러 작업으로 갈라지는 모습</title>
+  <circle cx="150" cy="225" r="46"
+    style="fill: var(--diag-blue-fill); stroke: var(--diag-blue-stroke); stroke-width: 2.5" />
+  <path d="M196 225 H360 M360 225 L420 140 M360 225 L420 310"
+    style="stroke: var(--fg-neutral); stroke-width: 2.5; fill: none"
+    stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="420" y="110" width="150" height="60" rx="14"
+    style="fill: var(--diag-green-fill); stroke: var(--diag-green-stroke); stroke-width: 2.5" />
+  <rect x="420" y="280" width="150" height="60" rx="14"
+    style="fill: var(--diag-green-fill); stroke: var(--diag-green-stroke); stroke-width: 2.5" />
+</svg>
+```
+````
 
 ### 아이콘 — Lucide 화이트리스트
 
