@@ -252,5 +252,5 @@ export async function deletePost(slug: string): Promise<void> {
   if (error) throw error;
   revalidatePath("/admin");
   revalidatePath("/");
-  redirect("/admin");
+  redirect("/admin/posts");
 }

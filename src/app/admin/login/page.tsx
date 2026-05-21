@@ -5,7 +5,7 @@ import { ADMIN_COOKIE } from "@/lib/auth";
 async function login(formData: FormData) {
   "use server";
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/admin");
+  const next = String(formData.get("next") ?? "/admin/posts");
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected || password !== expected) {
     redirect(`/admin/login?error=1&next=${encodeURIComponent(next)}`);
@@ -26,7 +26,7 @@ export default async function AdminLoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const next = sp.next ?? "/admin";
+  const next = sp.next ?? "/admin/posts";
   const error = sp.error === "1";
 
   return (

@@ -11,15 +11,11 @@ import {
 
 type Active = "dashboard" | "posts" | "categories" | "tags" | "series" | "stats" | "settings";
 
-export function AdminSidebar({ active = "dashboard" }: { active?: Active }) {
+export function AdminSidebar({ active = "posts" }: { active?: Active }) {
   const cls = (k: Active) => (active === k ? "active" : "");
   return (
     <div className="admin-sidebar">
       <div className="t-overline" style={{ padding: "4px 12px 8px" }}>작성</div>
-      <Link href="/admin" className={cls("dashboard")}>
-        <LayoutDashboard size={16} />
-        대시보드
-      </Link>
       <Link href="/admin/posts" className={cls("posts")}>
         <FileText size={16} />
         글
@@ -37,6 +33,10 @@ export function AdminSidebar({ active = "dashboard" }: { active?: Active }) {
         시리즈
       </Link>
       <div className="t-overline" style={{ padding: "16px 12px 8px" }}>분석</div>
+      <Link href="/admin/dashboard" className={cls("dashboard")}>
+        <LayoutDashboard size={16} />
+        대시보드
+      </Link>
       <Link href="/admin/stats" className={cls("stats")}>
         <BarChart3 size={16} />
         통계

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function AdminTopbar({
@@ -11,23 +12,27 @@ export function AdminTopbar({
   return (
     <div className="nav" style={{ height: 56, padding: "0 24px" }}>
       <div className="nav-left" style={{ gap: 16 }}>
-        <Link href="/admin" className="nav-brand" aria-label="어드민 홈">
+        <Link href="/admin/posts" className="nav-brand" aria-label="어드민 홈">
           <span className="dot" />
           <span>hynu</span>
         </Link>
-        <span
-          className="meta"
-          style={{
-            padding: "2px 8px",
-            borderRadius: 6,
-            background: "var(--bg-muted)",
-          }}
-        >
-          localhost
-        </span>
         {left}
       </div>
       <div className="nav-right" style={{ gap: 12 }}>
+        <Link
+          href="/"
+          target="_blank"
+          className="meta"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            textDecoration: "none",
+          }}
+        >
+          <ExternalLink size={13} />
+          블로그
+        </Link>
         <ThemeToggle />
         {children}
       </div>
