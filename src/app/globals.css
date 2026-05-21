@@ -482,13 +482,140 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   border-radius: var(--radius-md);
 }
 
-/* 시각자료 카탈로그 — 라이트/다크 두 벌 중 블로그 테마에 맞는 것만 표시.
-   워커가 본문에 <figure class="visual-figure"> 로 두 이미지를 함께 넣는다. */
-.prose .visual-figure { margin: 24px 0; }
-.prose .visual-figure img { margin: 0 auto; border-radius: 0; }
-.prose img.visual-dark { display: none; }
-[data-theme="dark"] .prose img.visual-light { display: none; }
-[data-theme="dark"] .prose img.visual-dark { display: block; }
+/* ============================================================
+   Visual catalog — 본문에 네이티브로 렌더되는 시각자료
+   (```visual / ```illustration 블록 → 컴포넌트. 색은 디자인 토큰이라
+    라이트/다크 자동 대응.)
+   ============================================================ */
+
+.prose .vis { margin: 30px 0; }
+
+/* 외곽 프레임 — step·stat 공용 */
+.vis-frame {
+  box-sizing: border-box;
+  padding: 28px 28px 26px;
+  border-radius: 20px;
+  border: 1px solid var(--line-subtle);
+  background: var(--bg-subtle);
+}
+.vis-head { text-align: center; margin-bottom: 22px; }
+.vis-eyebrow {
+  display: inline-block;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line-normal); background: var(--bg-elevated);
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--fg-neutral); line-height: 1;
+}
+.vis-title {
+  font-family: var(--font-display);
+  font-size: 21px; font-weight: 800; letter-spacing: -0.02em;
+  line-height: 1.35; color: var(--fg-strong); margin: 10px 0 0;
+}
+
+/* step-card — 반응형 그리드(번호로 순서 전달, 모든 카드 동일 스타일) */
+.vis-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+}
+.vis-step {
+  box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line-subtle);
+  background: var(--bg-elevated);
+}
+.vis-step .vis-no {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--fg-assistive);
+}
+.vis-ico {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vis-fill); color: var(--vis-strong);
+}
+.vis-step .vis-ico {
+  margin-top: 9px; width: 40px; height: 40px; border-radius: 12px;
+}
+.vis-step .vis-lb {
+  margin-top: 11px; font-size: 14px; font-weight: 700;
+  line-height: 1.35; color: var(--fg-strong); text-align: center;
+}
+.vis-step .vis-sub {
+  margin-top: 3px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--fg-alternative); text-align: center;
+}
+
+/* stat-card */
+.vis-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.vis-stat {
+  box-sizing: border-box;
+  padding: 20px 20px 22px;
+  border-radius: 14px;
+  border: 1px solid var(--line-subtle);
+  background: var(--bg-elevated);
+}
+.vis-stat .vis-ico {
+  width: 34px; height: 34px; border-radius: 10px; margin-bottom: 12px;
+}
+.vis-stat .vis-val {
+  font-family: var(--font-display); font-size: 30px; font-weight: 800;
+  letter-spacing: -0.02em; line-height: 1.1; color: var(--vis-strong);
+}
+.vis-stat .vis-lb {
+  margin-top: 7px; font-size: 14px; font-weight: 600;
+  line-height: 1.4; color: var(--fg-strong);
+}
+.vis-stat .vis-cap {
+  margin-top: 3px; font-size: 12px; line-height: 1.45; color: var(--fg-alternative);
+}
+.vis-delta {
+  margin-top: 11px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--vis-fill); color: var(--vis-strong);
+  font-size: 11.5px; font-weight: 700;
+}
+
+/* callout-card — 단일 박스 (좌측 강조선 + 옅은 틴트) */
+.vis-callout {
+  display: flex; gap: 13px; align-items: flex-start;
+  box-sizing: border-box;
+  padding: 17px 19px;
+  border-radius: 12px;
+  background: var(--vis-fill);
+  border-left: 3px solid var(--vis-strong);
+}
+.vis-callout .vis-ico {
+  flex: 0 0 auto; background: transparent; margin-top: 1px;
+}
+.vis-callout .vis-ct { min-width: 0; }
+.vis-callout .vis-hd {
+  font-size: 16px; font-weight: 700; line-height: 1.45; color: var(--fg-strong);
+}
+.vis-callout .vis-bd {
+  margin-top: 5px; font-size: 14px; line-height: 1.6; color: var(--fg-normal);
+}
+
+/* illustration — 인라인 SVG */
+.vis-illus { display: flex; justify-content: center; }
+.vis-illus svg { width: 100%; max-width: 660px; height: auto; display: block; }
+
+/* 렌더 오류 표시 */
+.vis-error {
+  padding: 12px 16px; border-radius: 10px;
+  border: 1px solid var(--diag-red-stroke); background: var(--diag-red-fill);
+  font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong);
+}
+
+@media (max-width: 768px) {
+  .vis-frame { padding: 20px 16px 18px; }
+  .vis-title { font-size: 19px; }
+  .vis-stat .vis-val { font-size: 26px; }
+}
 
 /* ============================================================
    Code block — Shiki (rehype-pretty-code) dual theme

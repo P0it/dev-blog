@@ -16,8 +16,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { postProcessVisuals } from "./lib/post-process-visuals.mjs";
-import { closeBrowser } from "./lib/visual-render.mjs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
@@ -35,10 +33,6 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN ?? "claude";
 // 다른 정책이 필요하면 CLAUDE_ARGS 환경변수로 덮어쓴다.
 const DEFAULT_CLAUDE_ARGS = "-p --permission-mode bypassPermissions";
 const CLAUDE_ARGS = (process.env.CLAUDE_ARGS ?? DEFAULT_CLAUDE_ARGS).split(/\s+/).filter(Boolean);
-
-// 시각자료 렌더 — 이 머신에서 도는 Next.js 서버 주소. 워커가 Playwright로 접속한다.
-const VISUAL_BASE_URL = (process.env.VISUAL_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-const INTERNAL_VISUAL_TOKEN = process.env.INTERNAL_VISUAL_TOKEN ?? "";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const POSTING = readFileSync(join(ROOT, "POSTING.md"), "utf8");
@@ -181,19 +175,6 @@ async function processJob(job) {
 
     const raw = await callClaude(prompt);
     const parsed = extractJson(raw);
-
-    // 본문의 ```visual 블록을 PNG로 굽고 마크다운 이미지로 치환
-    if (typeof parsed.body_md === "string" && parsed.body_md.includes("```visual")) {
-      const { bodyMd, rendered, failed } = await postProcessVisuals(parsed.body_md, {
-        supabase: sb,
-        baseUrl: VISUAL_BASE_URL,
-        token: INTERNAL_VISUAL_TOKEN,
-        log: (m) => console.log(m),
-      });
-      parsed.body_md = bodyMd;
-      console.log(`  시각자료: 성공 ${rendered} / 실패 ${failed}`);
-    }
-
     await applyResult(job.post_slug, parsed);
 
     await sb
@@ -243,7 +224,6 @@ async function nextPending() {
 
 async function main() {
   console.log(`ai-worker 시작 (${WATCH ? "watch" : "1회"}, poll ${POLL_MS}ms)`);
-  console.log(`  시각자료 렌더 대상: ${VISUAL_BASE_URL}`);
   await prune();
   for (;;) {
     let job = null;
@@ -259,18 +239,10 @@ async function main() {
     if (!WATCH) break;
     await sleep(POLL_MS);
   }
-  await closeBrowser();
   console.log("ai-worker 종료");
 }
 
-process.on("SIGINT", async () => {
-  console.log("\n중단 — 정리 중...");
-  await closeBrowser();
-  process.exit(0);
-});
-
-main().catch(async (e) => {
+main().catch((e) => {
   console.error("❌ fatal", e);
-  await closeBrowser();
   process.exit(1);
 });

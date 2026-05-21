@@ -2,16 +2,9 @@ import type { ReactElement } from "react";
 import { StepCard } from "./StepCard";
 import { StatCard } from "./StatCard";
 import { CalloutCard } from "./CalloutCard";
-import type { VisualSpec } from "./types";
+import { visualSchema, type VisualSpec } from "./types";
 
-export const VISUAL_PATTERNS = ["step-card", "stat-card", "callout-card"] as const;
-export type VisualPattern = (typeof VISUAL_PATTERNS)[number];
-
-export function isVisualPattern(value: string): value is VisualPattern {
-  return (VISUAL_PATTERNS as readonly string[]).includes(value);
-}
-
-/** 검증을 통과한 spec 을 패턴에 맞는 카탈로그 컴포넌트로 렌더한다. */
+/** 검증을 통과한 spec 을 패턴에 맞는 카탈로그 컴포넌트로 렌더. */
 export function VisualRenderer({ spec }: { spec: VisualSpec }): ReactElement {
   switch (spec.pattern) {
     case "step-card":
@@ -23,63 +16,21 @@ export function VisualRenderer({ spec }: { spec: VisualSpec }): ReactElement {
   }
 }
 
-/** 카탈로그 인덱스 미리보기용 샘플 데이터. */
-export const SAMPLE_SPECS: VisualSpec[] = [
-  {
-    pattern: "step-card",
-    alt: "Claude Code의 에이전트 루프 5단계",
-    eyebrow: "HOW CLAUDE CODE WORKS",
-    title: "Claude Code의 에이전트 루프",
-    accent: "primary",
-    direction: "horizontal",
-    steps: [
-      { label: "사용자 요청", sublabel: "your prompt", icon: "message-circle" },
-      { label: "컨텍스트 수집", sublabel: "read · search", icon: "search" },
-      { label: "실행", sublabel: "edit · run", icon: "edit" },
-      { label: "결과 검증", sublabel: "test · verify", icon: "check" },
-      {
-        label: "작업 완료",
-        sublabel: "task complete",
-        icon: "check-check",
-        highlight: true,
-      },
-    ],
-  },
-  {
-    pattern: "stat-card",
-    alt: "Mythos Preview 벤치마크 성과",
-    accent: "primary",
-    stats: [
-      {
-        value: "83.1%",
-        label: "CyberGym 점수",
-        caption: "이전 세대 66.6%",
-        icon: "gauge",
-        accent: "primary",
-        delta: { value: "+16.5%p", direction: "up" },
-      },
-      {
-        value: "수천 개",
-        label: "발견한 고위험 취약점",
-        caption: "모두 보고·패치 완료",
-        icon: "shield-alert",
-        accent: "success",
-      },
-      {
-        value: "1억 달러",
-        label: "방어 보안 크레딧",
-        caption: "오픈소스 단체 지원",
-        icon: "coins",
-        accent: "accent",
-      },
-    ],
-  },
-  {
-    pattern: "callout-card",
-    alt: "공격자보다 방어자가 먼저",
-    accent: "warn",
-    icon: "shield-alert",
-    heading: "공격자가 먼저 손에 넣기 전에 방어자에게 닿게 한다",
-    body: "취약점 발견에서 악용까지 걸리던 시간이 몇 달에서 몇 분으로 무너졌습니다. AI의 발견 능력을 방어자에게 먼저, 더 빨리 전달하는 것이 핵심입니다.",
-  },
-];
+/** ```visual 블록(JSON 문자열)을 검증해 카탈로그 컴포넌트로 렌더. */
+export function CatalogVisual({ json }: { json: string }) {
+  let data: unknown;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    return <div className="vis vis-error">시각자료 JSON 파싱 실패</div>;
+  }
+  const result = visualSchema.safeParse(data);
+  if (!result.success) {
+    return (
+      <div className="vis vis-error">
+        시각자료 검증 실패: {result.error.issues[0]?.message}
+      </div>
+    );
+  }
+  return <VisualRenderer spec={result.data} />;
+}

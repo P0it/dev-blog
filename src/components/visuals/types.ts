@@ -30,14 +30,12 @@ const stepSchema = z.object({
   label: z.string().min(1).max(24),
   sublabel: z.string().max(28).optional(),
   icon: z.string().min(1),
-  highlight: z.boolean().optional(),
   accent: accentSchema.optional(),
 });
 
 export const stepCardSchema = z.object({
   pattern: z.literal("step-card"),
   ...baseFields,
-  direction: z.enum(["horizontal", "vertical"]).default("horizontal"),
   steps: z.array(stepSchema).min(2).max(8),
 });
 

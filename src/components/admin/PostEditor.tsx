@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PostBody } from "@/components/post/PostBody";
+import { MarkdownPreview } from "@/components/post/MarkdownPreview";
 import { deriveReadingMin } from "@/lib/markdown";
 import { AdminTopbar } from "@/components/layout/AdminTopbar";
 import { Button } from "@/components/ui/Button";
@@ -394,7 +394,7 @@ export function PostEditor({
         >
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <h1 className="prose post-title">{title || "(제목 없음)"}</h1>
-            <PostBody md={bodyMd} fallback="본문 미리보기" />
+            <MarkdownPreview md={bodyMd} fallback="본문 미리보기" />
           </div>
         </div>
       </div>
