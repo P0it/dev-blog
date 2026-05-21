@@ -15,29 +15,19 @@ const sb = createClient(url, key, { auth: { persistSession: false } });
 
 // --- categories ---------------------------------------------------------
 const categoryGroups = [
-  { slug: "tech", label: "기술", children: [
-    { slug: "agent", label: "에이전트" },
-    { slug: "dev-tools", label: "개발자 도구" },
-    { slug: "solo-dev", label: "1인 개발" },
-    { slug: "coding-notes", label: "코딩 노트" },
+  { slug: "tech", label: "Tech", children: [
+    { slug: "claude", label: "Claude" },
+    { slug: "infra", label: "Infra" },
+    { slug: "ai", label: "AI" },
   ]},
-  { slug: "reading", label: "독서", children: [
-    { slug: "notes", label: "독서 노트" },
-    { slug: "quotes", label: "문장 수집" },
+  { slug: "business", label: "Business", children: [
+    { slug: "insights", label: "Insights" },
   ]},
-  { slug: "thought", label: "생각", children: [
-    { slug: "work-life", label: "일과 삶" },
-    { slug: "values", label: "가치관·태도" },
-    { slug: "philosophy", label: "철학적 사고" },
-  ]},
-  { slug: "business", label: "비즈니스", children: [
-    { slug: "insights", label: "인사이트" },
-    { slug: "product-strategy", label: "제품·전략" },
-  ]},
-  { slug: "inbox", label: "수집함", children: [] },
+  { slug: "design", label: "Design", children: [] },
 ];
 
-// 라벨 → slug 매핑 (posts.ts의 category 필드를 슬러그로 변환)
+// 라벨 → slug 매핑 (posts.ts의 category 필드를 슬러그로 변환).
+// rawPosts의 옛 한글 카테고리는 매핑에 없으므로 category_slug=null(미분류)이 된다.
 const labelToSlug = new Map();
 const categoryRows = [];
 let order = 0;
@@ -47,16 +37,6 @@ for (const g of categoryGroups) {
   for (const c of g.children) {
     categoryRows.push({ slug: c.slug, label: c.label, parent_slug: g.slug, sort_order: order++ });
     labelToSlug.set(c.label, c.slug);
-  }
-}
-
-// posts에서 쓰이는데 위에 없는 카테고리들은 평면(flat) 카테고리로 추가
-const extraLabels = ["MCP", "실험", "트렌드", "회고", "웹 인프라"];
-for (const label of extraLabels) {
-  const slug = label.toLowerCase().replace(/[·\s]+/g, "-");
-  if (!labelToSlug.has(label)) {
-    categoryRows.push({ slug, label, parent_slug: null, sort_order: order++ });
-    labelToSlug.set(label, slug);
   }
 }
 

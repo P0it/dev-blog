@@ -5,21 +5,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth";
+import { deriveExcerpt } from "@/lib/markdown";
 
+// velog식 미니멀 입력: 제목·태그·카테고리·본문만.
+// 슬러그(제목→slugify) / 썸네일(슬러그 해시) / 읽는시간(본문 분량) / 요약(본문 첫 `>`)은 자동.
+// 시리즈·추천 등 미사용 필드는 row에 포함하지 않아 기존 값이 보존된다.
 export type EditorInput = {
   originalSlug: string | null; // null = 신규
-  slug: string;
   title: string;
-  excerpt: string;
   bodyMd: string;
   categorySlug: string | null;
   tags: string[];
-  thumbKind: string;
-  isFeatured: boolean;
   readingMin: string;
-  seriesSlug: string | null;
-  seriesOrder: number | null;
-  seriesTitle: string; // 새 시리즈 생성 시 제목
 };
 
 function slugify(s: string): string {
@@ -31,52 +28,72 @@ function slugify(s: string): string {
     .replace(/-+/g, "-");
 }
 
+// 슬러그를 a–f 6개 썸네일 변형으로 결정적 매핑(카드 단조로움 방지).
+// 새 글에만 적용 — 기존 글의 thumb_kind는 update row에 포함하지 않아 보존된다.
+function thumbKindFromSlug(slug: string): string {
+  let h = 0;
+  for (const c of slug) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return "abcdef"[h % 6];
+}
+
 async function guard() {
   if (!(await isAdmin())) throw new Error("unauthorized");
 }
 
-// series_slug가 있으면 series row를 보장(upsert)하고 post에 넣을 필드 반환.
-async function seriesFields(
-  input: EditorInput,
-): Promise<{ series_slug: string | null; series_order: number | null }> {
-  if (!input.seriesSlug) return { series_slug: null, series_order: null };
+// 신규 글의 slug — 기존 글은 originalSlug를 유지(URL 안정).
+// 제목이 비어 있으면 timestamp fallback으로 임시 슬러그.
+function resolveSlug(input: EditorInput, fallback: "draft" | "post"): string {
+  if (input.originalSlug) return input.originalSlug;
+  return (slugify(input.title) || `${fallback}-${Date.now()}`).trim();
+}
+
+// 카드/검색/OG/RSS가 의존하는 excerpt는 본문 첫 `>` 블록에서 파생.
+// 본문에 `>` 블록이 없으면 기존 DB값을 보존(시드 글 안전).
+async function resolveExcerpt(input: EditorInput): Promise<string | null> {
+  const derived = deriveExcerpt(input.bodyMd);
+  if (derived) return derived;
+  if (!input.originalSlug) return null;
   const sb = supabaseServer();
-  const { error } = await sb
-    .from("series")
-    .upsert(
-      { slug: input.seriesSlug, title: input.seriesTitle || input.seriesSlug },
-      { onConflict: "slug" },
-    );
-  if (error) throw error;
-  return { series_slug: input.seriesSlug, series_order: input.seriesOrder };
+  const { data } = await sb
+    .from("posts")
+    .select("excerpt")
+    .eq("slug", input.originalSlug)
+    .maybeSingle();
+  return data?.excerpt ?? null;
+}
+
+// 신규 글에 한해 row에 포함되는 자동 필드(슬러그 해시 기반 썸네일).
+// 업데이트 시엔 row에서 빠져 기존 thumb_kind/시리즈/추천이 그대로 보존된다.
+function newPostExtras(slug: string): {
+  thumb_kind: string;
+  is_featured: boolean;
+} {
+  return { thumb_kind: thumbKindFromSlug(slug), is_featured: false };
 }
 
 export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
   await guard();
-  const slug = (input.slug || slugify(input.title) || `draft-${Date.now()}`).trim();
+  const slug = resolveSlug(input, "draft");
+  const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
-  const series = await seriesFields(input);
 
-  const row = {
+  const baseRow = {
     slug,
     title: input.title,
-    excerpt: input.excerpt || null,
+    excerpt,
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
     tags: input.tags,
-    thumb_kind: input.thumbKind || "a",
     reading_min: input.readingMin || null,
-    is_featured: input.isFeatured,
     status: "draft" as const,
-    ...series,
   };
 
-  if (input.originalSlug && input.originalSlug !== slug) {
-    // 슬러그 변경: 기존 row update with new slug
-    const { error } = await sb.from("posts").update(row).eq("slug", input.originalSlug);
+  if (input.originalSlug) {
+    // 업데이트 — thumb_kind/series/is_featured는 row에서 제외해 기존 값 유지.
+    const { error } = await sb.from("posts").update(baseRow).eq("slug", input.originalSlug);
     if (error) throw error;
   } else {
-    const { error } = await sb.from("posts").upsert(row, { onConflict: "slug" });
+    const { error } = await sb.from("posts").insert({ ...baseRow, ...newPostExtras(slug) });
     if (error) throw error;
   }
 
@@ -88,7 +105,8 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
 
 export async function publishPost(input: EditorInput): Promise<{ slug: string }> {
   await guard();
-  const slug = (input.slug || slugify(input.title) || `post-${Date.now()}`).trim();
+  const slug = resolveSlug(input, "post");
+  const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
 
   // 기존 발행일이 있으면 유지, 없으면 now()
@@ -98,28 +116,24 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     publishedAt = data?.published_at ?? null;
   }
   if (!publishedAt) publishedAt = new Date().toISOString();
-  const series = await seriesFields(input);
 
-  const row = {
+  const baseRow = {
     slug,
     title: input.title,
-    excerpt: input.excerpt || null,
+    excerpt,
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
     tags: input.tags,
-    thumb_kind: input.thumbKind || "a",
     reading_min: input.readingMin || null,
-    is_featured: input.isFeatured,
     status: "published" as const,
     published_at: publishedAt,
-    ...series,
   };
 
-  if (input.originalSlug && input.originalSlug !== slug) {
-    const { error } = await sb.from("posts").update(row).eq("slug", input.originalSlug);
+  if (input.originalSlug) {
+    const { error } = await sb.from("posts").update(baseRow).eq("slug", input.originalSlug);
     if (error) throw error;
   } else {
-    const { error } = await sb.from("posts").upsert(row, { onConflict: "slug" });
+    const { error } = await sb.from("posts").insert({ ...baseRow, ...newPostExtras(slug) });
     if (error) throw error;
   }
 

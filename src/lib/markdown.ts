@@ -32,6 +32,42 @@ export function extractToc(md: string | null | undefined): TocItem[] {
   return items;
 }
 
+// 첫 `>` 블록쿼트(연속 줄)를 요약으로. 카드/검색/OG/RSS가 쓰는 excerpt와 동일 문장.
+// 본문엔 그대로 렌더되고(상세 페이지 두괄식 훅), 컬럼에는 평문화해 저장된다.
+export function deriveExcerpt(md: string | null | undefined): string {
+  if (!md) return "";
+  const collected: string[] = [];
+  let started = false;
+  let inFence = false;
+  for (const raw of md.split("\n")) {
+    if (/^```/.test(raw)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    if (/^>/.test(raw)) {
+      started = true;
+      collected.push(raw.replace(/^>\s?/, "").trim());
+    } else if (started) {
+      // 첫 비-`>` 줄에서 블록 종료(빈 줄 포함)
+      break;
+    }
+  }
+  return stripInline(collected.filter(Boolean).join(" ")).replace(/\s+/g, " ").trim();
+}
+
+// 평문 추출용 — 인라인 마크다운 제거. 요약 파생 시 카드/메타에 깔끔하게.
+function stripInline(s: string): string {
+  return s
+    .replace(/`[^`\n]*`/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+}
+
 // 본문 분량으로 읽는 시간 추정. 코드블록·이미지·마크다운 기호는 제외하고
 // 순수 글자수 기준 — 한국어 기술 글 ~ 450자/분(코드는 훑어 읽는다고 가정).
 // 어드민 에디터가 발행 시 reading_min 컬럼에 채워 넣는다(수동 입력 폐지).

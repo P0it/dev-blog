@@ -48,8 +48,8 @@ export function PostDetailView({
               <Chip variant="blue">{post.category}</Chip>
             </div>
             <h1 className="prose post-title">{post.title}</h1>
-            {/* excerpt는 카드/검색/SEO/OG 전용 — 본문 맨 위 인용구가 페이지상 요약을 담당하므로
-                상세 페이지에는 노출하지 않는다(요약 중복 방지). */}
+            {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
+                excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
             <div
               style={{
                 display: "flex",

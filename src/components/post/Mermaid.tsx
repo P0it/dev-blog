@@ -52,7 +52,7 @@ function buildConfig(t: Tokens) {
     fontFamily,
     flowchart: {
       curve: "basis" as const,
-      padding: 20,
+      padding: 24,
       nodeSpacing: 50,
       rankSpacing: 60,
       useMaxWidth: true,
@@ -111,11 +111,18 @@ function buildConfig(t: Tokens) {
       .node rect { rx: 10; ry: 10; }
       .node .label, .node text, .node foreignObject div { fill: var(--fg-strong); color: var(--fg-strong); font-weight: 500; line-height: 1.5; }
 
+      /* foreignObject 내부 div가 가장 긴 줄에 맞게 측정되도록 강제.
+         이게 없으면 mermaid가 첫 줄(혹은 짧은 줄) 기준으로 너비를 잡아 한글이 짤린다.
+         max-width로 카드가 무한히 넓어지지 않게 상한선. */
+      .node foreignObject > div { width: max-content; max-width: 320px; white-space: normal; }
+      .node foreignObject p { margin: 0; white-space: nowrap; }
+
       /* markdown 문자열에서 **굵게** → <strong>. 첫 줄을 타이틀로 쓰면
-         클래스 색이 자동으로 입혀진다. 본문은 흰색/검은색(--fg-strong). */
-      .node foreignObject strong { display: block; font-weight: 700; font-size: 1.05em; letter-spacing: -0.005em; margin-bottom: 6px; }
+         클래스 색이 자동으로 입혀진다. 본문은 fg-strong.
+         ⚠ font-size를 키우면 mermaid 측정값과 어긋나 박스 밖으로 텍스트가 새어 나간다.
+         색·굵게만 변경한다(size·letter-spacing 변경 ✗). */
+      .node foreignObject strong { display: block; font-weight: 700; margin-bottom: 4px; }
       .node foreignObject em { font-style: italic; font-weight: 600; }
-      .node foreignObject p { margin: 0; }
 
       .edgeLabel, .edgeLabel foreignObject div { background-color: var(--bg-base); color: var(--fg-normal); padding: 2px 8px; border-radius: 4px; font-weight: 500; }
       .edgeLabel rect { fill: var(--bg-base); }
