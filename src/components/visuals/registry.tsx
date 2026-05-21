@@ -2,6 +2,11 @@ import type { ReactElement } from "react";
 import { StepCard } from "./StepCard";
 import { StatCard } from "./StatCard";
 import { CalloutCard } from "./CalloutCard";
+import { CompareCard } from "./CompareCard";
+import { TimelineCard } from "./TimelineCard";
+import { QuoteCard } from "./QuoteCard";
+import { ChecklistCard } from "./ChecklistCard";
+import { GridCard } from "./GridCard";
 import { visualSchema, type VisualSpec } from "./types";
 
 /** 검증을 통과한 spec 을 패턴에 맞는 카탈로그 컴포넌트로 렌더. */
@@ -13,6 +18,16 @@ export function VisualRenderer({ spec }: { spec: VisualSpec }): ReactElement {
       return <StatCard spec={spec} />;
     case "callout-card":
       return <CalloutCard spec={spec} />;
+    case "compare-card":
+      return <CompareCard spec={spec} />;
+    case "timeline-card":
+      return <TimelineCard spec={spec} />;
+    case "quote-card":
+      return <QuoteCard spec={spec} />;
+    case "checklist-card":
+      return <ChecklistCard spec={spec} />;
+    case "grid-card":
+      return <GridCard spec={spec} />;
   }
 }
 

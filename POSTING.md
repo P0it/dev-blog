@@ -188,6 +188,11 @@
 - **과정·순서·파이프라인** → `step-card` (사용자 요청 → 컨텍스트 수집 → 실행 → … 같은 단계)
 - **숫자·지표 강조** → `stat-card` (벤치마크 점수, 금액, 점유율 등 1~4개 지표)
 - **핵심 인사이트 박스** → `callout-card` (한 문장으로 못 박는 결론·경고·요점)
+- **둘·셋 견주기** → `compare-card` (기존 방식 vs 새 방식, A안 vs B안 — 항목을 칼럼으로 나란히)
+- **시간 순 흐름** → `timeline-card` (출시 연혁, 사건 순서 — 날짜가 붙는 흐름. 번호 절차는 step-card)
+- **원문·강연 인용** → `quote-card` (발표자·원작자가 한 말을 그대로 옮길 때)
+- **권장·금지** → `checklist-card` (이렇게 하라 / 이건 피하라 — 체크·금지 표시로 구분)
+- **순서 없는 구성요소** → `grid-card` (한 개념을 이루는 갈래·요소를 아이콘 타일로. 순서가 있으면 step-card)
 - **개념·은유 그림** → ` ```illustration ` (구조 스케치, 비유적 그림 — 정확한 수치가 아니라 직관을 그릴 때)
 
 본문에 이미 한 문장으로 충분히 전달된 사실은 시각자료로 또 옮기지 않는다. **본문이
@@ -200,7 +205,7 @@
 
 | 키 | 타입 | 설명 |
 |---|---|---|
-| `pattern` | `"step-card" \| "stat-card" \| "callout-card"` | 카탈로그 패턴 ID. 필수 |
+| `pattern` | `"step-card" \| "stat-card" \| "callout-card" \| "compare-card" \| "timeline-card" \| "quote-card" \| "checklist-card" \| "grid-card"` | 카탈로그 패턴 ID. 필수 |
 | `alt` | string | 이미지 alt 텍스트. 필수 (접근성·SEO) |
 | `eyebrow` | string? | 카드 상단 작은 카테고리/맥락 라벨 (예: `HOW CLAUDE CODE WORKS`). **선택** |
 | `title` | string? | 카드 메인 타이틀. **명사형·문어체**로 — `~방식`·`~구조`·`~흐름` 같은 명사 종결, `~합니다`체 ✗. 한 줄·30자 이내. **선택** |
@@ -271,6 +276,83 @@
 | `heading` | string | 한 문장 결론 (40자 이내) |
 | `body` | string? | 한두 문장 부연 (120자 이내) |
 
+**`compare-card` — 둘·셋 견주기**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `columns` | `Column[]` | 2~3개. 나란히 배치되어 비교된다 |
+
+`Column` 형식:
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `label` | string | 칼럼 이름 (예: `에이전트 방식`). 한 줄, 14자 이내 권장 |
+| `caption` | string? | 칼럼 한 줄 부연 (20자 이내) |
+| `icon` | string? | Lucide 아이콘 이름 (선택) |
+| `accent` | string? | 칼럼별 색. 보통 한쪽은 `mute`/`danger`, 다른 쪽은 `primary`/`success` |
+| `points` | string[] | 1~6개. 각 항목 한 줄 (35자 이내 권장) |
+
+**`timeline-card` — 시간 순 흐름**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `events` | `Event[]` | 2~6개. 세로 흐름으로 배치 |
+
+`Event` 형식:
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `date` | string | 날짜/시점 (예: `2024.06`). 한 줄, 10자 이내 권장 |
+| `label` | string | 사건 이름 (한 줄, 20자 이내 권장) |
+| `description` | string? | 한 줄 부연 (48자 이내) |
+| `icon` | string? | Lucide 아이콘 이름. 없으면 점으로 표시된다 |
+| `accent` | string? | 그 사건만 다른 색을 쓰고 싶을 때 |
+
+> 번호가 의미 있는 **절차**는 `step-card`, 날짜·연혁 같은 **시점**이 핵심이면 `timeline-card`.
+
+**`quote-card` — 원문·강연 인용**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `quote` | string | 인용문 한 단락 (110자 이내 권장). **원문 그대로** — 지어내지 않는다. 따옴표는 카탈로그가 자동으로 감싸므로 직접 넣지 않는다 |
+| `attribution` | string? | 말한 사람 이름 (20자 이내) |
+| `role` | string? | 직함·소속 (24자 이내) |
+
+`quote-card`는 `eyebrow`·`title`을 렌더하지 않는다 — 인용문과 발언자만 보여 준다. 차분한 중립 배경이라 `accent`는 발언자 줄의 작은 강조선에만 쓰인다.
+
+**`checklist-card` — 권장·금지**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `items` | `Item[]` | 2~8개 |
+
+`Item` 형식:
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `text` | string | 항목 한 줄 (40자 이내 권장) |
+| `state` | `"do" \| "dont" \| "neutral"` | 권장(체크·그린)·금지(엑스·레드)·중립(대시·그레이). 기본 `do` |
+| `caption` | string? | 항목 한 줄 부연 (40자 이내) |
+
+`checklist-card`의 항목 색은 `state`로 정해진다 — `accent`는 항목 표시에 영향을 주지 않는다.
+
+**`grid-card` — 순서 없는 구성요소**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `items` | `Item[]` | 2~6개. 반응형 타일 그리드로 자동 배치 |
+
+`Item` 형식:
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `title` | string | 요소 이름 (한 줄, 14자 이내 권장) |
+| `description` | string? | 한두 줄 설명 (48자 이내) |
+| `icon` | string | Lucide 아이콘 이름 |
+| `accent` | string? | 그 타일만 다른 색을 쓰고 싶을 때 |
+
+> 갈래에 **순서·번호**가 있으면 `step-card`, 그냥 나열되는 **구성요소**면 `grid-card`.
+
 ### ` ```illustration ` — 개념 일러스트 (SVG 직접)
 
 다이어그램·카드로는 안 되는 **개념·은유·구조 스케치**(이해를 돕는 그림)는
@@ -322,12 +404,12 @@ SVG를 그대로 적는다 — 워커가 라이트·다크 두 벌 PNG로 굽는
 - 대화·요청: `message-circle`, `message-square`, `send`, `mic`
 - 탐색·읽기: `search`, `book-open`, `file-text`, `eye`, `compass`
 - 작성·실행: `edit`, `pencil`, `play`, `terminal`, `code`, `rocket`
-- 결정·분기: `git-branch`, `split`, `arrow-right-left`, `shuffle`
+- 결정·분기: `git-branch`, `split`, `arrow-right-left`, `shuffle`, `scale`, `git-compare`
 - 검증·완료: `check`, `check-check`, `circle-check`, `shield-check`, `thumbs-up`
 - 경고·실패: `alert-triangle`, `alert-circle`, `x`, `shield-alert`, `ban`
 - 데이터·저장: `database`, `hard-drive`, `server`, `cloud`, `archive`
 - 사람·조직: `user`, `users`, `building-2`, `briefcase`
-- 시간·과정: `clock`, `timer`, `calendar`, `history`, `loader`
+- 시간·과정: `clock`, `timer`, `calendar`, `history`, `loader`, `flag`, `milestone`
 - 보안·키: `shield`, `lock`, `key`, `fingerprint`
 - 측정·지표: `bar-chart-3`, `trending-up`, `trending-down`, `gauge`, `activity`
 - 금융·숫자: `dollar-sign`, `coins`, `wallet`, `receipt`
@@ -335,7 +417,8 @@ SVG를 그대로 적는다 — 워커가 라이트·다크 두 벌 PNG로 굽는
 
 ### 크기 제한 — 작을수록 강하다
 
-- 한 패턴 안의 요소 수: `step-card` 2~8단계, `stat-card` 1~4지표, `callout-card`는 단일.
+- 한 패턴 안의 요소 수: `step-card` 2~8단계, `stat-card` 1~4지표, `callout-card` 단일,
+  `compare-card` 2~3칼럼, `timeline-card` 2~6사건, `checklist-card` 2~8항목, `grid-card` 2~6타일.
 - 글당 **보통 1개, 많아야 2개.** 강조와 같은 원칙 — 흔하면 무의미하다.
 - 시각자료 다 채우기보다 **중심 메시지 하나**를 또렷이 — 한 시각자료 = 한 결론.
 
