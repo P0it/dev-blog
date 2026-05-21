@@ -16,6 +16,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { postProcessVisuals } from "./lib/post-process-visuals.mjs";
+import { closeBrowser } from "./lib/visual-render.mjs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
@@ -33,6 +35,10 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN ?? "claude";
 // 다른 정책이 필요하면 CLAUDE_ARGS 환경변수로 덮어쓴다.
 const DEFAULT_CLAUDE_ARGS = "-p --permission-mode bypassPermissions";
 const CLAUDE_ARGS = (process.env.CLAUDE_ARGS ?? DEFAULT_CLAUDE_ARGS).split(/\s+/).filter(Boolean);
+
+// 시각자료 렌더 — 이 머신에서 도는 Next.js 서버 주소. 워커가 Playwright로 접속한다.
+const VISUAL_BASE_URL = (process.env.VISUAL_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+const INTERNAL_VISUAL_TOKEN = process.env.INTERNAL_VISUAL_TOKEN ?? "";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const POSTING = readFileSync(join(ROOT, "POSTING.md"), "utf8");
@@ -95,9 +101,11 @@ ${POSTING}
 - YouTube 링크면 Bash로 yt-dlp를 사용해 자막/스크립트를 추출하세요.
 - 일반 글이면 WebFetch로 본문을 가져오세요.
 - 원문을 충실히 번역·정리하되 개인 논평은 넣지 않습니다.
-- 원문에 흐름·구조·시간 순서·비율 같은 부분이 있어 다이어그램으로 독자 이해가
-  더 잘되는 곳이면, 규약 "2-2. 다이어그램" 절에 따라 \`\`\`mermaid 코드 블록을
-  본문에 보통 1개(많아야 2개) 끼워 넣으세요. 본문이 이미 설명한 사실을 구조화하는
+- 원문에 과정·순서·구조·수치 같은 부분이 있어 시각자료로 독자 이해가 더
+  잘되는 곳이면, 규약 "2-2. 시각자료 카탈로그" 절에 따라 \`\`\`visual 코드
+  블록(JSON)을 본문에 보통 1개(많아야 2개) 끼워 넣으세요. 카탈로그 패턴
+  (step-card / stat-card / callout-card)과 데이터만 작성하고, HTML·CSS나
+  이미지 링크를 직접 쓰지 마세요. 본문이 이미 설명한 사실을 구조화하는
   용도로만 쓰고, 새 사실·추측은 만들지 마세요.
 - 참고 자료(원문 링크)와 저작권 표기를 규약대로 본문 끝에 포함하세요.
 
@@ -166,6 +174,19 @@ async function processJob(job) {
 
     const raw = await callClaude(prompt);
     const parsed = extractJson(raw);
+
+    // 본문의 ```visual 블록을 PNG로 굽고 마크다운 이미지로 치환
+    if (typeof parsed.body_md === "string" && parsed.body_md.includes("```visual")) {
+      const { bodyMd, rendered, failed } = await postProcessVisuals(parsed.body_md, {
+        supabase: sb,
+        baseUrl: VISUAL_BASE_URL,
+        token: INTERNAL_VISUAL_TOKEN,
+        log: (m) => console.log(m),
+      });
+      parsed.body_md = bodyMd;
+      console.log(`  시각자료: 성공 ${rendered} / 실패 ${failed}`);
+    }
+
     await applyResult(job.post_slug, parsed);
 
     await sb
@@ -215,6 +236,7 @@ async function nextPending() {
 
 async function main() {
   console.log(`ai-worker 시작 (${WATCH ? "watch" : "1회"}, poll ${POLL_MS}ms)`);
+  console.log(`  시각자료 렌더 대상: ${VISUAL_BASE_URL}`);
   await prune();
   for (;;) {
     let job = null;
@@ -230,10 +252,18 @@ async function main() {
     if (!WATCH) break;
     await sleep(POLL_MS);
   }
+  await closeBrowser();
   console.log("ai-worker 종료");
 }
 
-main().catch((e) => {
+process.on("SIGINT", async () => {
+  console.log("\n중단 — 정리 중...");
+  await closeBrowser();
+  process.exit(0);
+});
+
+main().catch(async (e) => {
   console.error("❌ fatal", e);
+  await closeBrowser();
   process.exit(1);
 });
