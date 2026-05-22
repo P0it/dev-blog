@@ -1,6 +1,7 @@
 "use server";
 
 import { spawn } from "node:child_process";
+import sharp from "sharp";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -212,14 +213,44 @@ ${data.body_md ?? ""}`;
   return { ok: true };
 }
 
+// 업로드 이미지는 sharp로 리사이즈+WebP 변환해 저장(Storage 1GB 한도 절약).
+// 본문 표시폭이 720px(레티나 1440px)이라 1600px 초과분은 화질 손해 없이 줄인다.
+// GIF(애니메이션)·SVG(벡터)는 변환하면 손상되므로 원본 그대로 통과시킨다.
+const UPLOAD_MAX_WIDTH = 1600;
+const UPLOAD_WEBP_QUALITY = 90;
+
 export async function uploadImage(formData: FormData): Promise<{ url: string }> {
   await guard();
   const file = formData.get("file");
   if (!(file instanceof File)) throw new Error("file 누락");
   if (!file.type.startsWith("image/")) throw new Error(`이미지 아님: ${file.type}`);
-  if (file.size > 5 * 1024 * 1024) throw new Error("5MB 초과");
+  if (file.size > 8 * 1024 * 1024) throw new Error("8MB 초과");
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || file.type.split("/")[1] || "bin";
+  // GIF·SVG는 원본 유지, 그 외 래스터 이미지는 압축 후 WebP로 저장.
+  const passthrough = file.type === "image/gif" || file.type === "image/svg+xml";
+
+  let body: Buffer | File;
+  let contentType: string;
+  let ext: string;
+  if (passthrough) {
+    body = file;
+    contentType = file.type;
+    ext = file.type === "image/gif" ? "gif" : "svg";
+  } else {
+    const input = Buffer.from(await file.arrayBuffer());
+    try {
+      body = await sharp(input)
+        .rotate() // EXIF 방향 보정
+        .resize({ width: UPLOAD_MAX_WIDTH, withoutEnlargement: true })
+        .webp({ quality: UPLOAD_WEBP_QUALITY })
+        .toBuffer();
+    } catch (e) {
+      throw new Error(`이미지 처리 실패: ${(e as Error).message}`);
+    }
+    contentType = "image/webp";
+    ext = "webp";
+  }
+
   const stamp = new Date().toISOString().slice(0, 10);
   const id = crypto.randomUUID().slice(0, 8);
   const path = `${stamp}/${id}.${ext}`;
@@ -227,7 +258,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
   const sb = supabaseServer();
   const { error } = await sb.storage
     .from("post-images")
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, body, { contentType, upsert: false });
   if (error) throw error;
 
   const { data } = sb.storage.from("post-images").getPublicUrl(path);
