@@ -218,6 +218,9 @@ const SPECS: { id: string; note: string; spec: VisualSpec }[] = [
   },
 ];
 
+// 발행 페이지에서 한 줄·넓은 폭으로 렌더되는 패턴 — 미리보기도 그렇게 보여 준다.
+const WIDE = new Set(["step-card", "stat-card", "grid-card"]);
+
 const CSS = `
 .pv { max-width: 1080px; margin: 0 auto; padding: 64px 24px 128px; }
 .pv-kicker {
@@ -250,6 +253,23 @@ const CSS = `
   color: var(--fg-assistive); margin-bottom: 14px;
 }
 @media (max-width: 860px) { .pv-pair { grid-template-columns: 1fr; } }
+
+/* step·stat·grid — 발행 페이지처럼 한 줄·넓은 폭(880px). 좁으면 셀에 맞춰 줄어든다.
+   라이트/다크는 2열 대신 위아래로 쌓아 880px를 확보한다. */
+.pv-pair-wide { grid-template-columns: 1fr; }
+.pv-pair-wide .vis-frame { width: 880px; max-width: 100%; margin: 0 auto; }
+.pv-pair-wide .vis-steps,
+.pv-pair-wide .vis-stats,
+.pv-pair-wide .vis-grid {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: none;
+}
+.pv-badge {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; color: var(--fg-primary);
+  background: var(--bg-primary-soft); padding: 3px 8px; border-radius: 999px;
+}
 `;
 
 export default function VisualCatalogPreview() {
@@ -262,28 +282,33 @@ export default function VisualCatalogPreview() {
           <h1 className="pv-h1">카탈로그 패턴 미리보기</h1>
           <p className="pv-lead">
             본문 <code>{"```visual"}</code> 블록이 렌더되는 8가지 패턴입니다.
-            왼쪽은 현재 사이트 테마, 오른쪽은 다크 고정 — 두 칼럼을 같이 보려면
-            사이트를 라이트 모드로 두세요.
+            패턴마다 현재 테마와 다크를 함께 보여 줍니다(2열 패턴은 라이트 모드에서
+            나란히 비교). <code>step</code>·<code>stat</code>·<code>grid</code> 카드는
+            발행 페이지처럼 한 줄·넓은 폭(880px)으로 렌더됩니다.
           </p>
         </header>
-        {SPECS.map(({ id, note, spec }) => (
-          <section className="pv-sec" key={id}>
-            <div className="pv-meta">
-              <span className="pv-id">{id}</span>
-              <span className="pv-note">{note}</span>
-            </div>
-            <div className="pv-pair">
-              <div className="pv-cell">
-                <div className="pv-cell-tag">현재 테마</div>
-                <VisualRenderer spec={spec} />
+        {SPECS.map(({ id, note, spec }) => {
+          const wide = WIDE.has(id);
+          return (
+            <section className="pv-sec" key={id}>
+              <div className="pv-meta">
+                <span className="pv-id">{id}</span>
+                <span className="pv-note">{note}</span>
+                {wide && <span className="pv-badge">한 줄 · 발행 폭 880px</span>}
               </div>
-              <div className="pv-cell" data-theme="dark">
-                <div className="pv-cell-tag">다크</div>
-                <VisualRenderer spec={spec} />
+              <div className={wide ? "pv-pair pv-pair-wide" : "pv-pair"}>
+                <div className="pv-cell">
+                  <div className="pv-cell-tag">현재 테마</div>
+                  <VisualRenderer spec={spec} />
+                </div>
+                <div className="pv-cell" data-theme="dark">
+                  <div className="pv-cell-tag">다크</div>
+                  <VisualRenderer spec={spec} />
+                </div>
               </div>
-            </div>
-          </section>
-        ))}
+            </section>
+          );
+        })}
       </main>
     </>
   );

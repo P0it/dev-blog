@@ -400,8 +400,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .post-card {
   display: grid; grid-template-columns: 1fr 200px; gap: 32px;
   padding: 28px 0; border-bottom: 1px solid var(--line-subtle);
+  color: inherit; transition: opacity .15s ease;
 }
 .post-card:last-child { border-bottom: none; }
+.post-card:hover { opacity: 0.7; }
+.post-card:hover h3 { text-decoration: none; }
 .post-card .thumb {
   height: 130px; border-radius: 12px;
   background: linear-gradient(135deg, var(--neutral-100), var(--neutral-200));
@@ -438,7 +441,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .related-card .meta { font-size: 12.5px; color: var(--fg-neutral); }
 
 /* 콘텐츠 카드: hover 시 제목 밑줄 안 생기게 */
-.post-card a:hover, .featured-card:hover, .featured-card a:hover,
+.post-card:hover, .featured-card:hover, .featured-card a:hover,
 .related-card:hover, .related-card:hover h3 { text-decoration: none; }
 
 .thumb { position: relative; overflow: hidden; }
@@ -486,6 +489,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin: 24px auto;
   border-radius: var(--radius-md);
 }
+/* 본문(렌더된 마크다운) 이미지는 좌측 정렬 — 넓은 이미지가 데스크톱에서
+   우측으로 확장될 때, 가운데 정렬이면 좌우로 퍼져 좌측 TOC를 침범한다. */
+.post-body img { margin: 24px 0; }
 
 /* ============================================================
    Visual catalog — 본문에 네이티브로 렌더되는 시각자료
@@ -767,6 +773,30 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .vis-compare[data-cols="3"] { grid-template-columns: 1fr; }
   .vis-quote { padding: 18px 18px 17px; }
   .vis-quote-tx { font-size: 16.5px; }
+}
+
+/* 데스크톱(≥1200px, 좌측 TOC 레이아웃) — step·stat·grid 카드와 본문 이미지를
+   우측 고스트 칼럼까지 넓힌다(640 → 880). 발행 페이지(.post-layout) 한정 —
+   에디터 프리뷰는 좁은 패널이라 .post-layout 밖이므로 본문 폭을 유지한다.
+   880 = 본문 640 + 고스트 240, post-layout 폭과 정확히 맞아 가로 넘침 없음. */
+@media (min-width: 1200px) {
+  .post-layout .vis-frame:has(.vis-steps),
+  .post-layout .vis-frame:has(.vis-stats),
+  .post-layout .vis-frame:has(.vis-grid) {
+    width: 880px;
+  }
+  /* 항목을 한 줄로 — 개수와 무관하게 동일 너비 칼럼 */
+  .post-layout .vis-steps,
+  .post-layout .vis-stats,
+  .post-layout .vis-grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+  }
+  /* 본문 이미지도 고스트 칼럼까지 늘어날 수 있게(작은 이미지는 원본 크기 유지) */
+  .post-layout .post-body img {
+    max-width: 880px;
+  }
 }
 
 /* ============================================================
