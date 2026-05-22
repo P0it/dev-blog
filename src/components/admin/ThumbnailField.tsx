@@ -316,7 +316,7 @@ export function ThumbnailField({
                               boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
                             }}
                           >
-                            <Check size={13} color="#fff" strokeWidth={3} />
+                            <Check size={13} color="var(--neutral-900)" strokeWidth={3} />
                           </div>
                         )}
                       </div>
