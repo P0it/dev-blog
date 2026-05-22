@@ -5,17 +5,13 @@ import type { Post } from "@/lib/types";
 
 export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?: string }) {
   return (
-    <div className="post-card">
+    <Link href={`${hrefBase}/${post.slug}`} className="post-card" style={{ color: "inherit" }}>
       <div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-          <Chip variant="outline">{post.category}</Chip>
-          <span className="meta">
-            {post.date}
-          </span>
+          {post.category && <Chip variant="outline">{post.category}</Chip>}
+          <span className="meta">{post.date}</span>
         </div>
-        <Link href={`${hrefBase}/${post.slug}`} style={{ color: "inherit" }}>
-          <h3>{post.title}</h3>
-        </Link>
+        <h3>{post.title}</h3>
         <p>{post.excerpt}</p>
         <div style={{ display: "flex", gap: 6 }}>
           {post.tags.map((t) => (
@@ -23,9 +19,7 @@ export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?:
           ))}
         </div>
       </div>
-      <Link href={`${hrefBase}/${post.slug}`} aria-label={post.title} style={{ display: "block" }}>
-        <CoverThumb post={post} />
-      </Link>
-    </div>
+      <CoverThumb post={post} />
+    </Link>
   );
 }
