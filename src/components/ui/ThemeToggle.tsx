@@ -12,7 +12,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
     >
-      {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+      {theme === "light" ? <Moon size={18} color="#F5C518" /> : <Sun size={18} color="#F97316" />}
     </button>
   );
 }
