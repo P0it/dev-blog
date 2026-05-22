@@ -154,8 +154,8 @@ git clone <비공개-백업-레포> ~/blog-backups
 launchctl load ~/Library/LaunchAgents/blog.backup.plist
 ```
 
-복원: 백업 JSON의 `tables.*`를 기존 seed 패턴(`scripts/seed.mjs`)처럼
-`upsert`로 되돌리면 된다.
+복원: 백업 JSON의 `tables.*`를 Supabase 클라이언트로 읽어
+`upsert`(`onConflict: "slug"`)로 되돌리면 된다.
 
 ## 트러블슈팅
 
