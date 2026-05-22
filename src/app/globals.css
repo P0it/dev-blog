@@ -514,6 +514,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   border: 1px solid var(--line-subtle);
   background: var(--bg-subtle);
 }
+/* step·stat·grid 카드는 컨테이너 너비로 한 줄↔줄바꿈을 정한다(에디터 프리뷰 포함) */
+.vis-frame:has(.vis-steps),
+.vis-frame:has(.vis-stats),
+.vis-frame:has(.vis-grid) {
+  container-type: inline-size;
+}
 .vis-head { text-align: center; margin-bottom: 22px; }
 .vis-eyebrow {
   display: inline-block;
@@ -528,10 +534,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   line-height: 1.35; color: var(--fg-strong); margin: 10px 0 0;
 }
 
-/* step-card — 반응형 그리드(번호로 순서 전달, 모든 카드 동일 스타일) */
+/* step-card — 항목을 한 줄로(번호로 순서 전달, 모든 카드 동일 스타일) */
 .vis-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 10px;
 }
 .vis-step {
@@ -562,10 +569,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: var(--fg-alternative); text-align: center;
 }
 
-/* stat-card */
+/* stat-card — 항목을 한 줄로 */
 .vis-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .vis-stat {
@@ -740,10 +748,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin-top: 3px; font-size: 12.5px; line-height: 1.55; color: var(--fg-alternative);
 }
 
-/* grid-card — 순서 없는 개념 타일 */
+/* grid-card — 순서 없는 개념 타일, 항목을 한 줄로 */
 .vis-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .vis-cell {
@@ -770,6 +779,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong);
 }
 
+/* 컨테이너가 좁으면(모바일 등) 한 줄을 풀어 자연스럽게 줄바꿈한다 */
+@container (max-width: 420px) {
+  .vis-steps,
+  .vis-stats,
+  .vis-grid {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .vis-frame { padding: 20px 16px 18px; }
   .vis-title { font-size: 19px; }
@@ -781,22 +800,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* 데스크톱(≥1200px, 좌측 TOC 레이아웃) — step·stat·grid 카드와 본문 이미지를
-   우측 고스트 칼럼까지 넓힌다(640 → 880). 발행 페이지(.post-layout) 한정 —
-   에디터 프리뷰는 좁은 패널이라 .post-layout 밖이므로 본문 폭을 유지한다.
-   880 = 본문 640 + 고스트 240, post-layout 폭과 정확히 맞아 가로 넘침 없음. */
+   우측 고스트 칼럼까지 넓힌다(640 → 880). 발행 페이지(.post-layout) 한정.
+   880 = 본문 640 + 고스트 240, post-layout 폭과 정확히 맞아 가로 넘침 없음.
+   항목 한 줄 배치는 기본값(grid-auto-flow: column)이라 여기선 폭만 넓힌다. */
 @media (min-width: 1200px) {
   .post-layout .vis-frame:has(.vis-steps),
   .post-layout .vis-frame:has(.vis-stats),
   .post-layout .vis-frame:has(.vis-grid) {
     width: 880px;
-  }
-  /* 항목을 한 줄로 — 개수와 무관하게 동일 너비 칼럼 */
-  .post-layout .vis-steps,
-  .post-layout .vis-stats,
-  .post-layout .vis-grid {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-template-columns: none;
   }
   /* 본문 이미지도 고스트 칼럼까지 늘어날 수 있게(작은 이미지는 원본 크기 유지) */
   .post-layout .post-body img {
