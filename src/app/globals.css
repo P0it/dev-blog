@@ -60,6 +60,13 @@
   --blue-700: rgb(0,  94, 235);
   --blue-800: rgb(0,  77, 199);
 
+  /* 브랜드 민트 — 로고 색을 메인 액센트로.
+     500=로고 원색(다크모드 액센트), 600=라이트모드 텍스트용(흰 배경 대비 ~4.9:1). */
+  --mint-50:  rgb(230, 246, 241);
+  --mint-500: rgb(105, 197, 170);
+  --mint-600: rgb( 30, 128,  99);
+  --mint-700: rgb( 22, 100,  77);
+
   --purple-50:  rgb(240, 236, 254);
   --purple-500: rgb(151,  71, 255);
   --purple-600: rgb(101,  65, 242);
@@ -86,7 +93,7 @@
   --fg-assistive:     var(--neutral-400);
   --fg-disabled:      var(--neutral-300);
   --fg-on-color:      var(--white);
-  --fg-primary:       var(--blue-600);
+  --fg-primary:       var(--mint-600);
   --fg-negative:      var(--red-500);
   --fg-positive:      var(--green-500);
   --fg-cautionary:    var(--yellow-600);
@@ -98,8 +105,8 @@
   --bg-muted:         var(--neutral-100);
   --bg-emphasized:    var(--neutral-200);
   --bg-inverse:       var(--neutral-950);
-  --bg-primary:       var(--blue-600);
-  --bg-primary-soft:  var(--blue-50);
+  --bg-primary:       var(--mint-600);
+  --bg-primary-soft:  var(--mint-50);
   --bg-negative:      var(--red-500);
   --bg-negative-soft: var(--red-50);
   --bg-positive:      var(--green-500);
@@ -112,7 +119,7 @@
   --line-normal:      var(--neutral-200);
   --line-strong:      var(--neutral-300);
   --line-inverse:     var(--neutral-950);
-  --line-primary:     var(--blue-600);
+  --line-primary:     var(--mint-600);
 
   --shadow-1: 0 1px 2px rgba(23,23,23,0.06);
   --shadow-2: 0 2px 8px rgba(23,23,23,0.07);
@@ -171,6 +178,11 @@
   --fg-alternative: rgb(112, 115, 124);
   --fg-assistive:   rgb(80, 82, 88);
   --fg-disabled:    rgb(55, 56, 60);
+
+  /* 다크모드 액센트 — 밝은 민트(로고 원색)는 어두운 배경에서 대비 ~9:1.
+     --bg-primary(버튼 면)는 흰 글자 대비 때문에 라이트와 동일한 mint-600 유지. */
+  --fg-primary:     var(--mint-500);
+  --line-primary:   var(--mint-500);
 
   --bg-base:        rgb(18, 18, 20);
   --bg-elevated:    rgb(28, 30, 34);
@@ -307,16 +319,21 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .nav-left { display: flex; align-items: center; gap: 32px; }
 .nav-brand {
-  display: inline-flex; align-items: center; gap: 10px;
+  display: inline-flex; align-items: center; gap: 14px;
   font-family: var(--font-display); font-weight: 700; font-size: 20px;
   letter-spacing: -0.02em; color: var(--fg-strong);
 }
 .nav-brand:hover { text-decoration: none; }
+.brand-mark {
+  height: 24px; width: auto; display: block;
+  transition: opacity 0.15s ease;
+}
 .brand-logo {
   height: 22px; width: auto; display: block;
   color: var(--fg-strong);
   transition: opacity 0.15s ease;
 }
+.nav-brand:hover .brand-mark,
 .nav-brand:hover .brand-logo { opacity: 0.7; }
 .nav-links { display: flex; gap: 24px; }
 .nav-links a {
@@ -349,8 +366,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-weight: 600; font-size: 14px; border: none; cursor: pointer;
   font-family: inherit; transition: background 0.15s, color 0.15s;
 }
-.btn-primary { background: var(--blue-600); color: #fff; }
-.btn-primary:hover { background: var(--blue-700); }
+.btn-primary { background: var(--bg-primary); color: #fff; }
+.btn-primary:hover { background: var(--mint-700); }
 .btn-ghost { background: transparent; color: var(--fg-strong); }
 .btn-ghost:hover { background: var(--bg-muted); }
 .btn-outline { background: var(--bg-base); color: var(--fg-strong); border: 1px solid var(--line-normal); }
@@ -368,7 +385,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   background: var(--bg-muted); color: var(--fg-neutral);
   font-size: 12px; font-weight: 600;
 }
-.chip-blue { background: var(--bg-primary-soft); color: var(--blue-600); }
+/* primary 액센트 칩 — 클래스명은 레거시(과거 primary=blue). 항상 옅은 배경+진한 민트. */
+.chip-blue { background: var(--bg-primary-soft); color: var(--mint-600); }
 .chip-purple { background: var(--bg-accent-soft); color: var(--purple-600); }
 .chip-green { background: var(--bg-positive-soft); color: var(--green-600); }
 .chip-outline { background: transparent; border: 1px solid var(--line-normal); color: var(--fg-normal); }
@@ -910,7 +928,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .tree { font-size: 14px; }
 .tree .node { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
 .tree .node:hover { background: var(--bg-muted); }
-.tree .node.active { background: var(--bg-primary-soft); color: var(--blue-600); font-weight: 600; }
+.tree .node.active { background: var(--bg-primary-soft); color: var(--mint-600); font-weight: 600; }
 .tree .node .count { font-size: 12px; color: var(--fg-alternative); font-weight: 500; }
 .tree .group > .node { font-weight: 600; color: var(--fg-strong); }
 .tree .child { padding-left: 18px; }
@@ -966,7 +984,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .editor-line { font-family: var(--font-mono); font-size: 14px; line-height: 1.7; color: var(--fg-strong); }
 .editor-line .h { color: var(--fg-strong); font-weight: 700; }
 .editor-line .md { color: var(--neutral-500); }
-.editor-line .url { color: var(--blue-600); }
+.editor-line .url { color: var(--fg-primary); }
 
 /* 태그 입력 — 쉼표/Enter로 badge 확정 */
 .tag-input {

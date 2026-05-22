@@ -28,3 +28,22 @@ export function BrandLogo({ className = "brand-logo" }: { className?: string }) 
     </svg>
   );
 }
+
+// 홈 메뉴 좌측 심볼 마크.
+// 막대 5개(세로 3·가로 2)를 길이 330·두께 90으로 정규화한 계단형 도형.
+// 브랜드 그린(#69C5AA)은 라이트/다크 양쪽에서 그대로 보이므로 테마에 적응시키지 않는다.
+export function BrandMark({ className = "brand-mark" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 570 570"
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M0 0 L330 0 L330 240 L570 240 L570 570 L480 570 L480 330 L240 330 L240 90 L90 90 L90 330 L0 330 Z"
+        fill="#69C5AA"
+      />
+    </svg>
+  );
+}

@@ -309,7 +309,7 @@ export function ThumbnailField({
                               width: 20,
                               height: 20,
                               borderRadius: 999,
-                              background: "var(--fg-primary)",
+                              background: "var(--bg-primary)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",

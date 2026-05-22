@@ -267,7 +267,7 @@ const CSS = `
 }
 .pv-badge {
   font-family: var(--font-mono); font-size: 10px; font-weight: 600;
-  letter-spacing: 0.06em; color: var(--fg-primary);
+  letter-spacing: 0.06em; color: var(--mint-600);
   background: var(--bg-primary-soft); padding: 3px 8px; border-radius: 999px;
 }
 `;

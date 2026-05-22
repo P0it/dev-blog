@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { BrandLogo } from "@/components/layout/BrandLogo";
+import { BrandLogo, BrandMark } from "@/components/layout/BrandLogo";
 
 export function AdminTopbar({
   children,
@@ -14,6 +14,7 @@ export function AdminTopbar({
     <div className="nav" style={{ height: 56, padding: "0 24px" }}>
       <div className="nav-left" style={{ gap: 16 }}>
         <Link href="/admin/posts" className="nav-brand" aria-label="어드민 홈">
+          <BrandMark />
           <BrandLogo />
         </Link>
         <Link

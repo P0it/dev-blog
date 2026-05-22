@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Newspaper, FlaskConical, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
-import { BrandLogo } from "@/components/layout/BrandLogo";
+import { BrandLogo, BrandMark } from "@/components/layout/BrandLogo";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
@@ -21,6 +21,7 @@ export function PublicNav({
     <div className="nav">
       <div className="nav-left">
         <Link href={pathFor(locale, "/")} className="nav-brand" aria-label="hynu.blog">
+          <BrandMark />
           <BrandLogo />
         </Link>
         <div className="nav-links">
