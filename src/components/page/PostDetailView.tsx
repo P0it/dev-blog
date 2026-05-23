@@ -41,20 +41,14 @@ export function PostDetailView({
     <>
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
-
-      <section className="post-hero">
-        <CoverThumb post={post} fill />
-        <div className="post-hero-scrim" />
-        <div className="container-wide post-hero-inner">
-          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-            <Chip variant="blue">{post.category}</Chip>
+      <div className="post-hero-wrap">
+        {post.coverImage && (
+          <div className="post-hero-bg" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={post.coverImage} alt="" />
           </div>
-          <h1 className="post-hero-title">{post.title}</h1>
-          {post.excerpt && <p className="post-hero-excerpt">{post.excerpt}</p>}
-        </div>
-      </section>
-
-      <div className="container-wide" style={{ paddingTop: 40 }}>
+        )}
+        <div className="container-wide" style={{ paddingTop: 56, position: "relative" }}>
         <div className="post-layout">
           <div className="post-main">
             {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
@@ -97,9 +91,6 @@ export function PostDetailView({
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{SITE.author}</div>
                 <div className="meta">
                   {/* 발행일은 임시로 숨김 — 작성일 정리 후 다시 노출. */}
-                  {views != null && views > 0 && (
-                    <>{locale === "ko" ? "조회" : "views"} {views.toLocaleString()}</>
-                  )}
                 </div>
               </div>
             </div>
@@ -190,6 +181,7 @@ export function PostDetailView({
               </>
             )}
           </aside>
+        </div>
         </div>
       </div>
       <Footer />
