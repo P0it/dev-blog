@@ -13,11 +13,14 @@ export function CompareCard({ spec }: { spec: CompareCardSpec }) {
   return (
     <Frame eyebrow={spec.eyebrow} title={spec.title}>
       <div className="vis-compare" data-cols={spec.columns.length}>
-        {spec.columns.map((col, i) => (
+        {spec.columns.map((col, i) => {
+          const colAccent = col.accent ?? spec.accent;
+          return (
           <div
             className="vis-col"
             key={i}
-            style={accentVars(col.accent ?? spec.accent)}
+            data-accent={colAccent}
+            style={accentVars(colAccent)}
           >
             <div className="vis-col-hd">
               {col.icon && (
@@ -40,7 +43,8 @@ export function CompareCard({ spec }: { spec: CompareCardSpec }) {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </Frame>
   );
