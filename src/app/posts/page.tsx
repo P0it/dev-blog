@@ -17,9 +17,6 @@ export default async function PostsPage() {
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>Posts</div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>전체 글</h1>
-        <p style={{ color: "var(--fg-neutral)", fontSize: 15, marginTop: 8, maxWidth: 640 }}>
-          {posts.length === 0 ? "아직 글이 없습니다." : `${posts.length}편의 글.`}
-        </p>
 
         <div
           style={{

@@ -58,9 +58,6 @@ export default async function PostsByCategoryPage({
           ))}
         </div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>{cat.label}</h1>
-        <p style={{ color: "var(--fg-neutral)", fontSize: 15, marginTop: 8, maxWidth: 640 }}>
-          {posts.length === 0 ? "아직 글이 없습니다." : `${posts.length}편의 글.`}
-        </p>
 
         <div
           style={{
