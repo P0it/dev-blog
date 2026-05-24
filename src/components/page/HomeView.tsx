@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
-import { FeaturedCard } from "@/components/post/FeaturedCard";
 import { PostCard } from "@/components/post/PostCard";
 import type { Locale, Post } from "@/lib/types";
 import { pathFor, tFor } from "@/lib/i18n";
 
 export function HomeView({
   locale,
-  featured,
+  // featured 는 큐레이션 임시 숨김 동안 미사용 — props 시그니처는 호출부 호환 위해 유지.
+  featured: _featured,
   recent,
 }: {
   locale: Locale;
@@ -20,24 +20,13 @@ export function HomeView({
     <>
       <PublicNav active="home" locale={locale} switchPath="/" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <h2 style={{ fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>{t.curation}</h2>
-          <div className="meta">
-            {t.editorPick} · {featured.length}
-          </div>
-        </div>
-        <div className="featured">
-          {featured.map((p) => (
-            <FeaturedCard key={p.slug} post={p} hrefBase={pathFor(locale, "/posts")} />
-          ))}
-        </div>
+        {/* 큐레이션(Editor's Picks) 섹션 — 임시 숨김. featured 데이터·is_featured 플래그는 그대로 살림. */}
 
         <div
           style={{
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
-            marginTop: 24,
             marginBottom: 8,
           }}
         >
