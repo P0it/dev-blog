@@ -41,13 +41,22 @@ export function PostDetailView({
     <>
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
-      <div className="container-wide" style={{ paddingTop: 56 }}>
+
+      <section className="post-hero">
+        <CoverThumb post={post} fill />
+        <div className="post-hero-scrim" />
+        <div className="container-wide post-hero-inner">
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            <Chip variant="blue">{post.category}</Chip>
+          </div>
+          <h1 className="post-hero-title">{post.title}</h1>
+          {post.excerpt && <p className="post-hero-excerpt">{post.excerpt}</p>}
+        </div>
+      </section>
+
+      <div className="container-wide" style={{ paddingTop: 40 }}>
         <div className="post-layout">
           <div className="post-main">
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <Chip variant="blue">{post.category}</Chip>
-            </div>
-            <h1 className="prose post-title">{post.title}</h1>
             {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
                 excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
             <div
