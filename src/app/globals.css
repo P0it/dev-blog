@@ -524,6 +524,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .prose .vis { margin: 30px 0; }
 
+/* 한국어 줄바꿈: 단어 단위로 끊는다.
+   - keep-all: "양방향 상호작용" 같은 띄어쓰기 있는 구를 단어 경계에서만 끊어
+     마지막 한 글자만 다음 줄로 떨어지는 외톨이(orphan) 현상을 막는다.
+   - anywhere: 한 단어가 컨테이너 폭보다 길면 그때만 어디서든 끊어
+     영문 약어·긴 URL이 카드 밖으로 흘러넘치는 것을 막는다. */
+.vis {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 /* 외곽 프레임 — step·stat 공용 */
 .vis-frame {
   box-sizing: border-box;
@@ -1208,7 +1218,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 78%, var(--bg-base) 100%);
+  /* 표지 이미지가 밝든 어둡든 하단부에 흰 텍스트가 읽히도록 어두운 그라데이션. */
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
 }
 .post-hero-inner {
   position: relative;
@@ -1225,15 +1240,17 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   line-height: 1.1;
   letter-spacing: -0.03em;
   margin: 0;
-  color: #1B1C1E;
+  color: #fff;
   max-width: 880px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .post-hero-excerpt {
   font-size: 18px;
-  color: #373840;
+  color: rgba(255, 255, 255, 0.92);
   line-height: 1.6;
   margin: 20px 0 0;
   max-width: 720px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================================
