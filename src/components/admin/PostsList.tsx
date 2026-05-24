@@ -6,6 +6,7 @@ import { Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { AiReviseModal } from "@/components/admin/AiModals";
+import { AdminPostThumb } from "@/components/admin/AdminPostThumb";
 import {
   requestRevision,
   deletePostFromList,
@@ -150,6 +151,7 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
               borderTop: i ? "1px solid var(--line-subtle)" : "none",
             }}
           >
+            <AdminPostThumb coverImage={p.coverImage} thumbKind={p.thumbKind} />
             <button
               onClick={() =>
                 router.push(`/admin/editor?slug=${encodeURIComponent(p.slug)}`)

@@ -661,6 +661,8 @@ export type AdminPostRow = {
   updatedAt: string;
   category: string;
   isFeatured: boolean;
+  thumbKind: ThumbKind;
+  coverImage: string | null;
   aiStatus: "pending" | "processing" | "done" | "error" | null;
 };
 
@@ -671,7 +673,7 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("slug,title,status,updated_at,category_slug,is_featured")
+    .select("slug,title,status,updated_at,category_slug,is_featured,thumb_kind,cover_image")
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const rows = data ?? [];
@@ -700,6 +702,8 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
     updatedAt: r.updated_at,
     category: r.category_slug ? labels.get(r.category_slug) ?? r.category_slug : "",
     isFeatured: r.is_featured,
+    thumbKind: (r.thumb_kind as ThumbKind) ?? "a",
+    coverImage: r.cover_image ?? null,
     aiStatus: aiBySlug.get(r.slug) ?? null,
   }));
 }
