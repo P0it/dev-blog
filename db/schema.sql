@@ -30,6 +30,7 @@ create table if not exists posts (
   featured_chips jsonb not null default '[]'::jsonb,
   status         text not null default 'draft', -- draft | published
   published_at   timestamptz,
+  source_date    date,                       -- 원문(인용/번역 대상)의 작성·업로드 일자
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );

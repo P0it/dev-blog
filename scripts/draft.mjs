@@ -20,6 +20,8 @@
 //   thumb_kind: f           (선택) 없으면 slug 해시로 자동
 //   reading_min: 8분        (선택) 없으면 본문 분량에서 산출
 //   source_url: https://…   (선택) 기록용 — posts 컬럼 아님, 본문 참고자료에 직접 적는다
+//   source_date: 2026-05-20 (선택) 원문(인용/번역 대상) 작성·업로드 일자. 발행일을 이보다
+//                             앞으로 잡으려 하면 에디터에서 경고가 뜬다(YYYY-MM-DD)
 //   ---
 //   > 요약 인용구…
 //   ## 헤드라인…
@@ -165,6 +167,7 @@ function serializeFrontmatter(post) {
     `cover_image: ${post.cover_image ?? ""}`,
     `thumb_kind: ${post.thumb_kind ?? ""}`,
     `reading_min: ${post.reading_min ?? ""}`,
+    `source_date: ${post.source_date ?? ""}`,
     "---",
     "",
   ].join("\n");
@@ -219,6 +222,7 @@ async function push(file, force) {
     cover_image: unquote(fm.cover_image) || null,
     thumb_kind: unquote(fm.thumb_kind) || thumbKindFromSlug(slug),
     reading_min: unquote(fm.reading_min) || deriveReadingMin(body) || null,
+    source_date: unquote(fm.source_date) || null,
   };
 
   if (existing) {
@@ -242,7 +246,7 @@ async function push(file, force) {
 async function pull(slug, outFile) {
   const { data: post, error } = await sb
     .from("posts")
-    .select("slug,title,body_md,tags,category_slug,cover_image,thumb_kind,reading_min,status")
+    .select("slug,title,body_md,tags,category_slug,cover_image,thumb_kind,reading_min,source_date,status")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;

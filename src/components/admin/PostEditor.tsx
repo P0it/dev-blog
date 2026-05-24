@@ -34,6 +34,7 @@ type Initial = {
   coverImage: string | null;
   thumbKind: ThumbKind | null;
   publishedAt: string | null;
+  sourceDate: string | null;
   status: "draft" | "published";
 };
 
@@ -50,6 +51,18 @@ function fromDateInputValue(dateStr: string, existing: string | null): string | 
   if (!dateStr) return null;
   if (existing && existing.slice(0, 10) === dateStr) return existing;
   return `${dateStr}T12:00:00.000Z`;
+}
+
+// 발행일(또는 발행 시 채워질 today)이 원문 작성일보다 앞서는지.
+// 둘 다 'YYYY-MM-DD' 비교라 lexicographic == 시간순.
+function isPublishedBeforeSource(
+  publishedAt: string | null,
+  sourceDate: string | null,
+  todayDate: string,
+): boolean {
+  if (!sourceDate) return false;
+  const pub = (publishedAt ?? "").slice(0, 10) || todayDate;
+  return pub < sourceDate.slice(0, 10);
 }
 
 export function PostEditor({
@@ -70,6 +83,7 @@ export function PostEditor({
   const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
   const [thumbKind, setThumbKind] = useState<ThumbKind | null>(initial.thumbKind);
   const [publishedAt, setPublishedAt] = useState<string | null>(initial.publishedAt);
+  const [sourceDate, setSourceDate] = useState<string | null>(initial.sourceDate);
   const [tagDraft, setTagDraft] = useState("");
   const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [uploading, setUploading] = useState(false);
@@ -162,9 +176,10 @@ export function PostEditor({
       coverImage,
       thumbKind,
       publishedAt,
+      sourceDate,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind, publishedAt]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind, publishedAt, sourceDate]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -229,27 +244,32 @@ export function PostEditor({
     });
   };
 
+  const publishedBeforeSource = useMemo(
+    () => isPublishedBeforeSource(publishedAt, sourceDate, todayDate),
+    [publishedAt, sourceDate, todayDate],
+  );
+
   const onPublish = () => {
     if (!title.trim()) {
       alert("제목을 입력하세요.");
       return;
     }
+    if (publishedBeforeSource) {
+      const pubLabel = toDateInputValue(publishedAt) || todayDate;
+      const ok = confirm(
+        `발행일(${pubLabel})이 원문 작성일(${sourceDate!.slice(0, 10)})보다 앞섭니다.\n그대로 발행할까요?`,
+      );
+      if (!ok) return;
+    }
     const isUpdate = status === "published";
     setBusyMsg(isUpdate ? "업데이트 중…" : "발행 중…");
     startTransition(async () => {
       try {
-        const res = await publishPost(input);
-        setStatus("published");
+        await publishPost(input);
         markClean();
-        setSavedFlash(isUpdate ? "✓ 업데이트됨" : "✓ 발행됨");
-        if (res.slug !== initial.originalSlug) {
-          router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
-        } else {
-          router.refresh();
-        }
+        router.push("/admin/posts");
       } catch (e) {
         alert(`${isUpdate ? "업데이트" : "발행"} 실패: ${(e as Error).message}`);
-      } finally {
         setBusyMsg(null);
       }
     });
@@ -378,7 +398,9 @@ export function PostEditor({
                 title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
                 style={{
                   padding: "6px 10px",
-                  border: "1px solid var(--line-subtle)",
+                  border: publishedBeforeSource
+                    ? "1px solid var(--danger, #d33)"
+                    : "1px solid var(--line-subtle)",
                   borderRadius: 8,
                   fontSize: 13,
                   background: "transparent",
@@ -388,6 +410,38 @@ export function PostEditor({
                   colorScheme: "light dark",
                 }}
               />
+              <input
+                type="date"
+                value={sourceDate ?? ""}
+                max={todayDate}
+                onChange={(e) => setSourceDate(e.target.value || null)}
+                aria-label="원문 작성일"
+                title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
+                style={{
+                  padding: "6px 10px",
+                  border: "1px dashed var(--line-subtle)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: "transparent",
+                  color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  colorScheme: "light dark",
+                }}
+              />
+              {publishedBeforeSource && (
+                <span
+                  role="alert"
+                  title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--danger, #d33)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⚠ 원문보다 앞선 발행일
+                </span>
+              )}
               <ThumbnailField
                 coverImage={coverImage}
                 thumbKind={thumbKind}

@@ -41,6 +41,7 @@ type PostRow = {
   featured_chips: { variant: ChipVariant; label: string }[];
   status: string;
   published_at: string | null;
+  source_date: string | null;
   title_en?: string | null;
   excerpt_en?: string | null;
   body_md_en?: string | null;
@@ -98,6 +99,7 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     tags: row.tags ?? [],
     date,
     publishedAt: row.published_at,
+    sourceDate: row.source_date ?? null,
     readingMin: row.reading_min ?? "",
     thumbKind: (row.thumb_kind as ThumbKind) ?? "a",
     coverImage: row.cover_image ?? null,
@@ -659,7 +661,8 @@ export type AdminPostRow = {
   slug: string;
   title: string;
   status: "draft" | "published";
-  updatedAt: string;
+  // 독자에게 보이는 작성일(=published_at). draft 처럼 아직 발행 전이면 updated_at 으로 폴백.
+  displayDate: string;
   category: string;
   isFeatured: boolean;
   thumbKind: ThumbKind;
@@ -667,14 +670,16 @@ export type AdminPostRow = {
   aiStatus: "pending" | "processing" | "done" | "error" | null;
 };
 
-// 어드민 글 목록 — draft + published 전체, 최근 수정순.
+// 어드민 글 목록 — draft + published 전체, 공개 페이지와 동일하게 작성일(published_at) 기준 정렬.
+// published_at 이 없는 draft 는 맨 뒤로 가되 그 안에서는 updated_at desc.
 // 각 글의 최신 ai_jobs 상태를 함께 매핑(테이블 없으면 null).
 export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
   const sb = supabaseServer();
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("slug,title,status,updated_at,category_slug,is_featured,thumb_kind,cover_image")
+    .select("slug,title,status,published_at,updated_at,category_slug,is_featured,thumb_kind,cover_image")
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const rows = data ?? [];
@@ -700,7 +705,7 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
     slug: r.slug,
     title: r.title,
     status: r.status === "published" ? "published" : "draft",
-    updatedAt: r.updated_at,
+    displayDate: r.published_at ?? r.updated_at,
     category: r.category_slug ? labels.get(r.category_slug) ?? r.category_slug : "",
     isFeatured: r.is_featured,
     thumbKind: (r.thumb_kind as ThumbKind) ?? "a",

@@ -13,6 +13,7 @@ export type Post = {
   tags: string[];
   date: string;
   publishedAt?: string | null;
+  sourceDate?: string | null;
   readingMin: string;
   thumbKind: ThumbKind;
   coverImage?: string | null;

@@ -24,6 +24,7 @@ export type EditorInput = {
   coverImage: string | null;
   thumbKind: ThumbKind | null; // null = 슬러그 해시로 자동
   publishedAt: string | null; // 백데이트용 — null = 자동 처리(발행 시 now())
+  sourceDate: string | null;  // 원문(인용/번역 대상)의 작성·업로드 일자. null = 모름
   readingMin: string;
 };
 
@@ -93,6 +94,7 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     cover_image: input.coverImage || null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
+    source_date: input.sourceDate || null,
     status: "draft" as const,
   };
   if (input.publishedAt) baseRow.published_at = input.publishedAt;
@@ -140,6 +142,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     cover_image: input.coverImage || null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
+    source_date: input.sourceDate || null,
     status: "published" as const,
     published_at: publishedAt,
   };
