@@ -96,9 +96,9 @@ export function PostDetailView({
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{SITE.author}</div>
                 <div className="meta">
-                  {post.date}
+                  {/* 발행일은 임시로 숨김 — 작성일 정리 후 다시 노출. */}
                   {views != null && views > 0 && (
-                    <> · {locale === "ko" ? "조회" : "views"} {views.toLocaleString()}</>
+                    <>{locale === "ko" ? "조회" : "views"} {views.toLocaleString()}</>
                   )}
                 </div>
               </div>
@@ -172,7 +172,6 @@ export function PostDetailView({
                       <div className="body">
                         <Chip variant="outline">{r.category}</Chip>
                         <h3>{r.title}</h3>
-                        <div className="meta">{r.date}</div>
                       </div>
                     </Link>
                   ))}

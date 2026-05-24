@@ -40,7 +40,6 @@ export default async function PostsPage() {
                 <div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
                     <Chip variant="outline">{p.category}</Chip>
-                    <span className="meta">{p.date}</span>
                   </div>
                   <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
                     <h3>{p.title}</h3>
