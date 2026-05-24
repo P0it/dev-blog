@@ -192,7 +192,7 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
               </div>
               <div className="meta" style={{ marginTop: 3 }}>
                 {p.category && `${p.category} · `}
-                {fmtDate(p.updatedAt)}
+                {fmtDate(p.displayDate)}
               </div>
             </button>
 
