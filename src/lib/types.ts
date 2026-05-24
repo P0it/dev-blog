@@ -12,6 +12,7 @@ export type Post = {
   categorySlug?: string | null;
   tags: string[];
   date: string;
+  publishedAt?: string | null;
   readingMin: string;
   thumbKind: ThumbKind;
   coverImage?: string | null;

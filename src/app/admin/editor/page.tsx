@@ -21,6 +21,7 @@ export default async function EditorPage({
         tags: post.tags,
         coverImage: post.coverImage ?? null,
         thumbKind: post.thumbKind,
+        publishedAt: post.publishedAt ?? null,
         status: post.status ?? "draft",
       }
     : {
@@ -31,6 +32,7 @@ export default async function EditorPage({
         tags: [],
         coverImage: null,
         thumbKind: null,
+        publishedAt: null,
         status: "draft" as const,
       };
 

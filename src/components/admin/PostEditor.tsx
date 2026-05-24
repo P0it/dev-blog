@@ -33,8 +33,24 @@ type Initial = {
   tags: string[];
   coverImage: string | null;
   thumbKind: ThumbKind | null;
+  publishedAt: string | null;
   status: "draft" | "published";
 };
+
+// `<input type="date">` 의 value 형식(YYYY-MM-DD) 변환.
+// UTC 기준 날짜를 사용 — 백데이트 용도엔 일관성이 더 중요하다.
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+// 사용자가 고른 날짜를 ISO 로 직렬화.
+// 같은 날짜를 다시 고른 경우 기존 시각을 보존(no-op), 아니면 정오 UTC.
+function fromDateInputValue(dateStr: string, existing: string | null): string | null {
+  if (!dateStr) return null;
+  if (existing && existing.slice(0, 10) === dateStr) return existing;
+  return `${dateStr}T12:00:00.000Z`;
+}
 
 export function PostEditor({
   initial,
@@ -53,7 +69,9 @@ export function PostEditor({
   const [tags, setTags] = useState<string[]>(initial.tags);
   const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
   const [thumbKind, setThumbKind] = useState<ThumbKind | null>(initial.thumbKind);
+  const [publishedAt, setPublishedAt] = useState<string | null>(initial.publishedAt);
   const [tagDraft, setTagDraft] = useState("");
+  const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
@@ -135,9 +153,10 @@ export function PostEditor({
       tags: allTags,
       coverImage,
       thumbKind,
+      publishedAt,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind, publishedAt]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -302,6 +321,27 @@ export function PostEditor({
                   onDraftChange={setTagDraft}
                 />
               </div>
+              <input
+                type="date"
+                value={toDateInputValue(publishedAt)}
+                max={todayDate}
+                onChange={(e) =>
+                  setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
+                }
+                aria-label="작성일"
+                title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid var(--line-subtle)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: "transparent",
+                  color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  colorScheme: "light dark",
+                }}
+              />
               <ThumbnailField
                 coverImage={coverImage}
                 thumbKind={thumbKind}

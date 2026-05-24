@@ -23,6 +23,7 @@ export type EditorInput = {
   tags: string[];
   coverImage: string | null;
   thumbKind: ThumbKind | null; // null = 슬러그 해시로 자동
+  publishedAt: string | null; // 백데이트용 — null = 자동 처리(발행 시 now())
   readingMin: string;
 };
 
@@ -37,6 +38,16 @@ function slugify(s: string): string {
 
 async function guard() {
   if (!(await isAdmin())) throw new Error("unauthorized");
+}
+
+// 날짜 기준 미래 차단. 클라이언트가 노출하는 `<input type="date" max=오늘>` 우회
+// 대비 + TZ 차 ±1일 허용 (서버가 UTC인데 사용자가 KST 인 경우 등).
+function isFutureDateISO(iso: string): boolean {
+  const pickedDate = iso.slice(0, 10);
+  const tomorrowUtcDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return pickedDate > tomorrowUtcDate;
 }
 
 // 신규 글의 slug — 기존 글은 originalSlug를 유지(URL 안정).
@@ -67,7 +78,12 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
   const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
 
-  const baseRow = {
+  // 사용자가 입력한 published_at은 미래 방어 후 반영. 비어 있으면 row에서 제외해
+  // 기존 값(있다면)을 보존.
+  if (input.publishedAt && isFutureDateISO(input.publishedAt)) {
+    throw new Error("미래 날짜는 허용되지 않습니다");
+  }
+  const baseRow: Record<string, unknown> = {
     slug,
     title: input.title,
     excerpt,
@@ -79,6 +95,7 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     reading_min: input.readingMin || null,
     status: "draft" as const,
   };
+  if (input.publishedAt) baseRow.published_at = input.publishedAt;
 
   if (input.originalSlug) {
     // 업데이트 — series/is_featured는 row에서 제외해 기존 값 유지.
@@ -101,9 +118,13 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
   const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
 
-  // 기존 발행일이 있으면 유지, 없으면 now()
-  let publishedAt: string | null = null;
-  if (input.originalSlug) {
+  // UI 입력이 있으면 그 값을 우선, 없으면 기존 DB 값 유지, 그래도 없으면 now().
+  // UI `max` 속성을 우회하는 미래 날짜는 서버에서도 차단.
+  if (input.publishedAt && isFutureDateISO(input.publishedAt)) {
+    throw new Error("미래 날짜는 허용되지 않습니다");
+  }
+  let publishedAt: string | null = input.publishedAt;
+  if (!publishedAt && input.originalSlug) {
     const { data } = await sb.from("posts").select("published_at").eq("slug", input.originalSlug).maybeSingle();
     publishedAt = data?.published_at ?? null;
   }

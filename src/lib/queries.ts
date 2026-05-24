@@ -97,6 +97,7 @@ function rowToPost(row: PostRow, labels: Map<string, string>): Post {
     categorySlug: row.category_slug,
     tags: row.tags ?? [],
     date,
+    publishedAt: row.published_at,
     readingMin: row.reading_min ?? "",
     thumbKind: (row.thumb_kind as ThumbKind) ?? "a",
     coverImage: row.cover_image ?? null,
