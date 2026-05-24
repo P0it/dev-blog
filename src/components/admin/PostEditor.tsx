@@ -76,6 +76,14 @@ export function PostEditor({
   const [dragOver, setDragOver] = useState(false);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [aiReviseOpen, setAiReviseOpen] = useState(false);
+  // 상단바에 진행/완료 메시지. busyMsg = 진행 중, savedFlash = 완료 후 ~2.5s.
+  const [busyMsg, setBusyMsg] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(null), 2500);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertAtCursor = useCallback((text: string) => {
@@ -183,12 +191,16 @@ export function PostEditor({
   useEffect(() => {
     if (!initial.originalSlug || !dirty || pending) return;
     const t = setTimeout(() => {
+      setBusyMsg("자동 저장 중…");
       startTransition(async () => {
         try {
           await saveDraft(input);
           markClean();
+          setSavedFlash("✓ 자동 저장됨");
         } catch {
           /* 자동저장 실패는 조용히 */
+        } finally {
+          setBusyMsg(null);
         }
       });
     }, 4000);
@@ -197,11 +209,13 @@ export function PostEditor({
   }, [inputKey, dirty, pending, initial.originalSlug]);
 
   const onSave = () => {
+    setBusyMsg("저장 중…");
     startTransition(async () => {
       try {
         const res = await saveDraft(input);
         setStatus("draft");
         markClean();
+        setSavedFlash("✓ 저장됨");
         if (res.slug !== initial.originalSlug) {
           router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
         } else {
@@ -209,6 +223,8 @@ export function PostEditor({
         }
       } catch (e) {
         alert(`저장 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
@@ -218,44 +234,56 @@ export function PostEditor({
       alert("제목을 입력하세요.");
       return;
     }
+    const isUpdate = status === "published";
+    setBusyMsg(isUpdate ? "업데이트 중…" : "발행 중…");
     startTransition(async () => {
       try {
         const res = await publishPost(input);
         setStatus("published");
         markClean();
+        setSavedFlash(isUpdate ? "✓ 업데이트됨" : "✓ 발행됨");
         if (res.slug !== initial.originalSlug) {
           router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
         } else {
           router.refresh();
         }
       } catch (e) {
-        alert(`발행 실패: ${(e as Error).message}`);
+        alert(`${isUpdate ? "업데이트" : "발행"} 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
 
   const onAiRevise = (feedback: string) => {
     if (!initial.originalSlug) return;
+    setBusyMsg("AI 개선 요청 중…");
     startTransition(async () => {
       try {
         await requestRevision({ slug: initial.originalSlug!, feedback });
         setAiReviseOpen(false);
-        alert("AI 개선을 요청했습니다. 워커가 처리하면 새로고침해 확인하세요.");
+        setSavedFlash("✓ AI 개선 요청됨 — 워커 처리 후 새로고침");
         router.refresh();
       } catch (e) {
         alert(`요청 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
 
   const onAiDraft = (v: { url: string; note: string }) => {
+    setBusyMsg("AI 초안 요청 중…");
     startTransition(async () => {
       try {
         const res = await requestDraftFromUrl(v);
         setAiDraftOpen(false);
+        setSavedFlash("✓ AI 초안 요청됨");
         router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
       } catch (e) {
         alert(`요청 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
@@ -274,6 +302,24 @@ export function PostEditor({
           <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
             URL로 초안
           </Button>
+        )}
+        {(busyMsg || savedFlash) && (
+          <span
+            className="meta"
+            aria-live="polite"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: busyMsg ? "var(--fg-neutral)" : "var(--fg-strong)",
+              minWidth: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {busyMsg && <span className="ai-spinner" aria-hidden />}
+            {busyMsg ?? savedFlash}
+          </span>
         )}
         <Button variant="outline" size="sm" onClick={onSave} disabled={pending}>임시 저장</Button>
         <Button variant="primary" size="sm" onClick={onPublish} disabled={pending}>
