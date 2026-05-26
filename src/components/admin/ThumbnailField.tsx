@@ -18,7 +18,11 @@ const pill: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-type ThumbValue = { coverImage: string | null; thumbKind: ThumbKind | null };
+type ThumbValue = {
+  coverImage: string | null;
+  coverBrightness: number | null;
+  thumbKind: ThumbKind | null;
+};
 
 // 어드민 에디터 — 카드 썸네일 슬롯.
 // 한 줄 pill 을 누르면 모달이 열려: 이미지를 업로드하거나, 자동 생성 패턴을
@@ -26,10 +30,12 @@ type ThumbValue = { coverImage: string | null; thumbKind: ThumbKind | null };
 // "확인"을 눌러야 반영, "닫기"는 선택을 버린다. 이미지가 있으면 패턴보다 우선.
 export function ThumbnailField({
   coverImage,
+  coverBrightness,
   thumbKind,
   onChange,
 }: {
   coverImage: string | null;
+  coverBrightness: number | null;
   thumbKind: ThumbKind | null;
   onChange: (next: ThumbValue) => void;
 }) {
@@ -39,10 +45,12 @@ export function ThumbnailField({
 
   // 모달 내부 임시 선택 — 열 때 현재 값으로 초기화, "확인" 시에만 commit.
   const [draftCover, setDraftCover] = useState<string | null>(coverImage);
+  const [draftBrightness, setDraftBrightness] = useState<number | null>(coverBrightness);
   const [draftKind, setDraftKind] = useState<ThumbKind | null>(thumbKind);
 
   const openModal = () => {
     setDraftCover(coverImage);
+    setDraftBrightness(coverBrightness);
     setDraftKind(thumbKind);
     setOpen(true);
   };
@@ -68,8 +76,9 @@ export function ThumbnailField({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { url } = await uploadImage(fd);
+      const { url, brightness } = await uploadImage(fd);
       setDraftCover(url);
+      setDraftBrightness(brightness);
     } catch (e) {
       alert(`썸네일 업로드 실패: ${(e as Error).message}`);
     } finally {
@@ -79,7 +88,9 @@ export function ThumbnailField({
   };
 
   const confirm = () => {
-    onChange({ coverImage: draftCover, thumbKind: draftKind });
+    // 패턴으로 전환했거나 이미지를 제거했다면 brightness 는 무의미 → null.
+    const nextBrightness = draftCover ? draftBrightness : null;
+    onChange({ coverImage: draftCover, coverBrightness: nextBrightness, thumbKind: draftKind });
     setOpen(false);
   };
 
@@ -193,7 +204,7 @@ export function ThumbnailField({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDraftCover(null)}
+                      onClick={() => { setDraftCover(null); setDraftBrightness(null); }}
                     >
                       제거
                     </Button>
@@ -256,6 +267,7 @@ export function ThumbnailField({
                       type="button"
                       onClick={() => {
                         setDraftCover(null);
+                        setDraftBrightness(null);
                         setDraftKind(k);
                       }}
                       style={{

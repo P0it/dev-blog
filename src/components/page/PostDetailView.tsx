@@ -41,7 +41,16 @@ export function PostDetailView({
     <>
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
-      <div className={`post-hero-wrap${post.coverImage ? " post-hero-wrap--with-cover" : ""}`}>
+      <div
+        className={[
+          "post-hero-wrap",
+          post.coverImage ? "post-hero-wrap--with-cover" : "",
+          // 0.55 초과 = 밝은 사진 → 어두운 글씨, 그 외(어두운 사진·미계산) → 흰 글씨.
+          post.coverImage && (post.coverBrightness ?? 0) > 0.55
+            ? "post-hero-wrap--light-cover"
+            : "",
+        ].filter(Boolean).join(" ")}
+      >
         {post.coverImage && (
           <div className="post-hero-bg" aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element */}

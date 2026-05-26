@@ -32,6 +32,7 @@ type Initial = {
   categorySlug: string | null;
   tags: string[];
   coverImage: string | null;
+  coverBrightness: number | null;
   thumbKind: ThumbKind | null;
   publishedAt: string | null;
   sourceDate: string | null;
@@ -81,6 +82,7 @@ export function PostEditor({
   const [categorySlug, setCategorySlug] = useState<string | "">(initial.categorySlug ?? "");
   const [tags, setTags] = useState<string[]>(initial.tags);
   const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
+  const [coverBrightness, setCoverBrightness] = useState<number | null>(initial.coverBrightness);
   const [thumbKind, setThumbKind] = useState<ThumbKind | null>(initial.thumbKind);
   const [publishedAt, setPublishedAt] = useState<string | null>(initial.publishedAt);
   const [sourceDate, setSourceDate] = useState<string | null>(initial.sourceDate);
@@ -174,12 +176,13 @@ export function PostEditor({
       categorySlug: categorySlug || null,
       tags: allTags,
       coverImage,
+      coverBrightness,
       thumbKind,
       publishedAt,
       sourceDate,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind, publishedAt, sourceDate]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, coverBrightness, thumbKind, publishedAt, sourceDate]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -452,9 +455,11 @@ export function PostEditor({
               )}
               <ThumbnailField
                 coverImage={coverImage}
+                coverBrightness={coverBrightness}
                 thumbKind={thumbKind}
                 onChange={(next) => {
                   setCoverImage(next.coverImage);
+                  setCoverBrightness(next.coverBrightness);
                   setThumbKind(next.thumbKind);
                 }}
               />

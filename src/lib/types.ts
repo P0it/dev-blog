@@ -17,6 +17,7 @@ export type Post = {
   readingMin: string;
   thumbKind: ThumbKind;
   coverImage?: string | null;
+  coverBrightness?: number | null;
   isFeatured?: boolean;
   featuredChips?: { variant: ChipVariant; label: string }[];
   year: string;
