@@ -51,6 +51,10 @@ export function PostDetailView({
         <div className="container-wide" style={{ paddingTop: 56, position: "relative" }}>
         <div className="post-layout">
           <div className="post-main">
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <Chip variant="blue">{post.category}</Chip>
+            </div>
+            <h1 className="prose post-title">{post.title}</h1>
             {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
                 excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
             <div
