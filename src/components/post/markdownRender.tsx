@@ -82,7 +82,9 @@ function DivOrVisual(props: DivProps) {
 export async function renderMarkdown(md: string) {
   const file = await unified()
     .use(remarkParse)
-    .use(remarkGfm)
+    // singleTilde: false — '1~10', '월~금' 같은 한국어 범위 표기가 취소선으로
+    // 잘못 처리되는 걸 막는다. 의도적 취소선은 `~~취소~~` 로만 표시.
+    .use(remarkGfm, { singleTilde: false })
     .use(remarkRehype, { allowDangerousHtml: true })
     // 본문에 섞인 <u>·<mark> 등 raw HTML을 트리에 통합
     .use(rehypeRaw)
