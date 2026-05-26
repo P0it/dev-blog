@@ -249,6 +249,14 @@ export function PostEditor({
     [publishedAt, sourceDate, todayDate],
   );
 
+  // 클라이언트 라우팅(<Link>)·뒤로가기는 beforeunload가 안 잡는다.
+  // 미저장 상태에서 목록으로 빠지면 확인을 받는다.
+  const confirmLeaveIfDirty = (e: React.MouseEvent) => {
+    if (!dirty) return;
+    const ok = window.confirm("저장하지 않은 변경이 있습니다. 그래도 나가시겠어요?");
+    if (!ok) e.preventDefault();
+  };
+
   const onPublish = () => {
     if (!title.trim()) {
       alert("제목을 입력하세요.");
@@ -311,7 +319,7 @@ export function PostEditor({
   return (
     <>
       <AdminTopbar>
-        <Link href="/admin/posts">
+        <Link href="/admin/posts" onClick={confirmLeaveIfDirty}>
           <Button variant="ghost" size="sm">← 목록</Button>
         </Link>
         {initial.originalSlug ? (

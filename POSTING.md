@@ -381,6 +381,7 @@ README 기준 설치·실행·구동 방법. 명령은 코드 블록으로.
 - **권장·금지** → `checklist-card` (이렇게 하라 / 이건 피하라 — 체크·금지 표시로 구분)
 - **순서 없는 구성요소** → `grid-card` (한 개념을 이루는 갈래·요소를 아이콘 타일로. 순서가 있으면 step-card)
 - **짧은 키·설명 나열** → `list-card` (모드 목록, 처리 순서, 키-설명 요약. 단순 `-` 마크다운 리스트보다 한 단계 강조하고 싶을 때)
+- **한 줄짜리 짧은 나열** → `bullet-card` (설명 없이 라벨만 — "이런 모습입니다" 류의 압축 목록. 키·설명이 필요하면 list-card)
 - **개념·은유 그림** → ` ```illustration ` (구조 스케치, 비유적 그림 — 정확한 수치가 아니라 직관을 그릴 때)
 
 본문에 이미 한 문장으로 충분히 전달된 사실은 시각자료로 또 옮기지 않는다.
@@ -393,7 +394,7 @@ README 기준 설치·실행·구동 방법. 명령은 코드 블록으로.
 
 | 키 | 타입 | 설명 |
 |---|---|---|
-| `pattern` | `"step-card" \| "stat-card" \| "callout-card" \| "compare-card" \| "timeline-card" \| "quote-card" \| "checklist-card" \| "grid-card" \| "list-card"` | 카탈로그 패턴 ID. 필수 |
+| `pattern` | `"step-card" \| "stat-card" \| "callout-card" \| "compare-card" \| "timeline-card" \| "quote-card" \| "checklist-card" \| "grid-card" \| "list-card" \| "bullet-card"` | 카탈로그 패턴 ID. 필수 |
 | `alt` | string | 이미지 alt 텍스트. 필수 (접근성·SEO) |
 | `eyebrow` | string? | 카드 상단 작은 카테고리/맥락 라벨 (예: `HOW CLAUDE CODE WORKS`). **선택** |
 | `title` | string? | 카드 메인 타이틀. **명사형·문어체**로 — `~방식`·`~구조`·`~흐름` 같은 명사 종결, `~합니다`체 ✗. 한 줄·30자 이내. **선택** |
@@ -558,6 +559,15 @@ README 기준 설치·실행·구동 방법. 명령은 코드 블록으로.
 좌측 accent 컬러 바 + 옅은 틴트의 단일 박스로 렌더된다. 아이콘 없음·순서 번호 없음 — 단순한 강조 리스트가 필요할 때 쓴다.
 **언제 안 쓰나:** 순서가 핵심이면 `step-card`, 구성요소 갈래면 `grid-card`, 권장/금지면 `checklist-card`. 본문 흐름에 자연스럽게 녹는 짧은 나열은 그냥 `-` 마크다운으로 둔다.
 
+**`bullet-card` — 한 줄 라벨만 짧게 나열**
+
+| 키 | 타입 | 설명 |
+|---|---|---|
+| `items` | `string[]` | 2~8개. 한 줄·60자 이내. 설명 없이 라벨만 |
+
+`list-card`와 같은 박스 톤이되, 항목은 accent 색 작은 점 + 한 줄 라벨로 가볍게 떨어진다. "구체적으로는 이런 모습입니다" 다음의 압축 목록처럼, **설명을 굳이 붙일 필요 없는 짧은 나열**에 쓴다.
+**언제 안 쓰나:** 키마다 한 줄 설명이 붙으면 `list-card`, 권장/금지로 갈리면 `checklist-card`, 순서가 핵심이면 `step-card`. 본문에서 한 문장으로 충분하면 시각자료를 만들지 않는다.
+
 ### ` ```illustration ` — 개념 일러스트 (SVG 직접)
 
 다이어그램·카드로는 안 되는 **개념·은유·구조 스케치**(이해를 돕는 그림)는 ` ```illustration ` 블록에 **SVG를 직접** 그린다.
@@ -630,7 +640,7 @@ README 기준 설치·실행·구동 방법. 명령은 코드 블록으로.
 - **항목이 3개 이상일 때만 시각자료를 만든다.**
   `step-card`·`stat-card`·`grid-card`·`timeline-card`·`checklist-card`는 나열할 항목이 1~2개면 카드로 키우지 말고 본문 문장으로 적는다 — 2개짜리 카드는 한 줄 문장만 못하다.
   (`callout-card`·`quote-card`는 본래 단일, `compare-card`는 2~3 대상을 견주는 게 목적이라 이 규칙과 무관하다.)
-- 한 패턴 안의 요소 수: `step-card` 3~8단계, `stat-card` 3~4지표, `callout-card` 단일, `compare-card` 2~3칼럼, `timeline-card` 3~6사건, `checklist-card` 3~8항목, `grid-card` 3~6타일.
+- 한 패턴 안의 요소 수: `step-card` 3~8단계, `stat-card` 3~4지표, `callout-card` 단일, `compare-card` 2~3칼럼, `timeline-card` 3~6사건, `checklist-card` 3~8항목, `grid-card` 3~6타일, `list-card`·`bullet-card` 3~8항목.
 - `step-card`·`stat-card`·`grid-card`는 **항목이 한 줄로** 펼쳐진다.
   개수가 많아지면 칸이 한 줄을 지키느라 좁아지고, 모바일처럼 폭이 좁을 때만 여러 줄로 접힌다(에디터 프리뷰에서도 한 줄).
   칸이 너무 좁아 답답하지 않게 **step 3~6 · stat 3~4 · grid 3~5**를 권장한다 — 그보다 많으면 항목을 추리거나 본문 리스트로 옮긴다.
