@@ -49,55 +49,50 @@ export function PostDetailView({
           </div>
         )}
         <div className="container-wide" style={{ paddingTop: 56, position: "relative" }}>
-        <div className="post-layout">
-          <div className="post-main">
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <Chip variant="blue">{post.category}</Chip>
-            </div>
-            <h1 className="prose post-title">{post.title}</h1>
-            {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
-                excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                paddingBottom: 24,
-                borderBottom: "1px solid var(--line-subtle)",
-              }}
-            >
-              {hasAvatarFile(SITE.avatarUrl) ? (
-                <img
-                  src={SITE.avatarUrl}
-                  alt={SITE.author}
-                  width={36}
-                  height={36}
-                  style={{ width: 36, height: 36, borderRadius: 999, objectFit: "cover", background: "var(--bg-emphasized)" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 999,
-                    background: "var(--bg-emphasized)",
-                    color: "var(--fg-muted)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  aria-label={SITE.author}
-                >
-                  <User size={20} strokeWidth={1.75} />
-                </div>
-              )}
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{SITE.author}</div>
-                <div className="meta">
-                  {/* 발행일은 임시로 숨김 — 작성일 정리 후 다시 노출. */}
-                </div>
+        {/* 헤더(카테고리·제목·작성자)는 hero 위에 얹히고, 본문/목차는 그 아래부터 시작. */}
+        <div className="post-header">
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <Chip variant="blue">{post.category}</Chip>
+          </div>
+          <h1 className="prose post-title">{post.title}</h1>
+          <div className="post-author">
+            {hasAvatarFile(SITE.avatarUrl) ? (
+              <img
+                src={SITE.avatarUrl}
+                alt={SITE.author}
+                width={36}
+                height={36}
+                style={{ width: 36, height: 36, borderRadius: 999, objectFit: "cover", background: "var(--bg-emphasized)" }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  background: "var(--bg-emphasized)",
+                  color: "var(--fg-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-label={SITE.author}
+              >
+                <User size={20} strokeWidth={1.75} />
+              </div>
+            )}
+            <div>
+              <div className="post-author-name">{SITE.author}</div>
+              <div className="meta">
+                {/* 발행일은 임시로 숨김 — 작성일 정리 후 다시 노출. */}
               </div>
             </div>
+          </div>
+        </div>
+        <div className="post-layout">
+          <div className="post-main">
+            {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
+                excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
 
             {series && series.items.length > 0 && (
               <div

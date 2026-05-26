@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Wand2 } from "lucide-react";
+import { Eye, EyeOff, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { AiReviseModal } from "@/components/admin/AiModals";
@@ -10,6 +10,8 @@ import { AdminPostThumb } from "@/components/admin/AdminPostThumb";
 import {
   requestRevision,
   deletePostFromList,
+  unpublishPost,
+  publishPost,
 } from "@/app/admin/posts/actions";
 import type { AdminPostRow } from "@/lib/queries";
 
@@ -76,6 +78,29 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
       try {
         await requestRevision({ slug: reviseSlug, feedback });
         setReviseSlug(null);
+        router.refresh();
+      } catch (e) {
+        fail(e);
+      }
+    });
+  };
+
+  const onUnpublish = (slug: string, title: string) => {
+    if (!confirm(`"${title}" 글을 비공개로 전환할까요? 사용자 화면에서 숨겨집니다.`)) return;
+    startTransition(async () => {
+      try {
+        await unpublishPost(slug);
+        router.refresh();
+      } catch (e) {
+        fail(e);
+      }
+    });
+  };
+
+  const onPublish = (slug: string) => {
+    startTransition(async () => {
+      try {
+        await publishPost(slug);
         router.refresh();
       } catch (e) {
         fail(e);
@@ -198,6 +223,27 @@ export function PostsList({ posts }: { posts: AdminPostRow[] }) {
 
             <div style={{ display: "flex", gap: 6, alignItems: "center", flex: "0 0 auto" }}>
               <AiBadge status={p.aiStatus} />
+              {p.status === "published" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => onUnpublish(p.slug, p.title)}
+                  title="비공개로 전환"
+                >
+                  <EyeOff size={14} />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => onPublish(p.slug)}
+                  title="발행"
+                >
+                  <Eye size={14} />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

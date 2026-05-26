@@ -1178,8 +1178,29 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   height: 100%;
   object-fit: cover;
 }
-/* 커버 위에 올라오는 카테고리·제목은 흰색으로 — 이미지 위 가독성 확보. */
-.post-hero-wrap--with-cover .post-main .post-title { color: #fff; }
+/* 밝은 커버에서도 흰 글씨가 읽히도록 상단에 어두운 스크림을 얹는다. */
+.post-hero-bg::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+/* 헤더 — hero 위에 카테고리·제목·작성자가 얹힌다. 본문/목차는 그 아래부터. */
+.post-header {
+  position: relative;
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+.post-author { display: flex; align-items: center; gap: 12px; }
+.post-author-name { font-weight: 600; font-size: 14px; }
+/* 커버 있는 글: 헤더 텍스트를 흰색 + 그림자(밝은 사진에서도 가독성). */
+.post-hero-wrap--with-cover .post-header .post-title,
+.post-hero-wrap--with-cover .post-author-name {
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.45);
+}
+.post-hero-wrap--with-cover .post-header { border-bottom-color: rgba(255,255,255,0.25); }
 @media (max-width: 768px) {
   .post-hero-bg { height: 280px; }
 }

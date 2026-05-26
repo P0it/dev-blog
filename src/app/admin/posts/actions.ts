@@ -83,6 +83,49 @@ export async function requestRevision(input: {
   return { ok: true };
 }
 
+// 발행 취소 — published 글을 draft로 되돌려 사용자 화면에서 숨김.
+// published_at은 보존(다시 발행할 때 그대로 사용).
+export async function unpublishPost(slug: string): Promise<{ ok: true }> {
+  await guard();
+  const sb = supabaseServer();
+  const { error } = await sb
+    .from("posts")
+    .update({ status: "draft" })
+    .eq("slug", slug);
+  if (error) throw error;
+  revalidatePath("/admin/posts");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/posts/${slug}`);
+  return { ok: true };
+}
+
+// 목록에서 다시 발행 — draft를 published로 전환. published_at이 비어 있으면 now()로 채움.
+export async function publishPost(slug: string): Promise<{ ok: true }> {
+  await guard();
+  const sb = supabaseServer();
+  const { data: row, error: findErr } = await sb
+    .from("posts")
+    .select("published_at")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (!row) throw new Error("글을 찾을 수 없습니다");
+
+  const patch: { status: "published"; published_at?: string } = {
+    status: "published",
+  };
+  if (!row.published_at) patch.published_at = new Date().toISOString();
+
+  const { error } = await sb.from("posts").update(patch).eq("slug", slug);
+  if (error) throw error;
+  revalidatePath("/admin/posts");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/posts/${slug}`);
+  return { ok: true };
+}
+
 // 목록에서 삭제 — 기존 deletePost는 /admin으로 redirect하므로 목록 전용으로 분리.
 export async function deletePostFromList(slug: string): Promise<{ ok: true }> {
   await guard();
