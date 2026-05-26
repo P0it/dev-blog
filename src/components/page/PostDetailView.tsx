@@ -41,7 +41,7 @@ export function PostDetailView({
     <>
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
       <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
-      <div className="post-hero-wrap">
+      <div className={`post-hero-wrap${post.coverImage ? " post-hero-wrap--with-cover" : ""}`}>
         {post.coverImage && (
           <div className="post-hero-bg" aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element */}
