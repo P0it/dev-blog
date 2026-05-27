@@ -29,13 +29,17 @@ export type EditorInput = {
   readingMin: string;
 };
 
+// 한글·기호 제거 → ASCII 슬러그만. 한국어 제목이면 빈 문자열이 되어
+// resolveSlug 의 `${fallback}-${Date.now()}` 분기로 떨어진다. Vercel/Next 의
+// 비ASCII 동적 세그먼트 prerender 가 404 로 고정되는 이슈를 피하기 위함.
 function slugify(s: string): string {
   return s
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function guard() {

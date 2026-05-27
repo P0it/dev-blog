@@ -28,13 +28,19 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
      본문이 이미 말한 사실만 구조화한다.
    - 끝에 `## 참고 자료` + 원문 링크. 저작권 표기 한 줄은 **기본은 생략**(POSTING.md 2절 참조).
 5. **파일 작성** — `drafts/<slug>.md` 를 만든다(`drafts/` 는 .gitignore 됨).
-   맨 위 프런트매터 + 그 아래 본문:
+   - **슬러그는 ASCII 영문만** — `a-z 0-9 -`. 한글·공백·기호 금지.
+     (Vercel/Next 의 정적 prerender 가 비ASCII 슬러그에서 404 로 고정되는 이슈가 있어, 초안 단계부터 막는다.)
+   - 다른 글 스타일(`gstack-garry-tan-claude-code`, `simon-sinek-start-with-why-golden-circle`,
+     `project-glasswing-mythos`)을 따라 **인물명 + 핵심 키워드** 3~6단어로 짧게.
+   - `npm run draft -- push` 가 비ASCII 슬러그를 거부한다 — frontmatter 의 `slug:` 를 반드시 명시.
+   - 맨 위 프런트매터 + 그 아래 본문:
    ```
    ---
    title: 한국어 독자용 제목
+   slug: ascii-only-slug      # 필수 — 영문 ASCII (위 규칙)
    tags: [태그A, 태그B]
-   category: claude        # 선택 — tech/business/design/claude/infra/ai/insights 중
-   source_url: <원문 URL>  # 기록용
+   category: claude           # 선택 — tech/business/design/claude/infra/ai/insights 중
+   source_url: <원문 URL>     # 기록용
    ---
    > 요약 인용구…
    ## 헤드라인…
