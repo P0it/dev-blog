@@ -44,19 +44,18 @@ export function PostDetailView({
       <div
         className={[
           "post-hero-wrap",
-          post.coverImage ? "post-hero-wrap--with-cover" : "",
-          // 0.55 초과 = 밝은 사진 → 어두운 글씨, 그 외(어두운 사진·미계산) → 흰 글씨.
-          post.coverImage && (post.coverBrightness ?? 0) > 0.55
+          "post-hero-wrap--with-cover",
+          // 커버 없음(패턴 썸네일은 밝은 파스텔)·밝은 사진 → 어두운 글씨,
+          // 어두운 사진만 흰 글씨.
+          !post.coverImage || (post.coverBrightness ?? 0) > 0.55
             ? "post-hero-wrap--light-cover"
             : "",
         ].filter(Boolean).join(" ")}
       >
-        {post.coverImage && (
-          <div className="post-hero-bg" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={post.coverImage} alt="" />
-          </div>
-        )}
+        <div className="post-hero-bg" aria-hidden>
+          {/* 커버 이미지가 있으면 그 이미지를, 없으면 thumbKind 패턴으로 폴백. */}
+          <CoverThumb post={post} fill />
+        </div>
         <div className="container-wide" style={{ paddingTop: 56, position: "relative" }}>
         {/* 헤더(카테고리·제목·작성자)는 hero 위에 얹히고, 본문/목차는 그 아래부터 시작. */}
         <div className="post-header">
