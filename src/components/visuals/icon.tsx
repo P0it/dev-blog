@@ -39,6 +39,15 @@ export function VisualIcon({
   color = "currentColor",
   strokeWidth = 2,
 }: VisualIconProps) {
+  // Lucide 아이콘 이름은 항상 ASCII kebab-case. 그 밖(이모지 등)은 글리프로 그대로 렌더한다
+  // — 폰트 스택 끝의 Tossface가 컬러 이모지로 받는다. Circle 폴백으로 떨어지지 않게 분기.
+  if (!/^[a-z0-9-]+$/i.test(name)) {
+    return (
+      <span className="vis-emoji" style={{ fontSize: size, lineHeight: 1 }}>
+        {name}
+      </span>
+    );
+  }
   const Cmp = resolveIcon(name);
   return <Cmp size={size} color={color} strokeWidth={strokeWidth} absoluteStrokeWidth />;
 }
