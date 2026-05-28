@@ -297,6 +297,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    ============================================================ */
 
 .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+
+.posts-index { display: grid; grid-template-columns: 240px 1fr; gap: 56px; }
+.posts-index-aside { position: sticky; top: 96px; align-self: start; }
 .container-narrow { max-width: 768px; margin: 0 auto; padding: 0 40px; }
 
 .meta { font-size: 13px; color: var(--fg-neutral); font-weight: 500; }
@@ -384,6 +387,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 4px 10px; border-radius: 999px;
   background: var(--bg-muted); color: var(--fg-neutral);
   font-size: 12px; font-weight: 600;
+  white-space: nowrap;
 }
 /* primary 액센트 칩 — 클래스명은 레거시(과거 primary=blue). 항상 옅은 배경+진한 민트. */
 .chip-blue { background: var(--bg-primary-soft); color: var(--mint-600); }
@@ -512,9 +516,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin: 24px auto;
   border-radius: var(--radius-md);
 }
-/* 본문(렌더된 마크다운) 이미지는 좌측 정렬 — 넓은 이미지가 데스크톱에서
-   우측으로 확장될 때, 가운데 정렬이면 좌우로 퍼져 좌측 TOC를 침범한다. */
-.post-body img { margin: 24px 0; }
+/* 본문 이미지는 가운데 정렬 — 좁은 이미지(스크린샷·로고 등)가 좌측에
+   붙어 어색해 보이는 문제를 피한다. */
+.post-body img { margin: 24px auto; }
 
 /* ============================================================
    Visual catalog — 본문에 네이티브로 렌더되는 시각자료
@@ -920,21 +924,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .vis-quote-tx { font-size: 16.5px; }
 }
 
-/* 데스크톱(≥1200px, 좌측 TOC 레이아웃) — step·stat·grid 카드와 본문 이미지를
-   우측 고스트 칼럼까지 넓힌다(640 → 880). 발행 페이지(.post-layout) 한정.
-   880 = 본문 640 + 고스트 240, post-layout 폭과 정확히 맞아 가로 넘침 없음.
-   항목 한 줄 배치는 기본값(grid-auto-flow: column)이라 여기선 폭만 넓힌다. */
-@media (min-width: 1200px) {
-  .post-layout .vis-frame:has(.vis-steps),
-  .post-layout .vis-frame:has(.vis-stats),
-  .post-layout .vis-frame:has(.vis-grid) {
-    width: 880px;
-  }
-  /* 본문 이미지도 고스트 칼럼까지 늘어날 수 있게(작은 이미지는 원본 크기 유지) */
-  .post-layout .post-body img {
-    max-width: 880px;
-  }
-}
+/* 본문 이미지·visual 블록 모두 본문 칼럼(640px) 안에서 가운데 정렬한다.
+   고스트 칼럼까지 넓히면 칼럼보다 넓어진 요소가 좌측에 붙어(margin:auto 무효)
+   우측이 비어 보이므로, 넓힘을 포기하고 칼럼 폭에 맞춘다. visual 카드는
+   container query(@container)로 640 폭에 맞춰 자동 재배치된다. */
 
 /* ============================================================
    Code block — Shiki (rehype-pretty-code) dual theme
@@ -1192,7 +1185,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .post-header {
   position: relative;
   padding-bottom: 0;
-  margin-bottom: 72px;
+  /* hero 배경(360px) 위에 제목·작성자가 얹히고, 본문/목차는 그 아래부터.
+     min-height 로 헤더가 항상 hero 높이 이상을 차지하게 해 — 제목 길이와
+     무관하게 — 본문이 사진 영역과 절대 겹치지 않고 그 아래에서 시작한다. */
+  min-height: 320px;
+  margin-bottom: 32px;
 }
 .post-author { display: flex; align-items: center; gap: 12px; }
 .post-author-name { font-weight: 600; font-size: 14px; }
@@ -1211,7 +1208,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 @media (max-width: 768px) {
   .post-hero-bg { height: 280px; }
-  .post-header { margin-bottom: 56px; }
+  .post-header { min-height: 240px; margin-bottom: 28px; }
 }
 
 .post-layout {
@@ -1358,6 +1355,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .post-hero-excerpt { font-size: 15.5px; margin-top: 14px; }
 
   .lab-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  .posts-index { grid-template-columns: 1fr; gap: 28px; }
+  .posts-index-aside { position: static; }
 
   .hero-headline { font-size: 34px; }
   .prose h1 { font-size: 28px; }

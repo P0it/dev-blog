@@ -18,15 +18,8 @@ export default async function PostsPage() {
         <div className="meta" style={{ marginBottom: 6 }}>Posts</div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>전체 글</h1>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "240px 1fr",
-            gap: 56,
-            marginTop: 48,
-          }}
-        >
-          <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
+        <div className="posts-index" style={{ marginTop: 48 }}>
+          <aside className="posts-index-aside">
             <div className="t-overline" style={{ marginBottom: 12 }}>카테고리</div>
             <CategoryTree groups={groups} />
           </aside>
