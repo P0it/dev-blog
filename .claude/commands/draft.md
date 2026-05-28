@@ -20,6 +20,9 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    - 일반 글/문서: `WebFetch`.
    - GitHub 저장소: `WebFetch` 로 저장소 페이지 + 필요하면 `raw.githubusercontent.com` README.
    - YouTube: `Bash` 로 `yt-dlp` 자막 추출. 2차 해설이 아니라 원작자 원본 기준.
+     캡처를 넣을 거면 자막을 **타임스탬프 포함(VTT)** 으로 받는다
+     (`yt-dlp --write-subs --write-auto-subs --sub-format vtt --skip-download -o '%(id)s' <url>`).
+     각 소제목이 대본의 어느 시점에서 나왔는지 알아 둔다.
 4. **초안 작성** — POSTING.md 규약대로 한국어 글을 쓴다.
    - 본문은 `> 요약` → `## 헤드라인` 순서. 맨 위에 `# 제목` 다시 쓰지 않는다.
    - 정보 전달(원문 보존)·`-습니다`체·번역체 금지·두괄식. 대제목은 서술형 문어체.
@@ -45,7 +48,15 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    > 요약 인용구…
    ## 헤드라인…
    ```
-6. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
-7. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+6. **영상 캡처 — YouTube 글에 한해, 선택**. 각 소제목에 대표 장면을 넣고 싶을 때만.
+   - `drafts/<slug>.frames.json` 에 `[{"heading":"소제목","t":"3:21"}, ...]` 를 쓴다(t = 그 문단이 나온 대본 시점).
+   - `npm run capture -- candidates <video_url> drafts/<slug>.frames.json` — 시점마다 후보 프레임을 뽑는다.
+   - 출력된 후보 이미지를 **Read 로 직접 보고** 소제목마다 가장 나은 컷 1장을 고른다.
+     발표=슬라이드·자료 화면 우선, 데모=핵심 화면, 인터뷰=의미 있는 컷. 흐림·전환 중·눈 감음·빈 화면·발표자 어색한 표정은 배제.
+     **쓸 만한 컷이 하나도 없으면 그 소제목은 건너뛴다**(억지 그림 ✗).
+   - 고른 컷마다 `npm run capture -- upload <고른_파일>` → public URL 을 받아, 본문의 해당 `## 소제목` 바로 아래에 `![설명](URL)` 로 넣는다.
+   - 캡처도 시각자료다 — POSTING.md 2-3절(자동화 티 방지)대로 매 글 같은 자리·개수로 반복하지 않는다.
+7. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
+8. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`.
