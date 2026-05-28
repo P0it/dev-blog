@@ -60,8 +60,20 @@ export function ThumbnailField({
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
+        i.type.startsWith("image/"),
+      );
+      if (!item) return;
+      e.preventDefault();
+      upload(item.getAsFile() ?? undefined);
+    };
     window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", h);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [open]);
 
   const pick = () => inputRef.current?.click();
@@ -142,7 +154,7 @@ export function ThumbnailField({
             <div style={{ padding: "18px 20px 14px" }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>카드 썸네일</h3>
               <div className="meta" style={{ marginTop: 4 }}>
-                이미지를 올리거나, 자동 생성 패턴을 직접 고르세요.
+                이미지를 올리거나(클립보드 붙여넣기 ⌘V 가능), 자동 생성 패턴을 직접 고르세요.
               </div>
             </div>
 
