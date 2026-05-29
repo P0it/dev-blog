@@ -20,8 +20,23 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    - 일반 글/문서: `WebFetch`.
    - GitHub 저장소: `WebFetch` 로 저장소 페이지 + 필요하면 `raw.githubusercontent.com` README.
    - YouTube: `Bash` 로 `yt-dlp` 자막 추출. 2차 해설이 아니라 원작자 원본 기준.
-     캡처를 넣을 거면 자막을 **타임스탬프 포함(VTT)** 으로 받는다
-     (`yt-dlp --write-subs --write-auto-subs --sub-format vtt --skip-download -o '%(id)s' <url>`).
+     캡처를 넣을 거면 자막을 **타임스탬프 포함(VTT)** 으로 받는다.
+     - **언어는 사용자가 알려줄 필요 없다 — 먼저 `--list-subs` 로 확인해 직접 정한다.**
+       `--sub-langs` 미지정 시 yt-dlp 기본값이 `en` 이라, 한국어 영상에서도 없는 영어 자막을 뒤지며
+       불필요한 요청이 늘고 **429(레이트 리밋)** 가 난다. 영상마다 언어가 다르므로(ko/en…) 박아두지 말 것.
+       ```
+       yt-dlp --list-subs --skip-download <url>     # 실제 존재하는 자막 언어 확인 (다운로드 아님)
+       ```
+       출력에서 **수동 자막(자동 생성 아님)이 있는 원본 언어 하나**를 골라 `--sub-langs` 에 넣는다.
+     - **수동 자막을 먼저** 시도한다(`--write-subs`). list-subs 에 수동 자막이 없을 때만
+       `--write-auto-subs` 를 붙여 자동 자막으로 폴백한다(이때 `--sub-langs` 는 영상 원본 언어로).
+       자동 자막 엔드포인트가 가장 심하게 throttle 되므로 처음부터 둘 다 켜지 않는다.
+     - throttle 완화로 `--sleep-requests 1 --sleep-subtitles 1` 을 붙인다.
+       ```
+       yt-dlp --write-subs --sub-langs <확인한_언어> --sub-format vtt --skip-download \
+         --sleep-requests 1 --sleep-subtitles 1 -o '%(id)s' <url>
+       ```
+       그래도 429 면 `--cookies-from-browser chrome`(또는 safari) 를 추가해 인증 요청으로 보낸다.
      각 소제목이 대본의 어느 시점에서 나왔는지 알아 둔다.
 4. **초안 작성** — POSTING.md 규약대로 한국어 글을 쓴다.
    - 본문은 `> 요약` → `## 헤드라인` 순서. 맨 위에 `# 제목` 다시 쓰지 않는다.
@@ -48,14 +63,14 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    > 요약 인용구…
    ## 헤드라인…
    ```
-6. **영상 캡처 — YouTube 글에 한해, 선택**. 각 소제목에 대표 장면을 넣고 싶을 때만.
-   - `drafts/<slug>.frames.json` 에 `[{"heading":"소제목","t":"3:21"}, ...]` 를 쓴다(t = 그 문단이 나온 대본 시점).
+6. **영상 캡처 — YouTube 글이면 기본 수행.** 각 `## 소제목`마다 대표 장면을 캡처해 넣는 것을 기본으로 한다(영상 글의 기본 시각자료). 일반 글·GitHub 글에는 해당 없음.
+   - `drafts/<slug>.frames.json` 에 **소제목마다 한 줄씩** `[{"heading":"소제목","t":"3:21"}, ...]` 를 쓴다(t = 그 문단이 나온 대본 시점). 데모·시연처럼 화면이 풍부한 소제목은 시점 2개로 늘려도 된다.
    - `npm run capture -- candidates <video_url> drafts/<slug>.frames.json` — 시점마다 후보 프레임을 뽑는다.
    - 출력된 후보 이미지를 **Read 로 직접 보고** 소제목마다 가장 나은 컷 1장을 고른다.
      발표=슬라이드·자료 화면 우선, 데모=핵심 화면, 인터뷰=의미 있는 컷. 흐림·전환 중·눈 감음·빈 화면·발표자 어색한 표정은 배제.
-     **쓸 만한 컷이 하나도 없으면 그 소제목은 건너뛴다**(억지 그림 ✗).
+     **쓸 만한 컷이 하나도 없는 소제목만 건너뛴다**(억지 그림 ✗). 나머지는 모두 넣는다.
    - 고른 컷마다 `npm run capture -- upload <고른_파일>` → public URL 을 받아, 본문의 해당 `## 소제목` 바로 아래에 `![설명](URL)` 로 넣는다.
-   - 캡처도 시각자료다 — POSTING.md 2-3절(자동화 티 방지)대로 매 글 같은 자리·개수로 반복하지 않는다.
+   - 캡처는 영상 글의 기본 시각자료라 ` ```visual ` 카탈로그 카드의 "개수 변주"(POSTING.md 2-3절)와 별개로 본다 — 소제목마다 넣되, 구도가 매번 똑같이 굳지 않게 컷 종류(슬라이드·데모·인물 등)는 다양하게 고른다.
 7. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
 8. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
 
