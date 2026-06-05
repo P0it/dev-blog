@@ -216,6 +216,23 @@ const SPECS: { id: string; note: string; spec: VisualSpec }[] = [
       ],
     },
   },
+  {
+    id: "bullet-card",
+    note: "설명 없이 한 줄 라벨만 짧게 나열",
+    spec: {
+      pattern: "bullet-card",
+      alt: "AI 네이티브 회사의 일상 모습",
+      eyebrow: "AI-NATIVE COMPANY · DAY TO DAY",
+      title: "회사를 쿼리 가능하게 만드는 일상",
+      accent: "primary",
+      items: [
+        "회의는 AI 노트테이커로 기록",
+        "DM과 이메일은 최소화",
+        "모든 커뮤니케이션 채널에 에이전트를 박아 둠",
+        "매출·세일즈·엔지니어링·채용·운영까지 들여다보는 대시보드",
+      ],
+    },
+  },
 ];
 
 // 발행 페이지에서 한 줄·넓은 폭으로 렌더되는 패턴 — 미리보기도 그렇게 보여 준다.

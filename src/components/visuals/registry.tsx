@@ -7,6 +7,8 @@ import { TimelineCard } from "./TimelineCard";
 import { QuoteCard } from "./QuoteCard";
 import { ChecklistCard } from "./ChecklistCard";
 import { GridCard } from "./GridCard";
+import { ListCard } from "./ListCard";
+import { BulletCard } from "./BulletCard";
 import { visualSchema, type VisualSpec } from "./types";
 
 /** 검증을 통과한 spec 을 패턴에 맞는 카탈로그 컴포넌트로 렌더. */
@@ -28,6 +30,10 @@ export function VisualRenderer({ spec }: { spec: VisualSpec }): ReactElement {
       return <ChecklistCard spec={spec} />;
     case "grid-card":
       return <GridCard spec={spec} />;
+    case "list-card":
+      return <ListCard spec={spec} />;
+    case "bullet-card":
+      return <BulletCard spec={spec} />;
   }
 }
 

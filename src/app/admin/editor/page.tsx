@@ -20,7 +20,10 @@ export default async function EditorPage({
         categorySlug: post.categorySlug ?? null,
         tags: post.tags,
         coverImage: post.coverImage ?? null,
+        coverBrightness: post.coverBrightness ?? null,
         thumbKind: post.thumbKind,
+        publishedAt: post.publishedAt ?? null,
+        sourceDate: post.sourceDate ?? null,
         status: post.status ?? "draft",
       }
     : {
@@ -30,7 +33,10 @@ export default async function EditorPage({
         categorySlug: null,
         tags: [],
         coverImage: null,
+        coverBrightness: null,
         thumbKind: null,
+        publishedAt: null,
+        sourceDate: null,
         status: "draft" as const,
       };
 

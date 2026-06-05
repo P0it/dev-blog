@@ -20,6 +20,8 @@
 //   thumb_kind: f           (선택) 없으면 slug 해시로 자동
 //   reading_min: 8분        (선택) 없으면 본문 분량에서 산출
 //   source_url: https://…   (선택) 기록용 — posts 컬럼 아님, 본문 참고자료에 직접 적는다
+//   source_date: 2026-05-20 (선택) 원문(인용/번역 대상) 작성·업로드 일자. 발행일을 이보다
+//                             앞으로 잡으려 하면 에디터에서 경고가 뜬다(YYYY-MM-DD)
 //   ---
 //   > 요약 인용구…
 //   ## 헤드라인…
@@ -41,13 +43,18 @@ const sb = createClient(url, key, { auth: { persistSession: false } });
 // --- 파생 헬퍼 (src/lib 의 에디터 로직과 동일하게 유지) ------------------
 
 // 제목 → slug. src/app/admin/editor/actions.ts 의 slugify 와 동일.
+// 한글은 제거한다 — 한글 슬러그는 Vercel/Next 의 정적 prerender 매칭에서
+// 404 로 고정되는 이슈가 있어, 초안 단계부터 ASCII 슬러그만 허용한다.
+// 제목이 한국어뿐이면 빈 문자열이 되니, 호출자(push)가 명시적인 frontmatter
+// `slug:` 를 요구하도록 빈 결과는 에러로 던진다.
 function slugify(s) {
   return s
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 // slug → 카드 썸네일 패턴(a~l). src/lib/thumb.ts 와 동일.
@@ -165,6 +172,7 @@ function serializeFrontmatter(post) {
     `cover_image: ${post.cover_image ?? ""}`,
     `thumb_kind: ${post.thumb_kind ?? ""}`,
     `reading_min: ${post.reading_min ?? ""}`,
+    `source_date: ${post.source_date ?? ""}`,
     "---",
     "",
   ].join("\n");
@@ -180,6 +188,12 @@ async function push(file, force) {
 
   const slug = unquote(fm.slug) || slugify(title);
   if (!slug) throw new Error("slug 를 만들 수 없습니다 — 프런트매터에 slug 를 직접 지정하세요");
+  // 비ASCII 슬러그(한글 포함) 금지 — Vercel/Next 정적 prerender 가 404 로 고정되는 이슈.
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    throw new Error(
+      `slug '${slug}' 에 비ASCII 문자가 포함되어 있습니다. 인물명·핵심 키워드로 영문(소문자/숫자/하이픈) 슬러그를 만들어 frontmatter 의 slug 에 직접 적으세요.`,
+    );
+  }
 
   const { data: existing, error: exErr } = await sb
     .from("posts")
@@ -219,6 +233,7 @@ async function push(file, force) {
     cover_image: unquote(fm.cover_image) || null,
     thumb_kind: unquote(fm.thumb_kind) || thumbKindFromSlug(slug),
     reading_min: unquote(fm.reading_min) || deriveReadingMin(body) || null,
+    source_date: unquote(fm.source_date) || null,
   };
 
   if (existing) {
@@ -242,7 +257,7 @@ async function push(file, force) {
 async function pull(slug, outFile) {
   const { data: post, error } = await sb
     .from("posts")
-    .select("slug,title,body_md,tags,category_slug,cover_image,thumb_kind,reading_min,status")
+    .select("slug,title,body_md,tags,category_slug,cover_image,thumb_kind,reading_min,source_date,status")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;

@@ -12,9 +12,12 @@ export type Post = {
   categorySlug?: string | null;
   tags: string[];
   date: string;
+  publishedAt?: string | null;
+  sourceDate?: string | null;
   readingMin: string;
   thumbKind: ThumbKind;
   coverImage?: string | null;
+  coverBrightness?: number | null;
   isFeatured?: boolean;
   featuredChips?: { variant: ChipVariant; label: string }[];
   year: string;

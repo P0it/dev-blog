@@ -29,6 +29,11 @@
 @font-face { font-family: "Pretendard"; font-style: normal; font-weight: 900; font-display: swap;
   src: url("/fonts/Pretendard-Black.otf") format("opentype"); }
 
+/* Tossface — 컬러 이모지 폰트. COLR/CPAL 포맷(웹용)이라 모든 OS·브라우저에서 컬러로 렌더.
+   본문 폰트엔 이모지 글리프가 없으므로 스택 맨 뒤에 두면 이모지 코드포인트만 여기로 떨어진다. */
+@font-face { font-family: "Tossface"; font-style: normal; font-display: swap;
+  src: url("/fonts/TossFace.woff2") format("woff2"); }
+
 /* ============================================================
    ATOMIC + SEMANTIC TOKENS — light
    ============================================================ */
@@ -136,10 +141,10 @@
   --radius-full: 9999px;
 
   --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont,
-               "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", Arial, sans-serif;
+               "Apple SD Gothic Neo", "Noto Sans KR", "Helvetica Neue", Arial, "Tossface", sans-serif;
   --font-display: "Wanted Sans Variable", "Wanted Sans", "Pretendard",
-                  -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", monospace;
+                  -apple-system, BlinkMacSystemFont, "Tossface", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", "Tossface", monospace;
 
   --nav-bg: rgba(255, 255, 255, 0.82);
   /* 코드블록은 사이트 테마와 무관하게 항상 Night Owl 톤 (#011627 base) */
@@ -297,6 +302,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    ============================================================ */
 
 .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+
+.posts-index { display: grid; grid-template-columns: 240px 1fr; gap: 56px; }
+.posts-index-aside { position: sticky; top: 96px; align-self: start; }
 .container-narrow { max-width: 768px; margin: 0 auto; padding: 0 40px; }
 
 .meta { font-size: 13px; color: var(--fg-neutral); font-weight: 500; }
@@ -385,6 +393,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 4px 10px; border-radius: 999px;
   background: var(--bg-muted); color: var(--fg-neutral);
   font-size: 12px; font-weight: 600;
+  white-space: nowrap;
 }
 /* primary 액센트 칩 — 클래스명은 레거시(과거 primary=blue). 항상 옅은 배경+진한 민트. */
 .chip-blue { background: var(--bg-primary-soft); color: var(--mint-600); }
@@ -513,9 +522,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin: 24px auto;
   border-radius: var(--radius-md);
 }
-/* 본문(렌더된 마크다운) 이미지는 좌측 정렬 — 넓은 이미지가 데스크톱에서
-   우측으로 확장될 때, 가운데 정렬이면 좌우로 퍼져 좌측 TOC를 침범한다. */
-.post-body img { margin: 24px 0; }
+/* 본문 이미지는 가운데 정렬 — 좁은 이미지(스크린샷·로고 등)가 좌측에
+   붙어 어색해 보이는 문제를 피한다. */
+.post-body img { margin: 24px auto; }
 
 /* ============================================================
    Visual catalog — 본문에 네이티브로 렌더되는 시각자료
@@ -524,6 +533,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    ============================================================ */
 
 .prose .vis { margin: 30px 0; }
+
+/* 한국어 줄바꿈: 단어 단위로 끊는다.
+   - keep-all: "양방향 상호작용" 같은 띄어쓰기 있는 구를 단어 경계에서만 끊어
+     마지막 한 글자만 다음 줄로 떨어지는 외톨이(orphan) 현상을 막는다.
+   - anywhere: 한 단어가 컨테이너 폭보다 길면 그때만 어디서든 끊어
+     영문 약어·긴 URL이 카드 밖으로 흘러넘치는 것을 막는다. */
+.vis {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
 
 /* 외곽 프레임 — step·stat 공용 */
 .vis-frame {
@@ -576,6 +595,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: flex; align-items: center; justify-content: center;
   background: var(--vis-fill); color: var(--vis-strong);
 }
+/* 컬러 이모지(Tossface)는 틴트 박스 없이 깔끔하게 — 아이콘 자리에 이모지를 넣을 때. */
+.vis-ico:has(.vis-emoji) { background: transparent; }
+.vis-emoji { display: inline-block; }
 .vis-step .vis-ico {
   margin-top: 9px; width: 40px; height: 40px; border-radius: 12px;
 }
@@ -642,6 +664,90 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin-top: 5px; font-size: 14px; line-height: 1.6; color: var(--fg-normal);
 }
 
+/* list-card — 타이틀+항목을 단정한 박스에 담음. accent는 라벨·헤더 텍스트 강조에 사용. */
+.vis-list-box {
+  box-sizing: border-box;
+  padding: 18px 20px 20px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-subtle);
+}
+.vis-list-head {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+.vis-list-eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--fg-neutral); line-height: 1;
+  margin-bottom: 7px;
+}
+.vis-list-title {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 800; letter-spacing: -0.01em;
+  line-height: 1.35; color: var(--fg-strong); margin: 0;
+}
+.vis-list-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.vis-list-item .vis-list-lb {
+  font-size: 14.5px; font-weight: 700;
+  line-height: 1.4; color: var(--fg-strong);
+}
+.vis-list-item .vis-list-desc {
+  margin-top: 3px;
+  font-size: 13.5px; line-height: 1.55; color: var(--fg-normal);
+}
+
+/* bullet-card — 한 줄 라벨만 나열 (설명 없는 짧은 불릿) */
+.vis-bullet-eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--fg-neutral); line-height: 1;
+  margin-bottom: 8px;
+}
+.vis-bullet-title {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 800; letter-spacing: -0.01em;
+  line-height: 1.35; color: var(--fg-strong);
+  margin: 0 0 10px;
+}
+.vis-bullet-box {
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--line-subtle);
+}
+.vis-bullet-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vis-bullet-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--fg-strong);
+}
+.vis-bullet-dot {
+  flex: 0 0 auto;
+  width: 5px; height: 5px;
+  border-radius: 999px;
+  background: var(--vis-strong);
+  transform: translateY(-2px);
+}
+.vis-bullet-text { min-width: 0; }
+
 /* illustration — 인라인 SVG */
 .vis-illus { display: flex; justify-content: center; }
 .vis-illus svg { width: 100%; max-width: 660px; height: auto; display: block; }
@@ -656,7 +762,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 16px 16px 18px;
   border-radius: 14px;
   border: 1px solid var(--line-subtle);
-  background: var(--vis-fill);
+  background-color: var(--bg-elevated);
+  background-image: linear-gradient(var(--vis-fill), var(--vis-fill));
+}
+/* mute accent: 컬러 틴트를 비우고 elevated 베이스만 보이게 — 라이트에선 white, 다크에선 한 단계 떠 있는 회색 */
+.vis-col[data-accent="mute"] {
+  background-image: none;
+  border-color: transparent;
+}
+.vis-col[data-accent="mute"] .vis-ico {
+  background: var(--bg-muted);
 }
 .vis-col-hd {
   display: flex; align-items: center; gap: 9px;
@@ -818,21 +933,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .vis-quote-tx { font-size: 16.5px; }
 }
 
-/* 데스크톱(≥1200px, 좌측 TOC 레이아웃) — step·stat·grid 카드와 본문 이미지를
-   우측 고스트 칼럼까지 넓힌다(640 → 880). 발행 페이지(.post-layout) 한정.
-   880 = 본문 640 + 고스트 240, post-layout 폭과 정확히 맞아 가로 넘침 없음.
-   항목 한 줄 배치는 기본값(grid-auto-flow: column)이라 여기선 폭만 넓힌다. */
-@media (min-width: 1200px) {
-  .post-layout .vis-frame:has(.vis-steps),
-  .post-layout .vis-frame:has(.vis-stats),
-  .post-layout .vis-frame:has(.vis-grid) {
-    width: 880px;
-  }
-  /* 본문 이미지도 고스트 칼럼까지 늘어날 수 있게(작은 이미지는 원본 크기 유지) */
-  .post-layout .post-body img {
-    max-width: 880px;
-  }
-}
+/* 본문 이미지·visual 블록 모두 본문 칼럼(640px) 안에서 가운데 정렬한다.
+   고스트 칼럼까지 넓히면 칼럼보다 넓어진 요소가 좌측에 붙어(margin:auto 무효)
+   우측이 비어 보이므로, 넓힘을 포기하고 칼럼 폭에 맞춘다. visual 카드는
+   container query(@container)로 640 폭에 맞춰 자동 재배치된다. */
 
 /* ============================================================
    Code block — Shiki (rehype-pretty-code) dual theme
@@ -1059,6 +1163,63 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    Post detail layout (content + TOC)
    ============================================================ */
 
+.post-hero-wrap { position: relative; }
+.post-hero-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 360px;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  /* 이미지는 그대로 노출, 아래쪽 1/3 만 본문 배경으로 부드럽게 페이드. */
+  mask-image: linear-gradient(to bottom, #000 0%, #000 65%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 65%, transparent 100%);
+}
+.post-hero-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 어두운 사진 위에서 흰 글씨를 받쳐 줄 약한 스크림.
+   밝은 사진(--light-cover)에서는 비활성화해 사진 색을 가리지 않는다. */
+.post-hero-bg::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.20) 55%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+.post-hero-wrap--light-cover .post-hero-bg::after { background: none; }
+/* 헤더 — hero 위에 카테고리·제목·작성자가 얹힌다. 본문/목차는 그 아래부터.
+   본문 시작과의 간격은 margin-bottom 으로 충분히 벌린다. */
+.post-header {
+  position: relative;
+  padding-bottom: 0;
+  /* hero 배경(360px) 위에 제목·작성자가 얹히고, 본문/목차는 그 아래부터.
+     min-height 로 헤더가 항상 hero 높이 이상을 차지하게 해 — 제목 길이와
+     무관하게 — 본문이 사진 영역과 절대 겹치지 않고 그 아래에서 시작한다. */
+  min-height: 320px;
+  margin-bottom: 32px;
+}
+.post-author { display: flex; align-items: center; gap: 12px; }
+.post-author-name { font-weight: 600; font-size: 14px; }
+/* 어두운 커버: 헤더 텍스트 흰색 + 약한 그림자. */
+.post-hero-wrap--with-cover:not(.post-hero-wrap--light-cover) .post-header .post-title,
+.post-hero-wrap--with-cover:not(.post-hero-wrap--light-cover) .post-author-name {
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.45);
+}
+/* 밝은 커버: 기본 어두운 글씨 + 옅은 라이트 그림자(가독성 보강). */
+.post-hero-wrap--light-cover .post-author-name {
+  text-shadow: 0 1px 6px rgba(255,255,255,0.55);
+}
+.post-hero-wrap--light-cover .post-title {
+  text-shadow: 0 1px 6px rgba(255,255,255,0.55);
+}
+@media (max-width: 768px) {
+  .post-hero-bg { height: 280px; }
+  .post-header { min-height: 240px; margin-bottom: 28px; }
+}
+
 .post-layout {
   display: grid;
   /* 좌측 TOC + 본문 + 우측 고스트로 본문을 뷰포트 중앙에 맞춤 */
@@ -1095,6 +1256,60 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-family: var(--font-display);
   font-size: 44px; line-height: 1.15;
   letter-spacing: -0.025em; margin: 0 0 16px;
+}
+
+/* ============================================================
+   Post hero — 썸네일 배경 위에 카테고리·제목·발췌 오버레이
+   ============================================================ */
+
+.post-hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+.post-hero > :first-child {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+.post-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* 표지 이미지가 밝든 어둡든 하단부에 흰 텍스트가 읽히도록 어두운 그라데이션. */
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+.post-hero-inner {
+  position: relative;
+  padding-top: 88px;
+  padding-bottom: 120px;
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.post-hero-title {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: #fff;
+  max-width: 880px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.post-hero-excerpt {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.6;
+  margin: 20px 0 0;
+  max-width: 720px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================================
@@ -1140,7 +1355,18 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .post-toc { display: none; }
   .post-title { font-size: 28px; line-height: 1.2; }
 
+  .post-hero-inner {
+    padding-top: 56px;
+    padding-bottom: 72px;
+    min-height: 320px;
+  }
+  .post-hero-title { font-size: 34px; line-height: 1.15; }
+  .post-hero-excerpt { font-size: 15.5px; margin-top: 14px; }
+
   .lab-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  .posts-index { grid-template-columns: 1fr; gap: 28px; }
+  .posts-index-aside { position: static; }
 
   .hero-headline { font-size: 34px; }
   .prose h1 { font-size: 28px; }

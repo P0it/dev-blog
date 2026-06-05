@@ -17,9 +17,6 @@ export function FeaturedCard({ post, hrefBase = "/posts" }: { post: Post; hrefBa
         </div>
         <h3>{post.title}</h3>
         <p>{post.excerpt}</p>
-        <div className="meta">
-          {post.date}
-        </div>
       </div>
     </Link>
   );

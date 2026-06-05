@@ -22,21 +22,38 @@ export type EditorInput = {
   categorySlug: string | null;
   tags: string[];
   coverImage: string | null;
+  coverBrightness: number | null; // 0~1. 업로드 시 sharp 로 계산. 외부 URL·SVG=null
   thumbKind: ThumbKind | null; // null = 슬러그 해시로 자동
+  publishedAt: string | null; // 백데이트용 — null = 자동 처리(발행 시 now())
+  sourceDate: string | null;  // 원문(인용/번역 대상)의 작성·업로드 일자. null = 모름
   readingMin: string;
 };
 
+// 한글·기호 제거 → ASCII 슬러그만. 한국어 제목이면 빈 문자열이 되어
+// resolveSlug 의 `${fallback}-${Date.now()}` 분기로 떨어진다. Vercel/Next 의
+// 비ASCII 동적 세그먼트 prerender 가 404 로 고정되는 이슈를 피하기 위함.
 function slugify(s: string): string {
   return s
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function guard() {
   if (!(await isAdmin())) throw new Error("unauthorized");
+}
+
+// 날짜 기준 미래 차단. 클라이언트가 노출하는 `<input type="date" max=오늘>` 우회
+// 대비 + TZ 차 ±1일 허용 (서버가 UTC인데 사용자가 KST 인 경우 등).
+function isFutureDateISO(iso: string): boolean {
+  const pickedDate = iso.slice(0, 10);
+  const tomorrowUtcDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return pickedDate > tomorrowUtcDate;
 }
 
 // 신규 글의 slug — 기존 글은 originalSlug를 유지(URL 안정).
@@ -67,7 +84,12 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
   const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
 
-  const baseRow = {
+  // 사용자가 입력한 published_at은 미래 방어 후 반영. 비어 있으면 row에서 제외해
+  // 기존 값(있다면)을 보존.
+  if (input.publishedAt && isFutureDateISO(input.publishedAt)) {
+    throw new Error("미래 날짜는 허용되지 않습니다");
+  }
+  const baseRow: Record<string, unknown> = {
     slug,
     title: input.title,
     excerpt,
@@ -75,10 +97,13 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     category_slug: input.categorySlug || null,
     tags: input.tags,
     cover_image: input.coverImage || null,
+    cover_brightness: input.coverImage ? input.coverBrightness : null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
+    source_date: input.sourceDate || null,
     status: "draft" as const,
   };
+  if (input.publishedAt) baseRow.published_at = input.publishedAt;
 
   if (input.originalSlug) {
     // 업데이트 — series/is_featured는 row에서 제외해 기존 값 유지.
@@ -101,9 +126,13 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
   const excerpt = await resolveExcerpt(input);
   const sb = supabaseServer();
 
-  // 기존 발행일이 있으면 유지, 없으면 now()
-  let publishedAt: string | null = null;
-  if (input.originalSlug) {
+  // UI 입력이 있으면 그 값을 우선, 없으면 기존 DB 값 유지, 그래도 없으면 now().
+  // UI `max` 속성을 우회하는 미래 날짜는 서버에서도 차단.
+  if (input.publishedAt && isFutureDateISO(input.publishedAt)) {
+    throw new Error("미래 날짜는 허용되지 않습니다");
+  }
+  let publishedAt: string | null = input.publishedAt;
+  if (!publishedAt && input.originalSlug) {
     const { data } = await sb.from("posts").select("published_at").eq("slug", input.originalSlug).maybeSingle();
     publishedAt = data?.published_at ?? null;
   }
@@ -117,8 +146,10 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     category_slug: input.categorySlug || null,
     tags: input.tags,
     cover_image: input.coverImage || null,
+    cover_brightness: input.coverImage ? input.coverBrightness : null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
     reading_min: input.readingMin || null,
+    source_date: input.sourceDate || null,
     status: "published" as const,
     published_at: publishedAt,
   };
@@ -219,7 +250,27 @@ ${data.body_md ?? ""}`;
 const UPLOAD_MAX_WIDTH = 1600;
 const UPLOAD_WEBP_QUALITY = 90;
 
-export async function uploadImage(formData: FormData): Promise<{ url: string }> {
+// 평균 휘도(Rec.709, 0~1). sharp.stats() 의 채널 평균을 가중합.
+// 실패해도 업로드 자체는 막지 않게 try/catch 로 감싼다 — null 이면 PostDetailView 가
+// 기본 스크림/흰글씨로 폴백한다.
+async function computeBrightness(buf: Buffer): Promise<number | null> {
+  try {
+    const stats = await sharp(buf).stats();
+    const ch = stats.channels;
+    if (ch.length < 3) {
+      // 그레이스케일은 첫 채널 평균만으로 충분.
+      return Math.max(0, Math.min(1, ch[0].mean / 255));
+    }
+    const lum = 0.2126 * ch[0].mean + 0.7152 * ch[1].mean + 0.0722 * ch[2].mean;
+    return Math.max(0, Math.min(1, lum / 255));
+  } catch {
+    return null;
+  }
+}
+
+export async function uploadImage(
+  formData: FormData,
+): Promise<{ url: string; brightness: number | null }> {
   await guard();
   const file = formData.get("file");
   if (!(file instanceof File)) throw new Error("file 누락");
@@ -232,10 +283,16 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
   let body: Buffer | File;
   let contentType: string;
   let ext: string;
+  let brightness: number | null = null;
   if (passthrough) {
     body = file;
     contentType = file.type;
     ext = file.type === "image/gif" ? "gif" : "svg";
+    // GIF 는 첫 프레임으로 휘도 계산. SVG 는 벡터라 패스(null).
+    if (file.type === "image/gif") {
+      const raw = Buffer.from(await file.arrayBuffer());
+      brightness = await computeBrightness(raw);
+    }
   } else {
     const input = Buffer.from(await file.arrayBuffer());
     try {
@@ -249,6 +306,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
     }
     contentType = "image/webp";
     ext = "webp";
+    brightness = await computeBrightness(body);
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
@@ -262,7 +320,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
   if (error) throw error;
 
   const { data } = sb.storage.from("post-images").getPublicUrl(path);
-  return { url: data.publicUrl };
+  return { url: data.publicUrl, brightness };
 }
 
 export async function deletePost(slug: string): Promise<void> {

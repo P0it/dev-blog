@@ -142,6 +142,27 @@ export const gridCardSchema = z.object({
   items: z.array(gridItemSchema).min(2).max(6),
 });
 
+/* ---------- list-card ---------- */
+
+const listItemSchema = z.object({
+  label: z.string().min(1).max(48),
+  description: z.string().max(140).optional(),
+});
+
+export const listCardSchema = z.object({
+  pattern: z.literal("list-card"),
+  ...baseFields,
+  items: z.array(listItemSchema).min(2).max(8),
+});
+
+/* ---------- bullet-card ---------- */
+
+export const bulletCardSchema = z.object({
+  pattern: z.literal("bullet-card"),
+  ...baseFields,
+  items: z.array(z.string().min(1).max(60)).min(2).max(8),
+});
+
 /* ---------- union ---------- */
 
 export const visualSchema = z.discriminatedUnion("pattern", [
@@ -153,6 +174,8 @@ export const visualSchema = z.discriminatedUnion("pattern", [
   quoteCardSchema,
   checklistCardSchema,
   gridCardSchema,
+  listCardSchema,
+  bulletCardSchema,
 ]);
 
 export type VisualSpec = z.infer<typeof visualSchema>;
@@ -171,6 +194,9 @@ export type CompareColumnSpec = z.infer<typeof compareColumnSchema>;
 export type TimelineEventSpec = z.infer<typeof timelineEventSchema>;
 export type CheckItemSpec = z.infer<typeof checkItemSchema>;
 export type GridItemSpec = z.infer<typeof gridItemSchema>;
+export type ListCardSpec = z.infer<typeof listCardSchema>;
+export type ListItemSpec = z.infer<typeof listItemSchema>;
+export type BulletCardSpec = z.infer<typeof bulletCardSchema>;
 
 /**
  * accent → CSS 변수 페어. fill 은 옅은 배경, strong 은 진한 전경/테두리.

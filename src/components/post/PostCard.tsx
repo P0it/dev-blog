@@ -9,7 +9,6 @@ export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?:
       <div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
           {post.category && <Chip variant="outline">{post.category}</Chip>}
-          <span className="meta">{post.date}</span>
         </div>
         <h3>{post.title}</h3>
         <p>{post.excerpt}</p>

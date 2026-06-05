@@ -32,9 +32,39 @@ type Initial = {
   categorySlug: string | null;
   tags: string[];
   coverImage: string | null;
+  coverBrightness: number | null;
   thumbKind: ThumbKind | null;
+  publishedAt: string | null;
+  sourceDate: string | null;
   status: "draft" | "published";
 };
+
+// `<input type="date">` 의 value 형식(YYYY-MM-DD) 변환.
+// UTC 기준 날짜를 사용 — 백데이트 용도엔 일관성이 더 중요하다.
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+// 사용자가 고른 날짜를 ISO 로 직렬화.
+// 같은 날짜를 다시 고른 경우 기존 시각을 보존(no-op), 아니면 정오 UTC.
+function fromDateInputValue(dateStr: string, existing: string | null): string | null {
+  if (!dateStr) return null;
+  if (existing && existing.slice(0, 10) === dateStr) return existing;
+  return `${dateStr}T12:00:00.000Z`;
+}
+
+// 발행일(또는 발행 시 채워질 today)이 원문 작성일보다 앞서는지.
+// 둘 다 'YYYY-MM-DD' 비교라 lexicographic == 시간순.
+function isPublishedBeforeSource(
+  publishedAt: string | null,
+  sourceDate: string | null,
+  todayDate: string,
+): boolean {
+  if (!sourceDate) return false;
+  const pub = (publishedAt ?? "").slice(0, 10) || todayDate;
+  return pub < sourceDate.slice(0, 10);
+}
 
 export function PostEditor({
   initial,
@@ -52,12 +82,24 @@ export function PostEditor({
   const [categorySlug, setCategorySlug] = useState<string | "">(initial.categorySlug ?? "");
   const [tags, setTags] = useState<string[]>(initial.tags);
   const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage);
+  const [coverBrightness, setCoverBrightness] = useState<number | null>(initial.coverBrightness);
   const [thumbKind, setThumbKind] = useState<ThumbKind | null>(initial.thumbKind);
+  const [publishedAt, setPublishedAt] = useState<string | null>(initial.publishedAt);
+  const [sourceDate, setSourceDate] = useState<string | null>(initial.sourceDate);
   const [tagDraft, setTagDraft] = useState("");
+  const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [aiReviseOpen, setAiReviseOpen] = useState(false);
+  // 상단바에 진행/완료 메시지. busyMsg = 진행 중, savedFlash = 완료 후 ~2.5s.
+  const [busyMsg, setBusyMsg] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(null), 2500);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertAtCursor = useCallback((text: string) => {
@@ -134,10 +176,13 @@ export function PostEditor({
       categorySlug: categorySlug || null,
       tags: allTags,
       coverImage,
+      coverBrightness,
       thumbKind,
+      publishedAt,
+      sourceDate,
       readingMin: deriveReadingMin(bodyMd),
     };
-  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, thumbKind]);
+  }, [initial.originalSlug, title, bodyMd, categorySlug, tags, tagDraft, coverImage, coverBrightness, thumbKind, publishedAt, sourceDate]);
 
   // 미저장 변경 추적
   const baselineRef = useRef<string | null>(null);
@@ -164,12 +209,16 @@ export function PostEditor({
   useEffect(() => {
     if (!initial.originalSlug || !dirty || pending) return;
     const t = setTimeout(() => {
+      setBusyMsg("자동 저장 중…");
       startTransition(async () => {
         try {
           await saveDraft(input);
           markClean();
+          setSavedFlash("✓ 자동 저장됨");
         } catch {
           /* 자동저장 실패는 조용히 */
+        } finally {
+          setBusyMsg(null);
         }
       });
     }, 4000);
@@ -178,11 +227,13 @@ export function PostEditor({
   }, [inputKey, dirty, pending, initial.originalSlug]);
 
   const onSave = () => {
+    setBusyMsg("저장 중…");
     startTransition(async () => {
       try {
         const res = await saveDraft(input);
         setStatus("draft");
         markClean();
+        setSavedFlash("✓ 저장됨");
         if (res.slug !== initial.originalSlug) {
           router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
         } else {
@@ -190,8 +241,23 @@ export function PostEditor({
         }
       } catch (e) {
         alert(`저장 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
+  };
+
+  const publishedBeforeSource = useMemo(
+    () => isPublishedBeforeSource(publishedAt, sourceDate, todayDate),
+    [publishedAt, sourceDate, todayDate],
+  );
+
+  // 클라이언트 라우팅(<Link>)·뒤로가기는 beforeunload가 안 잡는다.
+  // 미저장 상태에서 목록으로 빠지면 확인을 받는다.
+  const confirmLeaveIfDirty = (e: React.MouseEvent) => {
+    if (!dirty) return;
+    const ok = window.confirm("저장하지 않은 변경이 있습니다. 그래도 나가시겠어요?");
+    if (!ok) e.preventDefault();
   };
 
   const onPublish = () => {
@@ -199,44 +265,56 @@ export function PostEditor({
       alert("제목을 입력하세요.");
       return;
     }
+    if (publishedBeforeSource) {
+      const pubLabel = toDateInputValue(publishedAt) || todayDate;
+      const ok = confirm(
+        `발행일(${pubLabel})이 원문 작성일(${sourceDate!.slice(0, 10)})보다 앞섭니다.\n그대로 발행할까요?`,
+      );
+      if (!ok) return;
+    }
+    const isUpdate = status === "published";
+    setBusyMsg(isUpdate ? "업데이트 중…" : "발행 중…");
     startTransition(async () => {
       try {
-        const res = await publishPost(input);
-        setStatus("published");
+        await publishPost(input);
         markClean();
-        if (res.slug !== initial.originalSlug) {
-          router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
-        } else {
-          router.refresh();
-        }
+        router.push("/admin/posts");
       } catch (e) {
-        alert(`발행 실패: ${(e as Error).message}`);
+        alert(`${isUpdate ? "업데이트" : "발행"} 실패: ${(e as Error).message}`);
+        setBusyMsg(null);
       }
     });
   };
 
   const onAiRevise = (feedback: string) => {
     if (!initial.originalSlug) return;
+    setBusyMsg("AI 개선 요청 중…");
     startTransition(async () => {
       try {
         await requestRevision({ slug: initial.originalSlug!, feedback });
         setAiReviseOpen(false);
-        alert("AI 개선을 요청했습니다. 워커가 처리하면 새로고침해 확인하세요.");
+        setSavedFlash("✓ AI 개선 요청됨 — 워커 처리 후 새로고침");
         router.refresh();
       } catch (e) {
         alert(`요청 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
 
   const onAiDraft = (v: { url: string; note: string }) => {
+    setBusyMsg("AI 초안 요청 중…");
     startTransition(async () => {
       try {
         const res = await requestDraftFromUrl(v);
         setAiDraftOpen(false);
+        setSavedFlash("✓ AI 초안 요청됨");
         router.replace(`/admin/editor?slug=${encodeURIComponent(res.slug)}`);
       } catch (e) {
         alert(`요청 실패: ${(e as Error).message}`);
+      } finally {
+        setBusyMsg(null);
       }
     });
   };
@@ -244,7 +322,7 @@ export function PostEditor({
   return (
     <>
       <AdminTopbar>
-        <Link href="/admin/posts">
+        <Link href="/admin/posts" onClick={confirmLeaveIfDirty}>
           <Button variant="ghost" size="sm">← 목록</Button>
         </Link>
         {initial.originalSlug ? (
@@ -255,6 +333,24 @@ export function PostEditor({
           <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
             URL로 초안
           </Button>
+        )}
+        {(busyMsg || savedFlash) && (
+          <span
+            className="meta"
+            aria-live="polite"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: busyMsg ? "var(--fg-neutral)" : "var(--fg-strong)",
+              minWidth: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {busyMsg && <span className="ai-spinner" aria-hidden />}
+            {busyMsg ?? savedFlash}
+          </span>
         )}
         <Button variant="outline" size="sm" onClick={onSave} disabled={pending}>임시 저장</Button>
         <Button variant="primary" size="sm" onClick={onPublish} disabled={pending}>
@@ -302,11 +398,68 @@ export function PostEditor({
                   onDraftChange={setTagDraft}
                 />
               </div>
+              <input
+                type="date"
+                value={toDateInputValue(publishedAt)}
+                max={todayDate}
+                onChange={(e) =>
+                  setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
+                }
+                aria-label="작성일"
+                title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
+                style={{
+                  padding: "6px 10px",
+                  border: publishedBeforeSource
+                    ? "1px solid var(--danger, #d33)"
+                    : "1px solid var(--line-subtle)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: "transparent",
+                  color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  colorScheme: "light dark",
+                }}
+              />
+              <input
+                type="date"
+                value={sourceDate ?? ""}
+                max={todayDate}
+                onChange={(e) => setSourceDate(e.target.value || null)}
+                aria-label="원문 작성일"
+                title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
+                style={{
+                  padding: "6px 10px",
+                  border: "1px dashed var(--line-subtle)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: "transparent",
+                  color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  colorScheme: "light dark",
+                }}
+              />
+              {publishedBeforeSource && (
+                <span
+                  role="alert"
+                  title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--danger, #d33)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⚠ 원문보다 앞선 발행일
+                </span>
+              )}
               <ThumbnailField
                 coverImage={coverImage}
+                coverBrightness={coverBrightness}
                 thumbKind={thumbKind}
                 onChange={(next) => {
                   setCoverImage(next.coverImage);
+                  setCoverBrightness(next.coverBrightness);
                   setThumbKind(next.thumbKind);
                 }}
               />

@@ -11,7 +11,6 @@ export default async function PostOG({ params }: { params: { slug: string } }) {
   const title = post?.title ?? "Untitled";
   const excerpt = post?.excerpt ?? "";
   const category = post?.category ?? "";
-  const date = post?.date ?? "";
 
   return new ImageResponse(
     (
@@ -76,7 +75,6 @@ export default async function PostOG({ params }: { params: { slug: string } }) {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 22, opacity: 0.5 }}>
           <span>{SITE.author}</span>
-          <span>{date}</span>
         </div>
       </div>
     ),
