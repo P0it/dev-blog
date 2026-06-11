@@ -45,7 +45,11 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
      개념 그림은 ```illustration SVG 1개까지. 매번 같은 패턴 조합(`stat-card` + `compare-card` 등)·같은 위치 반복은 금한다.
      본문이 이미 말한 사실만 구조화한다.
    - 끝에 `## 참고 자료` + 원문 링크. 저작권 표기 한 줄은 **기본은 생략**(POSTING.md 2절 참조).
-5. **파일 작성** — `drafts/<slug>.md` 를 만든다(`drafts/` 는 .gitignore 됨).
+5. **문체 퇴고 — 번역투 제거 전용 패스 (필수).** 초안을 다 쓴 뒤, 사실·구조·링크는 그대로 두고
+   **문장만** 처음부터 다시 읽으며 한국어 어순으로 고쳐 쓴다. 영어 은유 직역("~의 함수"·"~의 영토"),
+   문두 부사+쉼표("역설적이게도,"), 쉼표 삽입절, 무생물 주어+타동사를 걷어낸다.
+   판별법: 소리 내어 읽었을 때 한국 개발자가 옆 사람에게 하는 말로 자연스러운가.
+6. **파일 작성** — `drafts/<slug>.md` 를 만든다(`drafts/` 는 .gitignore 됨).
    - **슬러그는 ASCII 영문만** — `a-z 0-9 -`. 한글·공백·기호 금지.
      (Vercel/Next 의 정적 prerender 가 비ASCII 슬러그에서 404 로 고정되는 이슈가 있어, 초안 단계부터 막는다.)
    - 다른 글 스타일(`gstack-garry-tan-claude-code`, `simon-sinek-start-with-why-golden-circle`,
@@ -63,7 +67,7 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    > 요약 인용구…
    ## 헤드라인…
    ```
-6. **영상 캡처 — YouTube 글이면 기본 수행.** 각 `## 소제목`마다 대표 장면을 캡처해 넣는 것을 기본으로 한다(영상 글의 기본 시각자료). 일반 글·GitHub 글에는 해당 없음.
+7. **영상 캡처 — YouTube 글이면 기본 수행.** 각 `## 소제목`마다 대표 장면을 캡처해 넣는 것을 기본으로 한다(영상 글의 기본 시각자료). 일반 글·GitHub 글에는 해당 없음.
    - `drafts/<slug>.frames.json` 에 **소제목마다 한 줄씩** `[{"heading":"소제목","t":"3:21"}, ...]` 를 쓴다(t = 그 문단이 나온 대본 시점). 데모·시연처럼 화면이 풍부한 소제목은 시점 2개로 늘려도 된다.
    - `npm run capture -- candidates <video_url> drafts/<slug>.frames.json` — 시점마다 후보 프레임을 뽑는다.
    - 출력된 후보 이미지를 **Read 로 직접 보고** 소제목마다 가장 나은 컷 1장을 고른다.
@@ -71,7 +75,7 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
      **쓸 만한 컷이 하나도 없는 소제목만 건너뛴다**(억지 그림 ✗). 나머지는 모두 넣는다.
    - 고른 컷마다 `npm run capture -- upload <고른_파일>` → public URL 을 받아, 본문의 해당 `## 소제목` 바로 아래에 `![설명](URL)` 로 넣는다.
    - 캡처는 영상 글의 기본 시각자료라 ` ```visual ` 카탈로그 카드의 "개수 변주"(POSTING.md 2-3절)와 별개로 본다 — 소제목마다 넣되, 구도가 매번 똑같이 굳지 않게 컷 종류(슬라이드·데모·인물 등)는 다양하게 고른다.
-7. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
-8. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+8. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
+9. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`.
