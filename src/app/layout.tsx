@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ThemeProvider, themeInitScript } from "@/lib/theme";
+import { ThemeProvider, ThemeScript } from "@/lib/theme";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -30,10 +30,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
       <body>
+        <ThemeScript />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

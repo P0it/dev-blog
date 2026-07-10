@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useServerInsertedHTML } from "next/navigation";
 
 type Theme = "light" | "dark";
 type ThemeContextValue = { theme: Theme; toggle: () => void };
@@ -40,6 +41,16 @@ export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
+}
+
+// Injects the anti-FOUC theme script into the SSR HTML stream, outside the
+// React component tree. This avoids React 19's "Encountered a script tag"
+// warning while still running before hydration. Renders nothing on the client.
+export function ThemeScript() {
+  useServerInsertedHTML(() => (
+    <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+  ));
+  return null;
 }
 
 export const themeInitScript = `
