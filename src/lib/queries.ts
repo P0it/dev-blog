@@ -703,7 +703,7 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
     /* ai_jobs 마이그레이션 전이면 무시 */
   }
 
-  return rows.map((r) => ({
+  const mapped: AdminPostRow[] = rows.map((r) => ({
     slug: r.slug,
     title: r.title,
     status: r.status === "published" ? "published" : "draft",
@@ -714,6 +714,14 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
     coverImage: r.cover_image ?? null,
     aiStatus: aiBySlug.get(r.slug) ?? null,
   }));
+
+  // 작성중(draft)인 글을 항상 상단에 배치하고, 그 안에서는 최신순으로 정렬
+  return mapped.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "draft" ? -1 : 1;
+    const da = a.displayDate ? new Date(a.displayDate).getTime() : 0;
+    const db = b.displayDate ? new Date(b.displayDate).getTime() : 0;
+    return db - da;
+  });
 }
 
 // 어드민 태그 관리용 — draft 포함 전체에서 집계.
