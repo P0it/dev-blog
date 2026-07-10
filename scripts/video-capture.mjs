@@ -69,6 +69,21 @@ function candidates(videoUrl, manifestPath, opts) {
   const outDir = opts.out ?? join("drafts", "_frames", videoId);
   mkdirSync(outDir, { recursive: true });
 
+  // 저해상도 전체를 yt-dlp 네이티브 다운로더로 한 번만 받아 둔다.
+  //   구간별 `--download-sections` 는 다운로드를 ffmpeg 에 위임하는데,
+  //   YouTube 가 ffmpeg 의 직접 요청을 심하게 throttle 하는 영상이 있어(16초 클립이
+  //   150초로도 안 끝남) 캡처가 멈춘 것처럼 보인다. 네이티브 다운로더는 n-challenge 를
+  //   풀어 정상 속도(10MiB/s+)로 받으므로, 전체를 한 번 받고 프레임은 로컬에서 뽑는다.
+  //   avc(H.264) 를 우선해 ffmpeg 의 seek 가 빠르게 한다.
+  const fullVideo = join(outDir, "_full.mp4");
+  if (!existsSync(fullVideo)) {
+    run("yt-dlp", [
+      "-f", "bv*[height<=720][vcodec^=avc]/bv*[height<=720]/b[height<=720]/best",
+      "-o", fullVideo,
+      videoUrl,
+    ]);
+  }
+
   const sections = [];
   manifest.forEach((entry, i) => {
     const heading = entry.heading ?? `섹션 ${i + 1}`;
@@ -78,28 +93,16 @@ function candidates(videoUrl, manifestPath, opts) {
     const secDir = join(outDir, `sec-${String(i + 1).padStart(2, "0")}`);
     mkdirSync(secDir, { recursive: true });
 
-    // 시점 주변 구간만 받는다 — 영상 전체를 다운로드하지 않는다.
-    const clip = join(secDir, "_clip.mp4");
-    if (!existsSync(clip)) {
-      run("yt-dlp", [
-        "-f", "bv*[height<=720]/b[height<=720]/best",
-        "--download-sections", `*${start}-${end}`,
-        "--force-keyframes-at-cuts",
-        "-o", clip,
-        videoUrl,
-      ]);
-    }
-
-    // 클립(start~end)에서 step 간격으로 한 장씩 뽑는다. 클립 0초 = 영상 start 초.
+    // 받아 둔 전체 영상에서 시점 앞뒤(window) 를 step 간격으로 한 장씩 뽑는다.
+    // -ss 를 -i 앞에 둬 빠른 seek. 절대 시각(absSec)으로 바로 캡처한다.
     const files = [];
-    for (let ts = 0; ts <= end - start + 0.001; ts += step) {
-      const absSec = start + ts;
+    for (let absSec = start; absSec <= end + 0.001; absSec += step) {
       const file = join(secDir, `cand-${stampLabel(absSec)}.jpg`);
       try {
-        run("ffmpeg", ["-y", "-ss", String(ts), "-i", clip, "-frames:v", "1", "-q:v", "3", file]);
+        run("ffmpeg", ["-y", "-ss", String(absSec), "-i", fullVideo, "-frames:v", "1", "-q:v", "3", file]);
         if (existsSync(file)) files.push(file);
       } catch {
-        /* 클립 끝을 넘어선 시점은 ffmpeg 가 실패 — 무시 */
+        /* 영상 끝을 넘어선 시점은 ffmpeg 가 실패 — 무시 */
       }
     }
 
