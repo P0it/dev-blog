@@ -55,7 +55,6 @@ slug: mcp-probe            # 필수, ASCII 케밥
 name: MCP Probe            # 필수, 카드에 뜨는 이름
 tagline: MCP 서버를 붙여보고 응답을 날것으로 보는 도구   # 필수, 40자 이내
 year: "2026"               # 필수
-logo_emoji: 🔌             # 필수
 logo_bg: "#1F6FEB"         # 필수, 단색
 stack: [Next.js, Cloudflare Workers, TypeScript]
 url: https://mcp-probe.pages.dev   # 스킴 포함 절대 URL. 배포 없으면 빈 값
@@ -97,7 +96,7 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 | 컬럼 | 타입 | 용도 |
 |---|---|---|
 | `tagline` | text | 카드 한 줄 |
-| `logo_emoji` | text | 카드 아이콘 |
+| `logo_emoji` | text | (미사용) 초기 설계의 흔적. 화면은 이모지를 쓰지 않는다 |
 | `logo_bg` | text | 로고 타일 배경색 |
 | `logo_url` | text | 실제 로고 이미지. 있으면 이모지보다 우선 |
 | `status` | text | 운영중 / 실험중 / 중단 |

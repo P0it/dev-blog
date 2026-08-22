@@ -3,7 +3,6 @@ slug: hyunwoo-blog
 name: hyunwoo.blog
 tagline: AI 세션이 초안을 쓰고 내가 고쳐 발행하는 개인 블로그
 year: "2026"
-logo_emoji: ✍️
 logo_bg: "#1E8063"
 stack: [Next.js, React, TypeScript, Supabase, Tailwind CSS, Vercel]
 url: https://hyunwoo-blog.vercel.app

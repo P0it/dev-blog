@@ -3,7 +3,6 @@ slug: routines-notebook
 name: Routines Notebook
 tagline: 가설 하나에 셀 하나, 통과한 것만 글이 된다
 year: "2026"
-logo_emoji: 🧪
 logo_bg: "#6541F2"
 stack: [TypeScript, Anthropic API, Cloudflare Pages]
 url: https://routines-notebook.pages.dev

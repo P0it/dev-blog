@@ -3,7 +3,6 @@ slug: news-briefing
 name: News Briefing
 tagline: 아침 6시, 오늘 알아야 할 것만 열두 줄
 year: "2026"
-logo_emoji: 📰
 logo_bg: "#B45309"
 stack: [launchd, Claude Max, KakaoTalk API]
 url: https://news-briefing.vercel.app

@@ -3,6 +3,9 @@
 // 다른 레포의 Claude 세션이 /portfolio 스킬로 만든 portfolio.md 를
 // 이 레포 projects/<slug>.md 로 옮긴 뒤 push 한다.
 //
+// 로고는 이미지(logo_file 또는 logo_url)만 쓴다. 이미지가 없으면 공개 화면이
+// 프로젝트 이름 첫 글자를 카드에 넣는다. 이모지는 쓰지 않는다.
+//
 // 사용법:
 //   npm run project -- push projects/<slug>.md
 //   npm run project -- pull <slug> [projects/<slug>.md]
@@ -114,7 +117,6 @@ function toFrontmatter(row) {
     `name: ${row.name}`,
     `tagline: ${row.tagline ?? ""}`,
     `year: "${row.year}"`,
-    `logo_emoji: ${row.logo_emoji ?? ""}`,
     `logo_bg: "${row.logo_bg ?? ""}"`,
     `logo_url: ${row.logo_url ?? ""}`,
     `stack: [${(row.stack ?? []).join(", ")}]`,
@@ -130,7 +132,7 @@ async function push(file) {
   if (!file) throw new Error("파일 경로가 없다");
   const { meta, body } = parseFrontmatter(readFileSync(file, "utf8"));
 
-  for (const k of ["slug", "name", "tagline", "year", "logo_emoji", "logo_bg"]) {
+  for (const k of ["slug", "name", "tagline", "year", "logo_bg"]) {
     if (!meta[k]) throw new Error(`필수 필드 누락: ${k}`);
   }
   if (!/^[a-z0-9][a-z0-9-]*$/.test(meta.slug)) {
@@ -149,9 +151,18 @@ async function push(file) {
   // sort_order 는 기존 값을 지킨다. 새 프로젝트면 맨 뒤로 보낸다.
   const { data: existing } = await sb
     .from("projects")
-    .select("sort_order")
+    .select("sort_order,visibility")
     .eq("slug", meta.slug)
     .maybeSingle();
+
+  // 어드민 에디터가 source of truth 다. 이미 발행된 프로젝트를 파일로 덮으면
+  // 어드민에서 고친 내용이 롤백된다. draft.mjs 와 같은 규칙으로 --force 를 요구한다.
+  if (existing?.visibility === "published" && !force) {
+    throw new Error(
+      `${meta.slug} 는 이미 발행된 프로젝트다. 어드민에서 고친 내용을 덮어쓸 수 있다.\n` +
+        `  그래도 덮으려면: npm run project -- push ${file} --force`,
+    );
+  }
   let sortOrder = existing?.sort_order;
   if (sortOrder === undefined || sortOrder === null) {
     const { data: last } = await sb
@@ -176,7 +187,6 @@ async function push(file) {
     name: meta.name,
     year: String(meta.year),
     tagline: meta.tagline,
-    logo_emoji: meta.logo_emoji,
     logo_bg: meta.logo_bg,
     logo_url: logoUrl,
     status: meta.status ?? "",
@@ -185,12 +195,16 @@ async function push(file) {
     host: meta.host || "none",
     body_md: bodyWithMedia,
     sort_order: sortOrder,
+    // 신규는 draft 로 들어간다 — 어드민에서 확인하고 발행한다.
+    // 기존 행은 키를 빼서 지금 노출 상태를 그대로 둔다.
+    ...(existing ? {} : { visibility: "draft" }),
   };
 
   const { error } = await sb.from("projects").upsert(row, { onConflict: "slug" });
   if (error) throw error;
   console.log(`✓ ${meta.slug} 적재 완료 (${bodyWithMedia.length}자)`);
-  console.log(`  확인: /lab/${meta.slug}`);
+  if (existing) console.log(`  확인: /lab/${meta.slug}`);
+  else console.log(`  draft 로 들어갔다. 어드민에서 확인 후 발행: /admin/projects`);
 }
 
 async function pull(slug, file) {
@@ -213,7 +227,9 @@ async function media(slug, path) {
   console.log(url);
 }
 
-const [cmd, ...rest] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const force = argv.includes("--force");
+const [cmd, ...rest] = argv.filter((a) => a !== "--force");
 try {
   if (cmd === "push") await push(rest[0]);
   else if (cmd === "pull") await pull(rest[0], rest[1]);

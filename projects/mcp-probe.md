@@ -3,7 +3,6 @@ slug: mcp-probe
 name: MCP Probe
 tagline: MCP 서버를 붙여보고 응답을 날것으로 보는 도구
 year: "2026"
-logo_emoji: 🔌
 logo_bg: "#1F6FEB"
 stack: [TypeScript, Cloudflare Workers, MCP SDK]
 url: https://mcp-probe.pages.dev
