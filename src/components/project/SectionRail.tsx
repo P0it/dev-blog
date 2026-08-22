@@ -32,7 +32,8 @@ export function SectionRail({ items }: { items: RailItem[] }) {
       {items.map((it, i) => (
         <a key={it.id} href={`#${it.id}`} className={it.id === active ? "on" : undefined}>
           <i />
-          {String(i + 1).padStart(2, "0")} {it.label}
+          <em>{String(i + 1).padStart(2, "0")}</em>
+          {it.label}
         </a>
       ))}
     </nav>

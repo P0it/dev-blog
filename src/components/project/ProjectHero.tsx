@@ -1,4 +1,6 @@
-import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ArrowUpRight, Calendar, Cloud, Layers } from "lucide-react";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import type { Project } from "@/lib/types";
 
 const HOST_LABEL: Record<Project["host"], string> = {
@@ -24,33 +26,49 @@ export function ProjectHero({ project: p }: { project: Project }) {
           <img src={p.heroPoster} alt="" />
         ) : (
           <div className="lab-hero-fallback" style={{ background: p.logoBg }}>
-            <span aria-hidden>{p.logoEmoji}</span>
+            <ProjectMark p={p} variant="hero" />
           </div>
         )}
-        <div className="lab-hero-scan" />
         <div className="lab-hero-veil" />
 
         {p.url && (
           <a className="lab-hero-go" href={p.url} target="_blank" rel="noreferrer">
             바로가기
-            <ArrowUpRight size={13} />
+            <ArrowUpRight size={16} />
           </a>
         )}
 
         <div className="lab-hero-hud">
           <div className="container-wide">
+            <Link href="/lab" className="lab-hero-back">
+              <ArrowLeft size={15} />
+              실험실
+            </Link>
             <h1 className="lab-hero-name">{p.name}</h1>
             {p.tagline && <p className="lab-hero-tagline">{p.tagline}</p>}
             <div className="lab-hero-meta">
               {p.status && (
-                <span className="lab-label">
-                  <span className="lab-led" />
+                <span className="lab-hero-chip">
+                  <span className="lab-led" style={{ margin: 0 }} />
                   {p.status}
                 </span>
               )}
-              <span className="lab-label">{p.year}</span>
-              {stack.length > 0 && <span className="lab-label">{stack.join(" · ")}</span>}
-              {showHost && <span className="lab-label">{hostLabel}</span>}
+              <span className="lab-hero-chip">
+                <Calendar size={14} />
+                {p.year}
+              </span>
+              {stack.length > 0 && (
+                <span className="lab-hero-chip">
+                  <Layers size={14} />
+                  {stack.join(" · ")}
+                </span>
+              )}
+              {showHost && (
+                <span className="lab-hero-chip">
+                  <Cloud size={14} />
+                  {hostLabel}
+                </span>
+              )}
             </div>
           </div>
         </div>

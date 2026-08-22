@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PlayCircle } from "lucide-react";
 
 export type Clip = {
   title: string;
@@ -67,10 +68,10 @@ export function Demos({ clips }: { clips: Clip[] }) {
             )}
           </div>
           <figcaption className="lab-demo-cap">
-            <span className="lab-label">
-              scene {String(i + 1).padStart(2, "0")}
-            </span>
-            <strong>{c.title}</strong>
+            <strong>
+              <PlayCircle size={18} />
+              {c.title}
+            </strong>
             {c.caption && <p>{c.caption}</p>}
           </figcaption>
         </figure>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 export type TrialCase = {
   title: string;
@@ -25,29 +26,30 @@ export function Trials({ cases }: { cases: TrialCase[] }) {
               aria-expanded={isOpen}
               onClick={() => setOpen(isOpen ? null : i)}
             >
-              <span className="lab-trial-title">{c.title}</span>
-              <span className="lab-label">
-                case {String(i + 1).padStart(2, "0")} {isOpen ? "▲" : "▼"}
+              <span className="lab-trial-title">
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                {c.title}
               </span>
+              <ChevronDown size={18} className="chev" />
             </button>
 
             {isOpen ? (
               <>
                 {c.symptom && (
                   <div className="lab-trial-row">
-                    <span className="lab-label">증상</span>
+                    <span className="tag">증상</span>
                     <span>{c.symptom}</span>
                   </div>
                 )}
                 {c.attempt && (
                   <div className="lab-trial-row">
-                    <span className="lab-label">시도</span>
+                    <span className="tag">시도</span>
                     <span>{c.attempt}</span>
                   </div>
                 )}
                 {c.result && (
                   <div className="lab-trial-row">
-                    <span className="lab-label">결론</span>
+                    <span className="tag">결론</span>
                     <span>{c.result}</span>
                   </div>
                 )}

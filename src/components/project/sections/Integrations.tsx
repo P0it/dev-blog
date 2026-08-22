@@ -1,3 +1,5 @@
+import { ExternalLink, Plug } from "lucide-react";
+
 export type Integration = {
   name: string;
   fields: { label: string; value: string }[];
@@ -10,6 +12,7 @@ function FieldValue({ value }: { value: string }) {
   return (
     <a className="lab-integ-link" href={value} target="_blank" rel="noreferrer">
       {value.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+      <ExternalLink size={13} />
     </a>
   );
 }
@@ -18,12 +21,15 @@ export function Integrations({ items }: { items: Integration[] }) {
   return (
     <div className="lab-integ lab-stagger">
       {items.map((it, i) => (
-        <div key={i} className="lab-panel lab-corner lab-integ-card">
-          <div className="lab-integ-name">{it.name}</div>
+        <div key={i} className="lab-panel lab-integ-card">
+          <div className="lab-integ-name">
+            <Plug size={17} className="icon" />
+            {it.name}
+          </div>
           <dl className="lab-integ-rows">
             {it.fields.map((f, j) => (
               <div key={j} className="lab-integ-row">
-                <dt className="lab-label">{f.label}</dt>
+                <dt>{f.label}</dt>
                 <dd>
                   <FieldValue value={f.value} />
                 </dd>

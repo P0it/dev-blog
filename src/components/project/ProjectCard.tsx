@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import type { Project } from "@/lib/types";
 
 // 카드 전체를 Link 로 감싸면 안쪽에 바로가기 링크를 넣을 수 없다(앵커 중첩).
@@ -10,12 +11,8 @@ export function ProjectCard({ p }: { p: Project }) {
     <article className="lab-panel lab-card lab-reveal">
       <Link href={`/lab/${p.slug}`} className="lab-card-hit">
         <div className="lab-card-tile" style={{ background: p.logoBg }}>
-          {p.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.logoUrl} alt="" />
-          ) : (
-            <span aria-hidden>{p.logoEmoji}</span>
-          )}
+          <ProjectMark p={p} variant="card" />
+          {p.status && <span className="lab-card-status">{p.status}</span>}
         </div>
         <div className="lab-card-body">
           <h3 className="lab-card-name">{p.name}</h3>
@@ -25,8 +22,8 @@ export function ProjectCard({ p }: { p: Project }) {
 
       {p.url && (
         <a className="lab-card-go" href={p.url} target="_blank" rel="noreferrer">
-          <span className="lab-label">바로가기</span>
-          <ArrowUpRight size={13} />
+          <span>바로가기</span>
+          <ArrowUpRight size={16} />
         </a>
       )}
     </article>

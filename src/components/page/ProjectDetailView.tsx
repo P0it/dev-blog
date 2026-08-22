@@ -13,6 +13,30 @@ import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
 import { parseProjectBody, sectionAnchor, type Section } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
+import {
+  BookOpen,
+  ListChecks,
+  Layers,
+  Plug,
+  PlayCircle,
+  Network,
+  Wrench,
+  Flag,
+  FileText,
+} from "lucide-react";
+
+// 섹션 종류마다 고정 아이콘. 이모지를 쓰지 않고 아이콘으로만 구분한다.
+const SECTION_ICON: Record<Section["kind"], typeof BookOpen> = {
+  intro: BookOpen,
+  requirements: ListChecks,
+  tech: Layers,
+  integrations: Plug,
+  demo: PlayCircle,
+  architecture: Network,
+  trials: Wrench,
+  remaining: Flag,
+  raw: FileText,
+};
 
 function renderSection(s: Section) {
   switch (s.kind) {
@@ -41,6 +65,11 @@ function renderSection(s: Section) {
   }
 }
 
+function sectionIcon(kind: Section["kind"]) {
+  const Icon = SECTION_ICON[kind];
+  return <Icon size={17} />;
+}
+
 export function ProjectDetailView({ project }: { project: Project }) {
   const sections = parseProjectBody(project.body);
   const rail = sections.map((s, i) => ({ id: sectionAnchor(i, s.title), label: s.title }));
@@ -58,10 +87,10 @@ export function ProjectDetailView({ project }: { project: Project }) {
               {sections.map((s, i) => (
                 <section key={sectionAnchor(i, s.title)} id={sectionAnchor(i, s.title)}>
                   <div className="lab-section-head">
-                    <span className="lab-label">
-                      {String(i + 1).padStart(2, "0")} · {s.title}
-                    </span>
+                    <span className="icon">{sectionIcon(s.kind)}</span>
+                    <h2>{s.title}</h2>
                     <hr />
+                    <span className="lab-label">{String(i + 1).padStart(2, "0")}</span>
                   </div>
                   {renderSection(s)}
                 </section>

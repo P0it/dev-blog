@@ -57,7 +57,10 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
       <div className="lab-arch-steps">
         {steps.map((s, i) => (
           <div key={i} className="lab-arch-step on">
-            <b>{s.label}</b>
+            <b>
+              <em>{String(i + 1).padStart(2, "0")}</em>
+              {s.label}
+            </b>
             {s.md}
           </div>
         ))}
@@ -79,7 +82,10 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
             }}
             className={`lab-arch-step${i === active ? " on" : ""}`}
           >
-            <b>{s.label}</b>
+            <b>
+              <em>{String(i + 1).padStart(2, "0")}</em>
+              {s.label}
+            </b>
             {s.md}
           </div>
         ))}
