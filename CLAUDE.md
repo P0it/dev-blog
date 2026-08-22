@@ -33,3 +33,19 @@
 
 URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 → 인사이트 글 경로다.
 이 세션이 웹 리서치로 근거를 모아 의견 글을 쓴다. 규약은 `INSIGHT.md`, 커맨드는 `/insight`.
+
+## 실험실 프로젝트 적재
+
+`/lab` 의 프로젝트는 다른 레포에서 만든 원고를 받아 적재한다.
+
+1. 그 프로젝트 레포에서 `/portfolio` 실행 → 루트에 `portfolio.md` 생성
+2. 이 레포 `projects/<slug>.md` 로 옮긴다
+3. `npm run project -- push projects/<slug>.md`
+4. 공개 URL 이 있으면 `npm run capture:project <slug>`
+
+`/portfolio` 스킬 원본은 이 레포 `skills/portfolio/SKILL.md` 다.
+`npm run setup:skills` 가 `~/.claude/skills/portfolio` 로 링크를 건다.
+규약을 고칠 때는 반드시 이 레포의 원본을 고친다.
+
+상세 화면 규약은 `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md`.
+`##` 제목이 곧 렌더러 선택이라, 제목을 바꾸면 그 섹션은 일반 마크다운으로 떨어진다.

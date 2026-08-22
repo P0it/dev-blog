@@ -1,18 +1,11 @@
-// 포트폴리오 규약 .md → Supabase projects 적재.
+// 실험실 프로젝트 원고를 Supabase projects 에 적재한다.
 //
-// 다른 레포에서 /portfolio 로 뽑은 portfolio.md 를 이 레포 projects/<slug>.md 로
-// 가져와 실험실(/lab)에 올린다. draft.mjs 와 같은 구조이고 대상 테이블만 projects 다.
+// 다른 레포의 Claude 세션이 /portfolio 스킬로 만든 portfolio.md 를
+// 이 레포 projects/<slug>.md 로 옮긴 뒤 push 한다.
 //
 // 사용법:
-//   npm run project -- push <file.md>      프런트매터+본문을 projects 에 upsert
-//   npm run project -- pull <slug> [file]  기존 프로젝트를 .md 로 내려받기
-//
-// 프런트매터 (docs/superpowers/specs/2026-08-22-lab-portfolio-design.md 1절):
-//   slug, name, tagline, year, logo_emoji, logo_bg, stack, url, host, status, capture
-//
-// 주의 — 마이그레이션 0013 전이라 tagline/logo_emoji/logo_bg/status 를 담을 컬럼이
-// 아직 없다. tagline 은 기존 description 컬럼으로 넣고, 나머지는 경고만 찍고 버린다.
-// 0013 적용 후 이 매핑을 걷어낸다. capture 는 DB 컬럼이 아니라 항상 무시한다.
+//   npm run project -- push projects/<slug>.md
+//   npm run project -- pull <slug> [projects/<slug>.md]
 //
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (.env.local)
 
@@ -28,113 +21,117 @@ if (!url || !key) {
 }
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
-// 0013 적용 전까지 담을 곳이 없는 필드. 조용히 버리면 나중에 왜 안 뜨는지 헤맨다.
-const PENDING_COLUMNS = ["logo_emoji", "logo_bg", "logo_url", "status", "hero_media", "hero_poster", "shots"];
+const HOSTS = ["vercel", "cloudflare", "local", "none"];
 
-function unquote(s) {
-  const t = String(s ?? "").trim();
-  if (t.length > 1 && ((t[0] === '"' && t.at(-1) === '"') || (t[0] === "'" && t.at(-1) === "'"))) {
-    return t.slice(1, -1);
+// 아주 좁은 YAML 만 읽는다 — 문자열, [a, b] 배열, 주석. draft.mjs 와 같은 수준.
+function parseFrontmatter(raw) {
+  const m = /^---\n([\s\S]*?)\n---\n?/.exec(raw);
+  if (!m) throw new Error("프런트매터가 없다 (--- 로 시작해야 한다)");
+  const meta = {};
+  for (const line of m[1].split("\n")) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    const i = line.indexOf(":");
+    if (i < 0) continue;
+    const k = line.slice(0, i).trim();
+    let v = line.slice(i + 1).trim();
+    v = v.replace(/\s+#.*$/, "").trim(); // 줄 끝 주석
+    if (/^\[.*\]$/.test(v)) {
+      meta[k] = v
+        .slice(1, -1)
+        .split(",")
+        .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+        .filter(Boolean);
+    } else {
+      meta[k] = v.replace(/^["']|["']$/g, "");
+    }
   }
-  return t;
+  return { meta, body: raw.slice(m[0].length).trim() };
 }
 
-function parseList(raw) {
-  if (!raw) return [];
-  let s = String(raw).trim();
-  if (s.startsWith("[") && s.endsWith("]")) s = s.slice(1, -1);
-  return s.split(",").map((x) => unquote(x)).filter(Boolean);
-}
-
-// 맨 위 ---...--- 블록만 프런트매터로 본다. 본문의 --- 나 ``` 펜스는 건드리지 않는다.
-function parseFrontmatter(text) {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
-  if (lines[0]?.trim() !== "---") return { data: {}, body: text.replace(/\r\n/g, "\n") };
-  let endIdx = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === "---") { endIdx = i; break; }
-  }
-  if (endIdx < 0) throw new Error("프런트매터를 닫는 --- 줄이 없습니다");
-  const data = {};
-  for (const line of lines.slice(1, endIdx)) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const idx = t.indexOf(":");
-    if (idx < 0) continue;
-    // 값 뒤 주석(# ...)은 버린다. 규약 예시가 주석을 달고 있다.
-    data[t.slice(0, idx).trim()] = t.slice(idx + 1).replace(/\s+#.*$/, "").trim();
-  }
-  return { data, body: lines.slice(endIdx + 1).join("\n").replace(/^\n+/, "") };
+function toFrontmatter(row) {
+  const lines = [
+    `slug: ${row.slug}`,
+    `name: ${row.name}`,
+    `tagline: ${row.tagline ?? ""}`,
+    `year: "${row.year}"`,
+    `logo_emoji: ${row.logo_emoji ?? ""}`,
+    `logo_bg: "${row.logo_bg ?? ""}"`,
+    `stack: [${(row.stack ?? []).join(", ")}]`,
+    `url: ${row.url ?? ""}`,
+    `host: ${row.host ?? "none"}`,
+    `status: ${row.status ?? ""}`,
+    `capture: true`,
+  ];
+  return `---\n${lines.join("\n")}\n---\n\n${row.body_md ?? ""}\n`;
 }
 
 async function push(file) {
-  if (!file) throw new Error("사용법: npm run project -- push <file.md>");
-  const { data: fm, body } = parseFrontmatter(readFileSync(file, "utf8"));
+  if (!file) throw new Error("파일 경로가 없다");
+  const { meta, body } = parseFrontmatter(readFileSync(file, "utf8"));
 
-  const slug = unquote(fm.slug);
-  if (!slug) throw new Error("프런트매터에 slug 가 필요합니다");
-  // 비ASCII 슬러그 금지 — 포스트와 같은 정적 prerender 404 이슈를 피한다.
-  if (!/^[a-z0-9-]+$/.test(slug)) throw new Error(`slug '${slug}' 는 소문자/숫자/하이픈만 허용합니다`);
-
-  const name = unquote(fm.name);
-  if (!name) throw new Error("프런트매터에 name 이 필요합니다");
-  if (!body.trim()) throw new Error("본문이 비어 있습니다");
-
-  const projectUrl = unquote(fm.url);
-  if (projectUrl && !/^https?:\/\//.test(projectUrl)) {
-    throw new Error(`url 은 스킴을 포함한 절대 URL 이어야 합니다: '${projectUrl}'`);
+  for (const k of ["slug", "name", "tagline", "year", "logo_emoji", "logo_bg"]) {
+    if (!meta[k]) throw new Error(`필수 필드 누락: ${k}`);
+  }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(meta.slug)) {
+    throw new Error(`slug 는 ASCII 케밥이어야 한다: ${meta.slug}`);
+  }
+  if (meta.url && !/^https?:\/\//.test(meta.url)) {
+    throw new Error(`url 은 스킴을 포함한 절대 URL 이어야 한다: ${meta.url}`);
+  }
+  if (meta.host && !HOSTS.includes(meta.host)) {
+    throw new Error(`host 는 ${HOSTS.join(" | ")} 중 하나여야 한다: ${meta.host}`);
+  }
+  if (meta.tagline.length > 40) {
+    console.warn(`⚠ tagline 이 ${meta.tagline.length}자다. 카드에서 두 줄로 잘린다.`);
   }
 
-  const host = unquote(fm.host) || "none";
-  if (!["vercel", "cloudflare", "local", "none"].includes(host)) {
-    throw new Error(`host 는 vercel | cloudflare | local | none 중 하나여야 합니다: '${host}'`);
-  }
-
-  const dropped = PENDING_COLUMNS.filter((c) => fm[c] !== undefined);
-  if (dropped.length) {
-    console.warn(`⚠︎ 담을 컬럼이 없어 무시: ${dropped.join(", ")} (마이그레이션 0013 미적용)`);
+  // sort_order 는 기존 값을 지킨다. 새 프로젝트면 맨 뒤로 보낸다.
+  const { data: existing } = await sb
+    .from("projects")
+    .select("sort_order")
+    .eq("slug", meta.slug)
+    .maybeSingle();
+  let sortOrder = existing?.sort_order;
+  if (sortOrder === undefined || sortOrder === null) {
+    const { data: last } = await sb
+      .from("projects")
+      .select("sort_order")
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    sortOrder = (last?.sort_order ?? 0) + 1;
   }
 
   const row = {
-    slug,
-    name,
-    year: unquote(fm.year),
-    description: unquote(fm.tagline), // 0013 전 임시 매핑
-    stack: parseList(fm.stack),
-    url: projectUrl,
-    host,
+    slug: meta.slug,
+    name: meta.name,
+    year: String(meta.year),
+    tagline: meta.tagline,
+    logo_emoji: meta.logo_emoji,
+    logo_bg: meta.logo_bg,
+    status: meta.status ?? "",
+    stack: Array.isArray(meta.stack) ? meta.stack : [],
+    url: meta.url || null,
+    host: meta.host || "none",
     body_md: body,
+    sort_order: sortOrder,
   };
 
-  const { data: existing } = await sb.from("projects").select("slug").eq("slug", slug).maybeSingle();
   const { error } = await sb.from("projects").upsert(row, { onConflict: "slug" });
   if (error) throw error;
-  console.log(`${existing ? "갱신" : "신규"}: ${slug} — ${name} (본문 ${body.length}자)`);
-  console.log(`확인: /lab/${slug}`);
+  console.log(`✓ ${meta.slug} 적재 완료 (${body.length}자)`);
+  console.log(`  확인: /lab/${meta.slug}`);
 }
 
 async function pull(slug, file) {
-  if (!slug) throw new Error("사용법: npm run project -- pull <slug> [file.md]");
+  if (!slug) throw new Error("slug 가 없다");
   const { data, error } = await sb.from("projects").select("*").eq("slug", slug).maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error(`프로젝트를 찾을 수 없습니다: ${slug}`);
-
-  const out = file || `projects/${slug}.md`;
-  const fmLines = [
-    "---",
-    `slug: ${data.slug}`,
-    `name: ${data.name}`,
-    `tagline: ${data.description ?? ""}`,
-    `year: "${data.year ?? ""}"`,
-    `stack: [${(data.stack ?? []).join(", ")}]`,
-    `url: ${data.url ?? ""}`,
-    `host: ${data.host ?? "none"}`,
-    "---",
-    "",
-  ];
+  if (!data) throw new Error(`없는 slug: ${slug}`);
+  const out = file ?? `projects/${slug}.md`;
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, fmLines.join("\n") + (data.body_md ?? ""), "utf8");
-  console.log(`내려받음: ${out}`);
+  writeFileSync(out, toFrontmatter(data), "utf8");
+  console.log(`✓ ${out} 로 내려받음`);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -142,10 +139,10 @@ try {
   if (cmd === "push") await push(rest[0]);
   else if (cmd === "pull") await pull(rest[0], rest[1]);
   else {
-    console.error("사용법:\n  npm run project -- push <file.md>\n  npm run project -- pull <slug> [file.md]");
+    console.error("사용법: npm run project -- push <file.md> | pull <slug> [file]");
     process.exit(1);
   }
 } catch (e) {
-  console.error(`실패: ${e.message}`);
+  console.error(`✗ ${e.message}`);
   process.exit(1);
 }
