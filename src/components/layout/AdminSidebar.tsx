@@ -5,11 +5,13 @@ import {
   FolderTree,
   Hash,
   Layers,
+  FlaskConical,
   BarChart3,
   Settings,
 } from "lucide-react";
 
-type Active = "dashboard" | "posts" | "categories" | "tags" | "series" | "stats" | "settings";
+type Active =
+  | "dashboard" | "posts" | "projects" | "categories" | "tags" | "series" | "stats" | "settings";
 
 export function AdminSidebar({ active = "posts" }: { active?: Active }) {
   const cls = (k: Active) => (active === k ? "active" : "");
@@ -19,6 +21,10 @@ export function AdminSidebar({ active = "posts" }: { active?: Active }) {
       <Link href="/admin/posts" className={cls("posts")}>
         <FileText size={16} />
         글
+      </Link>
+      <Link href="/admin/projects" className={cls("projects")}>
+        <FlaskConical size={16} />
+        실험실
       </Link>
       <Link href="/admin/categories" className={cls("categories")}>
         <FolderTree size={16} />

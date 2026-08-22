@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseProjectBody, sectionAnchor } from "./project-sections.ts";
+import { buildProjectSections, parseProjectBody, sectionAnchor } from "./project-sections.ts";
 
 const FENCE = "```";
 
@@ -69,12 +69,11 @@ test("요구사항 체크박스를 파싱한다", () => {
   ]);
 });
 
-test("기술 선정 표에서 구분선을 걷어낸다", () => {
+test("옛 3열 표에서는 '고른 것' 열을 이름으로 쓴다", () => {
   const s = parseProjectBody(FULL)[2];
   assert.equal(s.kind, "tech");
   if (s.kind !== "tech") return;
-  assert.deepEqual(s.head, ["후보", "고른 것", "이유"]);
-  assert.deepEqual(s.rows, [["Vercel / CF Workers", "CF Workers", "프록시가 필요했다"]]);
+  assert.deepEqual(s.items, ["CF Workers"]);
 });
 
 test("구조에서 mermaid 와 단계를 갈라낸다", () => {
@@ -105,9 +104,18 @@ test("모르는 제목은 raw 로 떨어진다", () => {
   assert.equal(secs[0].title, "회고");
 });
 
-test("표가 없는 기술 선정도 던지지 않고 raw 가 된다", () => {
-  const secs = parseProjectBody("## 기술 선정\n\n그냥 문단이다.\n");
-  assert.equal(secs[0].kind, "raw");
+test("기술 스택은 불릿 목록도 받는다", () => {
+  const secs = parseProjectBody("## 기술 스택\n\n- Next.js\n- **Supabase**\n- Vercel\n");
+  assert.equal(secs[0].kind, "tech");
+  if (secs[0].kind !== "tech") return;
+  assert.deepEqual(secs[0].items, ["Next.js", "Supabase", "Vercel"]);
+});
+
+test("한 줄 쉼표 나열도 이름으로 쪼갠다", () => {
+  const secs = parseProjectBody("## 기술 스택\n\nNext.js, React, TypeScript\n");
+  assert.equal(secs[0].kind, "tech");
+  if (secs[0].kind !== "tech") return;
+  assert.deepEqual(secs[0].items, ["Next.js", "React", "TypeScript"]);
 });
 
 test("mermaid 가 없는 구조도 살아남는다", () => {
@@ -187,14 +195,41 @@ test("필드가 하나도 없는 데이터와 API 는 raw 로 떨어진다", () 
   assert.equal(secs[0].kind, "raw");
 });
 
-test("기술 선정은 2열 표도 받는다", () => {
+test("2열 표는 첫 열만 이름으로 남긴다", () => {
   const secs = parseProjectBody(
     "## 기술 선정\n\n| 기술 | 고른 이유 |\n| --- | --- |\n| Next.js | 어드민이 동적이라 |\n",
   );
   assert.equal(secs[0].kind, "tech");
   if (secs[0].kind !== "tech") return;
-  assert.deepEqual(secs[0].head, ["기술", "고른 이유"]);
-  assert.deepEqual(secs[0].rows, [["Next.js", "어드민이 동적이라"]]);
+  assert.deepEqual(secs[0].items, ["Next.js"]);
+});
+
+test("본문에 기술 섹션이 없으면 프런트매터 stack 으로 끼운다", () => {
+  const secs = buildProjectSections("## 제품 소개\n\n소개다.\n\n## 남은 것\n\n- 더 할 것\n", [
+    "Next.js",
+    "Supabase",
+  ]);
+  assert.deepEqual(secs.map((s) => s.kind), ["intro", "tech", "remaining"]);
+  const tech = secs[1];
+  if (tech.kind !== "tech") return;
+  assert.equal(tech.title, "기술 스택");
+  assert.deepEqual(tech.items, ["Next.js", "Supabase"]);
+});
+
+test("요구사항이 있으면 그 다음 자리에 끼운다", () => {
+  const secs = buildProjectSections(
+    "## 제품 소개\n\n소개다.\n\n## 요구사항\n\n- [x] 된다\n\n## 구조\n\n### 한 단계\n\n설명.\n",
+    ["React"],
+  );
+  assert.deepEqual(secs.map((s) => s.kind), ["intro", "requirements", "tech", "architecture"]);
+});
+
+test("본문에 기술 섹션이 있으면 stack 을 덧붙이지 않는다", () => {
+  const secs = buildProjectSections("## 기술 스택\n\n- Astro\n", ["React"]);
+  assert.equal(secs.filter((s) => s.kind === "tech").length, 1);
+  const tech = secs[0];
+  if (tech.kind !== "tech") return;
+  assert.deepEqual(tech.items, ["Astro"]);
 });
 
 test("시연 섹션을 클립으로 쪼갠다", () => {
@@ -213,4 +248,63 @@ test("시연 섹션을 클립으로 쪼갠다", () => {
 test("소스가 하나도 없는 시연은 raw 로 떨어진다", () => {
   const secs = parseProjectBody("## 시연\n\n### 장면\n\n**설명** 설명만\n");
   assert.equal(secs[0].kind, "raw");
+});
+
+test("기획 섹션을 라벨 필드로 쪼갠다", () => {
+  const secs = parseProjectBody(
+    "## 기획\n\n**문제** 맥북 앞에 없을 때 글감을 놓친다\n**사용자** 혼자 블로그를 굴리는 개발자\n**넣지 않은 것** 댓글·구독\n",
+  );
+  assert.equal(secs[0].kind, "plan");
+  if (secs[0].kind !== "plan") return;
+  assert.deepEqual(
+    secs[0].fields.map((f) => f.label),
+    ["문제", "사용자", "넣지 않은 것"],
+  );
+  assert.equal(secs[0].fields[0].value, "맥북 앞에 없을 때 글감을 놓친다");
+});
+
+test("라벨이 없는 기획은 raw 로 떨어진다", () => {
+  const secs = parseProjectBody("## 기획\n\n그냥 문단이다.\n");
+  assert.equal(secs[0].kind, "raw");
+});
+
+test("유저 플로우는 mermaid 를 떼어낸다", () => {
+  const secs = parseProjectBody(
+    `## 유저 플로우\n\n${FENCE}mermaid\nflowchart LR\n  A --> B\n${FENCE}\n\n### 첫 걸음\n\n폰에서 URL 을 붙인다.\n`,
+  );
+  assert.equal(secs[0].kind, "userflow");
+  if (secs[0].kind !== "userflow") return;
+  assert.equal(secs[0].diagram, "flowchart LR\n  A --> B");
+  assert.deepEqual(secs[0].steps.map((s) => s.label), ["첫 걸음"]);
+});
+
+test("'유저 플로' 표기도 같은 섹션으로 받는다", () => {
+  const secs = parseProjectBody(`## 유저 플로\n\n${FENCE}mermaid\nflowchart LR\n  A --> B\n${FENCE}\n`);
+  assert.equal(secs[0].kind, "userflow");
+});
+
+test("개발 과정은 단계와 '붙인 것' 을 갈라낸다", () => {
+  const secs = parseProjectBody(
+    "## 개발 과정\n\n### 1. 폰으로 초안을 요청하고 싶었다\n\n서버 상태가 필요했다.\n\n**붙인 것** Supabase, Vercel\n\n### 2. 워커를 붙였다\n\n큐를 돌렸다.\n",
+  );
+  assert.equal(secs[0].kind, "journey");
+  if (secs[0].kind !== "journey") return;
+  assert.equal(secs[0].steps.length, 2);
+  assert.deepEqual(secs[0].steps[0].added, ["Supabase", "Vercel"]);
+  assert.equal(secs[0].steps[0].md, "서버 상태가 필요했다.");
+  assert.deepEqual(secs[0].steps[1].added, []);
+});
+
+test("'붙인 것' 이 없는 단계도 서술은 온전히 남는다", () => {
+  const secs = parseProjectBody("## 개발 과정\n\n### 시작\n\n첫 줄.\n\n둘째 줄.\n");
+  assert.equal(secs[0].kind, "journey");
+  if (secs[0].kind !== "journey") return;
+  assert.equal(secs[0].steps[0].md, "첫 줄.\n\n둘째 줄.");
+});
+
+test("개발 과정 제목의 앞머리 번호는 뗀다", () => {
+  const secs = parseProjectBody("## 개발 과정\n\n### 1. 시작했어요\n\n내용.\n\n### 2) 다음\n\n내용.\n");
+  assert.equal(secs[0].kind, "journey");
+  if (secs[0].kind !== "journey") return;
+  assert.deepEqual(secs[0].steps.map((s) => s.label), ["시작했어요", "다음"]);
 });

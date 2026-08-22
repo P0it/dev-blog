@@ -68,6 +68,7 @@ type ProjectRow = {
   hero_poster: string | null;
   shots: string[] | null;
   sort_order: number;
+  visibility: string | null;
 };
 
 const PROJECT_HOSTS = ["vercel", "cloudflare", "local", "none"] as const;
@@ -83,6 +84,7 @@ function rowToProject(r: ProjectRow): Project {
     logoBg: r.logo_bg || "#1B1C1E",
     logoUrl: r.logo_url || null,
     status: r.status ?? "",
+    visibility: r.visibility === "published" ? "published" : "draft",
     body: r.body_md ?? "",
     stack: r.stack ?? [],
     url: r.url || null,
@@ -533,23 +535,33 @@ export async function getSeriesPosts(seriesSlug: string): Promise<Post[]> {
   }
 }
 
+// 0014_project_visibility 적용 전에는 visibility 컬럼이 없다. 그때는 필터를 뺀
+// 질의로 한 번 더 시도해 사이트가 계속 뜨게 한다. 마이그레이션 후에는 첫 질의가
+// 통과하므로 이 경로를 타지 않는다.
+function isMissingColumn(error: { code?: string } | null): boolean {
+  return error?.code === "42703";
+}
+
 export async function getProjects(): Promise<Project[]> {
   const sb = supabaseServer();
-  const { data, error } = await sb
-    .from("projects")
-    .select("*")
-    .order("sort_order");
+  const q = () => sb.from("projects").select("*").order("sort_order");
+  let { data, error } = await q().eq("visibility", "published");
+  if (error && isMissingColumn(error)) ({ data, error } = await q());
   if (error) throw error;
   return (data as ProjectRow[]).map(rowToProject);
 }
 
-export async function getProjectBySlug(slug: string): Promise<Project | null> {
+// 어드민 미리보기는 draft 도 열어야 하므로 includeDrafts 로 필터를 푼다.
+export async function getProjectBySlug(
+  slug: string,
+  includeDrafts = false,
+): Promise<Project | null> {
   const sb = supabaseServer();
-  const { data, error } = await sb
-    .from("projects")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
+  const q = () => sb.from("projects").select("*").eq("slug", slug);
+  let { data, error } = includeDrafts
+    ? await q().maybeSingle()
+    : await q().eq("visibility", "published").maybeSingle();
+  if (error && isMissingColumn(error)) ({ data, error } = await q().maybeSingle());
   // 마이그레이션 전 slug 컬럼 부재 시 404 처리 (사이트는 계속 동작).
   if (error) return null;
   if (!data) return null;
@@ -558,12 +570,26 @@ export async function getProjectBySlug(slug: string): Promise<Project | null> {
 
 export async function getAllProjectSlugs(): Promise<string[]> {
   const sb = supabaseServer();
-  const { data, error } = await sb.from("projects").select("slug");
+  const q = () => sb.from("projects").select("slug");
+  let { data, error } = await q().eq("visibility", "published");
+  if (error && isMissingColumn(error)) ({ data, error } = await q());
   // 0005_project_detail 마이그레이션 적용 전에는 slug 컬럼이 없다.
   // 그 경우 빈 목록을 반환해 사이트 전체 빌드는 통과시키고,
   // /lab/[slug]는 마이그레이션 후 동작한다.
   if (error) return [];
   return (data as { slug: string }[]).map((r) => r.slug);
+}
+
+// 어드민 목록 — draft 를 위로 올리고, 그 안에서 sort_order 순.
+export async function getAllProjectsForAdmin(): Promise<Project[]> {
+  const sb = supabaseServer();
+  const { data, error } = await sb.from("projects").select("*").order("sort_order");
+  if (error) throw error;
+  const all = (data as ProjectRow[]).map(rowToProject);
+  return [
+    ...all.filter((p) => p.visibility !== "published"),
+    ...all.filter((p) => p.visibility === "published"),
+  ];
 }
 
 // 어드민 대시보드용 집계

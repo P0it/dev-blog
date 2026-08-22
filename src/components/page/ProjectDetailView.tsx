@@ -6,12 +6,15 @@ import { MarkdownView } from "@/components/post/MarkdownView";
 import { Intro } from "@/components/project/sections/Intro";
 import { Requirements } from "@/components/project/sections/Requirements";
 import { TechChoices } from "@/components/project/sections/TechChoices";
+import { Plan } from "@/components/project/sections/Plan";
+import { UserFlow } from "@/components/project/sections/UserFlow";
+import { Journey } from "@/components/project/sections/Journey";
 import { Integrations } from "@/components/project/sections/Integrations";
 import { Demos } from "@/components/project/sections/Demos";
 import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
-import { parseProjectBody, sectionAnchor, type Section } from "@/lib/project-sections";
+import { buildProjectSections, sectionAnchor, type Section } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
 import {
   BookOpen,
@@ -23,13 +26,19 @@ import {
   Wrench,
   Flag,
   FileText,
+  Route,
+  Compass,
+  Target,
 } from "lucide-react";
 
 // 섹션 종류마다 고정 아이콘. 이모지를 쓰지 않고 아이콘으로만 구분한다.
 const SECTION_ICON: Record<Section["kind"], typeof BookOpen> = {
   intro: BookOpen,
+  plan: Target,
+  userflow: Compass,
   requirements: ListChecks,
   tech: Layers,
+  journey: Route,
   integrations: Plug,
   demo: PlayCircle,
   architecture: Network,
@@ -45,7 +54,13 @@ function renderSection(s: Section) {
     case "requirements":
       return <Requirements items={s.items} />;
     case "tech":
-      return <TechChoices head={s.head} rows={s.rows} />;
+      return <TechChoices items={s.items} />;
+    case "plan":
+      return <Plan fields={s.fields} />;
+    case "userflow":
+      return <UserFlow diagram={s.diagram} steps={s.steps} />;
+    case "journey":
+      return <Journey steps={s.steps} />;
     case "integrations":
       return <Integrations items={s.items} />;
     case "demo":
@@ -71,7 +86,7 @@ function sectionIcon(kind: Section["kind"]) {
 }
 
 export function ProjectDetailView({ project }: { project: Project }) {
-  const sections = parseProjectBody(project.body);
+  const sections = buildProjectSections(project.body, project.stack);
   const rail = sections.map((s, i) => ({ id: sectionAnchor(i, s.title), label: s.title }));
 
   return (

@@ -6,8 +6,11 @@
 
 export type Section =
   | { kind: "intro"; title: string; md: string }
+  | { kind: "plan"; title: string; fields: { label: string; value: string }[] }
+  | { kind: "userflow"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
-  | { kind: "tech"; title: string; head: string[]; rows: string[][] }
+  | { kind: "tech"; title: string; items: string[] }
+  | { kind: "journey"; title: string; steps: { label: string; md: string; added: string[] }[] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
   | { kind: "demo"; title: string; clips: { title: string; src: string; poster: string | null; caption: string }[] }
@@ -18,8 +21,13 @@ export type Section =
 // 규약이 정한 제목 → 렌더러 종류. 여기 없는 제목은 raw 로 간다.
 const KNOWN: Record<string, Section["kind"]> = {
   "제품 소개": "intro",
+  "기획": "plan",
+  "유저 플로우": "userflow",
+  "유저 플로": "userflow",
   "요구사항": "requirements",
   "기술 선정": "tech",
+  "기술 스택": "tech",
+  "개발 과정": "journey",
   "데이터와 API": "integrations",
   "시연": "demo",
   "구조": "architecture",
@@ -129,6 +137,75 @@ function parseTable(body: string): { head: string[]; rows: string[][] } | null {
   return { head, rows };
 }
 
+// 기술 이름만 뽑는다. 표(옛 규약, 첫 열이 기술 이름)·불릿·쉼표 나열을 모두 받는다.
+// 고른 이유는 더 이상 화면에 쓰지 않지만, 옛 원고가 표로 남아 있어도 이름은 살린다.
+function parseTechNames(body: string): string[] {
+  const table = parseTable(body);
+  if (table) {
+    // 옛 규약은 `후보 | 고른 것 | 이유` 3열이었다. 그 경우 이름은 둘째 열에 있다.
+    const picked = table.head.findIndex((h) => /고른\s*것|선택/.test(h));
+    const col = picked >= 0 ? picked : 0;
+    return dedupe(table.rows.map((r) => stripMd(r[col] ?? "")).filter(Boolean));
+  }
+
+  const out: string[] = [];
+  for (const { line, inFence } of walk(body)) {
+    if (inFence) continue;
+    const text = line.trim();
+    if (!text) continue;
+    // `- Next.js` / `* Next.js` / `1. Next.js` / `Next.js, React`
+    const item = /^(?:[-*+]|\d+[.)])\s+(.*)$/.exec(text);
+    const raw = item ? item[1] : text;
+    for (const part of raw.split(/[,·・]/)) {
+      const name = stripMd(part);
+      // 이유를 덧붙인 줄이 섞여 있으면 앞쪽 이름만 취한다.
+      const head = name.split(/\s+[—–-]\s+/)[0].trim();
+      if (head) out.push(head);
+    }
+  }
+  return dedupe(out);
+}
+
+// 굵게·코드·링크 표기를 벗겨 이름만 남긴다.
+function stripMd(s: string): string {
+  return s
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .trim();
+}
+
+function dedupe(names: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const n of names) {
+    const k = n.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(n);
+  }
+  return out;
+}
+
+// 개발 과정의 한 단계. 서술은 그대로 두고, `**붙인 것**` 줄만 떼어 칩으로 돌린다.
+function parseJourneyStep(label: string, md: string) {
+  // `### 1. 제목` 의 앞머리 번호는 뗀다. 화면이 이미 순번을 그린다.
+  const title = label.replace(/^\s*\d+\s*[.)]\s*/, "").trim() || label;
+  const added: string[] = [];
+  const kept: string[] = [];
+  for (const { line, inFence } of walk(md)) {
+    const m = !inFence ? /^\s*(?:\*\*붙인\s*것\*\*|붙인\s*것)\s*[:：]?\s*(.*)$/.exec(line) : null;
+    if (m) {
+      for (const part of m[1].split(/[,·・]/)) {
+        const name = stripMd(part);
+        if (name) added.push(name);
+      }
+      continue;
+    }
+    kept.push(line);
+  }
+  return { label: title, md: kept.join("\n").trim(), added: dedupe(added) };
+}
+
 function extractMermaid(body: string): { diagram: string | null; rest: string } {
   const m = /```mermaid\s*\n([\s\S]*?)```/.exec(body);
   if (!m) return { diagram: null, rest: body };
@@ -203,8 +280,18 @@ export function parseProjectBody(md: string): Section[] {
       const items = parseChecklist(body);
       out.push(items.length ? { kind, title, items } : raw);
     } else if (kind === "tech") {
-      const t = parseTable(body);
-      out.push(t ? { kind, title, head: t.head, rows: t.rows } : raw);
+      const items = parseTechNames(body);
+      out.push(items.length ? { kind, title, items } : raw);
+    } else if (kind === "plan") {
+      const fields = parseFields(body);
+      out.push(fields.length ? { kind, title, fields } : raw);
+    } else if (kind === "userflow") {
+      const { diagram, rest } = extractMermaid(body);
+      const steps = splitSubs(rest);
+      out.push(diagram || steps.length ? { kind, title, diagram, steps } : raw);
+    } else if (kind === "journey") {
+      const steps = splitSubs(body).map((sub) => parseJourneyStep(sub.label, sub.md));
+      out.push(steps.length ? { kind, title, steps } : raw);
     } else if (kind === "architecture") {
       const { diagram, rest } = extractMermaid(body);
       const steps = splitSubs(rest);
@@ -238,4 +325,20 @@ export function parseProjectBody(md: string): Section[] {
   }
 
   return out;
+}
+
+// 화면에 그릴 최종 섹션 목록.
+//
+// 기술 스택은 프런트매터 `stack` 이 소스다. 본문에 `## 기술 스택` 을 따로 쓰지 않아도
+// 여기서 섹션 하나를 만들어 끼운다. 옛 원고처럼 본문에 표가 남아 있으면 그쪽을 쓴다.
+export function buildProjectSections(body: string, stack: string[]): Section[] {
+  const sections = parseProjectBody(body);
+  const names = stack.map((s) => s.trim()).filter(Boolean);
+  if (!names.length || sections.some((s) => s.kind === "tech")) return sections;
+
+  const tech: Section = { kind: "tech", title: "기술 스택", items: names };
+  // 규약 순서상 요구사항 다음 자리다. 요구사항이 없으면 소개 다음.
+  const anchor = sections.findIndex((s) => s.kind === "requirements");
+  const at = anchor >= 0 ? anchor + 1 : sections.findIndex((s) => s.kind === "intro") + 1;
+  return [...sections.slice(0, at), tech, ...sections.slice(at)];
 }

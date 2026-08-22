@@ -71,18 +71,25 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 | 섹션 | 내용 | 형식 제약 |
 |---|---|---|
 | `## 제품 소개` | 뭐 하는 물건인지, 처음 보는 사람 기준 | 2~3 문단, 기능 나열 금지 |
+| `## 기획` | 누구의 어떤 문제를 어디까지 풀기로 했는지 | `**라벨** 값` 줄. 문제·사용자·넣지 않은 것을 되도록 |
+| `## 유저 플로우` | 사람이 움직이는 동선 | mermaid `flowchart LR` 1개 + 선택적 `### 단계` |
 | `## 요구사항` | 만들 때 하고 싶었던 것들 | `- [x]` / `- [ ]` 체크리스트, 항목당 한 줄 |
-| `## 기술 선정` | 실제로 쓴 기술과 고른 이유 | 2열 마크다운 표 (기술 / 이유) |
+| `## 개발 과정` | 생각이 흘러간 순서. 막힌 지점과 그때 붙인 것 | `### 단계` 단위 서술 + 선택적 `**붙인 것** 이름, 이름` |
 | `## 데이터와 API` | 붙인 외부 데이터·서비스 | `### 이름` 단위, `**라벨** 값` 줄 |
 | `## 시연` | 화면이 도는 짧은 영상 | `### 장면` 단위, `**파일** ./demo/x.mp4` 상대경로 |
 | `## 구조` | 데이터·요청 흐름 | mermaid 블록 1개 + `### 단계` 설명 문단들 |
 | `## 시행착오` | 삽질 케이스 | `### 케이스 제목` 단위, 각각 **증상 / 시도 / 결론** 세 문단 |
 | `## 남은 것` | 다음 작업, 알려진 한계 | 짧은 목록 |
 
+기술 스택은 본문에 쓰지 않는다. 프런트매터 `stack` 배열이 유일한 소스이고,
+상세 화면이 `## 기술 스택` 섹션을 스스로 끼워 넣는다. 옛 원고가 본문에 표를 갖고
+있으면 그쪽 이름을 쓴다(하위 호환).
+
 ### 스킬이 추가로 지시하는 것
 
-- **문체 규칙** — `POSTING.md` 의 원칙 요약. 짧은 호흡, 다체 중심, 첫 문장은 사실 직진,
-  번역투 금지. 다른 세션이 쓴 글이 그대로 올라오므로 이게 없으면 톤이 제각각으로 깨진다.
+- **문체 규칙** — 개발 일지·회고록 톤. 해요체를 기본으로 하고 합니다체를 섞는다.
+  "~했다" 로만 끝나는 문장을 잇지 않는다. 다른 세션이 쓴 글이 그대로 올라오므로
+  이게 없으면 톤이 제각각으로 깨진다. `**라벨** 값` 줄만 예외로 짧게 끊는다.
 - **시행착오 선별 기준** — 해결까지 두 번 이상 방향을 튼 것만. 오타 수정·단순 버그는 제외.
   근거는 커밋 로그, 이슈, 세션 메모리에서 찾는다.
 - **모르는 건 지어내지 않는다** — 채우지 못한 필드는 사용자에게 묻거나, 보고에 명시한다.
@@ -178,7 +185,10 @@ IntersectionObserver 를 쓰는 클라이언트 컴포넌트. 포스트의 우�
 |---|---|---|
 | 제품 소개 | 큰 본문 활자, 넉넉한 여백 | 진입 시 페이드업 |
 | 요구사항 | `- [x]` 파싱 → 체크 카드 2열 그리드 | 카드 스태거 페이드인, 체크 표시가 그려지듯 |
-| 기술 선정 | 마크다운 표 → 전용 표. 첫 열(기술 이름)만 강조 | 행 단위 슬라이드인 |
+| 기획 | 라벨 왼쪽 정렬 스펙 시트 | 진입 시 페이드업 |
+| 유저 플로우 | mermaid 를 풀폭 패널에, 설명은 아래에 | 없음 |
+| 기술 스택 | 브랜드 아이콘 + 이름 칩 나열 | 진입 시 페이드업 |
+| 개발 과정 | 세로 타임라인. 단계마다 서술 + `붙인 것` 칩 | 카드 스태거 |
 | 데이터와 API | 항목마다 카드. 링크 값은 앵커로 | 카드 스태거 |
 | 시연 | 영상 플레이어 + 캡션. 화면에 들어올 때만 재생 | 없음 (영상 자체가 움직인다) |
 | 구조 | 다이어그램을 어두운 풀폭 패널에 크게 | 다이어그램 sticky 고정, 옆 `### 단계` 를 스크롤하면 해당 mermaid 노드 점등 |
@@ -218,7 +228,10 @@ src/components/page/ProjectDetailView.tsx   (재작성)
 type Section =
   | { kind: "intro";        title: string; md: string }
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
-  | { kind: "tech";         title: string; head: string[]; rows: string[][] }
+  | { kind: "plan";         title: string; fields: { label: string; value: string }[] }
+  | { kind: "userflow";     title: string; diagram: string | null; steps: { label: string; md: string }[] }
+  | { kind: "tech";         title: string; items: string[] }
+  | { kind: "journey";      title: string; steps: { label: string; md: string; added: string[] }[] }
   | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "trials";       title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
@@ -226,9 +239,24 @@ type Section =
   | { kind: "raw";          title: string; md: string };
 
 function parseProjectBody(md: string): Section[];
+
+// 프런트매터 stack 을 받아 `## 기술 스택` 섹션을 요구사항 뒤에 끼운 최종 목록.
+function buildProjectSections(body: string, stack: string[]): Section[];
 ```
 
 파서는 절대 던지지 않는다. 형식이 어긋난 섹션은 `raw` 로 떨어뜨린다.
+
+### 기술 아이콘
+
+`simple-icons` 는 devDependency 로만 둔다. `npm run gen:tech-icons` 가 우리가 쓰는
+아이콘만 골라 `src/lib/tech-icons.generated.ts` 로 굽고, 런타임에는 그 path 문자열만
+번들에 들어간다. 외부 요청이 없다.
+
+- 이름 → 아이콘 매칭은 정규화(소문자, `.`·공백·`-` 제거) 후 비교한다
+- `claude CLI` → Claude 처럼 표기가 다른 것은 `scripts/tech-icon-aliases.json` 에 적는다
+- 브랜드 색이 한쪽 테마에서 묻히면(Next.js 의 `#000000`) 생성기가 명도를 보정해
+  light·dark 두 값을 함께 굽는다
+- 아이콘이 없는 이름은 첫 글자 타일로 떨어진다. 색은 이름 해시로 고정된다
 
 ## 4.5 비주얼 디렉션 — 계측기
 
