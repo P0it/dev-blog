@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Newspaper, Search } from "lucide-react";
+import { FlaskConical, Newspaper, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { BrandLogo, BrandMark } from "@/components/layout/BrandLogo";
@@ -29,7 +29,10 @@ export function PublicNav({
             <Newspaper size={14} style={{ color: "var(--fg-alternative)" }} />
             Posts
           </Link>
-          {/* Labs — 임시 숨김. /lab 라우트는 살아 있음. */}
+          <Link href={pathFor(locale, "/lab")} className={active === "lab" ? "active" : ""}>
+            <FlaskConical size={14} style={{ color: "var(--fg-alternative)" }} />
+            Labs
+          </Link>
         </div>
       </div>
       <div className="nav-right">
