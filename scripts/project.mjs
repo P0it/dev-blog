@@ -9,8 +9,8 @@
 //
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (.env.local)
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, resolve, extname, basename } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,6 +22,38 @@ if (!url || !key) {
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
 const HOSTS = ["vercel", "cloudflare", "local", "none"];
+const BUCKET = "project-media";
+
+// 로고로 받을 수 있는 형식. 버킷 allowedMimeTypes 와 맞춰 둔다.
+const LOGO_MIME = {
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+// 원고 옆에 둔 로고 파일을 project-media 에 올리고 공개 URL 을 돌려준다.
+// 경로는 원고 파일 기준 상대경로다 (예: logo_file: ./logo.png).
+async function uploadLogo(mdFile, rel, slug) {
+  const abs = resolve(dirname(mdFile), rel);
+  if (!existsSync(abs)) throw new Error(`logo_file 을 찾을 수 없다: ${abs}`);
+  const ext = extname(abs).toLowerCase();
+  const mime = LOGO_MIME[ext];
+  if (!mime) {
+    throw new Error(`지원하지 않는 로고 형식: ${ext} (png · webp · svg · jpg 만 된다)`);
+  }
+  const path = `${slug}/logo${ext}`;
+  const { error } = await sb.storage
+    .from(BUCKET)
+    .upload(path, readFileSync(abs), { contentType: mime, upsert: true });
+  if (error) throw error;
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  // 같은 경로에 덮어쓰므로 CDN 캐시를 우회할 쿼리를 붙인다.
+  const url = `${data.publicUrl}?v=${Date.now()}`;
+  console.log(`  ↑ 로고 업로드: ${basename(abs)} → ${path}`);
+  return url;
+}
 
 // 아주 좁은 YAML 만 읽는다 — 문자열, [a, b] 배열, 주석. draft.mjs 와 같은 수준.
 function parseFrontmatter(raw) {
@@ -56,6 +88,7 @@ function toFrontmatter(row) {
     `year: "${row.year}"`,
     `logo_emoji: ${row.logo_emoji ?? ""}`,
     `logo_bg: "${row.logo_bg ?? ""}"`,
+    `logo_url: ${row.logo_url ?? ""}`,
     `stack: [${(row.stack ?? []).join(", ")}]`,
     `url: ${row.url ?? ""}`,
     `host: ${row.host ?? "none"}`,
@@ -102,6 +135,11 @@ async function push(file) {
     sortOrder = (last?.sort_order ?? 0) + 1;
   }
 
+  // 로고 이미지가 있으면 이모지보다 우선한다. 파일 경로가 있으면 올리고,
+  // 이미 공개 URL 이면 그대로 쓴다.
+  let logoUrl = meta.logo_url || null;
+  if (meta.logo_file) logoUrl = await uploadLogo(file, meta.logo_file, meta.slug);
+
   const row = {
     slug: meta.slug,
     name: meta.name,
@@ -109,6 +147,7 @@ async function push(file) {
     tagline: meta.tagline,
     logo_emoji: meta.logo_emoji,
     logo_bg: meta.logo_bg,
+    logo_url: logoUrl,
     status: meta.status ?? "",
     stack: Array.isArray(meta.stack) ? meta.stack : [],
     url: meta.url || null,
