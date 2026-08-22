@@ -62,7 +62,7 @@ export function ProjectDetailView({ project }: { project: Project }) {
 
             {project.url && (
               <a
-                href={`https://${project.url}`}
+                href={/^https?:\/\//.test(project.url) ? project.url : `https://${project.url}`}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -77,11 +77,10 @@ export function ProjectDetailView({ project }: { project: Project }) {
                   fontWeight: 600,
                   color: "var(--fg-strong)",
                   textDecoration: "none",
-                  fontFamily: "var(--font-mono)",
                   marginBottom: 8,
                 }}
               >
-                <span>{project.url}</span>
+                <span>바로가기</span>
                 <ArrowUpRight size={13} style={{ opacity: 0.5 }} />
               </a>
             )}

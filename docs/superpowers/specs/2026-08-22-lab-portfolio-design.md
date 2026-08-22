@@ -58,8 +58,8 @@ year: "2026"               # 필수
 logo_emoji: 🔌             # 필수
 logo_bg: "#1F6FEB"         # 필수, 단색
 stack: [Next.js, Cloudflare Workers, TypeScript]
-url: mcp-probe.pages.dev   # 배포 없으면 빈 값
-host: cloudflare           # vercel | cloudflare | local | none
+url: https://mcp-probe.pages.dev   # 스킴 포함 절대 URL. 배포 없으면 빈 값
+host: cloudflare                   # vercel | cloudflare | local | none
 status: 운영중              # 운영중 | 실험중 | 중단
 capture: true              # 공개 URL 스크롤 캡처 허용 여부
 ---
@@ -108,6 +108,8 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 `tagline` 백필은 기존 `description` 에서 가져오고, 그 다음 컬럼을 드롭한다.
 
 `src/lib/types.ts` 의 `Project` 와 `queries.ts` 의 `rowToProject` 를 같이 고친다.
+`host` 타입은 지금 `"vercel" | "cloudflare"` 뿐이라 `"local" | "none"` 을 더한다.
+기존 `url` 값은 도메인만 들어있으므로 `https://` 를 붙여 백필한다.
 
 프런트매터의 `capture` 는 DB 컬럼이 아니다. `capture-project.mjs` 가 `projects/<slug>.md` 를
 읽어 판단하는 값이라 `push` 는 이 키를 무시한다.
@@ -147,7 +149,19 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 
 화면폭을 꽉 채우는 미디어. `hero_media` 가 있으면 자동재생·무음·루프 영상,
 없으면 `hero_poster` 이미지, 둘 다 없으면 `logo_bg` 단색 위에 로고. 그 위에 제목,
-tagline, `연도 · 스택 · 배포처 · status` 한 줄. 배포 URL 버튼은 우상단 고정.
+tagline, `연도 · 스택 · 배포처 · status` 한 줄.
+
+### 바로가기 링크
+
+프로젝트로 들어가는 링크는 프런트매터 `url` 하나다. 여러 개를 받지 않는다.
+
+버튼은 히어로 우상단 고정. 주소를 그대로 찍지 않고 **"바로가기"** 라벨 + 화살표 아이콘으로
+묶는다. 지금 `ProjectDetailView` 는 `mcp-probe.pages.dev` 같은 도메인을 모노 폰트로 노출하는데,
+도메인 문자열은 방문자에게 정보가 아니고 길이도 제각각이라 히어로 정렬을 흔든다.
+호스트는 옆 메타 줄의 `배포처` 가 이미 말해준다.
+
+`url` 은 스킴을 포함한 절대 URL 로 받고, `https://` 를 코드에서 붙이지 않는다. `url` 이 비면
+버튼을 통째로 렌더하지 않는다.
 
 ### 좌측 섹션 레일
 
