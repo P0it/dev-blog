@@ -1336,6 +1336,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-fg: var(--neutral-900);
   --lab-fg-dim: var(--neutral-600);
   --lab-shadow: 0 1px 2px rgba(27, 28, 30, 0.04), 0 8px 24px rgba(27, 28, 30, 0.05);
+  /* 카드 입체감 — 평상시엔 바닥에 붙어 있고, hover 에 그림자를 여러 겹 깔아 띄운다. */
+  --lab-card-shadow:
+    0 1px 2px rgba(27, 28, 30, 0.05),
+    0 4px 10px rgba(27, 28, 30, 0.045);
+  --lab-card-shadow-hover:
+    0 2px 4px rgba(27, 28, 30, 0.06),
+    0 10px 20px rgba(27, 28, 30, 0.08),
+    0 24px 48px rgba(27, 28, 30, 0.12);
+  --lab-card-edge: rgba(255, 255, 255, 0.9);
 }
 
 [data-theme="dark"] {
@@ -1347,6 +1356,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-fg: var(--neutral-50);
   --lab-fg-dim: var(--neutral-500);
   --lab-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --lab-card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  --lab-card-shadow-hover:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 12px 24px rgba(0, 0, 0, 0.45),
+    0 28px 56px rgba(0, 0, 0, 0.5);
+  --lab-card-edge: rgba(255, 255, 255, 0.12);
 }
 
 /* 격자는 페이지 바탕에만. 카드·표·패널은 .lab-panel 로 덮어 격자를 가린다. */
@@ -1429,12 +1446,31 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: flex; flex-direction: column;
   overflow: hidden;
   color: inherit;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: var(--lab-card-shadow);
+  will-change: transform;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 위쪽 모서리에 얇은 하이라이트를 얹어 판이 들린 것처럼 보이게 한다. */
+.lab-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: inset 0 1px 0 var(--lab-card-edge);
+  opacity: 0;
+  transition: opacity 0.24s ease;
 }
 .lab-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--lab-mint);
-  box-shadow: 0 2px 4px rgba(27, 28, 30, 0.05), 0 14px 34px rgba(27, 28, 30, 0.10);
+  transform: translateY(-6px) scale(1.012);
+  box-shadow: var(--lab-card-shadow-hover);
+}
+.lab-card:hover::before { opacity: 1; }
+.lab-card:active {
+  transform: translateY(-2px) scale(1.004);
+  box-shadow: var(--lab-card-shadow);
 }
 
 /* 카드 안의 링크는 밑줄을 그리지 않는다 (전역 a:hover 규칙을 덮는다). */
@@ -1760,9 +1796,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 동작 최소화를 켠 사람에게는 전 연출을 끈다. */
 @media (prefers-reduced-motion: reduce) {
   .lab-card,
+  .lab-card::before,
   .lab-arch-step,
   .lab-trial,
   .lab-tech td.pick { transition: none !important; }
+  .lab-card:hover { transform: none; }
 }
 
 @media (max-width: 1200px) {
