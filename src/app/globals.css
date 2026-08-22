@@ -1338,6 +1338,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-fg: var(--neutral-900);
   --lab-fg-dim: var(--neutral-600);
   --lab-shadow: 0 1px 2px rgba(27, 28, 30, 0.04), 0 6px 20px rgba(27, 28, 30, 0.05);
+  /* 카드 입체감 — 평소엔 바닥에 붙어 있고, hover 에 그림자를 겹쳐 띄운다. */
+  --lab-card-shadow:
+    0 1px 2px rgba(27, 28, 30, 0.05),
+    0 4px 10px rgba(27, 28, 30, 0.045);
+  --lab-card-shadow-hover:
+    0 2px 4px rgba(27, 28, 30, 0.06),
+    0 12px 24px rgba(27, 28, 30, 0.10),
+    0 28px 56px rgba(27, 28, 30, 0.14);
+  --lab-card-edge: rgba(255, 255, 255, 0.9);
 }
 
 [data-theme="dark"] {
@@ -1350,6 +1359,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-fg: var(--neutral-50);
   --lab-fg-dim: var(--neutral-500);
   --lab-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --lab-card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  --lab-card-shadow-hover:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 14px 28px rgba(0, 0, 0, 0.45),
+    0 32px 64px rgba(0, 0, 0, 0.55);
+  --lab-card-edge: rgba(255, 255, 255, 0.14);
 }
 
 /* 격자는 페이지 바탕에만. 카드·표·패널은 .lab-panel 로 덮어 격자를 가린다. */
@@ -1363,8 +1380,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 계기판 라벨 — 번호·상태·수치 전용. 문장에는 쓰지 않는다. */
 .lab-label {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--lab-fg-dim);
   font-weight: 500;
@@ -1449,12 +1466,32 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: flex; flex-direction: column;
   overflow: hidden;
   color: inherit;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: var(--lab-card-shadow);
+  will-change: transform;
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 윗변에 1px 하이라이트를 얹어 판이 들린 것처럼 보이게 한다.
+   다크에서는 그림자가 잘 안 보여 이쪽이 입체감을 대신한다. */
+.lab-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: inset 0 1px 0 var(--lab-card-edge);
+  opacity: 0;
+  transition: opacity 0.26s ease;
 }
 .lab-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--lab-line-strong);
-  box-shadow: 0 2px 6px rgba(27, 28, 30, 0.05), 0 16px 36px rgba(27, 28, 30, 0.10);
+  transform: translateY(-8px) scale(1.015);
+  box-shadow: var(--lab-card-shadow-hover);
+}
+.lab-card:hover::before { opacity: 1; }
+.lab-card:active {
+  transform: translateY(-2px) scale(1.004);
+  box-shadow: var(--lab-card-shadow);
 }
 
 /* 카드 안의 링크는 밑줄을 그리지 않는다 (전역 a:hover 규칙을 덮는다). */
@@ -1520,15 +1557,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 목록 상단 바 */
 .lab-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 18px 22px;
+  padding: 22px 24px;
   margin-bottom: 32px;
 }
 .lab-bar h1 {
   margin: 0;
-  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+  font-size: 30px; font-weight: 700; letter-spacing: -0.035em;
   color: var(--lab-fg);
 }
-.lab-bar .sub { font-size: 14px; color: var(--lab-fg-dim); margin-top: 3px; }
+.lab-bar .sub { font-size: 16px; color: var(--lab-fg-dim); margin-top: 3px; }
 
 /* Lab — 상세 히어로 */
 .lab-hero { position: relative; overflow: hidden; }
@@ -1634,6 +1671,50 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-rail a.on { color: var(--lab-mint); font-weight: 700; }
 .lab-rail a.on i { background: var(--lab-mint); box-shadow: 0 0 7px var(--lab-mint); }
 
+/* Lab — 기획
+   라벨을 왼쪽에 세운 스펙 시트. 항목끼리 눈으로 비교되는 게 목적이다. */
+.lab-plan { padding: 4px 0; }
+.lab-plan-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 16px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--lab-line);
+}
+.lab-plan-row:last-child { border-bottom: 0; }
+.lab-plan-row dt {
+  font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--lab-mint);
+  padding-top: 1px;
+}
+.lab-plan-row dd {
+  margin: 0;
+  font-size: 15px; line-height: 1.75;
+  color: var(--lab-fg);
+}
+@media (max-width: 640px) {
+  .lab-plan-row { grid-template-columns: 1fr; gap: 5px; }
+}
+
+/* Lab — 유저 플로우
+   사람이 움직이는 동선. 가로로 길어 폭을 다 쓰고 설명은 아래에 깐다. */
+.lab-flow-diagram { padding: 22px 18px; overflow-x: auto; }
+.lab-flow-steps {
+  list-style: none; margin: 14px 0 0; padding: 0;
+  display: grid; gap: 8px;
+}
+.lab-flow-steps li {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 14.5px; line-height: 1.75;
+  color: var(--lab-fg);
+}
+.lab-flow-steps li b {
+  flex: none;
+  font-weight: 700;
+  color: var(--lab-mint);
+}
+.lab-flow-steps li span { color: var(--lab-fg-dim); }
+
 /* Lab — 요구사항 */
 .lab-req { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .lab-req-item {
@@ -1657,32 +1738,96 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: var(--lab-fg-dim);
 }
 
-/* Lab — 기술 선정 */
-.lab-tech { overflow-x: auto; }
-.lab-tech table { width: 100%; border-collapse: collapse; font-size: 15px; }
-.lab-tech th {
-  text-align: left; padding: 14px 20px;
-  border-bottom: 1px solid var(--lab-line);
-  font-size: 13px; font-weight: 600;
-  color: var(--lab-fg-dim);
-  white-space: nowrap;
-}
-.lab-tech td {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--lab-line);
-  color: var(--lab-fg); line-height: 1.65;
-  vertical-align: top;
-}
-.lab-tech tr:last-child td { border-bottom: 0; }
-.lab-tech td.pick {
-  font-weight: 700;
+/* Lab — 기술 스택
+   브랜드 아이콘 + 이름의 칩 나열. 아이콘마다 색이 달라 --tc 로 받아 쓴다.
+   라이트/다크 각각에서 읽히는 값은 생성기가 미리 계산해 둔다. */
+.lab-stack { display: flex; flex-wrap: wrap; gap: 9px; }
+.lab-stack-chip {
+  --tc: var(--tc-light);
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 16px 9px 12px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  background: var(--lab-panel);
+  font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
   color: var(--lab-fg);
   white-space: nowrap;
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
-.lab-tech td.pick span {
-  display: inline-flex; align-items: center; gap: 8px;
+[data-theme="dark"] .lab-stack-chip { --tc: var(--tc-dark); }
+.lab-stack-chip svg { width: 16px; height: 16px; flex: none; fill: var(--tc); }
+/* 아이콘이 없는 기술은 첫 글자 타일로. 칩 높이가 흔들리지 않게 크기를 맞춘다. */
+.lab-stack-chip i {
+  width: 16px; height: 16px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tc) 20%, transparent);
+  color: var(--tc);
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700; font-style: normal; line-height: 1;
 }
-.lab-tech td.pick svg { color: var(--lab-mint); flex: none; }
+.lab-stack-chip:hover {
+  border-color: color-mix(in srgb, var(--tc) 45%, var(--lab-line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tc) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+/* Lab — 개발 과정
+   왼쪽 세로선에 번호 노드를 꿴 타임라인. 단계마다 서술 + 그때 붙인 것. */
+.lab-journey { list-style: none; margin: 0; padding: 0; position: relative; }
+.lab-journey::before {
+  content: ""; position: absolute;
+  left: 15px; top: 8px; bottom: 8px;
+  width: 1px; background: var(--lab-line);
+}
+.lab-journey-step {
+  position: relative;
+  display: flex; gap: 18px;
+  padding-bottom: 32px;
+}
+.lab-journey-step:last-child { padding-bottom: 0; }
+.lab-journey-num {
+  position: relative; z-index: 1;
+  flex: none;
+  width: 31px; height: 31px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--lab-line-strong);
+  background: var(--lab-panel);
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600;
+  color: var(--lab-fg-dim);
+}
+.lab-journey-step:hover .lab-journey-num {
+  border-color: var(--lab-mint);
+  color: var(--lab-mint);
+}
+.lab-journey-body { min-width: 0; flex: 1; padding-top: 2px; }
+.lab-journey-body h3 {
+  margin: 0 0 8px;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--lab-fg);
+}
+.lab-journey-body .lab-prose { font-size: 15px; line-height: 1.85; }
+.lab-journey-body .lab-prose > *:last-child { margin-bottom: 0; }
+.lab-journey-added {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-top: 12px;
+}
+.lab-journey-added-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--lab-fg-dim);
+}
+/* 타임라인 안의 칩은 본문보다 한 단 작게 — 서술이 주인공이다. */
+.lab-stack-chip.sm {
+  padding: 5px 11px 5px 8px;
+  font-size: 12.5px;
+  gap: 7px;
+}
+.lab-stack-chip.sm svg,
+.lab-stack-chip.sm i { width: 13px; height: 13px; }
+.lab-stack-chip.sm i { font-size: 8px; }
 
 /* Lab — 데이터와 API */
 .lab-integ { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -1863,9 +2008,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 동작 최소화를 켠 사람에게는 전 연출을 끈다. */
 @media (prefers-reduced-motion: reduce) {
   .lab-card,
+  .lab-card::before,
   .lab-arch-step,
   .lab-trial,
   .lab-hero-go { transition: none !important; }
+  .lab-card:hover { transform: none; }
 }
 
 @media (max-width: 1200px) {
