@@ -40,18 +40,24 @@ export type SeriesContext = {
   items: { slug: string; title: string; order: number | null }[];
 };
 
+export type ProjectHost = "vercel" | "cloudflare" | "local" | "none";
+
 export type Project = {
-  k: ThumbKind;
   slug: string;
   name: string;
   year: string;
-  desc: string;
-  plan: string;
-  build: string;
+  tagline: string;
+  logoEmoji: string;
+  logoBg: string;
+  logoUrl: string | null;
+  status: string;
   body: string;
   stack: string[];
-  url: string;
-  host: "vercel" | "cloudflare";
+  url: string | null;
+  host: ProjectHost;
+  heroMedia: string | null;
+  heroPoster: string | null;
+  shots: string[];
 };
 
 export type CategoryNode = {

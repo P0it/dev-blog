@@ -55,30 +55,41 @@ type ProjectRow = {
   slug: string;
   name: string;
   year: string;
-  description: string | null;
-  plan: string | null;
-  build_note: string | null;
+  tagline: string | null;
+  logo_emoji: string | null;
+  logo_bg: string | null;
+  logo_url: string | null;
+  status: string | null;
   body_md: string | null;
   stack: string[];
-  thumb_kind: string;
   url: string | null;
   host: string | null;
+  hero_media: string | null;
+  hero_poster: string | null;
+  shots: string[] | null;
   sort_order: number;
 };
 
+const PROJECT_HOSTS = ["vercel", "cloudflare", "local", "none"] as const;
+
 function rowToProject(r: ProjectRow): Project {
+  const host = PROJECT_HOSTS.find((h) => h === r.host) ?? "none";
   return {
-    k: (r.thumb_kind as ThumbKind) ?? "a",
     slug: r.slug,
     name: r.name,
     year: r.year,
-    desc: r.description ?? "",
-    plan: r.plan ?? "",
-    build: r.build_note ?? "",
+    tagline: r.tagline ?? "",
+    logoEmoji: r.logo_emoji || "🧪",
+    logoBg: r.logo_bg || "#1B1C1E",
+    logoUrl: r.logo_url || null,
+    status: r.status ?? "",
     body: r.body_md ?? "",
     stack: r.stack ?? [],
-    url: r.url ?? "",
-    host: (r.host as Project["host"]) ?? "vercel",
+    url: r.url || null,
+    host,
+    heroMedia: r.hero_media || null,
+    heroPoster: r.hero_poster || null,
+    shots: r.shots ?? [],
   };
 }
 

@@ -22,15 +22,15 @@ export async function generateMetadata({
   const url = `${SITE.url}/lab/${project.slug}`;
   return {
     title: project.name,
-    description: project.desc || undefined,
+    description: project.tagline || undefined,
     alternates: { canonical: url },
     openGraph: {
       type: "article",
       url,
       title: project.name,
-      description: project.desc || undefined,
+      description: project.tagline || undefined,
     },
-    twitter: { card: "summary_large_image", title: project.name, description: project.desc || undefined },
+    twitter: { card: "summary_large_image", title: project.name, description: project.tagline || undefined },
   };
 }
 

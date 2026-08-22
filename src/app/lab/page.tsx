@@ -7,44 +7,36 @@ export const revalidate = 60;
 
 export default async function LabPage() {
   const projects = await getProjects();
+  const running = projects.filter((p) => p.status === "운영중").length;
 
   return (
     <>
       <PublicNav active="lab" />
-      <div className="container-wide" style={{ paddingTop: 64, paddingBottom: 80 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: 16,
-            marginBottom: 40,
-          }}
-        >
-          <div className="hero-eyebrow">실험실</div>
-          <span className="meta">
-            {projects.length}편 · 배포 {projects.length}
-          </span>
-        </div>
+      <div className="lab-page" style={{ minHeight: "70vh", paddingTop: 56, paddingBottom: 88 }}>
+        <div className="container-wide">
+          <div
+            className="lab-panel lab-corner"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderRadius: 0,
+              marginBottom: 28,
+            }}
+          >
+            <div className="lab-label" style={{ fontSize: 11 }}>Lab · 실험실</div>
+            <div className="lab-label">
+              <span className="lab-led" />
+              {running} running · {projects.length} total
+            </div>
+          </div>
 
-        <div className="lab-grid">
-          {projects.map((p) => (
-            <ProjectCard key={p.name} p={p} />
-          ))}
-        </div>
-
-        <div
-          style={{
-            marginTop: 48,
-            paddingTop: 24,
-            borderTop: "1px solid var(--line-subtle)",
-            fontSize: 13,
-            color: "var(--fg-neutral)",
-            lineHeight: 1.65,
-            maxWidth: 560,
-          }}
-        >
-          카드를 누르면 그 프로젝트의 개발기, 로직 구성, 운영 노트가 블로그 글처럼 한 페이지로 펼쳐집니다. 코드는 그 안에서 GitHub로 따로 연결돼요.
+          <div className="lab-grid">
+            {projects.map((p) => (
+              <ProjectCard key={p.slug} p={p} />
+            ))}
+          </div>
         </div>
       </div>
       <Footer />

@@ -56,14 +56,18 @@ create table if not exists projects (
   slug        text unique not null,
   name        text not null,
   year        text not null,
-  description text,
-  plan        text,
-  build_note  text,
+  tagline     text,                          -- 카드 아래 한 줄
+  logo_emoji  text,                          -- 카드 아이콘 (logo_url 없을 때)
+  logo_bg     text,                          -- 로고 타일 배경색
+  logo_url    text,                          -- 실제 로고 이미지. 있으면 이모지보다 우선
+  status      text,                          -- 운영중 | 실험중 | 중단
   body_md     text,                          -- 개발기 본문 마크다운
   stack       text[] not null default '{}',
-  thumb_kind  text not null default 'a',
-  url         text,
-  host        text,                          -- vercel | cloudflare
+  url         text,                          -- 스킴 포함 절대 URL
+  host        text,                          -- vercel | cloudflare | local | none
+  hero_media  text,                          -- 스크롤 영상 URL
+  hero_poster text,                          -- 대표 스크린샷 URL
+  shots       text[] not null default '{}',
   sort_order  int  not null default 0,
   created_at  timestamptz not null default now()
 );
