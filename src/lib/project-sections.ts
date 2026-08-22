@@ -10,6 +10,7 @@ export type Section =
   | { kind: "tech"; title: string; head: string[]; rows: string[][] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
+  | { kind: "demo"; title: string; clips: { title: string; src: string; poster: string | null; caption: string }[] }
   | { kind: "trials"; title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
   | { kind: "remaining"; title: string; md: string }
   | { kind: "raw"; title: string; md: string };
@@ -20,6 +21,7 @@ const KNOWN: Record<string, Section["kind"]> = {
   "요구사항": "requirements",
   "기술 선정": "tech",
   "데이터와 API": "integrations",
+  "시연": "demo",
   "구조": "architecture",
   "시행착오": "trials",
   "남은 것": "remaining",
@@ -212,6 +214,20 @@ export function parseProjectBody(md: string): Section[] {
         .map((sub) => ({ name: sub.label, fields: parseFields(sub.md) }))
         .filter((it) => it.fields.length > 0);
       out.push(items.length ? { kind, title, items } : raw);
+    } else if (kind === "demo") {
+      const clips = splitSubs(body)
+        .map((sub) => {
+          const f = parseFields(sub.md);
+          const get = (name: string) => f.find((x) => x.label === name)?.value ?? "";
+          return {
+            title: sub.label,
+            src: get("영상") || get("이미지"),
+            poster: get("포스터") || null,
+            caption: get("설명"),
+          };
+        })
+        .filter((c) => c.src);
+      out.push(clips.length ? { kind, title, clips } : raw);
     } else if (kind === "trials") {
       const subs = splitSubs(body);
       const cases = subs.map((s) => parseCase(s.label, s.md));

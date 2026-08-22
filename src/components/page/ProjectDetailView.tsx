@@ -7,6 +7,7 @@ import { Intro } from "@/components/project/sections/Intro";
 import { Requirements } from "@/components/project/sections/Requirements";
 import { TechChoices } from "@/components/project/sections/TechChoices";
 import { Integrations } from "@/components/project/sections/Integrations";
+import { Demos } from "@/components/project/sections/Demos";
 import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
@@ -23,6 +24,8 @@ function renderSection(s: Section) {
       return <TechChoices head={s.head} rows={s.rows} />;
     case "integrations":
       return <Integrations items={s.items} />;
+    case "demo":
+      return <Demos clips={s.clips} />;
     case "architecture":
       return <Architecture diagram={s.diagram} steps={s.steps} />;
     case "trials":

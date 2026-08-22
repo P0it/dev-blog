@@ -51,6 +51,8 @@ export type Project = {
   logoBg: string;
   logoUrl: string | null;
   status: string;
+  // 사이트 노출 여부. status(운영중/실험중/중단)와는 다른 질문이다.
+  visibility: "draft" | "published";
   body: string;
   stack: string[];
   url: string | null;

@@ -196,3 +196,21 @@ test("기술 선정은 2열 표도 받는다", () => {
   assert.deepEqual(secs[0].head, ["기술", "고른 이유"]);
   assert.deepEqual(secs[0].rows, [["Next.js", "어드민이 동적이라"]]);
 });
+
+test("시연 섹션을 클립으로 쪼갠다", () => {
+  const secs = parseProjectBody(
+    "## 시연\n\n### 초안 요청부터 발행까지\n\n**영상** https://cdn.example.com/demo.webm\n**설명** URL 을 넣으면 초안이 나온다\n\n### 소스 없는 장면\n\n**설명** 설명만 있다\n",
+  );
+  assert.equal(secs[0].kind, "demo");
+  if (secs[0].kind !== "demo") return;
+  // 소스가 없는 장면은 버린다 — 빈 플레이어가 뜨면 더 나쁘다.
+  assert.equal(secs[0].clips.length, 1);
+  assert.equal(secs[0].clips[0].title, "초안 요청부터 발행까지");
+  assert.equal(secs[0].clips[0].src, "https://cdn.example.com/demo.webm");
+  assert.match(secs[0].clips[0].caption, /초안이 나온다/);
+});
+
+test("소스가 하나도 없는 시연은 raw 로 떨어진다", () => {
+  const secs = parseProjectBody("## 시연\n\n### 장면\n\n**설명** 설명만\n");
+  assert.equal(secs[0].kind, "raw");
+});

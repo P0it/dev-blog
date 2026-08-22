@@ -1,23 +1,25 @@
 // 배포된 프로젝트 화면을 찍어 project-media 에 올리고 DB 를 갱신한다.
 //
-//   npm run capture:project <slug>
+//   npm run capture:project <slug>          히어로 썸네일 한 장
+//   npm run capture:project <slug> --demo   위→아래 스크롤 8초 영상
 //
-// 하는 일
-//   1. projects/<slug>.md 의 capture 플래그와 url 을 읽는다 (없으면 DB 의 url)
-//   2. Playwright 로 열어 대표 스크린샷 한 장
-//   3. project-media 에 올리고 hero_poster 를 갱신
-//
-// 히어로는 정지 화면이다. 움직이는 배경은 제목을 읽는 데 방해가 되어 쓰지 않는다.
+// 히어로는 정지 화면이다. 움직이는 배경은 제목을 읽는 데 방해가 된다.
+// 영상은 본문 `## 시연` 에 들어간다 — --demo 가 찍어 올린 뒤 URL 을 찍어 주면
+// 그 값을 원고의 `**영상**` 줄에 붙인다. hero_poster 는 건드리지 않는다.
 //
 // 전제: npx playwright install chromium
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, rmSync, readdirSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "project-media";
 const VIEWPORT = { width: 1440, height: 900 };
+const SCROLL_MS = 8000;
+const demoMode = process.argv.includes("--demo");
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -25,7 +27,7 @@ const sb = createClient(
   { auth: { persistSession: false } },
 );
 
-const slug = process.argv[2];
+const slug = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : null;
 if (!slug) {
   console.error("사용법: npm run capture:project <slug>");
   process.exit(1);
@@ -78,28 +80,64 @@ async function run() {
   const target = meta.url || row.url;
   if (!target) throw new Error(`${slug} 에 url 이 없다. 캡처할 대상이 없다.`);
 
+  const outDir = demoMode ? mkdtempSync(join(tmpdir(), `cap-${slug}-`)) : null;
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({
+    viewport: VIEWPORT,
+    deviceScaleFactor: demoMode ? 1 : 2,
+    ...(outDir ? { recordVideo: { dir: outDir, size: VIEWPORT } } : {}),
+  });
   const page = await ctx.newPage();
 
   console.log(`· 여는 중: ${target}`);
   await page.goto(target, { waitUntil: "networkidle", timeout: 45000 });
   await page.waitForTimeout(1500);
 
-  const shot = await page.screenshot({ type: "png" });
+  if (!demoMode) {
+    const shot = await page.screenshot({ type: "png" });
+    await ctx.close();
+    await browser.close();
+
+    const posterUrl = await upload(`${slug}/poster-${Date.now()}.png`, shot, "image/png");
+    const { error: upErr } = await sb
+      .from("projects")
+      .update({ hero_poster: posterUrl })
+      .eq("slug", slug);
+    if (upErr) throw upErr;
+
+    console.log(`✓ ${slug} 썸네일 갱신`);
+    console.log(`  ${posterUrl}`);
+    return;
+  }
+
+  // 위에서 아래로 천천히. 페이지가 짧으면 그 자리에 머문다.
+  await page.evaluate(async (ms) => {
+    const total = Math.max(0, document.body.scrollHeight - window.innerHeight);
+    const start = performance.now();
+    while (performance.now() - start < ms) {
+      const t = (performance.now() - start) / ms;
+      window.scrollTo(0, total * t);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    window.scrollTo(0, total);
+  }, SCROLL_MS);
+  await page.waitForTimeout(500);
+
   await ctx.close();
   await browser.close();
 
-  const posterUrl = await upload(`${slug}/poster-${Date.now()}.png`, shot, "image/png");
+  const video = readdirSync(outDir).find((f) => f.endsWith(".webm"));
+  if (!video) throw new Error("영상 파일이 생기지 않았다");
+  const mediaUrl = await upload(
+    `${slug}/demo-scroll-${Date.now()}.webm`,
+    readFileSync(join(outDir, video)),
+    "video/webm",
+  );
+  rmSync(outDir, { recursive: true, force: true });
 
-  const { error: upErr } = await sb
-    .from("projects")
-    .update({ hero_poster: posterUrl, hero_media: null })
-    .eq("slug", slug);
-  if (upErr) throw upErr;
-
-  console.log(`✓ ${slug} 캡처 완료`);
-  console.log(`  poster: ${posterUrl}`);
+  console.log(`✓ ${slug} 시연 영상 업로드`);
+  console.log(`  ${mediaUrl}`);
+  console.log(`  원고의 ## 시연 아래에 \`**영상** <위 URL>\` 로 붙인다.`);
 }
 
 run().catch((e) => {

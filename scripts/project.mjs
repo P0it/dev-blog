@@ -24,14 +24,52 @@ const sb = createClient(url, key, { auth: { persistSession: false } });
 const HOSTS = ["vercel", "cloudflare", "local", "none"];
 const BUCKET = "project-media";
 
-// 로고로 받을 수 있는 형식. 버킷 allowedMimeTypes 와 맞춰 둔다.
-const LOGO_MIME = {
+// 올릴 수 있는 형식. 버킷 allowedMimeTypes 와 맞춰 둔다.
+const MIME = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
 };
+
+// 로컬 파일 하나를 project-media 에 올리고 공개 URL 을 돌려준다.
+async function uploadFile(abs, destPath) {
+  const ext = extname(abs).toLowerCase();
+  const mime = MIME[ext];
+  if (!mime) {
+    throw new Error(`지원하지 않는 형식: ${ext} (${Object.keys(MIME).join(" · ")} 만 된다)`);
+  }
+  const { error } = await sb.storage
+    .from(BUCKET)
+    .upload(destPath, readFileSync(abs), { contentType: mime, upsert: true });
+  if (error) throw error;
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(destPath);
+  return data.publicUrl;
+}
+
+// 본문의 `**파일** ./demo.mp4` 줄을 찾아 올리고 `**영상** <url>` 로 바꾼다.
+// 다른 레포 세션은 파일을 원고 옆에 두고 상대경로만 적으면 된다.
+async function uploadBodyMedia(mdFile, body, slug) {
+  const lines = body.split("\n");
+  let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*(?:\*\*파일\*\*|파일\s*[:：])\s*(\S+)\s*$/.exec(lines[i]);
+    if (!m) continue;
+    const rel = m[1];
+    if (/^https?:\/\//.test(rel)) continue;
+    const abs = resolve(dirname(mdFile), rel);
+    if (!existsSync(abs)) throw new Error(`시연 파일을 찾을 수 없다: ${abs}`);
+    const ext = extname(abs).toLowerCase();
+    const url = await uploadFile(abs, `${slug}/demo-${++n}${ext}`);
+    const label = /\.(mp4|webm)$/i.test(ext) ? "영상" : "이미지";
+    lines[i] = `**${label}** ${url}`;
+    console.log(`  ↑ 시연 업로드: ${basename(abs)} → ${slug}/demo-${n}${ext}`);
+  }
+  return lines.join("\n");
+}
 
 // 원고 옆에 둔 로고 파일을 project-media 에 올리고 공개 URL 을 돌려준다.
 // 경로는 원고 파일 기준 상대경로다 (예: logo_file: ./logo.png).
@@ -39,20 +77,10 @@ async function uploadLogo(mdFile, rel, slug) {
   const abs = resolve(dirname(mdFile), rel);
   if (!existsSync(abs)) throw new Error(`logo_file 을 찾을 수 없다: ${abs}`);
   const ext = extname(abs).toLowerCase();
-  const mime = LOGO_MIME[ext];
-  if (!mime) {
-    throw new Error(`지원하지 않는 로고 형식: ${ext} (png · webp · svg · jpg 만 된다)`);
-  }
-  const path = `${slug}/logo${ext}`;
-  const { error } = await sb.storage
-    .from(BUCKET)
-    .upload(path, readFileSync(abs), { contentType: mime, upsert: true });
-  if (error) throw error;
-  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  const url = await uploadFile(abs, `${slug}/logo${ext}`);
+  console.log(`  ↑ 로고 업로드: ${basename(abs)} → ${slug}/logo${ext}`);
   // 같은 경로에 덮어쓰므로 CDN 캐시를 우회할 쿼리를 붙인다.
-  const url = `${data.publicUrl}?v=${Date.now()}`;
-  console.log(`  ↑ 로고 업로드: ${basename(abs)} → ${path}`);
-  return url;
+  return `${url}?v=${Date.now()}`;
 }
 
 // 아주 좁은 YAML 만 읽는다 — 문자열, [a, b] 배열, 주석. draft.mjs 와 같은 수준.
@@ -140,6 +168,9 @@ async function push(file) {
   let logoUrl = meta.logo_url || null;
   if (meta.logo_file) logoUrl = await uploadLogo(file, meta.logo_file, meta.slug);
 
+  // 시연 영상·이미지는 본문 안에서 로컬 경로로 들어온다. 올리고 URL 로 바꾼다.
+  const bodyWithMedia = await uploadBodyMedia(file, body, meta.slug);
+
   const row = {
     slug: meta.slug,
     name: meta.name,
@@ -152,13 +183,13 @@ async function push(file) {
     stack: Array.isArray(meta.stack) ? meta.stack : [],
     url: meta.url || null,
     host: meta.host || "none",
-    body_md: body,
+    body_md: bodyWithMedia,
     sort_order: sortOrder,
   };
 
   const { error } = await sb.from("projects").upsert(row, { onConflict: "slug" });
   if (error) throw error;
-  console.log(`✓ ${meta.slug} 적재 완료 (${body.length}자)`);
+  console.log(`✓ ${meta.slug} 적재 완료 (${bodyWithMedia.length}자)`);
   console.log(`  확인: /lab/${meta.slug}`);
 }
 
@@ -173,12 +204,22 @@ async function pull(slug, file) {
   console.log(`✓ ${out} 로 내려받음`);
 }
 
+// 원고를 거치지 않고 파일 하나만 올리고 싶을 때. URL 을 찍어 주면 본문에 붙여 쓴다.
+async function media(slug, path) {
+  if (!slug || !path) throw new Error("사용법: media <slug> <file>");
+  if (!existsSync(path)) throw new Error(`파일이 없다: ${path}`);
+  const ext = extname(path).toLowerCase();
+  const url = await uploadFile(resolve(path), `${slug}/${basename(path, ext)}-${Date.now()}${ext}`);
+  console.log(url);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 try {
   if (cmd === "push") await push(rest[0]);
   else if (cmd === "pull") await pull(rest[0], rest[1]);
+  else if (cmd === "media") await media(rest[0], rest[1]);
   else {
-    console.error("사용법: npm run project -- push <file.md> | pull <slug> [file]");
+    console.error("사용법: npm run project -- push <file.md> | pull <slug> [file] | media <slug> <file>");
     process.exit(1);
   }
 } catch (e) {
