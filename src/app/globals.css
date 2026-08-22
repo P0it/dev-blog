@@ -1713,23 +1713,86 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* Lab — 유저 플로우
-   사람이 움직이는 동선. 가로로 길어 폭을 다 쓰고 설명은 아래에 깐다. */
-.lab-flow-diagram { padding: 22px 18px; overflow-x: auto; }
-.lab-flow-steps {
-  list-style: none; margin: 14px 0 0; padding: 0;
-  display: grid; gap: 8px;
+   사람이 움직이는 동선. 번호 카드를 가로 레일에 꿰고 갈림길은 카드 아래에 건다.
+   좁아지면 세로로 눕고 화살표도 같이 돈다. */
+.lab-uflow {
+  list-style: none; margin: 0; padding: 0 0 4px;
+  display: flex; align-items: stretch; gap: 0;
+  overflow-x: auto;
 }
-.lab-flow-steps li {
-  display: flex; align-items: baseline; gap: 10px;
-  font-size: 14.5px; line-height: 1.75;
+.lab-uflow-step { display: flex; align-items: stretch; flex: 1 0 210px; min-width: 0; }
+.lab-uflow-card {
+  flex: 1; min-width: 0;
+  padding: 16px 18px 18px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.lab-uflow-num {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.14em;
+  color: var(--lab-fg-dim);
+}
+.lab-uflow-label {
+  font-size: 14.5px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--lab-fg); line-height: 1.45;
+}
+.lab-uflow-desc {
+  margin: 0;
+  font-size: 13.5px; line-height: 1.7;
+  color: var(--lab-fg-dim);
+}
+/* 갈림길 — 조건에 민트를 주고 결과를 뒤에 붙인다. */
+.lab-uflow-branches {
+  display: grid; gap: 5px;
+  margin-top: auto; padding-top: 11px;
+  border-top: 1px solid var(--lab-line);
+}
+.lab-uflow-branch {
+  display: flex; gap: 7px; align-items: baseline;
+  font-size: 12.5px; line-height: 1.55;
   color: var(--lab-fg);
 }
-.lab-flow-steps li b {
+.lab-uflow-branch::before {
+  content: "\21B3";
   flex: none;
-  font-weight: 700;
+  color: var(--lab-fg-dim);
+  font-size: 11px;
+}
+.lab-uflow-branch em {
+  flex: none;
+  font-style: normal; font-weight: 600;
   color: var(--lab-mint);
 }
-.lab-flow-steps li span { color: var(--lab-fg-dim); }
+/* 카드 사이 연결선. 마지막 단계 뒤에는 그리지 않는다. */
+.lab-uflow-link {
+  flex: none;
+  align-self: center;
+  width: 28px; height: 0;
+  position: relative;
+  border-top: 1px dashed var(--lab-fg-dim);
+  opacity: 0.55;
+}
+.lab-uflow-link::after {
+  content: "";
+  position: absolute; right: -1px; top: 0;
+  width: 6px; height: 6px;
+  border-top: 1.5px solid var(--lab-fg-dim);
+  border-right: 1.5px solid var(--lab-fg-dim);
+  transform: translateY(-50%) rotate(45deg);
+}
+.lab-uflow-step:last-child .lab-uflow-link { display: none; }
+
+@media (max-width: 760px) {
+  .lab-uflow { flex-direction: column; overflow-x: visible; }
+  .lab-uflow-step { flex-direction: column; flex: none; }
+  .lab-uflow-link {
+    width: 0; height: 22px; margin-left: 28px; align-self: flex-start;
+    border-top: 0; border-left: 1px dashed var(--lab-fg-dim);
+  }
+  .lab-uflow-link::after { right: auto; left: 0; top: auto; bottom: -1px; transform: translateX(-50%) rotate(135deg); }
+}
+
+/* 단계 없이 mermaid 만 쓴 옛 원고용 */
+.lab-flow-diagram { padding: 22px 18px; overflow-x: auto; }
 
 /* Lab — 요구사항 */
 .lab-req { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

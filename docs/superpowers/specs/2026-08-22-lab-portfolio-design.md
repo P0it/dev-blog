@@ -72,7 +72,7 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 |---|---|---|
 | `## 제품 소개` | 뭐 하는 물건인지, 처음 보는 사람 기준 | 2~3 문단, 기능 나열 금지 |
 | `## 기획` | 누구의 어떤 문제를 어디까지 풀기로 했는지 | `**라벨** 값` 줄. 문제·사용자·넣지 않은 것을 되도록 |
-| `## 유저 플로우` | 사람이 움직이는 동선 | mermaid `flowchart LR` 1개 + 선택적 `### 단계` |
+| `## 유저 플로우` | 사람이 움직이는 동선 | `### 단계` 목록 + 선택적 `**갈라짐** 조건 → 결과 / …`. mermaid 안 씀 |
 | `## 요구사항` | 만들 때 하고 싶었던 것들 | `- [x]` / `- [ ]` 체크리스트, 항목당 한 줄 |
 | `## 개발 과정` | 생각이 흘러간 순서. 막힌 지점과 그때 붙인 것 | `### 단계` 단위 서술 + 선택적 `**붙인 것** 이름, 이름` |
 | `## 데이터와 API` | 붙인 외부 데이터·서비스 | `### 이름` 단위, `**라벨** 값` 줄 |
@@ -186,7 +186,7 @@ IntersectionObserver 를 쓰는 클라이언트 컴포넌트. 포스트의 우�
 | 제품 소개 | 큰 본문 활자, 넉넉한 여백 | 진입 시 페이드업 |
 | 요구사항 | `- [x]` 파싱 → 체크 카드 2열 그리드 | 카드 스태거 페이드인, 체크 표시가 그려지듯 |
 | 기획 | 라벨 왼쪽 정렬 스펙 시트 | 진입 시 페이드업 |
-| 유저 플로우 | mermaid 를 풀폭 패널에, 설명은 아래에 | 없음 |
+| 유저 플로우 | 번호 카드 가로 레일 + 점선 커넥터, 갈림길은 카드 하단 | 카드 스태거 |
 | 기술 스택 | 브랜드 아이콘 + 이름 칩 나열 | 진입 시 페이드업 |
 | 개발 과정 | 세로 타임라인. 단계마다 서술 + `붙인 것` 칩 | 카드 스태거 |
 | 데이터와 API | 항목마다 카드. 링크 값은 앵커로 | 카드 스태거 |
@@ -229,7 +229,8 @@ type Section =
   | { kind: "intro";        title: string; md: string }
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
   | { kind: "plan";         title: string; fields: { label: string; value: string }[] }
-  | { kind: "userflow";     title: string; diagram: string | null; steps: { label: string; md: string }[] }
+  | { kind: "userflow";     title: string; diagram: string | null;
+      steps: { label: string; md: string; branches: { when: string; then: string }[] }[] }
   | { kind: "tech";         title: string; items: string[] }
   | { kind: "journey";      title: string; steps: { label: string; md: string; added: string[] }[] }
   | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
@@ -245,6 +246,10 @@ function buildProjectSections(body: string, stack: string[]): Section[];
 ```
 
 파서는 절대 던지지 않는다. 형식이 어긋난 섹션은 `raw` 로 떨어뜨린다.
+
+유저 플로우는 mermaid 를 쓰지 않는다. 원고는 단계만 담고 그림은 컴포넌트가 그린다.
+프로젝트마다 레이아웃이 제각각이 되는 것과 한글 노드 폭이 흔들리는 걸 피하려는 것이다.
+단계 없이 mermaid 만 있는 옛 원고는 `diagram` 으로 떨어져 그대로 그려진다.
 
 ### 기술 아이콘
 

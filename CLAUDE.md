@@ -39,9 +39,13 @@ URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 →
 `/lab` 의 프로젝트는 다른 레포에서 만든 원고를 받아 적재한다.
 
 1. 그 프로젝트 레포에서 `/portfolio` 실행 → 루트에 `portfolio.md` 생성
-2. 이 레포 `projects/<slug>.md` 로 옮긴다
-3. `npm run project -- push projects/<slug>.md`
-4. 공개 URL 이 있으면 `npm run capture:project <slug>`
+2. 이 레포로 가져와 **`/project` 커맨드**에 넘긴다. 규약 대조·손질·적재·캡처까지 한다
+
+`/project` 없이 손으로 할 때는:
+
+1. 이 레포 `projects/<slug>.md` 로 옮긴다
+2. `npm run project -- push projects/<slug>.md`
+3. 공개 URL 이 있으면 `npm run capture:project <slug>`
 
 `/portfolio` 스킬 원본은 이 레포 `skills/portfolio/SKILL.md` 다.
 `npm run setup:skills` 가 `~/.claude/skills/portfolio` 로 링크를 건다.

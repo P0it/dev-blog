@@ -308,3 +308,32 @@ test("개발 과정 제목의 앞머리 번호는 뗀다", () => {
   if (secs[0].kind !== "journey") return;
   assert.deepEqual(secs[0].steps.map((s) => s.label), ["시작했어요", "다음"]);
 });
+
+test("유저 플로우의 갈라짐을 조건·결과로 쪼갠다", () => {
+  const secs = parseProjectBody(
+    "## 유저 플로우\n\n### 결과를 확인한다\n\n한 화면에서 본다.\n\n**갈라짐** 괜찮다 → 발행 / 아쉽다 → 다시 요청\n",
+  );
+  assert.equal(secs[0].kind, "userflow");
+  if (secs[0].kind !== "userflow") return;
+  assert.equal(secs[0].steps[0].md, "한 화면에서 본다.");
+  assert.deepEqual(secs[0].steps[0].branches, [
+    { when: "괜찮다", then: "발행" },
+    { when: "아쉽다", then: "다시 요청" },
+  ]);
+});
+
+test("갈라짐이 없는 단계도 그대로 남는다", () => {
+  const secs = parseProjectBody("## 유저 플로우\n\n### 첫 걸음\n\n붙이면 끝이에요.\n");
+  assert.equal(secs[0].kind, "userflow");
+  if (secs[0].kind !== "userflow") return;
+  assert.deepEqual(secs[0].steps[0].branches, []);
+  assert.equal(secs[0].diagram, null);
+});
+
+test("mermaid 만 있는 옛 유저 플로우도 살아남는다", () => {
+  const secs = parseProjectBody(`## 유저 플로우\n\n${FENCE}mermaid\nflowchart LR\n  A --> B\n${FENCE}\n`);
+  assert.equal(secs[0].kind, "userflow");
+  if (secs[0].kind !== "userflow") return;
+  assert.equal(secs[0].steps.length, 0);
+  assert.equal(secs[0].diagram, "flowchart LR\n  A --> B");
+});

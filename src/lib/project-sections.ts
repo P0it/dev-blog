@@ -7,7 +7,12 @@
 export type Section =
   | { kind: "intro"; title: string; md: string }
   | { kind: "plan"; title: string; fields: { label: string; value: string }[] }
-  | { kind: "userflow"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
+  | {
+      kind: "userflow";
+      title: string;
+      diagram: string | null;
+      steps: { label: string; md: string; branches: { when: string; then: string }[] }[];
+    }
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
   | { kind: "tech"; title: string; items: string[] }
   | { kind: "journey"; title: string; steps: { label: string; md: string; added: string[] }[] }
@@ -186,6 +191,26 @@ function dedupe(names: string[]): string[] {
   return out;
 }
 
+// 유저 플로우의 한 단계. `**갈라짐** 괜찮다 → 발행 / 아쉽다 → 다시 요청` 을 떼어낸다.
+// 화살표는 `→` 와 `->` 를, 갈래 구분은 `/` 를 받는다.
+function parseFlowStep(label: string, md: string) {
+  const branches: { when: string; then: string }[] = [];
+  const kept: string[] = [];
+  for (const { line, inFence } of walk(md)) {
+    const m = !inFence ? /^\s*(?:\*\*갈라짐\*\*|갈라짐)\s*[:：]?\s*(.*)$/.exec(line) : null;
+    if (!m) {
+      kept.push(line);
+      continue;
+    }
+    for (const part of m[1].split("/")) {
+      const [when, ...rest] = part.split(/\s*(?:→|->)\s*/);
+      const then = rest.join(" → ").trim();
+      if (when.trim() && then) branches.push({ when: stripMd(when), then: stripMd(then) });
+    }
+  }
+  return { label, md: kept.join("\n").trim(), branches };
+}
+
 // 개발 과정의 한 단계. 서술은 그대로 두고, `**붙인 것**` 줄만 떼어 칩으로 돌린다.
 function parseJourneyStep(label: string, md: string) {
   // `### 1. 제목` 의 앞머리 번호는 뗀다. 화면이 이미 순번을 그린다.
@@ -286,8 +311,9 @@ export function parseProjectBody(md: string): Section[] {
       const fields = parseFields(body);
       out.push(fields.length ? { kind, title, fields } : raw);
     } else if (kind === "userflow") {
+      // 단계를 쓰면 전용 렌더러로 그린다. mermaid 만 있는 옛 원고는 그림으로 떨어진다.
       const { diagram, rest } = extractMermaid(body);
-      const steps = splitSubs(rest);
+      const steps = splitSubs(rest).map((sub) => parseFlowStep(sub.label, sub.md));
       out.push(diagram || steps.length ? { kind, title, diagram, steps } : raw);
     } else if (kind === "journey") {
       const steps = splitSubs(body).map((sub) => parseJourneyStep(sub.label, sub.md));
