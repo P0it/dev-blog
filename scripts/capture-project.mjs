@@ -5,21 +5,19 @@
 // 하는 일
 //   1. projects/<slug>.md 의 capture 플래그와 url 을 읽는다 (없으면 DB 의 url)
 //   2. Playwright 로 열어 대표 스크린샷 한 장
-//   3. 위에서 아래로 천천히 스크롤하며 8초 영상 한 편
-//   4. project-media 에 올리고 hero_poster · hero_media 를 갱신
+//   3. project-media 에 올리고 hero_poster 를 갱신
+//
+// 히어로는 정지 화면이다. 움직이는 배경은 제목을 읽는 데 방해가 되어 쓰지 않는다.
 //
 // 전제: npx playwright install chromium
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY
 
-import { readFileSync, existsSync, rmSync, readdirSync, mkdtempSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { readFileSync, existsSync } from "node:fs";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "project-media";
 const VIEWPORT = { width: 1440, height: 900 };
-const SCROLL_MS = 8000;
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -80,13 +78,8 @@ async function run() {
   const target = meta.url || row.url;
   if (!target) throw new Error(`${slug} 에 url 이 없다. 캡처할 대상이 없다.`);
 
-  const outDir = mkdtempSync(join(tmpdir(), `cap-${slug}-`));
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 2,
-    recordVideo: { dir: outDir, size: VIEWPORT },
-  });
+  const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
 
   console.log(`· 여는 중: ${target}`);
@@ -94,44 +87,19 @@ async function run() {
   await page.waitForTimeout(1500);
 
   const shot = await page.screenshot({ type: "png" });
-
-  // 위에서 아래로 천천히. 페이지가 짧으면 그 자리에 머문다.
-  await page.evaluate(async (ms) => {
-    const total = Math.max(0, document.body.scrollHeight - window.innerHeight);
-    const start = performance.now();
-    while (performance.now() - start < ms) {
-      const t = (performance.now() - start) / ms;
-      window.scrollTo(0, total * t);
-      await new Promise((r) => requestAnimationFrame(r));
-    }
-    window.scrollTo(0, total);
-  }, SCROLL_MS);
-  await page.waitForTimeout(500);
-
   await ctx.close();
   await browser.close();
 
-  const video = readdirSync(outDir).find((f) => f.endsWith(".webm"));
-  if (!video) throw new Error("영상 파일이 생기지 않았다");
-
-  const stamp = Date.now();
-  const posterUrl = await upload(`${slug}/poster-${stamp}.png`, shot, "image/png");
-  const mediaUrl = await upload(
-    `${slug}/scroll-${stamp}.webm`,
-    readFileSync(join(outDir, video)),
-    "video/webm",
-  );
+  const posterUrl = await upload(`${slug}/poster-${Date.now()}.png`, shot, "image/png");
 
   const { error: upErr } = await sb
     .from("projects")
-    .update({ hero_poster: posterUrl, hero_media: mediaUrl })
+    .update({ hero_poster: posterUrl, hero_media: null })
     .eq("slug", slug);
   if (upErr) throw upErr;
 
-  rmSync(outDir, { recursive: true, force: true });
   console.log(`✓ ${slug} 캡처 완료`);
   console.log(`  poster: ${posterUrl}`);
-  console.log(`  media : ${mediaUrl}`);
 }
 
 run().catch((e) => {

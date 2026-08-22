@@ -1603,13 +1603,38 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   box-shadow: inset 2px 0 0 var(--lab-mint);
 }
 
+/* Lab — 데이터와 API */
+.lab-integ { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lab-integ-card { padding: 16px 18px; }
+.lab-integ-name {
+  font-size: 14.5px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--lab-fg);
+  padding-bottom: 10px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--lab-line);
+}
+.lab-integ-rows { margin: 0; }
+.lab-integ-row {
+  display: grid; grid-template-columns: 52px 1fr; gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px; line-height: 1.7;
+}
+.lab-integ-row:last-child { margin-bottom: 0; }
+.lab-integ-row dt { padding-top: 4px; }
+.lab-integ-row dd { margin: 0; color: var(--lab-fg); overflow-wrap: anywhere; }
+.lab-integ-link { color: var(--lab-mint); font-family: var(--font-mono); font-size: 12px; }
+.lab-integ-link:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .lab-integ { grid-template-columns: 1fr; }
+}
+
 /* Lab — 구조 */
 .lab-arch { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; align-items: start; }
 /* 가로로 긴 다이어그램은 폭 전체를 쓰는 sticky 밴드로 눕히고 단계를 그 아래에 둔다. */
 .lab-arch-band { grid-template-columns: 1fr; gap: 20px; }
 .lab-arch-band .lab-arch-panel { top: 84px; padding: 14px; }
 
-.lab-arch-panel { position: sticky; top: 108px; padding: 20px; min-width: 0; overflow-x: auto; }
+.lab-arch-panel { position: sticky; top: 108px; padding: 20px; min-width: 0; }
 .lab-arch-steps { padding: 8px 0; min-width: 0; }
 .lab-arch-step {
   padding: 18px 0 18px 16px;
@@ -1629,13 +1654,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 가로로 긴 flowchart LR 은 폭에 맞추면 납작해져 글자가 안 읽힌다.
    최소 높이를 보장하고, 넘치는 폭은 패널 안에서 가로로 스크롤한다.
    .mermaid-figure 가 flex 라 그대로 두면 svg 가 flex-shrink 로 눌린다. */
-.lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: flex-start; }
+.lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: center; }
 .lab-arch-panel .mermaid-figure > svg {
-  flex: 0 0 auto;
   display: block;
-  /* mermaid 가 svg 에 인라인 max-width 를 박으므로 !important 로 걷어낸다. */
-  width: auto !important; max-width: none !important;
-  height: auto; min-height: 260px; max-height: 62vh;
+  /* 폭에 맞춰 줄이기만 한다. 억지로 늘리면 노드가 화면 밖으로 튀어나간다. */
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto;
+  max-height: 60vh;
 }
 
 .lab-arch-panel svg g.node rect,
@@ -1713,7 +1739,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-arch-step,
   .lab-trial,
   .lab-tech td.pick { transition: none !important; }
-  .lab-hero-media video { display: none; }
 }
 
 @media (max-width: 1200px) {

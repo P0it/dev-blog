@@ -73,7 +73,8 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 |---|---|---|
 | `## 제품 소개` | 뭐 하는 물건인지, 처음 보는 사람 기준 | 2~3 문단, 기능 나열 금지 |
 | `## 요구사항` | 만들 때 하고 싶었던 것들 | `- [x]` / `- [ ]` 체크리스트, 항목당 한 줄 |
-| `## 기술 선정` | 후보 / 고른 것 / 이유 | 3열 마크다운 표 |
+| `## 기술 선정` | 실제로 쓴 기술과 고른 이유 | 2열 마크다운 표 (기술 / 이유) |
+| `## 데이터와 API` | 붙인 외부 데이터·서비스 | `### 이름` 단위, `**라벨** 값` 줄 |
 | `## 구조` | 데이터·요청 흐름 | mermaid 블록 1개 + `### 단계` 설명 문단들 |
 | `## 시행착오` | 삽질 케이스 | `### 케이스 제목` 단위, 각각 **증상 / 시도 / 결론** 세 문단 |
 | `## 남은 것` | 다음 작업, 알려진 한계 | 짧은 목록 |
@@ -147,8 +148,8 @@ capture: true              # 공개 URL 스크롤 캡처 허용 여부
 
 ### 히어로
 
-화면폭을 꽉 채우는 미디어. `hero_media` 가 있으면 자동재생·무음·루프 영상,
-없으면 `hero_poster` 이미지, 둘 다 없으면 `logo_bg` 단색 위에 로고. 그 위에 제목,
+화면폭을 꽉 채우는 **정지 화면**. `hero_poster` 이미지, 없으면 `logo_bg` 단색 위에 로고.
+움직이는 배경은 제목을 읽는 데 방해가 되므로 쓰지 않는다. 그 위에 제목,
 tagline, `연도 · 스택 · 배포처 · status` 한 줄.
 
 ### 바로가기 링크
@@ -177,7 +178,8 @@ IntersectionObserver 를 쓰는 클라이언트 컴포넌트. 포스트의 우�
 |---|---|---|
 | 제품 소개 | 큰 본문 활자, 넉넉한 여백 | 진입 시 페이드업 |
 | 요구사항 | `- [x]` 파싱 → 체크 카드 2열 그리드 | 카드 스태거 페이드인, 체크 표시가 그려지듯 |
-| 기술 선정 | 마크다운 표 → 전용 비교표 | 행 단위 슬라이드인, "고른 것" 셀만 뒤늦게 색이 차오름 |
+| 기술 선정 | 마크다운 표 → 전용 표. 첫 열(기술 이름)만 강조 | 행 단위 슬라이드인 |
+| 데이터와 API | 항목마다 카드. 링크 값은 앵커로 | 카드 스태거 |
 | 구조 | 다이어그램을 어두운 풀폭 패널에 크게 | 다이어그램 sticky 고정, 옆 `### 단계` 를 스크롤하면 해당 mermaid 노드 점등 |
 | 시행착오 | `###` 케이스별 접이식 카드 | 카드가 겹쳐 쌓이듯 등장, 펼칠 때 증상→시도→결론 계단식 |
 | 남은 것 | 담백한 목록 | 없음 |
@@ -216,6 +218,7 @@ type Section =
   | { kind: "intro";        title: string; md: string }
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
   | { kind: "tech";         title: string; head: string[]; rows: string[][] }
+  | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "trials";       title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
   | { kind: "remaining";    title: string; md: string }

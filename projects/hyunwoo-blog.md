@@ -38,12 +38,28 @@ capture: true
 
 ## 기술 선정
 
-| 후보 | 고른 것 | 이유 |
-|---|---|---|
-| 마크다운 파일 / Supabase / Notion API | Supabase | 폰에서 초안을 요청하려면 서버 상태가 필요했다. 파일은 로컬에 묶인다 |
-| Next.js / Astro | Next.js | 어드민이 동적 화면이라 정적 생성만으로는 부족했다 |
-| Vercel / Cloudflare Pages | Vercel | Next.js 기본 배포 경로라 손댈 게 없다 |
-| API 직접 호출 / claude CLI 스폰 | claude CLI | 이미 구독 중이라 별도 과금이 없다 |
+| 기술 | 고른 이유 |
+|---|---|
+| Supabase | 폰에서 초안을 요청하려면 서버 상태가 필요했다. 파일은 로컬에 묶인다 |
+| Next.js | 어드민이 동적 화면이라 정적 생성만으로는 부족했다 |
+| Vercel | Next.js 기본 배포 경로라 손댈 게 없다 |
+| claude CLI | 이미 구독 중이라 API 를 직접 부르는 것보다 과금이 없다 |
+
+## 데이터와 API
+
+### Supabase
+
+**제공처** Supabase
+**방식** JS 클라이언트. 읽기는 published 만, 쓰기는 로컬 어드민에서만
+**적재** 글은 초안 생성 시점에 draft 로 들어가고, 발행에서 published 로 바뀐다
+**주의** 공개 사이트에는 쓰기 경로가 없다. RLS 로 공개 읽기만 열어 뒀다
+
+### Anthropic (claude CLI)
+
+**제공처** Anthropic
+**방식** 로컬 워커가 subprocess 로 CLI 를 띄운다. HTTP 를 직접 부르지 않는다
+**적재** 결과는 곧바로 posts 테이블의 draft 행이 된다
+**주의** 워커가 로컬에서만 돈다. 컴퓨터가 꺼져 있으면 큐가 밀린다
 
 ## 구조
 

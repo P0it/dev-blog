@@ -18,16 +18,8 @@ export function ProjectHero({ project: p }: { project: Project }) {
   return (
     <header className="lab-hero">
       <div className="lab-hero-media">
-        {p.heroMedia ? (
-          <video
-            src={p.heroMedia}
-            poster={p.heroPoster ?? undefined}
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        ) : p.heroPoster ? (
+        {/* 히어로는 정지 화면이다. 움직이는 배경은 제목을 읽는 데 방해가 된다. */}
+        {p.heroPoster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.heroPoster} alt="" />
         ) : (

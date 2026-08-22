@@ -6,6 +6,7 @@ import { MarkdownView } from "@/components/post/MarkdownView";
 import { Intro } from "@/components/project/sections/Intro";
 import { Requirements } from "@/components/project/sections/Requirements";
 import { TechChoices } from "@/components/project/sections/TechChoices";
+import { Integrations } from "@/components/project/sections/Integrations";
 import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
@@ -20,6 +21,8 @@ function renderSection(s: Section) {
       return <Requirements items={s.items} />;
     case "tech":
       return <TechChoices head={s.head} rows={s.rows} />;
+    case "integrations":
+      return <Integrations items={s.items} />;
     case "architecture":
       return <Architecture diagram={s.diagram} steps={s.steps} />;
     case "trials":

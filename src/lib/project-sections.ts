@@ -9,6 +9,7 @@ export type Section =
   | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
   | { kind: "tech"; title: string; head: string[]; rows: string[][] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
+  | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
   | { kind: "trials"; title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
   | { kind: "remaining"; title: string; md: string }
   | { kind: "raw"; title: string; md: string };
@@ -18,6 +19,7 @@ const KNOWN: Record<string, Section["kind"]> = {
   "제품 소개": "intro",
   "요구사항": "requirements",
   "기술 선정": "tech",
+  "데이터와 API": "integrations",
   "구조": "architecture",
   "시행착오": "trials",
   "남은 것": "remaining",
@@ -131,6 +133,22 @@ function extractMermaid(body: string): { diagram: string | null; rest: string } 
   return { diagram: m[1].trim(), rest: body.replace(m[0], "").trim() };
 }
 
+// `**라벨** 값` 형태의 줄을 순서대로 모은다. 라벨 이름을 미리 정하지 않아
+// 프로젝트마다 필요한 항목(제공처·링크·방식·적재·주의)을 자유롭게 쓸 수 있다.
+function parseFields(md: string): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = [];
+  for (const { line, inFence } of walk(md)) {
+    if (inFence) continue;
+    const m = /^\s*(?:\*\*(.+?)\*\*|([^:：]{1,12})\s*[:：])\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const label = (m[1] ?? m[2] ?? "").trim();
+    const value = (m[3] ?? "").replace(/^\s*[-–—]\s*/, "").trim();
+    if (!label || !value) continue;
+    out.push({ label, value });
+  }
+  return out;
+}
+
 // `**증상** …` / `증상: …` 두 표기를 모두 받는다. 라벨이 하나도 없으면
 // 본문 전체를 증상에 넣어, 최소한 내용이 화면에서 사라지지 않게 한다.
 function parseCase(label: string, md: string) {
@@ -189,6 +207,11 @@ export function parseProjectBody(md: string): Section[] {
       const { diagram, rest } = extractMermaid(body);
       const steps = splitSubs(rest);
       out.push(diagram || steps.length ? { kind, title, diagram, steps } : raw);
+    } else if (kind === "integrations") {
+      const items = splitSubs(body)
+        .map((sub) => ({ name: sub.label, fields: parseFields(sub.md) }))
+        .filter((it) => it.fields.length > 0);
+      out.push(items.length ? { kind, title, items } : raw);
     } else if (kind === "trials") {
       const subs = splitSubs(body);
       const cases = subs.map((s) => parseCase(s.label, s.md));

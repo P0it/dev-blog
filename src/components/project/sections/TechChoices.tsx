@@ -1,5 +1,4 @@
-// 규약상 두 번째 열이 "고른 것"이다. 열 수가 어긋나도 그냥 표로 떨어지게 두고,
-// 강조는 두 번째 셀에만 건다.
+// 기술 이름 + 고른 이유. 후보 비교가 아니라 나열이므로 첫 열을 강조한다.
 export function TechChoices({ head, rows }: { head: string[]; rows: string[][] }) {
   return (
     <div className="lab-panel lab-tech lab-reveal">
@@ -15,7 +14,7 @@ export function TechChoices({ head, rows }: { head: string[]; rows: string[][] }
           {rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
-                <td key={j} className={j === 1 ? "pick" : undefined}>
+                <td key={j} className={j === 0 ? "pick" : undefined}>
                   {c}
                 </td>
               ))}
