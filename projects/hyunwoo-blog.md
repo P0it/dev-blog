@@ -4,7 +4,7 @@ name: hyunwoo.blog
 tagline: AI 세션이 초안을 쓰고 내가 고쳐 발행하는 개인 블로그
 year: "2026"
 logo_emoji: ✍️
-logo_bg: "#69C5AA"
+logo_bg: "#1E8063"
 stack: [Next.js, React, TypeScript, Supabase, Tailwind CSS, Vercel]
 url: https://hyunwoo-blog.vercel.app
 host: vercel
@@ -123,3 +123,4 @@ throttle 에 걸렸다. 저해상도로 전체를 한 번만 받아두고 그 �
 - 영어 번역본 자동 생성이 스키마만 있고 파이프라인이 비어 있다
 - 실험실 상세 화면이 아직 블로그 글 레이아웃을 그대로 쓴다
 - 워커가 로컬에서만 돈다. 집 컴퓨터가 꺼져 있으면 큐가 밀린다
+

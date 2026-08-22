@@ -9,6 +9,9 @@ export type Step = { label: string; md: string };
 // mermaid 가 그린 SVG 의 노드를 순서대로 집어 현재 단계 인덱스와 맞춘다.
 export function Architecture({ diagram, steps }: { diagram: string | null; steps: Step[] }) {
   const [active, setActive] = useState(0);
+  // 가로로 긴 다이어그램(LR 계열)은 좁은 칼럼에 넣으면 글자가 안 읽힌다.
+  // 렌더된 SVG 비율을 재서 2:1 을 넘으면 폭 전체를 쓰는 밴드로 눕힌다.
+  const [wide, setWide] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -40,6 +43,8 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
         raf = requestAnimationFrame(paint);
         return;
       }
+      const vb = svg.viewBox?.baseVal;
+      if (vb && vb.height > 0) setWide(vb.width / vb.height > 2);
       const nodes = Array.from(svg.querySelectorAll<SVGGElement>("g.node"));
       nodes.forEach((n, i) => n.classList.toggle("lab-node-on", i === active));
     };
@@ -61,7 +66,7 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
   }
 
   return (
-    <div className="lab-arch">
+    <div className={wide ? "lab-arch lab-arch-band" : "lab-arch"}>
       <div className="lab-panel lab-corner lab-arch-panel" ref={panelRef}>
         <Mermaid code={diagram} />
       </div>

@@ -1249,8 +1249,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .lab-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
 }
 .post-title {
   font-family: var(--font-display);
@@ -1436,7 +1436,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   box-shadow: 0 2px 4px rgba(27, 28, 30, 0.05), 0 14px 34px rgba(27, 28, 30, 0.10);
 }
 .lab-card-tile {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 3 / 2;
   display: flex; align-items: center; justify-content: center;
   font-size: 56px; line-height: 1;
   border-bottom: 1px solid var(--lab-line);
@@ -1484,7 +1484,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 미디어 아래쪽을 페이지 배경색으로 녹인다. */
 .lab-hero-veil {
   position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to top, var(--bg-normal) 2%, rgba(0, 0, 0, 0.55) 55%, rgba(0, 0, 0, 0.25) 100%);
+  /* 페이지 배경색으로 녹이는 층은 뺐다. 라이트 모드에서 흰색이 올라오며
+     메타 줄을 씻어내기 때문이다. 아래로 갈수록 짙어지는 스크림 하나만 쓴다. */
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.72) 24%,
+    rgba(0, 0, 0, 0.34) 58%,
+    rgba(0, 0, 0, 0.12) 100%);
 }
 .lab-hero-hud { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding-bottom: 26px; }
 .lab-hero-name {
@@ -1503,20 +1510,20 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: flex; flex-wrap: wrap; gap: 18px;
   margin-top: 18px;
 }
-.lab-hero-meta .lab-label { color: rgba(255, 255, 255, 0.62); }
+.lab-hero-meta .lab-label { color: rgba(255, 255, 255, 0.78); }
 .lab-hero-go {
   position: absolute; top: 20px; right: 40px; z-index: 3;
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px;
   border: 1px solid var(--lab-mint);
-  color: var(--lab-mint);
-  background: rgba(0, 0, 0, 0.45);
+  color: var(--mint-500);
+  background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(6px);
   font-family: var(--font-mono);
   font-size: 11px; letter-spacing: 0.1em;
   text-decoration: none;
 }
-.lab-hero-go:hover { background: var(--lab-mint); color: var(--white); }
+.lab-hero-go:hover { background: var(--mint-500); color: var(--neutral-950); }
 
 /* Lab — 상세 본문 레이아웃 */
 .lab-detail { display: grid; grid-template-columns: 152px 1fr; gap: 40px; }
@@ -1578,8 +1585,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* Lab — 구조 */
 .lab-arch { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; align-items: start; }
-.lab-arch-panel { position: sticky; top: 108px; padding: 20px; }
-.lab-arch-steps { padding: 8px 0; }
+/* 가로로 긴 다이어그램은 폭 전체를 쓰는 sticky 밴드로 눕히고 단계를 그 아래에 둔다. */
+.lab-arch-band { grid-template-columns: 1fr; gap: 20px; }
+.lab-arch-band .lab-arch-panel { top: 84px; padding: 14px; }
+
+.lab-arch-panel { position: sticky; top: 108px; padding: 20px; min-width: 0; overflow-x: auto; }
+.lab-arch-steps { padding: 8px 0; min-width: 0; }
 .lab-arch-step {
   padding: 18px 0 18px 16px;
   border-left: 2px solid var(--lab-line);
@@ -1594,6 +1605,18 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: inherit;
 }
 .lab-arch-step.on { color: var(--lab-fg); border-left-color: var(--lab-mint); }
+
+/* 가로로 긴 flowchart LR 은 폭에 맞추면 납작해져 글자가 안 읽힌다.
+   최소 높이를 보장하고, 넘치는 폭은 패널 안에서 가로로 스크롤한다.
+   .mermaid-figure 가 flex 라 그대로 두면 svg 가 flex-shrink 로 눌린다. */
+.lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: flex-start; }
+.lab-arch-panel .mermaid-figure > svg {
+  flex: 0 0 auto;
+  display: block;
+  /* mermaid 가 svg 에 인라인 max-width 를 박으므로 !important 로 걷어낸다. */
+  width: auto !important; max-width: none !important;
+  height: auto; min-height: 260px; max-height: 62vh;
+}
 
 .lab-arch-panel svg g.node rect,
 .lab-arch-panel svg g.node polygon,
@@ -1673,7 +1696,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-hero-media video { display: none; }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
+  .lab-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
   .lab-grid { grid-template-columns: repeat(2, 1fr); }
 }
 

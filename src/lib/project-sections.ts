@@ -140,7 +140,8 @@ function parseCase(label: string, md: string) {
     for (let i = 0; i < lines.length; i++) {
       const m = re.exec(lines[i]);
       if (!m) continue;
-      const rest: string[] = [m[1].trim()];
+      // `**증상** — 내용` 처럼 라벨 뒤에 대시를 쓰는 표기가 흔하다. 대시는 뗀다.
+      const rest: string[] = [m[1].replace(/^\s*[-–—]\s*/, "").trim()];
       for (let j = i + 1; j < lines.length; j++) {
         if (!lines[j].trim()) break;
         rest.push(lines[j].trim());
