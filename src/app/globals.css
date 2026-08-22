@@ -1251,6 +1251,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
+  /* 카드가 z 축으로 다가오려면 부모에 원근이 있어야 한다.
+     원근점이 위쪽이라 아래 줄 카드일수록 더 앞으로 나오는 것처럼 보인다. */
+  perspective: 1100px;
+  perspective-origin: 50% 30%;
 }
 .post-title {
   font-family: var(--font-display);
@@ -1341,11 +1345,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   /* 카드 입체감 — 평소엔 바닥에 붙어 있고, hover 에 그림자를 겹쳐 띄운다. */
   --lab-card-shadow:
     0 1px 2px rgba(27, 28, 30, 0.05),
-    0 4px 10px rgba(27, 28, 30, 0.045);
+    0 3px 8px rgba(27, 28, 30, 0.04);
   --lab-card-shadow-hover:
-    0 2px 4px rgba(27, 28, 30, 0.06),
-    0 12px 24px rgba(27, 28, 30, 0.10),
-    0 28px 56px rgba(27, 28, 30, 0.14);
+    0 4px 8px rgba(27, 28, 30, 0.05),
+    0 16px 28px rgba(27, 28, 30, 0.10),
+    0 40px 64px rgba(27, 28, 30, 0.16);
   --lab-card-edge: rgba(255, 255, 255, 0.9);
 }
 
@@ -1361,11 +1365,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
   --lab-card-shadow:
     0 1px 2px rgba(0, 0, 0, 0.35),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+    0 3px 10px rgba(0, 0, 0, 0.28);
   --lab-card-shadow-hover:
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 14px 28px rgba(0, 0, 0, 0.45),
-    0 32px 64px rgba(0, 0, 0, 0.55);
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    0 18px 32px rgba(0, 0, 0, 0.45),
+    0 44px 72px rgba(0, 0, 0, 0.6);
   --lab-card-edge: rgba(255, 255, 255, 0.14);
 }
 
@@ -1463,14 +1467,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Lab — 목록 그리드와 카드 */
 .lab-card {
   position: relative;
+  z-index: 0;
   display: flex; flex-direction: column;
   overflow: hidden;
   color: inherit;
   box-shadow: var(--lab-card-shadow);
   will-change: transform;
   transition:
-    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
 }
 /* 윗변에 1px 하이라이트를 얹어 판이 들린 것처럼 보이게 한다.
    다크에서는 그림자가 잘 안 보여 이쪽이 입체감을 대신한다. */
@@ -1484,13 +1490,23 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   opacity: 0;
   transition: opacity 0.26s ease;
 }
+/* 뜬 카드는 이웃 위로 올라서야 한다. 안 그러면 그림자가 옆 카드에 잘려
+   "뒤에 그림자만 깔린" 것처럼 보인다. */
 .lab-card:hover {
-  transform: translateY(-8px) scale(1.015);
+  z-index: 3;
+  transform: translate3d(0, -10px, 48px);
   box-shadow: var(--lab-card-shadow-hover);
 }
 .lab-card:hover::before { opacity: 1; }
+/* 하나가 앞으로 나오면 나머지는 뒤로 물러난다. 상대적인 거리 차가
+   "앞으로 튀어나왔다"는 인상을 만든다. */
+.lab-grid:has(.lab-card:hover) .lab-card:not(:hover) {
+  transform: translate3d(0, 0, -30px);
+  opacity: 0.88;
+}
 .lab-card:active {
-  transform: translateY(-2px) scale(1.004);
+  z-index: 3;
+  transform: translate3d(0, -2px, 10px);
   box-shadow: var(--lab-card-shadow);
 }
 
