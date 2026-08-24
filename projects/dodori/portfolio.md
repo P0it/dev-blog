@@ -272,22 +272,21 @@ flowchart LR
   end
   subgraph 밖[바깥]
     direction TB
-    EXT[네이버 · 공공데이터]
+    EXT[네이버 · KASI]
     VF[Vercel Function]
   end
-  UI -->|훅 호출| Q
-  Q -->|쿼리 결과| AS
-  AS -.->|껐다 켜면 먼저| Q
+  UI --> Q
+  Q -->|캐시| AS
+  AS -.-> Q
   Q -->|읽기·쓰기| DB
-  Q -->|1080·360 두 장| ST
-  Q -->|시크릿 필요한 일| EF
-  ST -.->|공개 URL| UI
-  EF -->|한 트랜잭션| DB
-  EF -->|장소·공휴일 조회| EXT
-  DB -->|트리거가 만든 알림 행| VF
-  VF -.->|웹 푸시| UI
-  DB -.->|바뀐 행| RT
-  RT -.->|즉시 반영| Q
+  Q -->|사진| ST
+  Q -->|시크릿| EF
+  EF --> DB
+  EF -->|조회| EXT
+  DB -->|알림 행| VF
+  VF -.->|푸시| UI
+  DB -.-> RT
+  RT -.->|즉시| Q
 ```
 
 ### 화면 — 훅 호출과 배치만 한다

@@ -2122,21 +2122,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* Lab — 구조 */
-/* 구조도는 본문 폭을 통째로 쓴다. 두 칼럼으로 쪼개면 다이어그램이 400px 안쪽으로
-   눌려 노드 글자가 뭉갠다. 그림을 위에 붙박아 두고 설명이 그 아래를 지나간다. */
-.lab-arch { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; }
+/* Lab — 구조
+   그림 한 장을 본문 폭에 크게 놓고 설명을 그 아래에 편다.
+   붙박이(sticky)로 두면 스크롤할 때 설명이 판 뒤로 깔려 가려진다. */
+.lab-arch { display: grid; grid-template-columns: 1fr; gap: 26px; }
 .lab-arch-panel {
-  position: sticky; top: 84px; padding: 20px; min-width: 0;
+  padding: 18px 20px 22px; min-width: 0;
   display: flex; flex-direction: column;
-  /* sticky 로 떠 있는 동안 아래 단계 글이 패널을 통과해 비치면 안 된다.
-     .lab-panel 의 반투명 면을 페이지 바탕색 위에 얹어 불투명하게 만든다. */
-  z-index: 2;
-  background-color: var(--bg-base);
-  background-image: linear-gradient(var(--lab-panel), var(--lab-panel));
 }
 .lab-arch-zoom {
   align-self: flex-end;
-  margin-bottom: 4px;
   padding: 5px 11px;
   border: 1px solid var(--lab-line);
   border-radius: 999px;
@@ -2148,34 +2143,22 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .lab-arch-zoom:hover { color: var(--lab-mint); border-color: var(--lab-mint); }
 
-/* 설명은 한 줄로 세운다. 두 칼럼으로 놓으면 같은 높이의 두 단계 중 무엇을 켜야
-   할지 정해지지 않아, 스크롤에 따라 점등이 튄다. */
-.lab-arch-steps { padding: 8px 0; min-width: 0; }
-.lab-arch-step > * { max-width: 46em; }
+/* 설명은 두 줄로 편다. 점등 짝이 없어져 순서에 매이지 않으므로,
+   짧은 문단 여럿을 세로로 길게 늘어놓을 이유가 없다. */
+.lab-arch-steps {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 26px;
+}
 .lab-arch-step {
-  padding: 20px 18px 20px 20px;
-  border-left: 2px solid var(--lab-line);
-  border-radius: 0 10px 10px 0;
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--lab-line);
   color: var(--lab-fg-dim);
-  font-size: 15px; line-height: 1.75;
-  transition: color 0.25s, border-color 0.25s, background-color 0.25s;
+  font-size: 14.5px; line-height: 1.75;
 }
 .lab-arch-step b {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
+  display: block;
   margin-bottom: 6px;
-  color: inherit;
-}
-.lab-arch-step b em {
-  font-family: var(--font-mono);
-  font-style: normal; font-size: 11px; opacity: 0.6;
-}
-/* 다이어그램에서 켜진 노드와 같은 색을 쓴다. 왼쪽 그림과 오른쪽 글이
-   한 쌍이라는 게 색으로 읽혀야 눈이 둘을 오간다. */
-.lab-arch-step.on {
+  font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg);
-  border-left-color: var(--lab-mint);
-  background: var(--lab-mint-bg);
 }
 
 .lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: center; }
@@ -2185,9 +2168,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   width: auto !important;
   max-width: 100% !important;
   height: auto;
-  /* 세로 흐름도는 높이가 병목이라 여기서 잘리면 통째로 축소돼 글자가 뭉갠다.
-     sticky top(108px)과 아래 여백만 남기고 화면 높이를 최대한 내준다. */
-  max-height: 62vh;
 }
 
 .lab-arch-panel svg g.node rect,
@@ -2196,32 +2176,21 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   transition: stroke 0.25s, filter 0.25s;
 }
 /* 실험실 다이어그램은 테마색으로 통일한다. mermaid 기본 팔레트(파랑)를
-   그대로 쓰면 페이지의 민트 계열과 따로 논다. 블로그 글의 다이어그램은
-   건드리지 않도록 .lab-arch-panel 안에서만 덮는다. */
+   그대로 쓰면 페이지의 민트 계열과 따로 논다. 원통(DB) 은 path 로 그려지므로
+   함께 잡아야 혼자 파랗게 남지 않는다. 블로그 글의 다이어그램은 건드리지
+   않도록 .lab-arch-panel 안에서만 덮는다. */
 .lab-arch-panel svg g.node rect,
 .lab-arch-panel svg g.node polygon,
-.lab-arch-panel svg g.node circle {
+.lab-arch-panel svg g.node circle,
+.lab-arch-panel svg g.node ellipse,
+.lab-arch-panel svg g.node path {
   fill: var(--lab-panel) !important;
   stroke: var(--lab-line) !important;
 }
-.lab-arch-panel svg g.node.lab-node-on rect,
-.lab-arch-panel svg g.node.lab-node-on polygon,
-.lab-arch-panel svg g.node.lab-node-on circle {
-  fill: var(--lab-mint-bg) !important;
-  stroke: var(--lab-mint) !important;
-  stroke-width: 2.5px !important;
-  filter: drop-shadow(0 0 8px var(--lab-mint-bg));
-}
-/* 계층 상자(subgraph). 구조 다이어그램은 상자로 경계를 긋는 게 본체라
-   기본 점선 테두리를 그대로 살리고, 짝이 된 상자만 민트로 채운다. */
+/* 계층 상자(subgraph) — 경계를 긋는 게 본체라 점선 테두리를 살린다. */
 .lab-arch-panel svg g.cluster rect {
   fill: var(--lab-panel) !important;
   stroke: var(--lab-line) !important;
-  transition: fill 0.25s, stroke 0.25s;
-}
-.lab-arch-panel svg g.cluster.lab-cluster-on rect {
-  fill: var(--lab-mint-bg) !important;
-  stroke: var(--lab-mint) !important;
 }
 .lab-arch-panel svg g.cluster .cluster-label, .lab-arch-panel svg g.cluster text {
   fill: var(--lab-fg-dim) !important; color: var(--lab-fg-dim) !important;
@@ -2232,7 +2201,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   background-color: var(--bg-base) !important;
   background-image: linear-gradient(var(--lab-panel), var(--lab-panel));
   color: var(--lab-fg-dim) !important;
-  font-size: 12px;
 }
 .lab-arch-panel svg .edgeLabel rect { fill: transparent !important; }
 .lab-arch-panel svg .flowchart-link { stroke: var(--lab-line) !important; }
@@ -2404,8 +2372,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-hero-name { font-size: 34px; }
   .lab-hero-tagline { font-size: 16px; }
   .lab-hero-go { right: 20px; top: 20px; padding: 9px 14px; font-size: 13px; }
-  .lab-arch { grid-template-columns: 1fr; gap: 16px; }
-  .lab-arch-panel { position: static; }
+  .lab-arch { gap: 16px; }
+  .lab-arch-steps { grid-template-columns: 1fr; }
   .lab-integ { grid-template-columns: 1fr; }
   .lab-section-head { margin: 52px 0 18px; }
 }

@@ -36,7 +36,7 @@ function readTokens() {
 
 type Tokens = ReturnType<typeof readTokens>;
 
-function buildConfig(t: Tokens) {
+function buildConfig(t: Tokens, fontSize = 14) {
   // 폰트 패밀리는 mermaid가 텍스트 너비 측정에도 쓴다. var()는 측정 시점에
   // 해석되지 않아 시스템 폰트로 잰 뒤 실제로는 Pretendard로 그려져 한글이
   // 노드 너비를 넘어선다. 실제 해석된 값(Pretendard 등)을 직접 넣어 측정과
@@ -63,7 +63,7 @@ function buildConfig(t: Tokens) {
     sequence: { useMaxWidth: true, mirrorActors: false, actorFontFamily: fontFamily, noteFontFamily: fontFamily, messageFontFamily: fontFamily },
     themeVariables: {
       fontFamily,
-      fontSize: "14px",
+      fontSize: `${fontSize}px`,
       background: t.bgBase,
       // 기본 노드 (지정 클래스 없을 때) — 블루 톤
       primaryColor: t.blueFill,
@@ -159,7 +159,9 @@ function buildConfig(t: Tokens) {
   };
 }
 
-export function Mermaid({ code }: { code: string }) {
+// fontSize 는 구조도처럼 큰 판에 올리는 그림에서 올린다. mermaid 가 이 값으로
+// 노드 너비까지 재기 때문에, CSS 로 키우면 글자가 상자를 넘는다.
+export function Mermaid({ code, fontSize }: { code: string; fontSize?: number }) {
   const id = useId().replace(/:/g, "");
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export function Mermaid({ code }: { code: string }) {
           await document.fonts.ready;
         }
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize(buildConfig(readTokens()));
+        mermaid.initialize(buildConfig(readTokens(), fontSize));
         const { svg } = await mermaid.render(`m-${id}-${tick}`, code);
         if (!cancelled && ref.current) ref.current.innerHTML = svg;
       } catch (e) {
@@ -195,7 +197,7 @@ export function Mermaid({ code }: { code: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code, id, tick]);
+  }, [code, id, tick, fontSize]);
 
   if (error) {
     return (
