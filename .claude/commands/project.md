@@ -79,8 +79,30 @@ description: 다른 레포에서 /portfolio 로 뽑아온 portfolio.md 를 규�
 ### 3. 파일을 놓는다
 
 `projects/<slug>.md` 로 저장한다. slug 는 프런트매터의 것을 쓴다.
-로고·시연 파일이 딸려 왔으면 `logo_file` / `**파일**` 의 상대경로가 실제로 맞는 자리에
-오도록 같이 옮긴다. 없는 파일을 가리키면 적재가 그 자리에서 실패한다.
+
+딸려 온 파일(로고·화면·시연)은 **슬러그 폴더 하나에 모은다.** `projects/` 는 평평해서
+저쪽 레포의 `screens/` 를 그대로 가져오면 프로젝트끼리 부딪힌다.
+
+```
+projects/
+  mcp-probe.md
+  mcp-probe/
+    logo.png
+    screens/01-home.png
+    demo/flow.mp4
+```
+
+원고의 경로도 그 자리에 맞게 고쳐 쓴다. **상대경로는 원고 파일 기준**이라
+`projects/<slug>.md` 옆에서 출발한다.
+
+- `logo_file: ./logo.png` → `./<slug>/logo.png`
+- `**파일** ./screens/01-home.png` → `./<slug>/screens/01-home.png`
+- `**파일** ./demo/flow.mp4` → `./<slug>/demo/flow.mp4`
+
+없는 파일을 가리키면 적재가 그 자리에서 실패한다. 옮긴 뒤 경로를 한 번 확인한다.
+
+이 파일들은 커밋한다. 적재하면 스토리지로 올라가지만, 원고를 다시 push 할 때
+로컬 원본이 없으면 그 자리에서 막히기 때문이다. 그래서 영상은 작게 유지한다.
 
 ### 4. 적재한다
 
