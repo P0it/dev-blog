@@ -1955,7 +1955,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 가로로 긴 다이어그램은 폭 전체를 쓰는 sticky 밴드로 눕히고 단계를 그 아래에 둔다. */
 .lab-arch-band { grid-template-columns: 1fr; gap: 24px; }
 .lab-arch-band .lab-arch-panel { top: 84px; padding: 18px; }
-.lab-arch-panel { position: sticky; top: 108px; padding: 24px; min-width: 0; }
+.lab-arch-panel {
+  position: sticky; top: 108px; padding: 24px; min-width: 0;
+  /* sticky 로 떠 있는 동안 아래 단계 글이 패널을 통과해 비치면 안 된다.
+     .lab-panel 의 반투명 면을 페이지 바탕색 위에 얹어 불투명하게 만든다. */
+  z-index: 2;
+  background-color: var(--bg-base);
+  background-image: linear-gradient(var(--lab-panel), var(--lab-panel));
+}
 .lab-arch-steps { padding: 8px 0; min-width: 0; }
 .lab-arch-step {
   padding: 20px 0 20px 20px;
