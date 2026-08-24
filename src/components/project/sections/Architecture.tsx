@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Mermaid } from "@/components/post/Mermaid";
 
 export type Step = { label: string; md: string };
@@ -49,6 +50,9 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
   const [zoom, setZoom] = useState(false);
   const [active, setActive] = useState<number | null>(null);
   const [tip, setTip] = useState<{ i: number; x: number; y: number } | null>(null);
+  // 안내 — 그림이 화면에 들어오면 떴다가, 한 번 만져 보면 사라진다.
+  const [coach, setCoach] = useState(false);
+  const [touched, setTouched] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const layers = useMemo(() => (diagram ? parseLayers(diagram) : []), [diagram]);
@@ -72,6 +76,38 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     clusters.forEach((c) => c.classList.toggle("lab-cluster-on", c === hit));
   }, [active, steps, diagram]);
 
+  // 설명이 딸린 노드에 표시를 남긴다. 안내 문구만으로는 어디에 올려야 하는지
+  // 모르므로, 커서 모양과 테두리로 "여긴 눌러 볼 수 있다"를 그림 안에서 말한다.
+  useEffect(() => {
+    let raf = 0;
+    const paint = () => {
+      const svg = panelRef.current?.querySelector("svg");
+      if (!svg) {
+        raf = requestAnimationFrame(paint);
+        return;
+      }
+      const keys = new Set(steps.map((x) => norm(x.label)));
+      svg.querySelectorAll<SVGGElement>("g.node").forEach((n) => {
+        n.classList.toggle("lab-node-linked", keys.has(norm(n.textContent ?? "")));
+      });
+    };
+    paint();
+    return () => cancelAnimationFrame(raf);
+  }, [steps, diagram]);
+
+  // 그림이 화면에 들어오면 안내를 띄운다. 스크롤로 여기 닿은 순간이라야
+  // 눈이 그림에 있다. 한 번 만져 봤으면 다시 띄우지 않는다.
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el || touched) return;
+    const io = new IntersectionObserver(
+      ([e]) => setCoach(e.isIntersecting),
+      { rootMargin: "-15% 0px -25% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [touched]);
+
   // 노드에 손이 오면 그 설명을 노드 옆에 띄운다. mermaid 가 비동기로 그리므로
   // 개별 노드에 붙이지 않고 패널에서 위임으로 받는다.
   const onPanelMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -83,6 +119,8 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
       setActive(null);
       return;
     }
+    setTouched(true);
+    setCoach(false);
     const key = norm(g.textContent ?? "");
     const i = steps.findIndex((s) => norm(s.label) === key);
     if (i < 0) {
@@ -100,7 +138,12 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     if (!zoom) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
     window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", esc);
+      document.body.style.overflow = prev;
+    };
   }, [zoom]);
 
   return (
@@ -116,7 +159,6 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
           }}
         >
           <div className="lab-arch-bar">
-            <span className="lab-arch-hint">노드에 올리면 설명이 뜹니다</span>
             <button type="button" className="lab-arch-zoom" onClick={() => setZoom(true)}>
               크게 보기
             </button>
@@ -124,6 +166,13 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
 
           {/* 구조도는 본문 폭을 다 쓰는 판에 올라가므로 글자를 한 단계 키운다. */}
           <Mermaid code={diagram} fontSize={16} />
+
+          {coach && !tip && (
+            <div className="lab-arch-coach" aria-hidden="true">
+              <span className="dot" />
+              노드에 올리면 설명이 보입니다
+            </div>
+          )}
 
           {tip && (
             <div className="lab-arch-tip" style={{ left: tip.x, top: tip.y }}>
@@ -172,18 +221,24 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
         })}
       </div>
 
-      {zoom && (
-        // 노드가 많은 구조도는 본문 폭에서도 줄어든다. 화면 전체를 내주고
-        // 원래 크기로 그린 다음, 넘치면 줄이는 대신 스크롤하게 둔다.
-        <div className="lab-arch-modal" onClick={() => setZoom(false)} role="presentation">
-          <button type="button" className="lab-arch-close" aria-label="닫기">
-            닫기
-          </button>
-          <div className="lab-arch-modal-inner" onClick={(e) => e.stopPropagation()} role="presentation">
-            <Mermaid code={diagram ?? ""} fontSize={18} />
-          </div>
-        </div>
-      )}
+      {zoom &&
+        // 화면 전체를 덮는 판은 body 로 빼서 그린다. 섹션 안에 두면 조상 요소의
+        // transform 하나에 position: fixed 가 그 요소 안으로 갇힌다.
+        createPortal(
+          <div className="lab-arch-modal" onClick={() => setZoom(false)} role="presentation">
+            <button type="button" className="lab-arch-close" onClick={() => setZoom(false)}>
+              닫기
+            </button>
+            <div
+              className="lab-arch-modal-inner"
+              onClick={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <Mermaid code={diagram ?? ""} fontSize={18} />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

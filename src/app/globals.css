@@ -1989,18 +1989,24 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-stack-chip.sm i { font-size: 8px; }
 
 /* Lab — 데이터와 API
-   무엇에 쓰는 물건인지가 먼저다. 접힌 카드에는 로고·이름·용도 한 줄·칩만 두고,
-   적재·주의 같은 세부는 "자세히" 로 내린다. 카드가 커지면 섹션이 사양서가 된다. */
-.lab-integ { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+   무엇에 쓰는 물건인지가 먼저다. 접힌 카드에는 로고·이름·용도 한 줄·링크·칩만 두고,
+   적재·주의 같은 세부는 "자세히" 로 내린다. 카드가 커지면 섹션이 사양서가 된다.
+
+   카드 크기는 줄 안에서 같아야 한다. 그리드가 폭을 맞추고, 카드 안을 세로 플렉스로
+   짜서 용도 문단이 남는 높이를 먹는다. 그래야 링크와 칩 줄이 카드마다 같은 선에 선다. */
+.lab-integ { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: stretch; }
 .lab-integ-card {
   --tc: var(--tc-light);
+  display: flex; flex-direction: column;
+  min-width: 0;
   padding: 18px 20px 16px;
   transition: border-color 0.16s ease;
 }
 [data-theme="dark"] .lab-integ-card { --tc: var(--tc-dark); }
 .lab-integ-card.open { border-color: var(--lab-line-strong); }
 
-.lab-integ-head { display: flex; align-items: center; gap: 10px; }
+.lab-integ-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* 브랜드 색은 아이콘 원색이다. 라이트·다크에서 각각 읽히는 값을 생성기가 구워 둔다. */
 .lab-integ-logo {
   width: 30px; height: 30px; flex: none;
   display: grid; place-items: center;
@@ -2017,35 +2023,47 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   min-width: 0; flex: 1;
   font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35;
   color: var(--lab-fg);
+  overflow-wrap: anywhere;
 }
-.lab-integ-link {
-  flex: none;
-  display: grid; place-items: center;
-  width: 26px; height: 26px;
-  border-radius: 7px;
-  color: var(--lab-fg-dim);
-}
-.lab-integ-link:hover { color: var(--lab-mint); background: var(--lab-mint-bg); }
 
+/* 용도가 남는 높이를 먹어서 아래 줄들이 카드마다 같은 선에 선다. */
 .lab-integ-purpose {
+  flex: 1;
   margin: 12px 0 0;
   font-size: 14.5px; line-height: 1.72;
   color: var(--lab-fg);
 }
 
+.lab-integ-link {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 12px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--lab-fg-dim);
+}
+.lab-integ-link span {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lab-integ-link svg { flex: none; }
+.lab-integ-link:hover { color: var(--lab-mint); }
+
 .lab-integ-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 .lab-integ-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+/* 긴 칩이 "자세히" 를 밀어내지 않게 카드 폭 안에서 잘린다. 짧게 쓰는 게 규약이다. */
 .lab-integ-chips span {
+  max-width: 100%;
   padding: 3px 9px;
   border: 1px solid var(--lab-line);
   border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 11px; letter-spacing: -0.01em;
   color: var(--lab-fg-dim);
-  white-space: nowrap;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lab-integ-more {
   flex: none;
@@ -2189,18 +2207,64 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   display: flex; flex-direction: column;
 }
 .lab-arch-panel svg g.node { cursor: default; }
+/* 설명이 딸린 노드 — 손이 갈 곳이라는 걸 그림 안에서 말한다. */
+.lab-arch-panel svg g.node.lab-node-linked { cursor: pointer; }
+.lab-arch-panel svg g.node.lab-node-linked rect,
+.lab-arch-panel svg g.node.lab-node-linked polygon,
+.lab-arch-panel svg g.node.lab-node-linked circle,
+.lab-arch-panel svg g.node.lab-node-linked ellipse,
+.lab-arch-panel svg g.node.lab-node-linked path {
+  stroke: var(--lab-line-strong) !important;
+  stroke-dasharray: none;
+}
+/* React 상태보다 먼저 반응해야 손이 머뭇거리지 않는다. */
+.lab-arch-panel svg g.node.lab-node-linked:hover rect,
+.lab-arch-panel svg g.node.lab-node-linked:hover polygon,
+.lab-arch-panel svg g.node.lab-node-linked:hover circle,
+.lab-arch-panel svg g.node.lab-node-linked:hover ellipse,
+.lab-arch-panel svg g.node.lab-node-linked:hover path {
+  stroke: var(--lab-mint) !important;
+}
 /* 판 머리줄 — 왼쪽에 쓰는 법, 오른쪽에 확대. */
 .lab-arch-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.lab-arch-hint {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12px; color: var(--lab-fg-dim);
+.lab-arch-bar { justify-content: flex-end; }
+/* 안내 — 그림이 화면에 들어올 때 떴다가 한 번 만지면 사라진다.
+   판 머리에 작게 적어 두면 아무도 안 읽어서, 그림 위에 얹고 숨을 쉬게 둔다. */
+.lab-arch-coach {
+  position: absolute; z-index: 3;
+  left: 50%; bottom: 22px;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--lab-mint);
+  background: var(--lab-mint-bg);
+  backdrop-filter: blur(6px);
+  color: var(--lab-fg);
+  font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: lab-coach-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.lab-arch-hint::before {
-  content: ""; width: 6px; height: 6px; border-radius: 50%;
+.lab-arch-coach .dot {
+  width: 8px; height: 8px; border-radius: 50%;
   background: var(--lab-mint);
-  box-shadow: 0 0 0 3px var(--lab-mint-bg);
+  animation: lab-coach-pulse 1.6s ease-in-out infinite;
 }
-@media (hover: none) { .lab-arch-hint { display: none; } }
+@keyframes lab-coach-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes lab-coach-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--lab-mint-bg); }
+  50%      { box-shadow: 0 0 0 7px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-arch-coach, .lab-arch-coach .dot { animation: none; }
+  .lab-arch-coach { transform: translateX(-50%); }
+}
+/* 손가락으로 보는 화면에는 hover 가 없다. */
+@media (hover: none) { .lab-arch-coach { display: none; } }
 .lab-arch-zoom {
   padding: 5px 11px;
   border: 1px solid var(--lab-line);
@@ -2217,8 +2281,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-arch-tip {
   position: absolute; z-index: 3;
   transform: translateX(-50%);
-  max-width: 300px;
-  padding: 11px 14px;
+  max-width: 340px;
+  padding: 13px 16px;
   border: 1px solid var(--lab-mint);
   border-radius: 12px;
   background: var(--bg-base);
@@ -2228,13 +2292,13 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 @keyframes lab-tip-in { from { opacity: 0; transform: translate(-50%, -4px); } }
 .lab-arch-tip b {
-  display: block; margin-bottom: 4px;
-  font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em;
+  display: block; margin-bottom: 5px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg);
 }
 .lab-arch-tip span {
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-  font-size: 13px; line-height: 1.65;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 14.5px; line-height: 1.7;
   color: var(--lab-fg-dim);
 }
 
