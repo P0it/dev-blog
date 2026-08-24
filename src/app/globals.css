@@ -2036,11 +2036,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .lab-arch-steps { padding: 8px 0; min-width: 0; }
 .lab-arch-step {
-  padding: 20px 0 20px 20px;
+  padding: 20px 18px 20px 20px;
   border-left: 2px solid var(--lab-line);
+  border-radius: 0 10px 10px 0;
   color: var(--lab-fg-dim);
   font-size: 15px; line-height: 1.75;
-  transition: color 0.25s, border-color 0.25s;
+  transition: color 0.25s, border-color 0.25s, background-color 0.25s;
 }
 .lab-arch-step b {
   display: flex; align-items: center; gap: 8px;
@@ -2052,7 +2053,13 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-family: var(--font-mono);
   font-style: normal; font-size: 11px; opacity: 0.6;
 }
-.lab-arch-step.on { color: var(--lab-fg); border-left-color: var(--lab-mint); }
+/* 다이어그램에서 켜진 노드와 같은 색을 쓴다. 왼쪽 그림과 오른쪽 글이
+   한 쌍이라는 게 색으로 읽혀야 눈이 둘을 오간다. */
+.lab-arch-step.on {
+  color: var(--lab-fg);
+  border-left-color: var(--diag-blue-stroke);
+  background: var(--diag-blue-fill);
+}
 
 .lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: center; }
 .lab-arch-panel .mermaid-figure > svg {
@@ -2071,12 +2078,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-arch-panel svg g.node circle {
   transition: stroke 0.25s, filter 0.25s;
 }
+/* 켜진 노드는 제 색을 진하게 할 뿐이다. 테마 민트를 쓰면 파란 노드 위에
+   초록 테두리가 얹혀 다이어그램과 따로 논다. */
 .lab-arch-panel svg g.node.lab-node-on rect,
 .lab-arch-panel svg g.node.lab-node-on polygon,
 .lab-arch-panel svg g.node.lab-node-on circle {
-  stroke: var(--lab-mint) !important;
-  stroke-width: 2px !important;
-  filter: drop-shadow(0 0 6px var(--lab-mint));
+  stroke: var(--diag-blue-stroke) !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 7px var(--diag-blue-fill));
 }
 
 /* Lab — 시행착오 */
