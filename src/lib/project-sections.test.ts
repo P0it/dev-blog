@@ -10,7 +10,7 @@ const FULL = `## 제품 소개
 
 두 번째 문단이다.
 
-## 요구사항
+## 구상
 
 - [x] 서버 주소만 넣으면 붙는다
 - [ ] stdio 와 sse 를 함께 본다
@@ -59,7 +59,7 @@ test("여섯 섹션을 순서대로 분류한다", () => {
   );
 });
 
-test("요구사항 체크박스를 파싱한다", () => {
+test("구상 체크박스를 파싱한다", () => {
   const s = parseProjectBody(FULL)[1];
   assert.equal(s.kind, "requirements");
   if (s.kind !== "requirements") return;
@@ -216,12 +216,20 @@ test("본문에 기술 섹션이 없으면 프런트매터 stack 으로 끼운�
   assert.deepEqual(tech.items, ["Next.js", "Supabase"]);
 });
 
-test("요구사항이 있으면 그 다음 자리에 끼운다", () => {
+test("구상이 있으면 그 다음 자리에 끼운다", () => {
   const secs = buildProjectSections(
     "## 제품 소개\n\n소개다.\n\n## 요구사항\n\n- [x] 된다\n\n## 구조\n\n### 한 단계\n\n설명.\n",
     ["React"],
   );
   assert.deepEqual(secs.map((s) => s.kind), ["intro", "requirements", "tech", "architecture"]);
+});
+
+test("옛 제목 `요구사항` 도 같은 렌더러로 간다", () => {
+  const s = parseProjectBody("## 요구사항\n\n- [x] 된다\n")[0];
+  assert.equal(s.kind, "requirements");
+  if (s.kind !== "requirements") return;
+  assert.equal(s.title, "요구사항");
+  assert.deepEqual(s.items, [{ done: true, text: "된다" }]);
 });
 
 test("본문에 기술 섹션이 있으면 stack 을 덧붙이지 않는다", () => {

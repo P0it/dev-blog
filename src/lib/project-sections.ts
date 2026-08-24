@@ -29,6 +29,7 @@ const KNOWN: Record<string, Section["kind"]> = {
   "기획": "plan",
   "유저 플로우": "userflow",
   "유저 플로": "userflow",
+  "구상": "requirements",
   "요구사항": "requirements",
   "기술 선정": "tech",
   "기술 스택": "tech",
@@ -363,7 +364,7 @@ export function buildProjectSections(body: string, stack: string[]): Section[] {
   if (!names.length || sections.some((s) => s.kind === "tech")) return sections;
 
   const tech: Section = { kind: "tech", title: "기술 스택", items: names };
-  // 규약 순서상 요구사항 다음 자리다. 요구사항이 없으면 소개 다음.
+  // 규약 순서상 구상 다음 자리다. 구상이 없으면 소개 다음.
   const anchor = sections.findIndex((s) => s.kind === "requirements");
   const at = anchor >= 0 ? anchor + 1 : sections.findIndex((s) => s.kind === "intro") + 1;
   return [...sections.slice(0, at), tech, ...sections.slice(at)];
