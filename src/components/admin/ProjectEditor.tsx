@@ -18,6 +18,12 @@ import type { ProjectHost } from "@/lib/types";
 // 규약이 정한 섹션 뼈대. 새 프로젝트는 이걸 깔고 시작해야 제목을 손으로 안 외운다.
 const BODY_TEMPLATE = `## 제품 소개
 
+## 화면
+
+### 
+
+**파일** 
+
 ## 기획
 
 **문제** 
@@ -27,12 +33,6 @@ const BODY_TEMPLATE = `## 제품 소개
 ## 구상
 
 - [ ] 
-
-## 화면
-
-### 
-
-**파일** 
 
 ## 유저 플로우
 

@@ -1669,38 +1669,40 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* Lab — 기획
    라벨을 왼쪽에 세운 스펙 시트. 항목끼리 눈으로 비교되는 게 목적이다. */
-.lab-plan { padding: 4px 0; }
-.lab-plan-row {
-  display: grid;
-  grid-template-columns: 108px 1fr;
-  gap: 16px;
-  padding: 15px 20px;
-  border-bottom: 1px solid var(--lab-line);
-}
-.lab-plan-row:last-child { border-bottom: 0; }
-.lab-plan-row dt {
-  font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
-  color: var(--lab-mint);
-  padding-top: 1px;
-}
-.lab-plan-row dd {
+/* Lab — 기획. 라벨을 질문으로 세워 인터뷰처럼 주고받게 한다.
+   표로 세우면 이력서처럼 읽히고, 값이 여럿인 라벨에서 눈이 라벨 열을 다시 읽는다. */
+.lab-qa { display: flex; flex-direction: column; gap: 26px; }
+.lab-qa-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.lab-qa-q {
+  display: flex; align-items: baseline; gap: 10px;
   margin: 0;
-  font-size: 15px; line-height: 1.75;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg);
 }
-/* 값이 여럿인 라벨(문제 셋, 넣지 않은 것 다섯)은 항목을 쌓는다.
-   라벨을 줄마다 반복하는 대신 한 번만 세워 두고 눈이 값만 훑게 한다. */
-.lab-plan-row dd ul { margin: 0; padding: 0; list-style: none; }
-.lab-plan-row dd li { position: relative; padding-left: 14px; }
-.lab-plan-row dd li + li { margin-top: 9px; }
-.lab-plan-row dd li::before {
-  content: "";
-  position: absolute; left: 0; top: 0.72em;
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--lab-line);
+.lab-qa-q .mark {
+  flex: none;
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: flex-start;
+  background: var(--lab-mint-bg);
+  color: var(--lab-mint);
+  font-family: var(--font-mono);
+  font-size: 12px; font-weight: 700;
+  transform: translateY(1px);
 }
+/* 답은 질문 아래, 마커 폭만큼 들여쓴다. 문답이 한 덩어리로 읽힌다. */
+.lab-qa-a { padding-left: 32px; }
+.lab-qa-a p {
+  margin: 0;
+  font-size: 15.5px; line-height: 1.8;
+  color: var(--lab-fg-dim);
+}
+.lab-qa-a p + p { margin-top: 10px; }
+
 @media (max-width: 640px) {
-  .lab-plan-row { grid-template-columns: 1fr; gap: 5px; }
+  .lab-qa { gap: 22px; }
+  .lab-qa-a { padding-left: 0; }
 }
 
 /* Lab — 유저 플로우

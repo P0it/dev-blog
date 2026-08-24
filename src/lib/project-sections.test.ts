@@ -216,7 +216,7 @@ test("본문에 기술 섹션이 없으면 프런트매터 stack 으로 끼운�
   assert.deepEqual(tech.items, ["Next.js", "Supabase"]);
 });
 
-test("기술 스택은 소개 바로 뒤 — 본문 첫 섹션 자리에 끼운다", () => {
+test("화면이 없으면 기술 스택이 소개 바로 뒤에 온다", () => {
   const secs = buildProjectSections(
     "## 제품 소개\n\n소개다.\n\n## 요구사항\n\n- [x] 된다\n\n## 구조\n\n### 한 단계\n\n설명.\n",
     ["React"],
@@ -261,12 +261,12 @@ test("화면이 비면 raw 로 떨어진다", () => {
   assert.equal(s.kind, "raw");
 });
 
-test("소개가 없으면 기술 스택이 맨 앞에 온다", () => {
+test("기술 스택은 화면 바로 뒤에 온다", () => {
   const secs = buildProjectSections(
     "## 화면\n\n### 목록\n\n**이미지** https://cdn/a.png\n",
     ["React"],
   );
-  assert.deepEqual(secs.map((s) => s.kind), ["tech", "screens"]);
+  assert.deepEqual(secs.map((s) => s.kind), ["screens", "tech"]);
 });
 
 test("본문에 기술 섹션이 있으면 stack 을 덧붙이지 않는다", () => {

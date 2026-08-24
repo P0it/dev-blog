@@ -414,9 +414,9 @@ export function buildProjectSections(body: string, stack: string[]): Section[] {
   if (!names.length || sections.some((s) => s.kind === "tech")) return sections;
 
   const tech: Section = { kind: "tech", title: "기술 스택", items: names };
-  // 본문 맨 앞자리다. 무엇으로 만든 물건인지 먼저 보여주고 이야기로 들어간다.
-  // 소개는 히어로로 올라가므로 그 바로 뒤 = 본문 첫 섹션이다.
-  const intro = sections.findIndex((s) => s.kind === "intro");
-  const at = intro + 1;
+  // 화면 다음 자리다. 본문은 화면으로 열고, 무엇으로 만들었는지가 바로 받는다.
+  // 화면이 없으면 소개 뒤(=본문 첫 섹션)로 간다. 소개는 히어로로 올라간다.
+  const screens = sections.findIndex((s) => s.kind === "screens");
+  const at = screens >= 0 ? screens + 1 : sections.findIndex((s) => s.kind === "intro") + 1;
   return [...sections.slice(0, at), tech, ...sections.slice(at)];
 }
