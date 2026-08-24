@@ -1,14 +1,7 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Cloud, Layers } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import type { Project } from "@/lib/types";
-
-const HOST_LABEL: Record<Project["host"], string> = {
-  vercel: "Vercel",
-  cloudflare: "Cloudflare Pages",
-  local: "로컬 실행",
-  none: "비공개",
-};
 
 export function ProjectHero({
   project: p,
@@ -19,12 +12,7 @@ export function ProjectHero({
      본문은 왜 만들게 됐는지(`## 기획`)부터 시작한다. */
   lead?: React.ReactNode;
 }) {
-  // 스택에 배포처가 이미 들어 있으면 메타 줄에서 한 번만 보이게 한다.
-  const hostLabel = HOST_LABEL[p.host];
-  const showHost = !p.stack.some((s) => s.toLowerCase() === hostLabel.toLowerCase().split(" ")[0]);
-  // 스택이 길면 앞 네 개만. 나머지는 상세 본문에서 드러난다.
-  const stack = p.stack.slice(0, 4);
-
+  // 표지에는 이름과 한 줄 소개만 둔다. 기술 스택은 본문 첫 섹션이 맡는다.
   return (
     <header className="lab-hero">
       <div className="lab-hero-media">
@@ -57,20 +45,6 @@ export function ProjectHero({
             </Link>
             <h1 className="lab-hero-name">{p.name}</h1>
             {p.tagline && <p className="lab-hero-tagline">{p.tagline}</p>}
-            <div className="lab-hero-meta">
-              {stack.length > 0 && (
-                <span className="lab-hero-chip">
-                  <Layers size={14} />
-                  {stack.join(" · ")}
-                </span>
-              )}
-              {showHost && (
-                <span className="lab-hero-chip">
-                  <Cloud size={14} />
-                  {hostLabel}
-                </span>
-              )}
-            </div>
             </div>
           </div>
         </div>

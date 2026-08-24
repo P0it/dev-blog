@@ -216,12 +216,12 @@ test("본문에 기술 섹션이 없으면 프런트매터 stack 으로 끼운�
   assert.deepEqual(tech.items, ["Next.js", "Supabase"]);
 });
 
-test("구상이 있으면 그 다음 자리에 끼운다", () => {
+test("기술 스택은 소개 바로 뒤 — 본문 첫 섹션 자리에 끼운다", () => {
   const secs = buildProjectSections(
     "## 제품 소개\n\n소개다.\n\n## 요구사항\n\n- [x] 된다\n\n## 구조\n\n### 한 단계\n\n설명.\n",
     ["React"],
   );
-  assert.deepEqual(secs.map((s) => s.kind), ["intro", "requirements", "tech", "architecture"]);
+  assert.deepEqual(secs.map((s) => s.kind), ["intro", "tech", "requirements", "architecture"]);
 });
 
 test("옛 제목 `요구사항` 도 같은 렌더러로 간다", () => {
@@ -261,12 +261,12 @@ test("화면이 비면 raw 로 떨어진다", () => {
   assert.equal(s.kind, "raw");
 });
 
-test("구상이 없으면 기술 스택이 화면 뒤에 온다", () => {
+test("소개가 없으면 기술 스택이 맨 앞에 온다", () => {
   const secs = buildProjectSections(
-    "## 제품 소개\n\n소개다.\n\n## 화면\n\n### 목록\n\n**이미지** https://cdn/a.png\n",
+    "## 화면\n\n### 목록\n\n**이미지** https://cdn/a.png\n",
     ["React"],
   );
-  assert.deepEqual(secs.map((s) => s.kind), ["intro", "screens", "tech"]);
+  assert.deepEqual(secs.map((s) => s.kind), ["tech", "screens"]);
 });
 
 test("본문에 기술 섹션이 있으면 stack 을 덧붙이지 않는다", () => {
@@ -305,7 +305,19 @@ test("기획 섹션을 라벨 필드로 쪼갠다", () => {
     secs[0].fields.map((f) => f.label),
     ["문제", "사용자", "넣지 않은 것"],
   );
-  assert.equal(secs[0].fields[0].value, "맥북 앞에 없을 때 글감을 놓친다");
+  assert.deepEqual(secs[0].fields[0].values, ["맥북 앞에 없을 때 글감을 놓친다"]);
+});
+
+test("기획의 같은 라벨은 하나로 묶인다", () => {
+  const secs = parseProjectBody(
+    "## 기획\n\n**문제** 첫째\n**사용자** 나\n**문제** 둘째\n**넣지 않은 것** 로그인\n**넣지 않은 것** 결제\n",
+  );
+  assert.equal(secs[0].kind, "plan");
+  if (secs[0].kind !== "plan") return;
+  // 처음 나온 순서를 지킨다 — 문제, 사용자, 넣지 않은 것
+  assert.deepEqual(secs[0].fields.map((f) => f.label), ["문제", "사용자", "넣지 않은 것"]);
+  assert.deepEqual(secs[0].fields[0].values, ["첫째", "둘째"]);
+  assert.deepEqual(secs[0].fields[2].values, ["로그인", "결제"]);
 });
 
 test("라벨이 없는 기획은 raw 로 떨어진다", () => {

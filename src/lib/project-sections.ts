@@ -6,7 +6,7 @@
 
 export type Section =
   | { kind: "intro"; title: string; md: string }
-  | { kind: "plan"; title: string; fields: { label: string; value: string }[] }
+  | { kind: "plan"; title: string; fields: { label: string; values: string[] }[] }
   | {
       kind: "userflow";
       title: string;
@@ -311,8 +311,15 @@ export function parseProjectBody(md: string): Section[] {
       const items = parseTechNames(body);
       out.push(items.length ? { kind, title, items } : raw);
     } else if (kind === "plan") {
-      const fields = parseFields(body);
-      out.push(fields.length ? { kind, title, fields } : raw);
+      // 같은 라벨이 여러 번 나오는 게 정상이다 — 문제도 셋, 넣지 않은 것도 다섯.
+      // 라벨을 줄마다 반복하면 표가 지저분해지므로 처음 나온 순서대로 묶는다.
+      const grouped: { label: string; values: string[] }[] = [];
+      for (const f of parseFields(body)) {
+        const hit = grouped.find((g) => g.label === f.label);
+        if (hit) hit.values.push(f.value);
+        else grouped.push({ label: f.label, values: [f.value] });
+      }
+      out.push(grouped.length ? { kind, title, fields: grouped } : raw);
     } else if (kind === "userflow") {
       // 단계를 쓰면 전용 렌더러로 그린다. mermaid 만 있는 옛 원고는 그림으로 떨어진다.
       const { diagram, rest } = extractMermaid(body);
@@ -390,10 +397,9 @@ export function buildProjectSections(body: string, stack: string[]): Section[] {
   if (!names.length || sections.some((s) => s.kind === "tech")) return sections;
 
   const tech: Section = { kind: "tech", title: "기술 스택", items: names };
-  // 규약 순서상 구상 다음 자리다. 없으면 화면 → 기획 → 소개 순으로 뒤를 찾는다.
-  // 소개는 히어로로 올라가므로, 소개 뒤에 끼우면 기술 칩이 본문 맨 앞에 서게 된다.
-  const order: Section["kind"][] = ["requirements", "screens", "plan", "intro"];
-  const anchor = order.map((k) => sections.findIndex((s) => s.kind === k)).find((i) => i >= 0) ?? -1;
-  const at = anchor + 1;
+  // 본문 맨 앞자리다. 무엇으로 만든 물건인지 먼저 보여주고 이야기로 들어간다.
+  // 소개는 히어로로 올라가므로 그 바로 뒤 = 본문 첫 섹션이다.
+  const intro = sections.findIndex((s) => s.kind === "intro");
+  const at = intro + 1;
   return [...sections.slice(0, at), tech, ...sections.slice(at)];
 }
