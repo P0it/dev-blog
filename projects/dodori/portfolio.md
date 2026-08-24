@@ -257,53 +257,76 @@ Vercel에 붙이고, 홈 화면에 추가하면 앱처럼 뜨는 PWA 셸을 씌�
 
 ```mermaid
 flowchart TD
-  A[Expo 앱 · iOS/Android/Web] --> B[TanStack Query · AsyncStorage 캐시]
-  B --> C[Supabase Postgres · RLS]
-  A --> D[Supabase Storage · photos/avatars]
-  C --> E[Edge Functions · 시크릿·트랜잭션]
-  E --> F[외부 API · 네이버·KASI]
-  C --> G[트리거: notifications · 쿼터]
-  G --> H[Vercel Function · 웹 푸시 발송]
-  C --> I[Realtime · 상대 변경 즉시 반영]
-  I --> A
+  subgraph 앱[Expo 앱]
+    UI[화면]
+    Q[TanStack Query]
+    AS[(AsyncStorage)]
+  end
+  subgraph 백[Supabase]
+    DB[(Postgres · RLS)]
+    ST[Storage]
+    EF[Edge Functions]
+    RT[Realtime]
+  end
+  subgraph 밖[바깥]
+    EXT[네이버 · 공공데이터]
+    VF[Vercel Function]
+  end
+  UI -->|훅 호출| Q
+  Q -->|쿼리 결과| AS
+  AS -.->|껐다 켜면 먼저| Q
+  Q -->|읽기·쓰기| DB
+  Q -->|1080·360 두 장| ST
+  Q -->|시크릿 필요한 일| EF
+  ST -.->|공개 URL| UI
+  EF -->|한 트랜잭션| DB
+  EF -->|장소·공휴일 조회| EXT
+  DB -->|트리거가 만든 알림 행| VF
+  VF -.->|웹 푸시| UI
+  DB -.->|바뀐 행| RT
+  RT -.->|즉시 반영| Q
 ```
 
-### Expo 앱 — 한 코드로 세 플랫폼
+### 화면 — 훅 호출과 배치만 한다
 
-expo-router 파일 라우팅에 4탭. 화면은 훅 호출과 컴포넌트 배치만 하고, 도메인 규칙은
-`lib/`(순수 함수)에, 서버 접근은 `api/`(TanStack Query 훅)에 내려둡니다.
+expo-router 파일 라우팅에 4탭이고, iOS·Android·Web이 같은 코드로 돕니다. 화면은 훅을
+부르고 컴포넌트를 놓는 일만 해요. 도메인 규칙은 `lib/` 의 순수 함수에, 서버 접근은
+`api/` 의 쿼리 훅에 내려가 있습니다.
 
 ### TanStack Query — 캐시가 오프라인 저장소를 겸한다
 
-쿼리 결과를 AsyncStorage에 영속화해서 껐다 켜도 바로 그려집니다. 세션만은 캐시에서 제외했어요
-— 안 그러면 로그인 후 다시 로그인 화면으로 돌아갑니다.
+앱이 서버로 나가는 길은 전부 여기를 지납니다. 쿼리 결과는 AsyncStorage로 내려가고,
+다시 켰을 때는 그 값을 먼저 그린 다음 새로 받아요. 세션만은 영속화 대상에서 빼 뒀습니다.
 
-### Postgres + RLS — 권한이 곧 스키마
+### Postgres · RLS — 권한이 곧 스키마
 
-모든 테이블이 `couple_id` 를 갖고, 정책은 전부 `my_couple_id()` 를 술어로 씁니다.
-"내가 마쳐야 상대가 열린다" 같은 게임 규칙도 애플리케이션이 아니라 RLS와 RPC가 강제해요.
+모든 테이블이 `couple_id` 를 갖고, 42개 정책이 전부 `public.my_couple_id()` 하나를
+술어로 씁니다. "내가 마쳐야 상대가 열린다" 같은 규칙도 앱이 아니라 RLS와 RPC가
+들고 있어요. 행이 바뀌면 Realtime과 알림 트리거로 나갑니다.
 
-### Storage — 렌디션 2종
+### Storage — 올릴 때 두 장을 만든다
 
-업로드할 때 기기에서 1080(본체)·360(목록)을 만들어 함께 올립니다. 서버 이미지 변환은
-쓰지 않아요. 영상은 mp4·포스터 JPEG·360 썸네일 세 파일이고, 그림이 필요한 화면은 영상을
-그냥 사진으로 봅니다.
+사진은 기기에서 1080(본체)과 360(목록)을 만들어 함께 올립니다. 영상은 mp4·포스터
+JPEG·360 썸네일 세 파일이고, 그림만 필요한 화면은 영상을 사진처럼 씁니다. 서버 이미지
+변환은 경로에 없어요.
 
-### Edge Functions — 시크릿과 트랜잭션만
+### Edge Functions — 시크릿과 트랜잭션만 맡는다
 
-네이버·공공데이터 키를 클라이언트에서 감추고, 초대 수락처럼 여러 테이블을 한 번에
-건드려야 하는 일을 맡습니다. 6개(`claim-invite`·`search-places`·`daily-release`·
-`generate-anniversaries`·`sync-holidays`·`notify-game`)에서 더 늘리지 않았어요.
+바깥 API 키를 클라이언트에서 감추는 일과, 초대 수락처럼 여러 테이블을 한 번에 건드리는
+일만 여기 있습니다. `claim-invite`·`search-places`·`daily-release`·`generate-anniversaries`·
+`sync-holidays`·`notify-game` 여섯 개고, 그 밖의 읽기·쓰기는 앱이 Postgres로 직접 갑니다.
 
-### 알림 트리거 → Vercel Function
+### Vercel Function — 알림은 만드는 곳과 보내는 곳이 다르다
 
-알림 행 생성은 Postgres 트리거가 단일 진실이고, 발송만 Vercel Function이 합니다.
-문구와 이동 경로는 순수 함수(`lib/notifications.ts`)를 앱과 워커가 함께 씁니다.
+알림 행을 만드는 건 Postgres 트리거고, 이 함수는 만들어진 행을 받아 웹 푸시로 쏘기만
+합니다. 문구와 이동 경로는 `lib/notifications.ts` 순수 함수 하나를 앱과 이 워커가
+같이 씁니다.
 
-### Realtime — 상대가 움직이면 바로 보인다
+### Realtime — 상대 쪽 변경이 그대로 들어온다
 
-상대가 투표하거나 게임을 마치면 홈 카드가 그 자리에서 열립니다. 앱을 껐다 켜야 보이던
-문제는 `AppState` 를 TanStack Query의 `focusManager` 에 연결해서 잡았어요.
+상대가 투표하거나 게임을 마치면 그 행 변경이 구독을 타고 넘어와 홈 카드가 그 자리에서
+열립니다. 앱이 포그라운드로 돌아올 때는 `AppState` 가 TanStack Query의 `focusManager` 를
+건드려 같은 자리를 다시 맞춰요.
 
 ## 시행착오
 

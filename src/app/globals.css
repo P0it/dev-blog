@@ -2104,6 +2104,29 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   stroke-width: 2.5px !important;
   filter: drop-shadow(0 0 8px var(--lab-mint-bg));
 }
+/* 계층 상자(subgraph). 구조 다이어그램은 상자로 경계를 긋는 게 본체라
+   기본 점선 테두리를 그대로 살리고, 짝이 된 상자만 민트로 채운다. */
+.lab-arch-panel svg g.cluster rect {
+  fill: var(--lab-panel) !important;
+  stroke: var(--lab-line) !important;
+  transition: fill 0.25s, stroke 0.25s;
+}
+.lab-arch-panel svg g.cluster.lab-cluster-on rect {
+  fill: var(--lab-mint-bg) !important;
+  stroke: var(--lab-mint) !important;
+}
+.lab-arch-panel svg g.cluster .cluster-label, .lab-arch-panel svg g.cluster text {
+  fill: var(--lab-fg-dim) !important; color: var(--lab-fg-dim) !important;
+}
+/* 화살표 라벨 — 무엇이 흐르는지 적는 자리라 선보다 한 단계 여리게 둔다. */
+.lab-arch-panel svg .edgeLabel foreignObject div {
+  /* 패널과 똑같이 두 겹으로 칠해야 선 위에 얹힌 라벨이 판 색과 정확히 맞는다. */
+  background-color: var(--bg-base) !important;
+  background-image: linear-gradient(var(--lab-panel), var(--lab-panel));
+  color: var(--lab-fg-dim) !important;
+  font-size: 12px;
+}
+.lab-arch-panel svg .edgeLabel rect { fill: transparent !important; }
 .lab-arch-panel svg .flowchart-link { stroke: var(--lab-line) !important; }
 .lab-arch-panel svg marker path { fill: var(--lab-line) !important; stroke: var(--lab-line) !important; }
 
