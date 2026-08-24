@@ -1675,6 +1675,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-hero-go:hover { transform: translateY(-1px); text-decoration: none; }
 
 /* Lab — 상세 본문 레이아웃 */
+/* 목차 레일이 차지하는 폭 + 간격. 본문 섹션이 이만큼 안쪽에서 시작하므로,
+   표지 글과 리드도 같은 값을 밀어 한 기준선에 세운다. 안 맞추면 위쪽 블록만
+   왼쪽으로 튀어나와 페이지가 치우쳐 보인다. */
+:root { --lab-rail-offset: 240px; }
+.lab-hero-inset { padding-left: var(--lab-rail-offset); }
+
 .lab-detail { display: grid; grid-template-columns: 184px 1fr; gap: 56px; }
 .lab-rail { position: sticky; top: 96px; align-self: start; padding-top: 76px; }
 .lab-rail a {
@@ -2176,10 +2182,13 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 1024px) {
   .lab-grid { grid-template-columns: repeat(2, 1fr); }
   .lab-detail { grid-template-columns: 148px 1fr; gap: 32px; }
+  :root { --lab-rail-offset: 180px; }
 }
 
 @media (max-width: 900px) {
   .lab-detail { grid-template-columns: 1fr; gap: 0; }
+  /* 레일이 사라지는 폭부터는 밀 이유가 없다. */
+  :root { --lab-rail-offset: 0px; }
   .lab-rail { display: none; }
   .lab-hero-media { height: 320px; }
   .lab-hero-name { font-size: 34px; }

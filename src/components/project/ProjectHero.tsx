@@ -48,6 +48,9 @@ export function ProjectHero({
 
         <div className="lab-hero-hud">
           <div className="container-wide">
+            {/* 본문 섹션은 목차 레일만큼 안쪽에서 시작한다. 표지 글도 같은
+                기준선에 세워야 페이지가 한 줄로 읽힌다. */}
+            <div className="lab-hero-inset">
             <Link href="/lab" className="lab-hero-back">
               <ArrowLeft size={15} />
               실험실
@@ -68,13 +71,16 @@ export function ProjectHero({
                 </span>
               )}
             </div>
+            </div>
           </div>
         </div>
       </div>
 
       {lead && (
         <div className="lab-hero-lead">
-          <div className="container-wide">{lead}</div>
+          <div className="container-wide">
+            <div className="lab-hero-inset">{lead}</div>
+          </div>
         </div>
       )}
     </header>
