@@ -1249,10 +1249,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .lab-grid {
   display: grid;
-  /* 폰 화면을 세로로 세우므로 3열이 맞다. 1120px 안쪽에서 한 장이 약 358×616 —
-     실제 기기 크기에 가까워 화면 내용이 그대로 읽힌다. */
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px 24px;
+  /* 폰 판은 폭을 고정한다. `1fr` 로 두면 화면이 넓어질수록 판이 같이 커져
+     카드가 실제 기기보다 커지는데, 세로로 세운 폰은 그때부터 화면을 잡아먹는다.
+     열 폭을 236px 로 못박고 남는 폭은 열 수로 돌린다 — 1120px 에서 4열이다. */
+  grid-template-columns: repeat(auto-fill, 236px);
+  justify-content: start;
+  gap: 32px 26px;
   perspective: 1100px;
   perspective-origin: 50% 30%;
 }
@@ -1483,11 +1485,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-card a:hover { text-decoration: none; color: inherit; }
 .lab-card-hit { display: block; }
 
-/* 폰 화면 비율. 390×844 를 위에서부터 담되 아래를 조금 잘라 카드가 너무
-   길어지지 않게 한다. 가로 캡처가 들어와도 cover 로 위쪽이 채워진다. */
+/* 폰 화면 비율 그대로(390×844). 예전엔 아래를 조금 잘라 카드 길이를 줄였는데,
+   그러면 홈 화면 밑동이 잘려 나가 무슨 화면인지 덜 읽힌다. 길이는 판 폭을 줄여
+   잡고, 비율은 기기와 맞춘다. 가로 캡처가 들어오면 cover 로 위쪽이 채워진다. */
 .lab-card-shot {
   position: relative;
-  aspect-ratio: 1 / 1.72;
+  aspect-ratio: 390 / 844;
   overflow: hidden;
   border-radius: 16px;
   background: var(--lab-line);
@@ -1716,12 +1719,72 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Lab — 유저 플로우
    사람이 움직이는 동선. 번호 카드를 가로 레일에 꿰고 갈림길은 카드 아래에 건다.
    좁아지면 세로로 눕고 화살표도 같이 돈다. */
+/* 레일 껍데기 — 화살표와 진행 막대가 여기에 절대배치로 얹힌다. */
+.lab-uflow-rail { position: relative; --fade: 64px; --fl: 0px; --fr: 0px; }
+/* 넘치는 쪽만 흐린다. 잘린 카드가 "이쪽에 더 있다"는 신호가 된다. */
+.lab-uflow-rail[data-overflow="true"][data-at-start="false"] { --fl: var(--fade); }
+.lab-uflow-rail[data-overflow="true"][data-at-end="false"] { --fr: var(--fade); }
 .lab-uflow {
-  list-style: none; margin: 0; padding: 0 0 4px;
+  list-style: none; margin: 0; padding: 2px 0 6px;
   display: flex; align-items: stretch; gap: 0;
   overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 2px;
+  overscroll-behavior-x: contain;
+  /* OS 스크롤바는 두께도 색도 화면마다 달라 카드 옆에 두면 마감이 흐트러진다.
+     감추고 아래 진행 막대로 대신한다. */
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+  transition: -webkit-mask-image 0.2s, mask-image 0.2s;
 }
-.lab-uflow-step { display: flex; align-items: stretch; flex: 1 0 210px; min-width: 0; }
+.lab-uflow::-webkit-scrollbar { display: none; }
+.lab-uflow-step {
+  display: flex; align-items: stretch; flex: 1 0 210px; min-width: 0;
+  scroll-snap-align: start;
+}
+
+/* 좌우 화살표 — 평소엔 옅게 떠 있다가 레일에 손이 오면 또렷해진다. */
+.lab-uflow-nav {
+  position: absolute; top: calc(50% - 20px);
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--lab-line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg-base) 82%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--lab-fg);
+  cursor: pointer;
+  opacity: 0.45;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.18s, transform 0.18s, border-color 0.18s, color 0.18s;
+  z-index: 2;
+}
+.lab-uflow-rail:hover .lab-uflow-nav,
+.lab-uflow-rail:focus-within .lab-uflow-nav { opacity: 1; }
+.lab-uflow-nav:hover { border-color: var(--lab-mint); color: var(--lab-mint); }
+.lab-uflow-nav:disabled { opacity: 0; pointer-events: none; }
+.lab-uflow-nav.prev { left: -14px; }
+.lab-uflow-nav.next { right: -14px; }
+.lab-uflow-nav.prev svg { transform: rotate(180deg); }
+.lab-uflow-nav.prev:hover { transform: translateX(-2px); }
+.lab-uflow-nav.next:hover { transform: translateX(2px); }
+
+/* 진행 막대 — 스크롤바 자리를 대신한다. 보이는 만큼이 폭, 어디쯤인지가 위치다. */
+.lab-uflow-bar {
+  position: relative;
+  height: 3px; margin-top: 14px;
+  border-radius: 999px;
+  background: var(--lab-line);
+  overflow: hidden;
+}
+.lab-uflow-bar i {
+  position: absolute; top: 0; bottom: 0;
+  min-width: 32px;
+  border-radius: inherit;
+  background: var(--lab-mint);
+  transition: left 0.12s linear, width 0.12s linear;
+}
 .lab-uflow-card {
   flex: 1; min-width: 0;
   padding: 16px 18px 18px;
@@ -1783,7 +1846,13 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-uflow-step:last-child .lab-uflow-link { display: none; }
 
 @media (max-width: 760px) {
-  .lab-uflow { flex-direction: column; overflow-x: visible; }
+  /* 세로로 누우면 레일이 아니다 — 마스크·화살표·막대를 전부 뗀다. */
+  .lab-uflow {
+    flex-direction: column; overflow-x: visible;
+    scroll-snap-type: none;
+    -webkit-mask-image: none; mask-image: none;
+  }
+  .lab-uflow-nav, .lab-uflow-bar { display: none; }
   .lab-uflow-step { flex-direction: column; flex: none; }
   .lab-uflow-link {
     width: 0; height: 22px; margin-left: 28px; align-self: flex-start;
@@ -1976,9 +2045,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 .lab-shot { margin: 0; }
-/* 폰 모양 — 실기기 비율(9:19.5)에 가깝게 세우고 모서리를 둥글린다. */
+/* 폰 모양 — 실기기 비율(390×844) 그대로 세우고 모서리를 둥글린다.
+   근사치로 두면 폰 캡처의 밑동(탭 바)이 잘려 무슨 화면인지 덜 읽힌다. */
 .lab-shot-frame {
-  aspect-ratio: 1 / 1.95;
+  aspect-ratio: 390 / 844;
   overflow: hidden;
   border-radius: 18px;
   /* 테두리를 두르면 화면마다 색 띠가 생겨 시선이 그쪽으로 간다.
@@ -2311,8 +2381,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 @media (max-width: 900px) {
-  /* 세로 카드는 열이 줄면 급격히 커진다. 2열까지만 내린다. */
-  .lab-grid { grid-template-columns: repeat(2, 1fr); gap: 22px 18px; }
+  /* 열 폭이 고정이라 열 수는 auto-fill 이 알아서 줄인다. 간격만 좁힌다. */
+  .lab-grid { gap: 26px 18px; }
   .lab-detail { grid-template-columns: 1fr; gap: 0; }
   /* 레일이 사라지는 폭부터는 밀 이유가 없다. */
   :root { --lab-rail-offset: 0px; }
@@ -2375,10 +2445,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .post-hero-title { font-size: 34px; line-height: 1.15; }
   .post-hero-excerpt { font-size: 15.5px; margin-top: 14px; }
 
-  .lab-grid { grid-template-columns: 1fr; gap: 20px; }
-  /* 한 장만 놓이면 카드가 화면만큼 커진다. 실제 기기 폭 언저리로 묶는다.
-     width 를 안 주면 auto 마진이 그리드 항목을 fit-content 로 줄여 버린다. */
-  .lab-card { width: 100%; max-width: 380px; margin: 0 auto; }
+  /* 한 줄에 한 장만 남는 폭. 왼쪽에 붙여 두면 허전하니 가운데로 모은다. */
+  .lab-grid { justify-content: center; gap: 24px; }
   /* 가로 나열이라 좁아져도 열 수를 바꾸지 않는다. 폭이 모자라면 옆으로 밀린다.
      grid-template-columns 를 주면 첫 열만 명시 열이 되어 찌그러진다. */
   .lab-screens { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 14px; }
