@@ -75,7 +75,7 @@ function renderSection(s: Section) {
     case "trials":
       return <Trials cases={s.cases} />;
     case "remaining":
-      return <Remaining md={s.md} />;
+      return <Remaining items={s.items} md={s.md} />;
     default:
       return (
         <div className="lab-prose">

@@ -21,7 +21,7 @@ export type Section =
   | { kind: "demo"; title: string; clips: { title: string; src: string; poster: string | null; caption: string }[] }
   | { kind: "screens"; title: string; shots: { title: string; src: string; caption: string }[] }
   | { kind: "trials"; title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
-  | { kind: "remaining"; title: string; md: string }
+  | { kind: "remaining"; title: string; items: string[]; md: string }
   | { kind: "raw"; title: string; md: string };
 
 // 규약이 정한 제목 → 렌더러 종류. 여기 없는 제목은 raw 로 간다.
@@ -109,6 +109,19 @@ function splitSubs(body: string): { label: string; md: string }[] {
     }
   }
   flush();
+  return out;
+}
+
+// `- 항목` / `* 항목` 을 뽑는다. 체크박스가 붙은 줄은 구상의 몫이라 건너뛴다.
+function parseBullets(body: string): string[] {
+  const out: string[] = [];
+  for (const { line, inFence } of walk(body)) {
+    if (inFence) continue;
+    const m = /^\s*[-*+]\s+(.+?)\s*$/.exec(line);
+    if (!m || /^\[[ xX]\]/.test(m[1])) continue;
+    const t = stripMd(m[1]);
+    if (t) out.push(t);
+  }
   return out;
 }
 
@@ -302,8 +315,12 @@ export function parseProjectBody(md: string): Section[] {
     const kind = KNOWN[title];
     const raw: Section = { kind: "raw", title, md: body };
 
-    if (kind === "intro" || kind === "remaining") {
+    if (kind === "intro") {
       out.push({ kind, title, md: body });
+    } else if (kind === "remaining") {
+      // 불릿을 뽑아 전용 목록으로 그린다. 전역 리셋이 list-style 을 죽여 놔서
+      // 마크다운 그대로 두면 마커 없는 줄글로 보인다.
+      out.push({ kind, title, items: parseBullets(body), md: body });
     } else if (kind === "requirements") {
       const items = parseChecklist(body);
       out.push(items.length ? { kind, title, items } : raw);
