@@ -244,6 +244,18 @@ test("화면 갤러리를 파싱한다", () => {
   ]);
 });
 
+test("어드민에서 적은 `**파일** <url>` 도 화면·시연으로 잡힌다", () => {
+  const shots = parseProjectBody("## 화면\n\n### 목록\n\n**파일** https://cdn/list.png\n")[0];
+  assert.equal(shots.kind, "screens");
+  if (shots.kind !== "screens") return;
+  assert.equal(shots.shots[0].src, "https://cdn/list.png");
+
+  const clips = parseProjectBody("## 시연\n\n### 흐름\n\n**파일** https://cdn/a.mp4\n")[0];
+  assert.equal(clips.kind, "demo");
+  if (clips.kind !== "demo") return;
+  assert.equal(clips.clips[0].src, "https://cdn/a.mp4");
+});
+
 test("화면이 비면 raw 로 떨어진다", () => {
   const s = parseProjectBody("## 화면\n\n아직 없다.\n")[0];
   assert.equal(s.kind, "raw");

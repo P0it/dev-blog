@@ -337,7 +337,7 @@ export function parseProjectBody(md: string): Section[] {
           const get = (name: string) => f.find((x) => x.label === name)?.value ?? "";
           return {
             title: sub.label,
-            src: get("영상") || get("이미지"),
+            src: get("영상") || get("이미지") || get("파일"),
             poster: get("포스터") || null,
             caption: get("설명"),
           };
@@ -345,13 +345,15 @@ export function parseProjectBody(md: string): Section[] {
         .filter((c) => c.src);
       out.push(clips.length ? { kind, title, clips } : raw);
     } else if (kind === "screens") {
-      // 시연과 같은 모양으로 적는다 (`### 제목` + `**파일**`). 다만 여기는 정지 화면을
-      // 그리드로 늘어놓는 자리라, 적재 뒤 라벨이 `**이미지**` 든 `**영상**` 이든 받는다.
+      // 시연과 같은 모양으로 적는다 (`### 제목` + `**파일**`). 적재 스크립트가 로컬
+      // 파일을 올리며 `**이미지**`/`**영상**` 으로 바꾸지만, 어드민에서 URL 을 직접
+      // 적으면 `**파일**` 그대로다. 셋 다 받는다.
       const shots = splitSubs(body)
         .map((sub) => {
           const f = parseFields(sub.md);
           const get = (name: string) => f.find((x) => x.label === name)?.value ?? "";
-          return { title: sub.label, src: get("이미지") || get("영상"), caption: get("설명") };
+          const src = get("이미지") || get("영상") || get("파일");
+          return { title: sub.label, src, caption: get("설명") };
         })
         .filter((s) => s.src);
       out.push(shots.length ? { kind, title, shots } : raw);
