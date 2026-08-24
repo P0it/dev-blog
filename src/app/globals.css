@@ -2151,6 +2151,28 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   object-fit: cover; object-position: top center;
   display: block;
 }
+
+/* 가로로 넓은 화면(데스크탑·웹). 폰 판에 우겨넣으면 좌우가 잘려 뭘 보는지 모른다.
+   두 칸을 쓰고 제 비율로 세운다. 판 비율은 렌더러가 실제 그림 비율로 넣어 준다. */
+.lab-shot.is-wide { grid-column: span 2; }
+.lab-shot.is-wide .lab-shot-frame { border-radius: 12px; }
+
+/* 스크롤까지 담긴 긴 캡처. 잘라 놓으면 맨 위 한 뼘만 보이니, 판 안에서 천천히 훑어 내린다.
+   판이 창(window)이고 그림이 그 뒤를 지나가는 셈이다. */
+.lab-shot.is-tall .lab-shot-frame img {
+  height: auto;
+  object-fit: fill;
+  will-change: transform;
+  animation: lab-shot-scroll var(--shot-dur, 12s) ease-in-out infinite alternate;
+}
+@keyframes lab-shot-scroll {
+  0%, 12% { transform: translateY(0); }
+  88%, 100% { transform: translateY(var(--shot-shift, 0)); }
+}
+/* 움직임을 줄여 달라고 한 사람에게는 훑지 않고 맨 위만 보여준다. */
+@media (prefers-reduced-motion: reduce) {
+  .lab-shot.is-tall .lab-shot-frame img { animation: none; }
+}
 /* 이름표 + 한 줄 설명. 목업만 덩그러니 놓이지 않게 글로 받쳐 준다. */
 .lab-shot-cap {
   padding: 12px 2px 0;
