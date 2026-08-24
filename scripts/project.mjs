@@ -30,6 +30,7 @@ const BUCKET = "project-media";
 // 올릴 수 있는 형식. 버킷 allowedMimeTypes 와 맞춰 둔다.
 const MIME = {
   ".png": "image/png",
+  ".gif": "image/gif",
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".jpg": "image/jpeg",
