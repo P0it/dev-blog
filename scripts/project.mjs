@@ -12,8 +12,10 @@
 //
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (.env.local)
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, resolve, extname, basename } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, rmSync } from "node:fs";
+import { dirname, resolve, extname, basename, join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,7 +39,42 @@ const MIME = {
   ".jpeg": "image/jpeg",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
+  ".mov": "video/quicktime",
 };
+
+// 화면 녹화는 보통 폰에서 나온다. 아이폰은 .mov 로 저장하는데, QuickTime 컨테이너는
+// 브라우저마다 재생이 갈린다 (안은 대개 H.264 라 내용물은 mp4 와 같다).
+// ffmpeg 가 있으면 다시 인코딩하지 않고 컨테이너만 바꿔 끼운다 — 무손실이고 1 초쯤 걸린다.
+// ffmpeg 가 없으면 .mov 그대로 올리고 경고만 남긴다. 적재를 막지는 않는다.
+function rewrapMov(abs) {
+  if (extname(abs).toLowerCase() !== ".mov") return { path: abs, tmp: null };
+
+  const probe = spawnSync("ffmpeg", ["-version"], { stdio: "ignore" });
+  if (probe.error) {
+    console.warn(`  ! ${basename(abs)} 는 .mov 다. ffmpeg 가 없어 그대로 올린다.`);
+    console.warn(`    브라우저에 따라 재생이 안 될 수 있다: ffmpeg -i in.mov -c copy out.mp4`);
+    return { path: abs, tmp: null };
+  }
+
+  const out = join(tmpdir(), `lab-demo-${basename(abs, ".mov")}-${process.pid}.mp4`);
+  const r = spawnSync("ffmpeg", ["-y", "-i", abs, "-c", "copy", "-movflags", "+faststart", out], {
+    stdio: "ignore",
+  });
+  if (r.status !== 0 || !existsSync(out)) {
+    console.warn(`  ! ${basename(abs)} 컨테이너 변환 실패 — .mov 그대로 올린다`);
+    return { path: abs, tmp: null };
+  }
+  console.log(`  ↻ ${basename(abs)} → mp4 로 다시 담음 (무손실)`);
+  return { path: out, tmp: out };
+}
+
+// 폰 녹화는 쉽게 커진다. 버킷에 올라가긴 하지만 상세 페이지가 무거워지므로 알린다.
+function warnIfHeavy(abs) {
+  const mb = statSync(abs).size / 1024 / 1024;
+  if (mb <= 15) return;
+  console.warn(`  ! ${basename(abs)} 가 ${mb.toFixed(1)}MB 다. 720p 로 줄이는 걸 권한다:`);
+  console.warn(`    ffmpeg -i in.mp4 -vf scale=-2:720 -c:v libx264 -crf 26 -an out.mp4`);
+}
 
 // 로컬 파일 하나를 project-media 에 올리고 공개 URL 을 돌려준다.
 async function uploadFile(abs, destPath) {
@@ -66,11 +103,19 @@ async function uploadBodyMedia(mdFile, body, slug) {
     if (/^https?:\/\//.test(rel)) continue;
     const abs = resolve(dirname(mdFile), rel);
     if (!existsSync(abs)) throw new Error(`시연 파일을 찾을 수 없다: ${abs}`);
-    const ext = extname(abs).toLowerCase();
-    const url = await uploadFile(abs, `${slug}/demo-${++n}${ext}`);
-    const label = /\.(mp4|webm)$/i.test(ext) ? "영상" : "이미지";
-    lines[i] = `**${label}** ${url}`;
-    console.log(`  ↑ 시연 업로드: ${basename(abs)} → ${slug}/demo-${n}${ext}`);
+
+    // 아이폰 녹화(.mov)는 가능하면 mp4 컨테이너로 바꿔 끼운 뒤 올린다.
+    const { path: src, tmp } = rewrapMov(abs);
+    try {
+      warnIfHeavy(src);
+      const ext = extname(src).toLowerCase();
+      const url = await uploadFile(src, `${slug}/demo-${++n}${ext}`);
+      const label = /\.(mp4|webm|mov)$/i.test(ext) ? "영상" : "이미지";
+      lines[i] = `**${label}** ${url}`;
+      console.log(`  ↑ 시연 업로드: ${basename(abs)} → ${slug}/demo-${n}${ext}`);
+    } finally {
+      if (tmp) rmSync(tmp, { force: true });
+    }
   }
   return lines.join("\n");
 }
@@ -223,9 +268,15 @@ async function pull(slug, file) {
 async function media(slug, path) {
   if (!slug || !path) throw new Error("사용법: media <slug> <file>");
   if (!existsSync(path)) throw new Error(`파일이 없다: ${path}`);
-  const ext = extname(path).toLowerCase();
-  const url = await uploadFile(resolve(path), `${slug}/${basename(path, ext)}-${Date.now()}${ext}`);
-  console.log(url);
+  const { path: src, tmp } = rewrapMov(resolve(path));
+  try {
+    warnIfHeavy(src);
+    const ext = extname(src).toLowerCase();
+    const url = await uploadFile(src, `${slug}/${basename(src, ext)}-${Date.now()}${ext}`);
+    console.log(url);
+  } finally {
+    if (tmp) rmSync(tmp, { force: true });
+  }
 }
 
 const argv = process.argv.slice(2);
