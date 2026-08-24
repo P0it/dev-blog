@@ -2,9 +2,9 @@ export type Shot = { title: string; src: string; caption: string };
 
 const VIDEO = /\.(mp4|webm|mov)(\?|$)/i;
 
-// 화면 갤러리 — 폰 모양 판을 좌우로 쭉 깔아 훑게 한다.
-// 화면마다 설명을 달지 않는다. 무엇이 어떻게 돌아가는지는 `## 개발 과정` 이 이야기하고,
-// 여기는 "이렇게 생겼다"만 보여주는 자리다. 이름표만 작게 붙인다.
+// 화면 갤러리 — 폰 모양 판을 깔아 "이렇게 생겼다"를 먼저 보여준다.
+// 판만 늘어놓으면 목업 전시가 되니, 이름표 아래에 그 화면이 무엇을 하는 자리인지
+// 한 줄을 붙인다. 자세한 이야기는 여전히 `## 개발 과정` 이 맡는다.
 export function Screens({ shots }: { shots: Shot[] }) {
   return (
     <div className="lab-screens lab-stagger">
@@ -18,7 +18,13 @@ export function Screens({ shots }: { shots: Shot[] }) {
               <img src={s.src} alt={s.title} loading="lazy" />
             )}
           </div>
-          {s.title && <figcaption className="lab-shot-cap">{s.title}</figcaption>}
+          {(s.title || s.caption) && (
+            <figcaption className="lab-shot-cap">
+              <span className="num">{String(i + 1).padStart(2, "0")}</span>
+              {s.title}
+              {s.caption && <p className="lab-shot-desc">{s.caption}</p>}
+            </figcaption>
+          )}
         </figure>
       ))}
     </div>

@@ -137,7 +137,9 @@ async function uploadLogo(mdFile, rel, slug) {
 }
 
 // 아주 좁은 YAML 만 읽는다 — 문자열, [a, b] 배열, 주석. draft.mjs 와 같은 수준.
-function parseFrontmatter(raw) {
+function parseFrontmatter(input) {
+  // 윈도우에서 만든 원고는 CRLF 라 그대로 두면 정규식이 다 어긋난다.
+  const raw = input.replace(/\r\n/g, "\n");
   const m = /^---\n([\s\S]*?)\n---\n?/.exec(raw);
   if (!m) throw new Error("프런트매터가 없다 (--- 로 시작해야 한다)");
   const meta = {};
