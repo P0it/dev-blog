@@ -71,18 +71,23 @@ portfolio/
 slug: mcp-probe            # 필수. ASCII 소문자 케밥. 블로그 URL 이 된다
 name: MCP Probe            # 필수. 카드에 뜨는 이름
 tagline: MCP 서버를 붙여보고 응답을 날것으로 보는 도구   # 필수. 40자 이내 한 줄
-year: "2026"               # 필수. 만든 해
+year: "2026"               # 필수. 만든 해 — 어드민 목록에서만 쓴다(공개 화면에 안 뜬다)
 logo_bg: "#1F6FEB"         # 필수. 로고 타일 배경 단색
 logo_file: ./logo.png      # 선택. 로고 이미지 파일 (원고 기준 상대경로)
 stack: [Next.js, Cloudflare Workers, TypeScript]   # 실제로 쓴 것만
 url: https://mcp-probe.pages.dev   # 스킴 포함 절대 URL. 배포 안 했으면 빈 값
 host: cloudflare           # vercel | cloudflare | local | none
-status: 운영중              # 운영중 | 실험중 | 중단
+status: 운영중              # 운영중 | 실험중 | 중단 — 어드민 목록용. 공개 화면에 안 뜬다
 capture: true              # 공개 URL 자동 스크린샷 촬영을 허용하는지
 ---
 ```
 
 `logo_bg` 는 로고가 배경에 묻히지 않는 색으로 고른다. 프로젝트 성격에 맞는 단색이면 된다.
+
+`year` 와 `status` 는 **공개 화면에 나오지 않는다.** 어드민 목록에서 프로젝트를 알아보는
+용도라 한 번 적고 잊으면 된다. 특히 `status` 로 운영 규모를 부풀리지 않는다 —
+혼자 만들어 띄워 둔 것과 실사용자를 받는 서비스는 다르고, 그 구분은 `## 기획` 과
+`## 개발 과정` 이 이야기로 드러낸다.
 
 ### 기술 스택은 `stack` 하나로 끝난다
 

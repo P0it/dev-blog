@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Calendar, Cloud, Layers } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Cloud, Layers } from "lucide-react";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import type { Project } from "@/lib/types";
 
@@ -55,16 +55,6 @@ export function ProjectHero({
             <h1 className="lab-hero-name">{p.name}</h1>
             {p.tagline && <p className="lab-hero-tagline">{p.tagline}</p>}
             <div className="lab-hero-meta">
-              {p.status && (
-                <span className="lab-hero-chip">
-                  <span className="lab-led" style={{ margin: 0 }} />
-                  {p.status}
-                </span>
-              )}
-              <span className="lab-hero-chip">
-                <Calendar size={14} />
-                {p.year}
-              </span>
               {stack.length > 0 && (
                 <span className="lab-hero-chip">
                   <Layers size={14} />

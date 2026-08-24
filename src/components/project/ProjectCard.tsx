@@ -21,12 +21,10 @@ export function ProjectCard({ p }: { p: Project }) {
             <span className="lab-card-badge" style={{ background: p.logoBg }}>
               <ProjectMark p={p} variant="card" />
             </span>
-            {p.status && <span className="lab-card-status">{p.status}</span>}
           </div>
         ) : (
           <div className="lab-card-tile" style={{ background: p.logoBg }}>
             <ProjectMark p={p} variant="card" />
-            {p.status && <span className="lab-card-status">{p.status}</span>}
           </div>
         )}
         <div className="lab-card-body">
