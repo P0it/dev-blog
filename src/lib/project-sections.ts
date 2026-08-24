@@ -19,6 +19,7 @@ export type Section =
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
   | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
   | { kind: "demo"; title: string; clips: { title: string; src: string; poster: string | null; caption: string }[] }
+  | { kind: "screens"; title: string; shots: { title: string; src: string; caption: string }[] }
   | { kind: "trials"; title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
   | { kind: "remaining"; title: string; md: string }
   | { kind: "raw"; title: string; md: string };
@@ -26,6 +27,7 @@ export type Section =
 // 규약이 정한 제목 → 렌더러 종류. 여기 없는 제목은 raw 로 간다.
 const KNOWN: Record<string, Section["kind"]> = {
   "제품 소개": "intro",
+  "화면": "screens",
   "기획": "plan",
   "유저 플로우": "userflow",
   "유저 플로": "userflow",
@@ -342,6 +344,17 @@ export function parseProjectBody(md: string): Section[] {
         })
         .filter((c) => c.src);
       out.push(clips.length ? { kind, title, clips } : raw);
+    } else if (kind === "screens") {
+      // 시연과 같은 모양으로 적는다 (`### 제목` + `**파일**`). 다만 여기는 정지 화면을
+      // 그리드로 늘어놓는 자리라, 적재 뒤 라벨이 `**이미지**` 든 `**영상**` 이든 받는다.
+      const shots = splitSubs(body)
+        .map((sub) => {
+          const f = parseFields(sub.md);
+          const get = (name: string) => f.find((x) => x.label === name)?.value ?? "";
+          return { title: sub.label, src: get("이미지") || get("영상"), caption: get("설명") };
+        })
+        .filter((s) => s.src);
+      out.push(shots.length ? { kind, title, shots } : raw);
     } else if (kind === "trials") {
       const subs = splitSubs(body);
       const cases = subs.map((s) => parseCase(s.label, s.md));
@@ -364,8 +377,10 @@ export function buildProjectSections(body: string, stack: string[]): Section[] {
   if (!names.length || sections.some((s) => s.kind === "tech")) return sections;
 
   const tech: Section = { kind: "tech", title: "기술 스택", items: names };
-  // 규약 순서상 구상 다음 자리다. 구상이 없으면 소개 다음.
-  const anchor = sections.findIndex((s) => s.kind === "requirements");
-  const at = anchor >= 0 ? anchor + 1 : sections.findIndex((s) => s.kind === "intro") + 1;
+  // 규약 순서상 구상 다음 자리다. 없으면 화면 → 기획 → 소개 순으로 뒤를 찾는다.
+  // 소개는 히어로로 올라가므로, 소개 뒤에 끼우면 기술 칩이 본문 맨 앞에 서게 된다.
+  const order: Section["kind"][] = ["requirements", "screens", "plan", "intro"];
+  const anchor = order.map((k) => sections.findIndex((s) => s.kind === k)).find((i) => i >= 0) ?? -1;
+  const at = anchor + 1;
   return [...sections.slice(0, at), tech, ...sections.slice(at)];
 }

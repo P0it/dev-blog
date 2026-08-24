@@ -11,6 +11,7 @@ import { UserFlow } from "@/components/project/sections/UserFlow";
 import { Journey } from "@/components/project/sections/Journey";
 import { Integrations } from "@/components/project/sections/Integrations";
 import { Demos } from "@/components/project/sections/Demos";
+import { Screens } from "@/components/project/sections/Screens";
 import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
@@ -29,6 +30,7 @@ import {
   Route,
   Compass,
   Target,
+  MonitorSmartphone,
 } from "lucide-react";
 
 // 섹션 종류마다 고정 아이콘. 이모지를 쓰지 않고 아이콘으로만 구분한다.
@@ -41,6 +43,7 @@ const SECTION_ICON: Record<Section["kind"], typeof BookOpen> = {
   journey: Route,
   integrations: Plug,
   demo: PlayCircle,
+  screens: MonitorSmartphone,
   architecture: Network,
   trials: Wrench,
   remaining: Flag,
@@ -65,6 +68,8 @@ function renderSection(s: Section) {
       return <Integrations items={s.items} />;
     case "demo":
       return <Demos clips={s.clips} />;
+    case "screens":
+      return <Screens shots={s.shots} />;
     case "architecture":
       return <Architecture diagram={s.diagram} steps={s.steps} />;
     case "trials":
@@ -86,13 +91,20 @@ function sectionIcon(kind: Section["kind"]) {
 }
 
 export function ProjectDetailView({ project }: { project: Project }) {
-  const sections = buildProjectSections(project.body, project.stack);
+  const all = buildProjectSections(project.body, project.stack);
+  // `## 제품 소개` 는 번호가 붙는 섹션이 아니라 히어로의 리드다. 이 물건이 뭔지는
+  // 표지에서 끝내고, 본문은 왜 만들게 됐는지(`## 기획`)부터 시작한다.
+  const intro = all.find((s) => s.kind === "intro");
+  const sections = all.filter((s) => s.kind !== "intro");
   const rail = sections.map((s, i) => ({ id: sectionAnchor(i, s.title), label: s.title }));
 
   return (
     <>
       <PublicNav active="lab" />
-      <ProjectHero project={project} />
+      <ProjectHero
+        project={project}
+        lead={intro ? <Intro md={intro.md} /> : undefined}
+      />
 
       <div className="lab-page" style={{ paddingBottom: 96 }}>
         <div className="container-wide">

@@ -10,7 +10,15 @@ const HOST_LABEL: Record<Project["host"], string> = {
   none: "비공개",
 };
 
-export function ProjectHero({ project: p }: { project: Project }) {
+export function ProjectHero({
+  project: p,
+  lead,
+}: {
+  project: Project;
+  /* `## 제품 소개` 는 섹션이 아니라 히어로의 리드다. 이 물건이 뭔지는 여기서 끝내고,
+     본문은 왜 만들게 됐는지(`## 기획`)부터 시작한다. */
+  lead?: React.ReactNode;
+}) {
   // 스택에 배포처가 이미 들어 있으면 메타 줄에서 한 번만 보이게 한다.
   const hostLabel = HOST_LABEL[p.host];
   const showHost = !p.stack.some((s) => s.toLowerCase() === hostLabel.toLowerCase().split(" ")[0]);
@@ -73,6 +81,12 @@ export function ProjectHero({ project: p }: { project: Project }) {
           </div>
         </div>
       </div>
+
+      {lead && (
+        <div className="lab-hero-lead">
+          <div className="container-wide">{lead}</div>
+        </div>
+      )}
     </header>
   );
 }

@@ -232,6 +232,31 @@ test("옛 제목 `요구사항` 도 같은 렌더러로 간다", () => {
   assert.deepEqual(s.items, [{ done: true, text: "된다" }]);
 });
 
+test("화면 갤러리를 파싱한다", () => {
+  const s = parseProjectBody(
+    "## 화면\n\n### 목록\n\n**이미지** https://cdn/list.png\n**설명** 한눈에 본다\n\n### 상세\n\n**이미지** https://cdn/detail.png\n",
+  )[0];
+  assert.equal(s.kind, "screens");
+  if (s.kind !== "screens") return;
+  assert.deepEqual(s.shots, [
+    { title: "목록", src: "https://cdn/list.png", caption: "한눈에 본다" },
+    { title: "상세", src: "https://cdn/detail.png", caption: "" },
+  ]);
+});
+
+test("화면이 비면 raw 로 떨어진다", () => {
+  const s = parseProjectBody("## 화면\n\n아직 없다.\n")[0];
+  assert.equal(s.kind, "raw");
+});
+
+test("구상이 없으면 기술 스택이 화면 뒤에 온다", () => {
+  const secs = buildProjectSections(
+    "## 제품 소개\n\n소개다.\n\n## 화면\n\n### 목록\n\n**이미지** https://cdn/a.png\n",
+    ["React"],
+  );
+  assert.deepEqual(secs.map((s) => s.kind), ["intro", "screens", "tech"]);
+});
+
 test("본문에 기술 섹션이 있으면 stack 을 덧붙이지 않는다", () => {
   const secs = buildProjectSections("## 기술 스택\n\n- Astro\n", ["React"]);
   assert.equal(secs.filter((s) => s.kind === "tech").length, 1);
