@@ -52,9 +52,11 @@ function buildConfig(t: Tokens) {
     fontFamily,
     flowchart: {
       curve: "basis" as const,
-      padding: 24,
-      nodeSpacing: 50,
-      rankSpacing: 60,
+      // 세로(TD) 흐름도는 rank 간격이 곧 전체 높이다. 60 이면 노드 예닐곱 개에
+      // 높이가 900px 을 넘어, 패널에 맞추느라 통째로 축소돼 글자가 안 읽힌다.
+      padding: 16,
+      nodeSpacing: 40,
+      rankSpacing: 38,
       useMaxWidth: true,
       htmlLabels: true, // 한글 너비 정확히 잡으려면 HTML 라벨 필수
     },

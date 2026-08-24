@@ -2,8 +2,9 @@ export type Shot = { title: string; src: string; caption: string };
 
 const VIDEO = /\.(mp4|webm|mov)(\?|$)/i;
 
-// 화면 갤러리. 정지 화면을 그리드로 늘어놓아 "이게 뭐 하는 물건인지"를 먼저 보여준다.
-// 시연(`## 시연`)은 흐름을 끝까지 따라가는 큰 클립이고, 여기는 장면 한 컷씩이다.
+// 화면 갤러리 — 폰 모양 판을 좌우로 쭉 깔아 훑게 한다.
+// 화면마다 설명을 달지 않는다. 무엇이 어떻게 돌아가는지는 `## 개발 과정` 이 이야기하고,
+// 여기는 "이렇게 생겼다"만 보여주는 자리다. 이름표만 작게 붙인다.
 export function Screens({ shots }: { shots: Shot[] }) {
   return (
     <div className="lab-screens lab-stagger">
@@ -17,10 +18,7 @@ export function Screens({ shots }: { shots: Shot[] }) {
               <img src={s.src} alt={s.title} loading="lazy" />
             )}
           </div>
-          <figcaption className="lab-shot-cap">
-            <strong>{s.title}</strong>
-            {s.caption && <p>{s.caption}</p>}
-          </figcaption>
+          {s.title && <figcaption className="lab-shot-cap">{s.title}</figcaption>}
         </figure>
       ))}
     </div>
