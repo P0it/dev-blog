@@ -146,7 +146,7 @@
                   -apple-system, BlinkMacSystemFont, "Tossface", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", "Tossface", monospace;
 
-  --nav-bg: rgba(255, 255, 255, 0.82);
+  --nav-bg: var(--bg-base);
   /* 코드블록은 사이트 테마와 무관하게 항상 Night Owl 톤 (#011627 base) */
   --code-bg: #011627;
   --code-border: rgba(214, 222, 235, 0.08);
@@ -200,7 +200,7 @@
   --line-normal:    rgba(255,255,255,0.10);
   --line-strong:    rgba(255,255,255,0.16);
 
-  --nav-bg: rgba(18, 18, 20, 0.78);
+  --nav-bg: var(--bg-base);
   /* 코드블록 변수는 :root에 정의되어 라이트/다크 공통으로 그대로 적용됨 */
 
   /* Diagram — dark: hue 살린 저채도 fill, stroke는 한 단계 밝게. */
@@ -320,9 +320,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 40px; height: 64px;
+  /* 반투명으로 두면 스크롤할 때 본문이 내비 뒤로 비쳐 글자가 겹쳐 읽힌다.
+     바탕과 같은 불투명 색으로 덮고, blur 도 같이 걷는다(가릴 게 없다). */
   background: var(--nav-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--line-subtle);
 }
 .nav-left { display: flex; align-items: center; gap: 32px; }
@@ -1986,35 +1986,95 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-stack-chip.sm i { width: 13px; height: 13px; }
 .lab-stack-chip.sm i { font-size: 8px; }
 
-/* Lab — 데이터와 API */
-.lab-integ { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.lab-integ-card { padding: 22px 24px; }
-.lab-integ-name {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
-  color: var(--lab-fg);
-  padding-bottom: 14px; margin-bottom: 14px;
-  border-bottom: 1px solid var(--lab-line);
+/* Lab — 데이터와 API
+   무엇에 쓰는 물건인지가 먼저다. 접힌 카드에는 로고·이름·용도 한 줄·칩만 두고,
+   적재·주의 같은 세부는 "자세히" 로 내린다. 카드가 커지면 섹션이 사양서가 된다. */
+.lab-integ { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+.lab-integ-card {
+  --tc: var(--tc-light);
+  padding: 18px 20px 16px;
+  transition: border-color 0.16s ease;
 }
-.lab-integ-name .icon { color: var(--lab-mint); flex: none; }
-.lab-integ-rows { margin: 0; }
+[data-theme="dark"] .lab-integ-card { --tc: var(--tc-dark); }
+.lab-integ-card.open { border-color: var(--lab-line-strong); }
+
+.lab-integ-head { display: flex; align-items: center; gap: 10px; }
+.lab-integ-logo {
+  width: 30px; height: 30px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tc) 14%, transparent);
+}
+.lab-integ-logo svg { width: 17px; height: 17px; fill: var(--tc); }
+.lab-integ-logo i {
+  font-family: var(--font-mono);
+  font-size: 13px; font-weight: 700; font-style: normal; line-height: 1;
+  color: var(--tc);
+}
+.lab-integ-name {
+  min-width: 0; flex: 1;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35;
+  color: var(--lab-fg);
+}
+.lab-integ-link {
+  flex: none;
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  color: var(--lab-fg-dim);
+}
+.lab-integ-link:hover { color: var(--lab-mint); background: var(--lab-mint-bg); }
+
+.lab-integ-purpose {
+  margin: 12px 0 0;
+  font-size: 14.5px; line-height: 1.72;
+  color: var(--lab-fg);
+}
+
+.lab-integ-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 14px;
+}
+.lab-integ-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.lab-integ-chips span {
+  padding: 3px 9px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: -0.01em;
+  color: var(--lab-fg-dim);
+  white-space: nowrap;
+}
+.lab-integ-more {
+  flex: none;
+  display: inline-flex; align-items: center; gap: 3px;
+  background: none; border: 0; padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.02em;
+  color: var(--lab-fg-dim);
+  cursor: pointer;
+}
+.lab-integ-more:hover { color: var(--lab-mint); }
+.lab-integ-more .chev { transition: transform 0.18s ease; }
+.lab-integ-card.open .lab-integ-more .chev { transform: rotate(180deg); }
+
+.lab-integ-rows {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--lab-line);
+}
 .lab-integ-row {
-  display: grid; grid-template-columns: 62px 1fr; gap: 14px;
-  margin-bottom: 12px;
-  font-size: 14.5px; line-height: 1.7;
+  display: grid; grid-template-columns: 46px 1fr; gap: 12px;
+  margin-bottom: 10px;
+  font-size: 13.5px; line-height: 1.7;
 }
 .lab-integ-row:last-child { margin-bottom: 0; }
 .lab-integ-row dt {
-  font-size: 13px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   color: var(--lab-fg-dim);
-  padding-top: 1px;
+  padding-top: 2px;
 }
 .lab-integ-row dd { margin: 0; color: var(--lab-fg); overflow-wrap: anywhere; }
-.lab-integ-link {
-  display: inline-flex; align-items: center; gap: 6px;
-  color: var(--lab-mint); font-weight: 600;
-}
-.lab-integ-link:hover { text-decoration: underline; }
 
 /* Lab — 시연 */
 /* 어드민 프로젝트 미리보기 상단 띠. 공개 화면과 헷갈리지 않게 표시한다. */
@@ -2445,6 +2505,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 1024px) {
   .lab-detail { grid-template-columns: 148px 1fr; gap: 32px; }
   :root { --lab-rail-offset: 180px; }
+  .lab-integ { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 900px) {
