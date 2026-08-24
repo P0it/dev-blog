@@ -21,9 +21,9 @@ function norm(s: string) {
 
 export function Architecture({ diagram, steps }: { diagram: string | null; steps: Step[] }) {
   const [active, setActive] = useState(0);
-  // 가로로 긴 다이어그램(LR 계열)은 좁은 칼럼에 넣으면 글자가 안 읽힌다.
-  // 렌더된 SVG 비율을 재서 2:1 을 넘으면 폭 전체를 쓰는 밴드로 눕힌다.
-  const [wide, setWide] = useState(false);
+  // 구조도는 칼럼을 반으로 쪼개면 400px 안쪽으로 눌려 글자가 안 읽힌다.
+  // 본문 폭을 통째로 쓰는 밴드에 올리고, 설명은 그 아래로 내린다.
+  const [zoom, setZoom] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -55,8 +55,6 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
         raf = requestAnimationFrame(paint);
         return;
       }
-      const vb = svg.viewBox?.baseVal;
-      if (vb && vb.height > 0) setWide(vb.width / vb.height > 2);
       const nodes = Array.from(svg.querySelectorAll<SVGGElement>("g.node"));
       const clusters = Array.from(svg.querySelectorAll<SVGGElement>("g.cluster"));
       const label = (el: Element) => norm(el.textContent ?? "");
@@ -74,6 +72,13 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     return () => cancelAnimationFrame(raf);
   }, [active, diagram, steps]);
 
+  useEffect(() => {
+    if (!zoom) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [zoom]);
+
   if (!diagram) {
     return (
       <div className="lab-arch-steps">
@@ -88,10 +93,25 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
   }
 
   return (
-    <div className={wide ? "lab-arch lab-arch-band" : "lab-arch"}>
+    <div className="lab-arch">
       <div className="lab-panel lab-corner lab-arch-panel" ref={panelRef}>
+        <button type="button" className="lab-arch-zoom" onClick={() => setZoom(true)}>
+          크게 보기
+        </button>
         <Mermaid code={diagram} />
       </div>
+      {zoom && (
+        // 노드가 많은 구조도는 본문 폭에서도 줄어든다. 화면 전체를 내주고
+        // 원래 크기로 그린 다음, 넘치면 줄이는 대신 스크롤하게 둔다.
+        <div className="lab-arch-modal" onClick={() => setZoom(false)} role="presentation">
+          <button type="button" className="lab-arch-close" aria-label="닫기">
+            닫기
+          </button>
+          <div className="lab-arch-modal-inner" onClick={(e) => e.stopPropagation()} role="presentation">
+            <Mermaid code={diagram} />
+          </div>
+        </div>
+      )}
       <div className="lab-arch-steps">
         {steps.map((s, i) => (
           <div
