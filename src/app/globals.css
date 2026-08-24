@@ -1249,12 +1249,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .lab-grid {
   display: grid;
-  /* 폰 판은 폭을 고정한다. `1fr` 로 두면 화면이 넓어질수록 판이 같이 커져
-     카드가 실제 기기보다 커지는데, 세로로 세운 폰은 그때부터 화면을 잡아먹는다.
-     열 폭을 236px 로 못박고 남는 폭은 열 수로 돌린다 — 1120px 에서 4열이다. */
-  grid-template-columns: repeat(auto-fill, 236px);
-  justify-content: start;
-  gap: 32px 26px;
+  /* 판은 폭을 고정한다. `1fr` 로 두면 화면이 넓어질수록 판이 같이 커져 카드가
+     실제 기기보다 커지는데, 세로로 세운 폰은 그때부터 화면을 잡아먹는다.
+     열 폭을 못박고 남는 폭은 열 수로 돌린다 — 1120px 에서 3열이다.
+     `auto-fit` 이라 빈 열은 접히고, 그래서 장수가 적어도 가운데로 모인다. */
+  grid-template-columns: repeat(auto-fit, minmax(0, 298px));
+  justify-content: center;
+  /* 작업대에 표본을 띄엄띄엄 놓는 간격. 좁히면 옆 카드와 한 덩어리로 붙어 읽힌다. */
+  gap: 46px 38px;
   perspective: 1100px;
   perspective-origin: 50% 30%;
 }
@@ -1336,6 +1338,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 :root {
   --lab-grid: rgba(27, 28, 30, 0.04);
+  --lab-grid-major: rgba(27, 28, 30, 0.075);
   --lab-line: rgba(27, 28, 30, 0.10);
   --lab-line-strong: rgba(27, 28, 30, 0.16);
   --lab-panel: var(--white);
@@ -1357,6 +1360,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 [data-theme="dark"] {
   --lab-grid: rgba(255, 255, 255, 0.04);
+  --lab-grid-major: rgba(255, 255, 255, 0.08);
   --lab-line: rgba(255, 255, 255, 0.11);
   --lab-line-strong: rgba(255, 255, 255, 0.18);
   --lab-panel: rgba(255, 255, 255, 0.04);
@@ -1375,12 +1379,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   --lab-card-edge: rgba(255, 255, 255, 0.14);
 }
 
-/* 격자는 페이지 바탕에만. 카드·표·패널은 .lab-panel 로 덮어 격자를 가린다. */
+/* 격자는 페이지 바탕에만. 카드·표·패널은 .lab-panel 로 덮어 격자를 가린다.
+   잔격자(28px) 위에 네 칸마다 굵은 선을 한 겹 더 얹는다. 한 종류만 깔면
+   벽지처럼 균질해서 뒤로 물러나 버리는데, 두 겹이면 작업대 눈금처럼 읽힌다. */
 .lab-page {
   background-image:
+    linear-gradient(var(--lab-grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lab-grid-major) 1px, transparent 1px),
     linear-gradient(var(--lab-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--lab-grid) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-size: 112px 112px, 112px 112px, 28px 28px, 28px 28px;
 }
 
 /* 계기판 라벨 — 번호·상태·수치 전용. 문장에는 쓰지 않는다. */
@@ -1466,6 +1474,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-prose li { margin-bottom: 10px; }
 .lab-prose strong { font-weight: 600; }
 
+/* 목록 머리줄 — 상세의 섹션 머리줄을 그대로 쓰되 위 여백만 걷는다.
+   페이지 첫 줄이라 72px 을 그대로 두면 판이 아래로 밀려 내려간다. */
+.lab-index-head { margin-top: 0; }
+
 /* Lab — 목록 그리드와 카드.
    카드는 폰 화면을 세로로 세운 판 하나와, 그 아래 로고·이름 줄로 끝난다.
    설명과 바로가기는 상세에 있으니 목록에서는 무엇인지만 알아보면 된다. */
@@ -1485,6 +1497,59 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-card a:hover { text-decoration: none; color: inherit; }
 .lab-card-hit { display: block; }
 
+/* 표본 판 — 번호줄·화면·이름줄을 한 판에 담는다. 셋을 격자 위에 그냥 얹어 두면
+   어느 이름이 어느 화면 것인지 눈이 매번 짝을 다시 맞춘다. 판이 배경 격자를
+   덮으면서 "작업대에 올려 둔 한 점"이 된다. */
+.lab-card-slab {
+  padding: 13px 13px 15px;
+  border-radius: 20px;
+  background: var(--lab-panel);
+  border: 1px solid var(--lab-line);
+  box-shadow: var(--lab-card-shadow);
+  transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.28s ease;
+}
+.lab-card:hover .lab-card-slab {
+  box-shadow: var(--lab-card-shadow-hover);
+  border-color: var(--lab-line-strong);
+}
+/* 코너 갈고리는 평소 숨어 있다가 hover 에 걸린다. 늘 켜 두면 목록 전체가
+   민트 점으로 시끄러워진다. */
+.lab-card-slab::before,
+.lab-card-slab::after {
+  width: 13px; height: 13px;
+  border-radius: 0;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.lab-card-slab::before { top: -1px; left: -1px; border-top-left-radius: 20px; }
+.lab-card-slab::after { bottom: -1px; right: -1px; border-bottom-right-radius: 20px; }
+.lab-card:hover .lab-card-slab::before,
+.lab-card:hover .lab-card-slab::after { opacity: 1; }
+
+/* 머리줄 — 표본 번호와 상태 램프. 계측기 어휘를 카드에도 한 줄만 남긴다. */
+.lab-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px 10px;
+}
+.lab-card-idx {
+  font-family: var(--font-mono);
+  font-size: 11.5px; font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--lab-fg-dim);
+  transition: color 0.28s ease;
+}
+.lab-card:hover .lab-card-idx { color: var(--lab-mint); }
+.lab-card-lamp {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lab-line-strong);
+  transition: background 0.28s ease, box-shadow 0.28s ease;
+}
+.lab-card:hover .lab-card-lamp {
+  background: var(--lab-mint);
+  box-shadow: 0 0 8px var(--lab-mint);
+}
+
 /* 폰 화면 비율 그대로(390×844). 예전엔 아래를 조금 잘라 카드 길이를 줄였는데,
    그러면 홈 화면 밑동이 잘려 나가 무슨 화면인지 덜 읽힌다. 길이는 판 폭을 줄여
    잡고, 비율은 기기와 맞춘다. 가로 캡처가 들어오면 cover 로 위쪽이 채워진다. */
@@ -1492,13 +1557,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   position: relative;
   aspect-ratio: 390 / 844;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--lab-line);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--lab-card-shadow);
-  transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  /* 판 위에 앉은 화면이라 그림자를 또 주면 판이 두 겹으로 보인다. 선만 두른다. */
+  box-shadow: inset 0 0 0 1px var(--lab-line);
 }
-.lab-card:hover .lab-card-shot { box-shadow: var(--lab-card-shadow-hover); }
 .lab-card-shot img {
   width: 100%; height: 100%;
   object-fit: cover; object-position: top center;
@@ -1508,10 +1572,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    목록에서 튄다. 조용한 판 위에 로고 배지 하나만 놓는다. */
 .lab-card-shot.empty {
   background: var(--lab-panel);
-  border: 1px solid var(--lab-line);
-  box-shadow: none;
 }
-.lab-card:hover .lab-card-shot.empty { box-shadow: var(--lab-card-shadow); }
 .lab-card-empty {
   width: 76px; height: 76px;
   border-radius: 20px;
@@ -1717,106 +1778,64 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* Lab — 유저 플로우
-   사람이 움직이는 동선. 번호 카드를 가로 레일에 꿰고 갈림길은 카드 아래에 건다.
-   좁아지면 세로로 눕고 화살표도 같이 돈다. */
-/* 레일 껍데기 — 화살표와 진행 막대가 여기에 절대배치로 얹힌다. */
-.lab-uflow-rail { position: relative; --fade: 64px; --fl: 0px; --fr: 0px; }
-/* 넘치는 쪽만 흐린다. 잘린 카드가 "이쪽에 더 있다"는 신호가 된다. */
-.lab-uflow-rail[data-overflow="true"][data-at-start="false"] { --fl: var(--fade); }
-.lab-uflow-rail[data-overflow="true"][data-at-end="false"] { --fr: var(--fade); }
-.lab-uflow {
-  list-style: none; margin: 0; padding: 2px 0 6px;
-  display: flex; align-items: stretch; gap: 0;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scroll-padding-left: 2px;
-  overscroll-behavior-x: contain;
-  /* OS 스크롤바는 두께도 색도 화면마다 달라 카드 옆에 두면 마감이 흐트러진다.
-     감추고 아래 진행 막대로 대신한다. */
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
-  transition: -webkit-mask-image 0.2s, mask-image 0.2s;
-}
-.lab-uflow::-webkit-scrollbar { display: none; }
-.lab-uflow-step {
-  display: flex; align-items: stretch; flex: 1 0 210px; min-width: 0;
-  scroll-snap-align: start;
-}
-
-/* 좌우 화살표 — 평소엔 옅게 떠 있다가 레일에 손이 오면 또렷해진다. */
-.lab-uflow-nav {
-  position: absolute; top: calc(50% - 20px);
-  width: 38px; height: 38px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--lab-line);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--bg-base) 82%, transparent);
-  backdrop-filter: blur(8px);
-  color: var(--lab-fg);
-  cursor: pointer;
-  opacity: 0.45;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  transition: opacity 0.18s, transform 0.18s, border-color 0.18s, color 0.18s;
-  z-index: 2;
-}
-.lab-uflow-rail:hover .lab-uflow-nav,
-.lab-uflow-rail:focus-within .lab-uflow-nav { opacity: 1; }
-.lab-uflow-nav:hover { border-color: var(--lab-mint); color: var(--lab-mint); }
-.lab-uflow-nav:disabled { opacity: 0; pointer-events: none; }
-.lab-uflow-nav.prev { left: -14px; }
-.lab-uflow-nav.next { right: -14px; }
-.lab-uflow-nav.prev svg { transform: rotate(180deg); }
-.lab-uflow-nav.prev:hover { transform: translateX(-2px); }
-.lab-uflow-nav.next:hover { transform: translateX(2px); }
-
-/* 진행 막대 — 스크롤바 자리를 대신한다. 보이는 만큼이 폭, 어디쯤인지가 위치다. */
-.lab-uflow-bar {
-  position: relative;
-  height: 3px; margin-top: 14px;
-  border-radius: 999px;
-  background: var(--lab-line);
-  overflow: hidden;
-}
-.lab-uflow-bar i {
-  position: absolute; top: 0; bottom: 0;
-  min-width: 32px;
-  border-radius: inherit;
-  background: var(--lab-mint);
-  transition: left 0.12s linear, width 0.12s linear;
-}
+   사람이 움직이는 동선. 카드를 세로로 쌓고 사이를 아래 화살표로 잇는다.
+   가로 레일은 페이지의 다른 섹션과 조작이 달라 걷어냈다.
+   개발 과정과 닮지 않게 형태를 갈라 둔다 — 그쪽은 선에 꿴 맨 글, 이쪽은 카드다. */
+.lab-uflow { list-style: none; margin: 0; padding: 0; }
+.lab-uflow-step { display: flex; flex-direction: column; align-items: stretch; }
 .lab-uflow-card {
-  flex: 1; min-width: 0;
-  padding: 16px 18px 18px;
-  display: flex; flex-direction: column; gap: 7px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 0 16px;
+  padding: 18px 22px 20px;
+  align-items: start;
+}
+/* 갈림길이 있는 카드만 오른쪽 열을 연다. 짧은 설명 한 줄이 880px 을 혼자
+   가로지르면 눈이 되돌아올 곳을 잃는다. */
+@media (min-width: 900px) {
+  .lab-uflow-card.has-branch { grid-template-columns: 42px minmax(0, 1fr) minmax(240px, 320px); }
 }
 .lab-uflow-num {
+  grid-row: span 2;
   font-family: var(--font-mono);
-  font-size: 10px; letter-spacing: 0.14em;
-  color: var(--lab-fg-dim);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+  color: var(--lab-mint);
+  padding-top: 2px;
 }
+.lab-uflow-main { min-width: 0; }
 .lab-uflow-label {
-  font-size: 14.5px; font-weight: 700; letter-spacing: -0.02em;
+  display: block;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg); line-height: 1.45;
 }
 .lab-uflow-desc {
-  margin: 0;
-  font-size: 13.5px; line-height: 1.7;
+  margin: 6px 0 0;
+  font-size: 14.5px; line-height: 1.75;
   color: var(--lab-fg-dim);
+  max-width: 46em;
 }
-/* 갈림길 — 조건에 민트를 주고 결과를 뒤에 붙인다. */
+/* 갈림길 — 조건에 민트를 주고 결과를 뒤에 붙인다.
+   좁으면 카드 아래에 선을 긋고 걸리고, 넓으면 오른쪽 열로 나가 세로선에 걸린다. */
 .lab-uflow-branches {
-  display: grid; gap: 5px;
-  margin-top: auto; padding-top: 11px;
+  display: grid; gap: 7px;
+  margin-top: 14px; padding-top: 13px;
   border-top: 1px solid var(--lab-line);
 }
+@media (min-width: 900px) {
+  .lab-uflow-card.has-branch .lab-uflow-branches {
+    grid-row: span 2;
+    margin-top: 2px; padding-top: 0;
+    padding-left: 20px;
+    border-top: 0; border-left: 1px solid var(--lab-line);
+  }
+}
 .lab-uflow-branch {
-  display: flex; gap: 7px; align-items: baseline;
-  font-size: 12.5px; line-height: 1.55;
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 13.5px; line-height: 1.6;
   color: var(--lab-fg);
 }
 .lab-uflow-branch::before {
-  content: "\21B3";
+  content: "↳";
   flex: none;
   color: var(--lab-fg-dim);
   font-size: 11px;
@@ -1826,39 +1845,29 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-style: normal; font-weight: 600;
   color: var(--lab-mint);
 }
-/* 카드 사이 연결선. 마지막 단계 뒤에는 그리지 않는다. */
+/* 카드 사이 연결선. 번호 열 가운데로 내려간다. 마지막 뒤에는 그리지 않는다. */
 .lab-uflow-link {
-  flex: none;
-  align-self: center;
-  width: 28px; height: 0;
   position: relative;
-  border-top: 1px dashed var(--lab-fg-dim);
-  opacity: 0.55;
+  align-self: flex-start;
+  margin-left: 43px;
+  width: 0; height: 26px;
+  border-left: 1px dashed var(--lab-fg-dim);
+  opacity: 0.5;
 }
 .lab-uflow-link::after {
   content: "";
-  position: absolute; right: -1px; top: 0;
+  position: absolute; left: 0; bottom: 0;
   width: 6px; height: 6px;
   border-top: 1.5px solid var(--lab-fg-dim);
   border-right: 1.5px solid var(--lab-fg-dim);
-  transform: translateY(-50%) rotate(45deg);
+  transform: translate(-50%, 1px) rotate(135deg);
 }
 .lab-uflow-step:last-child .lab-uflow-link { display: none; }
 
-@media (max-width: 760px) {
-  /* 세로로 누우면 레일이 아니다 — 마스크·화살표·막대를 전부 뗀다. */
-  .lab-uflow {
-    flex-direction: column; overflow-x: visible;
-    scroll-snap-type: none;
-    -webkit-mask-image: none; mask-image: none;
-  }
-  .lab-uflow-nav, .lab-uflow-bar { display: none; }
-  .lab-uflow-step { flex-direction: column; flex: none; }
-  .lab-uflow-link {
-    width: 0; height: 22px; margin-left: 28px; align-self: flex-start;
-    border-top: 0; border-left: 1px dashed var(--lab-fg-dim);
-  }
-  .lab-uflow-link::after { right: auto; left: 0; top: auto; bottom: -1px; transform: translateX(-50%) rotate(135deg); }
+@media (max-width: 620px) {
+  .lab-uflow-card { grid-template-columns: 1fr; gap: 0; padding: 16px 18px 18px; }
+  .lab-uflow-num { grid-row: auto; margin-bottom: 6px; }
+  .lab-uflow-link { margin-left: 20px; }
 }
 
 /* 단계 없이 mermaid 만 쓴 옛 원고용 */
@@ -2381,8 +2390,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 @media (max-width: 900px) {
-  /* 열 폭이 고정이라 열 수는 auto-fill 이 알아서 줄인다. 간격만 좁힌다. */
-  .lab-grid { gap: 26px 18px; }
+  /* 열 폭이 고정이라 열 수는 auto-fit 이 알아서 줄인다. 간격만 좁힌다. */
+  .lab-grid { gap: 34px 24px; }
   .lab-detail { grid-template-columns: 1fr; gap: 0; }
   /* 레일이 사라지는 폭부터는 밀 이유가 없다. */
   :root { --lab-rail-offset: 0px; }
@@ -2445,8 +2454,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .post-hero-title { font-size: 34px; line-height: 1.15; }
   .post-hero-excerpt { font-size: 15.5px; margin-top: 14px; }
 
-  /* 한 줄에 한 장만 남는 폭. 왼쪽에 붙여 두면 허전하니 가운데로 모은다. */
-  .lab-grid { justify-content: center; gap: 24px; }
+  .lab-grid { gap: 30px; }
   /* 가로 나열이라 좁아져도 열 수를 바꾸지 않는다. 폭이 모자라면 옆으로 밀린다.
      grid-template-columns 를 주면 첫 열만 명시 열이 되어 찌그러진다. */
   .lab-screens { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 14px; }
