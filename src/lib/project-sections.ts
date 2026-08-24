@@ -369,6 +369,17 @@ export function parseProjectBody(md: string): Section[] {
   return out;
 }
 
+// 목록 카드에 쓸 대표 화면 — `## 화면` 의 첫 장이다.
+//
+// 카드가 폰 화면을 세로로 세워 보여주므로, 배포 사이트를 가로로 찍은 hero_poster
+// 보다 이쪽이 맞다. 화면 섹션이 없으면 null 이고, 카드는 로고 타일로 떨어진다.
+export function firstScreenSrc(body: string): string | null {
+  for (const s of parseProjectBody(body)) {
+    if (s.kind === "screens") return s.shots[0]?.src ?? null;
+  }
+  return null;
+}
+
 // 화면에 그릴 최종 섹션 목록.
 //
 // 기술 스택은 프런트매터 `stack` 이 소스다. 본문에 `## 기술 스택` 을 따로 쓰지 않아도

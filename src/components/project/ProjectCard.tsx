@@ -1,44 +1,40 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { ProjectMark } from "@/components/project/ProjectMark";
+import { firstScreenSrc } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
 
-// 카드 전체를 Link 로 감싸면 안쪽에 바로가기 링크를 넣을 수 없다(앵커 중첩).
-// 그래서 상세로 가는 링크와 배포처로 가는 링크를 형제로 두고,
-// 상세 링크만 ::after 로 카드 전체를 덮어 클릭 영역을 넓힌다.
+// 목록 카드 — 폰 화면을 세로로 세우고, 그 아래 로고와 이름만 둔다.
+// 자세한 건 상세에서 보면 되므로 카드에는 설명을 얹지 않는다.
 export function ProjectCard({ p }: { p: Project }) {
-  // 찍어 둔 화면이 있으면 그걸 앞세운다. 로고 타일은 이 물건이 뭔지 알려주지 않는다.
-  // 화면 위에는 로고를 작은 배지로만 얹어 어느 프로젝트인지 알아보게 한다.
-  const shot = p.heroPoster;
+  // `## 화면` 의 첫 장이 대표 화면이다. 없으면 배포 사이트 캡처, 그것도 없으면 로고 타일.
+  const shot = firstScreenSrc(p.body) ?? p.heroPoster;
 
   return (
-    <article className="lab-panel lab-card lab-reveal">
+    <article className="lab-card lab-reveal">
       <Link href={`/lab/${p.slug}`} className="lab-card-hit">
-        {shot ? (
-          <div className="lab-card-shot">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div className={`lab-card-shot${shot ? "" : " empty"}`}>
+          {shot ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={shot} alt="" loading="lazy" />
-            <span className="lab-card-badge" style={{ background: p.logoBg }}>
+          ) : (
+            // 대표 화면이 아직 없는 프로젝트. 판 전체를 로고색으로 칠하면 목록에서
+            // 그 카드만 튀므로, 조용한 판 가운데에 로고 배지 하나만 놓는다.
+            <span className="lab-card-empty" style={{ background: p.logoBg }}>
               <ProjectMark p={p} variant="card" />
             </span>
-          </div>
-        ) : (
-          <div className="lab-card-tile" style={{ background: p.logoBg }}>
+          )}
+        </div>
+
+        <div className="lab-card-meta">
+          <span className="lab-card-logo" style={{ background: p.logoBg }}>
             <ProjectMark p={p} variant="card" />
+          </span>
+          <div className="lab-card-text">
+            <h3 className="lab-card-name">{p.name}</h3>
+            {p.tagline && <p className="lab-card-tagline">{p.tagline}</p>}
           </div>
-        )}
-        <div className="lab-card-body">
-          <h3 className="lab-card-name">{p.name}</h3>
-          {p.tagline && <p className="lab-card-tagline">{p.tagline}</p>}
         </div>
       </Link>
-
-      {p.url && (
-        <a className="lab-card-go" href={p.url} target="_blank" rel="noreferrer">
-          <span>바로가기</span>
-          <ArrowUpRight size={16} />
-        </a>
-      )}
     </article>
   );
 }
