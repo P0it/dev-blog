@@ -48,6 +48,10 @@ const CURATED = [
   "Vitest", "Jest", "ESLint", "Prettier", "npm", "pnpm", "Bitbucket",
   // 국내
   "KakaoTalk", "Naver", "Kakao",
+  // 외부 데이터·API 로 자주 붙는 것들 (`## 데이터와 API` 카드 아이콘)
+  "Google", "Google Cloud", "Google Maps", "Google Gemini",
+  "YouTube", "Telegram", "Instagram", "X", "Reddit", "Spotify",
+  "OpenStreetMap", "Mapbox", "Resend", "Algolia",
   // 기타 런타임
   "Apple", "Linux", "Ubuntu", "Raspberry Pi", "Nginx", "Elasticsearch",
 ];

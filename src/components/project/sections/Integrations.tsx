@@ -1,19 +1,83 @@
-import { ExternalLink, Plug } from "lucide-react";
+"use client";
 
-export type Integration = {
-  name: string;
-  fields: { label: string; value: string }[];
-};
+import { useState } from "react";
+import { ChevronDown, ExternalLink } from "lucide-react";
+import { resolveBrand } from "@/lib/tech-icons";
+import type { IntegrationItem } from "@/lib/project-sections";
 
-// 값이 URL 이면 그대로 링크로 건다. 출처를 눌러서 확인할 수 있어야
-// 데이터 기반 프로젝트의 신뢰가 생긴다.
-function FieldValue({ value }: { value: string }) {
-  if (!/^https?:\/\//.test(value)) return <>{value}</>;
+export type Integration = IntegrationItem;
+
+// 접힌 상태로는 로고·이름·용도 한 줄·칩만 보인다.
+// 무엇에 쓰는 물건인지가 먼저고, 적재·주의 같은 세부는 눌러야 나온다.
+function Card({ item }: { item: Integration }) {
+  const [open, setOpen] = useState(false);
+  const brand = resolveBrand(item.name, item.icon);
+  const hasDetails = item.details.length > 0;
+
   return (
-    <a className="lab-integ-link" href={value} target="_blank" rel="noreferrer">
-      {value.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-      <ExternalLink size={13} />
-    </a>
+    <div className={`lab-panel lab-integ-card${open ? " open" : ""}`}>
+      <div className="lab-integ-head">
+        <span
+          className="lab-integ-logo"
+          style={{ ["--tc-light" as string]: brand.light, ["--tc-dark" as string]: brand.dark }}
+          aria-hidden="true"
+        >
+          {brand.icon ? (
+            <svg viewBox="0 0 24 24">
+              <path d={brand.icon.path} />
+            </svg>
+          ) : (
+            <i>{brand.letter}</i>
+          )}
+        </span>
+        <span className="lab-integ-name">{item.name}</span>
+        {item.link && (
+          <a
+            className="lab-integ-link"
+            href={item.link}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${item.name} 문서 열기`}
+          >
+            <ExternalLink size={15} />
+          </a>
+        )}
+      </div>
+
+      {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
+
+      {(item.chips.length > 0 || hasDetails) && (
+        <div className="lab-integ-foot">
+          <div className="lab-integ-chips">
+            {item.chips.map((c, i) => (
+              <span key={i}>{c}</span>
+            ))}
+          </div>
+          {hasDetails && (
+            <button
+              type="button"
+              className="lab-integ-more"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? "접기" : "자세히"}
+              <ChevronDown size={15} className="chev" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {open && hasDetails && (
+        <dl className="lab-integ-rows">
+          {item.details.map((f, i) => (
+            <div key={i} className="lab-integ-row">
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 
@@ -21,22 +85,7 @@ export function Integrations({ items }: { items: Integration[] }) {
   return (
     <div className="lab-integ lab-stagger">
       {items.map((it, i) => (
-        <div key={i} className="lab-panel lab-integ-card">
-          <div className="lab-integ-name">
-            <Plug size={17} className="icon" />
-            {it.name}
-          </div>
-          <dl className="lab-integ-rows">
-            {it.fields.map((f, j) => (
-              <div key={j} className="lab-integ-row">
-                <dt>{f.label}</dt>
-                <dd>
-                  <FieldValue value={f.value} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <Card key={i} item={it} />
       ))}
     </div>
   );

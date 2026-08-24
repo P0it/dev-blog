@@ -4,6 +4,22 @@
 // 마크다운을 넘겨도 페이지는 살아 있어야 하므로, 형식이 어긋난 섹션은 raw 로
 // 떨어뜨려 일반 마크다운으로 렌더한다.
 
+// 데이터와 API 한 항목. 카드는 접힌 상태로 `용도` 한 줄과 칩만 보여주고,
+// 나머지 라벨은 펼쳤을 때 나온다. 무엇에 쓰는지가 먼저고 세부는 뒤로 뺀 것이다.
+export type IntegrationItem = {
+  name: string;
+  /** `**아이콘** Naver` 로 준 브랜드 힌트. 없으면 이름에서 찾는다 */
+  icon: string | null;
+  /** `**용도**` — 이 서비스를 무엇에 쓰는지 한 줄 */
+  purpose: string;
+  /** `**방식**` `**갱신**` — 카드 아래 작은 칩 */
+  chips: string[];
+  /** `**링크**` — 이름 옆 바깥 링크 */
+  link: string;
+  /** 나머지 라벨. 펼쳤을 때만 보인다 */
+  details: { label: string; value: string }[];
+};
+
 export type Section =
   | { kind: "intro"; title: string; md: string }
   | { kind: "plan"; title: string; fields: { label: string; values: string[] }[] }
@@ -17,7 +33,7 @@ export type Section =
   | { kind: "tech"; title: string; items: string[] }
   | { kind: "journey"; title: string; steps: { label: string; md: string; added: string[] }[] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
-  | { kind: "integrations"; title: string; items: { name: string; fields: { label: string; value: string }[] }[] }
+  | { kind: "integrations"; title: string; items: IntegrationItem[] }
   | { kind: "demo"; title: string; clips: { title: string; src: string; poster: string | null; caption: string }[] }
   | { kind: "screens"; title: string; shots: { title: string; src: string; caption: string }[] }
   | { kind: "trials"; title: string; cases: { title: string; symptom: string; attempt: string; result: string }[] }
@@ -271,6 +287,33 @@ function parseFields(md: string): { label: string; value: string }[] {
   return out;
 }
 
+// 라벨을 자리별로 가른다. 접힌 카드에 나오는 건 용도 한 줄과 칩뿐이고,
+// 옛 원고가 들고 오는 제공처·적재·주의 같은 라벨은 전부 펼침으로 내려간다.
+// 용도가 없으면 첫 라벨 값을 대신 세운다 — 카드 머리가 비면 무엇에 쓰는지 알 수 없다.
+const CHIP_LABELS = ["방식", "갱신"];
+
+function parseIntegration(
+  name: string,
+  fields: { label: string; value: string }[],
+): IntegrationItem | null {
+  if (!fields.length) return null;
+  const item: IntegrationItem = { name, icon: null, purpose: "", chips: [], link: "", details: [] };
+  const rest: { label: string; value: string }[] = [];
+  for (const f of fields) {
+    if (f.label === "용도" && !item.purpose) item.purpose = f.value;
+    else if (f.label === "아이콘" && !item.icon) item.icon = f.value;
+    else if (f.label === "링크" && !item.link && /^https?:\/\//.test(f.value)) item.link = f.value;
+    else if (CHIP_LABELS.includes(f.label)) item.chips.push(f.value);
+    else rest.push(f);
+  }
+  if (!item.purpose) {
+    const first = rest.shift() ?? null;
+    item.purpose = first?.value ?? item.chips.shift() ?? "";
+  }
+  item.details = rest;
+  return item.purpose || item.chips.length || item.details.length ? item : null;
+}
+
 // `**증상** …` / `증상: …` 두 표기를 모두 받는다. 라벨이 하나도 없으면
 // 본문 전체를 증상에 넣어, 최소한 내용이 화면에서 사라지지 않게 한다.
 function parseCase(label: string, md: string) {
@@ -353,8 +396,8 @@ export function parseProjectBody(md: string): Section[] {
       out.push(diagram || steps.length ? { kind, title, diagram, steps } : raw);
     } else if (kind === "integrations") {
       const items = splitSubs(body)
-        .map((sub) => ({ name: sub.label, fields: parseFields(sub.md) }))
-        .filter((it) => it.fields.length > 0);
+        .map((sub) => parseIntegration(sub.label, parseFields(sub.md)))
+        .filter((it) => it !== null);
       out.push(items.length ? { kind, title, items } : raw);
     } else if (kind === "demo") {
       const clips = splitSubs(body)

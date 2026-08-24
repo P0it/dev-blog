@@ -166,28 +166,62 @@ const INTEG = `## 데이터와 API
 
 ### 기상청 단기예보
 
-**제공처** 공공데이터포털
+**용도** 동네 예보를 받아 매장 상세에 오늘 날씨를 붙인다
 **링크** https://www.data.go.kr/data/15084084/openapi.do
-**방식** REST API, 한 시간 주기 폴링
-**적재** 초기 3년치는 CSV 로 받아 벌크 insert, 이후 증분만 API
+**방식** REST · 한 시간 주기
+**갱신** 자동
 **주의** 하루 10,000 건 호출 제한
 
 ### 카카오 알림톡
 
-**제공처** 카카오 비즈니스
-**방식** REST API, 발송 시점에만 호출
+**용도** 예약이 확정되면 손님에게 알림을 보낸다
+**방식** 발송 시점에만 호출
 `;
 
-test("데이터와 API 섹션을 항목·필드로 쪼갠다", () => {
+test("데이터와 API 는 용도·칩·링크·상세로 갈린다", () => {
   const s = parseProjectBody(INTEG)[0];
   assert.equal(s.kind, "integrations");
   if (s.kind !== "integrations") return;
   assert.equal(s.items.length, 2);
-  assert.equal(s.items[0].name, "기상청 단기예보");
-  assert.deepEqual(s.items[0].fields[0], { label: "제공처", value: "공공데이터포털" });
-  assert.equal(s.items[0].fields[1].value, "https://www.data.go.kr/data/15084084/openapi.do");
-  assert.equal(s.items[0].fields.length, 5);
-  assert.equal(s.items[1].fields.length, 2);
+  const it = s.items[0];
+  assert.equal(it.name, "기상청 단기예보");
+  assert.equal(it.purpose, "동네 예보를 받아 매장 상세에 오늘 날씨를 붙인다");
+  assert.deepEqual(it.chips, ["REST · 한 시간 주기", "자동"]);
+  assert.equal(it.link, "https://www.data.go.kr/data/15084084/openapi.do");
+  assert.deepEqual(it.details, [{ label: "주의", value: "하루 10,000 건 호출 제한" }]);
+  assert.equal(s.items[1].details.length, 0);
+});
+
+const OLD_INTEG = `## 데이터와 API
+
+### 기상청
+
+**제공처** 공공데이터포털
+**방식** REST
+`;
+
+test("용도가 없는 옛 원고는 첫 라벨을 용도 자리에 세운다", () => {
+  const secs = parseProjectBody(OLD_INTEG);
+  assert.equal(secs[0].kind, "integrations");
+  if (secs[0].kind !== "integrations") return;
+  assert.equal(secs[0].items[0].purpose, "공공데이터포털");
+  assert.deepEqual(secs[0].items[0].chips, ["REST"]);
+});
+
+const HINT_INTEG = `## 데이터와 API
+
+### 네이버 검색
+
+**아이콘** Naver
+**용도** 후기를 모은다
+`;
+
+test("아이콘 힌트는 카드 필드로 새지 않는다", () => {
+  const secs = parseProjectBody(HINT_INTEG);
+  assert.equal(secs[0].kind, "integrations");
+  if (secs[0].kind !== "integrations") return;
+  assert.equal(secs[0].items[0].icon, "Naver");
+  assert.equal(secs[0].items[0].details.length, 0);
 });
 
 test("필드가 하나도 없는 데이터와 API 는 raw 로 떨어진다", () => {
