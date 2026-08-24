@@ -12,7 +12,7 @@ export default async function LabPage() {
   return (
     <>
       <PublicNav active="lab" />
-      <div className="lab-page" style={{ minHeight: "70vh", paddingTop: 56, paddingBottom: 88 }}>
+      <div className="lab-page" style={{ minHeight: "70vh", paddingTop: 28, paddingBottom: 72 }}>
         <div className="container-wide">
           {/* 상세의 섹션 머리줄과 같은 어휘. 격자만 깔린 판 위에 카드가 갑자기
               떠 있으면 무슨 판인지 모르는 채로 읽기 시작한다. */}

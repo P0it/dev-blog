@@ -1253,7 +1253,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
      실제 기기보다 커지는데, 세로로 세운 폰은 그때부터 화면을 잡아먹는다.
      열 폭을 못박고 남는 폭은 열 수로 돌린다 — 1120px 에서 3열이다.
      `auto-fit` 이라 빈 열은 접히고, 그래서 장수가 적어도 가운데로 모인다. */
-  grid-template-columns: repeat(auto-fit, minmax(0, 298px));
+  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--lab-shot-w) + var(--lab-slab-pad) * 2 + 2px)));
   justify-content: center;
   /* 작업대에 표본을 띄엄띄엄 놓는 간격. 좁히면 옆 카드와 한 덩어리로 붙어 읽힌다. */
   gap: 46px 38px;
@@ -1474,9 +1474,29 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-prose li { margin-bottom: 10px; }
 .lab-prose strong { font-weight: 600; }
 
+/* 목록 카드 치수. 폰 화면의 세로 길이가 기준이고 가로는 기기 비율로 따라온다.
+   좁은 화면(세로 스크롤이 당연한 폭)에서는 폭을 고정해 둔다. */
+:root {
+  --lab-shot-w: 270px;
+  --lab-slab-pad: 12px;
+  /* 화면 위아래로 판이 아닌 것들이 먹는 높이 — 내비·페이지 여백·머리줄·판 테두리·이름줄. */
+  --lab-shot-reserve: 284px;
+}
+
+/* 넓은 화면에서는 세로 여유가 판 크기를 정한다. 방문자가 처음 보는 한 화면 안에
+   첫 줄의 화면·로고·이름이 통째로 들어와야 하는데, 폭만 고정해 두면 노트북처럼
+   세로가 짧은 화면에서 판 밑동이 접힌 채로 첫인상이 잡힌다.
+   화면 높이 = 남는 세로 − (내비·머리줄·판 테두리), 폭은 거기서 기기 비율로 따라온다. */
+@media (min-width: 901px) {
+  :root {
+    --lab-shot-h: clamp(390px, calc(100svh - var(--lab-shot-reserve)), 584px);
+    --lab-shot-w: calc(var(--lab-shot-h) * 390 / 844);
+  }
+}
+
 /* 목록 머리줄 — 상세의 섹션 머리줄을 그대로 쓰되 위 여백만 걷는다.
    페이지 첫 줄이라 72px 을 그대로 두면 판이 아래로 밀려 내려간다. */
-.lab-index-head { margin-top: 0; }
+.lab-index-head { margin-top: 0; margin-bottom: 16px; }
 
 /* Lab — 목록 그리드와 카드.
    카드는 폰 화면을 세로로 세운 판 하나와, 그 아래 로고·이름 줄로 끝난다.
@@ -1501,7 +1521,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    어느 이름이 어느 화면 것인지 눈이 매번 짝을 다시 맞춘다. 판이 배경 격자를
    덮으면서 "작업대에 올려 둔 한 점"이 된다. */
 .lab-card-slab {
-  padding: 13px 13px 15px;
+  padding: var(--lab-slab-pad);
   border-radius: 20px;
   background: var(--lab-panel);
   border: 1px solid var(--lab-line);
@@ -1530,7 +1550,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* 머리줄 — 표본 번호와 상태 램프. 계측기 어휘를 카드에도 한 줄만 남긴다. */
 .lab-card-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 4px 10px;
+  padding: 1px 4px 9px;
 }
 .lab-card-idx {
   font-family: var(--font-mono);
@@ -1555,6 +1575,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    잡고, 비율은 기기와 맞춘다. 가로 캡처가 들어오면 cover 로 위쪽이 채워진다. */
 .lab-card-shot {
   position: relative;
+  width: var(--lab-shot-w);
   aspect-ratio: 390 / 844;
   overflow: hidden;
   border-radius: 14px;
@@ -1590,7 +1611,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .lab-card-meta {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 4px 0;
+  padding: 12px 4px 2px;
 }
 .lab-card-logo {
   flex: none;
@@ -2127,11 +2148,24 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    붙박이(sticky)로 두면 스크롤할 때 설명이 판 뒤로 깔려 가려진다. */
 .lab-arch { display: grid; grid-template-columns: 1fr; gap: 26px; }
 .lab-arch-panel {
-  padding: 18px 20px 22px; min-width: 0;
+  position: relative;
+  padding: 18px 20px 20px; min-width: 0;
   display: flex; flex-direction: column;
 }
+.lab-arch-panel svg g.node { cursor: default; }
+/* 판 머리줄 — 왼쪽에 쓰는 법, 오른쪽에 확대. */
+.lab-arch-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lab-arch-hint {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--lab-fg-dim);
+}
+.lab-arch-hint::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lab-mint);
+  box-shadow: 0 0 0 3px var(--lab-mint-bg);
+}
+@media (hover: none) { .lab-arch-hint { display: none; } }
 .lab-arch-zoom {
-  align-self: flex-end;
   padding: 5px 11px;
   border: 1px solid var(--lab-line);
   border-radius: 999px;
@@ -2143,23 +2177,86 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .lab-arch-zoom:hover { color: var(--lab-mint); border-color: var(--lab-mint); }
 
-/* 설명은 두 줄로 편다. 점등 짝이 없어져 순서에 매이지 않으므로,
-   짧은 문단 여럿을 세로로 길게 늘어놓을 이유가 없다. */
+/* 노드 위에 뜨는 설명. 그림에서 눈을 떼지 않고 읽는 자리라 짧게 자른다. */
+.lab-arch-tip {
+  position: absolute; z-index: 3;
+  transform: translateX(-50%);
+  max-width: 300px;
+  padding: 11px 14px;
+  border: 1px solid var(--lab-mint);
+  border-radius: 12px;
+  background: var(--bg-base);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.13);
+  pointer-events: none;
+  animation: lab-tip-in 0.13s ease-out;
+}
+@keyframes lab-tip-in { from { opacity: 0; transform: translate(-50%, -4px); } }
+.lab-arch-tip b {
+  display: block; margin-bottom: 4px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--lab-fg);
+}
+.lab-arch-tip span {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 13px; line-height: 1.65;
+  color: var(--lab-fg-dim);
+}
+
+/* 범례 — 실선과 점선이 다른 뜻이라는 걸 그림 밖에서 한 번 말해 준다. */
+.lab-arch-legend {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
+  margin-top: 14px; padding-top: 13px;
+  border-top: 1px solid var(--lab-line);
+  font-size: 12px; color: var(--lab-fg-dim);
+}
+.lab-arch-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.lab-arch-legend i { width: 18px; height: 0; }
+.lab-arch-legend i.solid { border-top: 1.5px solid var(--lab-fg-dim); }
+.lab-arch-legend i.dashed { border-top: 1.5px dashed var(--lab-fg-dim); }
+.lab-arch-legend .layers { margin-left: auto; gap: 6px; }
+.lab-arch-legend .layers em {
+  font-style: normal;
+  padding: 3px 9px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--lab-fg-dim);
+}
+
+/* 설명은 두 줄로 편다. 카드에 손이 오면 짝이 되는 노드가 그림에서 켜진다. */
 .lab-arch-steps {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 26px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
 }
 .lab-arch-step {
-  padding: 16px 0 18px;
-  border-top: 1px solid var(--lab-line);
+  padding: 16px 18px 17px;
+  border: 1px solid var(--lab-line);
+  border-radius: 14px;
+  background: var(--lab-panel);
   color: var(--lab-fg-dim);
   font-size: 14.5px; line-height: 1.75;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+}
+.lab-arch-step.on {
+  border-color: var(--lab-mint);
+  background: var(--lab-mint-bg);
+  transform: translateY(-2px);
 }
 .lab-arch-step b {
-  display: block;
-  margin-bottom: 6px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 7px;
   font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg);
 }
+/* 소속 덩어리. 그림을 안 봐도 어디 얘기인지 붙는다. */
+.lab-arch-step b .chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-base);
+  border: 1px solid var(--lab-line);
+  font-size: 11px; font-weight: 600; letter-spacing: 0;
+  color: var(--lab-fg-dim);
+}
+.lab-arch-step.on b .chip { border-color: var(--lab-mint); color: var(--lab-mint); }
 
 .lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: center; }
 .lab-arch-panel .mermaid-figure > svg {
@@ -2203,6 +2300,21 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: var(--lab-fg-dim) !important;
 }
 .lab-arch-panel svg .edgeLabel rect { fill: transparent !important; }
+/* 짝이 된 노드·상자를 켠다. 스크롤이 아니라 포인터가 움직인다. */
+.lab-arch-panel svg g.node.lab-node-on rect,
+.lab-arch-panel svg g.node.lab-node-on polygon,
+.lab-arch-panel svg g.node.lab-node-on circle,
+.lab-arch-panel svg g.node.lab-node-on ellipse,
+.lab-arch-panel svg g.node.lab-node-on path {
+  fill: var(--lab-mint-bg) !important;
+  stroke: var(--lab-mint) !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 8px var(--lab-mint-bg));
+}
+.lab-arch-panel svg g.cluster.lab-cluster-on rect {
+  fill: var(--lab-mint-bg) !important;
+  stroke: var(--lab-mint) !important;
+}
 .lab-arch-panel svg .flowchart-link { stroke: var(--lab-line) !important; }
 .lab-arch-panel svg marker path { fill: var(--lab-line) !important; stroke: var(--lab-line) !important; }
 
