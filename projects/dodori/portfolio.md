@@ -54,6 +54,132 @@ capture: false
 **파일** ./screens/04-feed.png
 **설명** 게시물과 24시간 스토리가 쌓인다
 
+## 데이터와 API
+
+### 네이버 지역검색 API
+
+**제공처** 네이버 개발자센터 (검색 > 지역)
+**링크** https://developers.naver.com/docs/serviceapi/search/local/local.md
+**방식** REST API. 사용자가 장소를 검색할 때만 호출
+**적재** 초기 데이터 없음. 검색 결과를 담을 때만 `places` 에 저장한다
+**주의** 키를 클라이언트에 두면 안 되므로 Edge Function(`search-places`)이 프록시한다. 좌표가 카텍(mapx/mapy ×1e7)으로 와서 WGS84로 변환해야 한다. 일 25,000건 제한
+
+### 한국천문연구원 특일정보 API
+
+**제공처** 공공데이터포털 (한국천문연구원 특일 정보)
+**링크** https://www.data.go.kr/data/15012690/openapi.do
+**방식** REST API. 월 1회 cron(`sync-holidays`)
+**적재** 없다. 일반 공휴일은 클라이언트(`lib/holidays.ts`)가 규칙으로 계산한다 — 양력 고정 + 음양력 변환 + 대체공휴일, 2050년까지
+**갱신** 국무회의가 그때그때 지정하는 **임시공휴일·선거일만** 긁어서 `holidays_extra` 에 넣는다
+**주의** 키가 없어도 일반 공휴일은 정상 표시된다. 규칙으로 계산 가능한 것까지 API에 의존하면 키 하나에 캘린더 전체가 걸린다
+
+### iTunes Search API
+
+**제공처** Apple
+**링크** https://performance-partners.apple.com/search-api
+**방식** REST API. **런타임 호출 없음** — 시드 생성 때만 쓴다
+**적재** LLM으로 곡 후보를 뽑고, 스크립트(`scripts/build-song-pool.py`)가 iTunes로 실재를 검증해 아트워크·30초 미리듣기·앨범 링크까지 받아 마이그레이션 SQL을 만든다. 84곡
+**주의** iTunes는 아무 쿼리에나 fuzzy 결과를 돌려준다 — "싸이 강남스타일"에 Kenny Rogers가 나온다. 그래서 **아티스트와 제목이 둘 다 일치하는 결과만** 채택하고, 이 매칭을 LLM 환각 필터로 쓴다. 한글 제목은 로마자로 색인되는 경우가 많아 후보에 한글·영문 제목을 함께 둔다
+
+### 네이버 지도
+
+**제공처** 네이버 클라우드 플랫폼 (Maps)
+**링크** https://www.ncloud.com/product/applicationService/maps
+**방식** 네이티브는 SDK(`@mj-studio/react-native-naver-map`), 웹은 JS API — 플랫폼 분기
+**주의** 클라이언트 ID가 네이티브·웹 두 이름으로 나뉘어 같은 값을 두 곳에 둔다. 웹은 콘솔에 포트·경로 없이 호스트만 등록해야 하고, 안 맞으면 인증 실패가 지도 대신 빈 화면으로 나온다
+
+### 카카오 로그인
+
+**제공처** 카카오 개발자센터
+**링크** https://developers.kakao.com/docs/latest/ko/kakaologin/common
+**방식** 네이티브는 SDK(`@react-native-kakao/*`), 웹은 Supabase Auth를 통한 OAuth
+**주의** Expo Go에서 안 되고 dev client 빌드가 필요하다. 안드로이드는 첫 빌드 후 keystore 키 해시를 콘솔에 등록해야 한다. 웹 OAuth에서 이메일 scope를 요청하면 KOE205로 막혔다 — 동의항목 설정과 어긋나서, scope를 아예 지정하지 않는 쪽으로 되돌렸다
+
+## 구조
+
+```mermaid
+flowchart LR
+  subgraph 앱[Expo 앱]
+    direction TB
+    UI[화면]
+    Q[TanStack Query]
+    AS[(AsyncStorage)]
+  end
+  subgraph 백[Supabase]
+    direction TB
+    DB[(Postgres · RLS)]
+    ST[Storage]
+    EF[Edge Functions]
+    RT[Realtime]
+  end
+  subgraph 밖[바깥]
+    direction TB
+    EXT[네이버 · KASI]
+    VF[Vercel Function]
+  end
+  UI --> Q
+  Q -->|캐시| AS
+  AS -.-> Q
+  Q -->|읽기·쓰기| DB
+  Q -->|사진| ST
+  Q -->|시크릿| EF
+  EF --> DB
+  EF -->|조회| EXT
+  DB -->|알림 행| VF
+  VF -.->|푸시| UI
+  DB -.-> RT
+  RT -.->|즉시| Q
+```
+
+### 화면 — 훅 호출과 배치만 한다
+
+expo-router 파일 라우팅에 4탭이고, iOS·Android·Web이 같은 코드로 돕니다. 화면은 훅을
+부르고 컴포넌트를 놓는 일만 해요. 도메인 규칙은 `lib/` 의 순수 함수에, 서버 접근은
+`api/` 의 쿼리 훅에 내려가 있습니다.
+
+### TanStack Query — 캐시가 오프라인 저장소를 겸한다
+
+앱이 서버로 나가는 길은 전부 여기를 지납니다. 쿼리 결과는 AsyncStorage로 내려가고,
+다시 켰을 때는 그 값을 먼저 그린 다음 새로 받아요. 세션만은 영속화 대상에서 빼 뒀습니다.
+
+### Postgres · RLS — 권한이 곧 스키마
+
+모든 테이블이 `couple_id` 를 갖고, 42개 정책이 전부 `public.my_couple_id()` 하나를
+술어로 씁니다. "내가 마쳐야 상대가 열린다" 같은 규칙도 앱이 아니라 RLS와 RPC가
+들고 있어요. 행이 바뀌면 Realtime과 알림 트리거로 나갑니다.
+
+### Storage — 올릴 때 두 장을 만든다
+
+사진은 기기에서 1080(본체)과 360(목록)을 만들어 함께 올립니다. 영상은 mp4·포스터
+JPEG·360 썸네일 세 파일이고, 그림만 필요한 화면은 영상을 사진처럼 씁니다. 서버 이미지
+변환은 경로에 없어요.
+
+### Edge Functions — 시크릿과 트랜잭션만 맡는다
+
+바깥 API 키를 클라이언트에서 감추는 일과, 초대 수락처럼 여러 테이블을 한 번에 건드리는
+일만 여기 있습니다. `claim-invite`·`search-places`·`daily-release`·`generate-anniversaries`·
+`sync-holidays`·`notify-game` 여섯 개고, 그 밖의 읽기·쓰기는 앱이 Postgres로 직접 갑니다.
+
+### Vercel Function — 알림은 만드는 곳과 보내는 곳이 다르다
+
+알림 행을 만드는 건 Postgres 트리거고, 이 함수는 만들어진 행을 받아 웹 푸시로 쏘기만
+합니다. 문구와 이동 경로는 `lib/notifications.ts` 순수 함수 하나를 앱과 이 워커가
+같이 씁니다.
+
+### Realtime — 상대 쪽 변경이 그대로 들어온다
+
+상대가 투표하거나 게임을 마치면 그 행 변경이 구독을 타고 넘어와 홈 카드가 그 자리에서
+열립니다. 앱이 포그라운드로 돌아올 때는 `AppState` 가 TanStack Query의 `focusManager` 를
+건드려 같은 자리를 다시 맞춰요.
+
+## 구상
+
+- [x] 일정을 둘이 같은 캘린더에서 잡는다
+- [x] 다녀온 하루가 사진·코스가 붙은 앨범 한 장으로 남는다
+- [x] 가보고 싶은 곳을 쟁여두고 다음 데이트 코스로 꺼내 쓴다
+- [x] 사진을 둘만 보는 곳에 올린다
+- [ ] 앱스토어·플레이스토어에 올려서 우리 말고도 쓴다
+
 ## 기획
 
 **문제** 일정도 데이트 계획도 사진도, 둘이 같이 쓸 곳이 없어서 늘 남의 앱을 빌려 썼어요
@@ -63,14 +189,6 @@ capture: false
 **넣지 않은 것** 색으로 사람 구분(나=초록/상대=분홍). 같이 화면을 보면 보는 사람마다 반대로 읽혀서 혼선이 됐어요
 **넣지 않은 것** 실시간 동시 대결. 접속 타이밍이 안 맞으면 죽는 기능이라 비동기 점수 승부로 충분했어요
 **넣지 않은 것** 대댓글. 참여자가 둘뿐이라 트리 구조가 생길 일이 없어요
-
-## 구상
-
-- [x] 일정을 둘이 같은 캘린더에서 잡는다
-- [x] 다녀온 하루가 사진·코스가 붙은 앨범 한 장으로 남는다
-- [x] 가보고 싶은 곳을 쟁여두고 다음 데이트 코스로 꺼내 쓴다
-- [x] 사진을 둘만 보는 곳에 올린다
-- [ ] 앱스토어·플레이스토어에 올려서 우리 말고도 쓴다
 
 ## 유저 플로우
 
@@ -211,124 +329,6 @@ Vercel에 붙이고, 홈 화면에 추가하면 앱처럼 뜨는 PWA 셸을 씌�
 깨지는 화면이 생기는데, 포트폴리오에서 그건 최악의 실패니까요.
 
 **붙인 것** Vercel
-
-## 데이터와 API
-
-### 네이버 지역검색 API
-
-**제공처** 네이버 개발자센터 (검색 > 지역)
-**링크** https://developers.naver.com/docs/serviceapi/search/local/local.md
-**방식** REST API. 사용자가 장소를 검색할 때만 호출
-**적재** 초기 데이터 없음. 검색 결과를 담을 때만 `places` 에 저장한다
-**주의** 키를 클라이언트에 두면 안 되므로 Edge Function(`search-places`)이 프록시한다. 좌표가 카텍(mapx/mapy ×1e7)으로 와서 WGS84로 변환해야 한다. 일 25,000건 제한
-
-### 한국천문연구원 특일정보 API
-
-**제공처** 공공데이터포털 (한국천문연구원 특일 정보)
-**링크** https://www.data.go.kr/data/15012690/openapi.do
-**방식** REST API. 월 1회 cron(`sync-holidays`)
-**적재** 없다. 일반 공휴일은 클라이언트(`lib/holidays.ts`)가 규칙으로 계산한다 — 양력 고정 + 음양력 변환 + 대체공휴일, 2050년까지
-**갱신** 국무회의가 그때그때 지정하는 **임시공휴일·선거일만** 긁어서 `holidays_extra` 에 넣는다
-**주의** 키가 없어도 일반 공휴일은 정상 표시된다. 규칙으로 계산 가능한 것까지 API에 의존하면 키 하나에 캘린더 전체가 걸린다
-
-### iTunes Search API
-
-**제공처** Apple
-**링크** https://performance-partners.apple.com/search-api
-**방식** REST API. **런타임 호출 없음** — 시드 생성 때만 쓴다
-**적재** LLM으로 곡 후보를 뽑고, 스크립트(`scripts/build-song-pool.py`)가 iTunes로 실재를 검증해 아트워크·30초 미리듣기·앨범 링크까지 받아 마이그레이션 SQL을 만든다. 84곡
-**주의** iTunes는 아무 쿼리에나 fuzzy 결과를 돌려준다 — "싸이 강남스타일"에 Kenny Rogers가 나온다. 그래서 **아티스트와 제목이 둘 다 일치하는 결과만** 채택하고, 이 매칭을 LLM 환각 필터로 쓴다. 한글 제목은 로마자로 색인되는 경우가 많아 후보에 한글·영문 제목을 함께 둔다
-
-### 네이버 지도
-
-**제공처** 네이버 클라우드 플랫폼 (Maps)
-**링크** https://www.ncloud.com/product/applicationService/maps
-**방식** 네이티브는 SDK(`@mj-studio/react-native-naver-map`), 웹은 JS API — 플랫폼 분기
-**주의** 클라이언트 ID가 네이티브·웹 두 이름으로 나뉘어 같은 값을 두 곳에 둔다. 웹은 콘솔에 포트·경로 없이 호스트만 등록해야 하고, 안 맞으면 인증 실패가 지도 대신 빈 화면으로 나온다
-
-### 카카오 로그인
-
-**제공처** 카카오 개발자센터
-**링크** https://developers.kakao.com/docs/latest/ko/kakaologin/common
-**방식** 네이티브는 SDK(`@react-native-kakao/*`), 웹은 Supabase Auth를 통한 OAuth
-**주의** Expo Go에서 안 되고 dev client 빌드가 필요하다. 안드로이드는 첫 빌드 후 keystore 키 해시를 콘솔에 등록해야 한다. 웹 OAuth에서 이메일 scope를 요청하면 KOE205로 막혔다 — 동의항목 설정과 어긋나서, scope를 아예 지정하지 않는 쪽으로 되돌렸다
-
-## 구조
-
-```mermaid
-flowchart LR
-  subgraph 앱[Expo 앱]
-    direction TB
-    UI[화면]
-    Q[TanStack Query]
-    AS[(AsyncStorage)]
-  end
-  subgraph 백[Supabase]
-    direction TB
-    DB[(Postgres · RLS)]
-    ST[Storage]
-    EF[Edge Functions]
-    RT[Realtime]
-  end
-  subgraph 밖[바깥]
-    direction TB
-    EXT[네이버 · KASI]
-    VF[Vercel Function]
-  end
-  UI --> Q
-  Q -->|캐시| AS
-  AS -.-> Q
-  Q -->|읽기·쓰기| DB
-  Q -->|사진| ST
-  Q -->|시크릿| EF
-  EF --> DB
-  EF -->|조회| EXT
-  DB -->|알림 행| VF
-  VF -.->|푸시| UI
-  DB -.-> RT
-  RT -.->|즉시| Q
-```
-
-### 화면 — 훅 호출과 배치만 한다
-
-expo-router 파일 라우팅에 4탭이고, iOS·Android·Web이 같은 코드로 돕니다. 화면은 훅을
-부르고 컴포넌트를 놓는 일만 해요. 도메인 규칙은 `lib/` 의 순수 함수에, 서버 접근은
-`api/` 의 쿼리 훅에 내려가 있습니다.
-
-### TanStack Query — 캐시가 오프라인 저장소를 겸한다
-
-앱이 서버로 나가는 길은 전부 여기를 지납니다. 쿼리 결과는 AsyncStorage로 내려가고,
-다시 켰을 때는 그 값을 먼저 그린 다음 새로 받아요. 세션만은 영속화 대상에서 빼 뒀습니다.
-
-### Postgres · RLS — 권한이 곧 스키마
-
-모든 테이블이 `couple_id` 를 갖고, 42개 정책이 전부 `public.my_couple_id()` 하나를
-술어로 씁니다. "내가 마쳐야 상대가 열린다" 같은 규칙도 앱이 아니라 RLS와 RPC가
-들고 있어요. 행이 바뀌면 Realtime과 알림 트리거로 나갑니다.
-
-### Storage — 올릴 때 두 장을 만든다
-
-사진은 기기에서 1080(본체)과 360(목록)을 만들어 함께 올립니다. 영상은 mp4·포스터
-JPEG·360 썸네일 세 파일이고, 그림만 필요한 화면은 영상을 사진처럼 씁니다. 서버 이미지
-변환은 경로에 없어요.
-
-### Edge Functions — 시크릿과 트랜잭션만 맡는다
-
-바깥 API 키를 클라이언트에서 감추는 일과, 초대 수락처럼 여러 테이블을 한 번에 건드리는
-일만 여기 있습니다. `claim-invite`·`search-places`·`daily-release`·`generate-anniversaries`·
-`sync-holidays`·`notify-game` 여섯 개고, 그 밖의 읽기·쓰기는 앱이 Postgres로 직접 갑니다.
-
-### Vercel Function — 알림은 만드는 곳과 보내는 곳이 다르다
-
-알림 행을 만드는 건 Postgres 트리거고, 이 함수는 만들어진 행을 받아 웹 푸시로 쏘기만
-합니다. 문구와 이동 경로는 `lib/notifications.ts` 순수 함수 하나를 앱과 이 워커가
-같이 씁니다.
-
-### Realtime — 상대 쪽 변경이 그대로 들어온다
-
-상대가 투표하거나 게임을 마치면 그 행 변경이 구독을 타고 넘어와 홈 카드가 그 자리에서
-열립니다. 앱이 포그라운드로 돌아올 때는 `AppState` 가 TanStack Query의 `focusManager` 를
-건드려 같은 자리를 다시 맞춰요.
 
 ## 시행착오
 

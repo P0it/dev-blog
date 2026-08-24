@@ -4,8 +4,8 @@ import { firstScreenSrc } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
 
 // 목록 카드 — 실험실 작업대에 올려 둔 표본 한 점.
-// 판 하나가 번호줄·폰 화면·이름줄을 다 담는다. 셋이 따로 놀면 어느 이름이
-// 어느 화면 것인지 눈이 매번 다시 짝을 맞춰야 한다.
+// 번호줄·폰 화면·이름줄을 바짝 붙이고 옆 카드와는 넉넉히 띄운다. 바탕 판을
+// 깔아 묶으면 화면 테두리와 겹쳐 두 줄로 보이고 배경 격자도 끊긴다.
 export function ProjectCard({ p, index }: { p: Project; index: number }) {
   // `## 화면` 의 첫 장이 대표 화면이다. 없으면 배포 사이트 캡처, 그것도 없으면 로고 타일.
   const shot = firstScreenSrc(p.body) ?? p.heroPoster;
@@ -13,7 +13,7 @@ export function ProjectCard({ p, index }: { p: Project; index: number }) {
   return (
     <article className="lab-card lab-reveal">
       <Link href={`/lab/${p.slug}`} className="lab-card-hit">
-        <div className="lab-card-slab lab-corner">
+        <div className="lab-card-slab">
           {/* 계측기 어휘의 머리줄. 번호는 모노, 오른쪽 램프는 hover 에 켜진다. */}
           <div className="lab-card-head">
             <span className="lab-card-idx">{String(index + 1).padStart(2, "0")}</span>

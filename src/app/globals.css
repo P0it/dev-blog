@@ -1253,7 +1253,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
      실제 기기보다 커지는데, 세로로 세운 폰은 그때부터 화면을 잡아먹는다.
      열 폭을 못박고 남는 폭은 열 수로 돌린다 — 1120px 에서 3열이다.
      `auto-fit` 이라 빈 열은 접히고, 그래서 장수가 적어도 가운데로 모인다. */
-  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--lab-shot-w) + var(--lab-slab-pad) * 2 + 2px)));
+  grid-template-columns: repeat(auto-fit, minmax(0, var(--lab-shot-w)));
   justify-content: center;
   /* 작업대에 표본을 띄엄띄엄 놓는 간격. 좁히면 옆 카드와 한 덩어리로 붙어 읽힌다. */
   gap: 46px 38px;
@@ -1478,7 +1478,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    좁은 화면(세로 스크롤이 당연한 폭)에서는 폭을 고정해 둔다. */
 :root {
   --lab-shot-w: 270px;
-  --lab-slab-pad: 12px;
   /* 화면 위아래로 판이 아닌 것들이 먹는 높이 — 내비·페이지 여백·머리줄·판 테두리·이름줄. */
   --lab-shot-reserve: 284px;
 }
@@ -1517,40 +1516,16 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-card a:hover { text-decoration: none; color: inherit; }
 .lab-card-hit { display: block; }
 
-/* 표본 판 — 번호줄·화면·이름줄을 한 판에 담는다. 셋을 격자 위에 그냥 얹어 두면
-   어느 이름이 어느 화면 것인지 눈이 매번 짝을 다시 맞춘다. 판이 배경 격자를
-   덮으면서 "작업대에 올려 둔 한 점"이 된다. */
-.lab-card-slab {
-  padding: var(--lab-slab-pad);
-  border-radius: 20px;
-  background: var(--lab-panel);
-  border: 1px solid var(--lab-line);
-  box-shadow: var(--lab-card-shadow);
-  transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 0.28s ease;
-}
-.lab-card:hover .lab-card-slab {
-  box-shadow: var(--lab-card-shadow-hover);
-  border-color: var(--lab-line-strong);
-}
-/* 코너 갈고리는 평소 숨어 있다가 hover 에 걸린다. 늘 켜 두면 목록 전체가
-   민트 점으로 시끄러워진다. */
-.lab-card-slab::before,
-.lab-card-slab::after {
-  width: 13px; height: 13px;
-  border-radius: 0;
-  opacity: 0;
-  transition: opacity 0.28s ease;
-}
-.lab-card-slab::before { top: -1px; left: -1px; border-top-left-radius: 20px; }
-.lab-card-slab::after { bottom: -1px; right: -1px; border-bottom-right-radius: 20px; }
-.lab-card:hover .lab-card-slab::before,
-.lab-card:hover .lab-card-slab::after { opacity: 1; }
+/* 판 바탕은 두지 않는다. 화면 자체가 이미 색과 테두리를 가진 덩어리라, 그 뒤에
+   흰 판을 한 겹 더 깔면 테두리가 두 줄로 겹쳐 보이고 격자도 끊긴다.
+   묶임은 바탕이 아니라 간격이 만든다 — 번호줄·화면·이름줄은 붙이고,
+   옆 카드와는 넉넉히 띄운다. */
+.lab-card-slab { position: relative; }
 
 /* 머리줄 — 표본 번호와 상태 램프. 계측기 어휘를 카드에도 한 줄만 남긴다. */
 .lab-card-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1px 4px 9px;
+  padding: 0 2px 9px;
 }
 .lab-card-idx {
   font-family: var(--font-mono);
@@ -1581,9 +1556,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   border-radius: 14px;
   background: var(--lab-line);
   display: flex; align-items: center; justify-content: center;
-  /* 판 위에 앉은 화면이라 그림자를 또 주면 판이 두 겹으로 보인다. 선만 두른다. */
-  box-shadow: inset 0 0 0 1px var(--lab-line);
+  box-shadow: var(--lab-card-shadow);
+  transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
+.lab-card:hover .lab-card-shot { box-shadow: var(--lab-card-shadow-hover); }
+.lab-card-shot.empty { box-shadow: none; border: 1px solid var(--lab-line); }
 .lab-card-shot img {
   width: 100%; height: 100%;
   object-fit: cover; object-position: top center;
@@ -1611,7 +1588,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .lab-card-meta {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 4px 2px;
+  padding: 12px 2px 0;
 }
 .lab-card-logo {
   flex: none;
