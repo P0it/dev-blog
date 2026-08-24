@@ -11,7 +11,8 @@
 // 주요 옵션:
 //   --cmd "<명령>"     앱을 직접 띄운다. 생략하면 이미 떠 있다고 보고 --base 로 붙는다
 //   --base <url>       기준 주소 (기본 http://localhost:3000)
-//   --out <dir>        저장 폴더 (기본 ./screens)
+//   --out <dir>        저장 폴더 (기본 ./portfolio/screens)
+//   --anchor <dir>     원고가 놓일 폴더 (기본 ./portfolio). 경로 계산 기준이다
 //   --mobile           폰 뷰포트(390×844)로 찍는다. 기본은 1440×900
 //   --full             페이지 전체를 세로로 이어 찍는다. 기본은 첫 화면만
 //   --wait <ms>        각 화면에서 기다릴 시간 (기본 1200)
@@ -50,7 +51,7 @@ const flag = (name) => argv.includes(`--${name}`);
 
 const cmd = opt("cmd");
 const base = (opt("base", "http://localhost:3000") ?? "").replace(/\/+$/, "");
-const outDir = resolve(opt("out", "./screens"));
+const outDir = resolve(opt("out", "./portfolio/screens"));
 const waitMs = Number(opt("wait", "1200"));
 const authFile = opt("auth");
 const mobile = flag("mobile");
@@ -165,10 +166,10 @@ async function run() {
   // 원고에 그대로 붙일 블록. 설명은 사람이 채운다 — 화면만 보고는 알 수 없다.
   // 경로는 항상 상대경로로 적는다 — 적재 스크립트가 원고 위치 기준으로 찾기 때문에
   // 절대경로를 적으면 다른 기계에서 그대로 깨진다.
-  const given = opt("out", "./screens").replace(/\/+$/, "");
-  const rel = given.startsWith(".")
-    ? given
-    : `./${relative(process.cwd(), outDir).replace(/\\/g, "/") || "screens"}`;
+  // 기준은 원고가 놓일 폴더다 (기본 ./portfolio, 그 안에 portfolio.md 가 들어간다).
+  // 원고에서 본 경로라 `./screens/01-home.png` 처럼 한 단계 짧아진다.
+  const anchorDir = resolve(opt("anchor", "./portfolio"));
+  const rel = `./${relative(anchorDir, outDir).replace(/\\/g, "/") || "screens"}`;
   const md = [
     "## 화면",
     "",

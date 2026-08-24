@@ -16,8 +16,10 @@ description: 다른 레포에서 /portfolio 로 뽑아온 portfolio.md 를 규�
 
 ### 1. 원고를 확보한다
 
-`$ARGUMENTS` 가 파일 경로면 그걸 읽는다. 내용을 그대로 붙여넣었으면 그걸 쓴다.
-아무것도 없으면 원고를 달라고 한다. 레포 루트에 `portfolio.md` 가 굴러다니면 그것도 후보다.
+`$ARGUMENTS` 가 경로면 그걸 쓴다 — **폴더 경로여도 된다.** `portfolio/` 를 통째로
+받는 게 정상이고, 그 안의 `portfolio.md` 가 원고다.
+내용을 그대로 붙여넣었으면 그걸 쓰되, 그때는 로고·화면 파일이 없다는 뜻이다.
+아무것도 없으면 달라고 한다. 레포 안에 `portfolio/` 나 `portfolio.md` 가 굴러다니면 후보다.
 
 ### 2. 규약과 대조한다
 
@@ -78,28 +80,25 @@ description: 다른 레포에서 /portfolio 로 뽑아온 portfolio.md 를 규�
 
 ### 3. 파일을 놓는다
 
-`projects/<slug>.md` 로 저장한다. slug 는 프런트매터의 것을 쓴다.
-
-딸려 온 파일(로고·화면·시연)은 **슬러그 폴더 하나에 모은다.** `projects/` 는 평평해서
-저쪽 레포의 `screens/` 를 그대로 가져오면 프로젝트끼리 부딪힌다.
+**저쪽 레포의 `portfolio/` 폴더를 통째로 `projects/<slug>/` 로 옮긴다.**
+slug 는 프런트매터의 것을 쓴다.
 
 ```
 projects/
-  mcp-probe.md
   mcp-probe/
+    portfolio.md
     logo.png
     screens/01-home.png
     demo/flow.mp4
 ```
 
-원고의 경로도 그 자리에 맞게 고쳐 쓴다. **상대경로는 원고 파일 기준**이라
-`projects/<slug>.md` 옆에서 출발한다.
+**경로는 고치지 않는다.** `**파일**` 과 `logo_file` 의 상대경로는 원고 파일 기준인데,
+원고가 그 폴더 안에 그대로 있으니 `./screens/01-home.png` 가 알아서 맞는다.
+폴더를 풀어헤쳐 파일만 옮기면 그때부터 경로를 일일이 다시 써야 한다 — 그러지 마라.
 
-- `logo_file: ./logo.png` → `./<slug>/logo.png`
-- `**파일** ./screens/01-home.png` → `./<slug>/screens/01-home.png`
-- `**파일** ./demo/flow.mp4` → `./<slug>/demo/flow.mp4`
-
-없는 파일을 가리키면 적재가 그 자리에서 실패한다. 옮긴 뒤 경로를 한 번 확인한다.
+원고 내용만 붙여받았고 파일이 없으면 `projects/<slug>/portfolio.md` 로 저장하고,
+로컬 파일을 가리키는 줄(`logo_file`, `**파일**`)은 지운 뒤 보고에 적는다.
+없는 파일을 가리키면 적재가 그 자리에서 실패한다.
 
 이 파일들은 커밋한다. 적재하면 스토리지로 올라가지만, 원고를 다시 push 할 때
 로컬 원본이 없으면 그 자리에서 막히기 때문이다. 그래서 영상은 작게 유지한다.
@@ -107,7 +106,7 @@ projects/
 ### 4. 적재한다
 
 ```
-npm run project -- push projects/<slug>.md
+npm run project -- push projects/<slug>/portfolio.md
 ```
 
 **이미 발행된 프로젝트면 스크립트가 막는다.** 그게 정상이다. 어드민 에디터가

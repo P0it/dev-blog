@@ -1,14 +1,18 @@
 // 실험실 프로젝트 원고를 Supabase projects 에 적재한다.
 //
-// 다른 레포의 Claude 세션이 /portfolio 스킬로 만든 portfolio.md 를
-// 이 레포 projects/<slug>.md 로 옮긴 뒤 push 한다.
+// 다른 레포의 Claude 세션이 /portfolio 스킬로 만든 portfolio/ 폴더를
+// 이 레포 projects/<slug>/ 로 통째로 옮긴 뒤 push 한다.
 //
 // 로고는 이미지(logo_file 또는 logo_url)만 쓴다. 이미지가 없으면 공개 화면이
 // 프로젝트 이름 첫 글자를 카드에 넣는다. 이모지는 쓰지 않는다.
 //
 // 사용법:
-//   npm run project -- push projects/<slug>.md
-//   npm run project -- pull <slug> [projects/<slug>.md]
+//   npm run project -- push projects/<slug>/portfolio.md
+//   npm run project -- pull <slug> [파일]
+//
+// 원고와 미디어(로고·화면·시연)는 projects/<slug>/ 한 폴더에 같이 둔다.
+// `**파일**` 상대경로가 원고 기준이라, 다른 레포에서 만든 portfolio/ 폴더를
+// 그대로 projects/<slug>/ 로 옮기면 경로를 고칠 필요가 없다.
 //
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (.env.local)
 
@@ -258,7 +262,8 @@ async function pull(slug, file) {
   const { data, error } = await sb.from("projects").select("*").eq("slug", slug).maybeSingle();
   if (error) throw error;
   if (!data) throw new Error(`없는 slug: ${slug}`);
-  const out = file ?? `projects/${slug}.md`;
+  // 미디어가 원고 옆에 붙어 다니므로 슬러그 폴더 하나에 모은다. push 와 같은 자리다.
+  const out = file ?? `projects/${slug}/portfolio.md`;
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, toFrontmatter(data), "utf8");
   console.log(`✓ ${out} 로 내려받음`);
