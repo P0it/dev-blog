@@ -235,8 +235,14 @@ export function ProjectEditor({ initial }: { initial: ProjectEditorInitial }) {
         <Link href="/admin/projects" onClick={confirmLeaveIfDirty}>
           <Button variant="ghost" size="sm">← 목록</Button>
         </Link>
+        {/* 오른쪽 창은 일반 마크다운 프리뷰라 섹션 렌더러가 안 걸린다.
+            어드민 미리보기 라우트는 draft 도 열어서 진짜 화면을 그대로 보여준다. */}
         {initial.originalSlug && (
-          <a href={`/lab/${initial.originalSlug}`} target="_blank" rel="noreferrer">
+          <a
+            href={`/admin/projects/preview/${initial.originalSlug}`}
+            target="_blank"
+            rel="noreferrer"
+          >
             <Button variant="ghost" size="sm">
               <ExternalLink size={14} />실제 화면
             </Button>
@@ -461,6 +467,10 @@ export function ProjectEditor({ initial }: { initial: ProjectEditorInitial }) {
         >
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <h1 className="prose post-title">{name || "(이름 없음)"}</h1>
+            <p className="meta" style={{ margin: "0 0 24px" }}>
+              마크다운 그대로 보는 창이다. 화면 갤러리·기획 표처럼 섹션 렌더러가
+              걸리는 부분은 상단 &ldquo;실제 화면&rdquo;에서 확인한다.
+            </p>
             <MarkdownPreview md={bodyMd} fallback="본문 미리보기" />
           </div>
         </div>
