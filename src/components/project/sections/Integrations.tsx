@@ -7,7 +7,13 @@ import type { IntegrationItem } from "@/lib/project-sections";
 
 export type Integration = IntegrationItem;
 
-// 접힌 상태로는 로고·이름·용도 한 줄·칩만 보인다.
+// 링크는 카드에 보여야 값을 한다. 스킴과 www 만 떼고 주소를 그대로 세운다 —
+// 어느 개발자센터·문서 페이지를 보고 붙였는지가 이 섹션의 신뢰다.
+function linkLabel(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+}
+
+// 접힌 상태로는 로고·이름·용도 한 줄·링크·칩만 보인다.
 // 무엇에 쓰는 물건인지가 먼저고, 적재·주의 같은 세부는 눌러야 나온다.
 function Card({ item }: { item: Integration }) {
   const [open, setOpen] = useState(false);
@@ -15,13 +21,12 @@ function Card({ item }: { item: Integration }) {
   const hasDetails = item.details.length > 0;
 
   return (
-    <div className={`lab-panel lab-integ-card${open ? " open" : ""}`}>
+    <div
+      className={`lab-panel lab-integ-card${open ? " open" : ""}`}
+      style={{ ["--tc-light" as string]: brand.light, ["--tc-dark" as string]: brand.dark }}
+    >
       <div className="lab-integ-head">
-        <span
-          className="lab-integ-logo"
-          style={{ ["--tc-light" as string]: brand.light, ["--tc-dark" as string]: brand.dark }}
-          aria-hidden="true"
-        >
+        <span className="lab-integ-logo" aria-hidden="true">
           {brand.icon ? (
             <svg viewBox="0 0 24 24">
               <path d={brand.icon.path} />
@@ -31,20 +36,16 @@ function Card({ item }: { item: Integration }) {
           )}
         </span>
         <span className="lab-integ-name">{item.name}</span>
-        {item.link && (
-          <a
-            className="lab-integ-link"
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${item.name} 문서 열기`}
-          >
-            <ExternalLink size={15} />
-          </a>
-        )}
       </div>
 
       {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
+
+      {item.link && (
+        <a className="lab-integ-link" href={item.link} target="_blank" rel="noreferrer" title={item.link}>
+          <span>{linkLabel(item.link)}</span>
+          <ExternalLink size={13} />
+        </a>
+      )}
 
       {(item.chips.length > 0 || hasDetails) && (
         <div className="lab-integ-foot">
