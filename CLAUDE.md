@@ -34,6 +34,25 @@
 URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 → 인사이트 글 경로다.
 이 세션이 웹 리서치로 근거를 모아 의견 글을 쓴다. 규약은 `INSIGHT.md`, 커맨드는 `/insight`.
 
+## 스킬·커맨드를 고칠 때
+
+**스킬과 슬래시 커맨드는 이 레포의 md 를 고치고 커밋한다.** 다른 머신은 이 레포로만
+동기화되므로, 홈 디렉터리(`~/.claude/`)의 파일을 직접 고치면 그 머신에서만 살고
+나머지는 모른 채로 옛 규약대로 만든다.
+
+| 고칠 것 | 원본 |
+|---|---|
+| `/portfolio` | `skills/portfolio/SKILL.md` (`~/.claude/skills/portfolio` 가 여기로 걸린 심볼릭 링크) |
+| `/draft` `/insight` `/project` `/research` `/revise` | `.claude/commands/*.md` |
+| 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
+| `/lab` 화면 규약 | `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md` |
+
+`.gitignore` 가 `/.claude/*` 를 무시하되 `!/.claude/commands/` 로 커맨드만 살려 둔다.
+새 머신에서는 `npm run setup:skills` 로 링크를 건다.
+
+**화면을 고쳤으면 규약도 같이 고친다.** 렌더러만 바꾸고 규약 문서를 두면, 다음에
+그 문서를 읽고 만드는 쪽이 옛 화면으로 되돌린다. 접은 안은 왜 접었는지까지 남긴다.
+
 ## 실험실 프로젝트 적재
 
 `/lab` 의 프로젝트는 다른 레포에서 만든 원고를 받아 적재한다.
