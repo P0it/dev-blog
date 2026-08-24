@@ -2059,8 +2059,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    한 쌍이라는 게 색으로 읽혀야 눈이 둘을 오간다. */
 .lab-arch-step.on {
   color: var(--lab-fg);
-  border-left-color: var(--diag-blue-stroke);
-  background: var(--diag-blue-fill);
+  border-left-color: var(--lab-mint);
+  background: var(--lab-mint-bg);
 }
 
 .lab-arch-panel .mermaid-figure { margin: 0; padding: 0; justify-content: center; }
@@ -2080,15 +2080,25 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-arch-panel svg g.node circle {
   transition: stroke 0.25s, filter 0.25s;
 }
-/* 켜진 노드는 제 색을 진하게 할 뿐이다. 테마 민트를 쓰면 파란 노드 위에
-   초록 테두리가 얹혀 다이어그램과 따로 논다. */
+/* 실험실 다이어그램은 테마색으로 통일한다. mermaid 기본 팔레트(파랑)를
+   그대로 쓰면 페이지의 민트 계열과 따로 논다. 블로그 글의 다이어그램은
+   건드리지 않도록 .lab-arch-panel 안에서만 덮는다. */
+.lab-arch-panel svg g.node rect,
+.lab-arch-panel svg g.node polygon,
+.lab-arch-panel svg g.node circle {
+  fill: var(--lab-panel) !important;
+  stroke: var(--lab-line) !important;
+}
 .lab-arch-panel svg g.node.lab-node-on rect,
 .lab-arch-panel svg g.node.lab-node-on polygon,
 .lab-arch-panel svg g.node.lab-node-on circle {
-  stroke: var(--diag-blue-stroke) !important;
+  fill: var(--lab-mint-bg) !important;
+  stroke: var(--lab-mint) !important;
   stroke-width: 2.5px !important;
-  filter: drop-shadow(0 0 7px var(--diag-blue-fill));
+  filter: drop-shadow(0 0 8px var(--lab-mint-bg));
 }
+.lab-arch-panel svg .flowchart-link { stroke: var(--lab-line) !important; }
+.lab-arch-panel svg marker path { fill: var(--lab-line) !important; stroke: var(--lab-line) !important; }
 
 /* Lab — 남은 것. 전역 리셋이 마커를 죽이므로 직접 그린다.
    앞 문장은 사실, 뒤 문장은 그래서 어떻다는 이유라 무게를 갈라 준다. */
@@ -2142,8 +2152,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: var(--lab-fg-dim);
 }
 .lab-trial-head .chev { color: var(--lab-fg-dim); flex: none; transition: transform 0.2s; }
-.lab-trial.open { border-color: var(--lab-mint); background: var(--lab-mint-bg); }
-.lab-trial.open .chev { transform: rotate(180deg); color: var(--lab-mint); }
+/* 스크롤을 내리면 알아서 펼쳐지므로 대부분이 열린 상태가 된다.
+   그때마다 판을 물들이면 화면이 온통 색이라 오히려 안 읽힌다. 화살표만 돌린다. */
+.lab-trial.open .chev { transform: rotate(180deg); }
 .lab-trial-row {
   display: grid; grid-template-columns: 60px 1fr; gap: 14px;
   margin-top: 16px;

@@ -37,6 +37,8 @@ const KNOWN: Record<string, Section["kind"]> = {
   "기술 스택": "tech",
   "개발 과정": "journey",
   "데이터와 API": "integrations",
+  // 규약에서 뺀 섹션이다. 화면 갤러리가 영상도 같은 자리에 그린다.
+  // 옛 원고가 들고 와도 깨지지 않게 파서·렌더러는 남겨 둔다.
   "시연": "demo",
   "구조": "architecture",
   "시행착오": "trials",
