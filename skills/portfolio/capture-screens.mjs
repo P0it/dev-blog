@@ -6,7 +6,7 @@
 // 사용법 (레포 루트에서):
 //   node ~/.claude/skills/portfolio/capture-screens.mjs \
 //     --cmd "npm run dev" --base http://localhost:3000 \
-//     / :홈 /posts:글목록 /admin:어드민
+//     /:홈 /posts:글목록 /admin:어드민
 //
 // 주요 옵션:
 //   --cmd "<명령>"     앱을 직접 띄운다. 생략하면 이미 떠 있다고 보고 --base 로 붙는다
@@ -19,7 +19,8 @@
 //   --auth <file>      playwright storageState JSON. 로그인 뒤 화면을 찍을 때
 //   --dark             다크 모드로 찍는다
 //
-// 라우트는 `경로:이름` 으로 준다. 이름을 생략하면 경로에서 만든다.
+// 라우트는 `경로:이름` 으로 준다. 윈도우 Git Bash 에서는 이름을 꼭 붙여라 —
+// `/posts` 같은 인자를 셸이 윈도우 경로로 바꿔 버린다.
 
 import { mkdirSync, existsSync, writeFileSync } from "node:fs";
 import { join, resolve, relative } from "node:path";
@@ -60,10 +61,17 @@ const dark = flag("dark");
 
 // `--x 값` 을 걷어낸 나머지가 라우트다.
 const routes = [];
+const mangled = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a.startsWith("--")) {
     if (argv[i + 1] && !argv[i + 1].startsWith("--")) i++;
+    continue;
+  }
+  // Git Bash(MSYS)가 `/posts` 를 `C:/Program Files/Git/posts` 로 바꿔 놓는 일이 있다.
+  // 그대로 두면 드라이브 콜론에서 이름이 잘려 path 가 "C" 가 되므로 여기서 걸러낸다.
+  if (/^[A-Za-z]:[\\/]/.test(a) || /[\\/]Git[\\/]/i.test(a)) {
+    mangled.push(a);
     continue;
   }
   const at = a.lastIndexOf(":");
@@ -73,8 +81,18 @@ for (let i = 0; i < argv.length; i++) {
   const name = hasName ? a.slice(at + 1) : null;
   routes.push({ path, name });
 }
+// 변환된 인자를 걸러내면 라우트가 비어 버리므로, 빈 목록보다 이 안내가 먼저 나가야 한다.
+// `경로:이름` 형태는 콜론 덕에 이 변환을 피해 간다. 이름을 붙이는 쪽으로 안내한다.
+if (mangled.length) {
+  console.error("라우트가 윈도우 경로로 바뀌었다 (Git Bash 의 경로 자동 변환):");
+  for (const m of mangled) console.error(`  ${m}`);
+  console.error("라우트마다 이름을 붙이면 변환을 피한다: /posts:글목록");
+  console.error("또는 MSYS_NO_PATHCONV=1 을 앞에 붙여 실행해라.");
+  process.exit(1);
+}
+
 if (!routes.length) {
-  console.error("찍을 라우트를 하나 이상 줘라. 예: / :홈 /posts:글목록");
+  console.error("찍을 라우트를 하나 이상 줘라. 예: /:홈 /posts:글목록");
   process.exit(1);
 }
 
@@ -163,7 +181,8 @@ async function run() {
     return;
   }
 
-  // 원고에 그대로 붙일 블록. 설명은 사람이 채운다 — 화면만 보고는 알 수 없다.
+  // 원고에 그대로 붙일 블록. 화면 갤러리는 이름표만 그리므로 설명 줄은 내보내지 않는다.
+  // 이름은 라우트에서 딴 것이라, 붙여 넣은 뒤 사람이 읽을 말로 다듬는다.
   // 경로는 항상 상대경로로 적는다 — 적재 스크립트가 원고 위치 기준으로 찾기 때문에
   // 절대경로를 적으면 다른 기계에서 그대로 깨진다.
   // 기준은 원고가 놓일 폴더다 (기본 ./portfolio, 그 안에 portfolio.md 가 들어간다).
@@ -173,12 +192,12 @@ async function run() {
   const md = [
     "## 화면",
     "",
-    ...done.flatMap((d) => [`### ${d.name}`, "", `**파일** ${rel}/${d.file}`, "**설명** ", ""]),
+    ...done.flatMap((d) => [`### ${d.name}`, "", `**파일** ${rel}/${d.file}`, ""]),
   ].join("\n");
 
   writeFileSync(join(outDir, "_section.md"), md, "utf8");
   console.error(`\n· ${done.length} 장. ${outDir}`);
-  console.error("· 아래를 원고에 붙이고 **설명** 을 채워라 (사본: screens/_section.md)\n");
+  console.error("· 아래를 원고에 붙이고 `### 이름` 을 다듬어라 (사본: screens/_section.md)\n");
   console.log(md);
 }
 
