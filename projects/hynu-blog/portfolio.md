@@ -176,7 +176,7 @@ flowchart LR
   AD -->|초안 요청| APP
   APP -->|글·프로젝트| DB
   APP -->|이미지·영상| ST
-  W -->|밀린 작업| DB
+  DB -.->|밀린 작업| W
   W --> CC
   CC -->|완성 본문| DB
   DB -.->|생성 완료| AD
