@@ -159,6 +159,21 @@ function buildConfig(t: Tokens, fontSize = 14) {
   };
 }
 
+// 그림을 제 크기보다 크게 그리지 않는다.
+//
+// mermaid 는 `useMaxWidth` 로 그린 svg 의 인라인 style 에 자연 폭을 max-width 로 남기고
+// width 는 100% 로 둔다. 그 상한을 CSS 로 덮으면 노드 두어 개짜리 그림이 판 폭까지
+// 늘어나 글자만 커다래진다. 그래서 상한을 판(figure) 쪽으로 옮겨 단다 —
+// 작은 그림은 제 크기에서 멈추고 가운데 서고, 큰 그림은 판 폭에 맞춰 줄어든다.
+function fitToNaturalWidth(host: HTMLDivElement) {
+  const svg = host.querySelector("svg");
+  if (!svg) return;
+  const natural = parseFloat(svg.style.maxWidth || "");
+  host.style.maxWidth = Number.isFinite(natural) && natural > 0 ? `${Math.round(natural)}px` : "";
+  svg.style.maxWidth = "100%";
+  svg.style.width = "100%";
+}
+
 // fontSize 는 구조도처럼 큰 판에 올리는 그림에서 올린다. mermaid 가 이 값으로
 // 노드 너비까지 재기 때문에, CSS 로 키우면 글자가 상자를 넘는다.
 export function Mermaid({ code, fontSize }: { code: string; fontSize?: number }) {
@@ -189,7 +204,10 @@ export function Mermaid({ code, fontSize }: { code: string; fontSize?: number })
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize(buildConfig(readTokens(), fontSize));
         const { svg } = await mermaid.render(`m-${id}-${tick}`, code);
-        if (!cancelled && ref.current) ref.current.innerHTML = svg;
+        if (!cancelled && ref.current) {
+          ref.current.innerHTML = svg;
+          fitToNaturalWidth(ref.current);
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       }
@@ -214,7 +232,7 @@ export function Mermaid({ code, fontSize }: { code: string; fontSize?: number })
       style={{
         display: "flex",
         justifyContent: "center",
-        margin: "32px 0",
+        margin: "32px auto",
         padding: "8px 0",
         overflowX: "auto",
       }}

@@ -92,19 +92,17 @@ function sectionIcon(kind: Section["kind"]) {
 
 export function ProjectDetailView({ project }: { project: Project }) {
   const all = buildProjectSections(project.body, project.stack);
-  // `## 제품 소개` 는 번호가 붙는 섹션이 아니라 히어로의 리드다. 이 물건이 뭔지는
-  // 표지에서 끝내고, 본문은 왜 만들게 됐는지(`## 기획`)부터 시작한다.
-  const intro = all.find((s) => s.kind === "intro");
+  // `## 제품 소개` 는 없어진 섹션이다. 표지 아래 리드 문단으로 깔았더니, 이 물건이
+  // 뭔지를 표지에서 한 번, `## 기획` 에서 또 한 번 말하게 됐다. 이제 소개는 기획의
+  // 첫 문답(`**소개**` → "어떤 서비스인가요?")이 맡고, 본문은 `## 화면` 으로 연다.
+  // 옛 원고에 남아 있으면 그리지 않고 흘린다 — 적재 전에 기획으로 옮긴다.
   const sections = all.filter((s) => s.kind !== "intro");
   const rail = sections.map((s, i) => ({ id: sectionAnchor(i, s.title), label: s.title }));
 
   return (
     <>
       <PublicNav active="lab" />
-      <ProjectHero
-        project={project}
-        lead={intro ? <Intro md={intro.md} /> : undefined}
-      />
+      <ProjectHero project={project} />
 
       <div className="lab-page" style={{ paddingBottom: 96 }}>
         <div className="container-wide">
