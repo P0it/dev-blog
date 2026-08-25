@@ -97,9 +97,14 @@ function ShotFigure({
 export function Screens({ shots }: { shots: Shot[] }) {
   // null 이면 닫힘. 열려 있으면 몇 번째 화면을 보고 있는지다.
   const [at, setAt] = useState<number | null>(null);
+  // 확대 창에 걸린 그림의 비율. 세로 캡처를 판 폭까지 늘리면 안 되므로 재 둔다.
+  const [ratio, setRatio] = useState<number | null>(null);
 
   const step = useCallback(
-    (d: number) => setAt((v) => (v === null ? v : (v + d + shots.length) % shots.length)),
+    (d: number) => {
+      setRatio(null);
+      setAt((v) => (v === null ? v : (v + d + shots.length) % shots.length));
+    },
     [shots.length],
   );
 
@@ -116,12 +121,24 @@ export function Screens({ shots }: { shots: Shot[] }) {
   }, [at, step]);
 
   const cur = at === null ? null : shots[at];
+  // 폰 캡처는 2·3배 밀도로 찍혀 있다(780×1688 = 390pt 화면의 두 배). 판 폭에 맞춰
+  // 늘리면 글씨가 실제 기기의 세 배로 부풀어, 확대가 아니라 뭉개짐이 된다.
+  // 세로로 긴 그림은 실기기 폭 언저리에 세우고 넘치는 길이는 스크롤로 받는다.
+  const portrait = ratio !== null && ratio < 0.9;
 
   return (
     <>
       <div className="lab-screens lab-stagger">
         {shots.map((s, i) => (
-          <ShotFigure key={i} shot={s} index={i} onOpen={() => setAt(i)} />
+          <ShotFigure
+            key={i}
+            shot={s}
+            index={i}
+            onOpen={() => {
+              setRatio(null);
+              setAt(i);
+            }}
+          />
         ))}
       </div>
 
@@ -134,12 +151,29 @@ export function Screens({ shots }: { shots: Shot[] }) {
         {cur && (
           <>
             {/* 판 안에 우겨넣지 않는다. 원본 비율 그대로 두고, 긴 캡처는 스크롤로 훑는다. */}
-            <div className="lab-shot-modal-stage">
+            <div className={`lab-shot-modal-stage${portrait ? " is-portrait" : ""}`}>
               {VIDEO.test(cur.src) ? (
-                <video src={cur.src} controls autoPlay loop playsInline />
+                <video
+                  src={cur.src}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  onLoadedMetadata={(e) => {
+                    const v = e.currentTarget;
+                    if (v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
+                  }}
+                />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={cur.src} alt={cur.title} />
+                <img
+                  src={cur.src}
+                  alt={cur.title}
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    if (img.naturalHeight) setRatio(img.naturalWidth / img.naturalHeight);
+                  }}
+                />
               )}
             </div>
 
