@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Maximize2 } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { resolveBrand } from "@/lib/tech-icons";
-import { LabModal } from "../LabModal";
 import type { IntegrationItem } from "@/lib/project-sections";
 
 export type Integration = IntegrationItem;
@@ -14,99 +13,78 @@ function linkLabel(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 }
 
-function Brand({ item, size }: { item: Integration; size: "sm" | "lg" }) {
-  const brand = resolveBrand(item.name, item.icon);
-  return (
-    <span className={`lab-integ-logo${size === "lg" ? " lg" : ""}`} aria-hidden="true">
-      {brand.icon ? (
-        <svg viewBox="0 0 24 24">
-          <path d={brand.icon.path} />
-        </svg>
-      ) : (
-        <i>{brand.letter}</i>
-      )}
-    </span>
-  );
-}
-
+/**
+ * 카드는 로고·이름·용도 한 줄·링크까지만 세우고, 세부는 **올리면 아래로 덮으며** 나온다.
+ *
+ * 접은 안이 둘 있다.
+ *  - 제자리 펼침: 그리드 한 줄의 높이는 가장 큰 칸이 정한다. 하나를 펼치면 옆 카드가
+ *    같이 늘어나 빈 상자가 됐다.
+ *  - 확대 창(모달): 훑어 내리며 가볍게 보는 자리인데 화면이 전환되는 느낌이라 흐름이 끊겼다.
+ *
+ * 그래서 세부 판은 흐름 밖(absolute)에 두고 이웃 카드 위를 덮는다. 레이아웃은 그대로다.
+ */
 function Card({ item }: { item: Integration }) {
   const [open, setOpen] = useState(false);
   const brand = resolveBrand(item.name, item.icon);
   const rows = item.details;
   const hasDetails = rows.length > 0;
 
-  const brandVars = {
-    ["--tc-light" as string]: brand.light,
-    ["--tc-dark" as string]: brand.dark,
-  };
-
   return (
-    <>
-      <div className="lab-panel lab-integ-card" style={brandVars}>
-        {/* 카드 전체가 누를 자리다. 판을 덮는 버튼을 깔아 두면 카드 안의 링크가
-            버튼 안에 중첩되지 않는다 — 버튼 속 링크는 마크업상 허용되지 않는다. */}
-        {hasDetails && (
-          <button
-            type="button"
-            className="lab-integ-hit"
-            onClick={() => setOpen(true)}
-            aria-label={`${item.name} 자세히 보기`}
-          />
-        )}
-
-        <div className="lab-integ-head">
-          <Brand item={item} size="sm" />
-          <span className="lab-integ-name">{item.name}</span>
-        </div>
-
-        {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
-
-        <div className="lab-integ-foot">
-          {item.link ? (
-            <a
-              className="lab-integ-link"
-              href={item.link}
-              target="_blank"
-              rel="noreferrer"
-              title={item.link}
-            >
-              <span>{linkLabel(item.link)}</span>
-              <ExternalLink size={13} />
-            </a>
+    <div
+      className={`lab-panel lab-integ-card${open && hasDetails ? " open" : ""}`}
+      style={{ ["--tc-light" as string]: brand.light, ["--tc-dark" as string]: brand.dark }}
+      // 포인터가 있는 기기에서는 올리는 것만으로 열린다. 세부 판은 이 카드의 자손이라
+      // 판 위로 마우스가 옮겨 가도 leave 가 나지 않는다.
+      onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
+      onPointerLeave={() => setOpen(false)}
+    >
+      <div className="lab-integ-head">
+        <span className="lab-integ-logo" aria-hidden="true">
+          {brand.icon ? (
+            <svg viewBox="0 0 24 24">
+              <path d={brand.icon.path} />
+            </svg>
           ) : (
-            <span />
+            <i>{brand.letter}</i>
           )}
-          {hasDetails && (
-            <span className="lab-integ-more">
-              자세히
-              <Maximize2 size={12} />
-            </span>
-          )}
-        </div>
+        </span>
+        <span className="lab-integ-name">{item.name}</span>
       </div>
 
-      <LabModal open={open} onClose={() => setOpen(false)} label={item.name} className="lab-integ-modal">
-        <div style={brandVars}>
-          <div className="lab-integ-modal-head">
-            <Brand item={item} size="lg" />
-            <div>
-              <h3>{item.name}</h3>
-              {item.purpose && <p>{item.purpose}</p>}
-            </div>
-          </div>
+      {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
 
-          {item.link && (
-            <a
-              className="lab-integ-modal-link"
-              href={item.link}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span>{linkLabel(item.link)}</span>
-              <ExternalLink size={14} />
-            </a>
-          )}
+      <div className="lab-integ-foot">
+        {item.link ? (
+          <a
+            className="lab-integ-link"
+            href={item.link}
+            target="_blank"
+            rel="noreferrer"
+            title={item.link}
+          >
+            <span>{linkLabel(item.link)}</span>
+            <ExternalLink size={13} />
+          </a>
+        ) : (
+          <span />
+        )}
+        {hasDetails && (
+          // 손가락·키보드에는 hover 가 없다. 같은 판을 눌러서도 여닫는다.
+          <button
+            type="button"
+            className="lab-integ-more"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            onFocus={() => setOpen(true)}
+          >
+            자세히
+            <ChevronDown size={14} className="chev" />
+          </button>
+        )}
+      </div>
 
+      {hasDetails && (
+        <div className="lab-integ-pop" aria-hidden={!open}>
           <dl className="lab-integ-rows">
             {rows.map((f, i) => (
               <div key={i} className="lab-integ-row">
@@ -116,8 +94,8 @@ function Card({ item }: { item: Integration }) {
             ))}
           </dl>
         </div>
-      </LabModal>
-    </>
+      )}
+    </div>
   );
 }
 
