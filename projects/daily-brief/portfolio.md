@@ -4,7 +4,7 @@ name: 데일리 브리핑
 tagline: 밤사이 공시를 훑어 아침에 종목만 남기는 브리핑
 year: "2026"
 logo_bg: "#191F28"
-logo_file: ./logo.png
+logo_file: ./logo.svg
 stack: [Python, Next.js, React, TypeScript, Tailwind CSS, Supabase, Vercel, GitHub Actions, pytest, Ruff]
 url: https://daily-news-flame.vercel.app/
 host: vercel
@@ -147,61 +147,73 @@ flowchart LR
   subgraph 바깥[바깥 소스]
     direction TB
     SRC[공시·시세·와이어]
-    LLM[Claude Code CLI]
+    CLI[Claude Code CLI]
   end
-  subgraph 파이프[아침 파이프라인]
+  subgraph 러너[GitHub Actions 러너]
     direction TB
-    COL[수집기] --> SCORE[시그널 점수]
-    SCORE --> PICK[이슈 선정]
-    PICK --> VERIFY[2차 검증]
+    COL[수집 계층]
+    RANK[점수 엔진]
+    JUDGE[LLM 판단]
+    SCREEN[발굴 스크리너]
   end
   subgraph 원장[Supabase]
     direction TB
-    DB[(브리핑 원장)]
+    LEDGER[(픽 원장)]
+    DICT[(용어 사전)]
   end
   subgraph 읽는쪽[읽는 쪽]
     direction TB
-    WEB[브리핑 페이지]
+    SITE[정적 사이트]
     DC[디스코드 알림]
   end
   SRC -->|공시·시세| COL
-  PICK -->|후보 풀| LLM
-  LLM -.->|픽 초안| VERIFY
-  VERIFY -->|브리핑| DB
-  VERIFY -->|요약 세 줄| DC
-  DB -->|빌드시 추출| WEB
-  DB -.->|이미 본 것| COL
+  SRC -->|재무| SCREEN
+  COL -->|정규화 항목| RANK
+  RANK -->|후보 풀| JUDGE
+  JUDGE -->|프롬프트| CLI
+  CLI -.->|판단| JUDGE
+  JUDGE -->|픽| LEDGER
+  JUDGE -->|새 용어| DICT
+  SCREEN -->|랭킹| LEDGER
+  DICT -.->|캐시 적중| JUDGE
+  LEDGER -.->|이미 본 것| COL
+  LEDGER -->|정적 추출| SITE
+  JUDGE -->|요약 세 줄| DC
 ```
 
-### 아침 파이프라인 — 평일 07:00 에 GitHub Actions 가 띄운다
+### GitHub Actions 러너 — 평일 07:00 에 뜬다
 
 UTC 로 전날 22시에 뜹니다. 실측 실행 시간이 6~9분이라 타임아웃은 30분이고, 같은 날짜를 두 프로세스가 건드리지 않게 동시 실행을 막아뒀어요.
 
-### 수집기
+### 수집 계층
 
-DART, 뉴스 RSS, EDGAR, 거시지표, 리서치, KRX, 급상승, 정부 조달, 내부자 클러스터, 기관 보유, 의회 거래, FDA, 와이어를 각각 따로 돌립니다. 하나가 죽어도 나머지가 계속 가요.
+DART, 뉴스 RSS, EDGAR, 거시지표, 리서치, KRX, 급상승, 정부 조달, 내부자 클러스터, 기관 보유, 의회 거래, FDA, 와이어를 각각 따로 돌려 한 형식으로 맞춰 내놓습니다. 하나가 죽어도 나머지가 계속 가요.
 
-### 시그널 점수
+### 점수 엔진
 
-처음 보는 항목만 남기고 공시 유형과 소스별로 점수를 매깁니다. 티어별 하한을 넘긴 것이 후보 풀이 돼요.
+LLM 이 닿지 않는 결정론 구간입니다. 공시 유형과 소스별 점수, 시가총액 게이트, 티어별 하한을 여기서 매겨 후보 풀을 만들어요.
 
-### 이슈 선정
+### LLM 판단
 
-국내와 해외를 두 호출로 동시에 던져, 후보 풀에서 그날의 핵심 이슈와 종목을 뽑게 합니다.
+후보 풀을 받아 이슈 선정, 2차 검증, 요약, 번역, 낙수효과 추론까지 맡습니다. 촉매가 근거 공시에 실제로 있는지 대조하는 것도 이 자리예요.
 
-### 2차 검증
+### 발굴 스크리너
 
-촉매가 근거 공시에 실제로 있는지 이슈 단위로 대조하고, 종목과 공시 주체가 맞물리는지 확인합니다. 확인이 실패한 픽은 버리지 않고 사유를 달아 화면에 노출해요.
+촉매 트랙과 회선을 공유하지 않습니다. 고정 유니버스의 재무만 받아 팩터 랭킹을 내고, 손으로 돌릴 때만 움직여요.
 
 ### Claude Code CLI
 
-요약, 번역, 이슈 선정, 픽 검증, 낙수효과 추론을 맡습니다. 응답은 캐시에 쌓여 같은 입력이 두 번 가지 않아요.
+Max 플랜 할당량으로 도는 바깥 실행기입니다. 판단이 필요한 모든 호출이 여기로 나갔다 들어와요.
 
-### 브리핑 원장
+### 픽 원장
 
-날짜별 브리핑과 픽 원장이 여기 있습니다. 어느 머신에서 돌리든 여기로 씁니다. 매일 아침 정리 작업이 이 테이블은 건드리지 않아 사실상 무기한 누적돼요.
+날짜별 브리핑과 픽이 여기 있습니다. 어느 머신에서 돌리든 여기로 쓰고, 매일 아침 정리 작업이 이 테이블은 건드리지 않아 사실상 무기한 누적돼요.
 
-### 브리핑 페이지
+### 용어 사전
+
+브리핑에 뜨는 용어 해설과 LLM 응답 캐시를 같이 들고 있습니다. 같은 입력이 두 번 나가지 않게 막는 자리예요.
+
+### 정적 사이트
 
 빌드할 때 원장에서 끌어와 정적 파일을 굽습니다. 런타임에 DB 를 부르지 않아요.
 

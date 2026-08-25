@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CardShot } from "@/components/project/CardShot";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { firstScreenSrc } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
@@ -20,18 +21,19 @@ export function ProjectCard({ p, index }: { p: Project; index: number }) {
             <span className="lab-card-lamp" />
           </div>
 
-          <div className={`lab-card-shot${shot ? "" : " empty"}`}>
-            {shot ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={shot} alt="" loading="lazy" />
-            ) : (
-              // 대표 화면이 아직 없는 프로젝트. 판 전체를 로고색으로 칠하면 목록에서
-              // 그 카드만 튀므로, 조용한 판 가운데에 로고 배지 하나만 놓는다.
+          {shot ? (
+            // 긴 캡처는 판 안에서 훑어 내린다. 비율은 그림을 받아 보고 정하므로
+            // 판 안쪽만 클라이언트로 뗀다.
+            <CardShot src={shot} />
+          ) : (
+            // 대표 화면이 아직 없는 프로젝트. 판 전체를 로고색으로 칠하면 목록에서
+            // 그 카드만 튀므로, 조용한 판 가운데에 로고 배지 하나만 놓는다.
+            <div className="lab-card-shot empty">
               <span className="lab-card-empty" style={{ background: p.logoBg }}>
                 <ProjectMark p={p} variant="card" />
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="lab-card-meta">
             <span className="lab-card-logo" style={{ background: p.logoBg }}>
