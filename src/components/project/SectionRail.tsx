@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 
 export type RailItem = { id: string; label: string };
-export type RailCta = { href: string; label: string };
 
-export function SectionRail({ items, cta }: { items: RailItem[]; cta?: RailCta | null }) {
+export function SectionRail({ items, ctaHref }: { items: RailItem[]; ctaHref?: string | null }) {
   const [active, setActive] = useState(items[0]?.id ?? "");
 
   useEffect(() => {
@@ -43,10 +42,10 @@ export function SectionRail({ items, cta }: { items: RailItem[]; cta?: RailCta |
       {/* 히어로 우상단 바로가기는 표지 장식에 가까워 눈에 잘 안 든다. 본문을 읽는
           내내 따라오는 자리에 같은 링크를 한 번 더 세운다. 레일이 사라지는 폭에서는
           본문 맨 위로 떨어져 가로로 넓게 선다. */}
-      {cta && (
-        <a className="lab-rail-cta" href={cta.href} target="_blank" rel="noreferrer">
+      {ctaHref && (
+        <a className="lab-rail-cta" href={ctaHref} target="_blank" rel="noreferrer">
           <span>
-            {cta.label}
+            사이트 체험하기
             <ArrowUpRight size={16} />
           </span>
         </a>

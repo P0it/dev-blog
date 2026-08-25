@@ -462,17 +462,3 @@ export function buildProjectSections(body: string, stack: string[]): Section[] {
   const at = screens >= 0 ? screens + 1 : sections.findIndex((s) => s.kind === "intro") + 1;
   return [...sections.slice(0, at), tech, ...sections.slice(at)];
 }
-
-// 본문 옆 바로가기 버튼의 라벨. 링크가 데모 페이지를 가리키면 "체험"이라고 말해준다 —
-// 같은 "사이트 바로가기"로 뭉뚱그리면 눌러보기 전까지 뭐가 열릴지 알 수 없다.
-// 프런트매터에 라벨 필드를 따로 두지 않는 건, 지금까지 갈리는 경우가 이 하나뿐이라
-// 컬럼을 늘릴 값어치가 없어서다. 경우가 늘면 그때 `url_label` 을 받는다.
-export function projectCtaLabel(url: string): string {
-  try {
-    const path = new URL(url).pathname.toLowerCase();
-    if (/(^|\/)demo(\/|$)/.test(path)) return "데모 체험하기";
-  } catch {
-    // 상대 경로·깨진 URL 은 기본 라벨로 둔다.
-  }
-  return "사이트 바로가기";
-}
