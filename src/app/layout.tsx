@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider, ThemeScript } from "@/lib/theme";
 import { SITE } from "@/lib/site";
+import { websiteJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,7 +35,9 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body>
         <ThemeScript />
+        <JsonLd data={websiteJsonLd()} />
         <ThemeProvider>{children}</ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
