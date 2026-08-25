@@ -398,8 +398,10 @@ export async function searchPosts(rawQuery: string): Promise<Post[]> {
   }
 
   // 폴백: 단순 ILIKE (RPC 없을 때)
-  const esc = q.replace(/[%_,]/g, "\\$&");
-  const pattern = `%${esc}%`;
+  // 다국어는 휴면이라 *_en 컬럼이 DB 에 없다. 참조하면 쿼리 자체가 터진다.
+  // 값은 반드시 큰따옴표로 감싼다. 안 그러면 검색어의 쉼표·괄호가 or() 논리트리 파서를 깬다.
+  const quote = (v: string) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const pattern = quote(`%${q.replace(/[%_\\]/g, "\\$&")}%`);
   const { data, error } = await sb
     .from("posts")
     .select("*")
@@ -409,9 +411,7 @@ export async function searchPosts(rawQuery: string): Promise<Post[]> {
         `title.ilike.${pattern}`,
         `excerpt.ilike.${pattern}`,
         `body_md.ilike.${pattern}`,
-        `title_en.ilike.${pattern}`,
-        `excerpt_en.ilike.${pattern}`,
-        `body_md_en.ilike.${pattern}`,
+        `tags.cs.{${quote(q)}}`,
       ].join(","),
     )
     .order("published_at", { ascending: false })
