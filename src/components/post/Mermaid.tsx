@@ -174,9 +174,31 @@ function fitToNaturalWidth(host: HTMLDivElement) {
   svg.style.width = "100%";
 }
 
+// 판을 다 쓰게 둔다.
+//
+// 구조도는 본문 폭을 통째로 내준 판 위에 올라간다. 거기서 자연 폭에 멈추면
+// 노드 몇 개짜리 그림이 판 한가운데 우표만 하게 앉아 아무것도 안 읽힌다.
+// 그림은 벡터라 키워도 흐려지지 않으므로, 이 자리에서는 판 폭까지 늘린다.
+function fillHost(host: HTMLDivElement) {
+  const svg = host.querySelector("svg");
+  if (!svg) return;
+  host.style.maxWidth = "";
+  svg.style.maxWidth = "100%";
+  svg.style.width = "100%";
+}
+
 // fontSize 는 구조도처럼 큰 판에 올리는 그림에서 올린다. mermaid 가 이 값으로
 // 노드 너비까지 재기 때문에, CSS 로 키우면 글자가 상자를 넘는다.
-export function Mermaid({ code, fontSize }: { code: string; fontSize?: number }) {
+export function Mermaid({
+  code,
+  fontSize,
+  fill = false,
+}: {
+  code: string;
+  fontSize?: number;
+  /** 자연 폭에 멈추지 않고 판 폭을 다 쓴다. 구조도처럼 큰 판에 올릴 때만. */
+  fill?: boolean;
+}) {
   const id = useId().replace(/:/g, "");
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +228,8 @@ export function Mermaid({ code, fontSize }: { code: string; fontSize?: number })
         const { svg } = await mermaid.render(`m-${id}-${tick}`, code);
         if (!cancelled && ref.current) {
           ref.current.innerHTML = svg;
-          fitToNaturalWidth(ref.current);
+          if (fill) fillHost(ref.current);
+          else fitToNaturalWidth(ref.current);
         }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
@@ -215,7 +238,7 @@ export function Mermaid({ code, fontSize }: { code: string; fontSize?: number })
     return () => {
       cancelled = true;
     };
-  }, [code, id, tick, fontSize]);
+  }, [code, id, tick, fontSize, fill]);
 
   if (error) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Mermaid } from "@/components/post/Mermaid";
 
@@ -15,37 +15,36 @@ function norm(s: string) {
     .toLowerCase();
 }
 
-// subgraph 로 그린 계층을 읽어 "이 노드는 어느 덩어리 소속인가"를 만든다.
-// 설명 카드에 소속을 달아 주면, 그림을 안 봐도 어디 얘기인지 붙는다.
-function parseLayers(code: string) {
-  const layers: { name: string; nodes: Set<string> }[] = [];
-  let cur: { name: string; nodes: Set<string> } | null = null;
+// 그림이 이미 이름을 가진 것들 — 노드 라벨과 subgraph 제목.
+//
+// 설명은 툴팁이 그림 위에서 말한다. 그림에 짝이 있는 설명을 아래에 카드로 또
+// 깔면 같은 문장을 두 번 읽히는 셈이라, 여기서 뽑은 이름으로 걸러 낸다.
+function parseLabels(code: string) {
+  const out = new Set<string>();
   for (const raw of code.split("\n")) {
     const line = raw.trim();
     const sg = /^subgraph\s+([^\s[]+)(?:\[(.+?)\])?$/.exec(line);
     if (sg) {
-      cur = { name: (sg[2] ?? sg[1]).trim(), nodes: new Set() };
-      layers.push(cur);
+      out.add(norm((sg[2] ?? sg[1]).trim()));
       continue;
     }
-    if (line === "end") {
-      cur = null;
-      continue;
-    }
-    if (!cur) continue;
+    if (line === "end" || line.startsWith("%%")) continue;
     // 노드 선언은 `ID[라벨]` · `ID[(라벨)]` · `ID(라벨)` 세 꼴로 온다.
     for (const m of line.matchAll(/([A-Za-z0-9_가-힣]+)\s*(?:\[\(?([^\]()]+)\)?\]|\(\(?([^)]+)\)?\))/g)) {
-      cur.nodes.add(norm(m[2] ?? m[3] ?? m[1]));
+      out.add(norm(m[2] ?? m[3] ?? m[1]));
     }
   }
-  return layers;
+  return out;
 }
 
 // 구조 — 지금 돌아가는 물건이 어떤 덩어리로 나뉘고 그 사이로 무엇이 오가는가.
 //
 // 그림과 설명을 잇되 스크롤로는 잇지 않는다. 예전에는 판을 붙박아 두고 스크롤로
 // 노드를 켰는데, 붙박인 판이 설명을 뒤로 깔아 가렸다. 지금은 포인터가 움직인다 —
-// 노드에 올리면 그 설명이 그 자리에 뜨고, 설명에 올리면 그 노드가 켜진다.
+// 노드나 덩어리에 올리면 그 설명이 그 자리에 뜬다.
+//
+// 그림이 말할 수 있는 것은 그림에게 맡긴다. 아래 카드에는 그림에 짝이 없는 설명만
+// 남는다. 짝이 있는 것까지 카드로 깔면 툴팁과 같은 문장이 두 번 나온다.
 export function Architecture({ diagram, steps }: { diagram: string | null; steps: Step[] }) {
   const [zoom, setZoom] = useState(false);
   const [active, setActive] = useState<number | null>(null);
@@ -55,10 +54,11 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
   const [touched, setTouched] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const layers = useMemo(() => (diagram ? parseLayers(diagram) : []), [diagram]);
-  const layerOf = useCallback(
-    (label: string) => layers.find((l) => l.nodes.has(norm(label)))?.name ?? null,
-    [layers],
+  const labels = useMemo(() => (diagram ? parseLabels(diagram) : new Set<string>()), [diagram]);
+  // 그림에 없는 설명만 카드로 남긴다.
+  const orphans = useMemo(
+    () => steps.filter((s) => !labels.has(norm(s.label))),
+    [steps, labels],
   );
 
   // 설명에 손이 오면 짝이 되는 노드를 켠다. 이름으로 찾고, 없으면 상자를 본다.
@@ -68,16 +68,15 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     const nodes = Array.from(svg.querySelectorAll<SVGGElement>("g.node"));
     const clusters = Array.from(svg.querySelectorAll<SVGGElement>("g.cluster"));
     const key = active === null ? "" : norm(steps[active]?.label ?? "");
-    const hit =
-      (key && nodes.find((n) => norm(n.textContent ?? "") === key)) ||
-      (key && clusters.find((c) => norm(c.textContent ?? "") === key)) ||
-      null;
-    nodes.forEach((n) => n.classList.toggle("lab-node-on", n === hit));
-    clusters.forEach((c) => c.classList.toggle("lab-cluster-on", c === hit));
+    const hitNode = (key && nodes.find((n) => norm(n.textContent ?? "") === key)) || null;
+    const hitCluster =
+      (!hitNode && key && clusters.find((c) => norm(clusterName(c)) === key)) || null;
+    nodes.forEach((n) => n.classList.toggle("lab-node-on", n === hitNode));
+    clusters.forEach((c) => c.classList.toggle("lab-cluster-on", c === hitCluster));
   }, [active, steps, diagram]);
 
-  // 설명이 딸린 노드에 표시를 남긴다. 안내 문구만으로는 어디에 올려야 하는지
-  // 모르므로, 커서 모양과 테두리로 "여긴 눌러 볼 수 있다"를 그림 안에서 말한다.
+  // 설명이 딸린 노드·덩어리에 표시를 남긴다. 안내 문구만으로는 어디에 올려야
+  // 하는지 모르므로, 커서 모양과 테두리로 "여긴 만져 볼 수 있다"를 그림 안에서 말한다.
   useEffect(() => {
     let raf = 0;
     const paint = () => {
@@ -89,6 +88,9 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
       const keys = new Set(steps.map((x) => norm(x.label)));
       svg.querySelectorAll<SVGGElement>("g.node").forEach((n) => {
         n.classList.toggle("lab-node-linked", keys.has(norm(n.textContent ?? "")));
+      });
+      svg.querySelectorAll<SVGGElement>("g.cluster").forEach((c) => {
+        c.classList.toggle("lab-cluster-linked", keys.has(norm(clusterName(c))));
       });
     };
     paint();
@@ -108,12 +110,15 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     return () => io.disconnect();
   }, [touched]);
 
-  // 노드에 손이 오면 그 설명을 노드 옆에 띄운다. mermaid 가 비동기로 그리므로
-  // 개별 노드에 붙이지 않고 패널에서 위임으로 받는다.
+  // 노드·덩어리에 손이 오면 그 설명을 그 자리에 띄운다. mermaid 가 비동기로
+  // 그리므로 개별 요소에 붙이지 않고 패널에서 위임으로 받는다.
   const onPanelMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const panel = panelRef.current;
     if (!panel) return;
-    const g = (e.target as Element).closest?.("g.node") as SVGGElement | null;
+    const el = e.target as Element;
+    const node = el.closest?.("g.node") as SVGGElement | null;
+    const cluster = node ? null : (el.closest?.("g.cluster") as SVGGElement | null);
+    const g = node ?? cluster;
     if (!g) {
       setTip(null);
       setActive(null);
@@ -121,7 +126,7 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     }
     setTouched(true);
     setCoach(false);
-    const key = norm(g.textContent ?? "");
+    const key = node ? norm(node.textContent ?? "") : norm(clusterName(cluster!));
     const i = steps.findIndex((s) => norm(s.label) === key);
     if (i < 0) {
       setTip(null);
@@ -131,7 +136,9 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     const box = g.getBoundingClientRect();
     const host = panel.getBoundingClientRect();
     setActive(i);
-    setTip({ i, x: box.left + box.width / 2 - host.left, y: box.bottom - host.top + 10 });
+    // 덩어리는 크다. 그 밑에 붙이면 설명이 그림 밖으로 나가므로 제목 옆에 세운다.
+    const y = node ? box.bottom - host.top + 10 : box.top - host.top + 34;
+    setTip({ i, x: box.left + box.width / 2 - host.left, y });
   };
 
   useEffect(() => {
@@ -150,7 +157,7 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     <div className="lab-arch">
       {diagram && (
         <div
-          className="lab-panel lab-corner lab-arch-panel"
+          className="lab-panel lab-corner lab-arch-panel lab-arch-skin"
           ref={panelRef}
           onPointerMove={onPanelMove}
           onPointerLeave={() => {
@@ -164,13 +171,14 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
             </button>
           </div>
 
-          {/* 구조도는 본문 폭을 다 쓰는 판에 올라가므로 글자를 한 단계 키운다. */}
-          <Mermaid code={diagram} fontSize={16} />
+          {/* 구조도는 본문 폭을 다 쓰는 판에 올라간다. 자연 폭에 멈추면 판 한가운데
+              우표만 하게 앉으므로, 판을 다 쓰게 두고 글자도 한 단계 키운다. */}
+          <Mermaid code={diagram} fontSize={16} fill />
 
           {coach && !tip && (
             <div className="lab-arch-coach" aria-hidden="true">
               <span className="dot" />
-              노드에 올리면 설명이 보입니다
+              그림에 올리면 설명이 보입니다
             </div>
           )}
 
@@ -190,36 +198,28 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
               <i className="dashed" />
               되돌아오는 것
             </span>
-            {layers.length > 0 && (
-              <span className="layers">
-                {layers.map((l) => (
-                  <em key={l.name}>{l.name}</em>
-                ))}
-              </span>
-            )}
           </div>
         </div>
       )}
 
-      <div className="lab-arch-steps">
-        {steps.map((s, i) => {
-          const layer = layerOf(s.label);
-          return (
-            <div
-              key={i}
-              className={`lab-arch-step${i === active ? " on" : ""}`}
-              onPointerEnter={() => setActive(i)}
-              onPointerLeave={() => setActive((v) => (v === i ? null : v))}
-            >
-              <b>
-                {s.label}
-                {layer && <span className="chip">{layer}</span>}
-              </b>
-              {s.md}
-            </div>
-          );
-        })}
-      </div>
+      {orphans.length > 0 && (
+        <div className="lab-arch-steps">
+          {orphans.map((s, i) => {
+            const at = steps.indexOf(s);
+            return (
+              <div
+                key={i}
+                className={`lab-arch-step${at === active ? " on" : ""}`}
+                onPointerEnter={() => setActive(at)}
+                onPointerLeave={() => setActive((v) => (v === at ? null : v))}
+              >
+                <b>{s.label}</b>
+                {s.md}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {zoom &&
         // 화면 전체를 덮는 판은 body 로 빼서 그린다. 섹션 안에 두면 조상 요소의
@@ -230,15 +230,21 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
               닫기
             </button>
             <div
-              className="lab-arch-modal-inner"
+              className="lab-arch-modal-inner lab-arch-skin"
               onClick={(e) => e.stopPropagation()}
               role="presentation"
             >
-              <Mermaid code={diagram ?? ""} fontSize={18} />
+              <Mermaid code={diagram ?? ""} fontSize={18} fill />
             </div>
           </div>,
           document.body,
         )}
     </div>
   );
+}
+
+// 덩어리 이름은 제목 라벨 하나다. textContent 를 그냥 쓰면 안에 든 노드 글자까지
+// 딸려 와 어떤 설명과도 안 맞는다.
+function clusterName(c: SVGGElement) {
+  return c.querySelector(".cluster-label, .label")?.textContent ?? "";
 }

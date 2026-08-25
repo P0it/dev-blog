@@ -2236,25 +2236,32 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 18px 20px 20px; min-width: 0;
   display: flex; flex-direction: column;
 }
-.lab-arch-panel svg g.node { cursor: default; }
+.lab-arch-skin svg g.node { cursor: default; }
 /* 설명이 딸린 노드 — 손이 갈 곳이라는 걸 그림 안에서 말한다. */
-.lab-arch-panel svg g.node.lab-node-linked { cursor: pointer; }
-.lab-arch-panel svg g.node.lab-node-linked rect,
-.lab-arch-panel svg g.node.lab-node-linked polygon,
-.lab-arch-panel svg g.node.lab-node-linked circle,
-.lab-arch-panel svg g.node.lab-node-linked ellipse,
-.lab-arch-panel svg g.node.lab-node-linked path {
+.lab-arch-skin svg g.node.lab-node-linked { cursor: pointer; }
+.lab-arch-skin svg g.node.lab-node-linked rect,
+.lab-arch-skin svg g.node.lab-node-linked polygon,
+.lab-arch-skin svg g.node.lab-node-linked circle,
+.lab-arch-skin svg g.node.lab-node-linked ellipse,
+.lab-arch-skin svg g.node.lab-node-linked path {
   stroke: var(--lab-line-strong) !important;
   stroke-dasharray: none;
 }
 /* React 상태보다 먼저 반응해야 손이 머뭇거리지 않는다. */
-.lab-arch-panel svg g.node.lab-node-linked:hover rect,
-.lab-arch-panel svg g.node.lab-node-linked:hover polygon,
-.lab-arch-panel svg g.node.lab-node-linked:hover circle,
-.lab-arch-panel svg g.node.lab-node-linked:hover ellipse,
-.lab-arch-panel svg g.node.lab-node-linked:hover path {
+.lab-arch-skin svg g.node.lab-node-linked:hover rect,
+.lab-arch-skin svg g.node.lab-node-linked:hover polygon,
+.lab-arch-skin svg g.node.lab-node-linked:hover circle,
+.lab-arch-skin svg g.node.lab-node-linked:hover ellipse,
+.lab-arch-skin svg g.node.lab-node-linked:hover path {
   stroke: var(--lab-mint) !important;
 }
+/* 덩어리(subgraph)에 설명이 붙었을 때. 노드와 같은 어휘로 만질 수 있음을 알린다. */
+.lab-arch-skin svg g.cluster.lab-cluster-linked { cursor: pointer; }
+.lab-arch-skin svg g.cluster.lab-cluster-linked:hover rect,
+.lab-arch-skin svg g.cluster.lab-cluster-on rect {
+  stroke: var(--lab-mint) !important;
+}
+
 /* 판 머리줄 — 왼쪽에 쓰는 법, 오른쪽에 확대. */
 .lab-arch-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lab-arch-bar { justify-content: flex-end; }
@@ -2343,16 +2350,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-arch-legend i { width: 18px; height: 0; }
 .lab-arch-legend i.solid { border-top: 1.5px solid var(--lab-fg-dim); }
 .lab-arch-legend i.dashed { border-top: 1.5px dashed var(--lab-fg-dim); }
-.lab-arch-legend .layers { margin-left: auto; gap: 6px; }
-.lab-arch-legend .layers em {
-  font-style: normal;
-  padding: 3px 9px;
-  border: 1px solid var(--lab-line);
-  border-radius: 999px;
-  font-size: 11.5px; font-weight: 600;
-  color: var(--lab-fg-dim);
-}
-
 /* 설명은 두 줄로 편다. 카드에 손이 오면 짝이 되는 노드가 그림에서 켜진다. */
 .lab-arch-steps {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
@@ -2377,18 +2374,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--lab-fg);
 }
-/* 소속 덩어리. 그림을 안 봐도 어디 얘기인지 붙는다. */
-.lab-arch-step b .chip {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--bg-base);
-  border: 1px solid var(--lab-line);
-  font-size: 11px; font-weight: 600; letter-spacing: 0;
-  color: var(--lab-fg-dim);
-}
-.lab-arch-step.on b .chip { border-color: var(--lab-mint); color: var(--lab-mint); }
-
-.lab-arch-panel .mermaid-figure { margin: 0 auto; padding: 0; justify-content: center; }
+/* margin-left/right: auto 를 주면 세로 flex 안에서 stretch 가 꺼진다. 그러면 판이
+   아무리 넓어도 그림은 제 최소 폭(300px)에 주저앉는다 — 구조도가 우표만 하던 이유. */
+.lab-arch-panel .mermaid-figure { margin: 0; padding: 0; width: 100%; justify-content: center; }
 .lab-arch-panel .mermaid-figure > svg {
   display: block;
   /* 판 폭에 맞춰 줄이기만 한다. 늘리지 않는 건 판(.mermaid-figure) 쪽 max-width 가
@@ -2398,60 +2386,61 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   height: auto;
 }
 
-.lab-arch-panel svg g.node rect,
-.lab-arch-panel svg g.node polygon,
-.lab-arch-panel svg g.node circle {
+.lab-arch-skin svg g.node rect,
+.lab-arch-skin svg g.node polygon,
+.lab-arch-skin svg g.node circle {
   transition: stroke 0.25s, filter 0.25s;
 }
 /* 실험실 다이어그램은 테마색으로 통일한다. mermaid 기본 팔레트(파랑)를
    그대로 쓰면 페이지의 민트 계열과 따로 논다. 원통(DB) 은 path 로 그려지므로
    함께 잡아야 혼자 파랗게 남지 않는다. 블로그 글의 다이어그램은 건드리지
    않도록 .lab-arch-panel 안에서만 덮는다. */
-.lab-arch-panel svg g.node rect,
-.lab-arch-panel svg g.node polygon,
-.lab-arch-panel svg g.node circle,
-.lab-arch-panel svg g.node ellipse,
-.lab-arch-panel svg g.node path {
+.lab-arch-skin svg g.node rect,
+.lab-arch-skin svg g.node polygon,
+.lab-arch-skin svg g.node circle,
+.lab-arch-skin svg g.node ellipse,
+.lab-arch-skin svg g.node path {
   fill: var(--lab-panel) !important;
   stroke: var(--lab-diag-node) !important;
 }
 /* 계층 상자(subgraph) — 경계를 긋는 게 본체라 점선 테두리를 살린다. */
-.lab-arch-panel svg g.cluster rect {
+.lab-arch-skin svg g.cluster rect {
   fill: var(--lab-panel) !important;
   stroke: var(--lab-diag-cluster) !important;
   stroke-width: 1.5px !important;
 }
-.lab-arch-panel svg g.cluster .cluster-label, .lab-arch-panel svg g.cluster text {
+.lab-arch-skin svg g.cluster .cluster-label, .lab-arch-skin svg g.cluster text {
   fill: var(--lab-fg-dim) !important; color: var(--lab-fg-dim) !important;
 }
 /* 화살표 라벨 — 무엇이 흐르는지 적는 자리라 선보다 한 단계 여리게 둔다. */
-.lab-arch-panel svg .edgeLabel foreignObject div {
+.lab-arch-skin svg .edgeLabel foreignObject div {
   /* 패널과 똑같이 두 겹으로 칠해야 선 위에 얹힌 라벨이 판 색과 정확히 맞는다. */
   background-color: var(--bg-base) !important;
   background-image: linear-gradient(var(--lab-panel), var(--lab-panel));
   color: var(--lab-fg-dim) !important;
 }
-.lab-arch-panel svg .edgeLabel rect { fill: transparent !important; }
+.lab-arch-skin svg .edgeLabel rect { fill: transparent !important; }
 /* 짝이 된 노드·상자를 켠다. 스크롤이 아니라 포인터가 움직인다. */
-.lab-arch-panel svg g.node.lab-node-on rect,
-.lab-arch-panel svg g.node.lab-node-on polygon,
-.lab-arch-panel svg g.node.lab-node-on circle,
-.lab-arch-panel svg g.node.lab-node-on ellipse,
-.lab-arch-panel svg g.node.lab-node-on path {
+.lab-arch-skin svg g.node.lab-node-on rect,
+.lab-arch-skin svg g.node.lab-node-on polygon,
+.lab-arch-skin svg g.node.lab-node-on circle,
+.lab-arch-skin svg g.node.lab-node-on ellipse,
+.lab-arch-skin svg g.node.lab-node-on path {
   fill: var(--lab-mint-bg) !important;
   stroke: var(--lab-mint) !important;
   stroke-width: 2.5px !important;
   filter: drop-shadow(0 0 8px var(--lab-mint-bg));
 }
-.lab-arch-panel svg g.cluster.lab-cluster-on rect {
+.lab-arch-skin svg g.cluster.lab-cluster-on rect {
   fill: var(--lab-mint-bg) !important;
   stroke: var(--lab-mint) !important;
 }
 /* 무엇이 어디로 가는지가 이 그림의 본체다. 선을 노드 경계보다 진하게 둔다. */
-.lab-arch-panel svg .flowchart-link { stroke: var(--lab-diag-edge) !important; stroke-width: 1.7px !important; }
-.lab-arch-panel svg marker path { fill: var(--lab-diag-edge) !important; stroke: var(--lab-diag-edge) !important; }
+.lab-arch-skin svg .flowchart-link { stroke: var(--lab-diag-edge) !important; stroke-width: 1.7px !important; }
+.lab-arch-skin svg marker path { fill: var(--lab-diag-edge) !important; stroke: var(--lab-diag-edge) !important; }
 
-/* 구조도 확대 — 화면을 통째로 내주고 원래 크기로 그린다. 넘치면 스크롤한다. */
+/* 구조도 확대 — 화면을 통째로 내주고 가능한 한 크게 그린다.
+   노드 색·선 굵기 같은 살결은 `.lab-arch-skin` 이 판과 확대 창 양쪽에 똑같이 입힌다. */
 .lab-arch-modal {
   position: fixed; inset: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;
@@ -2460,6 +2449,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   backdrop-filter: blur(6px);
 }
 .lab-arch-modal-inner {
+  width: min(1500px, 100%);
   max-width: 100%; max-height: 100%;
   overflow: auto;
   padding: 24px;
@@ -2468,9 +2458,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   background: var(--bg-base);
 }
 .lab-arch-modal-inner .mermaid-figure { margin: 0; padding: 0; }
-/* 여기서는 줄이지 않는다. 축소가 곧 안 읽히는 원인이라 스크롤로 받는다. */
+/* 판을 내준 만큼 그림도 늘린다. width: auto 로 두면 flex 안에서 0 으로 계산돼
+   확대 창이 빈 상자로 뜬다 — "크게 보기가 안 된다"의 정체였다. */
+.lab-arch-modal-inner .mermaid-figure { width: 100%; }
 .lab-arch-modal-inner .mermaid-figure > svg {
-  width: auto !important; max-width: none !important; height: auto; max-height: none;
+  display: block;
+  width: 100% !important; max-width: 100% !important;
+  /* 폭을 다 쓰되 세로로 화면을 넘지 않게 잡아 둔다. viewBox 가 있어 상자만 정해 주면
+     그림이 그 안에 맞춰 들어간다 — 스크롤 없이 한눈에 보는 게 이 창의 목적이다. */
+  height: auto; max-height: calc(100vh - 150px);
 }
 .lab-arch-close {
   position: absolute; top: 16px; right: 20px;
