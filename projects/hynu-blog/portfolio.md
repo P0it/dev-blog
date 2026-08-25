@@ -6,7 +6,7 @@ year: "2026"
 logo_bg: "#0E1116"
 logo_file: ./logo.svg
 stack: [Next.js, React, TypeScript, Tailwind CSS, Supabase, PostgreSQL, Vercel, Claude Code, GitHub Actions]
-url: https://hyun-blog.vercel.app
+url: https://hyun-blog-ten.vercel.app
 host: vercel
 platform: web
 status: 운영중
@@ -91,13 +91,6 @@ capture: false
 **링크** https://github.com/yt-dlp/yt-dlp
 **주의** 같은 영상을 구간별로 여러 번 받으면 속도 제한에 걸린다. 저해상도로 통째 한 번만 받고 프레임은 로컬에서 뽑는다
 
-### Giscus
-
-**용도** 글 아래 댓글을 GitHub Discussions에 얹어 둔다
-**방식** 임베드
-**링크** https://giscus.app
-**주의** 댓글 데이터가 우리 DB가 아니라 저장소에 남는다. 댓글을 쓰려면 읽는 사람에게 GitHub 계정이 필요하다
-
 ### Vercel Analytics
 
 **용도** 어디서 들어와 어떤 기기로 보는지, 화면이 얼마나 빨리 뜨는지 본다
@@ -120,7 +113,7 @@ capture: false
 **소개** 제가 보고 읽은 걸 요약해 쌓아 두는 개인 기록 블로그예요. 링크를 하나 던지면 AI가 규약대로 초안을 써 놓고, 저는 그걸 다듬어 발행합니다
 **계기** 처음엔 그냥 기록용 블로그가 갖고 싶었어요. 그런데 기존 블로그 플랫폼은 커뮤니티 기능이 대부분이라 저한테는 필요가 없더라고요. 어차피 안 쓸 기능에 화면을 맞추느니, 원하는 걸 원하는 대로 붙일 수 있는 사이트를 직접 세우는 게 낫겠다 싶었습니다
 **사용자** 저 혼자 씁니다. 읽는 쪽은 검색으로 들어오는 사람들이고, 쓰는 쪽 화면은 전부 제 것이에요
-**넣지 않은 것** 회원가입도 좋아요도 없어요. 댓글만 Giscus로 얹어 뒀습니다
+**넣지 않은 것** 회원가입도 좋아요도 댓글도 없어요. 읽고 가는 자리라 그쪽은 아직 안 켰습니다
 **배운 것** 규약을 문서로 못 박아 두면 AI가 쓴 글의 결이 편마다 흔들려요. POSTING.md가 코드보다 자주 고쳐집니다
 **지금** 네, 여기 있는 글 대부분이 이 파이프라인에서 나왔습니다
 
