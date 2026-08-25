@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { permanentRedirect } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
@@ -7,6 +8,7 @@ import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllTags, getPostsByTag } from "@/lib/queries";
 import { SITE } from "@/lib/site";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { tagKey } from "@/lib/tags";
 import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
@@ -40,6 +42,15 @@ export default async function TagPage({
 }) {
   const { tag } = await params;
   const decoded = decodeURIComponent(tag);
+
+  // 표기를 통합하기 전 주소(/tags/AI 등)로 들어오면 정규 표기로 영구 이동시킨다.
+  // 안 그러면 옛 주소가 빈 태그 페이지로 남아 중복·빈 페이지가 색인된다.
+  const all = await getAllTags();
+  const canonical = all.find((t) => tagKey(t.tag) === tagKey(decoded))?.tag;
+  if (canonical && canonical !== decoded) {
+    permanentRedirect(`/tags/${encodeURIComponent(canonical)}`);
+  }
+
   const posts = await getPostsByTag(decoded);
 
   return (

@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { canonicalizeTags } from "./lib/tags.mjs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
@@ -145,7 +146,12 @@ async function applyResult(slug, parsed) {
   if (typeof parsed.title === "string" && parsed.title.trim()) patch.title = parsed.title.trim();
   if (typeof parsed.excerpt === "string") patch.excerpt = parsed.excerpt;
   if (typeof parsed.body_md === "string") patch.body_md = parsed.body_md;
-  if (Array.isArray(parsed.tags)) patch.tags = parsed.tags.map(String);
+  if (Array.isArray(parsed.tags)) {
+    // 이미 쓰이는 표기가 있으면 거기에 맞춘다. AI 가 "AI"/"ai" 를 번갈아 내도 하나로 모인다.
+    const { data: rows } = await sb.from("posts").select("tags");
+    const existing = (rows ?? []).flatMap((r) => r.tags ?? []);
+    patch.tags = canonicalizeTags(parsed.tags.map(String), existing);
+  }
   if (typeof parsed.reading_min === "string" && parsed.reading_min.trim())
     patch.reading_min = parsed.reading_min.trim();
   if (Object.keys(patch).length === 0) throw new Error("결과에 적용할 필드가 없음");

@@ -31,6 +31,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { canonicalizeTags } from "./lib/tags.mjs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
@@ -122,6 +123,12 @@ function unquote(s) {
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))
     return t.slice(1, -1);
   return t;
+}
+
+// 이미 쓰이고 있는 태그 표기 전부. "AI"/"ai" 처럼 갈라지는 걸 막는 기준이 된다.
+async function existingTags(sb) {
+  const { data } = await sb.from("posts").select("tags");
+  return (data ?? []).flatMap((r) => r.tags ?? []);
 }
 
 function parseTags(raw) {
@@ -228,7 +235,7 @@ async function push(file, force) {
     title,
     excerpt: deriveExcerpt(body) || null,
     body_md: body,
-    tags: parseTags(fm.tags),
+    tags: canonicalizeTags(parseTags(fm.tags), await existingTags(sb)),
     category_slug: categorySlug,
     cover_image: unquote(fm.cover_image) || null,
     thumb_kind: unquote(fm.thumb_kind) || thumbKindFromSlug(slug),

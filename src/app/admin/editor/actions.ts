@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { canonicalizeTags } from "@/lib/tags";
 import { isAdmin } from "@/lib/auth";
 import { deriveExcerpt } from "@/lib/markdown";
 import { thumbKindFromSlug } from "@/lib/thumb";
@@ -63,6 +64,15 @@ function resolveSlug(input: EditorInput, fallback: "draft" | "post"): string {
   return (slugify(input.title) || `${fallback}-${Date.now()}`).trim();
 }
 
+// 태그는 자유 입력이라 "AI"/"ai" 같은 표기 흔들림이 생긴다. 이미 쓰이고 있는
+// 표기가 있으면 거기에 맞춘다 — 태그 페이지가 갈라져 중복 색인되는 걸 막는다.
+async function resolveTags(tags: string[]): Promise<string[]> {
+  const sb = supabaseServer();
+  const { data } = await sb.from("posts").select("tags");
+  const existing = (data ?? []).flatMap((r) => (r.tags as string[]) ?? []);
+  return canonicalizeTags(tags, existing);
+}
+
 // 카드/검색/OG/RSS가 의존하는 excerpt는 본문 첫 `>` 블록에서 파생.
 // 본문에 `>` 블록이 없으면 기존 DB값을 보존(시드 글 안전).
 async function resolveExcerpt(input: EditorInput): Promise<string | null> {
@@ -95,7 +105,7 @@ export async function saveDraft(input: EditorInput): Promise<{ slug: string }> {
     excerpt,
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
-    tags: input.tags,
+    tags: await resolveTags(input.tags),
     cover_image: input.coverImage || null,
     cover_brightness: input.coverImage ? input.coverBrightness : null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
@@ -144,7 +154,7 @@ export async function publishPost(input: EditorInput): Promise<{ slug: string }>
     excerpt,
     body_md: input.bodyMd || null,
     category_slug: input.categorySlug || null,
-    tags: input.tags,
+    tags: await resolveTags(input.tags),
     cover_image: input.coverImage || null,
     cover_brightness: input.coverImage ? input.coverBrightness : null,
     thumb_kind: input.thumbKind ?? thumbKindFromSlug(slug),
