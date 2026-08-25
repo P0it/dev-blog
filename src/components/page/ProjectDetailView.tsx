@@ -16,7 +16,7 @@ import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
 import { buildProjectSections, sectionAnchor, type Section } from "@/lib/project-sections";
-import type { Project } from "@/lib/types";
+import type { Project, ProjectPlatform } from "@/lib/types";
 import {
   BookOpen,
   ListChecks,
@@ -50,7 +50,7 @@ const SECTION_ICON: Record<Section["kind"], typeof BookOpen> = {
   raw: FileText,
 };
 
-function renderSection(s: Section) {
+function renderSection(s: Section, platform: ProjectPlatform) {
   switch (s.kind) {
     case "intro":
       return <Intro md={s.md} />;
@@ -69,7 +69,7 @@ function renderSection(s: Section) {
     case "demo":
       return <Demos clips={s.clips} />;
     case "screens":
-      return <Screens shots={s.shots} />;
+      return <Screens shots={s.shots} platform={platform} />;
     case "architecture":
       return <Architecture diagram={s.diagram} steps={s.steps} />;
     case "trials":
@@ -117,7 +117,7 @@ export function ProjectDetailView({ project }: { project: Project }) {
                     <hr />
                     <span className="lab-label">{String(i + 1).padStart(2, "0")}</span>
                   </div>
-                  {renderSection(s)}
+                  {renderSection(s, project.platform)}
                 </section>
               ))}
               {sections.length === 0 && (

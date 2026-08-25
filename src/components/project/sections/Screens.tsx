@@ -3,48 +3,66 @@
 import { useCallback, useEffect, useState } from "react";
 import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
 import { LabModal } from "../LabModal";
+import type { ProjectPlatform } from "@/lib/types";
 
 export type Shot = { title: string; src: string; caption: string };
 
 const VIDEO = /\.(mp4|webm|mov)(\?|$)/i;
 
-// 판은 실기기 비율(390×844)로 서 있다. 들어오는 그림은 셋 중 하나다.
-//  - 가로로 넓은 화면(데스크탑·웹): 폰 판에 넣으면 좌우가 잘려 안 읽힌다 → 두 칸을 쓰고 제 비율로 선다
+// 판은 프로젝트가 무엇으로 찍혔느냐로 갈린다 — 폰 실기기(390×844)냐 브라우저 창(16:10)이냐.
+// 그림 비율만 보고 고르면 데스크탑 전체 페이지 캡처(세로로 긴)가 "폰의 긴 캡처"와
+// 겹쳐서 폰 판에 우겨넣어진다. 그래서 판은 원고의 platform 이 정한다.
+//
+// 폰 판에 들어오는 그림은 셋 중 하나다.
+//  - 가로로 넓은 화면: 폰 판에 넣으면 좌우가 잘려 안 읽힌다 → 두 칸을 쓰고 제 비율로 선다
 //  - 폰 한 화면: 판 비율 그대로 들어간다
 //  - 스크롤까지 담은 긴 캡처: 위만 보이고 나머지가 잘린다 → 판 안에서 천천히 훑어 내린다
+//
+// 브라우저 판은 늘 두 칸이라 넓다. 여기서는 가로 판정이 필요 없고, 전체 페이지를
+// 담은 긴 캡처만 훑어 내리면 된다.
 const PHONE_AR = 390 / 844;
+const BROWSER_AR = 16 / 10;
 const LANDSCAPE = 1.1;
 // 판보다 15% 넘게 길면 "한 화면이 아니라 스크롤"로 본다. 살짝 긴 건 그냥 잘라도 티가 안 난다.
-const TALL = PHONE_AR * 0.85;
+const TALL_RATIO = 0.85;
 
 function ShotFigure({
   shot,
   index,
+  platform,
   onOpen,
 }: {
   shot: Shot;
   index: number;
+  platform: ProjectPlatform;
   onOpen: () => void;
 }) {
   const [ratio, setRatio] = useState<number | null>(null);
-  const wide = ratio !== null && ratio > LANDSCAPE;
-  const tall = ratio !== null && ratio < TALL;
+  const web = platform === "web";
+  const frameAr = web ? BROWSER_AR : PHONE_AR;
+  // 웹 판은 이미 두 칸을 쓰고 가로로 누워 있다. 여기서 또 가로 판정을 하면
+  // 살짝 세로로 긴 캡처가 "넓다"와 "길다"에 동시에 걸려 판이 오락가락한다.
+  const wide = !web && ratio !== null && ratio > LANDSCAPE;
+  const tall = ratio !== null && ratio < frameAr * TALL_RATIO;
 
-  // 훑어 내릴 거리는 그림 높이 기준 비율이다. 판이 덮는 만큼(ratio/PHONE_AR)을 빼면 남는 게 잘린 부분.
+  // 훑어 내릴 거리는 그림 높이 기준 비율이다. 판이 덮는 만큼(ratio/frameAr)을 빼면 남는 게 잘린 부분.
   // 시간은 길이에 비례시킨다 — 짧은 그림이 느릿하게 기어가거나 긴 그림이 휙 지나가지 않게.
-  const shift = tall && ratio ? (1 - ratio / PHONE_AR) * 100 : 0;
-  const duration = tall && ratio ? Math.min(26, Math.max(7, (PHONE_AR / ratio) * 4.5)) : 0;
+  const shift = tall && ratio ? (1 - ratio / frameAr) * 100 : 0;
+  const duration = tall && ratio ? Math.min(26, Math.max(7, (frameAr / ratio) * 4.5)) : 0;
 
-  const frameStyle = wide
-    ? { aspectRatio: String(ratio) }
-    : tall
-      ? ({
+  const frameStyle = {
+    aspectRatio: wide && ratio ? String(ratio) : String(frameAr),
+    ...(tall
+      ? {
           ["--shot-shift"]: `-${shift.toFixed(2)}%`,
           ["--shot-dur"]: `${duration.toFixed(1)}s`,
-        } as React.CSSProperties)
-      : undefined;
+        }
+      : {}),
+  } as React.CSSProperties;
 
-  const cls = ["lab-shot", wide && "is-wide", tall && "is-tall"].filter(Boolean).join(" ");
+  const cls = ["lab-shot", web && "is-web", wide && "is-wide", tall && "is-tall"]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <figure className={cls}>
@@ -94,7 +112,13 @@ function ShotFigure({
 // 화면 갤러리 — 폰 모양 판을 깔아 "이렇게 생겼다"를 먼저 보여준다.
 // 판만 늘어놓으면 목업 전시가 되니, 이름표 아래에 그 화면이 무엇을 하는 자리인지
 // 한 줄을 붙인다. 자세한 이야기는 여전히 `## 개발 과정` 이 맡는다.
-export function Screens({ shots }: { shots: Shot[] }) {
+export function Screens({
+  shots,
+  platform = "mobile",
+}: {
+  shots: Shot[];
+  platform?: ProjectPlatform;
+}) {
   // null 이면 닫힘. 열려 있으면 몇 번째 화면을 보고 있는지다.
   const [at, setAt] = useState<number | null>(null);
   // 확대 창에 걸린 그림의 비율. 세로 캡처를 판 폭까지 늘리면 안 되므로 재 둔다.
@@ -124,7 +148,9 @@ export function Screens({ shots }: { shots: Shot[] }) {
   // 폰 캡처는 2·3배 밀도로 찍혀 있다(780×1688 = 390pt 화면의 두 배). 판 폭에 맞춰
   // 늘리면 글씨가 실제 기기의 세 배로 부풀어, 확대가 아니라 뭉개짐이 된다.
   // 세로로 긴 그림은 실기기 폭 언저리에 세우고 넘치는 길이는 스크롤로 받는다.
-  const portrait = ratio !== null && ratio < 0.9;
+  // 웹 캡처는 데스크탑 창을 찍은 것이라 세로로 길어도 폭을 다 써야 읽힌다.
+  // 실기기 폭으로 좁히는 건 폰 캡처에만 맞는 이야기다.
+  const portrait = platform !== "web" && ratio !== null && ratio < 0.9;
 
   return (
     <>
@@ -134,6 +160,7 @@ export function Screens({ shots }: { shots: Shot[] }) {
             key={i}
             shot={s}
             index={i}
+            platform={platform}
             onOpen={() => {
               setRatio(null);
               setAt(i);

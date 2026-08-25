@@ -65,6 +65,9 @@ create table if not exists projects (
   stack       text[] not null default '{}',
   url         text,                          -- 스킴 포함 절대 URL
   host        text,                          -- vercel | cloudflare | local | none
+  -- 화면을 올릴 판. 쓰인 기술이 아니라 캡처를 무엇으로 찍었는지가 기준이다 —
+  -- 웹으로 만들었어도 폰 화면으로 쓰는 물건이면 mobile.
+  platform    text not null default 'mobile', -- mobile | web
   hero_media  text,                          -- 스크롤 영상 URL
   hero_poster text,                          -- 대표 스크린샷 URL
   shots       text[] not null default '{}',

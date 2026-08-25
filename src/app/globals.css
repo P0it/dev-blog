@@ -1558,7 +1558,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-card-shot {
   position: relative;
   width: var(--lab-shot-w);
-  aspect-ratio: 390 / 844;
+  /* 판 비율은 폰(390/844)이냐 브라우저 창(16/10)이냐로 갈린다. 여기서 못박으면
+     웹 프로젝트가 폰 판에 갇히므로 렌더러가 --shot-ar 로 넣어 준다. */
+  aspect-ratio: var(--shot-ar, 0.462);
   overflow: hidden;
   border-radius: 14px;
   background: var(--lab-line);
@@ -1567,6 +1569,26 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lab-card:hover .lab-card-shot { box-shadow: var(--lab-card-shadow-hover); }
+/* 웹 프로젝트의 판은 가로로 눕는다. 폰 카드 한 칸(236px)에 넣으면 높이가 148px 밖에
+   안 돼 목록에서 무슨 화면인지 안 읽힌다 → 두 칸과 그 사이 간격까지 쓴다.
+   판 폭이 늘어난 만큼 모서리도 폰보다 덜 둥글려 브라우저 창처럼 보이게 한다. */
+.lab-card.is-web .lab-card-shot { border-radius: 12px; }
+/* 몇 칸을 쓸지는 두 가지가 정한다 — 옆에 선 폰 판과 키가 맞아야 하고, 데스크탑
+   화면이 알아볼 만큼은 커야 한다.
+     두 칸: 530×331 — 폰 판(536)보다 200px 낮아 한 줄이 어긋나고, 1440px 화면을
+            37%로 줄여 글씨가 점이 된다
+     세 칸: 812×507 — 폰 판과 키가 맞고 축소율도 56%로 올라간다
+   그래서 네 칸이 서는 폭(본문 1120px)에서는 세 칸을 쓴다. 그보다 좁으면 열 수가
+   줄어드니 두 칸으로 내리고, 열이 하나뿐인 폭에서는 한 칸 그대로 눕혀 둔다.
+   640px = 판 둘(248×2) + 사이 간격(34) 이 겨우 들어가는 지점. */
+@media (min-width: 640px) {
+  .lab-card.is-web { grid-column: span 2; }
+  .lab-card.is-web .lab-card-shot { width: calc(var(--lab-shot-w) * 2 + 34px); }
+}
+@media (min-width: 1120px) {
+  .lab-card.is-web { grid-column: span 3; }
+  .lab-card.is-web .lab-card-shot { width: calc(var(--lab-shot-w) * 3 + 68px); }
+}
 .lab-card-shot.empty { box-shadow: none; border: 1px solid var(--lab-line); }
 .lab-card-shot img {
   width: 100%; height: 100%;
@@ -1579,6 +1601,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-card-shot.is-tall img {
   height: auto;
   object-fit: fill;
+  /* 판은 가운데 정렬 flex 라, 판보다 키 큰 그림을 그냥 두면 위아래로 똑같이 잘린다.
+     훑어내림은 맨 위에서 출발해 아래로 내려가는 것이라, 시작점이 이미 잘려 있으면
+     그림의 머리(내비·제목)를 영영 못 보여준다. 위에 붙여 놓고 시작한다. */
+  align-self: flex-start;
   will-change: transform;
   animation: lab-shot-scroll var(--shot-dur, 12s) ease-in-out infinite alternate;
 }
@@ -2217,6 +2243,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    근사치로 두면 폰 캡처의 밑동(탭 바)이 잘려 무슨 화면인지 덜 읽힌다. */
 .lab-shot-frame {
   position: relative;
+  /* 렌더러가 판 비율을 인라인으로 넣는다(폰·브라우저·제 비율). 여기 값은 그림이
+     아직 안 실렸을 때의 폰 기본값이다. */
   aspect-ratio: 390 / 844;
   overflow: hidden;
   border-radius: 18px;
@@ -2237,6 +2265,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    두 칸을 쓰고 제 비율로 세운다. 판 비율은 렌더러가 실제 그림 비율로 넣어 준다. */
 .lab-shot.is-wide { grid-column: span 2; }
 .lab-shot.is-wide .lab-shot-frame { border-radius: 12px; }
+
+/* 웹 프로젝트의 판은 브라우저 창 비율(16:10)로 늘 두 칸을 쓴다. 폰 판 한 칸(158px)에
+   데스크탑 화면을 넣으면 글씨가 점으로 보인다. 모서리도 폰보다 덜 둥글린다. */
+.lab-shot.is-web { grid-column: span 2; }
+.lab-shot.is-web .lab-shot-frame { border-radius: 12px; }
 
 /* 스크롤까지 담긴 긴 캡처. 잘라 놓으면 맨 위 한 뼘만 보이니, 판 안에서 천천히 훑어 내린다.
    판이 창(window)이고 그림이 그 뒤를 지나가는 셈이다. */

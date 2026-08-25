@@ -8,6 +8,7 @@ logo_file: ./logo.svg
 stack: [Next.js, React, TypeScript, Tailwind CSS, Supabase, PostgreSQL, Vercel, Claude Code, GitHub Actions]
 url: https://hyun-blog.vercel.app
 host: vercel
+platform: web
 status: 운영중
 capture: false
 ---

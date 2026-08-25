@@ -64,6 +64,7 @@ type ProjectRow = {
   stack: string[];
   url: string | null;
   host: string | null;
+  platform: string | null;
   hero_media: string | null;
   hero_poster: string | null;
   shots: string[] | null;
@@ -72,6 +73,8 @@ type ProjectRow = {
 };
 
 const PROJECT_HOSTS = ["vercel", "cloudflare", "local", "none"] as const;
+// 판을 못 읽으면 폰으로 본다 — 지금까지 서 있던 모습이 그거라, 값이 비어도 아무것도 안 바뀐다.
+const PROJECT_PLATFORMS = ["mobile", "web"] as const;
 
 function rowToProject(r: ProjectRow): Project {
   const host = PROJECT_HOSTS.find((h) => h === r.host) ?? "none";
@@ -89,6 +92,7 @@ function rowToProject(r: ProjectRow): Project {
     stack: r.stack ?? [],
     url: r.url || null,
     host,
+    platform: PROJECT_PLATFORMS.find((p) => p === r.platform) ?? "mobile",
     heroMedia: r.hero_media || null,
     heroPoster: r.hero_poster || null,
     shots: r.shots ?? [],

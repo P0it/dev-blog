@@ -31,6 +31,9 @@ if (!url || !key) {
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
 const HOSTS = ["vercel", "cloudflare", "local", "none"];
+// 화면을 올릴 판. 캡처를 폰으로 찍었으면 mobile, 데스크탑 브라우저 창으로 찍었으면 web.
+// 쓰인 기술이 기준이 아니다 — 웹으로 만들었어도 폰 화면으로 쓰는 물건이면 mobile 이다.
+const PLATFORMS = ["mobile", "web"];
 const BUCKET = "project-media";
 
 // 올릴 수 있는 형식. 버킷 allowedMimeTypes 와 맞춰 둔다.
@@ -174,6 +177,7 @@ function toFrontmatter(row) {
     `stack: [${(row.stack ?? []).join(", ")}]`,
     `url: ${row.url ?? ""}`,
     `host: ${row.host ?? "none"}`,
+    `platform: ${row.platform ?? "mobile"}`,
     `status: ${row.status ?? ""}`,
     `capture: true`,
   ];
@@ -195,6 +199,9 @@ async function push(file) {
   }
   if (meta.host && !HOSTS.includes(meta.host)) {
     throw new Error(`host 는 ${HOSTS.join(" | ")} 중 하나여야 한다: ${meta.host}`);
+  }
+  if (meta.platform && !PLATFORMS.includes(meta.platform)) {
+    throw new Error(`platform 은 ${PLATFORMS.join(" | ")} 중 하나여야 한다: ${meta.platform}`);
   }
   if (meta.tagline.length > 40) {
     console.warn(`⚠ tagline 이 ${meta.tagline.length}자다. 카드에서 두 줄로 잘린다.`);
@@ -245,6 +252,7 @@ async function push(file) {
     stack: Array.isArray(meta.stack) ? meta.stack : [],
     url: meta.url || null,
     host: meta.host || "none",
+    platform: meta.platform || "mobile",
     body_md: bodyWithMedia,
     sort_order: sortOrder,
     // 신규는 draft 로 들어간다 — 어드민에서 확인하고 발행한다.

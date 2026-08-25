@@ -13,7 +13,7 @@ import {
   publishProject,
   type ProjectInput,
 } from "@/app/admin/projects/actions";
-import type { ProjectHost } from "@/lib/types";
+import type { ProjectHost, ProjectPlatform } from "@/lib/types";
 
 // 규약이 정한 섹션 뼈대. 새 프로젝트는 이걸 깔고 시작해야 제목을 손으로 안 외운다.
 const BODY_TEMPLATE = `## 제품 소개
@@ -111,6 +111,7 @@ export type ProjectEditorInitial = {
   status: string;
   url: string;
   host: ProjectHost;
+  platform: ProjectPlatform;
   stack: string[];
   bodyMd: string;
   visibility: "draft" | "published";
@@ -129,6 +130,7 @@ export function ProjectEditor({ initial }: { initial: ProjectEditorInitial }) {
   const [status, setStatus] = useState(initial.status);
   const [url, setUrl] = useState(initial.url);
   const [host, setHost] = useState<ProjectHost>(initial.host);
+  const [platform, setPlatform] = useState<ProjectPlatform>(initial.platform);
   const [stack, setStack] = useState<string[]>(initial.stack);
   const [stackDraft, setStackDraft] = useState("");
   const [bodyMd, setBodyMd] = useState(initial.bodyMd);
@@ -148,13 +150,14 @@ export function ProjectEditor({ initial }: { initial: ProjectEditorInitial }) {
       status,
       url,
       host,
+      platform,
       // 아직 확정 안 한 입력값도 저장 시 누락되지 않게 포함
       stack: stackDraft.trim() ? [...stack, stackDraft.trim()] : stack,
       bodyMd,
     }),
     [
       initial.originalSlug, slug, name, year, tagline, logoUrl,
-      logoBg, status, url, host, stack, stackDraft, bodyMd,
+      logoBg, status, url, host, platform, stack, stackDraft, bodyMd,
     ],
   );
 
@@ -422,6 +425,19 @@ export function ProjectEditor({ initial }: { initial: ProjectEditorInitial }) {
                 {HOSTS.map((h) => (
                   <option key={h} value={h}>{h}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              {/* 화면을 올릴 판. 쓰인 기술이 아니라 캡처를 무엇으로 찍었는지가 기준이다 —
+                  웹으로 만들었어도 폰 화면으로 쓰는 물건이면 폰이다. */}
+              <Label>화면 판</Label>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as ProjectPlatform)}
+                style={field}
+              >
+                <option value="mobile">폰 화면</option>
+                <option value="web">브라우저 창</option>
               </select>
             </div>
           </div>

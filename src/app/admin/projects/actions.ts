@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth";
-import type { ProjectHost } from "@/lib/types";
+import type { ProjectHost, ProjectPlatform } from "@/lib/types";
 
 async function guard() {
   if (!(await isAdmin())) throw new Error("unauthorized");
@@ -20,11 +20,14 @@ export type ProjectInput = {
   status: string;
   url: string;
   host: ProjectHost;
+  platform: ProjectPlatform;
   stack: string[];
   bodyMd: string;
 };
 
 const HOSTS: ProjectHost[] = ["vercel", "cloudflare", "local", "none"];
+// 화면을 올릴 판. 값이 이상하면 폰으로 떨어뜨린다 — 지금까지 서 있던 모습이 그거다.
+const PLATFORMS: ProjectPlatform[] = ["mobile", "web"];
 
 // 슬러그는 포스트와 같은 규칙 — 한글 슬러그는 정적 prerender 에서 404 로 고정된다.
 function normalizeSlug(raw: string): string {
@@ -54,6 +57,7 @@ function toRow(input: ProjectInput) {
     status: input.status.trim() || "실험중",
     url: url || null,
     host: HOSTS.includes(input.host) ? input.host : "none",
+    platform: PLATFORMS.includes(input.platform) ? input.platform : "mobile",
     stack: input.stack.map((t) => t.trim()).filter(Boolean),
     body_md: input.bodyMd,
   };

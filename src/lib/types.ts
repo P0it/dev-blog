@@ -42,6 +42,12 @@ export type SeriesContext = {
 
 export type ProjectHost = "vercel" | "cloudflare" | "local" | "none";
 
+// 화면을 올릴 판. 쓰인 기술이 아니라 **캡처를 무엇으로 찍었는지**가 기준이다 —
+// 웹으로 만들었어도 폰 화면으로 쓰는 물건이면 "mobile" 이다.
+// 판을 그림 비율로만 고르면 데스크탑 전체 페이지 캡처가 "폰의 긴 캡처"와 겹쳐
+// 폰 판에 우겨넣어진다. 그래서 원고가 직접 정한다.
+export type ProjectPlatform = "mobile" | "web";
+
 export type Project = {
   slug: string;
   name: string;
@@ -57,6 +63,7 @@ export type Project = {
   stack: string[];
   url: string | null;
   host: ProjectHost;
+  platform: ProjectPlatform;
   heroMedia: string | null;
   heroPoster: string | null;
   shots: string[];

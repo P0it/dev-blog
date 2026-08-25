@@ -11,8 +11,12 @@ export function ProjectCard({ p, index }: { p: Project; index: number }) {
   // `## 화면` 의 첫 장이 대표 화면이다. 없으면 배포 사이트 캡처, 그것도 없으면 로고 타일.
   const shot = firstScreenSrc(p.body) ?? p.heroPoster;
 
+  // 웹 프로젝트는 판이 가로로 눕는다. 폰 카드 한 칸에 넣으면 판이 손톱만 해져
+  // 글씨가 안 읽히므로 두 칸을 쓴다.
+  const web = p.platform === "web";
+
   return (
-    <article className="lab-card lab-reveal">
+    <article className={`lab-card lab-reveal${web ? " is-web" : ""}`}>
       <Link href={`/lab/${p.slug}`} className="lab-card-hit">
         <div className="lab-card-slab">
           {/* 계측기 어휘의 머리줄. 번호는 모노, 오른쪽 램프는 hover 에 켜진다. */}
@@ -24,11 +28,14 @@ export function ProjectCard({ p, index }: { p: Project; index: number }) {
           {shot ? (
             // 긴 캡처는 판 안에서 훑어 내린다. 비율은 그림을 받아 보고 정하므로
             // 판 안쪽만 클라이언트로 뗀다.
-            <CardShot src={shot} />
+            <CardShot src={shot} platform={p.platform} />
           ) : (
             // 대표 화면이 아직 없는 프로젝트. 판 전체를 로고색으로 칠하면 목록에서
             // 그 카드만 튀므로, 조용한 판 가운데에 로고 배지 하나만 놓는다.
-            <div className="lab-card-shot empty">
+            <div
+              className="lab-card-shot empty"
+              style={{ ["--shot-ar"]: web ? "1.6" : "0.462" } as React.CSSProperties}
+            >
               <span className="lab-card-empty" style={{ background: p.logoBg }}>
                 <ProjectMark p={p} variant="card" />
               </span>
