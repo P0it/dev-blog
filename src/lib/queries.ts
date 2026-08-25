@@ -162,7 +162,12 @@ export async function getFeaturedPosts(): Promise<Post[]> {
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
 
-export async function getRecentPosts(limit = 6): Promise<Post[]> {
+// offset 을 받는 이유: 홈에서 스크롤로 이어 받는다(/api/posts/recent).
+// hasMore 는 limit+1 을 긁어서 판단한다 — count 쿼리를 한 번 더 치지 않으려고.
+export async function getRecentPosts(
+  limit = 6,
+  offset = 0,
+): Promise<{ posts: Post[]; hasMore: boolean }> {
   const sb = supabaseServer();
   const labels = await categoryLabelMap();
   const { data, error } = await sb
@@ -171,9 +176,13 @@ export async function getRecentPosts(limit = 6): Promise<Post[]> {
     .eq("status", "published")
     .eq("is_featured", false)
     .order("published_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit);
   if (error) throw error;
-  return (data as PostRow[]).map((r) => rowToPost(r, labels));
+  const rows = data as PostRow[];
+  return {
+    posts: rows.slice(0, limit).map((r) => rowToPost(r, labels)),
+    hasMore: rows.length > limit,
+  };
 }
 
 export async function getAllPosts(): Promise<Post[]> {
