@@ -6,7 +6,7 @@ year: "2026"
 logo_bg: "#121212"
 logo_file: ./logo.png
 stack: [Expo, React Native, TypeScript, Supabase, PostgreSQL, TanStack Query, Vercel, Sentry]
-url: https://dodori.vercel.app
+url: https://dodori.vercel.app/demo
 host: vercel
 status: 운영중
 capture: false

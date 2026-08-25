@@ -15,7 +15,7 @@ import { Screens } from "@/components/project/sections/Screens";
 import { Architecture } from "@/components/project/sections/Architecture";
 import { Trials } from "@/components/project/sections/Trials";
 import { Remaining } from "@/components/project/sections/Remaining";
-import { buildProjectSections, sectionAnchor, type Section } from "@/lib/project-sections";
+import { buildProjectSections, projectCtaLabel, sectionAnchor, type Section } from "@/lib/project-sections";
 import type { Project } from "@/lib/types";
 import {
   BookOpen,
@@ -107,7 +107,10 @@ export function ProjectDetailView({ project }: { project: Project }) {
       <div className="lab-page" style={{ paddingBottom: 96 }}>
         <div className="container-wide">
           <div className="lab-detail">
-            <SectionRail items={rail} />
+            <SectionRail
+              items={rail}
+              cta={project.url ? { href: project.url, label: projectCtaLabel(project.url) } : null}
+            />
             <div style={{ minWidth: 0 }}>
               {sections.map((s, i) => (
                 <section key={sectionAnchor(i, s.title)} id={sectionAnchor(i, s.title)}>

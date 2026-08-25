@@ -1736,7 +1736,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-hero-inset { padding-left: var(--lab-rail-offset); }
 
 .lab-detail { display: grid; grid-template-columns: 184px 1fr; gap: 56px; }
-.lab-rail { position: sticky; top: 96px; align-self: start; padding-top: 76px; }
+.lab-rail-wrap { position: sticky; top: 96px; align-self: start; padding-top: 76px; }
+.lab-rail { display: block; }
 .lab-rail a {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 0;
@@ -1759,6 +1760,35 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lab-rail a:hover { color: var(--lab-fg); text-decoration: none; }
 .lab-rail a.on { color: var(--lab-mint); font-weight: 700; }
 .lab-rail a.on i { background: var(--lab-mint); box-shadow: 0 0 7px var(--lab-mint); }
+
+/* 본문 옆 바로가기. 표지 우상단 버튼은 스크롤과 함께 사라지므로, 읽는 동안 계속
+   따라오는 링크를 목차 아래에 세운다. 목록과는 실선 한 줄로 갈라 목차 항목으로
+   오해되지 않게 한다. */
+.lab-rail-cta {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin-top: 18px; padding-top: 18px;
+  border-top: 1px solid var(--lab-line);
+  font-size: 14px; font-weight: 700;
+  color: var(--lab-mint);
+  text-decoration: none;
+}
+.lab-rail-cta span {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--lab-mint);
+  border-radius: 999px;
+  background: var(--lab-mint-bg);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.lab-rail-cta:hover { text-decoration: none; }
+/* 민트를 꽉 채우면 글자색이 밝은 판/어두운 판에서 각각 뒤집혀야 해 토큰이 하나 더
+   필요해진다. 띄우고 배경만 진하게 하는 걸로 갈음한다. */
+.lab-rail-cta:hover span {
+  background: var(--lab-mint-bg);
+  transform: translateY(-1px);
+  box-shadow: var(--lab-card-shadow);
+}
 
 /* Lab — 기획
    라벨을 왼쪽에 세운 스펙 시트. 항목끼리 눈으로 비교되는 게 목적이다. */
@@ -2738,7 +2768,9 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-card::before,
   .lab-arch-step,
   .lab-trial,
-  .lab-hero-go { transition: none !important; }
+  .lab-hero-go,
+  .lab-rail-cta span { transition: none !important; }
+  .lab-rail-cta:hover span { transform: none; }
   .lab-card:hover { transform: none; }
 }
 
@@ -2754,7 +2786,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-detail { grid-template-columns: 1fr; gap: 0; }
   /* 레일이 사라지는 폭부터는 밀 이유가 없다. */
   :root { --lab-rail-offset: 0px; }
+  /* 레일(목차)만 접고 바로가기는 남긴다 — 표지 버튼 하나로는 눈에 안 든다.
+     본문 맨 위에서 가로로 꽉 찬 버튼으로 선다. */
+  .lab-rail-wrap { position: static; padding-top: 0; }
   .lab-rail { display: none; }
+  .lab-rail-cta { margin: 28px 0 4px; padding-top: 0; border-top: 0; }
+  .lab-rail-cta span { padding: 13px 18px; }
   .lab-hero-media { height: 320px; }
   .lab-hero-name { font-size: 34px; }
   .lab-hero-tagline { font-size: 16px; }
