@@ -12,11 +12,9 @@ export type IntegrationItem = {
   icon: string | null;
   /** `**용도**` — 이 서비스를 무엇에 쓰는지 한 줄 */
   purpose: string;
-  /** `**방식**` `**갱신**` — 카드 아래 작은 칩 */
-  chips: string[];
-  /** `**링크**` — 이름 옆 바깥 링크 */
+  /** `**링크**` — 카드에 세우는 바깥 링크 */
   link: string;
-  /** 나머지 라벨. 펼쳤을 때만 보인다 */
+  /** 용도·아이콘·링크를 뺀 나머지 라벨 전부. 원고 순서 그대로, 확대 창에서만 보인다 */
   details: { label: string; value: string }[];
 };
 
@@ -287,31 +285,30 @@ function parseFields(md: string): { label: string; value: string }[] {
   return out;
 }
 
-// 라벨을 자리별로 가른다. 접힌 카드에 나오는 건 용도 한 줄과 칩뿐이고,
-// 옛 원고가 들고 오는 제공처·적재·주의 같은 라벨은 전부 펼침으로 내려간다.
+// 라벨을 자리별로 가른다. 카드에 나오는 건 용도 한 줄과 링크뿐이고, 방식·갱신·적재·주의
+// 같은 나머지 라벨은 전부 확대 창으로 내려간다. 한때 방식·갱신을 칩으로 세웠지만,
+// 값이 죄다 한 문장 이상이라 칩 안에서 잘려 아무 정보도 주지 못했다.
 // 용도가 없으면 첫 라벨 값을 대신 세운다 — 카드 머리가 비면 무엇에 쓰는지 알 수 없다.
-const CHIP_LABELS = ["방식", "갱신"];
 
 function parseIntegration(
   name: string,
   fields: { label: string; value: string }[],
 ): IntegrationItem | null {
   if (!fields.length) return null;
-  const item: IntegrationItem = { name, icon: null, purpose: "", chips: [], link: "", details: [] };
+  const item: IntegrationItem = { name, icon: null, purpose: "", link: "", details: [] };
   const rest: { label: string; value: string }[] = [];
   for (const f of fields) {
     if (f.label === "용도" && !item.purpose) item.purpose = f.value;
     else if (f.label === "아이콘" && !item.icon) item.icon = f.value;
     else if (f.label === "링크" && !item.link && /^https?:\/\//.test(f.value)) item.link = f.value;
-    else if (CHIP_LABELS.includes(f.label)) item.chips.push(f.value);
     else rest.push(f);
   }
   if (!item.purpose) {
     const first = rest.shift() ?? null;
-    item.purpose = first?.value ?? item.chips.shift() ?? "";
+    item.purpose = first?.value ?? "";
   }
   item.details = rest;
-  return item.purpose || item.chips.length || item.details.length ? item : null;
+  return item.purpose || item.details.length ? item : null;
 }
 
 // `**증상** …` / `증상: …` 두 표기를 모두 받는다. 라벨이 하나도 없으면

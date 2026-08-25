@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { LabModal } from "../LabModal";
 import { Mermaid } from "@/components/post/Mermaid";
 
 export type Step = { label: string; md: string };
@@ -141,18 +141,6 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
     setTip({ i, x: box.left + box.width / 2 - host.left, y });
   };
 
-  useEffect(() => {
-    if (!zoom) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
-    window.addEventListener("keydown", esc);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", esc);
-      document.body.style.overflow = prev;
-    };
-  }, [zoom]);
-
   return (
     <div className="lab-arch">
       {diagram && (
@@ -221,24 +209,9 @@ export function Architecture({ diagram, steps }: { diagram: string | null; steps
         </div>
       )}
 
-      {zoom &&
-        // 화면 전체를 덮는 판은 body 로 빼서 그린다. 섹션 안에 두면 조상 요소의
-        // transform 하나에 position: fixed 가 그 요소 안으로 갇힌다.
-        createPortal(
-          <div className="lab-arch-modal" onClick={() => setZoom(false)} role="presentation">
-            <button type="button" className="lab-arch-close" onClick={() => setZoom(false)}>
-              닫기
-            </button>
-            <div
-              className="lab-arch-modal-inner lab-arch-skin"
-              onClick={(e) => e.stopPropagation()}
-              role="presentation"
-            >
-              <Mermaid code={diagram ?? ""} fontSize={18} fill />
-            </div>
-          </div>,
-          document.body,
-        )}
+      <LabModal open={zoom} onClose={() => setZoom(false)} label="구조도 크게 보기" className="lab-arch-skin">
+        <Mermaid code={diagram ?? ""} fontSize={18} fill />
+      </LabModal>
     </div>
   );
 }

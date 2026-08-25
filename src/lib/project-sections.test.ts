@@ -178,7 +178,7 @@ const INTEG = `## 데이터와 API
 **방식** 발송 시점에만 호출
 `;
 
-test("데이터와 API 는 용도·칩·링크·상세로 갈린다", () => {
+test("데이터와 API 는 용도·링크와 나머지 상세로 갈린다", () => {
   const s = parseProjectBody(INTEG)[0];
   assert.equal(s.kind, "integrations");
   if (s.kind !== "integrations") return;
@@ -186,10 +186,14 @@ test("데이터와 API 는 용도·칩·링크·상세로 갈린다", () => {
   const it = s.items[0];
   assert.equal(it.name, "기상청 단기예보");
   assert.equal(it.purpose, "동네 예보를 받아 매장 상세에 오늘 날씨를 붙인다");
-  assert.deepEqual(it.chips, ["REST · 한 시간 주기", "자동"]);
   assert.equal(it.link, "https://www.data.go.kr/data/15084084/openapi.do");
-  assert.deepEqual(it.details, [{ label: "주의", value: "하루 10,000 건 호출 제한" }]);
-  assert.equal(s.items[1].details.length, 0);
+  // 방식·갱신도 상세로 내려간다. 값이 한 문장 이상이라 칩에 넣으면 잘려 못 읽힌다.
+  assert.deepEqual(it.details, [
+    { label: "방식", value: "REST · 한 시간 주기" },
+    { label: "갱신", value: "자동" },
+    { label: "주의", value: "하루 10,000 건 호출 제한" },
+  ]);
+  assert.deepEqual(s.items[1].details, [{ label: "방식", value: "발송 시점에만 호출" }]);
 });
 
 const OLD_INTEG = `## 데이터와 API
@@ -205,7 +209,7 @@ test("용도가 없는 옛 원고는 첫 라벨을 용도 자리에 세운다", 
   assert.equal(secs[0].kind, "integrations");
   if (secs[0].kind !== "integrations") return;
   assert.equal(secs[0].items[0].purpose, "공공데이터포털");
-  assert.deepEqual(secs[0].items[0].chips, ["REST"]);
+  assert.deepEqual(secs[0].items[0].details, [{ label: "방식", value: "REST" }]);
 });
 
 const HINT_INTEG = `## 데이터와 API

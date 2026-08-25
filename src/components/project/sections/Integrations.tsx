@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ExternalLink, Maximize2 } from "lucide-react";
 import { resolveBrand } from "@/lib/tech-icons";
+import { LabModal } from "../LabModal";
 import type { IntegrationItem } from "@/lib/project-sections";
 
 export type Integration = IntegrationItem;
@@ -13,72 +14,110 @@ function linkLabel(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 }
 
-// 접힌 상태로는 로고·이름·용도 한 줄·링크·칩만 보인다.
-// 무엇에 쓰는 물건인지가 먼저고, 적재·주의 같은 세부는 눌러야 나온다.
+function Brand({ item, size }: { item: Integration; size: "sm" | "lg" }) {
+  const brand = resolveBrand(item.name, item.icon);
+  return (
+    <span className={`lab-integ-logo${size === "lg" ? " lg" : ""}`} aria-hidden="true">
+      {brand.icon ? (
+        <svg viewBox="0 0 24 24">
+          <path d={brand.icon.path} />
+        </svg>
+      ) : (
+        <i>{brand.letter}</i>
+      )}
+    </span>
+  );
+}
+
 function Card({ item }: { item: Integration }) {
   const [open, setOpen] = useState(false);
   const brand = resolveBrand(item.name, item.icon);
-  const hasDetails = item.details.length > 0;
+  const rows = item.details;
+  const hasDetails = rows.length > 0;
+
+  const brandVars = {
+    ["--tc-light" as string]: brand.light,
+    ["--tc-dark" as string]: brand.dark,
+  };
 
   return (
-    <div
-      className={`lab-panel lab-integ-card${open ? " open" : ""}`}
-      style={{ ["--tc-light" as string]: brand.light, ["--tc-dark" as string]: brand.dark }}
-    >
-      <div className="lab-integ-head">
-        <span className="lab-integ-logo" aria-hidden="true">
-          {brand.icon ? (
-            <svg viewBox="0 0 24 24">
-              <path d={brand.icon.path} />
-            </svg>
-          ) : (
-            <i>{brand.letter}</i>
-          )}
-        </span>
-        <span className="lab-integ-name">{item.name}</span>
-      </div>
+    <>
+      <div className="lab-panel lab-integ-card" style={brandVars}>
+        {/* 카드 전체가 누를 자리다. 판을 덮는 버튼을 깔아 두면 카드 안의 링크가
+            버튼 안에 중첩되지 않는다 — 버튼 속 링크는 마크업상 허용되지 않는다. */}
+        {hasDetails && (
+          <button
+            type="button"
+            className="lab-integ-hit"
+            onClick={() => setOpen(true)}
+            aria-label={`${item.name} 자세히 보기`}
+          />
+        )}
 
-      {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
+        <div className="lab-integ-head">
+          <Brand item={item} size="sm" />
+          <span className="lab-integ-name">{item.name}</span>
+        </div>
 
-      {item.link && (
-        <a className="lab-integ-link" href={item.link} target="_blank" rel="noreferrer" title={item.link}>
-          <span>{linkLabel(item.link)}</span>
-          <ExternalLink size={13} />
-        </a>
-      )}
+        {item.purpose && <p className="lab-integ-purpose">{item.purpose}</p>}
 
-      {(item.chips.length > 0 || hasDetails) && (
         <div className="lab-integ-foot">
-          <div className="lab-integ-chips">
-            {item.chips.map((c, i) => (
-              <span key={i}>{c}</span>
-            ))}
-          </div>
-          {hasDetails && (
-            <button
-              type="button"
-              className="lab-integ-more"
-              aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
+          {item.link ? (
+            <a
+              className="lab-integ-link"
+              href={item.link}
+              target="_blank"
+              rel="noreferrer"
+              title={item.link}
             >
-              {open ? "접기" : "자세히"}
-              <ChevronDown size={15} className="chev" />
-            </button>
+              <span>{linkLabel(item.link)}</span>
+              <ExternalLink size={13} />
+            </a>
+          ) : (
+            <span />
+          )}
+          {hasDetails && (
+            <span className="lab-integ-more">
+              자세히
+              <Maximize2 size={12} />
+            </span>
           )}
         </div>
-      )}
+      </div>
 
-      {open && hasDetails && (
-        <dl className="lab-integ-rows">
-          {item.details.map((f, i) => (
-            <div key={i} className="lab-integ-row">
-              <dt>{f.label}</dt>
-              <dd>{f.value}</dd>
+      <LabModal open={open} onClose={() => setOpen(false)} label={item.name} className="lab-integ-modal">
+        <div style={brandVars}>
+          <div className="lab-integ-modal-head">
+            <Brand item={item} size="lg" />
+            <div>
+              <h3>{item.name}</h3>
+              {item.purpose && <p>{item.purpose}</p>}
             </div>
-          ))}
-        </dl>
-      )}
-    </div>
+          </div>
+
+          {item.link && (
+            <a
+              className="lab-integ-modal-link"
+              href={item.link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span>{linkLabel(item.link)}</span>
+              <ExternalLink size={14} />
+            </a>
+          )}
+
+          <dl className="lab-integ-rows">
+            {rows.map((f, i) => (
+              <div key={i} className="lab-integ-row">
+                <dt>{f.label}</dt>
+                <dd>{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </LabModal>
+    </>
   );
 }
 

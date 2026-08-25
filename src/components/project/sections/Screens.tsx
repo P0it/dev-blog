@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { LabModal } from "../LabModal";
 
 export type Shot = { title: string; src: string; caption: string };
 
@@ -15,7 +17,15 @@ const LANDSCAPE = 1.1;
 // 판보다 15% 넘게 길면 "한 화면이 아니라 스크롤"로 본다. 살짝 긴 건 그냥 잘라도 티가 안 난다.
 const TALL = PHONE_AR * 0.85;
 
-function ShotFigure({ shot, index }: { shot: Shot; index: number }) {
+function ShotFigure({
+  shot,
+  index,
+  onOpen,
+}: {
+  shot: Shot;
+  index: number;
+  onOpen: () => void;
+}) {
   const [ratio, setRatio] = useState<number | null>(null);
   const wide = ratio !== null && ratio > LANDSCAPE;
   const tall = ratio !== null && ratio < TALL;
@@ -39,6 +49,11 @@ function ShotFigure({ shot, index }: { shot: Shot; index: number }) {
   return (
     <figure className={cls}>
       <div className="lab-shot-frame" style={frameStyle}>
+        {/* 판 위에 눌러 여는 자리를 덮는다. 그리드의 판은 실제 화면보다 훨씬 작아
+            글씨가 안 읽힌다 — 원본을 크게 보는 길이 없으면 목업 전시로 끝난다. */}
+        <button type="button" className="lab-shot-open" onClick={onOpen} aria-label={`${shot.title || `화면 ${index + 1}`} 크게 보기`}>
+          <Maximize2 size={15} />
+        </button>
         {VIDEO.test(shot.src) ? (
           <video
             src={shot.src}
@@ -80,11 +95,76 @@ function ShotFigure({ shot, index }: { shot: Shot; index: number }) {
 // 판만 늘어놓으면 목업 전시가 되니, 이름표 아래에 그 화면이 무엇을 하는 자리인지
 // 한 줄을 붙인다. 자세한 이야기는 여전히 `## 개발 과정` 이 맡는다.
 export function Screens({ shots }: { shots: Shot[] }) {
+  // null 이면 닫힘. 열려 있으면 몇 번째 화면을 보고 있는지다.
+  const [at, setAt] = useState<number | null>(null);
+
+  const step = useCallback(
+    (d: number) => setAt((v) => (v === null ? v : (v + d + shots.length) % shots.length)),
+    [shots.length],
+  );
+
+  // 갤러리는 한 장만 크게 보려고 여는 게 아니다. 창을 닫았다 다시 여는 대신
+  // 좌우 키로 넘긴다. Escape 는 LabModal 이 맡는다.
+  useEffect(() => {
+    if (at === null) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [at, step]);
+
+  const cur = at === null ? null : shots[at];
+
   return (
-    <div className="lab-screens lab-stagger">
-      {shots.map((s, i) => (
-        <ShotFigure key={i} shot={s} index={i} />
-      ))}
-    </div>
+    <>
+      <div className="lab-screens lab-stagger">
+        {shots.map((s, i) => (
+          <ShotFigure key={i} shot={s} index={i} onOpen={() => setAt(i)} />
+        ))}
+      </div>
+
+      <LabModal
+        open={cur !== null}
+        onClose={() => setAt(null)}
+        label={cur?.title || "화면 크게 보기"}
+        className="lab-shot-modal"
+      >
+        {cur && (
+          <>
+            {/* 판 안에 우겨넣지 않는다. 원본 비율 그대로 두고, 긴 캡처는 스크롤로 훑는다. */}
+            <div className="lab-shot-modal-stage">
+              {VIDEO.test(cur.src) ? (
+                <video src={cur.src} controls autoPlay loop playsInline />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cur.src} alt={cur.title} />
+              )}
+            </div>
+
+            <div className="lab-shot-modal-bar">
+              {shots.length > 1 && (
+                <button type="button" onClick={() => step(-1)} aria-label="이전 화면">
+                  <ChevronLeft size={17} />
+                </button>
+              )}
+              <div className="lab-shot-modal-cap">
+                <b>
+                  <span className="num">{String((at ?? 0) + 1).padStart(2, "0")}</span>
+                  {cur.title}
+                </b>
+                {cur.caption && <p>{cur.caption}</p>}
+              </div>
+              {shots.length > 1 && (
+                <button type="button" onClick={() => step(1)} aria-label="다음 화면">
+                  <ChevronRight size={17} />
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </LabModal>
+    </>
   );
 }
