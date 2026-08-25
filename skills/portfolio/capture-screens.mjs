@@ -180,7 +180,10 @@ async function run() {
     try {
       await page.goto(url, { waitUntil: "networkidle", timeout: 45000 });
       await page.waitForTimeout(waitMs);
-      await page.screenshot({ path: join(outDir, file), fullPage });
+      // animations:"disabled" — 스크롤이 긴 화면을 fullPage 로 받으면 진행 중인
+      // 전환이 이음새에 얼룩으로 남는다(페이지 아래쪽 글자가 상단에 겹쳐 찍히는 식).
+      // 멈춰 세우고 찍으면 그 자국이 안 생긴다.
+      await page.screenshot({ path: join(outDir, file), fullPage, animations: "disabled", caret: "hide" });
       done.push({ file, name: nameFor(r, i), url });
       console.error(`  ✓ ${r.path} → ${file}`);
     } catch (e) {
