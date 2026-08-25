@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews, getSeriesContext } from "@/lib/queries";
 import { PostDetailView } from "@/components/page/PostDetailView";
 import { SITE } from "@/lib/site";
+import { blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
 
@@ -52,5 +54,17 @@ export default async function PostDetailPage({
     getPostViews(slug),
     post.seriesSlug ? getSeriesContext(post.seriesSlug) : Promise.resolve(null),
   ]);
-  return <PostDetailView post={post} locale="ko" related={related} views={views} series={series} />;
+  const crumbs = [
+    { name: SITE.name, path: "/" },
+    { name: "전체 글", path: "/posts" },
+    ...(post.categorySlug ? [{ name: post.category, path: `/posts/c/${post.categorySlug}` }] : []),
+    { name: post.title, path: `/posts/${post.slug}` },
+  ];
+
+  return (
+    <>
+      <JsonLd data={[blogPostingJsonLd(post), breadcrumbJsonLd(crumbs)]} />
+      <PostDetailView post={post} locale="ko" related={related} views={views} series={series} />
+    </>
+  );
 }

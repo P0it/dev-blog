@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getAllProjectSlugs, getProjectBySlug } from "@/lib/queries";
 import { ProjectDetailView } from "@/components/page/ProjectDetailView";
 import { SITE } from "@/lib/site";
+import { projectJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
 
@@ -42,5 +44,16 @@ export default async function ProjectDetailPage({
   const { slug } = await params;
   const project = await getProjectBySlug(slug);
   if (!project) notFound();
-  return <ProjectDetailView project={project} />;
+  const crumbs = [
+    { name: SITE.name, path: "/" },
+    { name: "실험실", path: "/lab" },
+    { name: project.name, path: `/lab/${project.slug}` },
+  ];
+
+  return (
+    <>
+      <JsonLd data={[projectJsonLd(project), breadcrumbJsonLd(crumbs)]} />
+      <ProjectDetailView project={project} />
+    </>
+  );
 }
