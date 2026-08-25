@@ -156,6 +156,23 @@ async function run() {
   });
   const page = await ctx.newPage();
 
+  // 개발 서버를 띄워 찍는 도구라, 프레임워크가 화면 구석에 붙이는 개발용 배지가
+  // 그대로 원고에 실린다(Next.js 의 왼쪽 아래 N, Vite·Nuxt 의 에러 오버레이 따위).
+  // 발행될 화면에는 없는 것이니 찍기 전에 감춘다. `addInitScript` 로 걸어 두면
+  // 페이지를 옮겨 다녀도 매번 다시 적용된다.
+  await page.addInitScript(() => {
+    const css = `nextjs-portal, #__next-build-watcher, [data-nextjs-toast],
+      vite-error-overlay, #nuxt-devtools-anchor, #__next-dev-overlay,
+      astro-dev-toolbar { display: none !important; }`;
+    const put = () => {
+      const el = document.createElement("style");
+      el.textContent = css;
+      document.head?.appendChild(el);
+    };
+    if (document.head) put();
+    else document.addEventListener("DOMContentLoaded", put);
+  });
+
   const done = [];
   for (const [i, r] of routes.entries()) {
     const url = r.path.startsWith("http") ? r.path : `${base}${r.path.startsWith("/") ? "" : "/"}${r.path}`;
