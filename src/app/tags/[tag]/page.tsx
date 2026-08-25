@@ -5,6 +5,9 @@ import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllTags, getPostsByTag } from "@/lib/queries";
+import { SITE } from "@/lib/site";
+import { breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
 
@@ -20,7 +23,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { tag } = await params;
   const decoded = decodeURIComponent(tag);
-  return { title: `#${decoded}`, description: `"${decoded}" 태그가 달린 글` };
+  const url = `${SITE.url}/tags/${encodeURIComponent(decoded)}`;
+  const description = `"${decoded}" 태그가 달린 글`;
+  return {
+    title: `#${decoded}`,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "website", url, title: `#${decoded}`, description },
+  };
 }
 
 export default async function TagPage({
@@ -34,6 +44,13 @@ export default async function TagPage({
 
   return (
     <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: SITE.name, path: "/" },
+          { name: "태그", path: "/tags" },
+          { name: `#${decoded}`, path: `/tags/${encodeURIComponent(decoded)}` },
+        ])}
+      />
       <PublicNav active="" locale="ko" switchPath={`/tags/${tag}`} />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>

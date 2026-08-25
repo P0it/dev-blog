@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
@@ -10,8 +11,33 @@ import {
   getCategoryGroups,
   getPostsByCategorySlug,
 } from "@/lib/queries";
+import { SITE } from "@/lib/site";
+import { breadcrumbJsonLd, collectionJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const segments = slug ?? [];
+  const cat = segments.length > 0 ? await getCategoryBySlug(segments[segments.length - 1]) : null;
+  if (!cat) return {};
+  // 같은 카테고리에 하위 경로로도 닿을 수 있으므로 canonical 을 실제 계층 경로 하나로 고정한다.
+  const path = cat.parent_slug
+    ? `/posts/c/${cat.parent_slug}/${cat.slug}`
+    : `/posts/c/${cat.slug}`;
+  const description = `"${cat.label}" 카테고리의 글 모음`;
+  return {
+    title: cat.label,
+    description,
+    alternates: { canonical: `${SITE.url}${path}` },
+    openGraph: { type: "website", url: `${SITE.url}${path}`, title: cat.label, description },
+  };
+}
 
 export default async function PostsByCategoryPage({
   params,
@@ -41,8 +67,23 @@ export default async function PostsByCategoryPage({
   }
   crumbs.push({ href: `/posts/c/${segments.join("/")}`, label: cat.label });
 
+  const canonicalPath = cat.parent_slug
+    ? `/posts/c/${cat.parent_slug}/${cat.slug}`
+    : `/posts/c/${cat.slug}`;
+
   return (
     <>
+      <JsonLd
+        data={[
+          collectionJsonLd({
+            path: canonicalPath,
+            name: cat.label,
+            description: `"${cat.label}" 카테고리의 글 모음`,
+            posts,
+          }),
+          breadcrumbJsonLd(crumbs.map((c) => ({ name: c.label, path: c.href }))),
+        ]}
+      />
       <PublicNav active="posts" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 8 }}>

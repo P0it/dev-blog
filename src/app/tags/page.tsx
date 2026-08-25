@@ -1,10 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { getAllTags } from "@/lib/queries";
+import { SITE } from "@/lib/site";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "전체 태그",
+  description: "글에 달린 태그 전체. 큰 글씨일수록 글이 많습니다.",
+  alternates: { canonical: `${SITE.url}/tags` },
+  openGraph: {
+    type: "website",
+    url: `${SITE.url}/tags`,
+    title: "전체 태그",
+  },
+};
 
 export default async function TagsPage() {
   const tags = await getAllTags();

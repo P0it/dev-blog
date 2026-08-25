@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
@@ -5,6 +6,12 @@ import { Chip } from "@/components/ui/Chip";
 import { searchPosts } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
+
+// 검색 결과는 쿼리마다 URL 이 갈라져 얇은 중복 페이지가 된다. robots.ts 와 함께 색인에서 뺀다.
+export const metadata: Metadata = {
+  title: "검색",
+  robots: { index: false, follow: true },
+};
 
 function highlight(text: string, q: string): React.ReactNode {
   if (!q) return text;

@@ -6,6 +6,9 @@ import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllSeries, getSeriesContext, getSeriesPosts } from "@/lib/queries";
+import { SITE } from "@/lib/site";
+import { breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
 
@@ -22,7 +25,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const ctx = await getSeriesContext(slug);
   if (!ctx) return {};
-  return { title: ctx.title, description: ctx.description ?? `${ctx.title} 연재` };
+  const url = `${SITE.url}/series/${ctx.slug}`;
+  const description = ctx.description ?? `${ctx.title} 연재`;
+  return {
+    title: ctx.title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "website", url, title: ctx.title, description },
+  };
 }
 
 export default async function SeriesPage({
@@ -37,6 +47,13 @@ export default async function SeriesPage({
 
   return (
     <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: SITE.name, path: "/" },
+          { name: "연재", path: "/series" },
+          { name: ctx.title, path: `/series/${ctx.slug}` },
+        ])}
+      />
       <PublicNav active="" locale="ko" switchPath={`/series/${slug}`} />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>

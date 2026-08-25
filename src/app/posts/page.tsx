@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
@@ -5,14 +6,32 @@ import { CategoryTree } from "@/components/category/CategoryTree";
 import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllPosts, getCategoryGroups } from "@/lib/queries";
+import { SITE } from "@/lib/site";
+import { collectionJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "전체 글",
+  description: `${SITE.name}에 올라온 모든 글. 카테고리별로 몰아보기.`,
+  alternates: { canonical: `${SITE.url}/posts` },
+  openGraph: { type: "website", url: `${SITE.url}/posts`, title: "전체 글" },
+};
 
 export default async function PostsPage() {
   const [posts, groups] = await Promise.all([getAllPosts(), getCategoryGroups()]);
 
   return (
     <>
+      <JsonLd
+        data={collectionJsonLd({
+          path: "/posts",
+          name: "전체 글",
+          description: `${SITE.name}에 올라온 모든 글`,
+          posts,
+        })}
+      />
       <PublicNav active="posts" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>Posts</div>

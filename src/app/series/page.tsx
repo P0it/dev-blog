@@ -1,10 +1,24 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { getAllSeries } from "@/lib/queries";
+import { SITE } from "@/lib/site";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "연재",
+  description: "여러 글을 순서대로 묶은 연재 모음.",
+  alternates: { canonical: `${SITE.url}/series` },
+  openGraph: {
+    type: "website",
+    url: `${SITE.url}/series`,
+    title: "연재",
+    description: "여러 글을 순서대로 묶은 연재 모음.",
+  },
+};
 
 export default async function SeriesIndexPage() {
   const series = await getAllSeries();
