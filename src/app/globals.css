@@ -1714,15 +1714,24 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 .lab-card-empty img { width: 62%; height: 62%; object-fit: contain; }
-/* 앱 아이콘(png 등)은 제 배경과 안전 여백을 이미 품고 있다. 여기서 또 줄여 넣으면
+/* 앱 아이콘(정사각 래스터)은 제 배경과 안전 여백을 이미 품고 있다. 여기서 또 줄여 넣으면
    정작 마크가 판의 3분의 1도 안 되게 앉는다. 판을 가득 채우고, 아이콘 규격의
    안전 여백만큼 다시 밀어 올려 마크가 SVG 로고와 비슷한 덩치로 서게
-   한다. 넘치는 가장자리는 아이콘 제 배경뿐이고 `logo_bg` 와 같은 색이라 안 보인다. */
+   한다. 넘치는 가장자리는 아이콘 제 배경뿐이고 `logo_bg` 와 같은 색이라 안 보인다.
+   정사각인지는 `ProjectMark` 가 그림을 받아 보고 판정한다 — 가로로 긴 워드마크를
+   이 규칙에 태우면 이름 가운데 두어 글자만 남고 양끝이 잘린다. */
 .lab-card-empty img.is-icon,
 .lab-card-logo img.is-icon {
   width: 100%; height: 100%;
   object-fit: cover;
   transform: scale(1.18);
+}
+/* 이름을 가로로 쓴 워드마크. 통째로 앉혀야 읽히므로 자르지 않는다. SVG 마크(64%)보다
+   넉넉히 잡는 건, 가로로 긴 그림은 같은 비율로 넣으면 높이가 손톱만 해지기 때문이다. */
+.lab-card-empty img.is-wordmark,
+.lab-card-logo img.is-wordmark {
+  width: 88%; height: 88%;
+  object-fit: contain;
 }
 .lab-card-empty .lab-card-mono {
   font-family: var(--font-display);
