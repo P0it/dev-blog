@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Maximize2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { LabModal } from "../LabModal";
 import type { ProjectPlatform } from "@/lib/types";
 
@@ -144,6 +144,39 @@ export function Screens({
     return () => window.removeEventListener("keydown", key);
   }, [at, step]);
 
+  // 화면이 여남은 장이면 그리드만으로 스크롤이 한참 길어져, 아래에 있는 개발 과정·
+  // 시행착오까지 내려가는 사람이 없다. 그래서 첫 줄만 깔아 두고 나머지는 접는다.
+  // 한 줄에 몇 칸이 서는지는 폭과 판 종류(웹은 줄을 통으로 쓴다)에 따라 달라지므로
+  // 숫자로 못 박지 않고, 깔린 뒤 첫 줄의 아랫변을 재서 거기까지만 보여준다.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [firstRow, setFirstRow] = useState<{ height: number; hidden: number } | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const kids = Array.from(el.children) as HTMLElement[];
+      if (kids.length < 2) return setFirstRow(null);
+      const top = kids[0].offsetTop;
+      const row = kids.filter((k) => k.offsetTop === top);
+      if (row.length >= kids.length) return setFirstRow(null);
+      const bottom = Math.max(...row.map((k) => k.offsetTop + k.offsetHeight));
+      setFirstRow({ height: bottom - top, hidden: kids.length - row.length });
+    };
+
+    measure();
+    // 그림이 실린 뒤에야 판 비율(넓다·길다)이 정해져 줄이 다시 짜인다.
+    // 컨테이너만 보면 접힌 동안엔 높이가 고정돼 그 변화를 못 받으니 판도 같이 본다.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const k of Array.from(el.children)) ro.observe(k);
+    return () => ro.disconnect();
+  }, [shots]);
+
+  const clamped = !open && firstRow !== null;
+
   const cur = at === null ? null : shots[at];
   // 폰 캡처는 2·3배 밀도로 찍혀 있다(780×1688 = 390pt 화면의 두 배). 판 폭에 맞춰
   // 늘리면 글씨가 실제 기기의 세 배로 부풀어, 확대가 아니라 뭉개짐이 된다.
@@ -154,7 +187,11 @@ export function Screens({
 
   return (
     <>
-      <div className="lab-screens lab-stagger">
+      <div
+        ref={gridRef}
+        className={`lab-screens lab-stagger${clamped ? " is-clamped" : ""}`}
+        style={clamped ? { maxHeight: firstRow!.height } : undefined}
+      >
         {shots.map((s, i) => (
           <ShotFigure
             key={i}
@@ -168,6 +205,18 @@ export function Screens({
           />
         ))}
       </div>
+
+      {firstRow !== null && (
+        <button
+          type="button"
+          className={`lab-screens-more${open ? " is-open" : ""}`}
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          {open ? "접기" : `화면 ${firstRow.hidden}장 더보기`}
+          <ChevronDown size={15} />
+        </button>
+      )}
 
       <LabModal
         open={cur !== null}

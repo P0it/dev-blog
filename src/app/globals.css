@@ -2345,6 +2345,39 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   gap: 30px 20px;
 }
 
+/* 접힌 갤러리 — 첫 줄만 보여준다.
+   화면이 열 몇 장이면 그리드만으로 스크롤이 길어져, 아래의 개발 과정·시행착오까지
+   내려가는 사람이 없다. 몇 칸을 남길지는 렌더러가 첫 줄 높이를 재서 인라인으로 넣는다.
+   여기서는 넘치는 부분을 잘라 두기만 한다. 아래를 살짝 흐리게 해서 "여기서 끝"이
+   아니라 "더 있다"로 읽히게 한다. */
+.lab-screens.is-clamped {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+}
+
+.lab-screens-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 16px auto 0;
+  padding: 9px 18px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lab-fg-dim);
+  font-size: 13.5px; font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.lab-screens-more:hover {
+  color: var(--lab-fg);
+  border-color: var(--lab-fg-dim);
+}
+.lab-screens-more svg { transition: transform 0.2s ease; }
+.lab-screens-more.is-open svg { transform: rotate(180deg); }
+
 .lab-shot { margin: 0; }
 /* 폰 모양 — 실기기 비율(390×844) 그대로 세우고 모서리를 둥글린다.
    근사치로 두면 폰 캡처의 밑동(탭 바)이 잘려 무슨 화면인지 덜 읽힌다. */
