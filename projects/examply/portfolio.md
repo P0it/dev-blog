@@ -3,7 +3,8 @@ slug: examply
 name: Examply
 tagline: PDF 문제집을 망각 곡선에 맞춰 다시 물어보는 앱
 year: "2025"
-logo_bg: "#0C87C4"
+logo_bg: "#0B0F14"
+logo_file: ./logo.png
 stack: [Next.js, TypeScript, Tailwind CSS, shadcn/ui, FastAPI, Python, SQLModel, SQLite, PyMuPDF, Tesseract, FSRS, Docker]
 url:
 host: local
