@@ -13,7 +13,7 @@
 //   --base <url>       기준 주소 (기본 http://localhost:3000)
 //   --out <dir>        저장 폴더 (기본 ./portfolio/screens)
 //   --anchor <dir>     원고가 놓일 폴더 (기본 ./portfolio). 경로 계산 기준이다
-//   --mobile           폰 뷰포트(390×844)로 찍는다. 기본은 1440×900
+//   --mobile           폰 뷰포트(390×844)로 찍는다. 기본은 1152×720
 //   --full             페이지 전체를 세로로 이어 찍는다. 기본은 첫 화면만
 //   --wait <ms>        각 화면에서 기다릴 시간 (기본 1200)
 //   --auth <file>      playwright storageState JSON. 로그인 뒤 화면을 찍을 때
@@ -96,7 +96,12 @@ if (!routes.length) {
   process.exit(1);
 }
 
-const VIEWPORT = mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 };
+// 데스크탑 폭을 1152 로 잡는 건 취향이 아니라 산수다. 이 캡처는 블로그 실험실의
+// 판 안에서 보이고, 글씨가 읽히느냐는 *찍은 폭 대비 판 폭*으로 정해진다.
+// 1440 으로 찍으면 목록 판(812px)에서 56% 로 줄어 16px 본문이 9px 이 된다.
+// 1152 면 70% 다. 흔한 반응형 경계(768·900·1024·1199·1280)를 모두 비켜 가는 폭이라
+// 데스크탑 레이아웃은 그대로 나온다. 더 좁히면 사이트가 태블릿 배치로 접힌다.
+const VIEWPORT = mobile ? { width: 390, height: 844 } : { width: 1152, height: 720 };
 
 // 파일명은 ASCII 로 만든다. 한글 이름은 원고에만 쓰고 파일은 경로에서 딴다.
 function fileFor(path, i) {

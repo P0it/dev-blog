@@ -17,7 +17,10 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "project-media";
-const VIEWPORT = { width: 1440, height: 900 };
+// 1440 이 아니라 1152 다. 이 그림은 실험실 판 안에서 보이고, 글씨가 읽히느냐는
+// *찍은 폭 대비 판 폭*으로 정해진다 — 1440 으로 찍으면 목록 판(812px)에서 56% 로
+// 줄어 본문이 9px 이 된다. 1152 는 흔한 반응형 경계를 모두 비켜 가는 데스크탑 폭이다.
+const VIEWPORT = { width: 1152, height: 720 };
 const SCROLL_MS = 8000;
 const demoMode = process.argv.includes("--demo");
 

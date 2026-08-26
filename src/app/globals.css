@@ -2337,8 +2337,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    시연(아래)이 흐름을 끝까지 따라가는 큰 클립이라면, 여기는 훑어보는 자리다. */
 .lab-screens {
   display: grid;
-  /* 폰 판은 작게 잡고 남는 폭은 이름·설명이 쓴다. 장수가 늘면 아래로 접힌다. */
-  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  /* 폰 판 폭은 캡처가 읽히느냐로 정한다. 158px 로 잡았더니 본문 폭(880px)에 다섯
+     칸이 서고, 390px 짜리 폰 화면이 44% 로 앉아 본문 글씨가 6px 이 됐다 — 글자가
+     아니라 얼룩이다. 260px 로 올리면 한 줄에 세 칸(각 280px, 72%)이 서서 화면
+     안 글씨를 읽을 수 있다. 장수가 늘면 아래로 접힌다. */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 30px 20px;
 }
 
@@ -2366,13 +2369,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 /* 가로로 넓은 화면(데스크탑·웹). 폰 판에 우겨넣으면 좌우가 잘려 뭘 보는지 모른다.
-   두 칸을 쓰고 제 비율로 세운다. 판 비율은 렌더러가 실제 그림 비율로 넣어 준다. */
-.lab-shot.is-wide { grid-column: span 2; }
+   폰 판이 세 칸으로 넓어진 뒤로는 두 칸(580px)도 데스크탑 화면에는 모자라
+   — 1152px 캡처가 50% 로 앉는다 — 줄을 통으로 쓴다(880px, 76%).
+   판 비율은 렌더러가 실제 그림 비율로 넣어 준다. */
+.lab-shot.is-wide { grid-column: 1 / -1; }
 .lab-shot.is-wide .lab-shot-frame { border-radius: 12px; }
 
-/* 웹 프로젝트의 판은 브라우저 창 비율(16:10)로 늘 두 칸을 쓴다. 폰 판 한 칸(158px)에
-   데스크탑 화면을 넣으면 글씨가 점으로 보인다. 모서리도 폰보다 덜 둥글린다. */
-.lab-shot.is-web { grid-column: span 2; }
+/* 웹 프로젝트의 판은 브라우저 창 비율(16:10)로 늘 줄을 통으로 쓴다.
+   모서리도 폰보다 덜 둥글린다. */
+.lab-shot.is-web { grid-column: 1 / -1; }
 .lab-shot.is-web .lab-shot-frame { border-radius: 12px; }
 
 /* 스크롤까지 담긴 긴 캡처. 잘라 놓으면 맨 위 한 뼘만 보이니, 판 안에서 천천히 훑어 내린다.
@@ -2990,7 +2995,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   .lab-grid { justify-content: center; gap: 30px; }
   /* 가로 나열이라 좁아져도 열 수를 바꾸지 않는다. 폭이 모자라면 옆으로 밀린다.
      grid-template-columns 를 주면 첫 열만 명시 열이 되어 찌그러진다. */
-  .lab-screens { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 14px; }
+  /* 좁은 폭에서도 폰 화면 글씨가 읽혀야 한다 — 두 칸이 서는 값으로 잡는다. */
+  .lab-screens { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 14px; }
 
   .posts-index { grid-template-columns: 1fr; gap: 28px; }
   .posts-index-aside { position: static; }
