@@ -25,6 +25,9 @@ const BROWSER_AR = 16 / 10;
 const LANDSCAPE = 1.1;
 // 판보다 15% 넘게 길면 "한 화면이 아니라 스크롤"로 본다. 살짝 긴 건 그냥 잘라도 티가 안 난다.
 const TALL_RATIO = 0.85;
+// 붙박이 머리말이 덮는 높이. 본문 제목들의 scroll-margin-top 과 같은 값이라
+// 접었을 때 세우는 자리도 링크로 뛰었을 때와 같은 높이에 선다.
+const RESTING_TOP = 96;
 
 function ShotFigure({
   shot,
@@ -177,6 +180,25 @@ export function Screens({
 
   const clamped = !open && firstRow !== null;
 
+  // 접을 때 자리 지키기. 갤러리가 줄어든 만큼 아래 글이 통째로 위로 올라오는데,
+  // 펼친 채 한참 훑어 내려온 사람은 그 순간 갤러리를 지나쳐 한참 아래 글에 떨어진다
+  // — 정작 사용자는 화면 영역 안에서만 움직였는데도. 접힌 갤러리의 아랫변이 이미
+  // 화면 위로 밀려날 자리면, 그 아랫변을 화면 맨 위에 세워 다음 섹션부터 보이게 한다.
+  const moreRef = useRef<HTMLButtonElement>(null);
+
+  const toggle = () => {
+    if (open && firstRow) {
+      const grid = gridRef.current;
+      const btn = moreRef.current;
+      if (grid && btn) {
+        const shrink = grid.getBoundingClientRect().height - firstRow.height;
+        const bottom = btn.getBoundingClientRect().bottom - shrink;
+        if (bottom < RESTING_TOP) window.scrollBy(0, bottom - RESTING_TOP);
+      }
+    }
+    setOpen((v) => !v);
+  };
+
   const cur = at === null ? null : shots[at];
   // 폰 캡처는 2·3배 밀도로 찍혀 있다(780×1688 = 390pt 화면의 두 배). 판 폭에 맞춰
   // 늘리면 글씨가 실제 기기의 세 배로 부풀어, 확대가 아니라 뭉개짐이 된다.
@@ -210,7 +232,8 @@ export function Screens({
         <button
           type="button"
           className={`lab-screens-more${open ? " is-open" : ""}`}
-          onClick={() => setOpen((v) => !v)}
+          ref={moreRef}
+          onClick={toggle}
           aria-expanded={open}
         >
           {open ? "접기" : `화면 ${firstRow.hidden}장 더보기`}
