@@ -7,6 +7,7 @@ import { Intro } from "@/components/project/sections/Intro";
 import { Requirements } from "@/components/project/sections/Requirements";
 import { TechChoices } from "@/components/project/sections/TechChoices";
 import { Plan } from "@/components/project/sections/Plan";
+import { Interview } from "@/components/project/sections/Interview";
 import { UserFlow } from "@/components/project/sections/UserFlow";
 import { Journey } from "@/components/project/sections/Journey";
 import { Integrations } from "@/components/project/sections/Integrations";
@@ -30,6 +31,7 @@ import {
   Route,
   Compass,
   Target,
+  MessagesSquare,
   MonitorSmartphone,
 } from "lucide-react";
 
@@ -37,6 +39,7 @@ import {
 const SECTION_ICON: Record<Section["kind"], typeof BookOpen> = {
   intro: BookOpen,
   plan: Target,
+  interview: MessagesSquare,
   userflow: Compass,
   requirements: ListChecks,
   tech: Layers,
@@ -60,6 +63,8 @@ function renderSection(s: Section, platform: ProjectPlatform) {
       return <TechChoices items={s.items} />;
     case "plan":
       return <Plan fields={s.fields} />;
+    case "interview":
+      return <Interview fields={s.fields} />;
     case "userflow":
       return <UserFlow diagram={s.diagram} steps={s.steps} />;
     case "journey":

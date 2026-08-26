@@ -20,7 +20,11 @@ export type IntegrationItem = {
 
 export type Section =
   | { kind: "intro"; title: string; md: string }
+  // 기획과 인터뷰는 원고 형태가 `**라벨** 값` 으로 같고 화면만 다르다.
+  // 기획은 착수 전 판단(범위·우선순위·접은 안)을 표로 세우고,
+  // 인터뷰는 라벨을 질문으로 바꿔 만든 사람에게 물어보는 꼴로 그린다.
   | { kind: "plan"; title: string; fields: { label: string; values: string[] }[] }
+  | { kind: "interview"; title: string; fields: { label: string; values: string[] }[] }
   | {
       kind: "userflow";
       title: string;
@@ -43,6 +47,7 @@ const KNOWN: Record<string, Section["kind"]> = {
   "제품 소개": "intro",
   "화면": "screens",
   "기획": "plan",
+  "인터뷰": "interview",
   "유저 플로우": "userflow",
   "유저 플로": "userflow",
   "구상": "requirements",
@@ -369,8 +374,8 @@ export function parseProjectBody(md: string): Section[] {
     } else if (kind === "tech") {
       const items = parseTechNames(body);
       out.push(items.length ? { kind, title, items } : raw);
-    } else if (kind === "plan") {
-      // 같은 라벨이 여러 번 나오는 게 정상이다 — 문제도 셋, 넣지 않은 것도 다섯.
+    } else if (kind === "plan" || kind === "interview") {
+      // 같은 라벨이 여러 번 나오는 게 정상이다 — 접은 안도 셋, 넣지 않은 것도 다섯.
       // 라벨을 줄마다 반복하면 표가 지저분해지므로 처음 나온 순서대로 묶는다.
       const grouped: { label: string; values: string[] }[] = [];
       for (const f of parseFields(body)) {

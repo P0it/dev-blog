@@ -335,31 +335,50 @@ test("소스가 하나도 없는 시연은 raw 로 떨어진다", () => {
 
 test("기획 섹션을 라벨 필드로 쪼갠다", () => {
   const secs = parseProjectBody(
-    "## 기획\n\n**문제** 맥북 앞에 없을 때 글감을 놓친다\n**사용자** 혼자 블로그를 굴리는 개발자\n**넣지 않은 것** 댓글·구독\n",
+    "## 기획\n\n**범위** 초안 생성까지만 한다\n**우선순위** 폰에서 던지는 흐름이 먼저\n**넣지 않은 것** 댓글·구독\n",
   );
   assert.equal(secs[0].kind, "plan");
   if (secs[0].kind !== "plan") return;
   assert.deepEqual(
     secs[0].fields.map((f) => f.label),
-    ["문제", "사용자", "넣지 않은 것"],
+    ["범위", "우선순위", "넣지 않은 것"],
   );
-  assert.deepEqual(secs[0].fields[0].values, ["맥북 앞에 없을 때 글감을 놓친다"]);
+  assert.deepEqual(secs[0].fields[0].values, ["초안 생성까지만 한다"]);
 });
 
 test("기획의 같은 라벨은 하나로 묶인다", () => {
   const secs = parseProjectBody(
-    "## 기획\n\n**문제** 첫째\n**사용자** 나\n**문제** 둘째\n**넣지 않은 것** 로그인\n**넣지 않은 것** 결제\n",
+    "## 기획\n\n**접은 안** 첫째\n**범위** 초안까지\n**접은 안** 둘째\n**넣지 않은 것** 로그인\n**넣지 않은 것** 결제\n",
   );
   assert.equal(secs[0].kind, "plan");
   if (secs[0].kind !== "plan") return;
-  // 처음 나온 순서를 지킨다 — 문제, 사용자, 넣지 않은 것
-  assert.deepEqual(secs[0].fields.map((f) => f.label), ["문제", "사용자", "넣지 않은 것"]);
+  // 처음 나온 순서를 지킨다 — 접은 안, 범위, 넣지 않은 것
+  assert.deepEqual(secs[0].fields.map((f) => f.label), ["접은 안", "범위", "넣지 않은 것"]);
   assert.deepEqual(secs[0].fields[0].values, ["첫째", "둘째"]);
   assert.deepEqual(secs[0].fields[2].values, ["로그인", "결제"]);
 });
 
 test("라벨이 없는 기획은 raw 로 떨어진다", () => {
   const secs = parseProjectBody("## 기획\n\n그냥 문단이다.\n");
+  assert.equal(secs[0].kind, "raw");
+});
+
+// 인터뷰는 기획에서 떼어 낸 문답 섹션이다. 원고 형태는 같고 화면만 다르므로
+// 파서는 종류만 갈라 준다.
+test("인터뷰 섹션은 기획과 같은 라벨 필드로 쪼개진다", () => {
+  const secs = parseProjectBody(
+    "## 인터뷰\n\n**소개** 폰에서 URL 을 던지면 초안이 나와요\n**계기** 글감을 자꾸 놓쳤거든요\n",
+  );
+  assert.equal(secs[0].kind, "interview");
+  if (secs[0].kind !== "interview") return;
+  assert.deepEqual(
+    secs[0].fields.map((f) => f.label),
+    ["소개", "계기"],
+  );
+});
+
+test("라벨이 없는 인터뷰는 raw 로 떨어진다", () => {
+  const secs = parseProjectBody("## 인터뷰\n\n그냥 문단이다.\n");
   assert.equal(secs[0].kind, "raw");
 });
 
