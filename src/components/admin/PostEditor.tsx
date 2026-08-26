@@ -376,10 +376,13 @@ export function PostEditor({
           }}
         >
           <div style={{ padding: "20px 48px 0" }}>
-            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다. */}
+            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다.
+                폭이 모자라면 접어 내린다. 안 접으면 태그 칸이 `flex:1` 로 0 까지
+                쪼그라들고 칩은 제 칸 밖으로 삐져나와 날짜 입력 위에 겹쳐 앉는다. */}
             <div
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
                 gap: 12,
                 marginBottom: 18,
@@ -390,7 +393,8 @@ export function PostEditor({
                 value={categorySlug}
                 onChange={setCategorySlug}
               />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* 칩 하나와 입력 자리는 늘 확보한다 — 이 아래로 줄어들면 칩이 넘친다. */}
+              <div style={{ flex: 1, minWidth: 220 }}>
                 <TagInput
                   tags={tags}
                   draft={tagDraft}
