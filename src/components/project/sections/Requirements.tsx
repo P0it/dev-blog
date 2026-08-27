@@ -1,12 +1,10 @@
-import { Check, Minus } from "lucide-react";
-
-export function Requirements({ items }: { items: { done: boolean; text: string }[] }) {
+export function Requirements({ items }: { items: string[] }) {
   return (
     <div className="lab-req lab-stagger">
-      {items.map((it, i) => (
-        <div key={i} className={`lab-panel lab-req-item${it.done ? "" : " off"}`}>
-          <span className="mark">{it.done ? <Check size={14} /> : <Minus size={14} />}</span>
-          <span>{it.text}</span>
+      {items.map((text, i) => (
+        <div key={i} className="lab-panel lab-req-item">
+          <span className="mark" aria-hidden />
+          <span>{text}</span>
         </div>
       ))}
     </div>

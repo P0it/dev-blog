@@ -59,14 +59,18 @@ test("여섯 섹션을 순서대로 분류한다", () => {
   );
 });
 
-test("구상 체크박스를 파싱한다", () => {
+test("구상은 불릿을 그대로 뽑는다 — 옛 체크박스는 표시만 뗀다", () => {
   const s = parseProjectBody(FULL)[1];
   assert.equal(s.kind, "requirements");
   if (s.kind !== "requirements") return;
-  assert.deepEqual(s.items, [
-    { done: true, text: "서버 주소만 넣으면 붙는다" },
-    { done: false, text: "stdio 와 sse 를 함께 본다" },
-  ]);
+  assert.deepEqual(s.items, ["서버 주소만 넣으면 붙는다", "stdio 와 sse 를 함께 본다"]);
+});
+
+test("체크박스 없는 구상도 같은 렌더러로 간다", () => {
+  const s = parseProjectBody("## 구상\n\n- 서버 주소만 넣으면 붙는다\n- stdio 와 sse 를 함께 본다\n")[0];
+  assert.equal(s.kind, "requirements");
+  if (s.kind !== "requirements") return;
+  assert.deepEqual(s.items, ["서버 주소만 넣으면 붙는다", "stdio 와 sse 를 함께 본다"]);
 });
 
 test("옛 3열 표에서는 '고른 것' 열을 이름으로 쓴다", () => {
@@ -267,7 +271,7 @@ test("옛 제목 `요구사항` 도 같은 렌더러로 간다", () => {
   assert.equal(s.kind, "requirements");
   if (s.kind !== "requirements") return;
   assert.equal(s.title, "요구사항");
-  assert.deepEqual(s.items, [{ done: true, text: "된다" }]);
+  assert.deepEqual(s.items, ["된다"]);
 });
 
 test("화면 갤러리를 파싱한다", () => {

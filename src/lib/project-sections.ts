@@ -31,7 +31,7 @@ export type Section =
       diagram: string | null;
       steps: { label: string; md: string; branches: { when: string; then: string }[] }[];
     }
-  | { kind: "requirements"; title: string; items: { done: boolean; text: string }[] }
+  | { kind: "requirements"; title: string; items: string[] }
   | { kind: "tech"; title: string; items: string[] }
   | { kind: "journey"; title: string; steps: { label: string; md: string; added: string[] }[] }
   | { kind: "architecture"; title: string; diagram: string | null; steps: { label: string; md: string }[] }
@@ -146,12 +146,17 @@ function parseBullets(body: string): string[] {
   return out;
 }
 
-function parseChecklist(body: string): { done: boolean; text: string }[] {
-  const items: { done: boolean; text: string }[] = [];
+// 구상은 처음 그린 그림이라 완료 표시를 달지 않는다. 옛 원고의 `- [x]`·`- [ ]` 는
+// 표시만 떼고 문장을 살린다.
+function parseIdeas(body: string): string[] {
+  const items: string[] = [];
   for (const { line, inFence } of walk(body)) {
     if (inFence) continue;
-    const m = /^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$/.exec(line);
-    if (m) items.push({ done: m[1].toLowerCase() === "x", text: m[2].trim() });
+    const m = /^\s*[-*+]\s+(?:\[[ xX]\]\s+)?(.+?)\s*$/.exec(line);
+    if (m) {
+      const t = stripMd(m[1]);
+      if (t) items.push(t);
+    }
   }
   return items;
 }
@@ -369,7 +374,7 @@ export function parseProjectBody(md: string): Section[] {
       // 마크다운 그대로 두면 마커 없는 줄글로 보인다.
       out.push({ kind, title, items: parseBullets(body), md: body });
     } else if (kind === "requirements") {
-      const items = parseChecklist(body);
+      const items = parseIdeas(body);
       out.push(items.length ? { kind, title, items } : raw);
     } else if (kind === "tech") {
       const items = parseTechNames(body);
