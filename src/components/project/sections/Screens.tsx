@@ -29,6 +29,62 @@ const TALL_RATIO = 0.85;
 // 접었을 때 세우는 자리도 링크로 뛰었을 때와 같은 높이에 선다.
 const RESTING_TOP = 96;
 
+// 갤러리 안의 영상. 화면에 들어왔을 때 **처음부터** 튼다.
+//
+// 예전에는 autoPlay·loop 만 걸어 두었다. 그러면 원고 위쪽에 있는 영상이 독자가
+// 거기까지 내려오기도 전에 이미 몇 바퀴를 돌아, 도착했을 때는 늘 중간부터 보인다.
+// 화면 한 장을 담은 짧은 고리라면 상관없지만, 첫 화면부터 결과까지의 여정을 담은
+// 영상은 시작을 놓치면 이야기가 안 된다. 그래서 들어올 때 currentTime 을 0 으로
+// 되감고, 나가면 세운다. 보이지도 않는 영상이 계속 도는 것도 함께 없앤다.
+function ShotVideo({ src, onRatio }: { src: string; onRatio: (r: number) => void }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || reduced) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          // 되감기는 멈춰 있을 때만 한다. 판이 경계에 걸쳐 관찰자가 여러 번
+          // 울리는 일이 있는데, 그때마다 되감으면 영상이 첫 장면에서 못 벗어난다.
+          if (el.paused) el.currentTime = 0;
+          void el.play().catch(() => {});
+        } else {
+          el.pause();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [reduced]);
+
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      onLoadedMetadata={(e) => {
+        const v = e.currentTarget;
+        if (v.videoHeight) onRatio(v.videoWidth / v.videoHeight);
+      }}
+    />
+  );
+}
+
 function ShotFigure({
   shot,
   index,
@@ -76,18 +132,7 @@ function ShotFigure({
           <Maximize2 size={15} />
         </button>
         {VIDEO.test(shot.src) ? (
-          <video
-            src={shot.src}
-            muted
-            loop
-            autoPlay
-            playsInline
-            preload="metadata"
-            onLoadedMetadata={(e) => {
-              const v = e.currentTarget;
-              if (v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
-            }}
-          />
+          <ShotVideo src={shot.src} onRatio={setRatio} />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img

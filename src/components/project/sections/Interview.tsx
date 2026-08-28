@@ -1,7 +1,8 @@
 // 인터뷰 — 만든 사람에게 묻는다. 왜 시작했고, 누가 쓰고, 만들고 나서 어땠는지.
 //
 // 예전 이름은 `## 기획` 이었는데, 하는 일이 문답이라 이름과 내용이 어긋났다.
-// 착수 전 판단(범위·우선순위·접은 안)은 이제 `## 기획`(Plan.tsx)이 따로 맡는다.
+// 판단(어디까지 하기로 했나·무엇을 접었나)은 `## 개발 과정` 이 이야기로 맡는다 —
+// 규약에서 `## 기획` 섹션 자체를 없앴다. Plan.tsx 는 옛 원고용으로만 남아 있다.
 //
 // 라벨을 그대로 표로 세우면 이력서처럼 읽힌다. 라벨을 질문으로 바꿔 인터뷰처럼
 // 주고받게 한다. 원고는 그대로 `**라벨** 값` 이고, 질문은 여기서만 붙인다 —
@@ -27,8 +28,8 @@ const QUESTION: Record<string, string> = {
   기간: "만드는 데 얼마나 걸렸나요?",
   비용: "운영비는 얼마나 드나요?",
 
-  // 착수 전 판단(범위·우선순위·접은 안·정책·제약·가설·성공 기준·넣지 않은 것)은
-  // 여기 없다. `## 기획` 이 문답이 아니라 표로 세운다.
+  // 판단을 적는 라벨(범위·제약·정책 …)은 여기 없다. 문답이 아니라 결정이라
+  // `## 개발 과정` 이 이야기로 푼다.
 
   // 만들고 나서
   자랑: "제일 마음에 드는 부분은 어디인가요?",
@@ -37,17 +38,31 @@ const QUESTION: Record<string, string> = {
   지금: "지금도 쓰고 계신가요?",
 };
 
+// 파서는 같은 **라벨**끼리 묶지만, 다른 라벨이 같은 질문으로 뜨는 경우가 있다
+// (`문제`·`동기`·`계기` → "어떤 계기로 만들게 됐나요?"). 그대로 그리면 같은 질문이
+// 두 번 서서 인터뷰가 도돌이표로 읽히므로, 화면에서 한 번 더 **질문 기준**으로 묶는다.
+function byQuestion(fields: { label: string; values: string[] }[]) {
+  const out: { question: string; values: string[] }[] = [];
+  for (const f of fields) {
+    const question = QUESTION[f.label] ?? f.label;
+    const hit = out.find((o) => o.question === question);
+    if (hit) hit.values.push(...f.values);
+    else out.push({ question, values: [...f.values] });
+  }
+  return out;
+}
+
 export function Interview({ fields }: { fields: { label: string; values: string[] }[] }) {
   return (
     <div className="lab-qa lab-reveal">
-      {fields.map((f, i) => (
+      {byQuestion(fields).map((f, i) => (
         <div key={i} className="lab-qa-row">
           <p className="lab-qa-q">
             <span className="mark" aria-hidden>
               Q
             </span>
             {/* 모르는 라벨은 물음을 지어내지 않는다. 라벨을 그대로 세운다. */}
-            {QUESTION[f.label] ?? f.label}
+            {f.question}
           </p>
           <div className="lab-qa-a">
             {f.values.map((v, j) => (
