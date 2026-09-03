@@ -17,6 +17,22 @@ import { JsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 60;
 
+/**
+ * 카테고리 페이지를 미리 만들어 둔다.
+ *
+ * 이게 없으면 이 경로만 on-demand 렌더라, 필터 칩을 누른 그 순간에야 Supabase 를
+ * 왕복하고 그동안 화면이 멈춘다. 정적 경로가 아니라서 Link 프리페치도 못 받는다.
+ * 카테고리는 최상위 몇 개 + 하위 몇 개뿐이라 전부 미리 굽는 편이 싸다.
+ * (dynamicParams 기본값이 true 라 새로 생긴 카테고리는 그대로 on-demand 로 받는다)
+ */
+export async function generateStaticParams() {
+  const groups = await getCategoryGroups();
+  return groups.flatMap((g) => [
+    { slug: [g.slug] },
+    ...g.children.map((c) => ({ slug: [g.slug, c.slug] })),
+  ]);
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -48,9 +64,12 @@ export default async function PostsByCategoryPage({
   const segments = slug ?? [];
   if (segments.length === 0) notFound();
 
-  const groups = await getCategoryGroups();
+  // 카테고리 목록과 대상 카테고리는 서로 안 기다려도 되니 같이 던진다.
   const targetSlug = segments[segments.length - 1];
-  const cat = await getCategoryBySlug(targetSlug);
+  const [groups, cat] = await Promise.all([
+    getCategoryGroups(),
+    getCategoryBySlug(targetSlug),
+  ]);
   if (!cat) notFound();
 
   const posts = await getPostsByCategorySlug(cat.slug);
