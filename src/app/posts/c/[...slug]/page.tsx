@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
-import { CategoryTree } from "@/components/category/CategoryTree";
+import { CategoryFilter } from "@/components/category/CategoryFilter";
 import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import {
@@ -57,7 +57,6 @@ export default async function PostsByCategoryPage({
   const parentLabel = cat.parent_slug
     ? groups.find((g) => g.slug === cat.parent_slug)?.label
     : null;
-  const activeChildSlug = cat.parent_slug ? cat.slug : undefined;
 
   const crumbs: { href: string; label: string }[] = [
     { href: "/posts", label: "Posts" },
@@ -100,44 +99,34 @@ export default async function PostsByCategoryPage({
         </div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>{cat.label}</h1>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "240px 1fr",
-            gap: 56,
-            marginTop: 48,
-          }}
-        >
-          <aside style={{ position: "sticky", top: 96, alignSelf: "start" }}>
-            <div className="t-overline" style={{ marginBottom: 12 }}>카테고리</div>
-            <CategoryTree groups={groups} activeChildSlug={activeChildSlug} />
-          </aside>
+        <div style={{ marginTop: 28 }}>
+          <CategoryFilter groups={groups} activeSlug={cat.slug} />
+        </div>
 
-          <div>
-            {posts.map((p) => (
-              <div key={p.slug} className="post-card">
-                <div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                    <Chip variant="outline">{p.category}</Chip>
-                  </div>
-                  <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
-                    <h3>{p.title}</h3>
-                  </Link>
-                  {p.excerpt && <p>{p.excerpt}</p>}
-                  {p.tags.length > 0 && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {p.tags.map((t) => (
-                        <Chip key={t}>{t}</Chip>
-                      ))}
-                    </div>
-                  )}
+        <div style={{ marginTop: 32 }}>
+          {posts.map((p) => (
+            <div key={p.slug} className="post-card">
+              <div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                  <Chip variant="outline">{p.category}</Chip>
                 </div>
-                <Link href={`/posts/${p.slug}`} aria-label={p.title}>
-                  <CoverThumb post={p} />
+                <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
+                  <h3>{p.title}</h3>
                 </Link>
+                {p.excerpt && <p>{p.excerpt}</p>}
+                {p.tags.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {p.tags.map((t) => (
+                      <Chip key={t}>{t}</Chip>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+              <Link href={`/posts/${p.slug}`} aria-label={p.title}>
+                <CoverThumb post={p} />
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
       <Footer />

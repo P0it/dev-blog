@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
-import { CategoryTree } from "@/components/category/CategoryTree";
+import { CategoryFilter } from "@/components/category/CategoryFilter";
 import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllPosts, getCategoryGroups } from "@/lib/queries";
@@ -37,37 +37,34 @@ export default async function PostsPage() {
         <div className="meta" style={{ marginBottom: 6 }}>Posts</div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>전체 글</h1>
 
-        <div className="posts-index" style={{ marginTop: 48 }}>
-          <aside className="posts-index-aside">
-            <div className="t-overline" style={{ marginBottom: 12 }}>카테고리</div>
-            <CategoryTree groups={groups} />
-          </aside>
+        <div style={{ marginTop: 28 }}>
+          <CategoryFilter groups={groups} />
+        </div>
 
-          <div>
-            {posts.map((p) => (
-              <div key={p.slug} className="post-card">
-                <div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                    <Chip variant="outline">{p.category}</Chip>
-                  </div>
-                  <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
-                    <h3>{p.title}</h3>
-                  </Link>
-                  {p.excerpt && <p>{p.excerpt}</p>}
-                  {p.tags.length > 0 && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {p.tags.map((t) => (
-                        <Chip key={t}>{t}</Chip>
-                      ))}
-                    </div>
-                  )}
+        <div style={{ marginTop: 32 }}>
+          {posts.map((p) => (
+            <div key={p.slug} className="post-card">
+              <div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                  <Chip variant="outline">{p.category}</Chip>
                 </div>
-                <Link href={`/posts/${p.slug}`} aria-label={p.title}>
-                  <CoverThumb post={p} />
+                <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
+                  <h3>{p.title}</h3>
                 </Link>
+                {p.excerpt && <p>{p.excerpt}</p>}
+                {p.tags.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {p.tags.map((t) => (
+                      <Chip key={t}>{t}</Chip>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+              <Link href={`/posts/${p.slug}`} aria-label={p.title}>
+                <CoverThumb post={p} />
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
       <Footer />

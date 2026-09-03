@@ -306,8 +306,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
 
-.posts-index { display: grid; grid-template-columns: 240px 1fr; gap: 56px; }
-.posts-index-aside { position: sticky; top: 96px; align-self: start; }
 .container-narrow { max-width: 768px; margin: 0 auto; padding: 0 40px; }
 
 .meta { font-size: 13px; color: var(--fg-neutral); font-weight: 500; }
@@ -328,7 +326,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   background: var(--nav-bg);
   border-bottom: 1px solid var(--line-subtle);
 }
-.nav-left { display: flex; align-items: center; gap: 32px; }
+/* 내비 높이만큼 늘려야 안쪽 링크의 밑줄이 내비 아래 테두리까지 내려간다. */
+.nav-left { display: flex; align-items: center; gap: 32px; align-self: stretch; }
 .nav-brand {
   display: inline-flex; align-items: center; gap: 14px;
   font-family: var(--font-display); font-weight: 700; font-size: 20px;
@@ -1137,16 +1136,32 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .toc a.sub.active::before { left: 12px; }
 
 /* ============================================================
-   Category tree
+   Category filter
    ============================================================ */
 
-.tree { font-size: 14px; }
-.tree .node { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-.tree .node:hover { background: var(--bg-muted); }
-.tree .node.active { background: var(--bg-primary-soft); color: var(--mint-600); font-weight: 600; }
-.tree .node .count { font-size: 12px; color: var(--fg-alternative); font-weight: 500; }
-.tree .group > .node { font-weight: 600; color: var(--fg-strong); }
-.tree .child { padding-left: 18px; }
+/* 목록 위 가로 카테고리 필터. 최상위 한 줄, 고른 동안만 하위 한 줄. */
+.cat-filter { display: flex; flex-direction: column; gap: 10px; }
+.cat-filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.cat-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line-normal);
+  background: transparent; color: var(--fg-neutral);
+  font-size: 13px; font-weight: 600; line-height: 1.2;
+  text-decoration: none; white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.cat-chip:hover { background: var(--bg-muted); color: var(--fg-strong); text-decoration: none; }
+.cat-chip.active {
+  background: var(--bg-primary-soft); color: var(--mint-600);
+  border-color: transparent;
+}
+.cat-chip-count { font-size: 11px; font-weight: 500; opacity: 0.65; }
+
+/* 하위 줄은 한 단 낮은 층이라 테두리를 걷고 글자만 남긴다. */
+.cat-chip.sub { border-color: transparent; padding: 5px 10px; font-size: 12.5px; }
+.cat-chip.sub:hover { background: var(--bg-muted); }
 
 /* ============================================================
    Hero (about / projects eyebrow)
@@ -3077,9 +3092,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
      grid-template-columns 를 주면 첫 열만 명시 열이 되어 찌그러진다. */
   /* 좁은 폭에서도 폰 화면 글씨가 읽혀야 한다 — 두 칸이 서는 값으로 잡는다. */
   .lab-screens { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 14px; }
-
-  .posts-index { grid-template-columns: 1fr; gap: 28px; }
-  .posts-index-aside { position: static; }
 
   .hero-headline { font-size: 34px; }
   .prose h1 { font-size: 28px; }
