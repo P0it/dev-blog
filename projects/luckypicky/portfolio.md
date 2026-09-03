@@ -6,10 +6,10 @@ year: "2026"
 logo_bg: "#FFFFFF"
 logo_file: ./logo.png
 stack: [Flutter, Dart, Riverpod, Supabase, PostgreSQL, Google AdMob, GitHub Actions]
-url: ""
-host: none
+url: https://luckypicky-seven.vercel.app
+host: vercel
 status: 실험중
-capture: false
+capture: true
 ---
 
 ## 화면

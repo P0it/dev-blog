@@ -38,8 +38,9 @@ if (!slug) {
 
 // 원고에 capture: false 가 있으면 찍지 않는다. 원고가 없으면 DB 를 따른다.
 function readManifest() {
-  const file = `projects/${slug}.md`;
-  if (!existsSync(file)) return {};
+  // 원고는 슬러그 폴더에 미디어와 같이 있다. 폴더가 생기기 전 옛 배치도 본다.
+  const file = [`projects/${slug}/portfolio.md`, `projects/${slug}.md`].find((f) => existsSync(f));
+  if (!file) return {};
   const raw = readFileSync(file, "utf8");
   const m = /^---\n([\s\S]*?)\n---/.exec(raw);
   if (!m) return {};
