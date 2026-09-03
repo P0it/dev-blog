@@ -114,6 +114,8 @@
   --bg-inverse:       var(--neutral-950);
   --bg-primary:       var(--mint-500);
   --bg-primary-soft:  var(--mint-50);
+  /* 민트 반투명 틴트 — mint-50 은 다크에서 흰 판이 되므로, 양쪽 배경에 얹히는 면에 쓴다. */
+  --bg-primary-tint:  rgba(105, 197, 170, 0.16);
   --bg-negative:      var(--red-500);
   --bg-negative-soft: var(--red-50);
   --bg-positive:      var(--green-500);
@@ -191,6 +193,7 @@
   --fg-primary:     var(--mint-500);
   --fg-primary-strong: var(--mint-500);
   --line-primary:   var(--mint-500);
+  --bg-primary-tint: rgba(105, 197, 170, 0.16);
 
   --bg-base:        rgb(18, 18, 20);
   --bg-elevated:    rgb(28, 30, 34);
@@ -326,8 +329,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   background: var(--nav-bg);
   border-bottom: 1px solid var(--line-subtle);
 }
-/* 내비 높이만큼 늘려야 안쪽 링크의 밑줄이 내비 아래 테두리까지 내려간다. */
-.nav-left { display: flex; align-items: center; gap: 32px; align-self: stretch; }
+.nav-left { display: flex; align-items: center; gap: 32px; }
 .nav-brand {
   display: inline-flex; align-items: center; gap: 14px;
   font-family: var(--font-display); font-weight: 700; font-size: 20px;
@@ -345,24 +347,26 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .nav-brand:hover .brand-mark,
 .nav-brand:hover .brand-logo { opacity: 0.7; }
-/* 링크를 내비 높이만큼 늘려서, 현재 탭 밑줄이 내비 아래 테두리 바로 위에 붙게 한다.
-   (bottom 을 음수 px 로 맞추면 글꼴·아이콘 크기가 바뀔 때마다 어긋난다) */
-.nav-links { display: flex; gap: 24px; align-self: stretch; }
+/* 내비가 64px 라 밑줄을 아래 테두리에 붙이면 글자에서 20px 넘게 떨어져 따로 논다.
+   현재 탭은 라벨을 감싸는 알약 배경으로 표시해, 표시와 글자가 한 덩어리로 읽히게 한다. */
+.nav-links { display: flex; gap: 8px; align-items: center; }
 .nav-links a {
   display: inline-flex; align-items: center; gap: 6px;
   color: var(--fg-neutral); font-weight: 500; font-size: 14px;
-  position: relative; padding: 4px 0;
+  padding: 6px 12px; border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .nav-links a svg { color: var(--fg-alternative); }
-.nav-links a:hover { text-decoration: none; color: var(--fg-strong); }
-/* 현재 탭은 글자·아이콘·밑줄을 모두 브랜드 민트로 — 굵기만으론 눈에 안 띈다. */
+.nav-links a:hover { text-decoration: none; color: var(--fg-strong); background: var(--bg-muted); }
+.nav-links a:hover svg { color: var(--fg-neutral); }
+/* 현재 탭 — 글자·아이콘은 브랜드 민트, 배경은 민트 연한 톤. 굵기만으론 눈에 안 띈다. */
 .nav-links a.active,
-.nav-links a.active svg { color: var(--fg-primary-strong); }
+.nav-links a.active:hover { background: var(--bg-primary-tint); }
+.nav-links a.active,
+.nav-links a.active svg,
+.nav-links a.active:hover,
+.nav-links a.active:hover svg { color: var(--fg-primary-strong); }
 .nav-links a.active { font-weight: 600; }
-.nav-links a.active::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
-  height: 2px; background: var(--line-primary);
-}
 .nav-right { display: flex; align-items: center; gap: 8px; }
 
 .icon-btn {
