@@ -24,6 +24,16 @@ type SimLink = SimulationLinkDatum<SimNode>;
 // 노드 반지름. 루트 > 카테고리 > 글 순으로 작아진다.
 const RADIUS: Record<GraphNode["kind"], number> = { root: 7, category: 5.5, post: 4 };
 
+// 가만히 둔 그래프가 계속 일렁이는 정도. 진폭을 키우면 라벨이 서로 넘나들어
+// 읽기 나빠지고, 0 이면 그림이 굳어 죽어 보인다. 화면 맞춤은 처음 한 번만
+// 하므로, 이 일렁임이 커지면 가장자리에서 그림이 잘린다 — DRIFT_ROOM 이
+// 그만큼 여백을 미리 떼어 둔다. 둘은 같이 움직여야 한다.
+const DRIFT = 0.18;
+const DRIFT_ROOM = 26;
+// 이 값을 0 위로 유지해야 d3 타이머가 안 멈춘다. 동시에 링크·충돌 같은
+// 되돌리는 힘도 이 세기로 계속 걸려서 배치가 흐트러지지 않는다.
+const IDLE_ALPHA = 0.12;
+
 function truncate(s: string, n: number) {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
@@ -85,6 +95,7 @@ type Palette = {
   edge: string;
   label: string;
   labelStrong: string;
+  accent: string;
 };
 
 function readPalette(el: HTMLElement): Palette {
@@ -96,6 +107,9 @@ function readPalette(el: HTMLElement): Palette {
     edge: v("--line-normal") || "#ddd",
     label: v("--fg-alternative") || "#888",
     labelStrong: v("--fg-strong") || "#111",
+    // 지금 보는 글에 쓰는 테마색. -strong 쪽은 라이트에서 mint-600 이라
+    // 흰 바탕에서도 또렷하고, 다크에서는 mint-500 그대로 밝게 뜬다.
+    accent: v("--fg-primary-strong") || "#1e8063",
   };
 }
 
@@ -129,6 +143,7 @@ function GraphCanvas({
   const needsFit = useRef(true);
   const hover = useRef<SimNode | null>(null);
   const simRef = useRef<Simulation<SimNode, SimLink> | null>(null);
+  const onScreen = useRef(true);
   const [cursor, setCursor] = useState<"grab" | "pointer">("grab");
 
   // 시뮬레이션 입력은 매 렌더마다 새로 만들면 배치가 튄다. graph 가 바뀔 때만.
@@ -166,7 +181,7 @@ function GraphCanvas({
       const ys = nodes.map((n) => n.y ?? 0);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
       const minY = Math.min(...ys), maxY = Math.max(...ys);
-      const pad = expanded ? 40 : 14;
+      const pad = (expanded ? 40 : 14) + DRIFT_ROOM;
       const cap = expanded ? 1.6 : 1.4;
       const widest = Math.max(
         0,
@@ -252,14 +267,14 @@ function GraphCanvas({
 
       ctx.beginPath();
       ctx.arc(n.x ?? 0, n.y ?? 0, r, 0, Math.PI * 2);
-      ctx.fillStyle = strong ? p.nodeStrong : p.node;
+      ctx.fillStyle = isActive ? p.accent : strong ? p.nodeStrong : p.node;
       ctx.fill();
       if (isActive) {
-        // 지금 보는 글은 테두리를 둘러 한눈에 찾게 한다.
+        // 지금 보는 글은 테마색 점에 같은 색 테두리를 둘러 한눈에 찾게 한다.
         ctx.beginPath();
-        ctx.arc(n.x ?? 0, n.y ?? 0, r + 3.5, 0, Math.PI * 2);
-        ctx.lineWidth = 1.5 / k;
-        ctx.strokeStyle = p.nodeStrong;
+        ctx.arc(n.x ?? 0, n.y ?? 0, r + 4, 0, Math.PI * 2);
+        ctx.lineWidth = 2 / k;
+        ctx.strokeStyle = p.accent;
         ctx.stroke();
       }
 
@@ -268,8 +283,8 @@ function GraphCanvas({
       // 제목이 한 번 더 필요하지 않고, 그게 판에서 제일 긴 라벨이다.
       const showLabel = expanded || n.kind !== "post" || isHover;
       if (showLabel) {
-        ctx.fillStyle = strong ? p.labelStrong : p.label;
-        ctx.fillText(labelOf(n, expanded), n.x ?? 0, (n.y ?? 0) + r + 3 / k);
+        ctx.fillStyle = isActive ? p.accent : strong ? p.labelStrong : p.label;
+        ctx.fillText(labelOf(n, expanded), n.x ?? 0, (n.y ?? 0) + r + 4 / k);
       }
     }
     ctx.globalAlpha = 1;
@@ -330,10 +345,42 @@ function GraphCanvas({
     sim.tick(500);
     needsFit.current = true;
     draw();
-    // 이후엔 노드를 끌 때만 다시 움직인다(alphaTarget 으로 되살린다).
-    sim.on("tick", draw);
+
+    // 자리를 잡은 뒤에는 아주 약하게 계속 흔든다. 완전히 굳어 있으면 그림이
+    // 죽어 보이는데, 진폭을 작게 두고 원래 힘들(링크·척력·충돌)을 살려 두면
+    // 제자리 근처에서만 일렁여서 배치는 그대로 유지된다.
+    const born = performance.now();
+    sim.force("drift", () => {
+      const t = (performance.now() - born) / 1000;
+      nodes.forEach((n, i) => {
+        if (n.fx != null) return; // 끌고 있는 노드는 건드리지 않는다
+        n.vx = (n.vx ?? 0) + Math.cos(t * 0.5 + i * 1.3) * DRIFT;
+        n.vy = (n.vy ?? 0) + Math.sin(t * 0.42 + i * 2.1) * DRIFT;
+      });
+    });
+    // alphaTarget 을 0 위로 두면 타이머가 멈추지 않아 계속 일렁인다.
+    sim.on("tick", draw).alpha(IDLE_ALPHA).alphaTarget(IDLE_ALPHA).restart();
     simRef.current = sim;
+
+    // 화면 밖이거나 탭이 가려지면 세운다 — 안 보이는 그림을 계속 돌릴 이유가 없다.
+    const wrap = wrapRef.current;
+    const awake = () => {
+      const visible = !document.hidden && onScreen.current;
+      if (visible) sim.alphaTarget(IDLE_ALPHA).restart();
+      else sim.stop();
+    };
+    const io = wrap
+      ? new IntersectionObserver(([e]) => {
+          onScreen.current = e.isIntersecting;
+          awake();
+        })
+      : null;
+    if (io && wrap) io.observe(wrap);
+    document.addEventListener("visibilitychange", awake);
+
     return () => {
+      document.removeEventListener("visibilitychange", awake);
+      io?.disconnect();
       sim.stop();
       simRef.current = null;
     };
@@ -457,7 +504,7 @@ function GraphCanvas({
             // 놓으면 다시 물리에 맡긴다 — 붙잡아 두면 배치가 굳어 어색하다.
             d.node.fx = null;
             d.node.fy = null;
-            simRef.current?.alphaTarget(0);
+            simRef.current?.alphaTarget(IDLE_ALPHA);
           }
           if (!d.moved) {
             const hit = d.node ?? nodeAt(e);
