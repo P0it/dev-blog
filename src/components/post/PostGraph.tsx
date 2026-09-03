@@ -28,13 +28,15 @@ function truncate(s: string, n: number) {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
+const LABEL_PX = (expanded: boolean) => (expanded ? 12.5 : 10.5);
+
 function fontFor(expanded: boolean) {
-  return `${expanded ? 12.5 : 10.5}px system-ui, -apple-system, sans-serif`;
+  return `${LABEL_PX(expanded)}px system-ui, -apple-system, sans-serif`;
 }
 
 function labelOf(n: GraphNode, expanded: boolean) {
   if (!expanded) return n.kind === "post" ? truncate(n.label, 12) : n.label;
-  return truncate(n.label, 26);
+  return truncate(n.label, 18);
 }
 
 function adjacency(graph: PostGraphData) {
@@ -120,7 +122,11 @@ function GraphCanvas({
 
   // 렌더 루프가 매 프레임 읽는 값들은 state 로 두면 리렌더가 따라붙는다.
   const view = useRef({ x: 0, y: 0, k: 1 });
-  const fitted = useRef(false);
+  // 화면 맞춤은 두 가지를 따로 기억한다. autoFit 은 "아직 사용자가 손대지
+  // 않았다", needsFit 은 "이번 그리기에서 한 번 다시 맞춰라". 매 tick 마다
+  // 맞추면 배치가 자리를 잡는 동안 화면이 같이 출렁여서 튕겨 보인다.
+  const autoFit = useRef(true);
+  const needsFit = useRef(true);
   const hover = useRef<SimNode | null>(null);
   const simRef = useRef<Simulation<SimNode, SimLink> | null>(null);
   const [cursor, setCursor] = useState<"grab" | "pointer">("grab");
@@ -153,35 +159,49 @@ function GraphCanvas({
       canvas.style.height = `${h}px`;
     }
 
-    // 사용자가 아직 손대지 않았으면 그래프 전체가 들어오게 자동으로 맞춘다.
-    if (!fitted.current) {
+    // 사용자가 아직 손대지 않았고, 다시 맞추라는 표시가 있을 때만 맞춘다.
+    if (autoFit.current && needsFit.current) {
+      needsFit.current = false;
       const xs = nodes.map((n) => n.x ?? 0);
       const ys = nodes.map((n) => n.y ?? 0);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
       const minY = Math.min(...ys), maxY = Math.max(...ys);
       const pad = expanded ? 40 : 14;
-      const fit = (right: number) =>
-        Math.min(
-          (w - pad * 2) / Math.max(right - minX, 1),
-          (h - pad * 2) / Math.max(maxY - minY, 1),
-          expanded ? 1.6 : 1.4,
-        );
-      // 라벨은 확대율과 무관하게 화면상 폭이 같아서, 그래프 좌표로는 배율만큼
-      // 오른쪽으로 더 삐져나온다. 한 번 재보고 그 폭까지 넣어 다시 맞춘다 —
-      // 이걸 빼면 가장자리 글자가 잘린다.
+      const cap = expanded ? 1.6 : 1.4;
       const widest = Math.max(
         0,
         ...nodes
-          // 작은 판에서 라벨이 붙는 건 카테고리와 지금 보는 글뿐이다.
-          .filter((n) => expanded || n.kind !== "post" || n.slug === activeSlug)
+          // 작은 판에서 라벨이 붙는 건 카테고리뿐이다.
+          .filter((n) => expanded || n.kind !== "post")
           .map((n) => n.labelW ?? 0),
       );
-      const k = fit(maxX + widest / fit(maxX));
-      const right = maxX + widest / k;
+      // 라벨은 확대율과 무관하게 화면상 폭이 같아서, 그래프 좌표로는 배율이
+      // 작아질수록 더 넓게 삐져나온다. 폭과 배율이 서로를 물고 있으니 몇 번
+      // 되풀이해 맞추고, 마지막에 남는 짝으로 가운데를 잡는다 — 따로 계산하면
+      // 그만큼 한쪽이 잘린다.
+      const boundsAt = (k: number) => {
+        const half = widest / 2 / k;
+        return {
+          l: minX - half,
+          r: maxX + half,
+          t: minY - RADIUS.root,
+          b: maxY + (LABEL_PX(expanded) * 1.8) / k,
+        };
+      };
+      let k = cap;
+      for (let i = 0; i < 4; i++) {
+        const bb = boundsAt(k);
+        k = Math.min(
+          (w - pad * 2) / Math.max(bb.r - bb.l, 1),
+          (h - pad * 2) / Math.max(bb.b - bb.t, 1),
+          cap,
+        );
+      }
+      const bb = boundsAt(k);
       view.current = {
         k,
-        x: w / 2 - ((minX + right) / 2) * k,
-        y: h / 2 - ((minY + maxY) / 2) * k,
+        x: w / 2 - ((bb.l + bb.r) / 2) * k,
+        y: h / 2 - ((bb.t + bb.b) / 2) * k,
       };
     }
 
@@ -216,8 +236,12 @@ function GraphCanvas({
     ctx.globalAlpha = 1;
 
     // 확대해도 글씨 크기는 그대로 두려고 그래프 좌표계 배율만큼 나눠 준다.
-    ctx.font = `${(expanded ? 12.5 : 10.5) / k}px system-ui, -apple-system, sans-serif`;
-    ctx.textBaseline = "middle";
+    ctx.font = `${LABEL_PX(expanded) / k}px system-ui, -apple-system, sans-serif`;
+    // 라벨은 노드 아래 가운데에 놓는다. 오른쪽에 붙이면 충돌 반지름(노드를
+    // 중심으로 한 원)이 글씨가 뻗는 방향을 못 담아서, 점은 안 겹치는데 글씨만
+    // 겹치는 그림이 계속 남는다.
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
 
     for (const n of nodes) {
       const isActive = n.kind === "post" && n.slug === activeSlug;
@@ -239,11 +263,13 @@ function GraphCanvas({
         ctx.stroke();
       }
 
-      // 작은 판에서 글 제목까지 다 찍으면 글씨가 서로 겹쳐 못 읽는다.
-      const showLabel = expanded || n.kind !== "post" || isActive || isHover;
+      // 작은 판에서 글 제목까지 다 찍으면 200px 안에서 글씨가 겹쳐 못 읽는다.
+      // 지금 보는 글은 라벨 없이 링으로만 표시한다 — 어차피 읽고 있는 글이라
+      // 제목이 한 번 더 필요하지 않고, 그게 판에서 제일 긴 라벨이다.
+      const showLabel = expanded || n.kind !== "post" || isHover;
       if (showLabel) {
         ctx.fillStyle = strong ? p.labelStrong : p.label;
-        ctx.fillText(labelOf(n, expanded), (n.x ?? 0) + r + 5 / k, (n.y ?? 0) + 0.5);
+        ctx.fillText(labelOf(n, expanded), n.x ?? 0, (n.y ?? 0) + r + 3 / k);
       }
     }
     ctx.globalAlpha = 1;
@@ -259,23 +285,53 @@ function GraphCanvas({
     }
     // 라벨이 보이는 노드만 그 폭만큼 자리를 넓게 잡는다.
     const spread = (n: SimNode) => {
-      const shows = expanded || n.kind !== "post" || n.slug === activeSlug;
-      return RADIUS[n.kind] + 10 + (shows ? (n.labelW ?? 0) * (expanded ? 0.45 : 0.55) : 0);
+      const shows = expanded || n.kind !== "post";
+      if (!shows) return RADIUS[n.kind] + 9;
+      // labelW 는 화면 픽셀인데 여기 반지름은 그래프 좌표다. 배율이 1 보다
+      // 작게 잡히면 라벨이 그 비율만큼 더 넓어지므로 여유를 곱해 둔다 —
+      // 안 그러면 작은 판처럼 축소되는 쪽에서 글씨가 계속 겹친다.
+      return Math.max(RADIUS[n.kind] + 9, (n.labelW ?? 0) * 0.5 * 1.4 + 6);
     };
+
+    // 한 카테고리에 매달린 글 수를 센다. 가지 길이를 이 수에 맞춰 늘려야
+    // 자식들이 부모 둘레에 늘어설 자리가 생긴다 — 길이를 고정하면 링크 힘이
+    // 전부 같은 반지름에 묶어 두고, 밀어내는 힘은 그걸 못 이겨 글씨가 겹친다.
+    const childCount = new Map<string, number>();
+    for (const l of links) {
+      const s = (l.source as SimNode).id;
+      childCount.set(s, (childCount.get(s) ?? 0) + 1);
+    }
 
     const sim: Simulation<SimNode, SimLink> = forceSimulation(nodes)
       .force(
         "link",
         forceLink<SimNode, SimLink>(links)
           .id((d) => d.id)
-          // 카테고리 가지는 길게, 글은 짧게 붙여 가지 모양이 살게 한다.
-          .distance((l) => ((l.target as SimNode).kind === "post" ? 62 : 126))
+          .distance((l) => {
+            const t = l.target as SimNode;
+            if (t.kind !== "post") return 140;
+            const n = childCount.get((l.source as SimNode).id) ?? 1;
+            // 자식 n 개가 라벨 폭만큼 떨어져 둘러서려면 반지름이 대략 n·w/2π 다.
+            const room = expanded ? 78 : 34;
+            return Math.min(340, Math.max(70, (n * room) / Math.PI));
+          })
           .strength(1),
       )
       .force("charge", forceManyBody().strength(expanded ? -340 : -190))
-      .force("collide", forceCollide<SimNode>(spread).strength(0.9))
+      // 반복 횟수를 올려야 라벨끼리 실제로 밀어낸다(기본 1회로는 덜 풀린다).
+      .force("collide", forceCollide<SimNode>(spread).strength(1).iterations(3))
       .force("center", forceCenter(0, 0))
-      .on("tick", draw);
+      // 흔들림을 빨리 죽인다. 기본값(0.4)이면 자리를 잡고도 한참 출렁인다.
+      .velocityDecay(0.55)
+      .stop();
+
+    // 화면에 붙이기 전에 미리 다 돌려 자리를 잡아 둔다. 켜자마자 날아다니다
+    // 멈추는 그림이 "튕긴다"는 인상의 대부분이라, 아예 정착한 상태로 띄운다.
+    sim.tick(500);
+    needsFit.current = true;
+    draw();
+    // 이후엔 노드를 끌 때만 다시 움직인다(alphaTarget 으로 되살린다).
+    sim.on("tick", draw);
     simRef.current = sim;
     return () => {
       sim.stop();
@@ -288,7 +344,7 @@ function GraphCanvas({
     const wrap = wrapRef.current;
     if (!wrap) return;
     const ro = new ResizeObserver(() => {
-      fitted.current = false;
+      needsFit.current = true;
       draw();
     });
     ro.observe(wrap);
@@ -310,18 +366,38 @@ function GraphCanvas({
 
   const nodeAt = (e: { clientX: number; clientY: number }): SimNode | null => {
     const pt = toGraph(e);
+    const k = view.current.k;
     let best: SimNode | null = null;
     let bestD = Infinity;
     for (const n of nodes) {
       const d = Math.hypot((n.x ?? 0) - pt.x, (n.y ?? 0) - pt.y);
-      // 마우스·손가락 모두 집을 수 있게 화면상 7px 만큼 여유를 준다.
-      const hit = RADIUS[n.kind] + 7 / view.current.k;
-      if (d < hit && d < bestD) {
+      // 점만 노리게 하면 글 노드는 반지름이 4라 도저히 못 집는다.
+      // 화면상 14px 만큼 넉넉히 준다.
+      if (d < RADIUS[n.kind] + 14 / k && d < bestD) {
         best = n;
         bestD = d;
       }
     }
-    return best;
+    if (best) return best;
+
+    // 점을 빗나갔으면 라벨 글씨도 과녁으로 친다 — 실제로 눈에 보이는 건
+    // 점보다 제목 쪽이라, 제목을 눌렀는데 아무 일도 안 나면 고장으로 읽힌다.
+    const fontH = LABEL_PX(expanded) / k;
+    for (const n of nodes) {
+      const shown = expanded || n.kind !== "post";
+      if (!shown || !n.labelW) continue;
+      const left = (n.x ?? 0) - n.labelW / 2 / k;
+      const top = (n.y ?? 0) + RADIUS[n.kind] + 3 / k;
+      if (
+        pt.x >= left &&
+        pt.x <= left + n.labelW / k &&
+        pt.y >= top &&
+        pt.y <= top + fontH * 1.3
+      ) {
+        return n;
+      }
+    }
+    return null;
   };
 
   // 노드를 잡으면 그 노드를 끌고, 빈 곳을 잡으면 판 전체를 민다.
@@ -359,7 +435,7 @@ function GraphCanvas({
             } else {
               view.current.x += dx;
               view.current.y += dy;
-              fitted.current = true;
+              autoFit.current = false;
             }
             d.x = e.clientX;
             d.y = e.clientY;
@@ -408,7 +484,7 @@ function GraphCanvas({
             x: px - ((px - x) / k) * next,
             y: py - ((py - y) / k) * next,
           };
-          fitted.current = true;
+          autoFit.current = false;
           draw();
         }}
       />
