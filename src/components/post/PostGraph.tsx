@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Maximize2, X } from "lucide-react";
 import {
@@ -605,7 +606,11 @@ export function PostGraph({
         <GraphCanvas graph={local} activeSlug={activeSlug} expanded={false} onPick={pick} />
       </div>
 
-      {expanded && (
+      {/* 펼친 판은 body 로 빼서 그린다. 이 컴포넌트가 들어앉은 .post-toc 이
+          position: sticky 라 그 자체로 쌓임 맥락을 만드는데, 그 안에 두면
+          z-index 를 아무리 올려도 그 맥락 밖(내비게이션 등)으로는 못 올라온다. */}
+      {expanded &&
+        createPortal(
         <div
           className="post-graph-overlay"
           role="dialog"
@@ -626,7 +631,8 @@ export function PostGraph({
             </button>
             <GraphCanvas graph={graph} activeSlug={activeSlug} expanded onPick={pick} />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
