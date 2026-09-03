@@ -8,7 +8,10 @@ import type {
   ChipVariant,
   Locale,
   SeriesContext,
+  GraphNode,
+  PostGraph,
 } from "@/lib/types";
+import { SITE } from "@/lib/site";
 
 // "2026-05-04T00:00:00Z" → "2026.05.04"
 function fmtDate(iso: string | null): string {
@@ -896,4 +899,65 @@ export async function getOpsInfo(): Promise<OpsInfo> {
     counts: { published, drafts, categories, series },
     aiJobs: { available: aiAvailable, recent },
   };
+}
+
+// 지식 그래프용 트리 — 루트 → (상위 카테고리 →) 카테고리 → 발행 글.
+// 글이 하나도 안 달린 카테고리는 빼서 빈 가지가 생기지 않게 한다.
+export async function getPostGraph(): Promise<PostGraph> {
+  const sb = supabaseServer();
+  const [{ data: cats, error: e1 }, { data: posts, error: e2 }] = await Promise.all([
+    sb.from("categories").select("slug,label,parent_slug,sort_order").order("sort_order"),
+    sb
+      .from("posts")
+      .select("slug,title,category_slug")
+      .eq("status", "published")
+      .order("published_at", { ascending: false }),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  const catRows = (cats as CategoryRow[]) ?? [];
+  const postRows = (posts ?? []) as { slug: string; title: string; category_slug: string | null }[];
+  const byCat = new Map(catRows.map((c) => [c.slug, c]));
+
+  // 글이 실제로 달린 카테고리와, 거기까지 올라가는 부모들만 남긴다.
+  const keep = new Set<string>();
+  for (const p of postRows) {
+    let cur = p.category_slug;
+    while (cur && byCat.has(cur) && !keep.has(cur)) {
+      keep.add(cur);
+      cur = byCat.get(cur)!.parent_slug;
+    }
+  }
+
+  const nodes: GraphNode[] = [
+    { id: "root", label: SITE.name, kind: "root", href: "/posts" },
+  ];
+  const links: { source: string; target: string }[] = [];
+
+  for (const c of catRows) {
+    if (!keep.has(c.slug)) continue;
+    nodes.push({
+      id: `c:${c.slug}`,
+      label: c.label,
+      kind: "category",
+      href: `/posts/c/${c.slug}`,
+    });
+    const parent = c.parent_slug && keep.has(c.parent_slug) ? `c:${c.parent_slug}` : "root";
+    links.push({ source: parent, target: `c:${c.slug}` });
+  }
+
+  for (const p of postRows) {
+    nodes.push({
+      id: `p:${p.slug}`,
+      label: p.title,
+      kind: "post",
+      href: `/posts/${p.slug}`,
+      slug: p.slug,
+    });
+    const parent = p.category_slug && keep.has(p.category_slug) ? `c:${p.category_slug}` : "root";
+    links.push({ source: parent, target: `p:${p.slug}` });
+  }
+
+  return { nodes, links };
 }

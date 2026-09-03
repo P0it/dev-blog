@@ -7,11 +7,12 @@ import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
 import { TocNav } from "@/components/post/TocNav";
+import { PostGraph } from "@/components/post/PostGraph";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
-import type { Locale, Post, SeriesContext } from "@/lib/types";
+import type { Locale, Post, PostGraph as PostGraphData, SeriesContext } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
 
@@ -27,12 +28,14 @@ export function PostDetailView({
   related = [],
   views = null,
   series = null,
+  graph = null,
 }: {
   post: Post;
   locale: Locale;
   related?: Post[];
   views?: number | null;
   series?: SeriesContext | null;
+  graph?: PostGraphData | null;
 }) {
   const toc = extractToc(post.bodyMd);
   const t = tFor(locale);
@@ -187,6 +190,7 @@ export function PostDetailView({
                 <TocNav items={toc} />
               </>
             )}
+            {graph && <PostGraph graph={graph} activeSlug={post.slug} />}
           </aside>
         </div>
         </div>

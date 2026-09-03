@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews, getSeriesContext } from "@/lib/queries";
+import { getAllPostSlugs, getPostBySlug, getRelatedPosts, getPostViews, getSeriesContext, getPostGraph } from "@/lib/queries";
 import { PostDetailView } from "@/components/page/PostDetailView";
 import { SITE } from "@/lib/site";
 import { blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
@@ -49,10 +49,11 @@ export default async function PostDetailPage({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
-  const [related, views, series] = await Promise.all([
+  const [related, views, series, graph] = await Promise.all([
     getRelatedPosts(post, 4),
     getPostViews(slug),
     post.seriesSlug ? getSeriesContext(post.seriesSlug) : Promise.resolve(null),
+    getPostGraph(),
   ]);
   const crumbs = [
     { name: SITE.name, path: "/" },
@@ -64,7 +65,7 @@ export default async function PostDetailPage({
   return (
     <>
       <JsonLd data={[blogPostingJsonLd(post), breadcrumbJsonLd(crumbs)]} />
-      <PostDetailView post={post} locale="ko" related={related} views={views} series={series} />
+      <PostDetailView post={post} locale="ko" related={related} views={views} series={series} graph={graph} />
     </>
   );
 }

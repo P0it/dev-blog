@@ -82,3 +82,21 @@ export type CategoryGroup = {
   expanded: boolean;
   children: CategoryNode[];
 };
+
+// 글 상세 옆에 띄우는 지식 그래프. 루트 → 카테고리 → 글로 내려가는 트리다.
+// 글끼리 잇는 데이터(본문 상호 링크)가 없어서 선은 소속 관계로만 만든다.
+export type GraphNodeKind = "root" | "category" | "post";
+
+export type GraphNode = {
+  id: string;
+  label: string;
+  kind: GraphNodeKind;
+  href: string;
+  // 글 노드만 가진다 — 현재 보는 글을 강조할 때 쓴다.
+  slug?: string;
+};
+
+export type PostGraph = {
+  nodes: GraphNode[];
+  links: { source: string; target: string }[];
+};
