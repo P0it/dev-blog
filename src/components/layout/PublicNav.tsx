@@ -26,11 +26,11 @@ export function PublicNav({
         </Link>
         <div className="nav-links">
           <Link href={pathFor(locale, "/posts")} className={active === "posts" ? "active" : ""}>
-            <Newspaper size={14} style={{ color: "var(--fg-alternative)" }} />
+            <Newspaper size={14} />
             Posts
           </Link>
           <Link href={pathFor(locale, "/lab")} className={active === "lab" ? "active" : ""}>
-            <FlaskConical size={14} style={{ color: "var(--fg-alternative)" }} />
+            <FlaskConical size={14} />
             Labs
           </Link>
         </div>
