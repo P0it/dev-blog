@@ -1709,7 +1709,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    화면이 알아볼 만큼은 커야 한다.
      두 칸: 530×331 — 폰 판(536)보다 200px 낮아 한 줄이 어긋나고, 1440px 화면을
             37%로 줄여 글씨가 점이 된다
-     세 칸: 812×507 — 폰 판과 키가 맞고 축소율도 56%로 올라간다
+     세 칸: 812 폭 — 축소율이 56%로 올라가고, 폰 판과 키를 맞출 만큼 넓다
    그래서 네 칸이 서는 폭(본문 1120px)에서는 세 칸을 쓴다. 그보다 좁으면 열 수가
    줄어드니 두 칸으로 내리고, 열이 하나뿐인 폭에서는 한 칸 그대로 눕혀 둔다.
    640px = 판 둘(248×2) + 사이 간격(34) 이 겨우 들어가는 지점. */
@@ -1719,7 +1719,15 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 @media (min-width: 1120px) {
   .lab-card.is-web { grid-column: span 3; }
-  .lab-card.is-web .lab-card-shot { width: calc(var(--lab-shot-w) * 3 + 68px); }
+  /* 세 칸에서는 키를 폰 판에 못박는다. 브라우저 창 비율(16:10)에 맡기면 812×507 이라
+     옆에 선 폰 판(536)보다 29px 낮아, 한 줄에 웹 카드와 폰 카드가 같이 서면
+     이름줄이 어긋나고 줄 아랫변이 들쭉날쭉해진다. 판 비율은 1.52 가 되는데,
+     캡처는 어차피 위에서부터 채우므로(object-position: top) 아랫동만 조금 덜 보인다. */
+  .lab-card.is-web .lab-card-shot {
+    width: calc(var(--lab-shot-w) * 3 + 68px);
+    height: var(--lab-shot-h);
+    aspect-ratio: auto;
+  }
 }
 .lab-card-shot.empty { box-shadow: none; border: 1px solid var(--lab-line); }
 /* 긴 캡처도 맨 위만 잘라 세운다. 판 안에서 훑어 내리던 것은 접었다 — 카드 넷이

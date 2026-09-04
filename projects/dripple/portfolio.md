@@ -35,24 +35,19 @@ capture: false
 **파일** ./screens/04-my-turn.png
 **설명** 카드를 뽑고 나면 문장을 밀어 올릴 수 있게 됩니다
 
-### 손패 다루기
-
-**파일** ./screens/05-hand.mp4
-**설명** 카드를 집어 옆으로 밀면 순서가 바뀌고, 위로 밀면 놓입니다
-
 ### 문장 만들기
 
-**파일** ./screens/06-sentence.png
+**파일** ./screens/05-sentence.png
 **설명** 손패에서 밀어 올린 카드가 그대로 문장이 됩니다
 
 ### 배우기
 
-**파일** ./screens/07-tutorial.png
+**파일** ./screens/06-tutorial.png
 **설명** 정해진 패로 한 판을 같이 돌면서 규칙을 익힙니다
 
 ### 설정
 
-**파일** ./screens/08-settings.png
+**파일** ./screens/07-settings.png
 **설명** 효과음, 배경 음악, 진동을 각각 끕니다
 
 ## 인터뷰
