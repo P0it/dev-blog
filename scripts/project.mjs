@@ -102,6 +102,7 @@ async function uploadFile(abs, destPath) {
 // 다른 레포 세션은 파일을 원고 옆에 두고 상대경로만 적으면 된다.
 async function uploadBodyMedia(mdFile, body, slug) {
   const lines = body.split("\n");
+  const stamp = Date.now();
   let n = 0;
   for (let i = 0; i < lines.length; i++) {
     const m = /^\s*(?:\*\*파일\*\*|파일\s*[:：])\s*(\S+)\s*$/.exec(lines[i]);
@@ -118,7 +119,9 @@ async function uploadBodyMedia(mdFile, body, slug) {
       const ext = extname(src).toLowerCase();
       const url = await uploadFile(src, `${slug}/demo-${++n}${ext}`);
       const label = /\.(mp4|webm|mov)$/i.test(ext) ? "영상" : "이미지";
-      lines[i] = `**${label}** ${url}`;
+      // 로고와 같은 이유로 캐시 우회 쿼리를 붙인다. 화면을 다시 찍어 같은 경로에
+      // 덮어쓰면 CDN 이 옛 그림을 계속 내준다 — 새 화면인데 안 바뀐 것처럼 보인다.
+      lines[i] = `**${label}** ${url}?v=${stamp}`;
       console.log(`  ↑ 시연 업로드: ${basename(abs)} → ${slug}/demo-${n}${ext}`);
     } finally {
       if (tmp) rmSync(tmp, { force: true });
