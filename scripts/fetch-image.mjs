@@ -73,7 +73,8 @@ async function rehost(srcUrl) {
 // `![설명](REHOST:<원본 URL>)` 마커를 실제 공개 URL 로 치환한다.
 async function rewriteMarkers(file) {
   const lines = readFileSync(file, "utf8").split("\n");
-  const marker = /\(REHOST:([^)\s]+)\)/g;
+  // `![설명](REHOST:<URL>)` 본문 마커와 프런트매터 `cover_image: REHOST:<URL>` 둘 다 잡는다.
+  const marker = /REHOST:([^\s)]+)/g;
   const resolved = new Map();
   let ok = 0, dropped = 0;
 
@@ -104,7 +105,7 @@ async function rewriteMarkers(file) {
       dropped++;
       continue;
     }
-    out.push(line.replace(marker, (_, src) => `(${resolved.get(src)})`));
+    out.push(line.replace(marker, (_, src) => resolved.get(src)));
   }
 
   writeFileSync(file, out.join("\n"), "utf8");

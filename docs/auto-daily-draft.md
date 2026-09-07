@@ -38,6 +38,9 @@ Supabase posts  status=draft
 ![그림 설명](REHOST:https://원본/이미지.png)
 ```
 
+프런트매터 `cover_image: REHOST:https://…` 도 같은 마커를 쓴다 — 카드·목록·OG 썸네일이
+글 내용과 맞는 실제 이미지가 된다(실패하면 그 줄이 지워져 기본 썸네일로 떨어진다).
+
 `npm run fetch:image -- --rewrite <file.md>` 가 이 마커를 실제 공개 URL 로 바꿔친다.
 내려받기에 실패한 이미지는 **그 줄을 통째로 지운다** — 깨진 이미지가 남는 것보다 낫다.
 Actions 가 치환된 원고를 `[skip ci]` 로 되돌려 커밋해 저장소 사본과 DB 를 맞춘다.
