@@ -1,0 +1,86 @@
+name: Auto Draft Ingest
+
+# Claude 클라우드 루틴(매일 아침)이 auto-drafts/posts/ 에 커밋한 원고를
+# Supabase posts 에 draft 로 적재한다.
+#
+# 클라우드 루틴은 Anthropic 샌드박스에서 돌아 .env.local·로컬 워커에 닿지 못한다.
+# 그래서 루틴은 "글을 써서 커밋"까지만 하고, Supabase 시크릿을 쥔 이 워크플로가
+# 적재를 맡는다. 시크릿이 클라우드 세션 프롬프트로 새지 않는다.
+#
+# 필요한 저장소 시크릿:
+#   SUPABASE_URL         (keepalive 워크플로와 공용)
+#   SUPABASE_SECRET_KEY  (sb_secret_… — 서버 전용 키)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "auto-drafts/posts/**.md"
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "적재할 .md 경로 (비우면 최근 커밋의 변경분)"
+        required: false
+        default: ""
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - name: 적재 대상 고르기
+        id: pick
+        env:
+          MANUAL_FILE: ${{ inputs.file }}
+        run: |
+          if [ -n "$MANUAL_FILE" ]; then
+            files="$MANUAL_FILE"
+          else
+            files=$(git diff --name-only --diff-filter=AM HEAD^ HEAD -- 'auto-drafts/posts/*.md' || true)
+          fi
+          if [ -z "$files" ]; then
+            echo "적재할 원고 없음 — 건너뜁니다."
+          fi
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Supabase 자격 준비
+        if: steps.pick.outputs.files != ''
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::error::SUPABASE_URL 또는 SUPABASE_SECRET_KEY 시크릿이 없습니다."
+            exit 1
+          fi
+          # draft.mjs 는 --env-file=.env.local 로 뜬다. CI 에서 그 파일을 만들어 준다.
+          printf 'NEXT_PUBLIC_SUPABASE_URL=%s\nSUPABASE_SECRET_KEY=%s\n' \
+            "$SUPABASE_URL" "$SUPABASE_SECRET_KEY" > .env.local
+
+      - name: posts 에 적재
+        if: steps.pick.outputs.files != ''
+        run: |
+          echo "${{ steps.pick.outputs.files }}" | while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || { echo "::warning::파일 없음 $f"; continue; }
+            echo "── $f"
+            npm run draft -- push "$f"
+          done
+
+      - name: 자격 정리
+        if: always()
+        run: rm -f .env.local
