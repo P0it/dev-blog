@@ -23,6 +23,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: write
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
@@ -70,6 +73,32 @@ jobs:
           # draft.mjs 는 --env-file=.env.local 로 뜬다. CI 에서 그 파일을 만들어 준다.
           printf 'NEXT_PUBLIC_SUPABASE_URL=%s\nSUPABASE_SECRET_KEY=%s\n' \
             "$SUPABASE_URL" "$SUPABASE_SECRET_KEY" > .env.local
+
+      # 클라우드 루틴은 Supabase 시크릿이 없고 egress 프록시에 막혀 이미지를 못 올린다.
+      # 원고에 남긴 `![설명](REHOST:<원본 URL>)` 마커를 여기서 실제 공개 URL 로 바꾼다.
+      - name: 이미지 재호스팅
+        if: steps.pick.outputs.files != ''
+        run: |
+          echo "${{ steps.pick.outputs.files }}" | while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || continue
+            grep -q "REHOST:" "$f" || { echo "── $f — 재호스팅할 이미지 없음"; continue; }
+            echo "── $f"
+            npm run fetch:image -- --rewrite "$f" || true
+          done
+
+      - name: 바뀐 원고 되돌려 커밋
+        if: steps.pick.outputs.files != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- auto-drafts/posts; then
+            echo "치환된 이미지 없음 — 커밋 생략"
+          else
+            git add auto-drafts/posts
+            git commit -m "원고 이미지를 자체 버킷 URL 로 치환했다 [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: posts 에 적재
         if: steps.pick.outputs.files != ''

@@ -4,12 +4,20 @@
 //
 // 실행:
 //   npm run fetch:image -- <원본이미지 URL> [<URL2> …]
+//   npm run fetch:image -- --rewrite <file.md>
 // 출력: 재호스팅된 공개 URL (소스 → 결과)을 한 줄씩.
+//
+// --rewrite 는 클라우드 루틴용이다. 샌드박스에는 Supabase 시크릿이 없고 egress 프록시가
+// 많은 도메인을 막아 재호스팅을 못 한다. 그래서 루틴은 원본 이미지 URL 을
+// `![설명](REHOST:https://…)` 마커로만 박아 두고, 시크릿을 쥔 GitHub Actions 가
+// 이 모드로 마커를 실제 공개 URL 로 바꿔친다. 내려받기에 실패한 이미지는
+// 그 줄을 통째로 지운다 — 깨진 이미지가 글에 남는 것보다 없는 편이 낫다.
 //
 // 에디터 uploadImage(actions.ts)와 같은 규약: GIF·SVG 는 원본 유지,
 // 그 외 래스터는 sharp 로 폭 1600 webp(품질 82) 압축. 경로는 날짜/uuid.ext.
 
 import crypto from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
@@ -62,10 +70,62 @@ async function rehost(srcUrl) {
   return data.publicUrl;
 }
 
+// `![설명](REHOST:<원본 URL>)` 마커를 실제 공개 URL 로 치환한다.
+async function rewriteMarkers(file) {
+  const lines = readFileSync(file, "utf8").split("\n");
+  const marker = /\(REHOST:([^)\s]+)\)/g;
+  const resolved = new Map();
+  let ok = 0, dropped = 0;
+
+  const out = [];
+  for (const line of lines) {
+    const srcs = [...line.matchAll(marker)].map((m) => m[1]);
+    if (!srcs.length) {
+      out.push(line);
+      continue;
+    }
+    let failed = false;
+    for (const src of srcs) {
+      if (resolved.has(src)) continue;
+      try {
+        const url = await rehost(src);
+        resolved.set(src, url);
+        console.log(`✓ ${src}
+  → ${url}`);
+        ok++;
+      } catch (e) {
+        console.error(`✗ ${src}
+  ${e.message}`);
+        failed = true;
+      }
+    }
+    if (failed || srcs.some((s) => !resolved.has(s))) {
+      console.error(`  ↳ 이미지 줄 삭제: ${line.slice(0, 80)}`);
+      dropped++;
+      continue;
+    }
+    out.push(line.replace(marker, (_, src) => `(${resolved.get(src)})`));
+  }
+
+  writeFileSync(file, out.join("\n"), "utf8");
+  console.log(`재호스팅 ${ok}건, 삭제 ${dropped}건 — ${file}`);
+}
+
 async function run() {
-  const urls = process.argv.slice(2).filter(Boolean);
+  const argv = process.argv.slice(2).filter(Boolean);
+  const ri = argv.indexOf("--rewrite");
+  if (ri !== -1) {
+    const file = argv[ri + 1];
+    if (!file) {
+      console.error("사용법: npm run fetch:image -- --rewrite <file.md>");
+      process.exit(1);
+    }
+    await rewriteMarkers(file);
+    return;
+  }
+  const urls = argv;
   if (!urls.length) {
-    console.error("사용법: npm run fetch:image -- <원본 URL> [<URL2> …]");
+    console.error("사용법: npm run fetch:image -- <원본 URL> [<URL2> …]\n      npm run fetch:image -- --rewrite <file.md>");
     process.exit(1);
   }
   for (const src of urls) {
