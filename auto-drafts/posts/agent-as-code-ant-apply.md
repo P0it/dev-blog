@@ -15,7 +15,7 @@ category: insights
 
 파일끼리는 ID가 아니라 **상대 경로**로 서로를 가리킵니다. 리뷰어 에이전트가 `skills`에 `../skills/pr-summary`라고 적어 두면 `ant apply`가 의존 순서대로 만들면서 실제 ID를 채워 넣습니다. 명령을 실행하면 바뀔 내용을 계획으로 먼저 출력하고 승인을 기다립니다. `--dry-run`은 그 계획만 보여 주고 끝냅니다.
 
-![ant CLI 실행 화면 데모](REHOST:https://raw.githubusercontent.com/anthropics/anthropic-cli/main/.github/demo.gif)
+![ant CLI 실행 화면 데모](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-07/fba9197f.gif)
 
 ## 락파일에 적히는 두 개의 해시
 
