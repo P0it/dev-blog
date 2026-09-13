@@ -55,7 +55,8 @@ Actions 가 치환된 원고를 `[skip ci]` 로 되돌려 커밋해 저장소 �
 
 | 무엇 | 어디 |
 |---|---|
-| 루틴 프롬프트 원본 | 이 문서 아래 "루틴 프롬프트" 절 |
+| 루틴 프롬프트 원본 | `docs/auto-daily-draft.prompt.md` (2026-09-13 루틴에 동기화 완료) |
+| 루틴 ID | `trig_016RkyDj189C3rDtW7JmArhJ` |
 | 루틴 관리 | https://claude.ai/code/routines (`/schedule` 커맨드로도 수정) |
 | 적재 워크플로 | `.github/workflows/auto-draft-ingest.yml` |
 | 원고 도착지 | `auto-drafts/` (`/drafts/` 는 gitignore 라 못 쓴다) |
