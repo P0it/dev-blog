@@ -71,7 +71,7 @@ source_url: https://…              # 선택 — 기록용(컬럼 아님, 본�
 2. URL 원문을 수집한다 — 일반 글은 `WebFetch`, GitHub 는 저장소 페이지 + raw README,
    YouTube 는 `yt-dlp` 자막.
 3. POSTING.md 규약대로 한국어 초안을 쓴다(`> 요약` → `## 헤드라인`, `-습니다`체,
-   번역체 금지, 필요하면 ```visual / ```illustration 블록).
+   번역체 금지, 필요하면 ```visual / ```illustration 블록, 여러 대상을 견주면 마크다운 표).
 4. `drafts/<slug>.md` 에 프런트매터 + 본문을 쓴다.
 5. `npm run draft -- push drafts/<slug>.md` 실행.
 6. 출력된 `/admin/editor?slug=…` 에서 검토 후 발행.
