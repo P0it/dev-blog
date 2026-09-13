@@ -60,6 +60,28 @@ function rehypeExtractBlocks() {
   };
 }
 
+// 마크다운 표는 좁은 화면에서 가로로 넘친다. 페이지 전체가 가로 스크롤되지
+// 않도록 표만 감싸는 스크롤 컨테이너를 씌운다.
+function rehypeWrapTables() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element, index, parent) => {
+      if (node.tagName !== "table" || !parent || typeof index !== "number") return;
+      const wrapped =
+        parent.type === "element" &&
+        ((parent.properties?.className as string[] | undefined) ?? []).includes(
+          "table-scroll"
+        );
+      if (wrapped) return;
+      parent.children[index] = {
+        type: "element",
+        tagName: "div",
+        properties: { className: ["table-scroll"] },
+        children: [node],
+      };
+    });
+  };
+}
+
 type DivProps = React.HTMLAttributes<HTMLDivElement> & {
   "data-mermaid-source"?: string;
   "data-visual-source"?: string;
@@ -89,6 +111,7 @@ export async function renderMarkdown(md: string) {
     // 본문에 섞인 <u>·<mark> 등 raw HTML을 트리에 통합
     .use(rehypeRaw)
     .use(rehypeExtractBlocks)
+    .use(rehypeWrapTables)
     .use(rehypePrettyCode, {
       // Night Owl 단일 테마 (Sarah Drasner). 사이트 라이트/다크와 무관하게 코드블록은 항상 다크.
       theme: "night-owl",
