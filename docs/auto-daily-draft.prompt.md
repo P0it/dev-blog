@@ -7,7 +7,7 @@
 
 이 저장소(P0it/dev-blog)가 clone 되어 있다. 이 프롬프트의 원본은 `docs/auto-daily-draft.prompt.md`,
 전체 설계는 `docs/auto-daily-draft.md` 다.
-**아무것도 쓰기 전에** 먼저 읽어라: `CLAUDE.md`, `POSTING.md`, `INSIGHT.md`, `auto-drafts/README.md`.
+**아무것도 쓰기 전에** 먼저 읽어라: `CLAUDE.md`, `POSTING.md`, `.claude/commands/research.md`, `auto-drafts/README.md`.
 그리고 `auto-drafts/ideas/` 의 최근 파일 3~5개를 훑어 **이미 다룬 주제를 반복하지 마라.**
 
 ## STEP 1 — 리서치 (먼저 한다. 이 단계 전에는 한 글자도 쓰지 않는다)
@@ -64,9 +64,10 @@ WebFetch 로 원문을 못 열어 검색 스니펫만으로 쓴 수치·날짜�
 
 ## STEP 3 — 그중 1편을 완성 원고로
 
-3개 중 **가장 강한 하나**를 골라 **`/insight` 커맨드(`.claude/commands/insight.md`)의 절차를
-그대로 따라** 한 편을 끝까지 쓴다. 규약 원본은 `INSIGHT.md` 와 `POSTING.md` 이고, 커맨드가
-그 둘을 어떤 순서로 읽고 적용하는지 정해 두었다. 여기서 규약을 다시 풀어 쓰지 않는다 —
+3개 중 **가장 강한 하나**를 골라 **`/research` 커맨드(`.claude/commands/research.md`)의 절차를
+그대로 따라** 한 편을 끝까지 쓴다. STEP 2 에서 적어 둔 그 아이디어의 "핵심 앵글 한 문장"이
+`/research` 의 인자(조사할 주제·앵글)다. 규약 원본은 `POSTING.md` 이고, 커맨드가 그것을
+어떤 순서로 읽고 적용하는지 정해 두었다. 여기서 규약을 다시 풀어 쓰지 않는다 —
 두 곳에 적어 두면 한쪽만 고쳐지는 일이 생긴다.
 
 이 샌드박스에서 특히 지킬 것:
