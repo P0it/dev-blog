@@ -93,6 +93,11 @@ gh workflow run auto-draft-ingest.yml -f file=auto-drafts/posts/<slug>.md
     짐작해서 쓴 원고가 적재되는 것보다 낫다.
   - 루틴 자체의 설정(모델·저장소·도구·스케줄)을 바꿀 때만 `/schedule` 로 루틴을 연다.
 - 커밋 메시지에 AI attribution 금지(`CLAUDE.md`). 루틴 프롬프트에도 그 조항이 들어 있다.
+- **루틴은 `/insight` 커맨드를 그대로 쓴다(2026-09-14 부터).** `.claude/commands/{draft,insight,research}.md`
+  의 적재 단계가 `.env.local` 유무로 로컬/클라우드를 가른다 — 클라우드면 `auto-drafts/posts/` +
+  `REHOST:` 마커 + 커밋. 그래서 규약·점검표는 커맨드 한 곳만 고치면 로컬 세션과 루틴이 같이
+  바뀐다. 루틴 프롬프트(STEP 3)는 커맨드를 가리키고 샌드박스 특이사항만 적는다.
+  같은 원리로 `/research`·`/draft` 도 루틴에서 부를 수 있다(영상 캡처만 로컬 전용).
 
 ## 루틴 프롬프트
 

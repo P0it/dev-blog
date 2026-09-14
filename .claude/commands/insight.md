@@ -40,7 +40,8 @@ description: 질문·인사이트를 받아 웹 리서치 근거를 갖춘 의�
 7. **파일 작성** — `drafts/<slug>.md` (프런트매터 + 본문).
    - **슬러그는 ASCII 영문만**(`a-z 0-9 -`), 주제 키워드 3~6단어. `slug:` 반드시 명시.
    - `category: insights` 기본. `source_url` 은 쓰지 않는다(원문 없음).
-8. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
-9. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+8. **적재 — 실행 환경에 따라 갈린다.** `.env.local` 이 있으면 로컬, 없으면 클라우드 루틴이다.
+   - **로컬**: `npm run draft -- push drafts/<slug>.md` 실행. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+   - **클라우드 루틴**(Supabase 시크릿 없음, egress 제한): 파일을 `drafts/` 가 아니라 **`auto-drafts/posts/<slug>.md`** 에 쓴다. 이미지는 `npm run fetch:image` 대신 `![설명](REHOST:원본URL)` 마커로, 대표 이미지도 `cover_image: REHOST:원본URL` 로 남긴다. 커밋·푸시하면 GitHub Actions 가 재호스팅·적재한다(`docs/auto-daily-draft.md`). 커밋 메시지에 AI attribution 을 넣지 않는다.
 
 장르 규약 상세: `INSIGHT.md` · 파이프라인 상세: `docs/draft-in-claude-code.md`.

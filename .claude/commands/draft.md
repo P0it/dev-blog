@@ -70,7 +70,7 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    > 요약 인용구…
    ## 헤드라인…
    ```
-7. **영상 캡처 — YouTube 글이면 기본 수행.** 각 `## 소제목`마다 대표 장면을 캡처해 넣는 것을 기본으로 한다(영상 글의 기본 시각자료). 일반 글·GitHub 글에는 해당 없음.
+7. **영상 캡처 — YouTube 글이면 기본 수행 (로컬 전용, 클라우드 루틴에서는 건너뛴다).** 각 `## 소제목`마다 대표 장면을 캡처해 넣는 것을 기본으로 한다(영상 글의 기본 시각자료). 일반 글·GitHub 글에는 해당 없음.
    - `drafts/<slug>.frames.json` 에 **소제목마다 한 줄씩** `[{"heading":"소제목","t":"3:21"}, ...]` 를 쓴다(t = 그 문단이 나온 대본 시점). 데모·시연처럼 화면이 풍부한 소제목은 시점 2개로 늘려도 된다.
    - `npm run capture -- candidates <video_url> drafts/<slug>.frames.json` — 시점마다 후보 프레임을 뽑는다.
    - 출력된 후보 이미지를 **Read 로 직접 보고** 소제목마다 가장 나은 컷 1장을 고른다.
@@ -78,7 +78,8 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
      **쓸 만한 컷이 하나도 없는 소제목만 건너뛴다**(억지 그림 ✗). 나머지는 모두 넣는다.
    - 고른 컷마다 `npm run capture -- upload <고른_파일>` → public URL 을 받아, 본문의 해당 `## 소제목` 바로 아래에 `![설명](URL)` 로 넣는다.
    - 캡처는 영상 글의 기본 시각자료라 ` ```visual ` 카탈로그 카드의 "개수 변주"(POSTING.md 2-3절)와 별개로 본다 — 소제목마다 넣되, 구도가 매번 똑같이 굳지 않게 컷 종류(슬라이드·데모·인물 등)는 다양하게 고른다.
-8. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
-9. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+8. **적재 — 실행 환경에 따라 갈린다.** `.env.local` 이 있으면 로컬, 없으면 클라우드 루틴이다.
+   - **로컬**: `npm run draft -- push drafts/<slug>.md` 실행. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+   - **클라우드 루틴**(Supabase 시크릿 없음, egress 제한): 파일을 `drafts/` 가 아니라 **`auto-drafts/posts/<slug>.md`** 에 쓴다. 이미지는 `npm run fetch:image` 대신 `![설명](REHOST:원본URL)` 마커로, 대표 이미지도 `cover_image: REHOST:원본URL` 로 남긴다. 커밋·푸시하면 GitHub Actions 가 재호스팅·적재한다(`docs/auto-daily-draft.md`). 커밋 메시지에 AI attribution 을 넣지 않는다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`.

@@ -34,6 +34,7 @@ URL 하나를 번역·요약하는 `/draft` 와 달리, 이 커맨드는 **여�
    독자가 글을 신뢰하는 건 진짜 화면을 볼 때다. **개수 제한 없다.**
    - **자체 버킷에 재호스팅**(핫링크 금지): `npm run fetch:image -- <원본 이미지 URL>`
      → 출력 공개 URL 을 `![설명](그 URL)` 으로 박는다.
+     클라우드 루틴(`.env.local` 없음)에서는 이 명령을 못 돌린다 — `![설명](REHOST:원본URL)` 마커로 남기면 Actions 가 치환한다.
    - 쓰기 전 `curl -sIL <URL>` 로 200·image/* 인지 확인하면 헛수고를 던다.
 2. **직접 그린 SVG(```illustration)는 구조·흐름을 설명해야만. 한 편에 0~2장.**
    POSTING.md 2-2 절 맨 앞의 판단 기준을 그대로 적용한다 — 평문만으로는 구조·흐름·설계가
@@ -106,8 +107,8 @@ URL 하나를 번역·요약하는 `/draft` 와 달리, 이 커맨드는 **여�
    ```
    `source_url` 은 단일 출처가 없으므로 넣지 않는다.
 
-6. **적재** — `npm run draft -- push drafts/<slug>.md` 실행.
-
-7. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+6. **적재 — 실행 환경에 따라 갈린다.** `.env.local` 이 있으면 로컬, 없으면 클라우드 루틴이다.
+   - **로컬**: `npm run draft -- push drafts/<slug>.md` 실행. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+   - **클라우드 루틴**(Supabase 시크릿 없음, egress 제한): 파일을 `drafts/` 가 아니라 **`auto-drafts/posts/<slug>.md`** 에 쓴다. 이미지는 `npm run fetch:image` 대신 `![설명](REHOST:원본URL)` 마커로, 대표 이미지도 `cover_image: REHOST:원본URL` 로 남긴다. 커밋·푸시하면 GitHub Actions 가 재호스팅·적재한다(`docs/auto-daily-draft.md`). 커밋 메시지에 AI attribution 을 넣지 않는다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`. 단일 URL 글은 `/draft`.
