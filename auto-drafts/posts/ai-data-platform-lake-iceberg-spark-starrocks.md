@@ -8,15 +8,15 @@ series: llm-infra-basics
 series_order: 10
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/d0b59b4f.webp
 ---
-> AI 에 넣을 데이터는 대부분 DB 가 아니라 오브젝트 스토리지(S3)에 Parquet 파일로 쌓입니다. 그 파일 더미를 테이블처럼 다루게 해 주는 것이 Iceberg 이고 그 위에서 큰 처리는 Spark 가, 빠른 질의는 StarRocks 가 맡습니다. 이 네 가지의 역할만 잡으면 "데이터 플랫폼"이라는 말이 한 장의 그림으로 이어집니다.
+> AI 에 쓰는 데이터는 DB 가 아니라 S3 에 Parquet 파일로 쌓입니다. 그 파일 더미를 테이블로 만드는 Iceberg, 큰 처리를 맡는 Spark, 빠른 질의를 맡는 StarRocks 의 역할을 한 장의 그림으로 정리했습니다.
 
-8편 RAG 에 넣을 문서, 7편 파인튜닝에 쓸 대화 로그, 다음 편 예측 모델의 학습 데이터. 이런 것들은 회사 어디에 있을까요? 저는 당연히 데이터베이스에 있을 거라고 생각했는데 실제로 AI 팀이 데이터를 가져오는 곳은 DB 가 아니라 S3 같은 파일 저장소였습니다. 서비스 DB 에서 분석 질의를 돌리면 서비스가 느려지기 때문에, 분석·AI 용 데이터는 따로 싸게 쌓아 두는 곳이 생겼기 때문입니다. 그런데 파일로만 쌓아 두면 곧 다른 문제가 생기고 그걸 푸는 게 Iceberg 입니다.
+RAG 에 넣을 문서, 파인튜닝에 쓸 대화 로그, 수요 예측 모델의 학습 데이터. 이런 것들은 회사 어디에 있을까요? 저는 당연히 데이터베이스에 있을 거라고 생각했는데 실제로 AI 팀이 데이터를 가져오는 곳은 DB 가 아니라 S3 같은 파일 저장소였습니다. 서비스 DB 에서 분석 질의를 돌리면 서비스가 느려지기 때문에, 분석·AI 용 데이터는 따로 싸게 쌓아 두는 곳이 생겼기 때문입니다. 그런데 파일로만 쌓아 두면 곧 다른 문제가 생기고 그걸 푸는 게 Iceberg 입니다.
 
 ## 왜 DB 가 아닐까요 — Database · Data Warehouse · Data Lake
 
 서비스가 쓰는 **데이터베이스**(Postgres·MySQL)는 지금 이 순간의 상태를 정확하게, 한 건씩 빠르게 읽고 쓰는 데 맞춰져 있습니다. 여기서 "지난 3년 매출을 지역별로 집계"를 돌리면 서비스가 느려집니다. 그래서 분석용으로 데이터를 따로 복사해 두는 창고가 생겼고 그것이 **Data Warehouse** 입니다. 정해진 스키마로 정리해 넣고 SQL 로 집계합니다.
 
-**Data Lake** 는 그보다 느슨합니다. 로그·이미지·JSON·CSV 를 정리하지 않은 채로 일단 싸게 다 넣어 두는 곳입니다. 8편의 RAG 에 넣을 문서, 7편 파인튜닝에 쓸 대화 로그, 11편 예측 모델의 학습 데이터가 여기서 나옵니다. AI 는 정리된 표보다 원본이 필요한 경우가 많아 Data Lake 쪽이 출발점이 됩니다.
+**Data Lake** 는 그보다 느슨합니다. 로그·이미지·JSON·CSV 를 정리하지 않은 채로 일단 싸게 다 넣어 두는 곳입니다. RAG 에 넣을 문서, 파인튜닝에 쓸 대화 로그, 예측 모델의 학습 데이터가 여기서 나옵니다. AI 는 정리된 표보다 원본이 필요한 경우가 많아 Data Lake 쪽이 출발점이 됩니다.
 
 ## 그 Data Lake 의 바닥 — Object Storage 와 Parquet
 
@@ -52,7 +52,7 @@ S3 에 Parquet 을 폴더별로 쌓아 두면 처음엔 잘 됩니다. 그런데
 
 첫 번째 엔진입니다. **Apache Spark** 는 데이터가 한 서버에 안 들어갈 때 여러 서버로 나눠 처리하는 분산 처리 엔진입니다. UC Berkeley 에서 시작해 2014년 Apache 최상위 프로젝트가 됐습니다. Python(PySpark)·SQL 로 씁니다.
 
-Data Lake 에서 Spark 의 일은 **ETL/ELT** 입니다. 원본 로그를 읽어(Extract) 정제·조인·집계하고(Transform) Iceberg 테이블에 씁니다(Load). ETL 은 변환 후 적재, ELT 는 일단 적재 후 변환인데 Lakehouse 에서는 원본을 그대로 넣어 두고 나중에 변환하는 ELT 가 자연스럽습니다. 8편 RAG 의 문서 청킹·임베딩을 수백만 건 돌리는 것도 Spark 가 합니다. 수 시간짜리 배치가 Spark 의 영역입니다.
+Data Lake 에서 Spark 의 일은 **ETL/ELT** 입니다. 원본 로그를 읽어(Extract) 정제·조인·집계하고(Transform) Iceberg 테이블에 씁니다(Load). ETL 은 변환 후 적재, ELT 는 일단 적재 후 변환인데 Lakehouse 에서는 원본을 그대로 넣어 두고 나중에 변환하는 ELT 가 자연스럽습니다. RAG 의 문서 청킹·임베딩을 수백만 건 돌리는 것도 Spark 가 합니다. 수 시간짜리 배치가 Spark 의 영역입니다.
 
 ## 빠른 질의는 StarRocks 가 합니다
 
@@ -74,7 +74,7 @@ Data Lake 에서 Spark 의 일은 **ETL/ELT** 입니다. 원본 로그를 읽어
 | Spark | 대용량 변환·적재(ETL/ELT) | 분~시간 |
 | StarRocks | 대시보드·즉석 집계(OLAP) | 초 |
 
-애플리케이션·로그·DB 에서 나온 원본이 S3 에 Parquet 으로 쌓입니다. Iceberg 가 그걸 테이블로 만들고 Spark 가 정제해 다시 Iceberg 에 씁니다. StarRocks 가 그 테이블을 질의합니다. 8편의 RAG 문서도, 다음 편의 XGBoost 학습 데이터도, 12편에서 모델 성능을 추적할 로그도 전부 이 위에 놓입니다. 그럼 그 데이터로 LLM 말고 어떤 모델을 만들까요? 다음 편에서 XGBoost·TimesFM·Two-Tower 에 대해서 알아보겠습니다.
+애플리케이션·로그·DB 에서 나온 원본이 S3 에 Parquet 으로 쌓입니다. Iceberg 가 그걸 테이블로 만들고 Spark 가 정제해 다시 Iceberg 에 씁니다. StarRocks 가 그 테이블을 질의합니다. RAG 문서도, XGBoost 학습 데이터도, 모델 성능을 추적할 로그도 전부 이 위에 놓입니다. 그럼 그 데이터로 LLM 말고 어떤 모델을 만들까요? 다음 글에서 XGBoost·TimesFM·Two-Tower 에 대해서 알아보겠습니다.
 
 ## 참고 자료
 
