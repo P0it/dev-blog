@@ -3,7 +3,7 @@ title: 컨텍스트 압축은 더 이상 대화를 멈추지 않는다
 slug: claude-api-on-demand-compaction
 tags: [Claude API, 컨텍스트 압축]
 category: insights
-cover_image: REHOST:https://platform.claude.com/docs/images/compaction-flow.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/6e2cf532.svg
 ---
 
 > 9월 14일 Claude API 에 두 번째 압축 방식이 베타로 올라왔습니다. 요약만 따로 받아서 원래 메시지들과 바꿔 넣는 방식입니다. 문서에 적힌 동작과 비용 계측이 어긋나는 대목을 정리했습니다.
@@ -14,7 +14,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/compaction-flow.svg
 
 지금까지 Claude API 의 압축은 한 가지였습니다. `compact_20260112` 로 임계치를 정해 두면 입력 토큰이 그 값에 닿는 순간 API 가 요약을 만듭니다. 기본값은 15만 토큰이고 최소 5만 토큰부터 지정할 수 있습니다.
 
-![임계치 압축의 흐름. 입력 토큰이 지정한 값에 닿으면 Claude 가 요약을 compaction 블록에 쓰고 그대로 응답을 이어 간다](REHOST:https://platform.claude.com/docs/images/compaction-flow.svg)
+![임계치 압축의 흐름. 입력 토큰이 지정한 값에 닿으면 Claude 가 요약을 compaction 블록에 쓰고 그대로 응답을 이어 간다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/6e2cf532.svg)
 
 중요한 건 이 요약이 **내 요청 안에서** 만들어진다는 점입니다. 답을 받으려고 보낸 요청이 도중에 요약 한 번을 더 거칩니다. 그래서 그 요청은 평소보다 오래 걸립니다. 문서는 이 방식을 threshold compaction 이라고 부릅니다.
 
@@ -24,7 +24,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/compaction-flow.svg
 
 여기서 두 방식이 달라집니다. 임계치 압축의 블록은 요약한 메시지들 **뒤에** 붙습니다. 반면 서명된 블록은 그 메시지들을 **대체**합니다. 그래서 다음 요청부터는 원본 메시지를 지우고 블록을 맨 앞에 보내야 하고 원본이 앞에 남아 있으면 400 에러(`compaction_block_misplaced`)가 납니다.
 
-![단순 압축. 앞선 요청은 턴마다 thinking 이 붙은 전체 기록을 보내지만 다음 요청은 1~4 턴을 요약한 메시지 하나와 다음 지시만 보내므로 앞선 thinking 이 전혀 실리지 않는다](REHOST:https://platform.claude.com/docs/images/preserved-thinking-simple-compaction.svg)
+![단순 압축. 앞선 요청은 턴마다 thinking 이 붙은 전체 기록을 보내지만 다음 요청은 1~4 턴을 요약한 메시지 하나와 다음 지시만 보내므로 앞선 thinking 이 전혀 실리지 않는다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/ff3265d8.svg)
 
 저도 처음엔 호출 방식만 바꾼 편의 기능인 줄 알았습니다. 그런데 요약 요청이 대화에서 떨어져 나오면 **그 요청을 기다리지 않아도 된다**는 성질이 따라옵니다. 요약이 만들어지는 동안 대화는 원래 기록 그대로 진행하다가 블록이 도착하면 그때 바꿔 넣습니다. 문서가 async 또는 background compaction 이라고 부르는 형태입니다.
 
@@ -46,7 +46,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/compaction-flow.svg
 
 그럼 남긴 턴에 들어 있던 thinking 은 어떻게 될까요? preserved thinking 이 걸린 모델은 앞선 thinking 블록이 지금 대화와 맞는지 검사합니다. 요약으로 앞이 통째로 바뀌면 이 검사에 걸립니다.
 
-![keep-tail 압축. 1~2 턴을 요약한 뒤 3~5 턴을 원문 그대로 붙이면 3·4 턴의 thinking 이 검사에 걸리지만 같은 요청을 prefix_mismatch_behavior drop_block 으로 보내면 API 가 해당 블록을 떼고 input_transformations 에 기록한 뒤 통과시킨다](REHOST:https://platform.claude.com/docs/images/preserved-thinking-keep-tail-compaction.svg)
+![keep-tail 압축. 1~2 턴을 요약한 뒤 3~5 턴을 원문 그대로 붙이면 3·4 턴의 thinking 이 검사에 걸리지만 같은 요청을 prefix_mismatch_behavior drop_block 으로 보내면 API 가 해당 블록을 떼고 input_transformations 에 기록한 뒤 통과시킨다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/cbf1aeae.svg)
 
 문서는 남긴 턴의 thinking 이 그대로 유효할 조건을 두 가지로 적어 뒀습니다. 남긴 턴이 요약한 메시지들 바로 뒤에 이어져 있을 것, 그리고 `system` 과 `defer_loading` 이 걸리지 않은 `tools` 가 요약 요청 때와 같을 것입니다. 이 조건을 맞추면 긴 세션이 압축을 겪고도 직전까지의 추론을 이어서 씁니다.
 
