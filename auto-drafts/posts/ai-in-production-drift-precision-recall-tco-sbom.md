@@ -1,5 +1,5 @@
 ---
-title: 배포한 모델이 반년 뒤 틀리기 시작하는 이유, Data Drift·오탐·미탐·TCO·SBOM
+title: AI 모델은 배포하면 끝일까요?
 slug: ai-in-production-drift-precision-recall-tco-sbom
 tags: [MLOps, Data Drift, Precision, Recall, TCO, SBOM, SAST, LLM 인프라 입문]
 category: ai
@@ -8,19 +8,21 @@ series: llm-infra-basics
 series_order: 12
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9929e496.webp
 ---
-> 모델은 배포한 날이 가장 정확하고 그 뒤로 조금씩 나빠집니다. 세상이 바뀌는데 모델은 배포 시점의 데이터에 멈춰 있기 때문입니다. 그걸 알아채는 지표(Drift·Precision·Recall), 계속 돌리는 비용(TCO), 그리고 그 안에 뭐가 들어 있는지 아는 일(SBOM·SAST)이 운영의 전부입니다.
+> 아닙니다. 모델은 배포한 날이 가장 정확하고 그 뒤로 조금씩 나빠집니다. 세상은 바뀌는데 모델은 배포 시점의 데이터에 멈춰 있기 때문입니다. 그래서 운영에는 나빠짐을 알아채는 지표(Drift·Precision·Recall), 계속 돌리는 비용(TCO), 그리고 그 안에 뭐가 들어 있는지 아는 일(SBOM·SAST)이 따라옵니다.
 
-## 모델 코드는 전체의 작은 상자
+11편까지 오면 모델을 만들고 올리는 데까지는 그림이 잡힙니다. 그런데 저는 실제로 서비스에 올린 모델이 반년쯤 지나 이상한 답을 내기 시작하는 걸 보고 나서야 "배포는 시작이구나"를 실감했습니다. 코드는 한 줄도 안 바뀌었는데 왜 나빠질까요? 그 질문부터 풀고 운영에 필요한 것들을 하나씩 보겠습니다.
 
-Google 의 MLOps 문서가 2015년 논문 "Hidden Technical Debt in Machine Learning Systems" 의 그림을 가져와 이렇게 보여 줍니다.
+## 모델 코드는 전체의 작은 상자일 뿐입니다
+
+먼저 운영이 왜 큰일인지부터 보겠습니다. Google 의 MLOps 문서가 2015년 논문 "Hidden Technical Debt in Machine Learning Systems" 의 그림을 가져와 이렇게 보여 줍니다.
 
 ![Google Cloud MLOps 문서의 그림 — ML 코드는 가운데 작은 상자이고 나머지가 운영 시스템](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/5b1e9b1a.webp)
 
 가운데 작고 진한 상자가 ML 코드입니다. 나머지 — 데이터 수집·검증, 피처 엔지니어링, 서빙 인프라, 모니터링, 메타데이터 관리 — 가 실제 시스템의 대부분입니다. 이 시리즈 1~11편이 다룬 것도 대부분 그 바깥 상자들이었습니다. 이 바깥을 자동화하고 반복 가능하게 만드는 일을 **MLOps** 라고 부릅니다. 소프트웨어의 DevOps 에 "데이터와 모델도 버전이 있고 바뀐다"는 조건이 붙은 것입니다.
 
-## Data Drift — 들어오는 데이터가 달라진다
+## 왜 나빠질까요 — Data Drift
 
-11편의 이탈 예측 모델을 2025년 데이터로 학습했다고 하겠습니다. 2026년에 신규 가입 채널이 바뀌어 젊은 고객이 늘면, 모델에 들어오는 나이 열의 분포가 학습 때와 달라집니다. 이것이 **Data Drift** 입니다. 모델은 그대로인데 입력이 달라져 예측이 어긋납니다.
+서두의 질문입니다. 코드는 그대로인데 왜 나빠질까요? 11편의 이탈 예측 모델을 2025년 데이터로 학습했다고 하겠습니다. 2026년에 신규 가입 채널이 바뀌어 젊은 고객이 늘면, 모델에 들어오는 나이 열의 분포가 학습 때와 달라집니다. 이것이 **Data Drift** 입니다. 모델은 그대로인데 입력이 달라져 예측이 어긋납니다.
 
 ![Evidently 의 Data Drift 리포트 — 열마다 학습 시점(Reference)과 현재(Current) 분포를 견주고 통계 검정으로 drift 를 판정](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9929e496.webp)
 
@@ -30,9 +32,9 @@ Google 의 MLOps 문서가 2015년 논문 "Hidden Technical Debt in Machine Lear
 
 둘 중 어느 쪽이든 결론은 같습니다. 정확도가 떨어지면 최신 데이터로 **재학습**해서 다시 배포합니다. 그래서 MLOps 파이프라인은 학습을 한 번 하고 끝내지 않고 주기적으로 또는 drift 가 잡힐 때 자동으로 다시 도는 구조로 만듭니다.
 
-## 오탐과 미탐 — 정확도 하나로는 모자란 이유
+## 나빠졌다는 걸 어떻게 잴까요 — 오탐과 미탐
 
-"정확도 99%" 는 좋아 보이지만, 사기 거래가 전체의 0.5% 라면 전부 정상이라고 답해도 99.5% 입니다. 그래서 분류 모델은 틀린 종류를 나눠 셉니다.
+그럼 "나빠졌다"는 무엇으로 잴까요? "정확도 99%" 는 좋아 보이지만 사기 거래가 전체의 0.5% 라면 전부 정상이라고 답해도 99.5% 입니다. 그래서 분류 모델은 틀린 종류를 나눠 셉니다.
 
 ![scikit-learn 문서의 confusion matrix 예시 — 실제 클래스와 예측 클래스를 격자로](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/57c6cbc5.webp)
 
@@ -41,9 +43,9 @@ Google 의 MLOps 문서가 2015년 논문 "Hidden Technical Debt in Machine Lear
 
 이 둘로 두 지표를 만듭니다. **Precision** 은 "맞다고 한 것 중 진짜 맞은 비율", 오탐이 많으면 떨어집니다. **Recall** 은 "진짜 맞는 것 중 잡아낸 비율", 미탐이 많으면 떨어집니다. 둘은 보통 반비례합니다. 문턱을 낮춰 더 많이 잡으면 Recall 은 오르고 Precision 은 내려갑니다.
 
-어느 쪽을 택할지는 **업무**가 정합니다. 모델이 정하지 않습니다. 암 검진은 미탐이 치명적이니 Recall 을, 스팸 필터는 중요한 메일을 버리는 오탐이 더 아프니 Precision 을 우선합니다. 12편 앞의 모든 인프라가 잘 돌아도 이 선택이 틀리면 모델은 쓸모가 없습니다.
+어느 쪽을 택할지는 **업무**가 정합니다. 모델이 정하지 않습니다. 암 검진은 미탐이 치명적이니 Recall 을, 스팸 필터는 중요한 메일을 버리는 오탐이 더 아프니 Precision 을 우선합니다. 앞선 11편의 인프라가 전부 잘 돌아도 이 선택이 틀리면 모델은 쓸모가 없습니다.
 
-## TCO — GPU 값이 전부가 아니다
+## 계속 돌리면 얼마가 들까요 — TCO
 
 **TCO**(Total Cost of Ownership)는 도입부터 폐기까지의 총비용입니다. AI 시스템에서 눈에 띄는 것은 GPU 이지만 실제 청구서에는 더 많은 항목이 있습니다.
 
@@ -59,15 +61,15 @@ Google 의 MLOps 문서가 2015년 논문 "Hidden Technical Debt in Machine Lear
 
 LLM 쪽은 계산 단위가 하나 더 있습니다. 3편의 토큰입니다. 같은 GPU 에서 5편의 vLLM 이 초당 몇 토큰을 뽑느냐가 곧 토큰당 원가입니다. 4편의 양자화와 6편의 KV Cache 라우팅이 그 원가를 낮추는 장치였습니다.
 
-## SBOM — 안에 뭐가 들어 있는지
+## 안에 뭐가 들어 있는지 알아야 합니다 — SBOM
 
 9편에서 반입한 컨테이너 이미지 안에는 vLLM 뿐 아니라 PyTorch, CUDA 라이브러리, Python 패키지 수백 개가 들어 있습니다. 그중 하나에 취약점이 공개되면 "우리 이미지에 그게 있나"를 즉시 답해야 합니다. 그 답을 미리 적어 둔 목록이 **SBOM**(Software Bill of Materials)입니다. 부품 명세서라는 뜻 그대로 패키지 이름·버전·해시·라이선스를 나열합니다.
 
-형식은 CycloneDX 와 SPDX 두 가지가 표준이고, Syft·Trivy 같은 도구가 이미지를 스캔해 자동으로 만듭니다. 2021년 미국 행정명령 이후 공공 조달에서 SBOM 제출이 요구되기 시작했고 국내 공공·금융도 같은 방향입니다. AI 시스템에서는 여기에 **모델 파일의 해시와 출처**까지 넣어야 합니다. 9편 반입 단계에서 적어 둔 해시가 그 자리에 들어갑니다.
+형식은 CycloneDX 와 SPDX 두 가지가 표준이고 Syft·Trivy 같은 도구가 이미지를 스캔해 자동으로 만듭니다. 2021년 미국 행정명령 이후 공공 조달에서 SBOM 제출이 요구되기 시작했고 국내 공공·금융도 같은 방향입니다. AI 시스템에서는 여기에 **모델 파일의 해시와 출처**까지 넣어야 합니다. 9편 반입 단계에서 적어 둔 해시가 여기에 들어갑니다.
 
-SBOM 이 있으면 **의존성 취약점** 점검이 목록 대조로 끝납니다. 새 CVE 가 뜨면 SBOM 을 검색해 해당 버전이 있는지 보고, 있으면 9편의 반입 절차를 다시 돌립니다.
+SBOM 이 있으면 **의존성 취약점** 점검이 목록 대조로 끝납니다. 새 CVE 가 뜨면 SBOM 을 검색해 해당 버전이 있는지 보고 있으면 9편의 반입 절차를 다시 돌립니다.
 
-## SAST — 코드를 실행하기 전에
+## 코드를 실행하기 전에 봅니다 — SAST
 
 **SAST**(Static Application Security Testing)는 코드를 실행하지 않고 읽어서 취약한 패턴을 찾는 검사입니다. 하드코딩된 API 키, SQL 주입 가능한 문자열 조합, 안전하지 않은 역직렬화. Semgrep·CodeQL·Bandit 같은 도구가 CI 에서 커밋마다 돕니다.
 
