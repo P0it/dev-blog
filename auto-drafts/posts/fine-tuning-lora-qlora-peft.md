@@ -22,11 +22,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 결과물도 문제입니다. 용도마다 15GB 짜리 모델이 하나씩 생깁니다. 고객 응대용, 코드 리뷰용, 요약용 모델을 따로 두면 저장도 서빙도 세 배입니다.
 
-## 일부만 고치면 어떨까요 — PEFT
+## 일부만 고치는 PEFT
 
 그래서 나온 발상이 **PEFT**(Parameter-Efficient Fine-Tuning)입니다. 원본 파라미터는 얼려 두고 **아주 일부만 학습**하는 방법들을 묶어 부르는 이름이고 Hugging Face 의 `peft` 라이브러리 이름이기도 합니다. 원본이 안 바뀌니 기울기·옵티마이저 상태도 학습하는 일부에만 필요하고 결과물도 그 일부만 저장하면 됩니다. 이 "일부"를 원본 곁에 붙이는 작은 모듈로 만든 것을 **어댑터**라고 부릅니다.
 
-## 큰 표 대신 얇은 표 두 개 — LoRA
+## 큰 표 대신 얇은 표 두 개를 쓰는 LoRA
 
 PEFT 중에서 사실상 표준이 된 것이 2021년 Microsoft 연구진이 제안한 **LoRA**(Low-Rank Adaptation)입니다.
 
@@ -46,7 +46,7 @@ Qwen2.5-7B 의 `q_proj.weight` 는 3584 × 3584 표입니다. 이 표를 고치�
 
 원본 저장소에 있던 `config.json`·`tokenizer.json` 이 여기엔 없습니다. 어댑터는 원본 위에 얹는 것이라 `base_model_name_or_path` 로 원본을 가리키기만 합니다. 서빙할 때는 vLLM 이 원본 하나를 올리고 요청마다 어댑터를 골라 붙이는 방식(`--enable-lora`)을 지원합니다. 15GB 모델 하나에 40MB 어댑터 수십 개를 얹어서 용도별 모델 수십 개처럼 쓰는 구조입니다.
 
-## 원본을 4비트로 눌러 놓으면 — QLoRA
+## 원본을 4비트로 눌러 놓는 QLoRA
 
 LoRA 로 학습할 파라미터는 줄었지만 얼린 원본 W 는 여전히 GPU 에 BF16 으로 올라가 있어야 합니다. 7B 면 15GB, 70B 면 140GB 입니다. 여기서 양자화가 떠오릅니다. 숫자 하나를 2바이트 대신 0.5바이트로 적어 메모리를 줄이는 기법입니다. 2023년 5월 University of Washington 의 Tim Dettmers 등이 낸 **QLoRA** 는 이 원본을 **4비트**로 눌러 올리고 그 위에 LoRA 어댑터만 BF16 으로 학습합니다.
 

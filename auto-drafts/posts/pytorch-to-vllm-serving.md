@@ -40,7 +40,7 @@ print(tokenizer.decode(out[0], skip_special_tokens=True))
 
 ![NVIDIA 기술 블로그의 KV Cache 조각화 그림 — 미리 잡아 둔 공간이 비어 낭비됨](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/b981b7d0.webp)
 
-## 이 문제를 전담하는 소프트웨어 — 추론 엔진
+## 이 문제를 전담하는 추론 엔진
 
 이 세 문제를 전담하는 소프트웨어가 **추론 엔진**(Inference Engine)입니다. 모델 파일은 같은데 그걸 실행하는 방식이 다릅니다. 요청을 받아 줄 세우고 배치를 짜고 KV Cache 를 관리해서 결과를 HTTP 로 돌려줍니다. 학습에는 관여하지 않습니다.
 
@@ -54,7 +54,7 @@ print(tokenizer.decode(out[0], skip_special_tokens=True))
 | KV Cache | 요청마다 최대 길이 예약 | 블록 단위 동적 할당 |
 | 모델 | 같은 safetensors | 같은 safetensors |
 
-## vLLM 이 KV Cache 를 다루는 방식 — PagedAttention
+## vLLM 이 KV Cache 를 다루는 PagedAttention
 
 **vLLM** 은 UC Berkeley 의 Woosuk Kwon·Zhuohan Li 등이 만들어 2023년 6월 20일 공개한 오픈소스 추론 엔진입니다. 핵심 아이디어는 **PagedAttention** 입니다. 운영체제가 메모리를 페이지 단위로 나눠 관리하듯이, KV Cache 를 고정 크기 **블록**으로 나눠 필요할 때 하나씩 할당합니다. 블록은 메모리에서 이어져 있을 필요가 없고 블록 테이블이 위치를 기억합니다.
 
@@ -64,7 +64,7 @@ print(tokenizer.decode(out[0], skip_special_tokens=True))
 
 ![vLLM 블로그의 A100 처리량 비교 — HF Transformers·TGI 대비](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/4bb19d5c.webp)
 
-## 슬롯이 나면 바로 다음 요청 — Continuous Batching
+## 슬롯이 나면 바로 다음 요청을 받는 Continuous Batching
 
 두 번째 문제(긴 요청을 기다리는 배치)는 **Continuous Batching** 이 풉니다. 배치를 요청 단위가 아니라 **토큰 생성 한 스텝 단위**로 다시 짭니다. 어떤 요청이 끝나면 그 스텝에서 바로 빼고 대기 중인 요청을 그 슬롯에 넣습니다. GPU 는 빈 슬롯 없이 계속 돌고 새 요청은 앞 요청이 끝나길 기다리지 않습니다.
 

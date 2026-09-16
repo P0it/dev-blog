@@ -12,13 +12,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 RAG 에 넣을 문서, 파인튜닝에 쓸 대화 로그, 수요 예측 모델의 학습 데이터. 이런 것들은 회사 어디에 있을까요? 저는 당연히 데이터베이스에 있을 거라고 생각했는데 실제로 AI 팀이 데이터를 가져오는 곳은 DB 가 아니라 S3 같은 파일 저장소였습니다. 서비스 DB 에서 분석 질의를 돌리면 서비스가 느려지기 때문에, 분석·AI 용 데이터는 따로 싸게 쌓아 두는 곳이 생겼기 때문입니다. 그런데 파일로만 쌓아 두면 곧 다른 문제가 생기고 그걸 푸는 게 Iceberg 입니다.
 
-## 왜 DB 가 아닐까요 — Database · Data Warehouse · Data Lake
+## Database·Data Warehouse·Data Lake 의 차이
 
 서비스가 쓰는 **데이터베이스**(Postgres·MySQL)는 지금 이 순간의 상태를 정확하게, 한 건씩 빠르게 읽고 쓰는 데 맞춰져 있습니다. 여기서 "지난 3년 매출을 지역별로 집계"를 돌리면 서비스가 느려집니다. 그래서 분석용으로 데이터를 따로 복사해 두는 창고가 생겼고 그것이 **Data Warehouse** 입니다. 정해진 스키마로 정리해 넣고 SQL 로 집계합니다.
 
 **Data Lake** 는 그보다 느슨합니다. 로그·이미지·JSON·CSV 를 정리하지 않은 채로 일단 싸게 다 넣어 두는 곳입니다. RAG 에 넣을 문서, 파인튜닝에 쓸 대화 로그, 예측 모델의 학습 데이터가 여기서 나옵니다. AI 는 정리된 표보다 원본이 필요한 경우가 많아 Data Lake 쪽이 출발점이 됩니다.
 
-## 그 Data Lake 의 바닥 — Object Storage 와 Parquet
+## Data Lake 의 바닥인 Object Storage 와 Parquet
 
 그럼 Data Lake 는 실제로 뭘로 만들까요? 바닥은 **오브젝트 스토리지**입니다. AWS 의 **S3** 가 대표이고 온프레미스에서는 MinIO·Ceph 가 같은 API 를 제공합니다. 폴더 구조가 있는 것처럼 보이지만 실제로는 "키 → 파일" 저장소이고 용량당 비용이 디스크보다 훨씬 쌉니다.
 
