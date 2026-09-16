@@ -1,5 +1,5 @@
 ---
-title: 기업은 LLM을 어떻게 여러 GPU에서 서비스할까요?
+title: 기업이 LLM을 여러 GPU에서 서비스하는 방법, Kubernetes·MIG·llm-d
 slug: enterprise-llm-serving-kubernetes-llm-d-mig
 tags: [llm-d, Kubernetes, MIG, LLM 서빙, MaaS, LLM 인프라 입문]
 category: ai
@@ -8,9 +8,9 @@ series: llm-infra-basics
 series_order: 6
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/70a4f3e2.webp
 ---
-> vLLM 여러 개를 Kubernetes 로 묶고 그 앞에 LLM 요청의 특성을 아는 라우터(llm-d)를 두고 남는 GPU 는 MIG 로 쪼개 나눠 씁니다. 이렇게 세운 것을 조직 안에서 API 로 제공하는 형태가 MaaS 입니다. 이 층을 알면 "GPU 클러스터"라는 말이 실제로 무엇을 가리키는지 그림이 잡힙니다.
+> vLLM 한 개는 GPU 한 장을 관리합니다. 모델이 한 장에 안 들어가거나 요청이 서버 한 대를 넘거나 GPU 가 남아서 나눠 써야 하면, 그 위에 Kubernetes·MIG·llm-d 라는 층이 하나 더 필요합니다. 이 층을 알면 "GPU 클러스터"라는 말이 실제로 무엇을 가리키는지 그림이 잡힙니다.
 
-5편에서 vLLM 한 개가 GPU 한 장(또는 서버 한 대)을 관리하는 것까지 봤습니다. 그런데 회사에서는 곧 이런 상황이 옵니다. 모델이 한 장에 안 들어가거나, 사용자가 서버 한 대로 감당이 안 되거나, 반대로 GPU 가 남아서 여러 팀이 나눠 써야 하거나. 저는 이 세 가지가 전부 "Kubernetes 로 해결"인 줄 알았는데 실제로는 문제마다 도구가 다릅니다. 하나씩 보겠습니다.
+5편에서 vLLM 한 개가 GPU 한 장(또는 서버 한 대)을 관리하는 것까지 봤습니다. 그런데 회사에서는 곧 이런 상황이 옵니다. 모델이 한 장에 안 들어가거나, 사용자가 서버 한 대로 감당이 안 되거나, 반대로 GPU 가 남아서 여러 팀이 나눠 써야 하거나. 저는 이 세 가지가 전부 "Kubernetes 로 해결"인 줄 알았는데 실제로는 문제마다 도구가 다릅니다. GPU 를 묶는 건 Tensor Parallel, 서버를 묶는 건 Kubernetes, GPU 를 쪼개는 건 MIG 이고 그 앞에서 요청을 나누는 게 llm-d 입니다.
 
 ## 서버 한 대를 넘어서면 생기는 세 가지 문제
 
@@ -73,7 +73,7 @@ CNCF 기부 발표 글은 대규모 모델 운영 환경에서 이 라우팅을 
 
 전체 그림을 한 줄로 이으면 이렇습니다. 사용자 → Ingress → llm-d Router → vLLM Pod → GPU(또는 MIG 조각) → 모델. 1편의 76억 개 숫자가 이 경로 맨 끝에 있습니다.
 
-여기까지가 모델을 "돌리는" 쪽 이야기입니다. 다음 편에서는 방향을 바꿔서, 이 모델의 숫자 자체를 우리 회사에 맞게 고치는 Fine-tuning 과 LoRA 에 대해서 알아보겠습니다.
+여기까지가 모델을 "돌리는" 쪽 이야기입니다. 다음 편에서는 방향을 바꿔서 이 모델의 숫자 자체를 우리 회사에 맞게 고치는 Fine-tuning 과 LoRA 에 대해서 알아보겠습니다.
 
 ## 참고 자료
 

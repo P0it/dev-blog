@@ -1,5 +1,5 @@
 ---
-title: 모든 문제에 LLM이 필요할까요?
+title: 모든 문제에 LLM이 필요한 것은 아니다
 slug: beyond-llm-xgboost-timesfm-two-tower
 tags: [XGBoost, TimesFM, Two-Tower, 추천 시스템, 시계열, LLM 인프라 입문]
 category: ai
@@ -8,9 +8,9 @@ series: llm-infra-basics
 series_order: 11
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/ed8d29be.webp
 ---
-> 아닙니다. 기업 AI 프로젝트의 상당수는 문서가 아니라 표·시계열·클릭 로그를 다루고 이 세 가지에는 각각 XGBoost·TimesFM·Two-Tower 라는 따로 굳은 답이 있습니다. 셋 다 GPU 수십 장 없이 돌아갑니다. 문제 종류가 모델을 정하지, 최신 모델이 문제를 정하지 않습니다.
+> 기업 AI 프로젝트의 상당수는 문서가 아니라 표·시계열·클릭 로그를 다룹니다. 이 세 가지에는 각각 XGBoost·TimesFM·Two-Tower 라는 따로 굳은 답이 있고 셋 다 GPU 수십 장 없이 돌아갑니다. 문제 종류가 모델을 정하지, 최신 모델이 문제를 정하지 않습니다.
 
-1~9편을 읽고 나면 "AI = LLM" 처럼 느껴집니다. 저도 한동안 그랬습니다. 그런데 회사에서 실제로 들어오는 요청을 보면 이런 것들입니다. "이 고객이 이탈할까", "다음 달 매장별 수요가 얼마일까", "이 사용자에게 어떤 상품을 보여 줄까". 셋 다 입력이 문장이 아닙니다. 10편의 Lakehouse 에 쌓인 표와 숫자 열입니다. 이런 문제에 LLM 을 쓰면 비싸고 느리고 정확도도 떨어집니다. 그럼 뭘 써야 할까요? 문제 종류별로 하나씩 보겠습니다.
+1~9편을 읽고 나면 "AI = LLM" 처럼 느껴집니다. 저도 한동안 그랬습니다. 그런데 회사에서 실제로 들어오는 요청을 보면 이런 것들입니다. "이 고객이 이탈할까", "다음 달 매장별 수요가 얼마일까", "이 사용자에게 어떤 상품을 보여 줄까". 셋 다 입력이 문장이 아닙니다. 10편의 Lakehouse 에 쌓인 표와 숫자 열입니다. 이런 문제에 LLM 을 쓰면 비싸고 느리고 정확도도 떨어집니다. 그럼 뭘 써야 할까요? 표에는 XGBoost, 시계열에는 TimesFM, 추천에는 Two-Tower 입니다.
 
 ## 문제 종류가 모델을 정합니다
 

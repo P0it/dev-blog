@@ -1,5 +1,5 @@
 ---
-title: PyTorch로 잘 돌던 모델, 왜 서비스에는 vLLM이 필요할까요?
+title: PyTorch에서 vLLM까지, LLM을 서버에 올리는 방법
 slug: pytorch-to-vllm-serving
 tags: [vLLM, PyTorch, Hugging Face, LLM 서빙, LLM 인프라 입문]
 category: ai
@@ -8,9 +8,9 @@ series: llm-infra-basics
 series_order: 5
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/4bb19d5c.webp
 ---
-> `model.generate()` 는 요청 하나가 끝날 때까지 GPU 를 붙들고 있어서 동시 요청을 처리하지 못하고 KV Cache 를 요청마다 최대 길이로 미리 잡아 메모리의 60~80% 를 낭비합니다. vLLM 은 이 두 문제를 Continuous Batching 과 PagedAttention 으로 풀어 같은 GPU 에서 최대 24배 처리량을 냅니다. 그 위에 OpenAI 호환 API 까지 얹어 주니 서비스 서버는 보통 여기서 시작합니다.
+> Python 다섯 줄이면 Hugging Face 모델을 GPU 에 올리고 답을 받을 수 있습니다. 그런데 사용자 100명이 동시에 물으면 이 코드는 바로 막힙니다. 그 문제를 대신 풀어 주는 게 추론 엔진이고 vLLM 이 KV Cache 관리 방식 하나로 같은 GPU 에서 최대 24배 처리량을 냈습니다.
 
-Python 다섯 줄이면 Hugging Face 모델을 GPU 에 올리고 답을 받을 수 있습니다. 저도 처음엔 "이걸 FastAPI 로 감싸면 서비스 아닌가?" 싶었습니다. 그런데 사용자 100명이 동시에 물으면 이 코드는 바로 막힙니다. 왜 막히는지, 그리고 그 문제를 대신 풀어 주는 **추론 엔진**이 뭘 다르게 하는지 순서대로 따라가 보겠습니다.
+실험 노트북에서 `model.generate()` 로 답을 잘 받아 보셨을 겁니다. 저도 처음엔 "이걸 FastAPI 로 감싸면 서비스 아닌가?" 싶었습니다. 그런데 사용자 100명이 동시에 물으면 이 코드는 바로 막힙니다. 왜 막힐까요? `generate` 는 요청 하나가 끝날 때까지 GPU 를 붙들고 있고 KV Cache 를 요청마다 최대 길이로 미리 잡아 메모리를 낭비하기 때문입니다. 이 두 문제를 전담하는 소프트웨어가 **추론 엔진**이고 그 대표가 vLLM 입니다. 먼저 PyTorch 로 직접 올리는 것부터 해 보겠습니다.
 
 ## 먼저 PyTorch 로 직접 올려 봅니다
 

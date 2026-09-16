@@ -1,5 +1,5 @@
 ---
-title: Fine-tuning은 꼭 모델 전체를 다시 학습해야 할까요?
+title: 모델 전체를 다시 학습하지 않는 Fine-tuning, LoRA와 QLoRA
 slug: fine-tuning-lora-qlora-peft
 tags: [Fine-tuning, LoRA, QLoRA, PEFT, LLM 인프라 입문]
 category: ai
@@ -8,9 +8,9 @@ series: llm-infra-basics
 series_order: 7
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/f371e208.webp
 ---
-> 아닙니다. 원본 파라미터는 얼려 두고 곁에 작은 표 두 개만 학습하는 LoRA 방식이 있습니다. 예를 들어볼까요? Qwen2.5-7B 를 의료 문답용으로 학습시킨 어댑터 파일은 40.4MB 입니다. 원본 15.2GB 의 0.3% 입니다. 여기에 원본을 4비트로 눌러 놓고 같은 일을 하면 QLoRA 이고 소비자용 GPU 한 장으로 7B 를 파인튜닝하는 길이 열립니다.
+> 예를 들어볼까요? Qwen2.5-7B 를 의료 문답용으로 학습시킨 어댑터 파일은 40.4MB 입니다. 원본 15.2GB 의 0.3% 입니다. 원본 파라미터는 얼려 두고 곁에 작은 표 두 개만 학습하는 LoRA 덕분이고 원본을 4비트로 눌러 놓는 QLoRA 까지 가면 소비자용 GPU 한 장으로 7B 를 파인튜닝할 수 있습니다.
 
-"우리 데이터로 모델을 학습시키고 싶다"는 말을 들으면 저는 GPU 수십 장짜리 일이라고 생각했습니다. 76억 개 숫자를 전부 다시 고쳐야 하니까요. 그런데 Hugging Face 에서 `-LoRA` 가 붙은 저장소를 열어 보면 파일이 수십 MB 뿐입니다. 이게 어떻게 가능할까요? 파인튜닝이 뭔지부터 잡고 왜 전체 학습이 비싼지, 그리고 LoRA 가 어디를 건드리는지 순서대로 따라가겠습니다.
+"우리 데이터로 모델을 학습시키고 싶다"는 말을 들으면 저는 GPU 수십 장짜리 일이라고 생각했습니다. 76억 개 숫자를 전부 다시 고쳐야 하니까요. 그런데 Hugging Face 에서 `-LoRA` 가 붙은 저장소를 열어 보면 파일이 수십 MB 뿐입니다. 이게 어떻게 가능할까요? 원본은 그대로 두고 **곁에 붙인 작은 표만 학습**하기 때문입니다. 파인튜닝이 뭔지부터 잡고 왜 전체 학습이 비싼지, 그리고 LoRA 가 정확히 어디를 건드리는지 보겠습니다.
 
 ## 사전학습과 파인튜닝은 뭐가 다를까요
 

@@ -1,5 +1,5 @@
 ---
-title: AI 모델은 배포하면 끝일까요?
+title: AI 모델은 배포가 끝이 아니다
 slug: ai-in-production-drift-precision-recall-tco-sbom
 tags: [MLOps, Data Drift, Precision, Recall, TCO, SBOM, SAST, LLM 인프라 입문]
 category: ai
@@ -8,9 +8,9 @@ series: llm-infra-basics
 series_order: 12
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9929e496.webp
 ---
-> 아닙니다. 모델은 배포한 날이 가장 정확하고 그 뒤로 조금씩 나빠집니다. 세상은 바뀌는데 모델은 배포 시점의 데이터에 멈춰 있기 때문입니다. 그래서 운영에는 나빠짐을 알아채는 지표(Drift·Precision·Recall), 계속 돌리는 비용(TCO), 그리고 그 안에 뭐가 들어 있는지 아는 일(SBOM·SAST)이 따라옵니다.
+> 모델은 배포한 날이 가장 정확하고 그 뒤로 조금씩 나빠집니다. 세상은 바뀌는데 모델은 배포 시점의 데이터에 멈춰 있기 때문입니다. 그래서 운영에는 나빠짐을 알아채는 지표(Drift·Precision·Recall), 계속 돌리는 비용(TCO), 그 안에 뭐가 들어 있는지 아는 일(SBOM·SAST)이 따라옵니다.
 
-11편까지 오면 모델을 만들고 올리는 데까지는 그림이 잡힙니다. 그런데 저는 실제로 서비스에 올린 모델이 반년쯤 지나 이상한 답을 내기 시작하는 걸 보고 나서야 "배포는 시작이구나"를 실감했습니다. 코드는 한 줄도 안 바뀌었는데 왜 나빠질까요? 그 질문부터 풀고 운영에 필요한 것들을 하나씩 보겠습니다.
+11편까지 오면 모델을 만들고 올리는 데까지는 그림이 잡힙니다. 그런데 저는 실제로 서비스에 올린 모델이 반년쯤 지나 이상한 답을 내기 시작하는 걸 보고 나서야 "배포는 시작이구나"를 실감했습니다. 코드는 한 줄도 안 바뀌었는데 왜 나빠질까요? 들어오는 데이터가 학습 때와 달라졌기 때문입니다. 이걸 Data Drift 라고 부르는데 운영이 왜 큰일인지부터 보고 나서 이 이야기로 들어가겠습니다.
 
 ## 모델 코드는 전체의 작은 상자일 뿐입니다
 
