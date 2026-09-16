@@ -105,46 +105,6 @@ export function PostDetailView({
             {/* 페이지상 요약 훅은 본문 첫 `>` 인용구가 담당한다(에디터에서 자동으로
                 excerpt 컬럼에 추출되어 카드·검색·OG·RSS도 같은 문장을 쓴다). */}
 
-            {series && series.items.length > 0 && (
-              <div
-                style={{
-                  margin: "8px 0 32px",
-                  padding: "18px 20px",
-                  background: "var(--bg-subtle)",
-                  border: "1px solid var(--line-subtle)",
-                  borderRadius: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-                  <Link
-                    href={`/series/${series.slug}`}
-                    style={{ fontWeight: 700, fontSize: 15, color: "var(--fg-strong)", textDecoration: "none" }}
-                  >
-                    {t.series}: {series.title}
-                  </Link>
-                  <span className="meta">
-                    {series.items.findIndex((it) => it.slug === post.slug) + 1} / {series.items.length}
-                  </span>
-                </div>
-                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {series.items.map((it) => {
-                    const current = it.slug === post.slug;
-                    return (
-                      <li key={it.slug} style={{ fontSize: 14, lineHeight: 1.5 }}>
-                        {current ? (
-                          <span style={{ fontWeight: 700, color: "var(--fg-strong)" }}>{it.title}</span>
-                        ) : (
-                          <Link href={`${postsBase}/${it.slug}`} style={{ color: "var(--fg-neutral)" }}>
-                            {it.title}
-                          </Link>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            )}
-
             <PostBody md={post.bodyMd} fallback={t.bodyPending} />
 
             {post.tags.length > 0 && locale === "ko" && (
@@ -156,6 +116,36 @@ export function PostDetailView({
                 ))}
               </div>
             )}
+
+            {/* 시리즈 이전/다음 편 — 본문 끝, 연관 글 위 */}
+            {series && series.items.length > 1 && (() => {
+              const idx = series.items.findIndex((it) => it.slug === post.slug);
+              const prev = idx > 0 ? series.items[idx - 1] : null;
+              const next = idx >= 0 && idx < series.items.length - 1 ? series.items[idx + 1] : null;
+              return (
+                <nav className="series-nav" aria-label="시리즈 이전·다음 편">
+                  {prev ? (
+                    <Link href={`${postsBase}/${prev.slug}`} className="series-nav-link prev">
+                      <span className="series-nav-label">← 이전 편 · {String(idx).padStart(2, "0")}</span>
+                      <span className="series-nav-title">{prev.title}</span>
+                    </Link>
+                  ) : (
+                    <span className="series-nav-link empty" />
+                  )}
+                  {next ? (
+                    <Link href={`${postsBase}/${next.slug}`} className="series-nav-link next">
+                      <span className="series-nav-label">다음 편 · {String(idx + 2).padStart(2, "0")} →</span>
+                      <span className="series-nav-title">{next.title}</span>
+                    </Link>
+                  ) : (
+                    <Link href={`/series/${series.slug}`} className="series-nav-link next">
+                      <span className="series-nav-label">시리즈 완결 →</span>
+                      <span className="series-nav-title">{series.title} 전체 보기</span>
+                    </Link>
+                  )}
+                </nav>
+              );
+            })()}
 
             {related.length > 0 && (
               <div
@@ -192,6 +182,38 @@ export function PostDetailView({
             )}
             {graph && <PostGraph graph={graph} activeSlug={post.slug} />}
           </aside>
+
+          {/* 시리즈 회차는 오른쪽 열. 넓은 화면에서는 sticky, 좁아지면 본문 아래로 내려간다. */}
+          {series && series.items.length > 0 && (
+            <aside className="post-side">
+              <div className="post-series">
+                <div className="t-overline">{t.series}</div>
+                <Link href={`/series/${series.slug}`} className="post-series-title">
+                  {series.title}
+                </Link>
+                <div className="post-series-count">
+                  {series.items.findIndex((it) => it.slug === post.slug) + 1} / {series.items.length}
+                </div>
+                <ol className="post-series-list">
+                  {series.items.map((it, i) => {
+                    const current = it.slug === post.slug;
+                    return (
+                      <li key={it.slug} className={current ? "current" : ""}>
+                        <span className="post-series-idx">{String(i + 1).padStart(2, "0")}</span>
+                        {current ? (
+                          <span className="post-series-item">{it.title}</span>
+                        ) : (
+                          <Link href={`${postsBase}/${it.slug}`} className="post-series-item">
+                            {it.title}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </aside>
+          )}
         </div>
         </div>
       </div>
