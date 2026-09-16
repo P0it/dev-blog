@@ -74,10 +74,6 @@ export default async function SeriesPage({
                 <div className="series-ep-body">
                   <h3 className="series-ep-title">{p.title}</h3>
                   {p.excerpt && <p className="series-ep-excerpt">{p.excerpt}</p>}
-                  <div className="series-ep-meta">
-                    {p.date && <span>{p.date}</span>}
-                    {p.readingMin && <span>{p.readingMin}</span>}
-                  </div>
                 </div>
                 <div className="series-ep-thumb">
                   <CoverThumb post={p} fill />
