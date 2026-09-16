@@ -467,10 +467,21 @@ export async function getPostsByCategorySlug(slug: string): Promise<Post[]> {
 }
 
 // 시리즈 목록 (post 수 포함). series 테이블 없으면 [].
-export async function getAllSeries(): Promise<
-  { slug: string; title: string; description: string | null; count: number }[]
-> {
+export type SeriesSummary = {
+  slug: string;
+  title: string;
+  description: string | null;
+  count: number;
+  // 카드 표지용 앞 3편. 공개된 글만.
+  preview: Post[];
+  // 첫 편·마지막 편 발행일 (YYYY-MM-DD). 글이 없으면 null.
+  firstAt: string | null;
+  lastAt: string | null;
+};
+
+export async function getAllSeries(): Promise<SeriesSummary[]> {
   const sb = supabaseServer();
+  const labels = await categoryLabelMap();
   try {
     const { data: series, error } = await sb
       .from("series")
@@ -479,14 +490,28 @@ export async function getAllSeries(): Promise<
     if (error || !series) return [];
     const { data: posts } = await sb
       .from("posts")
-      .select("series_slug")
+      .select("*")
       .eq("status", "published")
-      .not("series_slug", "is", null);
-    const counts = new Map<string, number>();
-    for (const p of posts ?? []) {
-      if (p.series_slug) counts.set(p.series_slug, (counts.get(p.series_slug) ?? 0) + 1);
+      .not("series_slug", "is", null)
+      .order("series_order", { ascending: true, nullsFirst: false });
+    const bySeries = new Map<string, PostRow[]>();
+    for (const p of (posts ?? []) as PostRow[]) {
+      if (!p.series_slug) continue;
+      const list = bySeries.get(p.series_slug) ?? [];
+      list.push(p);
+      bySeries.set(p.series_slug, list);
     }
-    return series.map((s) => ({ ...s, count: counts.get(s.slug) ?? 0 }));
+    return series.map((s) => {
+      const rows = bySeries.get(s.slug) ?? [];
+      const dates = rows.map((r) => r.published_at).filter((d): d is string => !!d).sort();
+      return {
+        ...s,
+        count: rows.length,
+        preview: rows.slice(0, 3).map((r) => rowToPost(r, labels)),
+        firstAt: dates[0]?.slice(0, 10) ?? null,
+        lastAt: dates[dates.length - 1]?.slice(0, 10) ?? null,
+      };
+    });
   } catch {
     return [];
   }

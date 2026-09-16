@@ -194,6 +194,13 @@
   --fg-primary-strong: var(--mint-500);
   --line-primary:   var(--mint-500);
   --bg-primary-tint: rgba(105, 197, 170, 0.16);
+  /* soft 면은 라이트의 *-50(거의 흰색)이 다크에서 흰 판이 되므로 반투명 틴트로 교체 */
+  --bg-primary-soft:  var(--bg-primary-tint);
+  --bg-accent-soft:   rgba(151, 71, 255, 0.20);
+  --bg-positive-soft: rgba(0, 191, 64, 0.16);
+  --bg-negative-soft: rgba(255, 66, 66, 0.16);
+  --bg-cautionary-soft: rgba(255, 193, 7, 0.16);
+  --bg-informative-soft: rgba(0, 152, 178, 0.16);
 
   --bg-base:        rgb(18, 18, 20);
   --bg-elevated:    rgb(28, 30, 34);
@@ -414,6 +421,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .chip-purple { background: var(--bg-accent-soft); color: var(--purple-600); }
 .chip-green { background: var(--bg-positive-soft); color: var(--green-600); }
 .chip-outline { background: transparent; border: 1px solid var(--line-normal); color: var(--fg-normal); }
+/* 다크: 틴트 위에 600 계열은 가라앉으므로 글자를 한 단계 밝게 */
+[data-theme="dark"] .chip-blue { color: var(--mint-500); }
+[data-theme="dark"] .chip-purple { color: rgb(188, 150, 255); }
+[data-theme="dark"] .chip-green { color: rgb(72, 214, 120); }
+[data-theme="dark"] .cat-chip.active { color: var(--mint-500); }
 
 /* ============================================================
    Cards
@@ -422,6 +434,117 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .card {
   background: var(--bg-elevated); border-radius: 16px;
   border: 1px solid var(--line-subtle);
+}
+
+/* ============================================================
+   Series — 목록 카드 / 회차 목록
+   ============================================================ */
+
+.series-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  margin-top: 36px;
+}
+.series-card {
+  display: flex; flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-subtle);
+  border-radius: 18px; overflow: hidden;
+  color: inherit; text-decoration: none;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.series-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px -20px rgba(0,0,0,0.28);
+  text-decoration: none;
+}
+.series-card:hover .series-card-title { text-decoration: none; }
+
+/* 앞 3편 표지를 겹친 스택. 뒤로 갈수록 작고 옅어져 '연속물' 느낌을 준다. */
+.series-card-covers {
+  position: relative; height: 188px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--line-subtle);
+  overflow: hidden;
+}
+.series-card-cover {
+  position: absolute; left: 50%; bottom: -40px;
+  width: 56%; aspect-ratio: 16 / 9;
+  border-radius: 12px; overflow: hidden;
+  background: var(--bg-muted);
+  border: 1px solid var(--line-subtle);
+  box-shadow: 0 10px 24px -12px rgba(0,0,0,0.35);
+  transition: transform .28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.series-card-cover:nth-child(1) { transform: translate(-50%, 0); z-index: 3; }
+.series-card-cover:nth-child(2) { transform: translate(-50%, -22px) scale(0.92); z-index: 2; opacity: 0.8; }
+.series-card-cover:nth-child(3) { transform: translate(-50%, -42px) scale(0.84); z-index: 1; opacity: 0.55; }
+.series-card:hover .series-card-cover:nth-child(1) { transform: translate(-50%, -8px); }
+.series-card:hover .series-card-cover:nth-child(2) { transform: translate(-50%, -32px) scale(0.92); }
+.series-card:hover .series-card-cover:nth-child(3) { transform: translate(-50%, -54px) scale(0.84); }
+.series-card-cover-empty { background: linear-gradient(135deg, var(--bg-muted), var(--bg-emphasized)); }
+
+.series-card-body { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 8px; }
+.series-card-meta {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--fg-alternative);
+}
+.series-card-count {
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--bg-primary-soft); color: var(--mint-600);
+}
+[data-theme="dark"] .series-card-count { color: var(--mint-500); }
+.series-card-range { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0.02em; }
+.series-card-title {
+  margin: 0; font-size: 20px; line-height: 1.35;
+  letter-spacing: -0.01em; color: var(--fg-strong);
+}
+.series-card-desc {
+  margin: 0; font-size: 14px; line-height: 1.6; color: var(--fg-neutral);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.series-card-first {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line-subtle);
+  font-size: 13px; color: var(--fg-neutral);
+}
+.series-card-first-label { flex: none; font-weight: 600; color: var(--fg-alternative); }
+.series-card-first-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 회차 목록 — 번호를 mono 로 크게 두고, 카테고리·태그는 뺀다(시리즈 안에서는 잡음). */
+.series-ep-list { list-style: none; margin: 32px 0 0; padding: 0; }
+.series-ep { border-top: 1px solid var(--line-subtle); }
+.series-ep:last-child { border-bottom: 1px solid var(--line-subtle); }
+.series-ep-link {
+  display: grid; grid-template-columns: 56px 1fr 180px; gap: 24px; align-items: start;
+  padding: 24px 0; color: inherit; text-decoration: none;
+  transition: opacity .15s ease;
+}
+.series-ep-link:hover { opacity: 0.72; text-decoration: none; }
+.series-ep-link:hover .series-ep-title { text-decoration: none; }
+.series-ep-idx {
+  font-family: var(--font-mono); font-size: 22px; font-weight: 500; line-height: 1;
+  letter-spacing: 0.02em; color: var(--fg-alternative);
+  padding-top: 4px;
+}
+.series-ep-body { min-width: 0; }
+.series-ep-title { margin: 0 0 8px; font-size: 19px; line-height: 1.35; letter-spacing: -0.01em; color: var(--fg-strong); }
+.series-ep-excerpt {
+  margin: 0 0 10px; font-size: 14px; line-height: 1.55; color: var(--fg-neutral);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.series-ep-meta { display: flex; gap: 10px; font-size: 12.5px; color: var(--fg-alternative); }
+.series-ep-thumb {
+  position: relative; height: 112px; border-radius: 12px; overflow: hidden;
+  background: var(--bg-muted);
+}
+
+@media (max-width: 768px) {
+  .series-grid { grid-template-columns: 1fr; gap: 16px; }
+  .series-card-covers { height: 164px; }
+  .series-ep-link { grid-template-columns: 36px 1fr; gap: 14px; padding: 20px 0; }
+  .series-ep-idx { font-size: 16px; }
+  .series-ep-thumb { display: none; }
 }
 
 /* ============================================================

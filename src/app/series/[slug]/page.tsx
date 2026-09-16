@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
-import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { getAllSeries, getSeriesContext, getSeriesPosts } from "@/lib/queries";
 import { SITE } from "@/lib/site";
@@ -26,7 +25,7 @@ export async function generateMetadata({
   const ctx = await getSeriesContext(slug);
   if (!ctx) return {};
   const url = `${SITE.url}/series/${ctx.slug}`;
-  const description = ctx.description ?? `${ctx.title} 연재`;
+  const description = ctx.description ?? `${ctx.title} 시리즈`;
   return {
     title: ctx.title,
     description,
@@ -50,14 +49,14 @@ export default async function SeriesPage({
       <JsonLd
         data={breadcrumbJsonLd([
           { name: SITE.name, path: "/" },
-          { name: "연재", path: "/series" },
+          { name: "시리즈", path: "/series" },
           { name: ctx.title, path: `/series/${ctx.slug}` },
         ])}
       />
       <PublicNav active="series" locale="ko" switchPath={`/series/${slug}`} />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>
-          <Link href="/series" style={{ color: "inherit" }}>시리즈</Link>
+          <Link href="/series" style={{ color: "inherit" }}>Series</Link>
         </div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>{ctx.title}</h1>
         {ctx.description && (
@@ -67,25 +66,26 @@ export default async function SeriesPage({
         )}
         <div className="meta" style={{ marginTop: 8 }}>{posts.length}편</div>
 
-        <div style={{ marginTop: 32 }}>
+        <ol className="series-ep-list">
           {posts.map((p, i) => (
-            <div key={p.slug} className="post-card">
-              <div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                  <Chip variant="blue">{i + 1}</Chip>
-                  <Chip variant="outline">{p.category}</Chip>
+            <li key={p.slug} className="series-ep">
+              <Link href={`/posts/${p.slug}`} className="series-ep-link">
+                <span className="series-ep-idx">{String(i + 1).padStart(2, "0")}</span>
+                <div className="series-ep-body">
+                  <h3 className="series-ep-title">{p.title}</h3>
+                  {p.excerpt && <p className="series-ep-excerpt">{p.excerpt}</p>}
+                  <div className="series-ep-meta">
+                    {p.date && <span>{p.date}</span>}
+                    {p.readingMin && <span>{p.readingMin}</span>}
+                  </div>
                 </div>
-                <Link href={`/posts/${p.slug}`} style={{ color: "inherit" }}>
-                  <h3>{p.title}</h3>
-                </Link>
-                {p.excerpt && <p>{p.excerpt}</p>}
-              </div>
-              <Link href={`/posts/${p.slug}`} aria-label={p.title}>
-                <CoverThumb post={p} />
+                <div className="series-ep-thumb">
+                  <CoverThumb post={p} fill />
+                </div>
               </Link>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
       <Footer />
     </>
