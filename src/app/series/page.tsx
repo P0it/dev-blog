@@ -25,7 +25,7 @@ export default async function SeriesIndexPage() {
 
   return (
     <>
-      <PublicNav active="" locale="ko" switchPath="/series" />
+      <PublicNav active="series" locale="ko" switchPath="/series" />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>시리즈</div>
         <h1 style={{ fontSize: 36, margin: 0, letterSpacing: "-0.02em" }}>연재</h1>

@@ -54,7 +54,7 @@ export default async function SeriesPage({
           { name: ctx.title, path: `/series/${ctx.slug}` },
         ])}
       />
-      <PublicNav active="" locale="ko" switchPath={`/series/${slug}`} />
+      <PublicNav active="series" locale="ko" switchPath={`/series/${slug}`} />
       <div className="container-wide" style={{ paddingTop: 56, paddingBottom: 80 }}>
         <div className="meta" style={{ marginBottom: 6 }}>
           <Link href="/series" style={{ color: "inherit" }}>시리즈</Link>

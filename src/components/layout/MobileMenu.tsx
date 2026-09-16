@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FlaskConical, Newspaper, Search, Menu, X } from "lucide-react";
+import { FlaskConical, Layers, Newspaper, Search, Menu, X } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
@@ -33,6 +33,10 @@ export function MobileMenu({
             <Link href={pathFor(locale, "/posts")} onClick={close}>
               <Newspaper size={16} style={{ color: "var(--fg-alternative)" }} />
               Posts
+            </Link>
+            <Link href={pathFor(locale, "/series")} onClick={close}>
+              <Layers size={16} style={{ color: "var(--fg-alternative)" }} />
+              Series
             </Link>
             <Link href={pathFor(locale, "/lab")} onClick={close}>
               <FlaskConical size={16} style={{ color: "var(--fg-alternative)" }} />
