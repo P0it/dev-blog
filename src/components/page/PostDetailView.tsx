@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
-import { User } from "lucide-react";
+import { ChevronDown, User } from "lucide-react";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
@@ -186,14 +186,16 @@ export function PostDetailView({
           {/* 시리즈 회차는 오른쪽 열. 넓은 화면에서는 sticky, 좁아지면 본문 아래로 내려간다. */}
           {series && series.items.length > 0 && (
             <aside className="post-side">
-              <div className="post-series">
-                <div className="t-overline">{t.series}</div>
-                <Link href={`/series/${series.slug}`} className="post-series-title">
-                  {series.title}
-                </Link>
-                <div className="post-series-count">
-                  {series.items.findIndex((it) => it.slug === post.slug) + 1} / {series.items.length}
-                </div>
+              {/* 기본 접힘. 펼치기 전에는 시리즈 이름·위치만 보여 목차와 헷갈리지 않게 한다. */}
+              <details className="post-series">
+                <summary className="post-series-summary">
+                  <span className="t-overline">{t.series}</span>
+                  <span className="post-series-title">{series.title}</span>
+                  <span className="post-series-count">
+                    {series.items.findIndex((it) => it.slug === post.slug) + 1} / {series.items.length}
+                    <ChevronDown size={14} className="post-series-chev" />
+                  </span>
+                </summary>
                 <ol className="post-series-list">
                   {series.items.map((it, i) => {
                     const current = it.slug === post.slug;
@@ -211,7 +213,10 @@ export function PostDetailView({
                     );
                   })}
                 </ol>
-              </div>
+                <Link href={`/series/${series.slug}`} className="post-series-all">
+                  시리즈 전체 보기 →
+                </Link>
+              </details>
             </aside>
           )}
         </div>

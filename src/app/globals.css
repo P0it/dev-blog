@@ -728,8 +728,11 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   color: var(--fg-neutral); font-style: normal;
 }
 .prose :not(pre) > code { font-family: var(--font-mono); font-size: 14px; background: var(--bg-muted); padding: 2px 6px; border-radius: 6px; }
-.prose ul { padding-left: 22px; margin: 0 0 20px; }
-.prose ul li { font-size: 17px; line-height: 1.75; color: var(--fg-normal); margin-bottom: 8px; }
+/* tailwind preflight 가 list-style 을 none 으로 초기화하므로 본문 목록은 여기서 되살린다 */
+.prose ul { list-style: disc; padding-left: 22px; margin: 0 0 20px; }
+.prose ol { list-style: decimal; padding-left: 24px; margin: 0 0 20px; }
+.prose ul li, .prose ol li { font-size: 17px; line-height: 1.75; color: var(--fg-normal); margin-bottom: 8px; }
+.prose li::marker { color: var(--fg-neutral); }
 .prose strong { color: var(--fg-strong); font-weight: 700; }
 .prose em { font-style: italic; }
 .prose u {
@@ -1500,19 +1503,33 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   min-width: 0;
 }
 
-.post-series { font-size: 13px; }
-.post-series .t-overline { margin-bottom: 8px; }
+/* 시리즈 블록 — 테두리 있는 상자로 만들어 왼쪽 목차(선 없는 목록)와 모양부터 갈라 놓는다.
+   기본은 접힘. summary 에 이름·위치만, 펼치면 회차 목록. */
+.post-series {
+  font-size: 13px;
+  border: 1px solid var(--line-subtle); border-radius: 12px;
+  background: var(--bg-elevated);
+  padding: 14px 16px;
+}
+.post-series-summary {
+  list-style: none; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.post-series-summary::-webkit-details-marker { display: none; }
 .post-series-title {
   display: block; font-weight: 700; font-size: 14px; line-height: 1.4;
   color: var(--fg-strong); text-decoration: none;
 }
-.post-series-title:hover { color: var(--fg-primary-strong); text-decoration: none; }
 .post-series-count {
-  margin-top: 4px; font-family: var(--font-mono); font-size: 11.5px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 2px; font-family: var(--font-mono); font-size: 11.5px;
   letter-spacing: 0.04em; color: var(--fg-alternative);
 }
+.post-series-chev { color: var(--fg-assistive); transition: transform .18s ease; }
+.post-series[open] .post-series-chev { transform: rotate(180deg); }
+.post-series-summary:hover .post-series-title { color: var(--fg-primary-strong); }
 .post-series-list {
-  list-style: none; margin: 14px 0 0; padding: 12px 0 0;
+  list-style: none; margin: 12px 0 0; padding: 12px 0 0;
   border-top: 1px solid var(--line-subtle);
   display: flex; flex-direction: column; gap: 2px;
 }
@@ -1528,6 +1545,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 a.post-series-item:hover { color: var(--fg-strong); text-decoration: none; }
 .post-series-list li.current .post-series-idx { color: var(--fg-primary-strong); }
 .post-series-list li.current .post-series-item { color: var(--fg-primary-strong); font-weight: 600; }
+.post-series-all {
+  display: block; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--line-subtle);
+  font-size: 12.5px; font-weight: 600; color: var(--fg-primary-strong); text-decoration: none;
+}
+.post-series-all:hover { text-decoration: none; color: var(--fg-strong); }
 
 /* 본문 끝 이전/다음 편 */
 .series-nav {
@@ -1561,10 +1584,6 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
   .post-side {
     grid-column: 2; grid-row: 2;
     position: static; padding-left: 0; margin-top: 40px;
-  }
-  .post-series {
-    padding: 18px 20px; border-radius: 12px;
-    background: var(--bg-subtle); border: 1px solid var(--line-subtle);
   }
 }
 
@@ -3305,7 +3324,7 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
   .prose h2 { font-size: 22px; margin: 36px 0 12px; }
   .prose h3 { font-size: 18px; }
   .prose p,
-  .prose ul li { font-size: 16px; line-height: 1.7; }
+  .prose ul li, .prose ol li { font-size: 16px; line-height: 1.7; }
 
   .admin-sidebar { display: none; }
 }
