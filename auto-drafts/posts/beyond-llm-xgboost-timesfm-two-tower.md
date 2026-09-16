@@ -8,7 +8,7 @@ series: llm-infra-basics
 series_order: 11
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/ed8d29be.webp
 ---
-> 표 데이터에는 XGBoost, 시계열에는 TimesFM, 추천에는 Two-Tower. 기업 AI 프로젝트의 상당수가 LLM 이 아닌 이 세 모델로 풀리는 이유와 각각의 원리를 정리했습니다.
+> 표 데이터에는 XGBoost, 시계열에는 TimesFM, 추천에는 Two-Tower. 기업 AI 프로젝트의 상당수가 LLM 이 아닌 이 세 모델로 해결되는 이유와 각각의 원리를 정리했습니다.
 
 요즘 AI 이야기를 듣다 보면 "AI = LLM" 처럼 느껴집니다. 저도 한동안 그랬습니다. 그런데 회사에서 실제로 들어오는 요청을 보면 이런 것들입니다. "이 고객이 이탈할까", "다음 달 매장별 수요가 얼마일까", "이 사용자에게 어떤 상품을 보여 줄까". 셋 다 입력이 문장이 아닙니다. 데이터 플랫폼에 쌓인 표와 숫자 열입니다. 이런 문제에 LLM 을 쓰면 비싸고 느리고 정확도도 떨어집니다. 그럼 뭘 써야 할까요? 표에는 XGBoost, 시계열에는 TimesFM, 추천에는 Two-Tower 입니다.
 
@@ -33,7 +33,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 그림에서 한 사람의 점수는 tree1 의 +2 와 tree2 의 +0.9 를 더한 2.9 입니다. 트리 하나는 단순하지만 수백 개를 더하면 복잡한 경계를 그립니다.
 
-기업에서 여전히 XGBoost 를 쓰는 이유는 세 가지입니다. 표 데이터에서는 딥러닝보다 정확한 경우가 많습니다(2022년 Grinsztajn 등의 비교 연구가 이걸 체계적으로 보였습니다). CPU 한 대로 분 단위에 학습이 끝납니다. 그리고 어느 열이 결정에 얼마나 기여했는지 설명할 수 있습니다. 금융·보험처럼 설명 의무가 있는 곳에서 마지막 이유가 큽니다.
+기업에서 여전히 XGBoost 를 쓰는 이유는 세 가지입니다. 표 데이터에서는 대체로 딥러닝보다 정확합니다(2022년 Grinsztajn 등의 비교 연구가 이걸 체계적으로 보였습니다). CPU 한 대로 분 단위에 학습이 끝납니다. 그리고 어느 열이 결정에 얼마나 기여했는지 설명할 수 있습니다. 금융·보험처럼 설명 의무가 있는 곳에서 마지막 이유가 큽니다.
 
 ## 시계열에는 TimesFM
 
