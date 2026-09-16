@@ -48,6 +48,9 @@ cover_image: https://…             # 선택 — 카드 썸네일 이미지
 thumb_kind: f                      # 선택 — 없으면 slug 해시로 a~l 자동
 reading_min: 8분                   # 선택 — 없으면 본문 분량에서 산출
 source_url: https://…              # 선택 — 기록용(컬럼 아님, 본문 참고자료에 직접 적는다)
+published_at: 2026-06-08           # 선택 — 발행일을 미리 정할 때(시리즈를 과거 날짜에 끼울 때). 에디터 발행 시 그대로 쓰인다
+series: llm-infra                  # 선택 — series.slug (0003_series.sql 적용 필요)
+series_order: 3                    # 선택 — 시리즈 안 순서
 ---
 > 요약 인용구 — 카드·검색·OG·RSS 가 함께 쓰는 두괄식 훅.
 
@@ -112,8 +115,8 @@ Read 로 직접 보고 고르므로 별도 비전 API·비용이 없다. 쓸 만
    (pull 출력이 알려준다).
 
 `push` 가 기존 글을 갱신할 때는 **콘텐츠 필드만**(title·excerpt·body·tags·category·
-cover·thumb·reading_min) 바꾼다. `status`·`published_at`·`is_featured`·시리즈 설정은
-건드리지 않아 보존된다.
+cover·thumb·reading_min) 바꾼다. `status`·`is_featured` 는 건드리지 않아 보존되고,
+`published_at`·시리즈는 프런트매터에 적었을 때만 덮어쓴다.
 
 ## 주의 — 발행된 글의 캐시
 

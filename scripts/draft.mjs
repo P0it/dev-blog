@@ -22,6 +22,10 @@
 //   source_url: https://…   (선택) 기록용 — posts 컬럼 아님, 본문 참고자료에 직접 적는다
 //   source_date: 2026-05-20 (선택) 원문(인용/번역 대상) 작성·업로드 일자. 발행일을 이보다
 //                             앞으로 잡으려 하면 에디터에서 경고가 뜬다(YYYY-MM-DD)
+//   published_at: 2026-06-08 (선택) 발행일을 미리 정할 때. 시리즈처럼 과거 날짜에 끼워
+//                             넣을 글에 쓴다. 에디터가 발행할 때 이 값을 그대로 쓴다
+//   series: llm-infra       (선택) series.slug — 시리즈에 묶을 때
+//   series_order: 3         (선택) 시리즈 안 순서
 //   ---
 //   > 요약 인용구…
 //   ## 헤드라인…
@@ -229,8 +233,8 @@ async function push(file, force) {
     }
   }
 
-  // 콘텐츠 필드만 — status/published_at/is_featured/series 는 건드리지 않아
-  // 기존 글의 발행 상태·추천·시리즈 설정이 보존된다(에디터 update 와 동일 원칙).
+  // 콘텐츠 필드만 — status/is_featured 는 건드리지 않아 기존 글의 발행 상태·추천이
+  // 보존된다(에디터 update 와 동일 원칙). published_at/series 는 아래에서 지정했을 때만.
   const content = {
     title,
     excerpt: deriveExcerpt(body) || null,
@@ -242,18 +246,39 @@ async function push(file, force) {
     reading_min: unquote(fm.reading_min) || deriveReadingMin(body) || null,
     source_date: unquote(fm.source_date) || null,
   };
+  // 발행일·시리즈는 지정했을 때만 덮어쓴다 — 없으면 기존 값(에디터 설정) 보존.
+  const publishedAt = unquote(fm.published_at);
+  if (publishedAt) {
+    if (!/^\d{4}-\d{2}-\d{2}/.test(publishedAt)) throw new Error("published_at 은 YYYY-MM-DD 형식");
+    content.published_at = new Date(publishedAt).toISOString();
+  }
+  const seriesSlug = unquote(fm.series);
+  const seriesOrder = unquote(fm.series_order);
+  if (seriesSlug) {
+    content.series_slug = seriesSlug;
+    content.series_order = seriesOrder ? Number(seriesOrder) : null;
+  }
+
+  // series 컬럼(0003_series.sql)이 아직 없는 DB 면 시리즈만 빼고 적재하고 경고한다.
+  const write = async (row) => {
+    const q = existing
+      ? sb.from("posts").update(row).eq("slug", slug)
+      : sb.from("posts").insert({ ...row, slug, status: "draft", is_featured: false });
+    const { error } = await q;
+    if (error && /series_(slug|order)/.test(error.message) && row.series_slug !== undefined) {
+      console.warn("⚠ posts.series_slug 컬럼이 없어 시리즈 지정을 건너뜁니다 — db/migrations/0003_series.sql 을 적용하세요.");
+      const { series_slug: _s, series_order: _o, ...rest } = row;
+      return write(rest);
+    }
+    if (error) throw error;
+  };
+  await write(content);
 
   if (existing) {
-    const { error } = await sb.from("posts").update(content).eq("slug", slug);
-    if (error) throw error;
     console.log(`✓ 기존 글 갱신 — ${slug} (status 유지: ${existing.status})`);
     if (existing.status === "published")
       console.log("  발행글 — 공개 페이지 캐시는 즉시 갱신 안 됨(어드민 에디터 저장 또는 재배포 필요).");
   } else {
-    const { error } = await sb
-      .from("posts")
-      .insert({ ...content, slug, status: "draft", is_featured: false });
-    if (error) throw error;
     console.log(`✓ 신규 초안 생성 — ${slug}`);
   }
   console.log(`  편집/검토: /admin/editor?slug=${slug}`);
