@@ -3,7 +3,7 @@ title: Claude Code가 AGENTS.md를 읽는 조건
 slug: claude-code-agents-md-fallback
 tags: [Claude Code, AGENTS.md, CLAUDE.md]
 category: insights
-cover_image: REHOST:https://raw.githubusercontent.com/agentsmd/agents.md/main/public/og.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-18/8ed93528.webp
 ---
 
 > Claude Code 2.1.277 이 `AGENTS.md` 를 직접 읽기 시작했습니다. 다만 기본값은 두 파일을 함께 읽는 방식이 아닙니다. 공식 문서가 정리한 판정 규칙과 설정값, 지원이 붙지 않는 세션까지 정리했습니다.
@@ -18,7 +18,7 @@ cover_image: REHOST:https://raw.githubusercontent.com/agentsmd/agents.md/main/pu
 
 > Added AGENTS.md support: in projects without CLAUDE.md, Claude Code reads AGENTS.md instead
 
-![AGENTS.md — 코딩 에이전트를 위한 공개 포맷을 소개하는 저장소 로고 이미지](REHOST:https://raw.githubusercontent.com/agentsmd/agents.md/main/public/og.png)
+![AGENTS.md — 코딩 에이전트를 위한 공개 포맷을 소개하는 저장소 로고 이미지](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-18/8ed93528.webp)
 
 `AGENTS.md` 는 코딩 에이전트에게 줄 지시를 한 파일에 모으자는 공개 포맷입니다. 에이전트를 위한 README 라고 소개합니다. 저장소는 MIT 라이선스이고 GitHub Star 는 2만 4천 개 선입니다.
 
