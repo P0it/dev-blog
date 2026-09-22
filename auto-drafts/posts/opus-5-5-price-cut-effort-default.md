@@ -3,7 +3,7 @@ title: Opus 5.5 요금이 20%만 내렸는데 40% 싸다는 이유
 slug: opus-5-5-price-cut-effort-default
 tags: [Claude Opus 5.5, AI 에이전트, LLM 요금]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/a63576fc5e4af0139e2eb432b9a6316f16348d7c-2560x1440.webp
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-22/0d65b69b.webp
 ---
 
 > Anthropic 이 9월 22일 Claude Opus 5.5 를 공개하면서 Opus 5 보다 40% 싸게 돌아간다고 적었습니다. 단가표에서 실제로 내려간 폭이 얼마이고 나머지가 어떤 조건에서 측정된 값인지를 발표문과 공식 문서로 확인해 정리했습니다.
