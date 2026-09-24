@@ -3,7 +3,7 @@ title: Claude Code 를 --resume 하면 앞의 추론을 기억할까요?
 slug: claude-code-resume-thinking-block-prefix
 tags: [Claude Code, thinking 블록, AI 에이전트]
 category: insights
-cover_image: REHOST:https://platform.claude.com/docs/images/how-thinking-works.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-24/2a3b1103.svg
 ---
 
 > Claude Code v2.1.282 가 9월 24일에 고친 항목 가운데 네 건이 전부 이어서 연 세션의 thinking 블록 문제였습니다. 공식 changelog 와 Claude API 문서, 재현 절차가 붙은 GitHub 이슈를 확인해 한 가지 규칙이 왜 네 가지 증상으로 나타나는지 정리했습니다.
@@ -25,7 +25,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/how-thinking-works.s
 
 thinking 블록은 응답에서 `text` 블록보다 앞에 오는 내용 블록입니다. 모델이 답을 내기 전에 문제를 정리하고 방법을 시도해 본 내용이 여기 담깁니다.
 
-![Claude 가 요청을 받아 생각할지 판단하고 도구를 쓰는 경우 도구 호출 사이에 다시 생각하며 한 응답에 thinking 블록과 text 블록을 함께 돌려주는 흐름](REHOST:https://platform.claude.com/docs/images/how-thinking-works.svg)
+![Claude 가 요청을 받아 생각할지 판단하고 도구를 쓰는 경우 도구 호출 사이에 다시 생각하며 한 응답에 thinking 블록과 text 블록을 함께 돌려주는 흐름](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-24/2a3b1103.svg)
 
 블록에는 `signature` 필드가 같이 붙어 옵니다. [공식 문서](https://platform.claude.com/docs/en/build-with-claude/thinking)는 여기에 전체 추론이 암호화되어 들어 있다고 적어 뒀습니다. 블록을 되돌려 보내면 API 가 이 값으로 Claude 가 만든 블록이 맞는지 확인합니다. 문서는 이 값을 불투명한 값으로 다루라고 분명히 적어 뒀습니다. 직접 해석하거나 파싱하지 말라는 뜻입니다.
 
@@ -106,7 +106,7 @@ thinking 블록은 응답에서 `text` 블록보다 앞에 오는 내용 블록�
 
 아래 다이어그램은 마지막 턴만 보관하는 쪽을 그린 것입니다. thinking 이 도구 결과와 함께 그 어시스턴트 턴 동안만 남아 있다가 다음 사용자 턴에서 빠지는 모습입니다.
 
-![앞 턴 thinking 블록을 버리는 모델에서 thinking 이 도구 결과와 함께 유지되다가 다음 사용자 턴에서 빠지는 흐름을 그린 다이어그램](REHOST:https://platform.claude.com/docs/images/context-window-thinking-tools.svg)
+![앞 턴 thinking 블록을 버리는 모델에서 thinking 이 도구 결과와 함께 유지되다가 다음 사용자 턴에서 빠지는 흐름을 그린 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-24/20af05a9.svg)
 
 대화 도중에 모델을 바꿀 때는 방향이 중요합니다. Claude Opus 5.5 는 Claude Opus 5 와 그 이전 Opus·Sonnet·Haiku 의 블록을 읽지만 Claude Fable·Mythos 계열의 블록은 읽지 못합니다. 반대로 Claude Fable 5.1 은 Claude API 에서 Opus 5.5 의 블록을 읽습니다. 위로 올려 바꾸면 앞선 추론이 유지되고 아래로 내려 바꾸면 빠집니다. 읽지 못하는 블록은 오류 없이 빠지고 과금도 되지 않습니다.
 
