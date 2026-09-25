@@ -3,7 +3,7 @@ title: CLAUDE.md 에 강하게 적어 둔 지시가 지금은 역효과다
 slug: claude-md-prompt-audit-older-model-instructions
 tags: [Claude Code, CLAUDE.md, 컨텍스트 엔지니어링]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/0442fe138158e84ffce92bed1624dd09f37ac46f-2292x1288.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-25/d755c786.webp
 ---
 
 > Claude Code v2.1.283 이 9월 25일 CLAUDE.md 와 스킬, 커맨드에서 구형 모델용 프롬프트 패턴을 찾아내는 `/doctor prompt-audit` 을 더했습니다. 공식 changelog 와 명령 문서, Anthropic 이 공개한 감사 기준 문서를 확인해 무엇이 지적 대상이고 무엇이 그대로 남는지 정리했습니다.
@@ -24,7 +24,7 @@ Anthropic 이 공개한 skills 저장소에는 이 감사의 기준을 적어 �
 
 이 문제는 프롬프트 한 편만 손봐서는 해결되지 않습니다. Anthropic 은 2025년 9월 29일 글에서 프롬프트 엔지니어링과 컨텍스트 엔지니어링을 나눠 설명했습니다. 프롬프트를 한 번 잘 쓰는 작업과, 추론 중에 들어가는 토큰 전체를 계속 관리하는 작업은 다릅니다.
 
-![프롬프트 엔지니어링이 한 번의 작업으로 끝나는 것과 달리 컨텍스트 엔지니어링은 시스템 지시·도구·외부 데이터·대화 기록을 매 차례 다시 골라 담는 반복 작업임을 나란히 보여 주는 다이어그램](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/faa261102e46c7f090a2402a49000ffae18c5dd6-2292x1290.png)
+![프롬프트 엔지니어링이 한 번의 작업으로 끝나는 것과 달리 컨텍스트 엔지니어링은 시스템 지시·도구·외부 데이터·대화 기록을 매 차례 다시 골라 담는 반복 작업임을 나란히 보여 주는 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-25/39f4fe28.webp)
 
 같은 글은 목표를 한 문장으로 적었습니다. 원하는 결과가 나올 가능성을 가장 높이는 **가장 작은 고신호 토큰 묶음**을 찾는 것입니다. 토큰이 늘어나면 성능이 떨어지는 현상을 context rot 이라고 부릅니다. CLAUDE.md 에 쌓아 둔 줄은 매 차례 컨텍스트에 들어가므로 이 계산에 그대로 들어갑니다.
 
@@ -40,7 +40,7 @@ JSON 을 억지로 받아내려고 쌓아 둔 프리필 더미는 structured out
 
 이유를 안 적은 금지는 특히 값이 없습니다. 감사는 `never`·`don't`·`must not` 로 시작하는 줄마다 그것이 실제 업무 제약인지, 그냥 마음에 안 드는 출력 형태를 적어 둔 것인지 가려내라고 합니다. 후자는 긍정문으로 다시 쓰거나 지웁니다.
 
-![시스템 프롬프트의 눈높이를 보여 주는 그림으로 한쪽 끝에는 하드코딩한 if-else 로직으로 부서지기 쉬운 프롬프트가 있고 다른 쪽 끝에는 공유된 맥락을 잘못 전제한 지나치게 일반적인 프롬프트가 있으며 그 사이에 적절한 높이가 있음을 나타낸 스펙트럼](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/0442fe138158e84ffce92bed1624dd09f37ac46f-2292x1288.png)
+![시스템 프롬프트의 눈높이를 보여 주는 그림으로 한쪽 끝에는 하드코딩한 if-else 로직으로 부서지기 쉬운 프롬프트가 있고 다른 쪽 끝에는 공유된 맥락을 잘못 전제한 지나치게 일반적인 프롬프트가 있으며 그 사이에 적절한 높이가 있음을 나타낸 스펙트럼](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-25/d755c786.webp)
 
 Anthropic 은 같은 글에서 양쪽 끝을 모두 경고했습니다. 복잡한 하드코딩 로직으로 채운 프롬프트는 부서지기 쉽고 지나치게 막연한 지시는 공유되지 않은 맥락을 있다고 전제합니다. 권하는 방법은 능력 있는 모델로 최소한만 넣고 시작해서 실제로 실패한 것을 보고 한 줄씩 더하는 쪽입니다.
 
@@ -50,7 +50,7 @@ Anthropic 은 같은 글에서 양쪽 끝을 모두 경고했습니다. 복잡�
 
 도구 설명에서 빼야 하는 것은 따로 있습니다. `CRITICAL: You MUST use this tool when...` 같은 행동 유도 문구, 예시 대화, 다른 도구를 꾸짖는 교차 참조, 시스템 프롬프트에 흩뿌려 둔 도구 이름입니다. 대신 계약과 동작 방식, 언제 쓰는지, 파라미터 설명, 주의사항은 남깁니다.
 
-![사람이 쓴 Slack MCP 서버 도구 설명과 Claude 가 다시 쓴 도구 설명의 테스트셋 정확도를 막대로 견준 그래프](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/6e810aee67f3f3c955832fb7bf9033ffb0102000-1920x1080.png)
+![사람이 쓴 Slack MCP 서버 도구 설명과 Claude 가 다시 쓴 도구 설명의 테스트셋 정확도를 막대로 견준 그래프](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-25/e7ab452e.webp)
 
 Anthropic 이 2025년 9월 11일에 올린 도구 작성 글도 같은 말을 합니다. 도구 설명을 조금만 손봐도 결과가 크게 달라진다는 것을 평가로 보여 줍니다. 줄여야 할 것과 정확히 써야 할 것을 구분하지 않으면 감사 결과를 잘못 적용하게 됩니다.
 
