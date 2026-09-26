@@ -3,7 +3,7 @@ title: 안 쓰는 Claude 플러그인이 매 턴 쓰는 토큰
 slug: claude-plugin-always-on-context-cost
 tags: [Claude Code, 플러그인, 컨텍스트 엔지니어링]
 category: insights
-cover_image: REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6ab6a76f77cf7911a03be1bd_d852ff4a.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-26/894c8a45.webp
 ---
 
 > 9월 25일 열린 플러그인 제출 포털과 공식 문서를 함께 읽고 플러그인 하나가 매 턴 컨텍스트에 넣는 것을 정리했습니다. 확장을 만드는 쪽이 줄여야 하는 것은 기능이 아니라 설명문입니다.
@@ -24,7 +24,7 @@ Anthropic 이 9월 25일 플러그인 디렉터리 제출 포털을 공개했습
 
 발행한 뒤에는 제품 화면별·버전별 설치 수와 목록 노출 수, 검색어까지 볼 수 있습니다.
 
-![발행한 플러그인의 사용 지표를 보여 주는 화면 예시로 값은 예시 데이터입니다](REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6ab6a76f77cf7911a03be1c0_ec09f8b2.png)
+![발행한 플러그인의 사용 지표를 보여 주는 화면 예시로 값은 예시 데이터입니다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-26/8968293c.webp)
 
 제출 종류는 두 가지로 나뉩니다. 플러그인 번들은 GitHub 저장소에서 읽어 갑니다. 원격 MCP 서버는 URL 로 커넥터 하나를 등록합니다. 자기 서버를 직접 운영하면 번들과 커넥터를 각각 내는 쪽을 문서가 권합니다. 커넥터 쪽에만 서버 상태와 도구별 사용량 대시보드가 붙기 때문입니다.
 
@@ -34,7 +34,7 @@ Anthropic 이 9월 25일 플러그인 디렉터리 제출 포털을 공개했습
 
 그런데 유통 창구가 열린 주에 공식 문서 쪽에는 반대 방향의 숫자가 붙었습니다. 활성화한 플러그인은 그것을 쓰는 세션에만 관여하지 않습니다. 설치해 둔 모든 세션에 관여합니다.
 
-![플러그인 폴더에 든 매니페스트·스킬·에이전트·훅·MCP 설정이 세션에서 각각 무엇이 되는지 짝지어 보여 주는 다이어그램](REHOST:https://mintcdn.com/claude-code/2Q_GtOEovg5qaBem/images/plugin-directory.svg?fit=max&auto=format&n=2Q_GtOEovg5qaBem&q=85&s=f623b64e82713b830e48174f0a922888)
+![플러그인 폴더에 든 매니페스트·스킬·에이전트·훅·MCP 설정이 세션에서 각각 무엇이 되는지 짝지어 보여 주는 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-26/e0b39a5e.svg)
 
 구성요소마다 계산이 다릅니다. 매 턴 들어가는 것과 호출할 때만 들어가는 것을 비교해 보면 아래와 같습니다.
 
@@ -65,7 +65,7 @@ always-on 에 들어가는 것은 각 구성요소의 이름과 `description`, �
 
 이 값이 늘 보이지는 않습니다. 마켓플레이스 이름을 지정해 열거나 Marketplaces 탭에서 들어갈 때만 나오고 Discover 목록에서 바로 들어간 상세 화면에는 나오지 않습니다. 내가 직접 만든 마켓플레이스의 플러그인에는 Context cost 항목이 아예 없습니다. 공식 마켓플레이스만 이 값을 계산해 붙입니다.
 
-![마켓플레이스가 플러그인을 목록에 올리고 그 플러그인이 설치되어 세션에서 구성요소로 실리는 경로를 세 칸으로 그린 다이어그램](REHOST:https://mintcdn.com/claude-code/2Q_GtOEovg5qaBem/images/plugins-model.svg?fit=max&auto=format&n=2Q_GtOEovg5qaBem&q=85&s=4196344954b7c2e27fc0bd6a9a1113a1)
+![마켓플레이스가 플러그인을 목록에 올리고 그 플러그인이 설치되어 세션에서 구성요소로 실리는 경로를 세 칸으로 그린 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-26/48121cf3.svg)
 
 설치한 뒤에도 표시가 붙습니다. `/plugin` 의 Installed 탭에서 14일과 10세션 동안 쓰이지 않은 플러그인은 **Not used recently** 아래로 내려갑니다. 상세 화면에는 `Last used:` 줄이 생깁니다.
 
@@ -77,7 +77,7 @@ always-on 에 들어가는 것은 각 구성요소의 이름과 `description`, �
 
 제출하는 쪽에서 걸리는 항목은 대부분 코드 품질이 아닙니다. 실행 경로입니다. 검증은 포털의 **Validate** 버튼으로 돌고 스캔은 제출 뒤 추적 브랜치에 새 커밋이 올라올 때마다 돕니다. 결과는 네 단계로 나옵니다. 제출을 막는 **Blocks**, 사람 검토로 넘기는 **Policy hold**, 그대로 제출할 수 있는 **Warning**, 알림뿐인 **Note** 입니다.
 
-![플러그인의 검토 상태와 권고 사항을 보여 주는 화면 예시로 값은 예시 데이터입니다](REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6ab6a76f77cf7911a03be1bd_d852ff4a.png)
+![플러그인의 검토 상태와 권고 사항을 보여 주는 화면 예시로 값은 예시 데이터입니다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-26/894c8a45.webp)
 
 막히는 것 중 실수하기 쉬운 것들을 모아 보면 아래와 같습니다.
 
