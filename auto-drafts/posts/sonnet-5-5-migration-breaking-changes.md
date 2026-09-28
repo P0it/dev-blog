@@ -3,7 +3,7 @@ title: Sonnet 5.5 업그레이드는 모델 ID 한 줄이 아니다
 slug: sonnet-5-5-migration-breaking-changes
 tags: [Claude API, 모델 마이그레이션, AI 에이전트]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/b521482c2a09be87ac40f01e8949c216c426eeaa-1600x1000.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-28/f4b8a56d.webp
 ---
 
 > 9월 28일에 공개된 Claude Sonnet 5.5 는 Sonnet 5 와 가격도 컨텍스트 크기도 같습니다. 대신 공식 문서가 모델 소개보다 먼저 기존 코드를 깨뜨리는 변경 다섯 가지를 적어 뒀습니다. 어떤 요청이 400 으로 돌아오고 어떤 변경이 에러 없이 지나가는지 마이그레이션 문서를 따라 정리했습니다.
@@ -18,9 +18,9 @@ cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/b52148
 
 발표 페이지는 같은 프로그램을 이전 모델과 최신 모델에 각각 작성하게 하고 실행 화면을 나란히 붙여 뒀습니다.
 
-![Anthropic 발표 페이지의 비교 화면 — 이전 모델이 clock-of-clocks 프로그램을 작성해 실행한 결과](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/21053b0cbc6e93a7388f173ed8fb3bd4bb2ed85b-1600x1000.png)
+![Anthropic 발표 페이지의 비교 화면 — 이전 모델이 clock-of-clocks 프로그램을 작성해 실행한 결과](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-28/710ab2af.webp)
 
-![Anthropic 발표 페이지의 비교 화면 — 최신 모델이 같은 clock-of-clocks 프로그램을 작성해 실행한 결과](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/b521482c2a09be87ac40f01e8949c216c426eeaa-1600x1000.png)
+![Anthropic 발표 페이지의 비교 화면 — 최신 모델이 같은 clock-of-clocks 프로그램을 작성해 실행한 결과](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-28/f4b8a56d.webp)
 
 ## 400 을 돌려주는 다섯 가지
 
