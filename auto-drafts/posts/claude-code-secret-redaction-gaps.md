@@ -3,7 +3,7 @@ title: Claude Code 로그에서 마스킹을 빠져나가는 비밀번호
 slug: claude-code-secret-redaction-gaps
 tags: [Claude Code, 보안, AI 에이전트]
 category: insights
-cover_image: REHOST:https://mintcdn.com/claude-code/YR4DRZyI3CdsXkiT/images/claude-code-data-flow.svg?fit=max&auto=format&n=YR4DRZyI3CdsXkiT&q=85&s=2846ea92cfc2297b8620c31c82b482ad
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-29/5ee61135.svg
 ---
 
 > 9월 29일 공개된 Claude Code v2.1.285 는 비밀 값이 새어 나간 세 건을 함께 고쳤습니다. 마스킹과 업로드 제외가 무엇을 기준으로 판단하는지, 그 기준을 빠져나가는 값은 어떤 모양인지 공식 문서에서 확인해 정리했습니다.
@@ -48,7 +48,7 @@ cover_image: REHOST:https://mintcdn.com/claude-code/YR4DRZyI3CdsXkiT/images/clau
 
 알려진 패턴으로 판단하는 구조는 `/ultrareview` 만의 것이 아닙니다. 세션 기록이 기기를 떠나는 방법마다 가리는 값과 보관 기간이 다르게 적혀 있습니다.
 
-![Claude Code 가 설치·인증·요청·텔레메트리·피드백으로 외부와 주고받는 연결을 실선과 점선으로 구분해 그린 다이어그램](REHOST:https://mintcdn.com/claude-code/YR4DRZyI3CdsXkiT/images/claude-code-data-flow.svg?fit=max&auto=format&n=YR4DRZyI3CdsXkiT&q=85&s=2846ea92cfc2297b8620c31c82b482ad)
+![Claude Code 가 설치·인증·요청·텔레메트리·피드백으로 외부와 주고받는 연결을 실선과 점선으로 구분해 그린 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-29/5ee61135.svg)
 
 공식 문서의 데이터 흐름도는 필수 연결을 실선으로, 선택이거나 사용자가 시작하는 흐름을 점선으로 구분해 뒀습니다. 텔레메트리와 피드백이 점선 쪽에 있습니다. 세 방법을 항목별로 비교하면 아래와 같습니다.
 
