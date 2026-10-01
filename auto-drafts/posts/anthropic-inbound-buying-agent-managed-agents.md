@@ -3,7 +3,7 @@ title: 문의 폼 대신 에이전트를 둔 Anthropic, 전환은 두 배 이상
 slug: anthropic-inbound-buying-agent-managed-agents
 tags: [AI 에이전트, 고객 성공, 업무 자동화]
 category: insights
-cover_image: REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6abd13b165d6419cc6284dc6_33b256a2.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-01/b976a8f7.webp
 ---
 
 > 9월 30일 Anthropic 세일즈 리더가 자기 팀의 인바운드 재구축기를 공개했습니다. 하루 수천 건을 받는 구매 에이전트를 올린 뒤 가장 크게 달라진 것은 담당자에게 도착하는 리드였습니다. 그 변화를 만든 운영 구조를 공식 블로그와 Managed Agents 문서로 확인해 정리했습니다.
@@ -20,7 +20,7 @@ cover_image: REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/
 
 문제는 규모였습니다. 월 수만 건이 들어오는데 인바운드 BDR 팀이 감당하지 못했습니다. 담당자들은 하루를 문서에 이미 적혀 있는 질문에 답하면서 보냈고 대기열에 있는 고객 전부에게 닿을 방법이 없었습니다. Johnson 은 어느 시간대에 어떤 언어로 물어도 답을 받을 수 있어야 하고 담당자와 통화하지 않고도 살 수 있어야 한다고 적었습니다.
 
-![Anthropic 블로그가 기존 인바운드 절차를 설명하는 절에 실은 그림](REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6abd13b165d6419cc6284dc3_1f013605.png)
+![Anthropic 블로그가 기존 인바운드 절차를 설명하는 절에 실은 그림](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-01/d1418f4d.webp)
 
 ## Contact Sales 와 제품 안에 둔 구매 에이전트
 
@@ -34,7 +34,7 @@ cover_image: REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/
 
 이 경험은 opt-in 입니다. 고객이 대화를 시작할 때 에이전트와 담당자 중 어느 쪽과 이야기할지 직접 고릅니다. 에이전트를 기본값으로 깔고 사람을 숨겨 둔 구성이 아닙니다.
 
-![Anthropic 블로그가 구매 에이전트를 소개하는 절에 실은 그림](REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6abd13b165d6419cc6284dc6_33b256a2.png)
+![Anthropic 블로그가 구매 에이전트를 소개하는 절에 실은 그림](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-01/b976a8f7.webp)
 
 ## 사람에게 넘어온 리드가 달라진 폭
 
@@ -59,7 +59,7 @@ Johnson 이 든 예가 구체적입니다. 인사이드 세일즈 담당자 Ojas
 
 이게 가능한 이유는 모든 변경이 각각 하나의 버전으로 저장되기 때문입니다. 내부 테스트 1주 차에 이미 v7 이었고 출시 뒤에도 매주 프롬프트를 바꿔 내보냈습니다. 문제가 생기면 새 세션을 이전 버전으로 돌려놓으면 됩니다. 고객 응대 문구를 고치는 일이 배포 파이프라인 밖으로 나왔는데도 되돌릴 수 있는 상태가 유지됩니다.
 
-![Anthropic 블로그가 Managed Agents 를 고른 이유를 설명하는 절에 실은 그림](REHOST:https://cdn.prod.website-files.com/68a44d4040f98a4adf2207b6/6abd13b165d6419cc6284dcb_fb9d5cd4.png)
+![Anthropic 블로그가 Managed Agents 를 고른 이유를 설명하는 절에 실은 그림](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-01/f4daeee9.webp)
 
 ## 규칙 목록 대신 목표 한 줄
 
