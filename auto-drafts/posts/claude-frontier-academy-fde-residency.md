@@ -3,7 +3,7 @@ title: Claude 자격증 17만 장은 왜 부족했나
 slug: claude-frontier-academy-fde-residency
 tags: [엔터프라이즈 AI, AI 도입, 업무 자동화]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/cd4fd51deacd067d4e30aee4f4b149f6cba1b97b-1000x1000.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-02/d83344c3.svg
 ---
 
 > 10월 2일 Anthropic 이 1억 달러를 걸고 엔지니어 1만 명을 길러내는 Claude Frontier Academy 를 발표했습니다. 이 회사는 수만 곳의 파트너사에 Claude 자격증을 이미 발급해 왔는데, 그 위에 12주짜리 평가 과정을 새로 얹었습니다. 교육 과정을 하나 더 만든 이유를 공식 발표문과 참여 기업 발언으로 확인해 정리했습니다.
