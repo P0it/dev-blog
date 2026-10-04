@@ -3,7 +3,7 @@ title: 모드가 그린 Box 하나에 Claude Code 가 꺼지던 이유
 slug: claude-code-mod-render-fault-isolation
 tags: [Claude Code, 플러그인, 터미널 UI]
 category: insights
-cover_image: REHOST:https://mintcdn.com/claude-code/dgiVO_Od1X1faduV/images/mods-screen-map.svg?fit=max&auto=format&n=dgiVO_Od1X1faduV&q=85&s=5fda26b6609c62b68c6f9e528c1590ea
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-04/f751cf45.svg
 ---
 
 > 10월 1일 2.1.287 이 플러그인에 터미널 화면을 열어 준 뒤 이틀 만에 2.1.289 가 나왔고 그 수정 목록에는 모드가 화면을 그리다 세션을 끝내던 사례가 줄줄이 적혀 있습니다. 화면을 외부 코드에 열 때 검증과 격리 중 어디에 비용을 쓰게 되는지를 공식 changelog 와 모드 문서로 확인해 정리했습니다.
@@ -28,7 +28,7 @@ Claude Code 에 플러그인을 하나 설치하고 나서 화면이 평소와 �
 
 그럼 모드는 화면의 어디를 그릴 수 있을까요? [공식 문서](https://code.claude.com/docs/en/plugins/mods/interface)는 모드가 그릴 수 있는 모든 곳을 render site 라고 부릅니다. 터미널 세션에서 새로 생기는 곳이 다섯 군데입니다. 전사 옆의 pane, 전사 오른쪽 위의 toast, 전사 안의 로그 줄, 프롬프트 바로 위의 band, 프롬프트 아래의 상태 줄입니다.
 
-![모드가 그릴 수 있는 곳을 표시한 Claude Code 터미널 화면 지도](REHOST:https://mintcdn.com/claude-code/dgiVO_Od1X1faduV/images/mods-screen-map.svg?fit=max&auto=format&n=dgiVO_Od1X1faduV&q=85&s=5fda26b6609c62b68c6f9e528c1590ea)
+![모드가 그릴 수 있는 곳을 표시한 Claude Code 터미널 화면 지도](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-04/f751cf45.svg)
 
 새로 생기는 곳만 그릴 수 있는 게 아닙니다. Claude Code 가 이미 그리고 있는 곳도 render site 입니다. 메시지, 도구 호출 줄과 그 결과, 스피너, Claude 가 질문을 띄우는 대화 상자까지 모드가 다시 그릴 수 있습니다. 권한 프롬프트는 render site 가 아니어서 모드가 바꿀 수 없습니다.
 
@@ -38,7 +38,7 @@ Claude Code 에 플러그인을 하나 설치하고 나서 화면이 평소와 �
 
 세션이 함께 끝난 이유는 모드 코드가 실행되는 위치에 있습니다. 설정 훅은 Claude Code 밖에서 셸 명령으로 실행되지만 모드의 훅은 **Claude Code 프로세스 안에서 함수로** 실행됩니다. 작은 모드는 파일 세 가지로 이루어집니다. 매니페스트, 코드 파일을 가리키는 `hooks.json`, 그리고 훅을 등록하는 코드 파일입니다.
 
-![플러그인 디렉터리의 각 파일이 세션에 더하는 것을 이은 다이어그램](REHOST:https://mintcdn.com/claude-code/2Q_GtOEovg5qaBem/images/plugin-directory.svg?fit=max&auto=format&n=2Q_GtOEovg5qaBem&q=85&s=f623b64e82713b830e48174f0a922888)
+![플러그인 디렉터리의 각 파일이 세션에 더하는 것을 이은 다이어그램](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-04/741384a7.svg)
 
 그리는 과정도 Claude Code 와 공유합니다. 모드는 키보드를 직접 읽지 않습니다. 사용자가 버튼을 누르면 콜백이 변수를 바꾸고 `$.ui.invalidate('ui.render')` 로 다시 그려 달라고 요청하면, Claude Code 가 그 훅을 한 번 더 실행해 돌려받은 트리를 자기 화면과 함께 그립니다. 그래서 트리 하나가 그려지다 예외를 던지면 그 줄만 깨지고 끝나지 않았습니다. 그리던 화면 전체가 영향을 받았습니다.
 
@@ -58,13 +58,13 @@ ui.render (Pane) refused: Text prop "bogusProp" is not allowed; the engine drew 
 
 그리는 중에 생긴 실패는 `ui.fault` 이벤트로 올라옵니다. `e.phase` 가 `load`, `render`, `run` 중 하나이고 `e.reason` 에 오류 메시지가 들어옵니다. 모드가 이 이벤트를 처리하면 Claude Code 는 `ui.fault` 훅이 끝난 뒤 `ui.render` 훅을 한 번 더 실행합니다. 실패한 `Client` 를 빼고 다시 그릴 기회를 주는 것입니다. 아래는 모드가 pane 안에 직접 그린 격자인데 이런 영역이 바로 혼자 실패하도록 분리된 대상입니다.
 
-![모드가 pane 안에 그린 색 블록 격자, 두 줄 세 칸](REHOST:https://mintcdn.com/claude-code/dgiVO_Od1X1faduV/images/mods-heat-map.svg?fit=max&auto=format&n=dgiVO_Od1X1faduV&q=85&s=b91bcce3bad74bc851149133d4acc5d5)
+![모드가 pane 안에 그린 색 블록 격자, 두 줄 세 칸](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-04/eac232de.svg)
 
 ## 모드를 설치하는 쪽과 만드는 쪽에 남는 차이
 
 설치하는 쪽이 먼저 알아야 할 것은 모드가 내 권한으로 실행된다는 사실입니다. [모드 문서](https://code.claude.com/docs/en/plugins/mods/overview)가 설치 전에 확인하라고 적어 둔 범위는 넓습니다. 파일을 읽고 쓰고 프로그램을 시작하고 네트워크 요청을 보내고 환경 변수와 설정 파일에 든 API 키를 읽을 수 있습니다. 샌드박싱을 켜도 모드가 시작한 프로세스는 그 밖에서 실행됩니다.
 
-![마켓플레이스에서 플러그인을 설치해 Claude Code 가 구성요소를 불러오는 경로](REHOST:https://mintcdn.com/claude-code/2Q_GtOEovg5qaBem/images/plugins-model.svg?fit=max&auto=format&n=2Q_GtOEovg5qaBem&q=85&s=4196344954b7c2e27fc0bd6a9a1113a1)
+![마켓플레이스에서 플러그인을 설치해 Claude Code 가 구성요소를 불러오는 경로](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-04/ec99a53e.svg)
 
 무엇을 하는 모드인지 실행 없이 보려면 디렉터리를 받아 `claude plugin validate` 를 돌립니다. 출력의 `hooks:` 와 `calls:` 줄이 그 모드가 처리하는 이벤트와 Claude Code 에 요청하는 동작을 나열합니다.
 
