@@ -3,7 +3,7 @@ title: Strands Decider 2B 가 텍스트 대신 돌려주는 숫자
 slug: strands-decider-2b-calibrated-confidence
 tags: [AI 에이전트, LLM 서빙, 업무 자동화]
 category: insights
-cover_image: REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/architecture.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/400be554.svg
 ---
 
 > AWS Strands Labs 가 10월 1일 공개한 Strands Decider 2B 는 문장을 만들지 않고 주어진 선택지 중 하나를 골라 그 선택에 붙은 confidence 를 함께 돌려줍니다. 저장소에 공식 figure 21장과 preregistration 14건이 같이 올라와 있어 이 모델이 무엇을 잘하고 어디서 멈추는지를 발표 문구가 아니라 측정값으로 확인할 수 있습니다.
@@ -22,7 +22,7 @@ strands-decider ask StrandsAgents/strands-decider-2B-hobson-v21 \
 
 구조부터 보면 이 모델이 왜 빠른지 설명이 됩니다. 사전학습된 decoder 모델은 보통 입력을 torso 에 통과시킨 뒤 language-modelling head 를 거쳐 단어를 하나씩 만들어 냅니다. Strands Decider 는 torso 를 그대로 두고 그 head 를 버립니다. 대신 파라미터 100만 개 정도의 pointer head 를 붙입니다.
 
-![Hobson 구조 — 사전학습 torso 는 두고 language-modelling head 를 버린 뒤 pointer head 로 선택지별 logit 을 만든다](REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/architecture.svg)
+![Hobson 구조 — 사전학습 torso 는 두고 language-modelling head 를 버린 뒤 pointer head 로 선택지별 logit 을 만든다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/400be554.svg)
 
 pointer head 가 하는 계산은 한 줄입니다. `<answer>` 위치의 hidden state 를 query 로 쓰고 각 선택지 텍스트의 마지막 토큰 hidden state 를 key 로 써서 둘을 견줍니다.
 
@@ -61,7 +61,7 @@ confidence = (N · p_max − 1) / (N − 1)
 
 그래서 이 모델에서 정확도보다 먼저 볼 숫자는 보정 오차입니다. 저장소는 세대별 ECE 를 그대로 공개해 뒀습니다.
 
-![세대별 JevBench 보정 오차(ECE) — primitive 별 temperature 를 맞춘 뒤 held-out 분류에서 측정한 값](REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/jevbench_ece.svg)
+![세대별 JevBench 보정 오차(ECE) — primitive 별 temperature 를 맞춘 뒤 held-out 분류에서 측정한 값](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/27d9d37b.svg)
 
 그래프를 읽을 때 조건 하나를 함께 봐야 합니다. 여기 적힌 ECE 는 **primitive 별로 temperature 를 맞춘 뒤**의 값입니다. 모델이 날것으로 그만큼 보정돼 나온다는 뜻이 아니고 보정 단계를 한 번 거친 결과입니다. 기준 모델 v21 의 Brier 는 0.323, ECE 는 0.064 입니다. 직전 기준이던 v19 는 0.342 와 0.052 였습니다. 정확도와 Brier 는 v21 이 좋아졌는데 ECE 는 오히려 나빠졌습니다. 둘을 같이 올리지는 못했다는 뜻입니다.
 
@@ -69,7 +69,7 @@ confidence = (N · p_max − 1) / (N − 1)
 
 정확도는 JevBench 공개 과제 231문항으로 잽니다. v21 이 176문항을 맞춰 0.762 입니다. 난이도 구간을 나눠 보면 쉬운 쪽 48문항은 1.000, 표준 72문항은 0.931, 어려운 쪽 111문항은 0.550 입니다.
 
-![난이도 구간별 JevBench 정확도 — 쉬운 구간은 v5 에서 이미 포화됐고 그 뒤의 개선은 어려운 구간에서 나왔다](REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/jevbench_tiers.svg)
+![난이도 구간별 JevBench 정확도 — 쉬운 구간은 v5 에서 이미 포화됐고 그 뒤의 개선은 어려운 구간에서 나왔다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/36856d3e.svg)
 
 그래프가 말하는 바가 figure 부제에 그대로 적혀 있습니다. 쉬운 구간은 v5 에서 이미 1.0 에 닿았고 그 뒤 세대들이 벌어 온 점수는 전부 어려운 구간에서 나왔습니다. 그 어려운 구간이 아직 0.55 입니다. 절반을 겨우 넘깁니다.
 
@@ -81,7 +81,7 @@ confidence = (N · p_max − 1) / (N − 1)
 
 실제 파이프라인에서는 상태 하나를 두고 질문을 여러 개 겁니다. 이 문의가 어느 팀 것인지, 긴급한지, 환불 요청을 포함하는지를 같은 대화에 대해 동시에 묻는 식입니다. 그 경우의 지연이 어떻게 늘어나는지도 측정해 뒀습니다.
 
-![질문 개수에 따른 지연 — 약 2,000토큰 상태에 choice 질문을 N개 걸었을 때, prefix 를 공유하는 기본 설정과 prefix 캐시 없이 배치로 돌린 경우](REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/latency_vs_questions.svg)
+![질문 개수에 따른 지연 — 약 2,000토큰 상태에 choice 질문을 N개 걸었을 때, prefix 를 공유하는 기본 설정과 prefix 캐시 없이 배치로 돌린 경우](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/42412f79.svg)
 
 기본 설정은 상태 부분의 prefix 를 공유합니다. 상태는 한 번만 읽고 질문마다 뒷부분만 다시 계산하므로 질문을 늘려도 비용이 비례해서 늘지 않습니다. prefix 캐시 없이 배치로 돌린 쪽과 벌어지는 간격이 그 효과입니다. 판정 여러 개를 한 상태에 몰아서 묻는 설계가 유리하다는 이야기입니다. 🙂
 
@@ -89,7 +89,7 @@ confidence = (N · p_max − 1) / (N − 1)
 
 여기까지는 좋은 쪽입니다. 저장소가 숨기지 않은 반대쪽도 같이 봐야 합니다.
 
-![질문을 바꿨을 때의 답 변화 — held-out choice 과제에서 상태와 선택지는 고정하고 질문만 first·last·NOT·무관한 질문으로 바꿔 측정](REHOST:https://raw.githubusercontent.com/strands-labs/strands-decider/main/research/figures/question_sensitivity.svg)
+![질문을 바꿨을 때의 답 변화 — held-out choice 과제에서 상태와 선택지는 고정하고 질문만 first·last·NOT·무관한 질문으로 바꿔 측정](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-05/66b1b142.svg)
 
 이 figure 가 재는 것은 **모델이 질문을 실제로 읽고 있는지**입니다. 상태와 선택지를 그대로 두고 질문만 바꿉니다. 첫 번째를 고르라는 질문, 마지막을 고르라는 질문, 부정(`NOT`)이 들어간 질문, 아예 무관한 질문으로 바꿔 보고 답이 따라 움직이는지 확인합니다. 세대를 거치며 개선된 항목이지만 그래프가 따로 존재한다는 사실 자체가 이 모델에서 그게 자동으로 보장되지 않는다는 뜻입니다.
 
