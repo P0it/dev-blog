@@ -3,7 +3,7 @@ title: 레드팀 등급 Claude 는 안전장치 없는 모델과 무엇이 다�
 slug: claude-cyber-verification-program-tiers
 tags: [보안, AI 안전, 레드팀]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/bdb05797e26ba2d096ebda6df1c762518da39db2-1920x1080.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-06/8cbfd1f0.webp
 ---
 
 > Anthropic 이 2026년 10월 6일 Cyber Verification Program 을 세 등급으로 개편했습니다. 발표문에는 등급마다 사이버 안전장치를 얼마나 풀었는지가 CyScenarioBench 수치로 함께 적혀 있습니다. 등급이 가르는 업무와 그 숫자, 등급을 받는 조건을 공식 발표문에서 확인해 정리했습니다.
@@ -39,7 +39,7 @@ Specialized Access 는 차단이 가장 적은 등급입니다. 항공기 운영
 
 공식 발표문에는 등급마다 요구되는 보안·개인정보 통제 항목까지 한 표에 정리돼 있습니다.
 
-![Cyber Verification Program 등급별 개요 — 등급마다 열리는 기능과 요구되는 보안·개인정보 통제 항목](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/2b1d3817fe9aa732e1be4ed18446a1b1367379e7-1920x2322.png)
+![Cyber Verification Program 등급별 개요 — 등급마다 열리는 기능과 요구되는 보안·개인정보 통제 항목](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-06/69d947a2.webp)
 
 ## CyScenarioBench 에서 나온 차단 46회와 0회
 
@@ -51,7 +51,7 @@ Specialized Access 는 차단이 가장 적은 등급입니다. 항공기 운영
 
 마지막 줄이 이 발표에서 가장 눈에 걸리는 대목입니다. Anthropic 은 그 34회가 **안전장치를 아예 적용하지 않았을 때의 67.6% 성공률과 사실상 같다**고 적었습니다. 그 상태가 Specialized Access 를 대표한다고 덧붙였습니다. Red Team 등급을 통과한 뒤에는 분류기가 성적에 거의 영향을 주지 않는다는 뜻입니다. 통제하는 쪽이 모델에서 심사로 옮겨 갔습니다.
 
-![CyScenarioBench 결과 — Defense Access 에서는 50회 중 46회가 막혔고 Red Team Access 에서는 차단 없이 34회가 완료됐다](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/bdb05797e26ba2d096ebda6df1c762518da39db2-1920x1080.png)
+![CyScenarioBench 결과 — Defense Access 에서는 50회 중 46회가 막혔고 Red Team Access 에서는 차단 없이 34회가 완료됐다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-06/8cbfd1f0.webp)
 
 이 숫자를 먼저 공개한 것 자체가 흔하지 않습니다. 보통은 전문가에게 더 센 권한을 준다는 사실만 밝히고 얼마나 풀었는지는 적지 않습니다. Anthropic 은 그 폭을 먼저 적었습니다. 그래서 이 프로그램의 실제 통제 수단이 분류기가 아니라 신원 확인과 자격 심사라는 점이 발표문 안에서 분명해집니다. 안전장치를 모델에서 가입 절차로 옮겼다면 그 절차가 얼마나 촘촘한지가 곧 안전 수준이 됩니다.
 
@@ -69,7 +69,7 @@ Anthropic 은 이 제약을 풀 방법도 함께 예고했습니다. Enterprise 
 
 같이 읽어야 할 단서도 붙어 있습니다. 이 수치는 파트너 33곳의 보고에 기반한 값이라 Anthropic 은 실제 규모가 최소 다섯 배 높을 것으로 봅니다. 패치율은 더 낮게 집계돼 있습니다. 패치 수를 공개한 파트너가 절반이 안 되는데 수정이 아직 진행 중인 경우가 많았기 때문입니다.
 
-![Project Glasswing 과 Anthropic 오픈소스 스캔에서 확인된 취약점 수 — 파트너 33곳의 보고에 기반한 하한값](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/172894c37182d28628eb922929f134400c3ef1b5-1920x862.png)
+![Project Glasswing 과 Anthropic 오픈소스 스캔에서 확인된 취약점 수 — 파트너 33곳의 보고에 기반한 하한값](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-06/ba9835da.webp)
 
 ## 개인 연구자가 받을 수 있는 등급
 
