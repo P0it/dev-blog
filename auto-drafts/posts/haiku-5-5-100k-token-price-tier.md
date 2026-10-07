@@ -3,7 +3,7 @@ title: Haiku 5.5 에서 90% 인하가 끝나는 10만 토큰
 slug: haiku-5-5-100k-token-price-tier
 tags: [Claude API, LLM 요금, AI 에이전트]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/89e9b0fbfe0181f6ca565d913686ce8e49b5e9c2-1200x630.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-07/2398d1f7.webp
 ---
 
 > Anthropic 이 2026년 10월 7일 공개한 Claude Haiku 5.5 는 공식 요금표에 한 모델이 두 줄로 적혀 있습니다. 프롬프트 길이로 요율이 갈리는 구조와 새 토크나이저가 같은 텍스트를 약 30% 더 많이 세는 효과를 공식 문서의 숫자로 확인해 정리했습니다.
