@@ -3,7 +3,7 @@ title: settings.json 오타 하나로 꺼지는 Claude Code 훅
 slug: claude-code-hook-failure-fail-open
 tags: [Claude Code, Hooks, 에이전트 보안]
 category: insights
-cover_image: REHOST:https://mintcdn.com/claude-code/ikqp3_70mqIahteV/images/hook-resolution.svg?fit=max&auto=format&n=ikqp3_70mqIahteV&q=85&s=be0bf3053550c26de5f54cd64674c197
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-08/1cd0339b.svg
 ---
 
 > Claude Code 2.1.295 가 2026년 10월 8일 command 훅과 HTTP 훅에 `onFailure: "block"` 을 추가했습니다. 그 전까지 훅이 실패했을 때 막으려던 동작이 어떻게 처리됐는지를 공식 Hooks reference 의 문장으로 하나씩 확인해 정리했습니다.
@@ -12,7 +12,7 @@ cover_image: REHOST:https://mintcdn.com/claude-code/ikqp3_70mqIahteV/images/hook
 
 훅은 생각보다 많은 곳에서 발화합니다. 세션 시작과 종료, 턴마다 도는 프롬프트 제출과 정지, 도구 호출마다 도는 `PreToolUse` 와 `PostToolUse` 가 모두 훅 이벤트입니다.
 
-![Claude Code 훅 생애주기 다이어그램 — SessionStart 에서 시작해 턴 단위 루프 안에 UserPromptSubmit 과 에이전트 루프(PreToolUse·PermissionRequest·PostToolUse)가 중첩되고 SessionEnd 로 끝나는 구조](REHOST:https://mintcdn.com/claude-code/x7pO8l4XcvAXCoVc/images/hooks-lifecycle.svg?fit=max&auto=format&n=x7pO8l4XcvAXCoVc&q=85&s=81b9256c1bbe8832553485f5d9e9c746)
+![Claude Code 훅 생애주기 다이어그램 — SessionStart 에서 시작해 턴 단위 루프 안에 UserPromptSubmit 과 에이전트 루프(PreToolUse·PermissionRequest·PostToolUse)가 중첩되고 SessionEnd 로 끝나는 구조](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-08/09fc83a0.svg)
 
 ## 차단으로 읽히는 유일한 종료 코드 2
 
@@ -22,7 +22,7 @@ cover_image: REHOST:https://mintcdn.com/claude-code/ikqp3_70mqIahteV/images/hook
 
 막히는 흐름과 지나가는 흐름이 공식 다이어그램에 함께 그려져 있습니다. matcher 와 `if` 조건이 모두 맞으면 훅이 실행되고 `permissionDecision: "deny"` 를 돌려줘 도구 호출이 막힙니다. 둘 중 하나라도 맞지 않으면 훅은 건너뛰어지고 도구 호출은 그대로 진행됩니다.
 
-![Claude Code 훅 결정 흐름 — PreToolUse 발화 후 matcher 와 if 조건이 모두 맞으면 훅이 deny 를 돌려주고 도구 호출이 막히며 하나라도 맞지 않으면 훅을 건너뛰고 호출이 진행된다](REHOST:https://mintcdn.com/claude-code/ikqp3_70mqIahteV/images/hook-resolution.svg?fit=max&auto=format&n=ikqp3_70mqIahteV&q=85&s=be0bf3053550c26de5f54cd64674c197)
+![Claude Code 훅 결정 흐름 — PreToolUse 발화 후 matcher 와 if 조건이 모두 맞으면 훅이 deny 를 돌려주고 도구 호출이 막히며 하나라도 맞지 않으면 훅을 건너뛰고 호출이 진행된다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-08/1cd0339b.svg)
 
 ## 시작하지 못한 훅과 settings.json 오타
 
