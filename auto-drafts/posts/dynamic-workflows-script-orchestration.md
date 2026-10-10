@@ -3,7 +3,7 @@ title: 에이전트 1,000대의 순서는 모델이 쓴 스크립트가 정한�
 slug: dynamic-workflows-script-orchestration
 tags: [Claude Code, AI 에이전트, 업무 자동화]
 category: insights
-cover_image: REHOST:https://platform.claude.com/docs/images/workflow-anatomy.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-10/b52c68df.svg
 ---
 
 > 2026년 10월 9일 Claude Managed Agents 에 dynamic workflows 가 베타로 들어왔습니다. 에이전트가 오케스트레이션 프로그램을 직접 작성하고 서버가 그것을 백그라운드에서 실행하는 방식입니다. 같은 기능이 먼저 들어가 있던 Claude Code 와 비교해 한도와 확인 수단이 어떻게 다른지 공식 문서에 적힌 범위로 정리했습니다.
@@ -32,7 +32,7 @@ Review one or two contracts yourself, without a run.
 
 그럼 에이전트가 쓴 그 프로그램은 어떤 모양으로 실행될까요? 런은 세 층으로 되어 있습니다. 서버가 백그라운드에서 돌리는 **런**, 런이 선언한 **페이즈**, 그리고 페이즈 안에서 에이전트 한 대가 각각 차지하는 **세션 스레드**입니다. 공식 문서의 다이어그램이 이 세 층을 한 장에 그려 뒀습니다.
 
-![워크플로 런의 구조. 런 안에 페이즈가 둘 있고 각 페이즈 안에서 에이전트 스레드가 돌며 결과가 앞 페이즈에서 다음 페이즈로 넘어간다](REHOST:https://platform.claude.com/docs/images/workflow-anatomy.svg)
+![워크플로 런의 구조. 런 안에 페이즈가 둘 있고 각 페이즈 안에서 에이전트 스레드가 돌며 결과가 앞 페이즈에서 다음 페이즈로 넘어간다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-10/b52c68df.svg)
 
 페이즈는 "계약서 읽기"처럼 이름이 붙은 단계이고 진행 상황은 이 페이즈 이벤트로 확인합니다. 프로그램이 할 수 있는 일은 네 가지입니다.
 
@@ -68,7 +68,7 @@ Review one or two contracts yourself, without a run.
 
 런에는 자기 가격이 따로 없습니다. 에이전트들이 쓴 토큰이 모델별 단가로 그대로 청구됩니다. 세션 예산에 닿으면 열려 있던 런이 전부 멈추고 세션은 `budget_reached` 와 함께 유휴로 바뀝니다. 각 스레드는 이미 시작한 모델 요청을 마치므로 **일하던 스레드 수만큼 예산을 넘길 수 있습니다.** 예산을 올리거나 없애면 멈춰 있던 런이 다시 실행됩니다.
 
-![워크플로 런의 상태 전이. 실행 중과 유휴와 종료 사이를 무엇이 옮기는지 보여 준다](REHOST:https://platform.claude.com/docs/images/workflow-run-states.svg)
+![워크플로 런의 상태 전이. 실행 중과 유휴와 종료 사이를 무엇이 옮기는지 보여 준다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-10/ba454f82.svg)
 
 ## 워크플로 코드를 읽는 두 가지 방법
 
