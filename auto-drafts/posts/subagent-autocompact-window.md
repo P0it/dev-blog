@@ -3,7 +3,7 @@ title: 서브에이전트에 일을 넘긴 뒤 따로 도는 컨텍스트 창
 slug: subagent-autocompact-window
 tags: [Claude Code, AI 에이전트, 컨텍스트 엔지니어링]
 category: insights
-cover_image: REHOST:https://platform.claude.com/docs/images/context-window.svg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-11/99d12587.svg
 ---
 
 > 2026년 10월 9일 Claude Code 2.1.296 이 `autoCompactWindow` 를 서브에이전트 프런트매터에 추가했습니다. 서브에이전트의 컨텍스트 창이 부모 세션과 어떤 점에서 다르게 도는지, 자동 압축이 언제 시작되고 압축 뒤에 무엇이 돌아오지 않는지를 공식 문서에 적힌 범위로 정리했습니다.
@@ -18,7 +18,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/context-window.svg
 
 모델이 창 크기만 정하는 것은 아닙니다. 그 창에 무엇이 남는지도 모델에 따라 다릅니다. Claude Opus 4.5 이후, Sonnet 4.6 이후, Haiku 5.5, Fable 5.1 같은 모델은 앞 턴의 thinking 블록을 기본으로 남기고 그만큼 입력 토큰으로 셉니다. 그 앞 세대의 Opus·Sonnet 과 Haiku 4.5 까지의 모델은 되돌려 보낸 thinking 블록을 API 가 알아서 떼어 냅니다. 아래 도식이 떼어 내는 쪽 모델의 동작입니다.
 
-![thinking 블록을 떼어 내는 모델의 턴 구조. 각 턴의 thinking 블록은 출력에서 생성되고 다음 턴의 입력으로는 넘어가지 않는다](REHOST:https://platform.claude.com/docs/images/context-window-thinking.svg)
+![thinking 블록을 떼어 내는 모델의 턴 구조. 각 턴의 thinking 블록은 출력에서 생성되고 다음 턴의 입력으로는 넘어가지 않는다](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-11/55ba20f6.svg)
 
 부모를 Opus 로 두고 서브에이전트를 Haiku 4.5 로 내려 두면 두 창은 크기가 다르고 누적되는 내용도 다릅니다.
 
@@ -32,7 +32,7 @@ cover_image: REHOST:https://platform.claude.com/docs/images/context-window.svg
 - `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` 을 걸면 네이티브 1M 모델도 200K 경계에서 압축합니다
 - Claude Code 가 모르는 모델 ID 로 도는 세션은 그 ID 에 가정된 창 크기에서 압축합니다
 
-![턴이 쌓이면서 컨텍스트 창이 토큰 한도에 가까워지는 과정](REHOST:https://platform.claude.com/docs/images/context-window.svg)
+![턴이 쌓이면서 컨텍스트 창이 토큰 한도에 가까워지는 과정](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-11/99d12587.svg)
 
 목록을 보면 서브에이전트 하나가 어디서 압축될지는 그 서브에이전트의 모델을 확인해야 알 수 있습니다. 메인 대화가 967K 에서 압축되는 세션이라도, 창이 200K 인 모델에 넘긴 서브에이전트는 그 200K 한도에서 압축됩니다.
 
