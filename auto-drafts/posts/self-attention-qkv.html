@@ -1,0 +1,439 @@
+---
+title: Self-Attention은 "그것"이 무엇을 가리키는지 어떻게 알까요
+slug: self-attention-qkv
+excerpt: Self-Attention은 문장 속 단어마다 질문(Q)을 들고 다른 단어의 이름표(K)와 맞춰 본 뒤, 잘 맞는 단어의 내용(V)을 섞어 자기 뜻을 고쳐 쓰는 과정입니다. 화살표를 끌고 색을 섞으면서 그 계산을 손으로 따라가 봅니다.
+tags: [LLM, Transformer, Self-Attention, AI Shift Track]
+category: ai
+---
+<!-- page -->
+<style>
+.post-page .sa { --sa-q: rgb(255, 122, 69); --sa-k: rgb(80, 140, 255); color: var(--fg-normal); font-family: var(--font-sans); }
+.post-page .sa * { box-sizing: border-box; }
+.post-page .sa-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.post-page .sa-narrow > * { max-width: 720px; }
+.post-page .sa h1, .post-page .sa h2 { word-break: keep-all; font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
+.post-page .sa p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; }
+.post-page .sa b { color: var(--fg-strong); }
+.post-page .sa code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .sa .q { color: var(--sa-q); font-weight: 700; }
+.post-page .sa .k { color: var(--sa-k); font-weight: 700; }
+.post-page .sa .v { color: var(--fg-primary-strong); font-weight: 700; }
+
+/* 히어로: 왼쪽 글, 오른쪽 두 줄 연결도 */
+.post-page .sa-hero { padding: clamp(48px, 8vw, 104px) 0 clamp(48px, 7vw, 88px); }
+.post-page .sa-hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(32px, 5vw, 72px); align-items: center; }
+.post-page .sa-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .sa-hero h1 { font-size: clamp(32px, 5vw, 58px); line-height: 1.15; }
+.post-page .sa-lede { font-size: clamp(17px, 1.8vw, 19px) !important; color: var(--fg-neutral); margin-top: 22px !important; }
+.post-page .sa-toggle { display: inline-flex; padding: 4px; border-radius: 99px; background: var(--bg-muted); margin: 8px 0 4px; }
+.post-page .sa-toggle button { font: inherit; font-size: 14px; font-weight: 600; border: 0; border-radius: 99px; padding: 8px 16px; background: transparent; color: var(--fg-neutral); cursor: pointer; }
+.post-page .sa-toggle button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: var(--shadow-2); }
+
+.post-page .sa-links { position: relative; padding: 18px 12px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .sa-links-head { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); padding: 0 6px 10px; }
+.post-page .sa-links-body { position: relative; display: grid; grid-template-columns: 1fr 1fr; column-gap: 40%; }
+.post-page .sa-links svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.post-page .sa-links svg path { fill: none; stroke: var(--sa-q); stroke-linecap: round; transition: stroke-width 0.35s, opacity 0.35s; }
+.post-page .sa-tok { font-family: var(--font-mono); font-size: 14px; padding: 5px 10px; border-radius: var(--radius-xs); line-height: 1.2; white-space: nowrap; }
+.post-page .sa-tok.l { text-align: right; cursor: pointer; color: var(--fg-neutral); border: 0; background: none; font: inherit; font-family: var(--font-mono); font-size: 14px; }
+.post-page .sa-tok.l:hover { color: var(--fg-strong); }
+.post-page .sa-tok.l.is-on { color: var(--fg-on-color); background: var(--sa-q); }
+.post-page .sa-tok.r { color: var(--fg-strong); transition: background 0.35s; position: relative; }
+.post-page .sa-tok.r small { font-size: 11px; color: inherit; opacity: 0.75; margin-left: 6px; }
+.post-page .sa-cap { font-size: 13px !important; color: var(--fg-alternative); margin-top: 12px !important; }
+
+/* 섹션 공통 */
+.post-page .sa-sec { padding: clamp(56px, 8vw, 96px) 0; }
+.post-page .sa-sec + .sa-sec { border-top: 1px solid var(--line-normal); }
+.post-page .sa-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 22px; }
+.post-page .sa-kicker { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); margin-bottom: 10px; display: block; }
+
+/* Q K V 세 가지 소지품 */
+.post-page .sa-person { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 32px 0 8px; border-top: 2px solid var(--fg-strong); }
+.post-page .sa-person > div { padding: 20px 18px 6px 0; }
+.post-page .sa-person > div + div { padding-left: 18px; border-left: 1px solid var(--line-normal); }
+.post-page .sa-person h3 { font-family: var(--font-mono); font-size: 30px; margin: 0 0 4px; }
+.post-page .sa-person em { font-style: normal; font-weight: 700; color: var(--fg-strong); display: block; margin-bottom: 8px; }
+.post-page .sa-person p { font-size: 15px; line-height: 1.7; }
+.post-page .sa-formula { font-family: var(--font-mono); font-size: clamp(15px, 2.4vw, 22px); text-align: center; padding: 22px 12px; margin: 28px 0; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--fg-strong); overflow-x: auto; }
+.post-page .sa-formula small { display: block; font-size: 12px; color: var(--fg-alternative); margin-top: 8px; font-family: var(--font-sans); }
+
+/* 벡터 놀이터 */
+.post-page .sa-play { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 32px; }
+.post-page .sa-plane { width: 100%; aspect-ratio: 1; display: block; border-radius: var(--radius-md); background: var(--bg-subtle); touch-action: none; user-select: none; }
+.post-page .sa-plane .grid { stroke: var(--line-normal); }
+.post-page .sa-plane .axis { stroke: var(--line-strong); }
+.post-page .sa-plane text { font-family: var(--font-mono); font-size: 13px; }
+.post-page .sa-plane .handle { cursor: grab; }
+.post-page .sa-plane .handle:active { cursor: grabbing; }
+.post-page .sa-steps { display: grid; gap: 20px; }
+.post-page .sa-step-t { font-size: 13px; color: var(--fg-alternative); margin-bottom: 8px; font-family: var(--font-mono); }
+.post-page .sa-row { display: grid; grid-template-columns: 5.4em 1fr 3.6em; gap: 10px; align-items: center; font-size: 14px; margin: 5px 0; }
+.post-page .sa-row span:first-child { font-family: var(--font-mono); color: var(--fg-strong); display: flex; align-items: center; gap: 6px; }
+.post-page .sa-row i.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.post-page .sa-track { height: 14px; border-radius: 3px; background: var(--bg-muted); position: relative; overflow: hidden; }
+.post-page .sa-track b { position: absolute; top: 0; bottom: 0; border-radius: 3px; transition: width 0.15s, left 0.15s; }
+.post-page .sa-track .zero { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--line-strong); }
+.post-page .sa-num { font-family: var(--font-mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.post-page .sa-mix { display: flex; align-items: center; gap: 14px; }
+.post-page .sa-mixbar { flex: 1; height: 40px; border-radius: var(--radius-sm); display: flex; overflow: hidden; }
+.post-page .sa-mixbar span { height: 100%; transition: width 0.15s; }
+.post-page .sa-mixout { width: 64px; height: 64px; border-radius: 50%; flex: none; box-shadow: var(--shadow-3); transition: background 0.15s; display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; color: #fff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+/* √d */
+.post-page .sa-scale { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+.post-page .sa-scale-card { padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--line-normal); }
+.post-page .sa-scale-card h3 { font-size: 15px; margin: 0 0 12px; color: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .sa-scale-card .sa-row { grid-template-columns: 2.4em 1fr 3.6em; }
+.post-page .sa-ctrl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 22px; font-size: 14px; }
+.post-page .sa-ctrl input[type=range] { flex: 1; min-width: 160px; accent-color: var(--fg-strong); }
+.post-page .sa-ctrl output { font-family: var(--font-mono); font-size: 17px; color: var(--fg-strong); min-width: 4.5em; }
+.post-page .sa-btn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+
+/* 행렬 */
+.post-page .sa-matrix-wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 28px; }
+.post-page .sa-matrix { display: grid; gap: 3px; font-family: var(--font-mono); font-size: 12px; max-width: 560px; }
+.post-page .sa-matrix .c { aspect-ratio: 1; border-radius: 2px; min-width: 0; transition: background 0.25s, opacity 0.25s; }
+.post-page .sa-matrix .h { color: var(--fg-alternative); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; white-space: nowrap; }
+.post-page .sa-matrix .hc { color: var(--fg-alternative); writing-mode: vertical-rl; transform: rotate(180deg); display: flex; align-items: center; padding-top: 6px; height: 64px; white-space: nowrap; }
+.post-page .sa-matrix .c.masked { background: repeating-linear-gradient(45deg, var(--bg-muted) 0 3px, transparent 3px 6px) !important; }
+.post-page .sa-matrix .row-on { outline: 2px solid var(--sa-q); outline-offset: -1px; }
+.post-page .sa-heads { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.post-page .sa-heads button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line-strong); background: transparent; color: var(--fg-normal); cursor: pointer; }
+.post-page .sa-heads button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); border-color: var(--fg-strong); }
+.post-page .sa-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 14px; cursor: pointer; }
+
+.post-page .sa-myth { margin-top: 28px; }
+.post-page .sa-myth details { border-bottom: 1px solid var(--line-normal); padding: 16px 0; }
+.post-page .sa-myth summary { cursor: pointer; font-weight: 700; color: var(--fg-strong); font-size: 17px; list-style: none; display: flex; gap: 12px; }
+.post-page .sa-myth summary::before { content: "✕"; color: var(--fg-negative); font-family: var(--font-mono); }
+.post-page .sa-myth details[open] summary::before { content: "→"; color: var(--fg-primary-strong); }
+.post-page .sa-myth details p { margin: 12px 0 0 28px; font-size: 16px; }
+.post-page .sa-refs { padding-left: 1.2em; font-size: 15px; }
+.post-page .sa-refs li { margin: 8px 0; line-height: 1.6; }
+.post-page .sa-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
+
+.post-page .sa-reveal { animation: pg-sa-in linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
+@keyframes pg-sa-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 900px) {
+  .post-page .sa-hero-grid, .post-page .sa-play, .post-page .sa-matrix-wrap { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .post-page .sa-wrap { padding: 0 20px; }
+  .post-page .sa p { font-size: 16px; }
+  .post-page .sa-person { grid-template-columns: 1fr; }
+  .post-page .sa-person > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line-normal); }
+  .post-page .sa-scale { grid-template-columns: 1fr; }
+  .post-page .sa-links-body { column-gap: 30%; }
+  .post-page .sa-tok, .post-page .sa-tok.l { font-size: 13px; padding: 4px 6px; }
+  .post-page .sa-matrix { font-size: 9px; }
+  .post-page .sa-matrix .hc { height: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .sa * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="sa" data-sa>
+  <header class="sa-hero">
+    <div class="sa-wrap sa-hero-grid">
+      <div>
+        <div class="sa-eyebrow">AI Shift Track · LLM Foundation</div>
+        <h1>Self-Attention은 "그것"이 무엇을 가리키는지 어떻게 알까요</h1>
+        <p class="sa-lede">"The animal didn't cross the street because <b>it</b> was too tired." 여기서 <b>it</b>은 동물입니다. 마지막 단어를 <b>wide</b>로 바꾸면 it은 길이 됩니다. 사람은 바로 알아채지만 모델은 단어를 하나씩 숫자로 받을 뿐입니다. 모델은 단어끼리 서로를 얼마나 참고할지 계산해서 이 문제를 풉니다. 그 계산이 <b>Self-Attention</b>입니다.</p>
+        <div class="sa-toggle" role="group" aria-label="문장 마지막 단어">
+          <button type="button" aria-pressed="true" data-sa-end="tired">… too tired</button>
+          <button type="button" aria-pressed="false" data-sa-end="wide">… too wide</button>
+        </div>
+      </div>
+      <div>
+        <div class="sa-links" data-sa-links>
+          <div class="sa-links-head"><span>질문하는 단어</span><span>참고하는 단어</span></div>
+          <div class="sa-links-body" data-sa-linkbody><svg aria-hidden="true"></svg></div>
+        </div>
+        <p class="sa-cap">왼쪽 단어를 누르면 그 단어가 오른쪽 단어들을 얼마나 참고하는지 선 굵기로 보여 줍니다. 가중치는 설명을 위해 정한 예시 값입니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">왜 필요할까요</span>
+      <h2>처음 받은 단어 벡터에는 문맥이 없습니다</h2>
+      <p>모델은 단어(정확히는 토큰)를 <b>임베딩 벡터</b>로 바꿔서 받습니다. 문제는 이 벡터가 문장과 상관없이 늘 같다는 점입니다. "it"의 벡터는 동물 문장에서도, 길 문장에서도 똑같습니다. "bank"도 강둑이든 은행이든 출발점은 같은 벡터입니다.</p>
+      <p>그래서 각 단어는 문장 안의 다른 단어를 둘러보고, 자기와 관련 있는 단어의 정보를 가져와 자기 벡터를 고쳐 써야 합니다. 이 "둘러보고 가져오기"를 모든 단어가 동시에 하는 것이 Self-Attention입니다.</p>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">세 가지 소지품</span>
+      <h2>단어마다 질문, 이름표, 내용을 하나씩 들고 있습니다</h2>
+      <p>각 단어 벡터에 서로 다른 가중치 행렬 세 개를 곱해, 역할이 다른 벡터 세 개를 만듭니다. 이 행렬들은 학습으로 정해집니다.</p>
+      <div class="sa-person">
+        <div><h3 class="q">Q</h3><em>Query · 질문</em><p>"나는 지금 어떤 정보가 필요하지?" it이라면 "내가 가리키는 명사가 뭐지?"에 가까운 질문입니다.</p></div>
+        <div><h3 class="k">K</h3><em>Key · 이름표</em><p>"나는 이런 정보를 가지고 있어." 다른 단어의 질문과 얼마나 맞는지 비교되는 쪽입니다.</p></div>
+        <div><h3 class="v">V</h3><em>Value · 내용</em><p>"선택되면 건네줄 실제 정보." 이름표와 내용이 따로 있어서, 찾는 기준과 전달하는 정보가 달라도 됩니다.</p></div>
+      </div>
+      <div class="sa-formula">Attention(Q, K, V) = softmax( QK<sup>T</sup> / √d<sub>k</sub> ) · V<small>질문과 이름표를 맞춰 점수를 내고(QK<sup>T</sup>), 확률로 바꾼 뒤(softmax), 그 비율로 내용을 섞습니다(· V)</small></div>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap">
+      <div class="sa-narrow">
+        <span class="sa-kicker">직접 계산해 보기</span>
+        <h2>질문 화살표를 끌면 섞이는 색이 바뀝니다</h2>
+        <p>실제 벡터는 수백 차원이지만, 여기서는 2차원으로 줄였습니다. 주황 화살표가 it의 <span class="q">질문 Q</span>, 파란 화살표들이 다른 단어의 <span class="k">이름표 K</span>입니다. 각 단어의 <span class="v">내용 V</span>는 색으로 표시했습니다. 주황 화살표 끝을 끌어 보세요.</p>
+      </div>
+      <div class="sa-play">
+        <svg class="sa-plane" data-sa-plane viewBox="-160 -160 320 320" role="img" aria-label="질문 벡터와 키 벡터 네 개가 그려진 2차원 평면. 질문 벡터 끝을 끌어서 움직일 수 있습니다"></svg>
+        <div class="sa-steps">
+          <div><div class="sa-step-t">① 점수 = Q · K (내적. 같은 방향이면 오른쪽 +, 반대면 왼쪽 −)</div><div data-sa-dots></div></div>
+          <div><div class="sa-step-t">② 가중치 = softmax(점수 / √d)</div><div data-sa-weights></div></div>
+          <div><div class="sa-step-t">③ 새 it = 가중치대로 V를 섞은 결과</div>
+            <div class="sa-mix"><div class="sa-mixbar" data-sa-mixbar></div><div class="sa-mixout" data-sa-mixout>it</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="sa-narrow" style="margin-top:28px">
+        <p>Q가 animal의 K와 같은 방향을 가리키면 내적이 커지고, softmax를 거친 가중치도 animal에 몰립니다. 그러면 새 it의 색은 animal의 색에 가까워집니다. 단어를 고르는 것이 아니라 <b>섞는 것</b>이라는 점이 중요합니다. 가장 관련 있는 단어의 정보를 가장 많이, 나머지도 조금씩 가져옵니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">숨은 온도 조절</span>
+      <h2>√d로 나누지 않으면 한 단어만 보게 됩니다</h2>
+      <p>차원 d가 커지면 내적 값도 함께 커집니다. 각 성분이 평균 0, 분산 1인 무작위 값이면 내적의 분산은 d가 됩니다. 점수 차이가 크면 softmax는 거의 한 단어에 모든 가중치를 몰아줍니다. 그렇게 되면 학습 신호(기울기)가 거의 0이 되어 학습이 막힙니다.</p>
+      <p>그래서 점수를 √d로 나눕니다. <a href="/posts/llm-temperature-sampling">Temperature 글</a>에서 본 "로짓을 T로 나누기"와 똑같은 일입니다. 아래에서 d를 키워 보세요. 왼쪽은 나누지 않은 경우, 오른쪽은 나눈 경우입니다.</p>
+      <div class="sa-ctrl">
+        <label for="sa-d">차원 d</label>
+        <input id="sa-d" type="range" min="1" max="10" step="1" value="7" data-sa-d>
+        <output data-sa-dout>d = 64</output>
+        <button class="sa-btn" type="button" data-sa-reroll>무작위로 다시 뽑기</button>
+      </div>
+      <div class="sa-scale">
+        <div class="sa-scale-card"><h3>softmax(Q·K)</h3><div data-sa-raw></div></div>
+        <div class="sa-scale-card"><h3>softmax(Q·K / √d)</h3><div data-sa-scaled></div></div>
+      </div>
+      <p class="sa-cap">무작위 Q와 K 6개의 내적으로 계산합니다. 원 논문은 d<sub>k</sub> = 64를 써서 8로 나눴습니다.</p>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap">
+      <div class="sa-narrow">
+        <span class="sa-kicker">한꺼번에 보기</span>
+        <h2>모든 단어가 동시에 서로를 봅니다</h2>
+        <p>지금까지는 it 한 단어만 따라갔습니다. 실제로는 모든 단어가 동시에 질문을 던지므로, 결과는 단어 수 × 단어 수 크기의 표가 됩니다. 한 줄이 한 단어의 가중치입니다. 그래서 문장이 두 배 길어지면 계산량은 네 배가 됩니다.</p>
+        <p>또 모델은 이 계산을 여러 벌 따로 돌립니다. 이것을 <b>멀티 헤드</b>라고 합니다. 헤드마다 다른 관계를 잡도록 학습되는데, 아래 세 헤드는 흔히 관찰되는 패턴을 흉내 낸 예시입니다.</p>
+      </div>
+      <div class="sa-matrix-wrap">
+        <div>
+          <div class="sa-heads" role="group" aria-label="헤드 선택" data-sa-heads>
+            <button type="button" aria-pressed="true" data-head="coref">지시어 헤드</button>
+            <button type="button" aria-pressed="false" data-head="prev">직전 단어 헤드</button>
+            <button type="button" aria-pressed="false" data-head="self">자기 자신 헤드</button>
+          </div>
+          <div class="sa-matrix" data-sa-matrix role="img" aria-label="단어 대 단어 어텐션 가중치 표"></div>
+          <label class="sa-check"><input type="checkbox" data-sa-mask> GPT처럼 미래 단어 가리기 (causal mask)</label>
+        </div>
+        <div>
+          <p><b>표 읽는 법:</b> 왼쪽 단어가 위쪽 단어를 얼마나 참고하는지 진하기로 나타냅니다. 칸에 마우스를 올리면 그 줄이 강조됩니다.</p>
+          <p><b>causal mask를 켜면</b> 대각선 위쪽이 빗금으로 막힙니다. GPT 같은 생성 모델은 다음 단어를 맞히도록 학습되므로, 아직 나오지 않은 뒤쪽 단어를 볼 수 없게 점수를 −∞로 바꿉니다. 그러면 tired를 보지 못한 it은 동물인지 길인지 아직 정할 수 없습니다. 실제 모델은 뒤 단어가 나온 뒤 다음 층과 다음 토큰에서 이 정보를 다시 모읍니다.</p>
+          <p data-sa-rowinfo style="color:var(--fg-alternative);font-size:15px"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">자주 하는 오해</span>
+      <h2>어텐션 그림을 볼 때 조심할 점</h2>
+      <div class="sa-myth">
+        <details open><summary>헤드마다 정해진 역할이 있다</summary><p>역할을 미리 정해 주지 않습니다. 학습 결과 일부 헤드가 지시어나 직전 단어 같은 패턴을 보일 뿐이고, 해석하기 어려운 헤드가 훨씬 많습니다.</p></details>
+        <details><summary>가중치가 크면 그 단어 때문에 답이 나왔다</summary><p>어텐션 가중치는 정보가 어디서 섞였는지 보여 줄 뿐, 최종 답의 원인을 그대로 설명하지는 않습니다. 층이 수십 개 쌓이고 그 뒤에 MLP 층도 있기 때문입니다.</p></details>
+        <details><summary>어텐션은 가까운 단어끼리만 연결한다</summary><p>거리와 상관없이 모든 단어 쌍을 한 번에 비교합니다. 위치 정보는 따로 더해 주는 위치 인코딩으로 들어갑니다. 대신 길이의 제곱만큼 계산이 늘어나서 긴 문맥이 비싸집니다.</p></details>
+        <details><summary>단어 하나가 토큰 하나다</summary><p>모델이 보는 단위는 토큰입니다. didn't가 did와 n't로 나뉘는 것처럼 한 단어가 여러 토큰이 되기도 합니다. 이 페이지는 설명을 위해 단어 단위로 그렸습니다.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">정리</span>
+      <h2>한 문장으로 줄이면</h2>
+      <p>Self-Attention은 모든 단어가 <span class="q">질문</span>을 들고 다른 단어들의 <span class="k">이름표</span>와 내적으로 맞춰 본 뒤, softmax로 비율을 정해 그 단어들의 <span class="v">내용</span>을 섞어 자기 벡터를 고쳐 쓰는 과정입니다. √d로 나누는 것은 softmax가 한 단어에 쏠리지 않게 하는 온도 조절입니다.</p>
+      <h2 style="margin-top:56px">참고 자료</h2>
+      <ul class="sa-refs">
+        <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Vaswani et al., Attention Is All You Need (2017)</a></li>
+        <li><a href="https://www.3blue1brown.com/lessons/attention" target="_blank" rel="noopener">3Blue1Brown, Attention in transformers, step-by-step</a></li>
+        <li><a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">Jay Alammar, The Illustrated Transformer</a></li>
+        <li><a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer: GPT-2 어텐션을 직접 들여다보는 도구</a></li>
+        <li><a href="https://github.com/jessevig/bertviz" target="_blank" rel="noopener">BertViz: 두 줄 연결도로 어텐션을 보여 주는 시각화 도구</a></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const el = root.querySelector("[data-sa]");
+  if (!el) return;
+  const $ = (s) => el.querySelector(s);
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent && parent.appendChild(n); return n; };
+  const softmax = (a) => { const m = Math.max(...a), e = a.map((x) => Math.exp(x - m)), s = e.reduce((p, c) => p + c, 0); return e.map((x) => x / s); };
+
+  // ── 예시 가중치 ────────────────────────────────────────────
+  const TOK = ["The", "animal", "didn't", "cross", "the", "street", "because", "it", "was", "too", "tired"];
+  const IT = 7, LAST = 10;
+  let end = "tired";
+  const tokens = () => TOK.map((t, i) => (i === LAST ? end : t));
+  // 지시어 헤드: it 은 tired 면 animal, wide 면 street 을 본다. 나머지 단어는 자기·이웃 위주
+  const coref = (i) => {
+    const w = TOK.map((_, j) => (j === i ? 2.0 : Math.abs(j - i) === 1 ? 1.1 : 0.2));
+    if (i === IT) { w.fill(0.1); w[IT] = 0.9; w[1] = end === "tired" ? 3.0 : 1.2; w[5] = end === "tired" ? 1.0 : 3.0; w[LAST] = 1.6; }
+    if (i === LAST) { w[1] = end === "tired" ? 1.8 : 0.4; w[5] = end === "tired" ? 0.4 : 1.8; }
+    if (i === 3) { w[1] = 1.8; w[5] = 1.9; }
+    return softmax(w);
+  };
+  const prev = (i) => softmax(TOK.map((_, j) => (j === i - 1 ? 3.2 : j === i ? 1.0 : 0)));
+  const self = (i) => softmax(TOK.map((_, j) => (j === i ? 3.4 : 0.2)));
+  const HEADS = { coref, prev, self };
+
+  // ── 히어로 연결도 ──────────────────────────────────────────
+  const body = $("[data-sa-linkbody]"), svg = body.querySelector("svg");
+  let sel = IT;
+  const L = [], R = [];
+  TOK.forEach((t, i) => {
+    const l = document.createElement("button"); l.type = "button"; l.className = "sa-tok l"; l.style.gridColumn = "1"; l.style.gridRow = String(i + 1);
+    const r = document.createElement("div"); r.className = "sa-tok r"; r.style.gridColumn = "2"; r.style.gridRow = String(i + 1);
+    l.addEventListener("click", () => { sel = i; drawLinks(); }, { signal });
+    l.addEventListener("pointerenter", () => { sel = i; drawLinks(); }, { signal });
+    body.append(l, r); L.push(l); R.push(r);
+  });
+  const paths = TOK.map(() => mk("path", {}, svg));
+  const drawLinks = () => {
+    const tk = tokens(), w = coref(sel), b = body.getBoundingClientRect();
+    tk.forEach((t, i) => {
+      L[i].textContent = t; L[i].classList.toggle("is-on", i === sel);
+      R[i].innerHTML = `${t}<small>${Math.round(w[i] * 100)}%</small>`;
+      R[i].style.background = `rgba(255, 122, 69, ${Math.min(w[i] * 1.4, 0.75)})`;
+    });
+    const a = L[sel].getBoundingClientRect(), x1 = a.right - b.left + 4, y1 = a.top + a.height / 2 - b.top;
+    paths.forEach((p, j) => {
+      const c = R[j].getBoundingClientRect(), x2 = c.left - b.left - 4, y2 = c.top + c.height / 2 - b.top, mx = (x1 + x2) / 2;
+      p.setAttribute("d", `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+      p.setAttribute("stroke-width", (0.6 + w[j] * 14).toFixed(2));
+      p.setAttribute("opacity", (0.15 + w[j] * 1.6).toFixed(2));
+    });
+  };
+  new ResizeObserver(drawLinks).observe(body);
+  el.querySelectorAll("[data-sa-end]").forEach((btn) => btn.addEventListener("click", () => {
+    end = btn.dataset.saEnd; sel = IT;
+    el.querySelectorAll("[data-sa-end]").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
+    drawLinks(); drawMatrix();
+  }, { signal }));
+
+  // ── 벡터 놀이터 ────────────────────────────────────────────
+  const KEYS = [
+    { t: "animal", v: [92, 26], c: [46, 170, 120] },
+    { t: "street", v: [-70, 66], c: [80, 140, 255] },
+    { t: "tired", v: [40, -96], c: [235, 180, 30] },
+    { t: "the", v: [-80, -56], c: [150, 150, 160] },
+  ];
+  const plane = $("[data-sa-plane]");
+  for (let g = -150; g <= 150; g += 30) {
+    mk("line", { x1: g, x2: g, y1: -160, y2: 160, class: g === 0 ? "axis" : "grid" }, plane);
+    mk("line", { y1: g, y2: g, x1: -160, x2: 160, class: g === 0 ? "axis" : "grid" }, plane);
+  }
+  const defs = mk("defs", {}, plane);
+  const arrowHead = (id, color) => { const m = mk("marker", { id, viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" }, defs); mk("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, m); };
+  const uid = Math.random().toString(36).slice(2, 7);
+  arrowHead(`sa-k-${uid}`, "rgb(80,140,255)"); arrowHead(`sa-q-${uid}`, "rgb(255,122,69)");
+  KEYS.forEach((k) => {
+    // y 는 화면 아래가 + 이므로 뒤집어 그린다
+    mk("line", { x1: 0, y1: 0, x2: k.v[0], y2: -k.v[1], stroke: "rgb(80,140,255)", "stroke-width": 3, "marker-end": `url(#sa-k-${uid})` }, plane);
+    mk("circle", { cx: k.v[0] * 1.18, cy: -k.v[1] * 1.18, r: 7, fill: `rgb(${k.c})` }, plane);
+    mk("text", { x: k.v[0] * 1.18, y: -k.v[1] * 1.18 + (k.v[1] > 0 ? -14 : 22), "text-anchor": "middle", fill: "var(--fg-strong)" }, plane).textContent = k.t;
+  });
+  let q = [90, 30];
+  const qLine = mk("line", { x1: 0, y1: 0, stroke: "rgb(255,122,69)", "stroke-width": 4, "marker-end": `url(#sa-q-${uid})` }, plane);
+  const qLbl = mk("text", { fill: "rgb(255,122,69)", "font-weight": 700 }, plane); qLbl.textContent = "Q (it)";
+  const qHit = mk("circle", { r: 18, fill: "rgba(255,122,69,0.18)", class: "handle", stroke: "rgb(255,122,69)", "stroke-dasharray": "3 3" }, plane);
+  const dotsBox = $("[data-sa-dots]"), wBox = $("[data-sa-weights]"), mixbar = $("[data-sa-mixbar]"), mixout = $("[data-sa-mixout]");
+  const row = (label, color, pctLeft, pctW, fill, num) =>
+    `<div class="sa-row"><span><i class="sw" style="background:${color}"></i>${label}</span><span class="sa-track">${pctLeft !== null ? '<i class="zero"></i>' : ""}<b style="left:${pctLeft ?? 0}%;width:${pctW}%;background:${fill}"></b></span><span class="sa-num">${num}</span></div>`;
+  const SC = 1 / 40; // 화면 좌표 → 벡터 값
+  const drawPlay = () => {
+    qLine.setAttribute("x2", q[0]); qLine.setAttribute("y2", -q[1]);
+    qHit.setAttribute("cx", q[0]); qHit.setAttribute("cy", -q[1]);
+    qLbl.setAttribute("x", q[0] + 16); qLbl.setAttribute("y", -q[1] + 30);
+    const dots = KEYS.map((k) => (q[0] * k.v[0] + q[1] * k.v[1]) * SC * SC);
+    const w = softmax(dots.map((d) => d / Math.SQRT2));
+    const max = 12;
+    dotsBox.innerHTML = KEYS.map((k, i) => {
+      const d = Math.max(-max, Math.min(max, dots[i])), half = (Math.abs(d) / max) * 50;
+      return row(k.t, `rgb(${k.c})`, d >= 0 ? 50 : 50 - half, half, "var(--fg-strong)", dots[i].toFixed(1));
+    }).join("");
+    wBox.innerHTML = KEYS.map((k, i) => row(k.t, `rgb(${k.c})`, null, w[i] * 100, "rgb(255,122,69)", Math.round(w[i] * 100) + "%")).join("");
+    mixbar.innerHTML = KEYS.map((k, i) => `<span style="width:${w[i] * 100}%;background:rgb(${k.c})"></span>`).join("");
+    const mix = [0, 1, 2].map((ch) => Math.round(KEYS.reduce((s, k, i) => s + k.c[ch] * w[i], 0)));
+    mixout.style.background = `rgb(${mix})`;
+  };
+  const toLocal = (e) => { const pt = plane.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(plane.getScreenCTM().inverse()); return [Math.max(-150, Math.min(150, p.x)), Math.max(-150, Math.min(150, -p.y))]; };
+  let drag = false;
+  plane.addEventListener("pointerdown", (e) => { drag = true; plane.setPointerCapture(e.pointerId); q = toLocal(e); drawPlay(); }, { signal });
+  plane.addEventListener("pointermove", (e) => { if (drag) { q = toLocal(e); drawPlay(); } }, { signal });
+  plane.addEventListener("pointerup", () => (drag = false), { signal });
+  plane.addEventListener("pointercancel", () => (drag = false), { signal });
+
+  // ── √d 비교 ────────────────────────────────────────────────
+  const dIn = $("[data-sa-d]"), dOut = $("[data-sa-dout]"), rawBox = $("[data-sa-raw]"), scBox = $("[data-sa-scaled]");
+  const randn = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  let seedQ = [], seedK = [];
+  const reroll = () => { seedQ = Array.from({ length: 512 }, randn); seedK = Array.from({ length: 6 }, () => Array.from({ length: 512 }, randn)); };
+  const drawScale = () => {
+    const d = 2 ** (+dIn.value - 1); dOut.textContent = `d = ${d}`;
+    const dots = seedK.map((k) => k.slice(0, d).reduce((s, x, i) => s + x * seedQ[i], 0));
+    const draw = (w) => w.map((x, i) => row(`k${i + 1}`, "transparent", null, x * 100, "var(--fg-strong)", Math.round(x * 100) + "%")).join("");
+    rawBox.innerHTML = draw(softmax(dots));
+    scBox.innerHTML = draw(softmax(dots.map((x) => x / Math.sqrt(d))));
+  };
+  dIn.addEventListener("input", drawScale, { signal });
+  $("[data-sa-reroll]").addEventListener("click", () => { reroll(); drawScale(); }, { signal });
+
+  // ── 행렬 ───────────────────────────────────────────────────
+  const mat = $("[data-sa-matrix]"), maskIn = $("[data-sa-mask]"), info = $("[data-sa-rowinfo]");
+  let head = "coref", hoverRow = IT;
+  const N = TOK.length;
+  mat.style.gridTemplateColumns = `auto repeat(${N}, minmax(0, 1fr))`;
+  const drawMatrix = () => {
+    const tk = tokens(), masked = maskIn.checked;
+    let html = `<span></span>` + tk.map((t) => `<span class="hc">${t}</span>`).join("");
+    for (let i = 0; i < N; i++) {
+      let w = HEADS[head](i);
+      if (masked) { const s = w.slice(0, i + 1).reduce((a, b) => a + b, 0); w = w.map((x, j) => (j > i ? 0 : x / s)); }
+      html += `<span class="h">${tk[i]}</span>` + w.map((x, j) => `<span class="c${masked && j > i ? " masked" : ""}${i === hoverRow ? " row-on" : ""}" data-r="${i}" style="background:rgba(255,122,69,${Math.min(0.06 + x * 1.3, 1).toFixed(3)})" title="${tk[i]} → ${tk[j]}: ${Math.round(x * 100)}%"></span>`).join("");
+    }
+    mat.innerHTML = html;
+    let w = HEADS[head](hoverRow);
+    if (masked) { const s = w.slice(0, hoverRow + 1).reduce((a, b) => a + b, 0); w = w.map((x, j) => (j > hoverRow ? 0 : x / s)); }
+    const top = w.map((x, j) => [x, j]).sort((a, b) => b[0] - a[0]).slice(0, 2);
+    info.textContent = `강조된 줄: "${tk[hoverRow]}"은(는) ${top.map(([x, j]) => `${tk[j]} ${Math.round(x * 100)}%`).join(", ")} 순으로 참고합니다.`;
+  };
+  mat.addEventListener("pointerover", (e) => { const r = e.target.dataset && e.target.dataset.r; if (r !== undefined && +r !== hoverRow) { hoverRow = +r; drawMatrix(); } }, { signal });
+  maskIn.addEventListener("change", drawMatrix, { signal });
+  el.querySelectorAll("[data-head]").forEach((b) => b.addEventListener("click", () => {
+    head = b.dataset.head; el.querySelectorAll("[data-head]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); drawMatrix();
+  }, { signal }));
+
+  reroll(); drawScale(); drawPlay(); drawLinks(); drawMatrix();
+})();
+</script>

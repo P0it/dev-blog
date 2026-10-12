@@ -1181,6 +1181,9 @@ category: ...
 - 첫 `>` 인용구가 없으니 요약은 프런트매터 `excerpt` 로 준다. 없으면 `npm run draft` 가 거부한다.
 - `<html>` `<head>` `<body>` 는 쓰지 않는다. 본문에 들어갈 조각만 쓴다.
 - 적재는 마크다운 글과 같다: `npm run draft -- push <file>`. 원고는 `auto-drafts/posts/<slug>.html`.
+- 적재 전에 실제 화면으로 본다. `npm run dev` 를 띄우고 `/internal/page/<slug>` 를 열면 원고 파일을
+  메뉴·푸터가 붙은 상세 화면 그대로 그린다(개발 서버 전용). `npm run check:page -- <slug> <폴더> [--dark]`
+  는 데스크톱·모바일 전체 화면을 찍고 가로 넘침과 스크립트 오류를 출력한다.
 
 ### 5-2. 스타일
 

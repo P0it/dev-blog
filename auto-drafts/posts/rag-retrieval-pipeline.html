@@ -1,0 +1,466 @@
+---
+title: RAG는 AI가 모르는 우리 회사 규정을 어떻게 답할까요
+slug: rag-retrieval-pipeline
+excerpt: RAG는 모델을 다시 학습시키지 않고, 질문과 관련된 문서 조각을 찾아 프롬프트에 붙여 주는 방식입니다. 문서를 자르고, 지도 위에 놓고, 가까운 조각을 찾아 프롬프트에 담는 과정을 직접 조작하며 어디서 실패하는지까지 살펴봅니다.
+tags: [LLM, RAG, Embedding, Vector Search, AI Shift Track]
+category: ai
+---
+<!-- page -->
+<style>
+.post-page .rg { --rg-a: rgb(46, 170, 120); --rg-b: rgb(80, 140, 255); --rg-c: rgb(235, 160, 30); --rg-d: rgb(170, 110, 240); --rg-q: rgb(255, 92, 92); color: var(--fg-normal); font-family: var(--font-sans); }
+.post-page .rg * { box-sizing: border-box; }
+.post-page .rg-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.post-page .rg-col > * { max-width: 720px; }
+.post-page .rg h1, .post-page .rg h2, .post-page .rg h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .rg p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; }
+.post-page .rg b { color: var(--fg-strong); }
+.post-page .rg code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .rg-tag { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
+.post-page .rg-note { font-size: 13px !important; color: var(--fg-alternative); }
+
+/* 히어로: 같은 질문, 두 개의 답 */
+.post-page .rg-hero { padding: clamp(48px, 8vw, 104px) 0 clamp(40px, 6vw, 72px); }
+.post-page .rg-hero h1 { font-size: clamp(32px, 5.2vw, 60px); line-height: 1.15; max-width: 15em; }
+.post-page .rg-lede { font-size: clamp(17px, 1.9vw, 20px) !important; color: var(--fg-neutral); max-width: 38em; margin-top: 22px !important; }
+.post-page .rg-chat { margin-top: clamp(32px, 5vw, 56px); display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.post-page .rg-ask { grid-column: 1 / -1; justify-self: end; max-width: 30em; padding: 14px 18px; border-radius: 18px 18px 4px 18px; background: var(--fg-strong); color: var(--bg-base); font-size: 16px; }
+.post-page .rg-ans { padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--line-normal); background: var(--bg-elevated); position: relative; }
+.post-page .rg-ans h3 { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--fg-alternative); letter-spacing: 0.04em; margin-bottom: 10px; }
+.post-page .rg-ans p { font-size: 16px; margin: 0; min-height: 5.4em; }
+.post-page .rg-ans.bad { border-style: dashed; }
+.post-page .rg-ans.good { border-color: var(--rg-a); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rg-a) 14%, transparent); }
+.post-page .rg-cite { display: inline-block; font-family: var(--font-mono); font-size: 12px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--rg-a) 18%, transparent); color: var(--fg-strong); }
+.post-page .rg-stamp { position: absolute; top: 16px; right: 16px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
+.post-page .rg-ans.bad .rg-stamp { color: var(--fg-negative); background: var(--bg-negative-soft); }
+.post-page .rg-ans.good .rg-stamp { color: var(--fg-strong); background: color-mix(in srgb, var(--rg-a) 18%, transparent); }
+.post-page .rg-caret::after { content: "▍"; animation: pg-rg-blink 1s steps(1) infinite; color: var(--fg-alternative); }
+@keyframes pg-rg-blink { 50% { opacity: 0; } }
+
+/* 지하철 노선도처럼 이어지는 단계 표시 */
+.post-page .rg-route { display: flex; align-items: center; margin: 36px 0 0; font-size: 13px; overflow-x: auto; padding-bottom: 4px; }
+.post-page .rg-route a { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--fg-neutral); flex: none; min-width: 4.6em; }
+.post-page .rg-route a i { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--fg-strong); background: var(--bg-base); }
+.post-page .rg-route a:hover { color: var(--fg-strong); }
+.post-page .rg-route span { flex: 1; height: 3px; background: var(--fg-strong); min-width: 18px; margin-bottom: 26px; }
+.post-page .rg-route .split { background: repeating-linear-gradient(90deg, var(--fg-strong) 0 6px, transparent 6px 11px); }
+
+.post-page .rg-sec { padding: clamp(56px, 8vw, 96px) 0; border-top: 1px solid var(--line-normal); scroll-margin-top: 72px; }
+.post-page .rg-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 22px; }
+
+/* 오픈북 비유 */
+.post-page .rg-split { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 28px 0 8px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--line-normal); }
+.post-page .rg-split > div { padding: 22px; }
+.post-page .rg-split > div + div { border-left: 1px solid var(--line-normal); background: var(--bg-subtle); }
+.post-page .rg-split h3 { font-size: 17px; margin-bottom: 8px; }
+.post-page .rg-split p { font-size: 15px; margin: 0; }
+
+/* 청킹 실험실 */
+.post-page .rg-lab { margin-top: 28px; padding: 24px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .rg-ctrls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; font-size: 14px; margin-bottom: 18px; }
+.post-page .rg-ctrl { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.post-page .rg-ctrl input[type=range] { accent-color: var(--fg-strong); min-width: 0; }
+.post-page .rg-ctrl output { font-family: var(--font-mono); color: var(--fg-strong); min-width: 4.2em; text-align: right; }
+.post-page .rg-check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; grid-column: 1 / -1; }
+.post-page .rg-doc { font-size: 15px; line-height: 2.1; color: var(--fg-strong); word-break: keep-all; }
+.post-page .rg-doc .ch { border-radius: 3px; padding: 2px 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.post-page .rg-doc .ch-0 { background: color-mix(in srgb, var(--rg-b) 20%, transparent); }
+.post-page .rg-doc .ch-1 { background: color-mix(in srgb, var(--rg-c) 24%, transparent); }
+.post-page .rg-doc .ov { background: color-mix(in srgb, var(--rg-d) 34%, transparent); }
+.post-page .rg-doc .ans { text-decoration: underline wavy var(--rg-q); text-underline-offset: 5px; }
+.post-page .rg-doc .num { font-family: var(--font-mono); font-size: 10px; color: var(--fg-alternative); vertical-align: super; margin: 0 2px; }
+.post-page .rg-doc .ctx { font-family: var(--font-mono); font-size: 11px; color: var(--fg-on-color); background: var(--rg-d); border-radius: 3px; padding: 1px 5px; margin-right: 4px; }
+.post-page .rg-verdict { margin-top: 18px; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--bg-base); font-size: 15px; display: flex; gap: 10px; align-items: flex-start; }
+.post-page .rg-verdict i { font-style: normal; font-weight: 700; flex: none; }
+.post-page .rg-verdict.ok i { color: var(--rg-a); }
+.post-page .rg-verdict.no i { color: var(--fg-negative); }
+
+/* 의미 지도 */
+.post-page .rg-mapgrid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; margin-top: 28px; align-items: start; }
+.post-page .rg-map { width: 100%; aspect-ratio: 1; display: block; border-radius: var(--radius-md); background: var(--bg-subtle); touch-action: none; user-select: none; }
+.post-page .rg-map text { font-family: var(--font-sans); font-size: 12px; fill: var(--fg-strong); font-weight: 700; paint-order: stroke; stroke: var(--bg-subtle); stroke-width: 4px; stroke-linejoin: round; }
+.post-page .rg-map .tip { opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.post-page .rg-map g:hover > .tip { opacity: 1; }
+.post-page .rg-map .rank { font-family: var(--font-mono); font-size: 11px; fill: var(--bg-base); stroke: none; font-weight: 700; }
+.post-page .rg-map .area { font-size: 13px; fill: var(--fg-alternative); letter-spacing: 0.04em; }
+.post-page .rg-map .qdot { cursor: grab; }
+.post-page .rg-qs { display: grid; gap: 8px; margin-bottom: 18px; }
+.post-page .rg-qs button { font: inherit; font-size: 14px; text-align: left; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; }
+.post-page .rg-qs button[aria-pressed="true"] { border-color: var(--rg-q); color: var(--fg-strong); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rg-q) 30%, transparent); }
+.post-page .rg-hits { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; font-size: 14px; }
+.post-page .rg-hits li { display: grid; grid-template-columns: 1.6em 1fr auto; gap: 8px; align-items: baseline; padding: 8px 10px; border-radius: var(--radius-xs); background: var(--bg-subtle); }
+.post-page .rg-hits li b { font-family: var(--font-mono); font-weight: 500; }
+.post-page .rg-hits li em { font-style: normal; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); }
+.post-page .rg-hits li.kw { box-shadow: inset 3px 0 0 var(--rg-q); }
+
+/* 프롬프트 조립 */
+.post-page .rg-prompt { margin-top: 28px; font-size: 14px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--line-normal); }
+.post-page .rg-pblk { padding: 12px 16px; border-top: 1px solid var(--line-normal); line-height: 1.7; }
+.post-page .rg-pblk:first-child { border-top: 0; }
+.post-page .rg-pblk small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); letter-spacing: 0.06em; margin-bottom: 4px; }
+.post-page .rg-pblk.sys { background: var(--bg-subtle); }
+.post-page .rg-pblk.ctx { animation: pg-rg-drop 0.45s cubic-bezier(.2,.9,.3,1.2) both; }
+.post-page .rg-pblk.ask { background: var(--bg-subtle); color: var(--fg-strong); }
+@keyframes pg-rg-drop { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+.post-page .rg-budget { margin-top: 14px; font-size: 13px; color: var(--fg-alternative); }
+.post-page .rg-budget-bar { height: 10px; border-radius: 99px; background: var(--bg-muted); overflow: hidden; display: flex; margin-top: 6px; }
+.post-page .rg-budget-bar span { height: 100%; transition: width 0.35s; }
+
+/* 가운데에서 잊힘 */
+.post-page .rg-mid { margin-top: 28px; }
+.post-page .rg-mid svg { width: 100%; height: auto; display: block; overflow: visible; }
+.post-page .rg-mid text { font-family: var(--font-sans); font-size: 12px; fill: var(--fg-neutral); }
+.post-page .rg-mid .lbl { font-family: var(--font-mono); font-size: 11px; fill: var(--fg-alternative); }
+
+/* 실패 지점 노선도 */
+.post-page .rg-fail { margin-top: 28px; }
+.post-page .rg-line { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+.post-page .rg-line::before { content: ""; position: absolute; left: 7%; right: 7%; top: 13px; height: 3px; background: var(--fg-strong); }
+.post-page .rg-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; font-size: 13px; color: var(--fg-neutral); background: none; border: 0; cursor: pointer; padding: 0 2px; }
+.post-page .rg-stop i { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--fg-strong); background: var(--bg-base); display: grid; place-items: center; font-style: normal; font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); transition: background 0.2s, color 0.2s; }
+.post-page .rg-stop[aria-pressed="true"] i { background: var(--rg-q); border-color: var(--rg-q); color: #fff; }
+.post-page .rg-stop[aria-pressed="true"] { color: var(--fg-strong); font-weight: 700; }
+.post-page .rg-failbox { margin-top: 22px; padding: 20px 22px; border-radius: var(--radius-md); background: var(--bg-subtle); display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.post-page .rg-failbox h3 { font-size: 13px; font-family: var(--font-mono); font-weight: 500; color: var(--fg-alternative); margin-bottom: 6px; }
+.post-page .rg-failbox p { font-size: 15px; margin: 0; }
+
+/* 컨텍스추얼 리트리벌 막대 */
+.post-page .rg-cr { margin-top: 10px; display: grid; gap: 10px; }
+.post-page .rg-cr div { display: grid; grid-template-columns: minmax(9em, 15em) 1fr 3.4em; gap: 12px; align-items: center; font-size: 14px; }
+.post-page .rg-cr b { display: block; height: 22px; border-radius: 3px; background: var(--fg-strong); width: 0; transition: width 0.8s cubic-bezier(.2,.8,.2,1); }
+.post-page .rg-cr .is-in b { width: var(--w); }
+.post-page .rg-cr span:last-child { font-family: var(--font-mono); text-align: right; color: var(--fg-strong); }
+
+.post-page .rg-refs { padding-left: 1.2em; font-size: 15px; }
+.post-page .rg-refs li { margin: 8px 0; line-height: 1.6; }
+.post-page .rg-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .post-page .rg-mapgrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .post-page .rg-wrap { padding: 0 20px; }
+  .post-page .rg p { font-size: 16px; }
+  .post-page .rg-chat, .post-page .rg-split, .post-page .rg-ctrls, .post-page .rg-failbox { grid-template-columns: 1fr; }
+  .post-page .rg-split > div + div { border-left: 0; border-top: 1px solid var(--line-normal); }
+  .post-page .rg-lab { padding: 16px; }
+  .post-page .rg-line { grid-template-columns: repeat(4, 1fr); row-gap: 18px; }
+  .post-page .rg-line::before { display: none; }
+  .post-page .rg-cr div { grid-template-columns: 1fr 3.4em; }
+  .post-page .rg-cr b { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .rg * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="rg" data-rg>
+  <header class="rg-hero">
+    <div class="rg-wrap">
+      <span class="rg-tag">AI Shift Track · RAG Core</span>
+      <h1>RAG는 AI가 모르는 우리 회사 규정을 어떻게 답할까요</h1>
+      <p class="rg-lede">LLM은 학습이 끝난 시점까지 공개된 글로 배웠습니다. 그러니 우리 회사 사내 규정은 본 적이 없습니다. 그런데도 물어보면 그럴듯하게 지어서 답합니다. <b>RAG(Retrieval-Augmented Generation)</b>는 모델을 다시 학습시키지 않습니다. 대신 질문과 관련된 문서 조각을 찾아 질문 옆에 붙여 줍니다. 시험으로 치면 외워서 푸는 시험을 <b>오픈북 시험</b>으로 바꾸는 셈입니다.</p>
+      <div class="rg-chat" data-rg-chat>
+        <div class="rg-ask">재택근무는 한 주에 며칠까지 쓸 수 있나요?</div>
+        <div class="rg-ans bad"><span class="rg-stamp">근거 없음</span><h3>LLM 단독</h3><p data-rg-type="일반적으로 많은 회사가 주 2~3일 재택근무를 허용합니다. 정확한 기준은 인사팀에 문의해 보시는 것이 좋습니다.">일반적으로 많은 회사가 주 2~3일 재택근무를 허용합니다. 정확한 기준은 인사팀에 문의해 보시는 것이 좋습니다.</p></div>
+        <div class="rg-ans good"><span class="rg-stamp">문서 인용</span><h3>LLM + 검색한 문서</h3><p data-rg-type="주 3일까지 쓸 수 있습니다. 단, 수습 기간에는 주 1일로 제한되고, 전날 오후 6시까지 팀장 승인을 받아야 합니다. [근무규정 4.2]">주 3일까지 쓸 수 있습니다. 단, 수습 기간에는 주 1일로 제한되고, 전날 오후 6시까지 팀장 승인을 받아야 합니다. <span class="rg-cite">근무규정 4.2</span></p></div>
+      </div>
+      <nav class="rg-route" aria-label="이 글의 순서">
+        <a href="#rg-chunk"><i></i>자르기</a><span></span>
+        <a href="#rg-map"><i></i>지도에 놓기</a><span></span>
+        <a href="#rg-map"><i></i>가까운 조각 찾기</a><span></span>
+        <a href="#rg-prompt"><i></i>프롬프트 조립</a><span class="split"></span>
+        <a href="#rg-fail"><i></i>어디서 틀릴까</a>
+      </nav>
+      <p class="rg-note" style="margin-top:14px">이 글의 회사와 규정은 설명을 위해 만든 예시입니다.</p>
+    </div>
+  </header>
+
+  <section class="rg-sec">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">출발 전 · 큰 그림</span>
+      <h2>미리 준비하는 일과 질문할 때 하는 일로 나뉩니다</h2>
+      <p>RAG는 두 시점에 일합니다. 질문이 오기 전에 문서를 찾기 좋은 형태로 정리해 두고, 질문이 오면 그중 필요한 조각만 꺼내 씁니다.</p>
+      <div class="rg-split">
+        <div><h3>미리 해 두는 일 (인덱싱)</h3><p>문서를 읽어 적당한 크기로 자르고, 조각마다 뜻을 나타내는 숫자 벡터(임베딩)를 만들어 벡터 DB에 저장합니다. 문서가 바뀔 때마다 다시 합니다.</p></div>
+        <div><h3>질문할 때 하는 일 (검색과 생성)</h3><p>질문도 같은 방식으로 벡터로 바꾸고, 가장 가까운 조각 몇 개를 찾습니다. 찾은 조각을 질문과 함께 프롬프트에 넣어 LLM에게 답하게 합니다.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rg-sec" id="rg-chunk">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">정거장 1 · 자르기 (chunking)</span>
+      <h2>문서를 어디서 자르느냐가 답을 좌우합니다</h2>
+      <p>문서를 통째로 검색하면 너무 넓고, 문장 하나씩 자르면 앞뒤 맥락이 사라집니다. 그래서 일정한 길이로 자르되, 경계에서 문장이 끊기지 않도록 앞 조각의 끝부분을 다음 조각에 겹쳐 넣습니다. 이것을 <b>오버랩</b>이라고 합니다.</p>
+      <p>아래 규정 문서에서 물결 밑줄이 "재택근무 일수" 질문의 답입니다. 조각 크기와 오버랩을 바꿔 보면서, 답이 한 조각 안에 온전히 들어가는지 확인해 보세요.</p>
+      <div class="rg-lab">
+        <div class="rg-ctrls">
+          <label class="rg-ctrl">조각 크기<input type="range" min="40" max="360" step="10" value="80" data-rg-size><output data-rg-sizeout></output></label>
+          <label class="rg-ctrl">오버랩<input type="range" min="0" max="60" step="5" value="0" data-rg-over><output data-rg-overout></output></label>
+          <label class="rg-check"><input type="checkbox" data-rg-ctx> 조각 앞에 "어느 문서의 어느 절인지" 한 줄 붙이기 (contextual chunk)</label>
+        </div>
+        <div class="rg-doc" data-rg-doc></div>
+        <div class="rg-verdict" data-rg-verdict></div>
+      </div>
+      <p style="margin-top:24px">세 번째 옵션이 2024년 Anthropic이 발표한 <b>Contextual Retrieval</b>의 핵심 아이디어입니다. "수습 기간에는 주 1일로 제한한다"만 떼어 놓으면 무엇이 주 1일인지 알 수 없습니다. 앞에 "근무규정 > 4.2 재택근무"를 붙이면 검색이 이 조각을 찾을 수 있습니다.</p>
+    </div>
+  </section>
+
+  <section class="rg-sec" id="rg-map">
+    <div class="rg-wrap">
+      <div class="rg-col">
+        <span class="rg-tag">정거장 2–3 · 지도에 놓고 가까운 조각 찾기</span>
+        <h2>뜻이 비슷한 조각은 지도에서 가까이 모입니다</h2>
+        <p>임베딩 모델은 조각마다 수백~수천 개의 숫자로 된 벡터를 만듭니다. 뜻이 비슷한 문장일수록 벡터의 방향이 비슷해지도록 학습된 모델입니다. 아래는 그 공간을 2차원 지도로 눌러 그린 그림입니다. 같은 색은 같은 문서에서 나온 조각입니다.</p>
+        <p>질문을 고르거나 빨간 질문 점을 직접 끌어 보세요. 질문 점에서 가장 가까운 k개 조각이 검색 결과가 됩니다. 점에 붙은 번호가 오른쪽 결과 목록의 순위이고, 점에 마우스를 올리면 조각 내용이 보입니다.</p>
+      </div>
+      <div class="rg-mapgrid">
+        <svg class="rg-map" data-rg-map viewBox="0 0 400 400" role="img" aria-label="문서 조각들이 뜻에 따라 모여 있는 2차원 지도와 질문 점"></svg>
+        <div>
+          <div class="rg-qs" role="group" aria-label="질문 고르기" data-rg-qs></div>
+          <label class="rg-ctrl" style="font-size:14px">가져올 조각 수 k<input type="range" min="1" max="6" value="3" data-rg-k><output data-rg-kout></output></label>
+          <label class="rg-check" style="margin-top:12px"><input type="checkbox" data-rg-hybrid> 키워드 검색(BM25)도 함께 쓰기 (hybrid search)</label>
+          <ol class="rg-hits" data-rg-hits></ol>
+          <p class="rg-note" data-rg-mapnote style="margin-top:12px"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rg-sec" id="rg-prompt">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">정거장 4 · 프롬프트 조립</span>
+      <h2>찾은 조각은 질문 앞에 끼워 넣습니다</h2>
+      <p>검색 결과는 LLM에게 그대로 전달되지 않고, 프롬프트 틀 안에 들어갑니다. "아래 문서만 근거로 답하고, 없으면 모른다고 말하라"는 지시가 함께 들어가는 것이 보통입니다. 위 지도에서 고른 질문과 k에 따라 아래 프롬프트가 바뀝니다.</p>
+      <div class="rg-prompt" data-rg-prompt></div>
+      <div class="rg-budget" data-rg-budget></div>
+      <p style="margin-top:28px">그럼 많이 넣을수록 좋을까요? 꼭 그렇지는 않습니다. 긴 입력을 받은 모델이 <b>처음과 끝에 있는 정보는 잘 쓰고, 가운데 있는 정보는 놓치는</b> 경향이 실험으로 확인되었습니다(Lost in the Middle, 2023). 그래서 검색한 조각을 재순위(rerank)한 뒤 가장 관련 있는 것을 앞쪽에 두는 방식을 많이 씁니다.</p>
+      <div class="rg-mid">
+        <svg viewBox="0 0 640 220" role="img" aria-label="정답 문서의 위치가 가운데일수록 정확도가 떨어지는 U자 곡선 개념도">
+          <line x1="50" y1="180" x2="610" y2="180" stroke="var(--line-strong)"></line>
+          <line x1="50" y1="20" x2="50" y2="180" stroke="var(--line-strong)"></line>
+          <rect x="200" y="20" width="260" height="160" fill="var(--bg-negative-soft)"></rect>
+          <text x="330" y="40" text-anchor="middle" fill="var(--fg-negative)">가운데에 두면 놓치기 쉬움</text>
+          <path d="M60,46 C170,150 260,160 330,160 C400,160 500,140 600,62" fill="none" stroke="var(--fg-strong)" stroke-width="3"></path>
+          <circle cx="60" cy="46" r="6" fill="var(--fg-strong)"></circle><circle cx="600" cy="62" r="6" fill="var(--fg-strong)"></circle>
+          <text x="60" y="200" class="lbl">맨 앞</text><text x="330" y="200" class="lbl" text-anchor="middle">정답 문서의 위치</text><text x="600" y="200" class="lbl" text-anchor="end">맨 뒤</text>
+          <text x="40" y="26" class="lbl" text-anchor="end">정확</text><text x="40" y="178" class="lbl" text-anchor="end">부정확</text>
+        </svg>
+        <p class="rg-note">논문 그래프의 모양만 옮긴 개념도입니다. 실제 수치와 곡선 모양은 모델과 문서 수에 따라 다릅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="rg-sec" id="rg-fail">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">정거장 5 · 어디서 틀릴까</span>
+      <h2>RAG가 틀린 답을 내면 어느 정거장부터 의심할까요</h2>
+      <p>RAG의 답이 틀렸을 때 LLM 탓인 경우는 생각보다 적습니다. 대부분은 앞 단계에서 필요한 조각이 프롬프트까지 오지 못한 경우입니다. 정거장을 눌러 보세요.</p>
+      <div class="rg-fail">
+        <div class="rg-line" role="group" aria-label="RAG 파이프라인 단계" data-rg-stops></div>
+        <div class="rg-failbox" data-rg-failbox></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rg-sec">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">갈아타기 · 요즘 RAG</span>
+      <h2>요즘 RAG는 검색을 여러 겹으로 쌓습니다</h2>
+      <p>가장 단순한 RAG는 "임베딩 검색 한 번 → 프롬프트에 붙이기"입니다. 요즘은 이 위에 몇 겹을 더 쌓습니다. Anthropic이 공개한 실험에서 상위 20개 조각 안에 필요한 조각이 빠지는 비율은 단계를 더할 때마다 이렇게 줄었습니다.</p>
+      <p class="rg-note" style="margin:24px 0 0">검색 실패율 (top-20) · 막대가 짧을수록 좋습니다</p>
+      <div class="rg-cr" data-rg-cr>
+        <div><span>임베딩 검색만</span><b style="--w:100%"></b><span>5.7%</span></div>
+        <div><span>+ 조각에 문맥 붙이기</span><b style="--w:64.9%"></b><span>3.7%</span></div>
+        <div><span>+ 키워드 검색(BM25) 함께</span><b style="--w:50.9%"></b><span>2.9%</span></div>
+        <div><span>+ 재순위(rerank)</span><b style="--w:33.3%"></b><span>1.9%</span></div>
+      </div>
+      <p class="rg-note" style="margin-top:10px">출처: Anthropic, Introducing Contextual Retrieval (2024). 검색 실패율(top-20), 낮을수록 좋습니다.</p>
+      <p style="margin-top:24px">한 걸음 더 나아가면 모델이 직접 검색 도구를 부르는 <b>에이전트형 RAG</b>가 됩니다. 한 번 찾아보고 부족하면 검색어를 바꿔 다시 찾고, 여러 문서를 비교한 뒤 답합니다. 반대로 문서 전체가 작다면(Anthropic은 약 20만 토큰 이하를 예로 듭니다) 검색 없이 문서를 통째로 프롬프트에 넣는 편이 더 간단할 수도 있습니다.</p>
+    </div>
+  </section>
+
+  <section class="rg-sec">
+    <div class="rg-wrap rg-col">
+      <span class="rg-tag">정리</span>
+      <h2>RAG를 한 문장으로 줄이면</h2>
+      <p>RAG는 문서를 잘라 뜻에 따라 지도 위에 놓아 두었다가, 질문이 오면 그 근처의 조각을 찾아 질문과 함께 모델에게 건네는 방식입니다. 답이 틀렸다면 모델보다 먼저 자르기, 검색, 조립 단계를 의심해 봐야 합니다.</p>
+      <h2 style="margin-top:56px">참고 자료</h2>
+      <ul class="rg-refs">
+        <li><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al., Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (2020)</a></li>
+        <li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">Anthropic, Introducing Contextual Retrieval</a></li>
+        <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., Lost in the Middle: How Language Models Use Long Contexts</a></li>
+        <li><a href="https://www.pinecone.io/learn/chunking-strategies/" target="_blank" rel="noopener">Pinecone, Chunking Strategies for LLM Applications</a></li>
+        <li><a href="https://weaviate.io/blog/vector-search-explained" target="_blank" rel="noopener">Weaviate, Vector Search Explained</a></li>
+        <li><a href="https://www.redblobgames.com/pathfinding/a-star/introduction.html" target="_blank" rel="noopener">Red Blob Games, Introduction to A*: 끌어서 움직이는 지도 위 탐색 설명 방식</a></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const el = root.querySelector("[data-rg]");
+  if (!el) return;
+  const $ = (s) => el.querySelector(s);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent && parent.appendChild(n); return n; };
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  // ── 히어로: 화면에 들어오면 두 답을 타자 치듯 다시 쓴다 ──────────
+  if (!reduce) {
+    const ps = [...el.querySelectorAll("[data-rg-type]")];
+    let done = false;
+    new IntersectionObserver(([e], ob) => {
+      if (!e.isIntersecting || done) return; done = true; ob.disconnect();
+      ps.forEach((p, n) => {
+        const full = p.innerHTML, text = p.dataset.rgType; let i = 0;
+        p.textContent = ""; p.classList.add("rg-caret");
+        const tick = () => {
+          if (signal.aborted) return;
+          i += 1; p.textContent = text.slice(0, i);
+          if (i < text.length) setTimeout(tick, 28 + n * 6); else { p.innerHTML = full; p.classList.remove("rg-caret"); }
+        };
+        setTimeout(tick, 300 + n * 500);
+      });
+    }).observe($("[data-rg-chat]"));
+  }
+
+  // ── 01 청킹 ────────────────────────────────────────────────
+  const DOC = "제4장 근무 형태. 4.1 유연근무: 직원은 오전 8시부터 11시 사이에 출근 시각을 정할 수 있다. 4.2 재택근무: 재택근무는 주 3일까지 쓸 수 있다. 다만 수습 기간에는 주 1일로 제한한다. 신청은 전날 오후 6시까지 팀장 승인을 받아야 한다. 4.3 출장: 국내 출장은 하루 전, 해외 출장은 2주 전까지 품의한다.";
+  const ANS = "재택근무는 주 3일까지 쓸 수 있다.";
+  const SECTION = (pos) => (pos < DOC.indexOf("4.1") ? "근무규정 > 제4장" : pos < DOC.indexOf("4.2") ? "근무규정 > 4.1 유연근무" : pos < DOC.indexOf("4.3") ? "근무규정 > 4.2 재택근무" : "근무규정 > 4.3 출장");
+  const aS = DOC.indexOf(ANS), aE = aS + ANS.length;
+  const sizeIn = $("[data-rg-size]"), overIn = $("[data-rg-over]"), ctxIn = $("[data-rg-ctx]"), docEl = $("[data-rg-doc]"), verdict = $("[data-rg-verdict]");
+  const chunks = () => {
+    const size = +sizeIn.value, over = Math.min(+overIn.value, size - 10), out = [];
+    for (let s = 0; s < DOC.length; s += size - over) { out.push([s, Math.min(s + size, DOC.length)]); if (s + size >= DOC.length) break; }
+    return out;
+  };
+  const drawChunks = () => {
+    $("[data-rg-sizeout]").textContent = sizeIn.value + "자";
+    $("[data-rg-overout]").textContent = overIn.value + "자";
+    const cs = chunks(), ctx = ctxIn.checked;
+    // 글자마다 몇 번째 조각에 속하는지, 겹침인지 계산해 같은 상태끼리 묶어 칠한다
+    let html = "", cur = null, buf = "";
+    const flush = () => { if (!buf) return; const [k, ov, ans] = cur.split("|"); html += `<span class="ch ch-${+k % 2}${ov === "1" ? " ov" : ""}${ans === "1" ? " ans" : ""}">${esc(buf)}</span>`; buf = ""; };
+    for (let i = 0; i < DOC.length; i++) {
+      const own = cs.findIndex(([s, e]) => i >= s && i < e);
+      const ov = cs.filter(([s, e]) => i >= s && i < e).length > 1 ? 1 : 0;
+      const starts = cs.findIndex(([s]) => s === i);
+      const key = `${own}|${ov}|${i >= aS && i < aE ? 1 : 0}`;
+      if (starts >= 0) { flush(); cur = key; html += `<span class="num">#${starts + 1}</span>` + (ctx ? `<span class="ctx">${SECTION(i)}</span>` : ""); }
+      if (key !== cur) { flush(); cur = key; }
+      buf += DOC[i];
+    }
+    flush();
+    docEl.innerHTML = html;
+    const whole = cs.findIndex(([s, e]) => s <= aS && e >= aE);
+    const subject = whole >= 0 && (ctx || DOC.slice(cs[whole][0], cs[whole][1]).includes("재택"));
+    let cls = "no", msg;
+    if (whole < 0) msg = `<i>✕</i><span>답 문장이 조각 경계에서 잘렸습니다. 어느 조각을 찾아도 "주 3일"이라는 답이 온전히 들어 있지 않습니다. 오버랩을 늘리거나 조각을 키워 보세요.</span>`;
+    else if (+sizeIn.value > 260) { cls = "ok"; msg = `<i>△</i><span>답은 #${whole + 1} 조각 안에 있습니다. 다만 조각이 너무 커서 출장·유연근무 내용까지 섞였습니다. 질문과의 유사도가 흐려지고, 프롬프트 공간도 낭비됩니다.</span>`; }
+    else if (subject) { cls = "ok"; msg = `<i>✓</i><span>답이 #${whole + 1} 조각 안에 온전히 들어 있고, 이 조각에는 무엇에 대한 이야기인지도 남아 있습니다.</span>`; }
+    else msg = `<i>✕</i><span>답은 #${whole + 1} 조각 안에 있지만 주제어가 빠졌습니다.</span>`;
+    verdict.className = "rg-verdict " + cls; verdict.innerHTML = msg;
+  };
+  [sizeIn, overIn, ctxIn].forEach((x) => x.addEventListener("input", drawChunks, { signal }));
+
+  // ── 02 의미 지도 ───────────────────────────────────────────
+  const COL = { 근무: "var(--rg-b)", 휴가: "var(--rg-a)", 경비: "var(--rg-c)", IT: "var(--rg-d)" };
+  const PTS = [
+    ["근무", 96, 100, "재택근무는 주 3일까지"], ["근무", 150, 66, "수습 기간 재택 주 1일"], ["근무", 48, 140, "출근 시각 8~11시 선택"], ["근무", 156, 134, "재택 신청은 전날 6시까지"], ["근무", 100, 178, "국내 출장 하루 전 품의"],
+    ["휴가", 300, 92, "연차는 입사 1년 후 15일"], ["휴가", 270, 64, "반차는 4시간 단위"], ["휴가", 326, 130, "경조사 휴가 일수"], ["휴가", 286, 128, "연차 사용 촉진 제도"],
+    ["경비", 290, 300, "법인카드 1회 50만 원 한도"], ["경비", 322, 270, "출장 식비 하루 3만 원"], ["경비", 258, 330, "영수증은 7일 안에 제출"], ["경비", 316, 336, "택시비는 밤 10시 이후"],
+    ["IT", 96, 300, "VPN 접속 방법"], ["IT", 130, 330, "노트북 반출 승인"], ["IT", 70, 270, "비밀번호 90일마다 변경"], ["IT", 150, 286, "오류 ERR-4031: 인증서 만료", "ERR-4031"],
+  ];
+  const QS = [
+    { t: "재택근무는 주 며칠까지 되나요?", p: [108, 104] },
+    { t: "출장 가서 밥값은 얼마까지 쓸 수 있나요?", p: [210, 210] },
+    { t: "ERR-4031 오류가 떠요", p: [86, 252], kw: "ERR-4031" },
+  ];
+  const map = $("[data-rg-map]"), kIn = $("[data-rg-k]"), hyIn = $("[data-rg-hybrid]"), hits = $("[data-rg-hits]"), note = $("[data-rg-mapnote]");
+  [["근무 규정", 14, 22, "start"], ["휴가 규정", 386, 22, "end"], ["경비 규정", 386, 392, "end"], ["IT 안내", 14, 392, "start"]].forEach(([t, x, y, a]) => (mk("text", { x, y, class: "area", "text-anchor": a }, map).textContent = t));
+  const ringG = mk("g", {}, map), linkG = mk("g", {}, map);
+  const dots = PTS.map(([d, x, y, label]) => {
+    const g = mk("g", {}, map);
+    mk("circle", { cx: x, cy: y, r: 7, fill: COL[d] }, g);
+    mk("circle", { cx: x, cy: y, r: 14, fill: "transparent" }, g);
+    const t = mk("text", { x, y: y - 13, "text-anchor": x < 90 ? "start" : x > 310 ? "end" : "middle", class: "tip" }, g); t.textContent = label;
+    return { g, t };
+  });
+  const rankG = mk("g", {}, map);
+  let qi = 0, q = [...QS[0].p];
+  const qG = mk("g", { class: "qdot" }, map);
+  const qHalo = mk("circle", { r: 16, fill: "rgba(255,92,92,0.2)" }, qG);
+  const qDot = mk("circle", { r: 8, fill: "var(--rg-q)", stroke: "var(--bg-base)", "stroke-width": 3 }, qG);
+  const qs = $("[data-rg-qs]");
+  QS.forEach((x, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = x.t; b.setAttribute("aria-pressed", String(i === 0)); b.addEventListener("click", () => { qi = i; q = [...x.p]; [...qs.children].forEach((c, j) => c.setAttribute("aria-pressed", String(j === i))); search(); }, { signal }); qs.appendChild(b); });
+  let lastHits = [];
+  const search = () => {
+    const k = +kIn.value; $("[data-rg-kout]").textContent = k + "개";
+    [qHalo, qDot].forEach((c) => { c.setAttribute("cx", q[0]); c.setAttribute("cy", q[1]); });
+    const ranked = PTS.map((p, i) => ({ i, d: Math.hypot(p[1] - q[0], p[2] - q[1]) })).sort((a, b) => a.d - b.d);
+    let top = ranked.slice(0, k).map((r) => ({ ...r, kw: false }));
+    const kw = QS[qi].kw;
+    let note2 = "";
+    if (kw) {
+      const ki = PTS.findIndex((p) => p[4] === kw);
+      const inTop = top.some((r) => r.i === ki);
+      if (hyIn.checked && !inTop) { top = [{ i: ki, d: ranked.find((r) => r.i === ki).d, kw: true }, ...top.slice(0, k - 1)]; note2 = "키워드 검색이 ERR-4031이라는 글자가 정확히 들어 있는 조각을 찾아 맨 앞에 넣었습니다."; }
+      else if (!inTop) note2 = "임베딩은 '오류', 'IT 문제'라는 뜻은 잡지만, ERR-4031 같은 코드 문자열은 잘 구별하지 못합니다. 하이브리드 검색을 켜 보세요.";
+      else note2 = "운 좋게 뜻만으로도 찾았습니다. 코드가 많은 문서에서는 이런 운을 기대하기 어렵습니다.";
+    }
+    const maxD = Math.max(...top.map((r) => r.d));
+    ringG.innerHTML = `<circle cx="${q[0]}" cy="${q[1]}" r="${maxD + 10}" fill="none" stroke="var(--rg-q)" stroke-dasharray="4 5" opacity="0.6"/>`;
+    linkG.innerHTML = top.map((r) => `<line x1="${q[0]}" y1="${q[1]}" x2="${PTS[r.i][1]}" y2="${PTS[r.i][2]}" stroke="var(--rg-q)" stroke-width="2" opacity="0.7"${r.kw ? ' stroke-dasharray="2 4"' : ""}/>`).join("");
+    rankG.innerHTML = top.map((r, n) => `<circle cx="${PTS[r.i][1] + 11}" cy="${PTS[r.i][2] - 11}" r="8" fill="var(--fg-strong)"/><text class="rank" x="${PTS[r.i][1] + 11}" y="${PTS[r.i][2] - 7}" text-anchor="middle">${n + 1}</text>`).join("");
+    const sel = new Set(top.map((r) => r.i));
+    dots.forEach((d, i) => { d.g.style.opacity = sel.has(i) ? 1 : 0.4; d.g.classList.toggle("on", sel.has(i)); });
+    hits.innerHTML = top.map((r, n) => `<li class="${r.kw ? "kw" : ""}"><b>${n + 1}</b><span>${PTS[r.i][3]}</span><em>${r.kw ? "키워드" : "거리 " + Math.round(r.d)}</em></li>`).join("");
+    note.textContent = note2;
+    lastHits = top.map((r) => PTS[r.i]);
+    drawPrompt();
+  };
+  const toLocal = (e) => { const pt = map.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(map.getScreenCTM().inverse()); return [Math.max(10, Math.min(390, p.x)), Math.max(10, Math.min(390, p.y))]; };
+  let drag = false;
+  map.addEventListener("pointerdown", (e) => { drag = true; map.setPointerCapture(e.pointerId); q = toLocal(e); search(); }, { signal });
+  map.addEventListener("pointermove", (e) => { if (drag) { q = toLocal(e); search(); } }, { signal });
+  map.addEventListener("pointerup", () => (drag = false), { signal });
+  [kIn, hyIn].forEach((x) => x.addEventListener("input", search, { signal }));
+
+  // ── 03 프롬프트 ────────────────────────────────────────────
+  const prompt = $("[data-rg-prompt]"), budget = $("[data-rg-budget]");
+  const drawPrompt = () => {
+    const ctx = lastHits.map((p, n) => `<div class="rg-pblk ctx" style="animation-delay:${n * 70}ms"><small>문서 ${n + 1} · ${p[0]} 규정</small>${esc(p[3])} …</div>`).join("");
+    prompt.innerHTML = `<div class="rg-pblk sys"><small>SYSTEM</small>아래 문서만 근거로 답하세요. 문서에 없으면 "규정에서 찾지 못했습니다"라고 답하고, 근거 문서 번호를 함께 적으세요.</div>${ctx}<div class="rg-pblk ask"><small>USER</small>${esc(QS[qi].t)}</div>`;
+    const sys = 60, per = 220, ask = 20, total = 2000, used = sys + per * lastHits.length + ask;
+    budget.innerHTML = `조각 하나를 약 ${per}토큰으로 잡으면, 이 프롬프트는 약 ${used}토큰입니다.<div class="rg-budget-bar"><span style="width:${(sys / total) * 100}%;background:var(--fg-alternative)"></span><span style="width:${((per * lastHits.length) / total) * 100}%;background:var(--rg-b)"></span><span style="width:${(ask / total) * 100}%;background:var(--fg-strong)"></span></div>`;
+  };
+
+  // ── 04 실패 지점 ───────────────────────────────────────────
+  const STOPS = [
+    ["파싱", "PDF의 표가 한 줄로 뭉개지거나, 스캔본이라 글자가 추출되지 않습니다.", "표·이미지가 많은 문서는 레이아웃을 보존하는 파서나 OCR을 쓰고, 추출 결과를 사람이 몇 개 직접 열어 봅니다."],
+    ["자르기", "답 문장이 경계에서 잘리거나, 조각에서 주제어가 빠집니다.", "오버랩을 두고, 제목·절 번호 같은 문맥을 조각 앞에 붙입니다. 문단·제목 경계를 따라 자르는 방법도 있습니다."],
+    ["임베딩", "도메인 용어나 제품 코드를 임베딩 모델이 구별하지 못합니다.", "키워드 검색(BM25)을 함께 쓰고, 한국어와 도메인에 맞는 임베딩 모델을 고릅니다."],
+    ["검색", "비슷해 보이지만 답이 없는 조각이 상위를 차지합니다.", "후보를 넉넉히 뽑은 뒤 재순위 모델로 다시 줄을 세웁니다. 메타데이터 필터(부서, 날짜)도 씁니다."],
+    ["조립", "조각이 너무 많아 정작 중요한 조각이 가운데에 묻힙니다.", "가장 관련 있는 조각을 앞에 두고, 개수를 늘리기 전에 재순위 품질을 먼저 올립니다."],
+    ["생성", "문서에 없는 내용을 모델이 덧붙여 지어냅니다.", "근거 문서 번호를 함께 쓰게 하고, 문서에 없으면 모른다고 답하라는 지시를 넣습니다."],
+    ["갱신", "규정이 바뀌었는데 인덱스는 옛 문서 그대로입니다.", "문서가 바뀔 때마다 해당 조각만 다시 임베딩하고, 조각에 문서 버전과 날짜를 남깁니다."],
+  ];
+  const stops = $("[data-rg-stops]"), box = $("[data-rg-failbox]");
+  const pickStop = (i) => {
+    [...stops.children].forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+    box.innerHTML = `<div><h3>이렇게 틀립니다</h3><p>${STOPS[i][1]}</p></div><div><h3>이렇게 막습니다</h3><p>${STOPS[i][2]}</p></div>`;
+  };
+  STOPS.forEach(([t], i) => { const b = document.createElement("button"); b.type = "button"; b.className = "rg-stop"; b.innerHTML = `<i>${i + 1}</i>${t}`; b.addEventListener("click", () => pickStop(i), { signal }); stops.appendChild(b); });
+
+  // ── 05 막대는 화면에 들어올 때 자란다 ─────────────────────────
+  const cr = $("[data-rg-cr]");
+  new IntersectionObserver(([e], ob) => { if (e.isIntersecting) { [...cr.children].forEach((d, i) => setTimeout(() => d.classList.add("is-in"), reduce ? 0 : i * 180)); ob.disconnect(); } }, { threshold: 0.4 }).observe(cr);
+
+  drawChunks(); search(); pickStop(1);
+})();
+</script>
