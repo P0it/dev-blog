@@ -34,6 +34,17 @@
 URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 → 인사이트 글 경로다.
 이 세션이 웹 리서치로 근거를 모아 의견 글을 쓴다. 규약은 `INSIGHT.md`, 커맨드는 `/insight`.
 
+**학습 주제·시리즈 목차·수업 자료를 주며 "이걸로 글 만들어줘"** 라고 하면 → 학습 페이지 글 경로다.
+그림으로 원리가 이해되는 HTML 페이지 글을 만든다. 커맨드는 `/study`, 형식은 `POSTING.md` 5장.
+
+## 모든 글은 /humanize 를 거친다
+
+어느 경로로 쓴 글이든 적재 전에 `humanize-korean` 플러그인으로 윤문하고(`POSTING.md` 2-4),
+AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 순화어 ✗). 사용자가 2026-10-12 에 정했다.
+플러그인은 레포의 `.claude/settings.json` 이 설치를 권한다. 새 머신에서 권유가 안 떴으면
+Claude Code 에서 `/plugin marketplace add epoko77-ai/im-not-ai` → `/plugin install humanize-korean@im-not-ai`.
+`npm run setup:skills` 가 설치 여부를 알려 준다. 플러그인이 없으면 윤문을 건너뛰지 말고 멈춰서 설치를 요청한다.
+
 ## 스킬·커맨드를 고칠 때
 
 **스킬과 슬래시 커맨드는 이 레포의 md 를 고치고 커밋한다.** 다른 머신은 이 레포로만
@@ -43,12 +54,14 @@ URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 →
 | 고칠 것 | 원본 |
 |---|---|
 | `/portfolio` | `skills/portfolio/SKILL.md` (`~/.claude/skills/portfolio` 가 여기로 걸린 심볼릭 링크) |
-| `/draft` `/insight` `/project` `/research` `/revise` | `.claude/commands/*.md` |
+| `/draft` `/insight` `/project` `/research` `/revise` `/study` | `.claude/commands/*.md` |
+| 시각 설명 레퍼런스 (`/study` 가 쌓는다) | `docs/visual-references.md` |
 | 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
 | `/lab` 화면 규약 | `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md` |
 
-`.gitignore` 가 `/.claude/*` 를 무시하되 `!/.claude/commands/` 로 커맨드만 살려 둔다.
-새 머신에서는 `npm run setup:skills` 로 링크를 건다.
+`.gitignore` 가 `/.claude/*` 를 무시하되 `!/.claude/commands/` 와 `!/.claude/settings.json`(플러그인 설치 권유)만 살려 둔다.
+새 머신에서는 `npm run setup:skills` 로 링크를 걸고 플러그인 설치 여부를 확인한다.
+`/study` 의 화면 점검(`npm run check:page`)은 `npx playwright install chromium` 이 먼저 필요하다.
 
 **화면을 고쳤으면 규약도 같이 고친다.** 렌더러만 바꾸고 규약 문서를 두면, 다음에
 그 문서를 읽고 만드는 쪽이 옛 화면으로 되돌린다. 접은 안은 왜 접었는지까지 남긴다.

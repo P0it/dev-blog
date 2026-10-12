@@ -356,7 +356,10 @@ category: ai
   const defs = mk("defs", {}, plane);
   const arrowHead = (id, color) => { const m = mk("marker", { id, viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" }, defs); mk("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, m); };
   const uid = Math.random().toString(36).slice(2, 7);
-  arrowHead(`sa-k-${uid}`, "rgb(80,140,255)"); arrowHead(`sa-q-${uid}`, "rgb(255,122,69)"); KEYS.forEach((k) => { // y 는 화면 아래가 + 이므로 뒤집어 그린다 mk("line", { x1: 0, y1: 0, x2: k.v[0], y2: -k.v[1], stroke: "rgb(80,140,255)", "stroke-width": 3, "marker-end": `url(#sa-k-${uid})` }, plane);
+  arrowHead(`sa-k-${uid}`, "rgb(80,140,255)"); arrowHead(`sa-q-${uid}`, "rgb(255,122,69)");
+  KEYS.forEach((k) => {
+    // y 는 화면 아래가 + 이므로 뒤집어 그린다
+    mk("line", { x1: 0, y1: 0, x2: k.v[0], y2: -k.v[1], stroke: "rgb(80,140,255)", "stroke-width": 3, "marker-end": `url(#sa-k-${uid})` }, plane);
     mk("circle", { cx: k.v[0] * 1.18, cy: -k.v[1] * 1.18, r: 7, fill: `rgb(${k.c})` }, plane);
     mk("text", { x: k.v[0] * 1.18, y: -k.v[1] * 1.18 + (k.v[1] > 0 ? -14 : 22), "text-anchor": "middle", fill: "var(--fg-strong)" }, plane).textContent = k.t;
   });
@@ -423,7 +426,7 @@ category: ai
     let w = HEADS[head](hoverRow);
     if (masked) { const s = w.slice(0, hoverRow + 1).reduce((a, b) => a + b, 0); w = w.map((x, j) => (j > hoverRow ? 0 : x / s)); }
     const top = w.map((x, j) => [x, j]).sort((a, b) => b[0] - a[0]).slice(0, 2);
-    info.textContent = `강조된 줄: "${tk[hoverRow]}"은(는) ${top.map(([x, j]) =>`${tk[j]} ${Math.round(x * 100)}%`).join(", ")} 순으로 참고합니다.`;
+    info.textContent = `강조된 줄: "${tk[hoverRow]}"은(는) ${top.map(([x, j]) => `${tk[j]} ${Math.round(x * 100)}%`).join(", ")} 순으로 참고합니다.`;
   };
   mat.addEventListener("pointerover", (e) => { const r = e.target.dataset && e.target.dataset.r; if (r !== undefined && +r !== hoverRow) { hoverRow = +r; drawMatrix(); } }, { signal });
   maskIn.addEventListener("change", drawMatrix, { signal });

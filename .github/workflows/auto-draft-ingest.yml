@@ -16,6 +16,7 @@ on:
     branches: [main]
     paths:
       - "auto-drafts/posts/**.md"
+      - "auto-drafts/posts/**.html"
   workflow_dispatch:
     inputs:
       file:
@@ -49,7 +50,7 @@ jobs:
           if [ -n "$MANUAL_FILE" ]; then
             files="$MANUAL_FILE"
           else
-            files=$(git diff --name-only --diff-filter=AM HEAD^ HEAD -- 'auto-drafts/posts/*.md' || true)
+            files=$(git diff --name-only --diff-filter=AM HEAD^ HEAD -- 'auto-drafts/posts/*.md' 'auto-drafts/posts/*.html' || true)
           fi
           if [ -z "$files" ]; then
             echo "적재할 원고 없음 — 건너뜁니다."

@@ -1,0 +1,35 @@
+# 시각 설명 레퍼런스
+
+`/study` 가 글마다 레퍼런스를 탐색하고 여기에 쌓는다. 기록하는 것은 **설명 방식**이다.
+그림체·색·레이아웃은 가져오지 않는다. 실제로 열어 본 것만 적고, 열지 못한 것은 `미확인` 칸에 둔다.
+재사용을 강제하려는 목록이 아니다. 다음 글을 쓸 때 고를 수 있는 선택지를 넓히려는 목록이다.
+
+| 레퍼런스 | 설명 기법 | 쓸 때 | 확인일 | 쓴 글 |
+|---|---|---|---|---|
+| [Transformer Explainer](https://poloclub.github.io/transformer-explainer/) | 실제 GPT-2 위에서 temperature 슬라이더·top-k/top-p 토글로 다음 토큰 확률을 바로 다시 그린다. 토큰에 마우스를 올리면 attention 가중치 강조 | 실제 모델 값으로 보여 주고 싶을 때 | 2026-10-12 | llm-temperature-sampling, self-attention-qkv |
+| [HF, How to generate text](https://huggingface.co/blog/how-to-generate) | 분포가 평평한 문맥과 뾰족한 문맥을 나란히 놓아, 같은 k가 한쪽에서는 너무 많고 한쪽에서는 너무 적음을 보인다 | 고정값 방식의 약점을 보일 때 | 2026-10-12 | llm-temperature-sampling |
+| [Boltzmann distribution](https://en.wikipedia.org/wiki/Boltzmann_distribution) | (다른 분야) softmax 와 같은 꼴. 에너지 층 사이를 오가는 입자로 온도를 보여 준다 | 이름의 유래·물리 비유가 이해를 돕는 개념 | 2026-10-12 | llm-temperature-sampling |
+| [3Blue1Brown, Attention](https://www.3blue1brown.com/lessons/attention) | Query×Key 격자에서 점 크기로 점수 → 행마다 softmax → 마스크 칸을 −∞ 로. 형용사가 명사 벡터를 고치는 예시 | 행렬 계산을 단계별로 쌓을 때 | 2026-10-12 | self-attention-qkv |
+| [Jay Alammar, Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) | 단어 하나를 따라 점수→÷8→softmax→V 가중합 6단계, 그다음 같은 일을 행렬로 압축. "it → animal" 예문 | 한 토큰을 따라가며 계산을 보일 때 | 2026-10-12 | self-attention-qkv |
+| [Nicky Case, The Wisdom and/or Madness of Crowds](https://ncase.me/crowds/) | (다른 분야·사회 연결망) 사람을 노드로, 독자가 연결을 긋고 끊으면 영향이 이웃 비율로 퍼진다 | 가중 평균·정규화된 영향을 직관으로 보일 때 | 2026-10-12 | |
+| [Distill, Attention and Augmented RNNs](https://distill.pub/2016/augmented-rnns/) | soft attention 을 "모든 곳을 보되 정도만 다르게"로 설명 | attention 을 "고르기"로 오해할 때 | 2026-10-12 | |
+| [Anthropic, Contextual Retrieval](https://www.anthropic.com/news/contextual-retrieval) | 주어가 빠진 청크 예시("매출이 3% 늘었다") + 단계를 더할 때마다 줄어드는 실패율 막대 | 기법을 한 겹씩 더하는 효과를 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [Weaviate, Vector Search Explained](https://weaviate.io/blog/vector-search-explained) | 질의를 표적 공, 문서를 공으로 두는 비유. HNSW 위층은 긴 연결, 아래층은 짧은 연결 | 벡터 검색·ANN 을 그림으로 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [Pinecone, Chunking Strategies](https://www.pinecone.io/learn/chunking-strategies/) | 청크가 너무 작을 때와 너무 클 때 무엇이 망가지는지 글로 정리(그림 없음) | 청킹 실험의 판정 문구를 쓸 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [Jay Alammar, Illustrated Word2vec](https://jalammar.github.io/illustrated-word2vec/) | 임베딩을 색 칸 띠로 그려 비슷한 단어는 같은 열 색이 겹쳐 보이게 한다 | 임베딩 벡터의 "비슷함"을 보일 때 | 2026-10-12 | |
+| [Red Blob Games, Introduction to A*](https://www.redblobgames.com/pathfinding/a-star/introduction.html) | (다른 분야·지도 탐색) 시작점·목표를 끌어서 옮기고, 탐색 경계가 퍼지는 과정을 단계별로 본다 | 공간 위 탐색(최근접 이웃 등)을 조작하게 할 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [Lost in the Middle](https://arxiv.org/abs/2307.03172) | 정답 문서 위치에 따른 정확도 U자 곡선 | 긴 컨텍스트에서 위치 효과를 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
+
+## 미확인
+
+열어 봤지만 내용을 확인하지 못했거나 열리지 않은 곳. 다음에 다시 시도한다.
+
+- [bbycroft.net/llm](https://bbycroft.net/llm) — 3D LLM 시각화. 제목만 읽혔다
+- [BertViz](https://github.com/jessevig/bertviz) — README 로 head/model/neuron 뷰가 있다는 것만 확인
+- ByteByteGo RAG 글 — 404
+
+## 잘 먹힌 기법
+
+- **온도계 하나로 모든 그림 연동** (llm-temperature-sampling) — 같은 변수 하나가 확률표·수직선·샘플링·물리 비유를 동시에 바꾸니, 그림 여러 개가 한 원리로 묶여 보였다
+- **값을 색으로 섞기** (self-attention-qkv) — Value 를 색으로 두면 가중 평균 결과가 "섞인 색"으로 바로 보인다
+- **기본값을 실패 상태로** (rag-retrieval-pipeline) — 청킹 실험을 답이 잘린 상태로 시작해 독자가 슬라이더로 고치게 했다
