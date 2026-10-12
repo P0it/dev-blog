@@ -3,7 +3,7 @@ title: 에이전트 허용 도메인에 와일드카드가 필요할까요?
 slug: agent-allowed-domains-wildcard
 tags: [AI 에이전트, 에이전트 보안, Claude Code]
 category: insights
-cover_image: REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/0d1c612947c798aef48e6ab4beb7e8544da9d41a-4096x2305.png
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-12/2a9f8b81.webp
 ---
 
 > 에이전트에 웹을 열어 줄 때 적는 허용 도메인 목록은 Claude Managed Agents 의 도구 설정과 환경 설정, Claude Code 샌드박스까지 세 곳에 각각 있고 와일드카드 규칙이 서로 다릅니다. 같은 도메인 한 줄이 세 곳에서 어떻게 읽히는지와 어느 거절이 어느 목록에서 나오는지를 공식 문서에 적힌 범위로 정리했습니다.
@@ -86,7 +86,7 @@ Claude Managed Agents 에서 `web_search` 와 `web_fetch` 에는 각각 도메�
 
 내 기계에서 돌리는 Claude Code 에도 같은 종류의 목록이 있습니다. 샌드박스 안의 셸 명령은 네트워크로 나가는 직접 연결이 없고 Anthropic 이 기계 위에 띄운 프록시를 지나갑니다. 프록시가 연결마다 호스트명을 `network.allowedDomains` 와 `network.deniedDomains` 에 대조합니다. 포트를 적지 않은 항목은 그 호스트의 모든 포트를 엽니다.
 
-![Claude Code 의 샌드박싱 구조에서 파일시스템 제한과 네트워크 제한이 나뉘어 적용되는 모습](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/0d1c612947c798aef48e6ab4beb7e8544da9d41a-4096x2305.png)
+![Claude Code 의 샌드박싱 구조에서 파일시스템 제한과 네트워크 제한이 나뉘어 적용되는 모습](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-12/2a9f8b81.webp)
 
 이 목록은 처음에 비어 있습니다. 명령이 새 도메인을 처음 필요로 하면 Claude Code 가 승인을 묻고 승인하면 그 세션 동안 열립니다. `strictAllowlist` 를 켜면 묻지 않고 목록 밖의 호스트를 막습니다. 와일드카드는 `WebFetch(domain:...)` 규칙에서 맨 앞의 `*.` 과 맨 `*` 두 형태를 받습니다. `example.*` 처럼 다른 위치에 넣은 와일드카드는 WebFetch 호출에는 걸리지만 샌드박스 명령에는 효력이 없습니다.
 
@@ -114,7 +114,7 @@ Managed Agents 문서는 이 구조의 한계를 직접 경고로 적어 뒀습�
 
 문서가 제시하는 완화책은 목록을 좁히는 쪽이 아닙니다. `bash` 도구의 permission policy 를 `always_ask` 나 `auto` 로 두는 것이고 환경이 `packages` 를 쓰지 않는다면 `allow_package_managers` 를 끈 채 필요한 호스트만 적는 것입니다. 호스트를 열어 주는 결정과 그 호스트에서 무엇을 할 수 있는지를 따로 관리해야 한다는 뜻입니다.
 
-![Claude Code 가 git 명령을 프록시로 보내 토큰과 브랜치 이름, 저장소 대상을 검사하는 구조](REHOST:https://www-cdn.anthropic.com/images/4zrzovbb/website/e8f66bcf73d9d23cae67e67776b2d31373c13050-4096x2305.png)
+![Claude Code 가 git 명령을 프록시로 보내 토큰과 브랜치 이름, 저장소 대상을 검사하는 구조](https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-12/5e73b34c.webp)
 
 Claude Code 의 웹 세션이 git 을 다루는 방식이 그 구분을 보여 주는 예입니다. 자격증명은 샌드박스 밖에 두고 전용 프록시가 범위를 좁힌 자격증명과 git 동작을 함께 검사합니다. 설정된 브랜치로만 push 하는지까지 확인한 다음 실제 토큰을 붙여 GitHub 로 넘깁니다. 호스트를 여는 것으로 끝내지 않고 동작까지 검사하는 구조입니다.
 
