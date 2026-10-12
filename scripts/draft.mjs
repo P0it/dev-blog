@@ -26,9 +26,13 @@
 //                             넣을 글에 쓴다. 에디터가 발행할 때 이 값을 그대로 쓴다
 //   series: llm-infra       (선택) series.slug — 시리즈에 묶을 때
 //   series_order: 3         (선택) 시리즈 안 순서
+//   excerpt: 한두 문장 요약  (HTML 페이지 글만, 필수) 카드·검색·OG·RSS 요약
 //   ---
 //   > 요약 인용구…
 //   ## 헤드라인…
+//
+// HTML 페이지 글은 프런트매터 아래 첫 줄이 `<!-- page -->` 이고 그 뒤가 HTML 이다.
+// 파일 확장자는 .html 이어도 된다. 규약은 POSTING.md 「HTML 페이지 글」.
 //
 // 환경변수: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (.env.local)
 
@@ -104,9 +108,31 @@ function deriveExcerpt(md) {
   return stripInline(collected.filter(Boolean).join(" ")).replace(/\s+/g, " ").trim();
 }
 
+// HTML 페이지형 글 — 본문 첫 줄이 이 표시면 마크다운이 아니라 HTML 이다. src/lib/page-html.ts 와 동일.
+const PAGE_MARKER = "<!-- page -->";
+const isPageBody = (body) => !!body && body.trimStart().startsWith(PAGE_MARKER);
+function pageText(html) {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(style|script|svg)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // 본문 분량 → "N분". src/lib/markdown.ts 의 deriveReadingMin 와 동일.
 function deriveReadingMin(md) {
   if (!md) return "";
+  if (isPageBody(md)) {
+    const chars = pageText(md).replace(/\s+/g, "").length;
+    return chars ? `${Math.max(1, Math.round(chars / 450))}분` : "";
+  }
   const text = md
     .replace(/```[\s\S]*?```/g, "")
     .replace(/`[^`\n]*`/g, "")
@@ -235,9 +261,14 @@ async function push(file, force) {
 
   // 콘텐츠 필드만 — status/is_featured 는 건드리지 않아 기존 글의 발행 상태·추천이
   // 보존된다(에디터 update 와 동일 원칙). published_at/series 는 아래에서 지정했을 때만.
+  // HTML 페이지 글은 첫 `>` 인용구가 없으니 요약을 프런트매터 excerpt 로 받는다.
+  const page = isPageBody(body);
+  const excerpt = page ? unquote(fm.excerpt) : deriveExcerpt(body);
+  if (page && !excerpt) throw new Error("HTML 페이지 글은 프런트매터에 excerpt 가 필요합니다");
+
   const content = {
     title,
-    excerpt: deriveExcerpt(body) || null,
+    excerpt: excerpt || null,
     body_md: body,
     tags: canonicalizeTags(parseTags(fm.tags), await existingTags(sb)),
     category_slug: categorySlug,

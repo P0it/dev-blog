@@ -6,12 +6,14 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
+import { PageBody } from "@/components/post/PageBody";
 import { TocNav } from "@/components/post/TocNav";
 import { PostGraph } from "@/components/post/PostGraph";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { Comments } from "@/components/Comments";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { extractToc } from "@/lib/markdown";
+import { isPageBody } from "@/lib/page-html";
 import type { Locale, Post, PostGraph as PostGraphData, SeriesContext } from "@/lib/types";
 import { tFor } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
@@ -20,6 +22,45 @@ function hasAvatarFile(url: string): boolean {
   if (!url) return false;
   if (!url.startsWith("/")) return true; // 외부 URL은 그대로 신뢰
   return existsSync(path.join(process.cwd(), "public", url.replace(/^\//, "")));
+}
+
+// 시리즈 이전/다음 편 카드. 마지막 편은 시리즈 전체 보기로 잇는다.
+function SeriesNav({
+  series,
+  slug,
+  postsBase,
+}: {
+  series: SeriesContext | null;
+  slug: string;
+  postsBase: string;
+}) {
+  if (!series || series.items.length <= 1) return null;
+  const idx = series.items.findIndex((it) => it.slug === slug);
+  const prev = idx > 0 ? series.items[idx - 1] : null;
+  const next = idx >= 0 && idx < series.items.length - 1 ? series.items[idx + 1] : null;
+  return (
+    <nav className="series-nav" aria-label="시리즈 이전·다음 편">
+      {prev ? (
+        <Link href={`${postsBase}/${prev.slug}`} className="series-nav-link prev">
+          <span className="series-nav-label">← 이전 편 · {String(idx).padStart(2, "0")}</span>
+          <span className="series-nav-title">{prev.title}</span>
+        </Link>
+      ) : (
+        <span className="series-nav-link empty" />
+      )}
+      {next ? (
+        <Link href={`${postsBase}/${next.slug}`} className="series-nav-link next">
+          <span className="series-nav-label">다음 편 · {String(idx + 2).padStart(2, "0")} →</span>
+          <span className="series-nav-title">{next.title}</span>
+        </Link>
+      ) : (
+        <Link href={`/series/${series.slug}`} className="series-nav-link next">
+          <span className="series-nav-label">시리즈 완결 →</span>
+          <span className="series-nav-title">{series.title} 전체 보기</span>
+        </Link>
+      )}
+    </nav>
+  );
 }
 
 export function PostDetailView({
@@ -37,9 +78,27 @@ export function PostDetailView({
   series?: SeriesContext | null;
   graph?: PostGraphData | null;
 }) {
-  const toc = extractToc(post.bodyMd);
   const t = tFor(locale);
   const postsBase = locale === "en" ? "/en/posts" : "/posts";
+
+  // HTML 페이지형 글: 메뉴·푸터만 사이트 것을 쓰고, 그 사이는 글이 화면 폭 전체를 직접 꾸민다.
+  // 글 안에서 만들 수 없는 시리즈 이어 읽기와 댓글만 아래에 붙인다.
+  if (isPageBody(post.bodyMd)) {
+    return (
+      <>
+        <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
+        <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
+        <PageBody html={post.bodyMd!} />
+        <div className="container-wide post-page-tail">
+          <SeriesNav series={series} slug={post.slug} postsBase={postsBase} />
+          <Comments term={post.slug} />
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  const toc = extractToc(post.bodyMd);
   return (
     <>
       <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
@@ -118,34 +177,7 @@ export function PostDetailView({
             )}
 
             {/* 시리즈 이전/다음 편 — 본문 끝, 연관 글 위 */}
-            {series && series.items.length > 1 && (() => {
-              const idx = series.items.findIndex((it) => it.slug === post.slug);
-              const prev = idx > 0 ? series.items[idx - 1] : null;
-              const next = idx >= 0 && idx < series.items.length - 1 ? series.items[idx + 1] : null;
-              return (
-                <nav className="series-nav" aria-label="시리즈 이전·다음 편">
-                  {prev ? (
-                    <Link href={`${postsBase}/${prev.slug}`} className="series-nav-link prev">
-                      <span className="series-nav-label">← 이전 편 · {String(idx).padStart(2, "0")}</span>
-                      <span className="series-nav-title">{prev.title}</span>
-                    </Link>
-                  ) : (
-                    <span className="series-nav-link empty" />
-                  )}
-                  {next ? (
-                    <Link href={`${postsBase}/${next.slug}`} className="series-nav-link next">
-                      <span className="series-nav-label">다음 편 · {String(idx + 2).padStart(2, "0")} →</span>
-                      <span className="series-nav-title">{next.title}</span>
-                    </Link>
-                  ) : (
-                    <Link href={`/series/${series.slug}`} className="series-nav-link next">
-                      <span className="series-nav-label">시리즈 완결 →</span>
-                      <span className="series-nav-title">{series.title} 전체 보기</span>
-                    </Link>
-                  )}
-                </nav>
-              );
-            })()}
+            <SeriesNav series={series} slug={post.slug} postsBase={postsBase} />
 
             {related.length > 0 && (
               <div

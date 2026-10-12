@@ -1,4 +1,5 @@
 import GithubSlugger from "github-slugger";
+import { isPageBody, pageText } from "@/lib/page-html";
 
 export type TocItem = { id: string; label: string; sub?: boolean };
 
@@ -73,6 +74,7 @@ function stripInline(s: string): string {
 // 어드민 에디터가 발행 시 reading_min 컬럼에 채워 넣는다(수동 입력 폐지).
 export function deriveReadingMin(md: string | null | undefined): string {
   if (!md) return "";
+  if (isPageBody(md)) return minutesFor(pageText(md).replace(/\s+/g, ""));
   const text = md
     .replace(/```[\s\S]*?```/g, "")          // 펜스 코드블록
     .replace(/`[^`\n]*`/g, "")               // 인라인 코드
@@ -80,7 +82,10 @@ export function deriveReadingMin(md: string | null | undefined): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // 링크는 텍스트만 남김
     .replace(/[#>*_~\-]/g, "")               // 마크다운 기호
     .replace(/\s+/g, "");                    // 공백 제거 → 글자수
-  const chars = text.length;
-  if (chars === 0) return "";
-  return `${Math.max(1, Math.round(chars / 450))}분`;
+  return minutesFor(text);
+}
+
+function minutesFor(text: string): string {
+  if (text.length === 0) return "";
+  return `${Math.max(1, Math.round(text.length / 450))}분`;
 }

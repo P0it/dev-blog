@@ -1151,3 +1151,61 @@ Mythos Preview는 CyberGym에서 83.1%를 기록했다[^1].
 
 원본은 `src/lib/tags.ts`, 스크립트용 사본은 `scripts/lib/tags.mjs`.
 **한쪽만 고치면 어긋난다** — `src/lib/tags.test.ts` 가 두 구현을 대조해 잡는다.
+
+---
+
+## 5. HTML 페이지 글
+
+글 하나가 그 주제만을 위해 만든 정적 페이지가 되는 형식이다. 사이트의 메뉴와 푸터만
+그대로 쓰고, 그 사이는 글이 화면 폭 전체를 직접 꾸민다. 공통 히어로·제목·목차·시리즈
+열은 붙지 않는다. 본문 아래에는 시리즈 이전·다음 편과 댓글만 붙는다.
+말투·제목·퇴고 규약(2-0 ~ 2-4)은 마크다운 글과 같다. 형식만 다르다.
+
+### 5-1. 파일 형식
+
+```
+---
+title: 제목
+slug: english-slug
+excerpt: 카드·검색·OG·RSS 에 쓰일 한두 문장 요약 (필수)
+tags: [A, B]
+category: ...
+---
+<!-- page -->
+<style> … </style>
+<section> … </section>
+<script> … </script>
+```
+
+- 프런트매터 아래 **첫 줄이 `<!-- page -->`** 여야 HTML 페이지로 그려진다. 없으면 마크다운으로 렌더된다.
+- 첫 `>` 인용구가 없으니 요약은 프런트매터 `excerpt` 로 준다. 없으면 `npm run draft` 가 거부한다.
+- `<html>` `<head>` `<body>` 는 쓰지 않는다. 본문에 들어갈 조각만 쓴다.
+- 적재는 마크다운 글과 같다: `npm run draft -- push <file>`. 원고는 `auto-drafts/posts/<slug>.html`.
+
+### 5-2. 스타일
+
+- **모든 선택자는 `.post-page` 아래로 쓴다.** 본문 `<style>` 은 사이트 전체에 적용되므로,
+  `h2 { … }` 처럼 쓰면 메뉴·푸터까지 바뀐다. `@keyframes` 이름에는 `pg-` 같은 접두어를 붙인다.
+- 색·글꼴·둥글기는 사이트 토큰을 쓴다: `--fg-strong` `--fg-alternative` `--bg-base`
+  `--bg-subtle` `--bg-primary` `--bg-primary-tint` `--line-subtle` `--font-display`
+  `--font-sans` `--font-mono` `--radius-*` `--shadow-*`. 이 토큰은 다크모드에서 알아서 바뀐다.
+  직접 색을 쓰면 다크모드에서 깨지니, 꼭 필요하면 `[data-theme="dark"] .post-page …` 로 따로 잡는다.
+- 360px 폭에서도 가로 스크롤이 생기지 않아야 한다. 글자 크기는 `clamp()` 로 준다.
+- 움직임은 `@media (prefers-reduced-motion: reduce)` 에서 끈다.
+
+### 5-3. 모션·스크롤·커서
+
+- 등장·스크롤 효과는 CSS 로 먼저 한다: `@keyframes`, `animation-timeline: view()` / `scroll()`.
+- 커서 반응 등 JS 가 필요하면 `<script>` 를 넣는다. 페이지가 마운트된 뒤 순서대로 실행된다.
+  - `window.postPage.root`(본문 루트)에서 요소를 찾는다. `document` 전체를 뒤지지 않는다.
+  - 리스너·옵저버는 `window.postPage.signal` 에 묶는다:
+    `el.addEventListener("pointermove", fn, { signal })`. 다른 글로 넘어가면 abort 된다.
+  - 라이브러리는 버전을 고정한 CDN `<script src>` 로 넣는다(예: `gsap@3.12.5`). 다음 인라인
+    스크립트는 그 로드가 끝난 뒤 돈다.
+- 스크립트가 꺼져도 글은 다 읽혀야 한다. 본문 텍스트는 HTML 에 그대로 쓰고, JS 는 꾸밈만 맡는다.
+
+### 5-4. 구조
+
+- `<h1>` 은 하나, 글 제목이다. 섹션은 `<h2>`. 검색엔진과 읽는 시간 계산이 이 텍스트를 쓴다.
+- 이미지는 `npm run fetch:image` 로 재호스팅한 URL 을 쓴다. 그림은 인라인 SVG 로 그려도 된다.
+- 참고 자료는 마지막 섹션에 링크 목록으로 둔다.

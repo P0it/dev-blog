@@ -7,6 +7,7 @@ import { Chip } from "@/components/ui/Chip";
 import { CoverThumb } from "@/components/post/CoverThumb";
 import { searchPosts, getAllTags } from "@/lib/queries";
 import type { Post } from "@/lib/types";
+import { isPageBody, pageText } from "@/lib/page-html";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ function highlight(text: string, q: string): React.ReactNode {
 // 어디서 왜 걸렸는지 안 보이면 결과 목록이 그냥 글 목록처럼 읽힌다.
 function bodySnippet(bodyMd: string | null | undefined, q: string, radius = 90): string | null {
   if (!bodyMd || !q) return null;
-  const plain = bodyMd
+  const plain = isPageBody(bodyMd) ? pageText(bodyMd) : bodyMd
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
