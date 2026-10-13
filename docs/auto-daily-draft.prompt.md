@@ -71,9 +71,15 @@ Sources(제목+URL). 말미에 "그 외 눈에 띈 것" 3~5불릿(각 링크 포
   그림은 전부 인라인 SVG·Canvas·JS 로 만든다. 같은 슬러그가 이미 있으면 뒤에 날짜를 붙인다.
 - **화면 점검(4단계)**: `npm ci` → `npx playwright install chromium` → `npm run dev` 를 띄우고
   `npm run check:page -- <slug> <캡처폴더>` 와 `--dark` 를 돌린다. 360px 폭에서 가로 넘침 0,
-  스크립트 오류 0 이어야 한다. 샌드박스가 브라우저 설치나 dev 서버를 막으면, Critic(5단계)에게
-  캡처 대신 HTML 원본을 주고 360px 에서 넘칠 만한 고정 폭·작은 글씨를 코드로 짚게 한다.
-  어느 쪽이든 GitHub Actions 가 발행 직전에 같은 점검을 다시 돌리고, 실패하면 발행하지 않는다.
+  스크립트 오류 0, **호흡(rhythm) 위반 0**(섹션마다 그린 그림, 단락 220자, 그림 없이 이어지는 글 650자 —
+  `POSTING.md` 5-6)이어야 한다. GitHub Actions 가 발행 직전에 같은 점검을 다시 돌리고, 실패하면 발행하지 않는다.
+  샌드박스가 브라우저 설치나 dev 서버를 막으면 **Critic 을 HTML 코드로 대신하지 않는다** — 코드로는 그림이
+  이해되는지 판단할 수 없다. 그날은 `publish` 를 넣지 않고 초안으로만 적재하고 그 사실을 보고한다.
+- **그림이 먼저다.** `/study` 3단계 스토리보드(대표 인터랙션 + 섹션마다 그릴 그림)를 확정하기 전에는 본문을 쓰지 않는다.
+  이 샌드박스는 인터랙티브 설명 사이트(`*.github.io`·distill·observable 등)가 막혀 README 만 열린다.
+  README 는 사실 확인용이고, 그림 아이디어는 `docs/visual-references.md` 와 견본 세 편
+  (`auto-drafts/posts/llm-temperature-sampling.html`·`self-attention-qkv.html`·`rag-retrieval-pipeline.html`)의
+  그림을 열어 보고 수준을 맞춘다. 표·카드·글만 바뀌는 버튼 상자로 그림을 대신하면 마크다운 글과 다를 게 없다.
 - **humanize(6단계)는 빼먹지 않는다.** `humanize-monolith` 에이전트(레포 `.claude/agents/`)를 쓸 수 없으면
   윤문 없이 발행하지 않는다 — 아래 `publish` 를 넣지 않고(초안으로만 적재된다) 그 사실을 보고한다.
 - 제목은 `POSTING.md` 2-0 이 정본이다. 후보를 최소 3개 뽑아 견준다. 말투는 `-습니다` 뼈대, `~죠` 금지.
@@ -81,7 +87,7 @@ Sources(제목+URL). 말미에 "그 외 눈에 띈 것" 3~5불릿(각 링크 포
 
 ### 발행 표시
 
-4~6단계(화면 점검 또는 그 대체 검토, Critic 지적 반영, humanize, `npm run lint:draft`)를 **모두** 마쳤으면
+4~6단계(화면 점검·호흡 점검 통과, 캡처를 본 Critic 이해 점수 4 이상과 지적 반영, humanize, `npm run lint:draft`)를 **모두** 마쳤으면
 프런트매터에 한 줄을 넣는다:
 
 ```

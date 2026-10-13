@@ -91,7 +91,7 @@ gh workflow run auto-draft-ingest.yml -f file=auto-drafts/posts/<slug>.md
 
 ## 지켜야 할 선
 
-- **자동 발행은 `publish: true` + 화면 점검 통과일 때만.** `--publish` 는 이 워크플로만 붙인다.
+- **자동 발행은 `publish: true` + 화면 점검(넘침·오류·호흡 — POSTING 5-6) 통과일 때만.** `--publish` 는 이 워크플로만 붙인다.
   로컬 `/study` 가 커밋한 `.html` 은 `publish:` 줄이 없어 기존처럼 `draft` 로 들어간다.
 - **확인 못 한 수치는 글에 넣지 않는다.** egress 프록시에 막혀 원문을 못 연 출처의 숫자는 뺀다.
 - **루틴 프롬프트는 이제 저장소 파일만 고치면 된다.** 2026-09-13 부터 루틴에 등록된 건
