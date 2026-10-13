@@ -30,6 +30,9 @@ function lockScripts(html: string): string {
 export function PageBody({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const locked = useMemo(() => lockScripts(html), [html]);
+  // React 19 는 dangerouslySetInnerHTML 을 객체 동일성으로 비교한다. 렌더마다 새 객체를 주면
+  // 부모가 다시 그려질 때마다 innerHTML 이 다시 들어가, 글 스크립트가 붙든 요소와 인터랙션 상태가 날아간다.
+  const inner = useMemo(() => ({ __html: locked }), [locked]);
 
   useEffect(() => {
     const root = ref.current;
@@ -68,5 +71,5 @@ export function PageBody({ html }: { html: string }) {
     };
   }, [locked]);
 
-  return <div ref={ref} className="post-page" dangerouslySetInnerHTML={{ __html: locked }} />;
+  return <div ref={ref} className="post-page" dangerouslySetInnerHTML={inner} />;
 }
