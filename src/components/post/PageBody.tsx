@@ -32,6 +32,20 @@ export function PageBody({ html }: { html: string }) {
     const added: HTMLScriptElement[] = [];
     window.postPage = { root, signal: ctrl.signal };
 
+    // 코드 블록 복사 버튼(page-code.ts 가 만든 [data-pg-copy]) — 글마다 따로 짜지 않도록 여기서 한 번에 건다.
+    root.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-pg-copy]");
+      const pre = btn?.closest(".pg-code")?.querySelector("pre")?.cloneNode(true) as HTMLElement | undefined;
+      // 배지로 바뀐 해설 표지는 원래 글자(①)로 되돌려 복사한다
+      pre?.querySelectorAll(".pg-code-mark").forEach((m) => m.replaceWith(m.getAttribute("aria-label") || ""));
+      const code = pre?.textContent;
+      if (!btn || code == null) return;
+      navigator.clipboard?.writeText(code).then(() => {
+        btn.textContent = "복사됨";
+        setTimeout(() => { btn.textContent = "복사"; }, 1400);
+      }, () => {});
+    }, { signal: ctrl.signal });
+
     // src 스크립트(라이브러리)가 다 받아진 뒤에 다음 인라인 스크립트가 돌도록 하나씩 실행.
     const scripts = Array.from(root.querySelectorAll<HTMLScriptElement>(`script[type="${INERT_SCRIPT_TYPE}"]`));
     (async () => {

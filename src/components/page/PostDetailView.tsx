@@ -6,7 +6,7 @@ import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
 import { Chip } from "@/components/ui/Chip";
 import { PostBody } from "@/components/post/PostBody";
-import { PageBody } from "@/components/post/PageBody";
+import { PageBodyServer } from "@/components/post/PageBodyServer";
 import { TocNav } from "@/components/post/TocNav";
 import { PostGraph } from "@/components/post/PostGraph";
 import { CoverThumb } from "@/components/post/CoverThumb";
@@ -88,7 +88,7 @@ export function PostDetailView({
       <>
         <ViewBeacon path={`${postsBase}/${post.slug}`} slug={post.slug} />
         <PublicNav active="home" locale={locale} switchPath={`/posts/${post.slug}`} />
-        <PageBody html={post.bodyMd!} />
+        <PageBodyServer html={post.bodyMd!} />
         <div className="container-wide post-page-tail">
           <SeriesNav series={series} slug={post.slug} postsBase={postsBase} />
           <Comments term={post.slug} />

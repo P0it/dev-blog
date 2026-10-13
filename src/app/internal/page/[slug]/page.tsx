@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicNav } from "@/components/layout/PublicNav";
 import { Footer } from "@/components/layout/Footer";
-import { PageBody } from "@/components/post/PageBody";
+import { PageBodyServer } from "@/components/post/PageBodyServer";
 import { isPageBody } from "@/lib/page-html";
 
 // 개발용 미리보기 — 적재 전 auto-drafts/posts/<slug>.html 원고를 실제 상세 화면과 같은
@@ -22,7 +22,7 @@ export default async function PagePreview({ params }: { params: Promise<{ slug: 
   return (
     <>
       <PublicNav active="home" locale="ko" switchPath={`/posts/${slug}`} />
-      <PageBody html={body} />
+      <PageBodyServer html={body} />
       <Footer />
     </>
   );
