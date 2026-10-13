@@ -195,12 +195,24 @@ async function applyResult(slug, parsed) {
   if (error) throw error;
 }
 
-async function processJob(job) {
-  console.log(`▶ job#${job.id} ${job.type} (${job.post_slug ?? "-"})`);
-  await sb
+// 대기 중인 작업만 잡는다. 조회와 잡기 사이에 편집기에서 취소(status=error)됐으면 건너뛴다.
+export async function claimJob(id) {
+  const { data, error } = await sb
     .from("ai_jobs")
     .update({ status: "processing", started_at: nowIso() })
-    .eq("id", job.id);
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
+async function processJob(job) {
+  if (!(await claimJob(job.id))) {
+    console.log(`- job#${job.id} 이미 취소되었거나 다른 워커가 잡음`);
+    return;
+  }
+  console.log(`▶ job#${job.id} ${job.type} (${job.post_slug ?? "-"})`);
 
   try {
     if (job.type === "block_revise") {
@@ -303,7 +315,10 @@ async function main() {
   console.log("ai-worker 종료");
 }
 
-main().catch((e) => {
-  console.error("❌ fatal", e);
-  process.exit(1);
-});
+// 점검 스크립트가 claimJob 만 가져다 쓸 때는 루프를 돌리지 않는다.
+if (!process.argv.includes("--no-main")) {
+  main().catch((e) => {
+    console.error("❌ fatal", e);
+    process.exit(1);
+  });
+}
