@@ -178,6 +178,7 @@ export function PageVisualEditor({
     if (prev === undefined) return;
     history.current.future.push(value);
     onChange(prev);
+    setSel((cur) => (cur ? { block: cur.block, path: null } : cur)); // 구조가 바뀌었을 수 있어 경로는 버린다
   }, [value, onChange]);
 
   const redo = useCallback(() => {
@@ -185,6 +186,7 @@ export function PageVisualEditor({
     if (next === undefined) return;
     history.current.past.push(value);
     onChange(next);
+    setSel((cur) => (cur ? { block: cur.block, path: null } : cur));
   }, [value, onChange]);
 
   // 블록 도구 — 실행 뒤 선택이 옮겨 간 블록을 따라간다.
@@ -205,7 +207,11 @@ export function PageVisualEditor({
     setSel(null);
   };
 
+  // 편집 시작 때의 내용. 바뀌지 않았으면 확정하지 않는다 — 캔버스 직렬화는 원고의 표기(<br/>, 값 없는
+  // 속성 등)를 조금 바꾸므로, 그냥 들어갔다 나와도 본문 전체가 다시 써지고 자동 저장된다.
+  const editStart = useRef<string | null>(null);
   const startEdit = (el: HTMLElement, x?: number, y?: number) => {
+    editStart.current = el.innerHTML;
     el.setAttribute("contenteditable", "true");
     el.setAttribute("data-edit-text", "");
     el.focus();
@@ -222,8 +228,10 @@ export function PageVisualEditor({
   // 키보드 — 글자 편집 중이나 입력칸에서는 가로채지 않는다.
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      // 포커스가 문서(body)나 캔버스에 있을 때만 — 버튼·입력칸에 포커스가 있으면 그쪽 키로 둔다.
       const a = document.activeElement as HTMLElement | null;
-      if (a && (a.isContentEditable || a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")) return;
+      if (a && a !== document.body && !canvasRef.current?.contains(a)) return;
+      if (a?.isContentEditable) return;
       if (htmlEdit || aiAsk !== null || tab !== "edit") return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -238,7 +246,8 @@ export function PageVisualEditor({
         removeSel();
       } else if (e.key === "Enter" && sel.path !== null) {
         const hit = resolve(canvasRef.current, sel);
-        if (hit) {
+        // 경로가 사라져 블록 자체로 떨어졌거나, 이제는 편집 대상이 아니면 시작하지 않는다.
+        if (hit && hit.el !== hit.block && editableTarget(hit.el, hooks) === hit.el) {
           e.preventDefault();
           startEdit(hit.el as HTMLElement);
         }
@@ -255,7 +264,9 @@ export function PageVisualEditor({
     if (!el.hasAttribute("data-edit-text")) return;
     el.removeAttribute("contenteditable");
     el.removeAttribute("data-edit-text");
-    if (canvasRef.current) commit(cleanCanvasHtml(canvasRef.current.innerHTML));
+    const unchanged = el.innerHTML === editStart.current;
+    editStart.current = null;
+    if (!unchanged && canvasRef.current) commit(cleanCanvasHtml(canvasRef.current.innerHTML));
   };
 
   const onCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -371,6 +382,7 @@ export function PageVisualEditor({
     if (!htmlEdit) return;
     try {
       commit(replaceBlock(value, htmlEdit.index, htmlEdit.text));
+      setSel({ block: htmlEdit.index, path: null });
       setHtmlEdit(null);
     } catch (err) {
       setHtmlEdit({ ...htmlEdit, error: (err as Error).message });

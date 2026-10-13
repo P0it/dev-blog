@@ -121,3 +121,16 @@ test("inContext — 블록 HTML 을 원래 조상 래퍼로 감싼다(글 CSS �
   assert.equal(html, '<div class="wrap"><div class="grid"><section><h2>새것</h2></section></div></div>');
   assert.equal(inContext(SAMPLE, 99, "<section></section>"), "<section></section>");
 });
+
+test("editableTarget — 훅·입력 요소를 품은 요소는 편집하지 않는다(지우면 인터랙션이 끊김)", () => {
+  const body = `<!-- page --><section><h2>제목</h2><label class="ctrl">청크 크기<input type="range" data-rg-size><output data-rg-sizeout></output></label><p>그냥 <b>문단</b></p></section>
+<script>postPage.root.querySelector("[data-rg-size]"); postPage.root.querySelector("[data-rg-sizeout]");</script>`;
+  const doc = new DOMParser().parseFromString(`<!doctype html><html><body>${annotateForCanvas(body)}</body></html>`, "text/html");
+  const hooks = scriptHooks(body);
+  assert.equal(editableTarget(doc.querySelector("output") as Element, hooks), null);
+  assert.equal(editableTarget(doc.querySelector("label") as Element, hooks), null);
+  const p = doc.querySelector("p") as Element;
+  assert.equal(editableTarget(doc.querySelector("b") as Element, hooks), p);
+  // 훅이 없어도 입력 요소를 품으면 편집하지 않는다
+  assert.equal(editableTarget(doc.querySelector("label") as Element, []), null);
+});

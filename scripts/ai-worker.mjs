@@ -34,6 +34,9 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN ?? "claude";
 // 다른 정책이 필요하면 CLAUDE_ARGS 환경변수로 덮어쓴다.
 const DEFAULT_CLAUDE_ARGS = "-p --permission-mode bypassPermissions";
 const CLAUDE_ARGS = (process.env.CLAUDE_ARGS ?? DEFAULT_CLAUDE_ARGS).split(/\s+/).filter(Boolean);
+// block_revise 는 블록 HTML 을 고쳐 돌려주기만 하면 된다. 도구를 모두 끄고 권한 우회도 하지 않는다 —
+// 글 안에 섞인 문장이 프롬프트 인젝션이 되어도 이 PC 에서 명령을 실행할 수 없게.
+const BLOCK_CLAUDE_ARGS = (process.env.CLAUDE_BLOCK_ARGS ?? '-p --tools ""').split(/\s+/).filter(Boolean);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const POSTING = readFileSync(join(ROOT, "POSTING.md"), "utf8");
@@ -43,12 +46,12 @@ const nowIso = () => new Date().toISOString();
 const short = (s, n = 500) => (s && s.length > n ? s.slice(0, n) + "…" : s ?? null);
 
 // claude CLI 호출 — 프롬프트는 stdin으로(긴 본문의 argv 한계 회피).
-function callClaude(prompt) {
+function callClaude(prompt, args = CLAUDE_ARGS) {
   return new Promise((resolve, reject) => {
     // shell:true — Windows에서 claude가 .cmd 셈이라 PATH/PATHEXT 해석이 필요.
     // Mac/Linux도 /bin/sh -c 로 동일하게 동작. 프롬프트는 stdin으로만 전달하므로
     // argv에 사용자 입력이 없어 셸 인젝션 위험 없음.
-    const child = spawn(CLAUDE_BIN, CLAUDE_ARGS, {
+    const child = spawn(CLAUDE_BIN, args, {
       stdio: ["pipe", "pipe", "pipe"],
       shell: true,
     });
@@ -202,7 +205,7 @@ async function processJob(job) {
   try {
     if (job.type === "block_revise") {
       if (!job.block_html) throw new Error("block_html 누락");
-      const parsed = extractJson(await callClaude(blockRevisePrompt(job)));
+      const parsed = extractJson(await callClaude(blockRevisePrompt(job), BLOCK_CLAUDE_ARGS));
       if (typeof parsed.html !== "string" || !/^\s*<section[\s>]/i.test(parsed.html)) {
         throw new Error("결과가 <section> HTML 이 아님");
       }

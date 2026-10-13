@@ -8,6 +8,7 @@
 
 export const INERT_SCRIPT = "text/post-page";
 export const TEXT_TAGS = "h1,h2,h3,h4,h5,h6,p,li,figcaption,td,th,blockquote,button,dt,dd,label,summary";
+const NON_TEXT_CHILDREN = "input,output,select,textarea,svg,canvas,img,video,audio,iframe,button";
 
 function parse(body: string): HTMLElement {
   // <body> 를 명시해야 맨 앞 <style> 이 head 로 옮겨지지 않는다.
@@ -183,5 +184,8 @@ export function editableTarget(start: Element, hooks: string[]): Element | null 
   if (!el || !el.closest("[data-edit-block]")) return null;
   if (!(el.textContent ?? "").trim()) return null;
   if (isHookElement(el, hooks)) return null;
+  // 안에 입력·그림 요소나 스크립트 훅이 있으면 글자 편집 중에 지워질 수 있다(라벨 안 슬라이더 등).
+  if (el.querySelector(NON_TEXT_CHILDREN)) return null;
+  if (hooks.some((h) => safeQuery(el, h))) return null;
   return el;
 }
