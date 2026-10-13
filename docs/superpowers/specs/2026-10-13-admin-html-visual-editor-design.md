@@ -71,7 +71,7 @@
 - **블록 = 조상 중에 `section` 이 없는 `section`**. 래퍼(`.tp-wrap`, `.tp-body` 등) 안쪽이어도 블록이다.
 - 이동은 **같은 부모 안의 형제 블록끼리만** 한다. 2단 그리드 같은 레이아웃 구조를 보존한다.
   블록 목록에서 부모가 다른 블록 사이로 끌면 놓을 수 없게 표시한다.
-- 블록 식별: 편집 세션 동안 각 블록에 임시 `data-edit-id` 를 붙이고, 직렬화할 때 뗀다.
+- 블록 식별: 캔버스에 그릴 때 각 블록에 `data-edit-block="<순번>"` 을 붙이고, 직렬화할 때 뗀다.
 
 ### 저장
 
@@ -95,11 +95,11 @@ DOM 을 받는 순수 함수로 분리해 테스트한다.
 
 ### 흐름
 
-1. 블록 툴바 ✨ → 요청 입력 → 서버 액션 `requestBlockRevise(slug, blockHtml, instruction, hooks)` 가
+1. 블록 툴바 ✨ → 요청 입력 → 서버 액션 `requestBlockRevise({ slug, blockHtml, instruction })` 가
    `ai_jobs` 에 `type='block_revise'` 행을 넣고 id 를 돌려준다.
 2. 로컬 워커(`scripts/ai-worker.mjs`)가 claude CLI 에 프롬프트를 보낸다. 프롬프트 내용:
-   블록 HTML, 요청, 유지해야 할 훅 목록, POSTING.md 2-4 문체 점검 규칙, AI·LLM 용어는 영어·음차 유지,
-   `{"html": "..."}` JSON 으로만 답하라.
+   블록 HTML, 요청, "블록에 있는 class·id·data-* 는 그대로 두라"(훅 목록을 따로 넘기는 대신 더 넓게 지킨다),
+   POSTING.md 2-4 점검표와 5장 발췌, AI·LLM 용어는 영어·음차 유지, `{"html": "..."}` JSON 으로만 답하라.
 3. 워커는 결과를 **`ai_jobs.result_html` 에만 쓴다. `posts` 는 건드리지 않는다.** 편집기에 저장 안 된
    변경이 있을 수 있어서다.
 4. 편집기는 3초 간격으로 `getBlockJob(id)` 를 확인한다. `done` 이면 전/후 비교 창을 띄운다.
