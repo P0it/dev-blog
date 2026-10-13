@@ -49,3 +49,52 @@
 - **기본값을 실패 상태로** (rag-retrieval-pipeline) — 청킹 실험을 답이 잘린 상태로 시작해 독자가 슬라이더로 고치게 했다
 - **약속마다 바이트를 묶는 괄호를 다르게 그리기** (utf8-encoding-mojibake, 다시 만든 판) — 같은 네 바이트 아래 1·2바이트 괄호를 렌즈마다 다시 그리니 "인코딩 = 바이트를 끊어 읽는 규칙"이 글 없이 보였다. 첫 판은 같은 장치를 버튼+문장 상자로 만들어 Critic 3점, 괄호 그림 판은 4점
 - **비둘기집을 깔때기로** (utf8-encoding-mojibake) — 서로 다른 일곱 글자에서 나온 선이 상자 하나로 모이는 그림이 "되돌릴 수 없다"를 표보다 빨리 전한다
+
+## 페이지 레이아웃
+
+그림 하나가 아니라 **페이지 구조**를 고를 때 본다. `/study` 3단계 스토리보드에서 글마다 하나를 고르고,
+같은 시리즈 앞 편과 겹치지 않게 한다. 기준: `POSTING.md` 5-2(자유 폭, 가운데 축).
+2026-10-13 조사. "열었음"은 이 세션에서 페이지를 열어 본 것이다(WebFetch 는 글만 받아 와서 화면 구조는 설명으로 짐작한 것).
+
+### 갤러리
+
+| 곳 | 쓸모 | 확인 |
+|---|---|---|
+| [Awwwards](https://www.awwwards.com/websites/) | 상위 수준 사이트. Single page·Scrolling·Storytelling 태그 | 열었음 |
+| [One Page Love](https://onepagelove.com) | 원페이지 전문, 섹션 예시가 많다 | 열었음 |
+| [SiteInspire](https://www.siteinspire.com) | 타이포 위주·미니멀 | 열었음 |
+| [Landingfolio](https://www.landingfolio.com) | 히어로·기능 섹션별 예시 | 열었음 |
+| [Made in Webflow](https://webflow.com/made-in-webflow) | Scroll animation·Parallax·GSAP 필터, 구조를 뜯어 볼 수 있는 Cloneable | 열었음 |
+| [The Pudding](https://pudding.cool) | 데이터 스토리텔링의 기준점 | 열었음 |
+| [Bartosz Ciechanowski](https://ciechanow.ski) | 한 열 + 끌어서 돌리는 그림. 이 블로그 형식과 가장 가깝다 | 열었음 |
+| [scroll-driven-animations.style](https://scroll-driven-animations.style) | CSS 만으로 만든 진행 바·가로 섹션·카드 쌓기 데모 | 열었음 |
+| [Scrollama](https://github.com/russellsamora/scrollama) | sticky-side·sticky-overlay·모바일 패턴 | README 열었음 |
+| [v0 Community](https://v0.app/community) · [Lovable Discover](https://lovable.dev/discover) | AI 생성 페이지가 어디서 비슷해지는지 보는 반면교사 | 열었음 |
+| Land-book · Lapa Ninja · Codrops · Godly | — | 미확인(403·리다이렉트) |
+
+### 구조 패턴
+
+| 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 |
+|---|---|---|---|
+| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv |
+| 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | |
+| 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | |
+| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | |
+| 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | |
+| 카드 쌓기 | 겹쳐 쌓이는 sticky 층 / 같음 | 계층을 쌓아 올리는 설명 | |
+| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래 | 방식 A vs B | |
+
+벤토 격자·잡지형·장 표지의 실제 예시는 아직 열어 보지 못했다. 다음 조사 때 브라우저로 직접 본다.
+
+### 싸게 만드는 효과와 주의
+
+- `animation-timeline: view()/scroll()` — Chrome·Edge 115+, Safari 26. Firefox 는 미지원이니 효과 없이도 최종 상태가 보이게.
+- `position: sticky` — 부모에 `overflow: hidden` 이 있으면 안 붙는다. 모바일 높이는 `svh`.
+- 커서 반응은 `@media (hover: hover)` 에서만. 계속 움직이는 것은 멈춤 장치. `prefers-reduced-motion` 이면 위치·크기 변화를 끈다.
+
+### 템플릿처럼 보이게 하는 것 (피한다)
+
+같은 회색 둥근 카드 반복 · 위에 색 띠를 두른 카드와 이모지 아이콘 · 모든 섹션이 같은 폭·같은 순서(제목→부제→카드) ·
+보라→파랑 그라데이션 히어로 · 숫자 통계 3칸 띠 · 모든 요소가 똑같이 fade-up · 그림 자리에 장식 blob.
+한 페이지에 폭을 2~3가지(글 열, 넓은 그림, 전폭 띠) 섞고, 움직임은 상태가 바뀔 때만 쓴다.
