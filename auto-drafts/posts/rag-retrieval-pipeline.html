@@ -47,6 +47,27 @@ category: ai
 .post-page .rg-sec { padding: clamp(56px, 8vw, 96px) 0; border-top: 1px solid var(--line-normal); scroll-margin-top: 72px; }
 .post-page .rg-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 22px; }
 
+/* 직접 그린 개념도 공통 — viewBox 400 폭을 최대 560px 로 키운다 */
+.post-page .rg-fig { margin: 26px 0 10px; max-width: 560px; }
+.post-page .rg-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
+.post-page .rg-fig text { font-family: var(--font-sans); font-size: 13px; fill: var(--fg-normal); }
+.post-page .rg-fig .t-s { font-size: 11.5px; fill: var(--fg-alternative); }
+.post-page .rg-fig .t-b { font-weight: 700; fill: var(--fg-strong); }
+.post-page .rg-fig .t-lane { font-size: 12px; font-weight: 600; fill: var(--fg-alternative); }
+.post-page .rg-fig .node { fill: var(--bg-elevated); stroke: var(--line-strong); }
+.post-page .rg-fig .node.key { fill: color-mix(in srgb, var(--rg-a) 16%, var(--bg-elevated)); stroke: var(--rg-a); }
+.post-page .rg-fig .node.warm { fill: color-mix(in srgb, var(--rg-c) 18%, var(--bg-elevated)); stroke: var(--rg-c); }
+.post-page .rg-fig .wire { fill: none; stroke: var(--fg-alternative); stroke-width: 1.6; }
+.post-page .rg-fig .wire.go { stroke: var(--rg-a); stroke-width: 2.2; stroke-dasharray: 6 5; animation: pg-rg-flow 1.4s linear infinite; }
+@keyframes pg-rg-flow { to { stroke-dashoffset: -22; } }
+.post-page .rg-fig .no { stroke: var(--fg-negative); stroke-width: 2; fill: none; }
+.post-page .rg-fig .arrowhead { fill: var(--fg-alternative); }
+.post-page .rg-fig .arrowhead.go { fill: var(--rg-a); }
+.post-page .rg-cap { font-size: 13px !important; color: var(--fg-alternative); margin-top: 6px !important; }
+.post-page .rg details { margin: 4px 0 16px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.post-page .rg details summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+.post-page .rg details p { font-size: 15px; margin: 10px 0 0; }
+
 /* 오픈북 비유 */
 .post-page .rg-split { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 28px 0 8px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--line-normal); }
 .post-page .rg-split > div { padding: 22px; }
@@ -149,6 +170,8 @@ category: ai
 }
 @media (max-width: 640px) {
   .post-page .rg-wrap { padding: 0 20px; }
+  .post-page .rg-fig text { font-size: 14px; }
+  .post-page .rg-fig .t-s, .post-page .rg-fig .t-lane { font-size: 12.5px; }
   .post-page .rg p { font-size: 16px; }
   .post-page .rg-chat, .post-page .rg-split, .post-page .rg-ctrls, .post-page .rg-failbox { grid-template-columns: 1fr; }
   .post-page .rg-split > div + div { border-left: 0; border-top: 1px solid var(--line-normal); }
@@ -194,16 +217,60 @@ category: ai
     <div class="rg-wrap rg-col">
       <span class="rg-tag">출발 전 · 모델이 배운 것</span>
       <h2>LLM은 왜 우리 회사 규정을 모를까요</h2>
-      <p>LLM이 무엇을 배웠는지 알면 이유를 알 수 있습니다. LLM은 엄청난 양의 글을 읽으면서 "이 문장 다음에는 어떤 단어가 올까"를 맞히는 연습을 반복합니다. 연습할 때마다 모델 안에 있는 숫자 수십억 개가 조금씩 고쳐집니다. 이 숫자를 <b>가중치</b>(weight)라고 부릅니다. 가중치를 고쳐 가는 과정이 <b>학습</b>입니다.</p>
-      <p>학교 공부에 빗대면 이렇습니다. 학생이 교과서로 공부한 뒤 시험장에 들어가면 교과서에 없던 내용을 시험장에서 새로 배울 수는 없습니다. LLM도 학습에 쓴 글이 끝나는 날짜(knowledge cutoff) 뒤의 일이나 공개되지 않은 문서는 모릅니다. 우리 회사 근무규정은 사내망에만 있으니 학습할 기회가 없었습니다.</p>
-      <p>이 비유가 맞지 않는 부분도 있습니다. 학생은 모르는 문제에 "모르겠다"고 쓸 수 있습니다. LLM은 다음 단어를 그럴듯하게 이어 붙이도록 학습했기 때문에 모르는 내용도 자연스러운 문장으로 만들어 냅니다. 사실과 다른 내용을 그럴듯하게 지어내는 현상을 <b>할루시네이션</b>(hallucination)이라고 부릅니다.</p>
-      <p>맨 위 대화에서 "LLM 단독"이 내놓은 "주 2~3일" 답이 그런 예입니다. 모델에게 회사 규정을 알려 주는 방법은 두 가지입니다.</p>
-      <div class="rg-split">
-        <div><h3>모델을 다시 학습시키기 (파인튜닝)</h3><p>회사 문서로 추가 학습을 시켜 가중치 자체를 고칩니다. 교과서를 새로 외우게 하는 방법입니다. 규정이 바뀔 때마다 다시 학습시켜야 합니다. 답이 어느 문서에서 나왔는지 확인하기도 어렵습니다.</p></div>
-        <div><h3>필요한 문서를 찾아 같이 건네기 (RAG)</h3><p>모델은 그대로 둡니다. 질문할 때마다 관련 문서를 찾아 입력에 붙입니다. 규정이 바뀌면 문서만 바꾸면 됩니다. 답에 근거 문서 번호를 함께 적게 할 수도 있습니다.</p></div>
-      </div>
-      <p style="margin-top:24px">여기서 입력은 모델에게 건네는 글 전체를 말합니다. 이 입력을 <b>프롬프트</b>(prompt)라고 부릅니다. 질문만 넣을 수도 있고 질문 앞에 지시문과 참고 문서를 함께 넣을 수도 있습니다.</p>
-      <p>RAG라는 이름은 2020년 Lewis 등이 발표한 논문에서 나왔습니다. 논문은 모델의 가중치에 담긴 기억과 검색해서 꺼내 보는 문서를 함께 쓰는 방법으로 RAG를 설명합니다. 머릿속 기억과 펼쳐 보는 책을 같이 쓰는 것과 비슷합니다.</p>
+      <p>LLM은 공개된 글로 학습을 마친 다음에 쓰이기 때문에 사내망에만 있는 문서는 본 적이 없습니다. 아래 그림의 위쪽 줄이 모델이 읽은 글이고, 아래쪽 줄이 우리 회사 문서입니다.</p>
+      <figure class="rg-fig">
+        <svg viewBox="0 0 400 204" role="img" aria-label="학습 종료 시점 전까지의 공개 글만 모델 가중치에 들어가고, 사내 문서와 학습 뒤의 새 글은 들어가지 않는 타임라인">
+          <defs><marker id="rg-ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead go"></path></marker></defs>
+          <text x="10" y="16" class="t-lane">공개된 웹 글</text>
+          <g><rect x="10" y="31" width="4" height="11" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="17" y="30" width="4" height="12" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="24" y="35" width="4" height="7" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="31" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="38" y="32" width="4" height="10" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="45" y="31" width="4" height="11" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="52" y="35" width="4" height="7" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="59" y="27" width="4" height="15" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="66" y="30" width="4" height="12" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="73" y="32" width="4" height="10" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="80" y="33" width="4" height="9" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="87" y="28" width="4" height="14" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="94" y="29" width="4" height="13" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="101" y="35" width="4" height="7" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="108" y="31" width="4" height="11" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="115" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="122" y="29" width="4" height="13" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="129" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="136" y="30" width="4" height="12" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="143" y="31" width="4" height="11" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="150" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="157" y="35" width="4" height="7" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="164" y="27" width="4" height="15" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="171" y="26" width="4" height="16" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="178" y="35" width="4" height="7" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="185" y="32" width="4" height="10" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="192" y="26" width="4" height="16" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="199" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="206" y="32" width="4" height="10" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="213" y="30" width="4" height="12" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="220" y="29" width="4" height="13" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="227" y="33" width="4" height="9" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="234" y="34" width="4" height="8" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="241" y="26" width="4" height="16" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="248" y="32" width="4" height="10" rx="1" fill="var(--rg-b)" opacity="0.85"></rect><rect x="268" y="34" width="4" height="8" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="275" y="31" width="4" height="11" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="282" y="33" width="4" height="9" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="289" y="34" width="4" height="8" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="296" y="28" width="4" height="14" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="303" y="32" width="4" height="10" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="310" y="32" width="4" height="10" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="317" y="35" width="4" height="7" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="324" y="27" width="4" height="15" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="331" y="34" width="4" height="8" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="338" y="27" width="4" height="15" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="345" y="31" width="4" height="11" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="352" y="34" width="4" height="8" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="359" y="30" width="4" height="12" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="366" y="32" width="4" height="10" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="373" y="28" width="4" height="14" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="380" y="29" width="4" height="13" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect><rect x="387" y="35" width="4" height="7" rx="1" fill="var(--fg-alternative)" opacity="0.45"></rect></g>
+          <line x1="262" y1="10" x2="262" y2="104" stroke="var(--fg-strong)" stroke-width="2" stroke-dasharray="4 4"></line>
+          <text x="266" y="16" class="t-s">학습 종료 (knowledge cutoff)</text>
+          <text x="300" y="60" class="t-s">학습 뒤에 나온 글</text>
+          <path d="M70,46 L70,74" class="wire go" marker-end="url(#rg-ah1)"></path>
+          <path d="M190,46 L190,74" class="wire go" marker-end="url(#rg-ah1)"></path>
+          <rect x="10" y="78" width="242" height="30" rx="8" class="node key"></rect>
+          <text x="131" y="98" text-anchor="middle" class="t-b">LLM이 배운 것 (가중치)</text>
+          <text x="10" y="192" class="t-lane">사내망 문서 · 공개 안 됨</text>
+          <g><rect x="10" y="162" width="4" height="8" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="17" y="159" width="4" height="11" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="24" y="163" width="4" height="7" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="31" y="164" width="4" height="6" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="38" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="45" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="52" y="158" width="4" height="12" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="59" y="154" width="4" height="16" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="66" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="73" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="80" y="159" width="4" height="11" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="87" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="94" y="156" width="4" height="14" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="101" y="159" width="4" height="11" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="108" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="115" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="122" y="162" width="4" height="8" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="129" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="136" y="163" width="4" height="7" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="143" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="150" y="156" width="4" height="14" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="157" y="155" width="4" height="15" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="164" y="154" width="4" height="16" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="171" y="155" width="4" height="15" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="178" y="155" width="4" height="15" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="185" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="192" y="158" width="4" height="12" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="199" y="158" width="4" height="12" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="206" y="164" width="4" height="6" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="213" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="220" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="227" y="162" width="4" height="8" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="234" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="241" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="248" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="255" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="262" y="154" width="4" height="16" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="269" y="164" width="4" height="6" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="276" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="283" y="158" width="4" height="12" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="290" y="160" width="4" height="10" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="297" y="163" width="4" height="7" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="304" y="154" width="4" height="16" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="311" y="159" width="4" height="11" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="318" y="155" width="4" height="15" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="325" y="158" width="4" height="12" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="332" y="159" width="4" height="11" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="339" y="163" width="4" height="7" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="346" y="156" width="4" height="14" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="353" y="155" width="4" height="15" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="360" y="161" width="4" height="9" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="367" y="164" width="4" height="6" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="374" y="162" width="4" height="8" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="381" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect><rect x="388" y="157" width="4" height="13" rx="1" fill="var(--rg-c)" opacity="0.85"></rect></g>
+          <path d="M131,150 L131,114" class="no" stroke-dasharray="3 4"></path>
+          <path d="M123,124 l16,16 M139,124 l-16,16" class="no"></path>
+          <text x="148" y="136" class="t-s">학습에 들어간 적 없음</text>
+        </svg>
+        <figcaption class="rg-cap">설명을 위한 개념도입니다. 실제 학습 자료의 구성과 날짜는 모델마다 다릅니다.</figcaption>
+      </figure>
+      <p>학습은 "이 문장 다음에 올 단어"를 맞히는 연습을 반복하면서 모델 안의 숫자 수십억 개를 조금씩 고치는 과정입니다. 이 숫자를 <b>가중치</b>(weight)라고 부릅니다. 학습에 쓴 글이 끝나는 날짜 뒤의 일이나 공개되지 않은 문서는 가중치에 들어갈 길이 없습니다.</p>
+      <p>모르는 것을 물으면 "모르겠다" 대신 그럴듯한 문장을 지어냅니다. 다음 단어를 자연스럽게 잇도록 학습했기 때문입니다. 이 현상을 <b>할루시네이션</b>(hallucination)이라고 부르는데, 맨 위 대화의 "주 2~3일"이 그 예입니다.</p>
+      <p>모델에게 회사 규정을 알려 주는 길은 두 가지입니다. 가중치를 다시 고치거나, 문서를 질문과 함께 건네는 것입니다.</p>
+      <figure class="rg-fig">
+        <svg viewBox="0 0 400 214" role="img" aria-label="파인튜닝은 회사 문서로 가중치를 다시 고치고, RAG는 모델은 그대로 둔 채 검색한 문서를 질문과 함께 입력에 붙이는 두 경로 비교">
+          <defs>
+            <marker id="rg-ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"></path></marker>
+            <marker id="rg-ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead go"></path></marker>
+          </defs>
+          <text x="100" y="14" text-anchor="middle" class="t-lane">파인튜닝 (fine-tuning)</text>
+          <text x="300" y="14" text-anchor="middle" class="t-lane">RAG</text>
+          <line x1="200" y1="4" x2="200" y2="210" stroke="var(--line-normal)"></line>
+          <rect x="40" y="28" width="120" height="30" rx="8" class="node warm"></rect><text x="100" y="48" text-anchor="middle">회사 문서</text>
+          <path d="M100,60 L100,84" class="wire" marker-end="url(#rg-ah2)"></path>
+          <text x="108" y="77" class="t-s">다시 학습</text>
+          <rect x="40" y="88" width="120" height="44" rx="8" class="node warm"></rect>
+          <text x="100" y="107" text-anchor="middle" class="t-b">LLM</text><text x="100" y="124" text-anchor="middle" class="t-s">가중치를 고친다</text>
+          <path d="M100,134 L100,158" class="wire" marker-end="url(#rg-ah2)"></path>
+          <rect x="40" y="162" width="120" height="28" rx="8" class="node"></rect><text x="100" y="181" text-anchor="middle">답</text>
+          <text x="100" y="206" text-anchor="middle" class="t-s">규정이 바뀌면 다시 학습</text>
+          <rect x="216" y="28" width="76" height="30" rx="8" class="node warm"></rect><text x="254" y="48" text-anchor="middle">회사 문서</text>
+          <rect x="300" y="28" width="84" height="30" rx="8" class="node"></rect><text x="342" y="48" text-anchor="middle">질문</text>
+          <path d="M254,60 L282,84" class="wire go" marker-end="url(#rg-ah3)"></path>
+          <path d="M342,60 L318,84" class="wire go" marker-end="url(#rg-ah3)"></path>
+          <rect x="226" y="88" width="148" height="44" rx="8" class="node key"></rect>
+          <text x="300" y="107" text-anchor="middle" class="t-b">프롬프트</text><text x="300" y="124" text-anchor="middle" class="t-s">질문 + 찾은 문서</text>
+          <path d="M300,134 L300,158" class="wire go" marker-end="url(#rg-ah3)"></path>
+          <rect x="226" y="162" width="148" height="28" rx="8" class="node"></rect><text x="300" y="181" text-anchor="middle">LLM → 답 + 근거</text>
+          <text x="300" y="206" text-anchor="middle" class="t-s">LLM은 그대로, 문서만 교체</text>
+        </svg>
+      </figure>
+      <p>모델에게 건네는 입력 전체를 <b>프롬프트</b>(prompt)라고 부릅니다. RAG는 이 프롬프트에 질문만 넣지 않고 질문과 관련된 문서를 찾아 함께 넣습니다. 답에 근거 문서 번호를 적게 할 수도 있습니다.</p>
+      <details><summary>RAG라는 이름은 어디서 왔나요</summary><p>2020년 Lewis 등이 발표한 논문에서 나왔습니다. 논문은 모델의 가중치에 담긴 기억과 검색해서 꺼내 보는 문서를 함께 쓰는 방법으로 RAG를 설명합니다. 머릿속 기억과 펼쳐 보는 책을 같이 쓰는 것과 비슷합니다.</p></details>
     </div>
   </section>
 
@@ -211,14 +278,42 @@ category: ai
     <div class="rg-wrap rg-col">
       <span class="rg-tag">큰 그림 · 두 번에 나눠 일하기</span>
       <h2>미리 준비하는 일과 질문할 때 하는 일로 나뉩니다</h2>
-      <p>RAG가 일하는 방식은 학교 도서관과 비슷합니다. 사서는 새 책이 들어오면 분류 번호를 붙여 서가에 꽂아 둡니다. 학생이 질문을 들고 오면 분류 번호를 보고 관련 책 몇 권을 찾아 줍니다.</p>
-      <p>RAG도 질문이 오기 전에 문서를 찾기 좋은 형태로 정리해 둡니다. 질문이 오면 그중 필요한 부분만 꺼내 씁니다.</p>
-      <div class="rg-split">
-        <div><h3>미리 해 두는 일 (인덱싱)</h3><p>문서를 읽어 적당한 크기로 자릅니다(청킹, chunking). 잘라 낸 조각 하나를 <b>청크</b>(chunk)라고 부릅니다. 청크마다 뜻을 나타내는 숫자 묶음(임베딩, embedding)을 만들어 벡터 DB에 저장합니다. 벡터 DB는 이런 숫자 묶음을 저장해 두고 비슷한 것을 빠르게 찾아 주는 데이터베이스입니다.</p></div>
-        <div><h3>질문할 때 하는 일 (검색과 생성)</h3><p>질문도 같은 방식으로 숫자 묶음으로 바꿉니다. 그다음 질문과 가장 가까운 청크 k개(top-k)를 찾습니다. 찾은 청크를 질문과 함께 프롬프트에 넣어 LLM에게 답하게 합니다. 문서가 바뀌면 왼쪽 작업만 다시 합니다.</p></div>
-      </div>
-      <p style="margin-top:24px">도서관 비유와 다른 점도 있습니다. 사서는 책 내용을 이해하고 골라 줍니다. RAG의 검색 단계는 내용을 읽고 판단하지 않습니다. 숫자끼리 얼마나 가까운지만 계산합니다.</p>
-      <p>그래서 "가깝지만 답은 없는" 청크를 가져오는 실수가 생깁니다. 이 실수를 줄이는 방법은 글 뒤쪽에서 다룹니다.</p>
+      <p>RAG는 질문이 오기 전에 문서를 찾기 좋게 정리해 두고 질문이 오면 그중 필요한 부분만 꺼내 씁니다. 사서가 새 책에 분류 번호를 붙여 꽂아 두었다가, 학생이 질문을 들고 오면 관련 책 몇 권을 찾아 주는 것과 비슷합니다.</p>
+      <figure class="rg-fig">
+        <svg viewBox="0 0 400 222" role="img" aria-label="위쪽은 미리 하는 인덱싱(문서, 청킹, 임베딩, 벡터 DB), 아래쪽은 질문할 때 하는 일(질문, 임베딩, 검색, 프롬프트, LLM, 답)이고 검색이 벡터 DB에서 청크를 꺼내는 흐름도">
+          <defs>
+            <marker id="rg-ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"></path></marker>
+            <marker id="rg-ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrowhead go"></path></marker>
+          </defs>
+          <text x="6" y="14" class="t-lane">미리 해 두는 일 · 인덱싱</text>
+          <rect x="6" y="24" width="80" height="34" rx="8" class="node warm"></rect><text x="46" y="46" text-anchor="middle">문서</text>
+          <path d="M88,41 L106,41" class="wire" marker-end="url(#rg-ah4)"></path>
+          <rect x="108" y="24" width="80" height="34" rx="8" class="node"></rect><text x="148" y="46" text-anchor="middle">청킹</text>
+          <path d="M190,41 L208,41" class="wire" marker-end="url(#rg-ah4)"></path>
+          <rect x="210" y="24" width="80" height="34" rx="8" class="node"></rect><text x="250" y="46" text-anchor="middle">임베딩</text>
+          <path d="M292,41 L310,41" class="wire" marker-end="url(#rg-ah4)"></path>
+          <path d="M314,30 a38,8 0 0,1 76,0 v24 a38,8 0 0,1 -76,0 z" class="node key"></path>
+          <path d="M314,30 a38,8 0 0,0 76,0" fill="none" stroke="var(--rg-a)"></path>
+          <text x="352" y="52" text-anchor="middle" class="t-b">벡터 DB</text>
+          <text x="6" y="98" class="t-s">문서가 바뀌면 위쪽 줄만 다시 돌립니다</text>
+          <text x="6" y="132" class="t-lane">질문할 때 하는 일 · 검색과 생성</text>
+          <rect x="6" y="142" width="60" height="34" rx="8" class="node"></rect><text x="36" y="164" text-anchor="middle">질문</text>
+          <path d="M68,159 L80,159" class="wire go" marker-end="url(#rg-ah5)"></path>
+          <rect x="82" y="142" width="60" height="34" rx="8" class="node"></rect><text x="112" y="164" text-anchor="middle">임베딩</text>
+          <path d="M144,159 L156,159" class="wire go" marker-end="url(#rg-ah5)"></path>
+          <rect x="158" y="142" width="70" height="34" rx="8" class="node key"></rect><text x="193" y="164" text-anchor="middle" class="t-b">검색 top-k</text>
+          <path d="M340,66 C320,110 230,104 202,138" class="wire go" marker-end="url(#rg-ah5)"></path>
+          <text x="282" y="112" class="t-s">가까운 청크 k개</text>
+          <path d="M230,159 L242,159" class="wire go" marker-end="url(#rg-ah5)"></path>
+          <rect x="244" y="142" width="70" height="34" rx="8" class="node"></rect><text x="279" y="164" text-anchor="middle">프롬프트</text>
+          <path d="M316,159 L328,159" class="wire go" marker-end="url(#rg-ah5)"></path>
+          <rect x="330" y="142" width="64" height="34" rx="8" class="node"></rect><text x="362" y="164" text-anchor="middle">LLM → 답</text>
+          <text x="6" y="206" class="t-s">질문도 문서와 같은 임베딩 모델로 바꿔야 거리를 잴 수 있습니다</text>
+        </svg>
+      </figure>
+      <p>위쪽 줄의 세 낱말만 먼저 잡아 두면 됩니다. 문서를 적당한 크기로 자르는 일이 <b>청킹</b>(chunking)이고 잘라 낸 조각 하나가 <b>청크</b>(chunk)입니다. 청크마다 뜻을 나타내는 숫자 묶음인 <b>임베딩</b>(embedding)을 만들어 비슷한 숫자 묶음을 빠르게 찾아 주는 데이터베이스인 <b>벡터 DB</b>에 저장합니다.</p>
+      <p>아래쪽 줄에서는 질문을 같은 방식으로 숫자 묶음으로 바꾸고 가장 가까운 청크 k개(top-k)를 꺼내 질문과 함께 LLM에게 건넵니다.</p>
+      <details><summary>도서관 비유와 다른 점</summary><p>사서는 책 내용을 이해하고 골라 줍니다. RAG의 검색 단계는 내용을 읽고 판단하지 않습니다. 숫자끼리 얼마나 가까운지만 계산합니다. 그래서 "가깝지만 답은 없는" 청크를 가져오는 실수가 생깁니다. 이 실수를 줄이는 방법은 글 뒤쪽에서 다룹니다.</p></details>
     </div>
   </section>
 
@@ -226,13 +321,8 @@ category: ai
     <div class="rg-wrap rg-col">
       <span class="rg-tag">정거장 1 · 자르기 (chunking)</span>
       <h2>문서를 어디서 자르느냐가 답을 좌우합니다</h2>
-      <p>시험 공부를 할 때 교과서 한 단원을 통째로 외우기보다 단어장 카드 여러 장에 나눠 적어 두면 필요한 카드만 빨리 찾을 수 있습니다. 청킹은 문서를 이런 카드로 나누는 일입니다. 카드 한 장이 청크 하나에 해당합니다.</p>
-      <p>문제는 카드 크기입니다. 문서를 통째로 한 장에 적으면 필요 없는 내용까지 딸려 옵니다. 문장 하나씩 자르면 "수습 기간에는 주 1일로 제한한다"처럼 무엇에 대한 이야기인지 알 수 없는 카드가 생깁니다.</p>
-      <p>보통은 일정한 길이로 자릅니다. 300자짜리 문서를 100자씩 자르면 0~100자, 100~200자, 200~300자 청크 세 개가 나옵니다. 이때 경계에 걸친 문장은 두 청크로 쪼개집니다.</p>
-      <p>이 문제를 줄이려고 앞 청크의 끝부분을 다음 청크 앞에 다시 넣습니다. 이렇게 겹치는 부분을 <b>오버랩</b>(overlap)이라고 부릅니다. 같은 문서에 오버랩을 20자 두면 청크는 0~100자, 80~180자, 160~260자, 240~300자로 네 개가 됩니다.</p>
-      <p>카드 비유가 맞지 않는 부분은 끊는 위치입니다. 사람은 뜻이 끝나는 곳에서 카드를 끊습니다. 길이로 자르는 방식은 글자 수만 세고 뜻은 보지 않습니다. 그래서 실제 시스템에서는 문단이나 제목 경계를 따라 자르는 방법도 함께 씁니다.</p>
-      <p>실제로는 길이를 글자 수 대신 토큰 수로 잽니다. <b>토큰</b>(token)은 모델이 글을 읽는 단위로, 단어보다 조금 작은 조각입니다.</p>
-      <p>아래 규정 문서에서 물결 밑줄 친 부분이 "재택근무 일수" 질문의 답입니다. 청크 크기와 오버랩을 바꿔 보면서 답이 한 청크 안에 온전히 들어가는지 확인해 보세요.</p>
+      <p>청크가 너무 크면 필요 없는 내용까지 딸려 오고 너무 작으면 답 문장이 경계에서 잘리거나 무엇에 대한 이야기인지 사라집니다. 교과서를 단어장 카드로 나눠 적을 때 카드 크기를 정하는 것과 같은 고민입니다.</p>
+      <p>아래 규정 문서에서 물결 밑줄 친 부분이 "재택근무 일수" 질문의 답입니다. 지금은 일정한 길이로 자른 상태라 답이 두 청크로 쪼개져 있습니다. 청크 크기와 오버랩을 바꿔 답이 한 청크 안에 온전히 들어가게 해 보세요.</p>
       <div class="rg-lab">
         <div class="rg-ctrls">
           <label class="rg-ctrl">청크 크기<input type="range" min="40" max="360" step="10" value="80" data-rg-size><output data-rg-sizeout></output></label>
@@ -242,8 +332,13 @@ category: ai
         <div class="rg-doc" data-figure data-rg-doc></div>
         <div class="rg-verdict" data-rg-verdict></div>
       </div>
-      <p style="margin-top:24px">세 번째 옵션에는 2024년 Anthropic이 발표한 <b>Contextual Retrieval</b>의 핵심 아이디어가 담겨 있습니다. 단어장 카드 위에 "사회 3단원 · 지방 자치"처럼 단원 이름을 적어 두는 것과 같은 방법입니다. "수습 기간에는 주 1일로 제한한다"만 떼어 놓으면 무엇이 주 1일인지 알 수 없습니다. 앞에 "근무규정 > 4.2 재택근무"를 붙여 두면 검색으로 이 청크를 찾을 수 있습니다.</p>
-      <p>Anthropic은 이 한 줄을 사람이 쓰지 않았습니다. Claude에게 문서 전체와 청크를 함께 보여 주고 청크마다 50~100토큰 정도의 설명을 쓰게 했습니다. 청크가 수만 개여도 자동으로 붙일 수 있는 방법입니다.</p>
+      <p style="margin-top:24px">경계에 걸친 문장이 잘리지 않도록 앞 청크의 끝부분을 다음 청크 앞에 다시 넣는 것을 <b>오버랩</b>(overlap)이라고 부릅니다. 보라색으로 칠해진 부분이 두 청크에 함께 들어간 글자입니다.</p>
+      <p>세 번째 옵션은 2024년 Anthropic이 발표한 <b>Contextual Retrieval</b>의 핵심 아이디어입니다. "수습 기간에는 주 1일로 제한한다"만 떼어 놓으면 무엇이 주 1일인지 알 수 없습니다. 앞에 "근무규정 > 4.2 재택근무"를 붙여 두면 검색으로 이 청크를 찾을 수 있습니다.</p>
+      <details><summary>더 알아보기: 길이를 재는 단위, 자르는 위치, 문맥 한 줄은 누가 쓰나</summary>
+        <p>실제로는 길이를 글자 수 대신 토큰 수로 잽니다. <b>토큰</b>(token)은 모델이 글을 읽는 단위로, 단어보다 조금 작은 조각입니다.</p>
+        <p>사람은 뜻이 끝나는 곳에서 카드를 끊습니다. 길이로 자르는 방식은 글자 수만 세고 뜻은 보지 않습니다. 그래서 실제 시스템에서는 문단이나 제목 경계를 따라 자르는 방법도 함께 씁니다.</p>
+        <p>Anthropic은 문맥 한 줄을 사람이 쓰지 않았습니다. Claude에게 문서 전체와 청크를 함께 보여 주고 청크마다 50~100토큰 정도의 설명을 쓰게 했습니다. 청크가 수만 개여도 자동으로 붙일 수 있는 방법입니다.</p>
+      </details>
     </div>
   </section>
 
@@ -262,9 +357,30 @@ category: ai
       </div>
       <p class="rg-note">설명을 위해 만든 예시 값입니다. 오른쪽 유사도는 이 숫자로 코사인 유사도를 실제로 계산한 값입니다.</p>
       <p style="margin-top:24px">두 벡터가 얼마나 비슷한지는 보통 <b>코사인 유사도</b>(cosine similarity)로 잽니다. 두 벡터의 같은 칸 숫자끼리 곱해 모두 더한 뒤 각 벡터의 길이로 나눈 값입니다. 두 벡터가 같은 방향을 가리킬수록 1에 가깝고 상관없는 방향일수록 0에 가깝습니다.</p>
+      <figure class="rg-fig">
+        <svg viewBox="0 0 400 250" role="img" aria-label="근무 방식과 휴가 두 축 위에 질문, 재택근무, 연차, 법인카드 문장을 화살표로 그리고 질문과의 사잇각을 비교한 그림">
+          <line x1="40" y1="222" x2="300" y2="222" stroke="var(--line-strong)"></line>
+          <line x1="40" y1="222" x2="40" y2="10" stroke="var(--line-strong)"></line>
+          <text x="300" y="242" text-anchor="end" class="t-s">근무 방식 →</text>
+          <text x="46" y="14" class="t-s">↑ 휴가</text>
+          <path d="M179.1,206.5 A140,140 0 0 0 175.8,188.0" fill="none" stroke="var(--rg-a)" stroke-width="6" stroke-linecap="round"></path>
+          <path d="M129.3,199.7 A92,92 0 0 0 60.0,132.2" fill="none" stroke="var(--fg-negative)" stroke-width="2" stroke-dasharray="4 4"></path>
+          <line x1="40" y1="222" x2="238" y2="200" stroke="rgb(80,140,255)" stroke-width="3" stroke-linecap="round"></line><circle cx="238" cy="200" r="4.5" fill="rgb(80,140,255)"></circle>
+          <line x1="40" y1="222" x2="84" y2="24" stroke="var(--rg-a)" stroke-width="3" stroke-linecap="round"></line><circle cx="84" cy="24" r="4.5" fill="var(--rg-a)"></circle>
+          <line x1="40" y1="222" x2="40" y2="200" stroke="var(--rg-c)" stroke-width="3" stroke-linecap="round"></line><circle cx="40" cy="200" r="4.5" fill="var(--rg-c)"></circle>
+          <line x1="40" y1="222" x2="216" y2="178" stroke="var(--rg-q)" stroke-width="3.5" stroke-linecap="round"></line><circle cx="216" cy="178" r="4.5" fill="var(--rg-q)"></circle>
+          <text x="246" y="206" class="t-b">재택근무 3일</text>
+          <text x="224" y="172" fill="var(--rg-q)" font-weight="700">질문</text>
+          <text x="92" y="28" class="t-b">연차 15일</text>
+          <text x="48" y="198" class="t-s">법인카드</text>
+          <rect x="190" y="44" width="20" height="6" rx="3" fill="var(--rg-a)"></rect><text x="216" y="51" class="t-s">작은 사잇각 → 비슷함</text>
+          <line x1="190" y1="70" x2="210" y2="70" stroke="var(--fg-negative)" stroke-width="2" stroke-dasharray="4 4"></line><text x="216" y="74" class="t-s">큰 사잇각 → 다름</text>
+        </svg>
+        <figcaption class="rg-cap">위 표의 숫자 중 "근무 방식"과 "휴가" 두 축만 그렸습니다. 화살표 끝의 위치가 아니라 방향이 비슷한지를 봅니다.</figcaption>
+      </figure>
       <p>위 표에서 질문과 재택근무 문장은 0.98로 거의 같은 방향입니다. 법인카드 문장은 0.15로 질문과 거의 상관이 없습니다. 검색은 이 점수가 높은 순서로 청크를 고르는 일입니다.</p>
-      <p>지도 비유가 맞지 않는 부분은 축의 개수와 의미입니다. 실제 임베딩 벡터는 숫자가 수백~수천 개입니다. 각 축에 "휴가" 같은 이름이 붙어 있지도 않습니다. 문장을 벡터로 바꿔 주는 <b>임베딩 모델</b>이 수많은 문장을 보며 비슷한 뜻이 비슷한 숫자가 되도록 스스로 정한 축입니다.</p>
-      <p>그래서 질문과 문서는 반드시 같은 임베딩 모델로 바꿔야 합니다. 서로 다른 지도의 좌표끼리는 거리를 잴 수 없는 것과 같습니다. 임베딩 모델을 바꾸면 저장해 둔 청크도 모두 다시 임베딩해야 합니다.</p>
+      <details><summary>지도 비유와 다른 점</summary><p>실제 임베딩 벡터는 숫자가 수백~수천 개이고 각 축에 "휴가" 같은 이름이 붙어 있지도 않습니다. 축은 문장을 벡터로 바꿔 주는 <b>임베딩 모델</b>이 수많은 문장을 보며 비슷한 뜻이 비슷한 숫자가 되도록 스스로 정한 것입니다.</p></details>
+      <p>질문과 문서는 반드시 같은 <b>임베딩 모델</b>(문장을 벡터로 바꿔 주는 모델)로 바꿔야 합니다. 서로 다른 지도의 좌표끼리는 거리를 잴 수 없는 것과 같습니다. 임베딩 모델을 바꾸면 저장해 둔 청크도 모두 다시 임베딩해야 합니다.</p>
     </div>
   </section>
 
@@ -288,9 +404,8 @@ category: ai
       </div>
       <div class="rg-col" style="margin-top:40px">
         <p>세 번째 질문 "ERR-4031 오류가 떠요"에서는 임베딩 검색이 답을 놓칩니다. 임베딩은 "오류", "IT 문제"라는 뜻은 잡지만 ERR-4031 같은 코드 문자열은 잘 구별하지 못합니다.</p>
-        <p>이럴 때 쓰는 키워드 검색은 책 뒤쪽의 찾아보기(색인)와 비슷합니다. 찾아보기는 뜻을 따지지 않고 "ERR-4031"이라는 글자가 몇 쪽에 있는지 알려 줍니다. 대표적인 키워드 검색 방식인 <b>BM25</b>는 질문의 단어가 청크에 몇 번 나오는지와 그 단어가 전체 문서에서 얼마나 드문지를 따져 점수를 매깁니다. 드문 단어가 일치할수록 점수가 높습니다.</p>
-        <p>찾아보기와 다른 점은 BM25가 단어 하나만 찾지 않는다는 것입니다. 질문에 나온 모든 단어의 점수를 더해 청크의 순서를 매깁니다.</p>
-        <p>임베딩 검색과 키워드 검색을 함께 쓰고 결과를 합치는 방식을 <b>하이브리드 검색</b>(hybrid search)이라고 부릅니다. 세 번째 질문에서 하이브리드 검색을 켰다 꺼 보면서 결과 목록이 어떻게 바뀌는지 확인해 보세요.</p>
+        <p>책 뒤쪽 찾아보기(색인)처럼 글자가 똑같이 들어 있는 청크를 찾는 <b>키워드 검색</b>을 함께 쓰면 이 문제를 해결할 수 있습니다. 임베딩 검색과 키워드 검색의 결과를 합치는 방식을 <b>하이브리드 검색</b>(hybrid search)이라고 부릅니다. 세 번째 질문에서 켰다 꺼 보세요.</p>
+        <details><summary>키워드 검색 BM25는 어떻게 점수를 매기나요</summary><p>대표적인 키워드 검색 방식인 <b>BM25</b>는 질문의 단어가 청크에 몇 번 나오는지와 그 단어가 전체 문서에서 얼마나 드문지를 따져 점수를 매깁니다. 드문 단어가 일치할수록 점수가 높습니다.</p><p>찾아보기와 다른 점은 단어 하나만 찾지 않는다는 것입니다. 질문에 나온 모든 단어의 점수를 더해 청크의 순서를 매깁니다.</p></details>
       </div>
     </div>
   </section>
@@ -299,8 +414,7 @@ category: ai
     <div class="rg-wrap rg-col">
       <span class="rg-tag">정거장 4 · 프롬프트 조립</span>
       <h2>찾은 청크는 질문 앞에 끼워 넣습니다</h2>
-      <p>오픈북 시험에서 선생님이 책 전체를 주는 대신 관련 있는 페이지 몇 장만 복사해 시험지 앞에 붙여 준다고 생각해 보세요. 프롬프트 조립이 그 일입니다. 복사한 페이지는 검색한 청크에, 시험지는 질문에 해당합니다.</p>
-      <p>검색 결과를 LLM에 그대로 넘기지 않고 프롬프트 틀 안에 넣습니다. 보통 "아래 문서만 근거로 답하고, 없으면 모른다고 말하라"는 지시도 함께 넣습니다. 위 지도에서 고른 질문과 k에 따라 아래 프롬프트가 바뀝니다.</p>
+      <p>검색한 청크는 "아래 문서만 근거로 답하고, 없으면 모른다고 말하라"는 지시와 함께 프롬프트 틀 안에 들어갑니다. 오픈북 시험에서 관련 페이지 몇 장만 복사해 시험지 앞에 붙여 주는 것과 같습니다. 위 지도에서 고른 질문과 k에 따라 아래 프롬프트가 바뀝니다.</p>
       <div class="rg-prompt" data-figure data-rg-prompt></div>
       <div class="rg-budget" data-rg-budget></div>
       <p style="margin-top:28px">시험지 앞에 붙일 수 있는 페이지에도 한도가 있습니다. 모델이 한 번에 받을 수 있는 입력의 최대 길이를 <b>context window</b>라고 부릅니다. 길이는 토큰 수로 잽니다. 위 막대는 청크 하나를 약 220토큰으로 잡았을 때 프롬프트가 얼마나 차는지 보여 주는 예시입니다.</p>
@@ -319,8 +433,7 @@ category: ai
         <p class="rg-note">논문 그래프의 모양만 옮긴 개념도입니다. 실제 수치와 곡선 모양은 모델과 문서 수에 따라 다릅니다.</p>
       </div>
       <p style="margin-top:28px"><b>리랭킹</b>은 도서관에서 관련 있어 보이는 책을 일단 넉넉히 뽑아 온 뒤 한 권씩 펼쳐 보고 순서를 다시 정하는 일과 비슷합니다. 임베딩 검색으로 후보를 넉넉히 뽑으면 리랭킹 모델(reranker)이 질문과 청크를 한 쌍씩 함께 읽고 관련도 점수를 매깁니다. Anthropic의 실험에서는 후보 150개를 뽑아 리랭킹한 뒤 상위 20개만 프롬프트에 넣었습니다.</p>
-      <p>책을 한 권씩 펼쳐 보면 시간이 걸리듯 리랭킹도 느립니다. 임베딩은 청크마다 미리 한 번 계산해 두면 됩니다. 리랭킹은 질문이 올 때마다 후보 수만큼 모델을 돌려야 합니다. 그래서 전체 문서 대신 검색으로 줄인 후보에만 씁니다.</p>
-      <p>비유와 다른 점도 하나 있습니다. 사람은 책을 펼쳐 내용을 이해하고 판단합니다. 리랭킹 모델의 점수는 학습한 패턴으로 매긴 추정치라서 여전히 틀릴 수 있습니다.</p>
+      <details><summary>리랭킹은 왜 후보에만 쓰나요</summary><p>책을 한 권씩 펼쳐 보면 시간이 걸리듯 리랭킹도 느립니다. 임베딩은 청크마다 미리 한 번 계산해 두면 됩니다. 리랭킹은 질문이 올 때마다 후보 수만큼 모델을 돌려야 합니다. 그래서 전체 문서 대신 검색으로 줄인 후보에만 씁니다.</p><p>비유와 다른 점도 있습니다. 사람은 책을 펼쳐 내용을 이해하고 판단합니다. 리랭킹 모델의 점수는 학습한 패턴으로 매긴 추정치라서 여전히 틀릴 수 있습니다.</p></details>
     </div>
   </section>
 
@@ -356,7 +469,7 @@ category: ai
     </div>
   </section>
 
-  <section class="rg-sec">
+  <section class="rg-sec" data-text-only>
     <div class="rg-wrap rg-col">
       <span class="rg-tag">정리</span>
       <h2>RAG를 한 문장으로 줄이면</h2>
@@ -439,7 +552,7 @@ category: ai
     const subject = whole >= 0 && (ctx || DOC.slice(cs[whole][0], cs[whole][1]).includes("재택"));
     let cls = "no", msg;
     if (whole < 0) msg = `<i>✕</i><span>답 문장이 청크 경계에서 잘렸습니다. 어느 청크를 찾아도 "주 3일"이라는 답이 온전히 들어 있지 않습니다. 오버랩을 늘리거나 청크를 키워 보세요.</span>`;
-    else if (+sizeIn.value > 260) { cls = "ok"; msg = `<i>△</i><span>답은 #${whole + 1} 청크 안에 있습니다. 다만 청크가 너무 커서 출장·유연근무 내용까지 섞였습니다. 질문과의 유사도가 흐려집니다. 프롬프트 공간도 낭비됩니다.</span>`; }
+    else if (+sizeIn.value > 260) { cls = "ok"; msg = `<i>△</i><span>답은 #${whole + 1} 청크 안에 있습니다. 다만 청크가 너무 커서 출장·유연근무 내용까지 섞였습니다. 그래서 질문과의 유사도가 흐려지고 프롬프트 공간도 낭비됩니다.</span>`; }
     else if (subject) { cls = "ok"; msg = `<i>✓</i><span>답이 #${whole + 1} 청크 안에 온전히 들어 있습니다. 이 청크에는 무엇에 대한 이야기인지도 남아 있습니다.</span>`; }
     else msg = `<i>✕</i><span>답은 #${whole + 1} 청크 안에 있지만 주제어가 빠졌습니다.</span>`;
     verdict.className = "rg-verdict " + cls; verdict.innerHTML = msg;

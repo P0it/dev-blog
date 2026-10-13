@@ -1,1025 +1,451 @@
 ---
-title: 한글 주석 한 줄에 파일이 깨지는 이유
+title: 한글 주석만 깨진 파일 안에서는 무슨 일이 일어났을까요
 slug: utf8-encoding-mojibake
-excerpt: 파일에 든 것은 글자가 아니라 0부터 255까지의 숫자이고 그 숫자를 글자로 바꾸는 약속이 인코딩입니다. 같은 네 바이트가 약속에 따라 한글로도, ÇÑ±Û로도, 茄臂로도 읽히는 것을 직접 바꿔 끼워 보면서 영문 코드는 멀쩡한데 한글 주석만 깨지는 이유와 한 번 저장하면 원본을 되돌릴 수 없는 이유를 설명합니다.
+excerpt: 파일에 든 것은 글자가 아니라 0부터 255까지의 숫자이고, 그 숫자를 글자로 바꾸는 약속이 인코딩입니다. 같은 네 바이트를 다섯 가지 약속으로 읽어 보고, 틀린 약속으로 저장하면 왜 원래 글자를 되찾을 수 없는지 그림으로 따라갑니다.
 tags: [인코딩, UTF-8, 유니코드, Claude Code]
 category: ai
-publish: true
 ---
 <!-- page -->
 <style>
-.post-page .ec {
-  --ec-byte: rgb(52, 96, 196);
-  --ec-ok: rgb(13, 112, 82);
-  --ec-bad: rgb(190, 52, 30);
-  --ec-warn: rgb(146, 97, 8);
-  color: var(--fg-normal);
-  font-family: var(--font-sans);
-}
-/* 직접 쓴 색은 다크모드에서 따로 잡는다 (사이트 토큰이 아닌 값이라 자동으로 바뀌지 않는다) */
-[data-theme="dark"] .post-page .ec {
-  --ec-byte: rgb(142, 176, 255);
-  --ec-ok: rgb(86, 212, 166);
-  --ec-bad: rgb(255, 146, 122);
-  --ec-warn: rgb(240, 192, 98);
-}
-.post-page .ec * { box-sizing: border-box; }
-.post-page .ec-wrap { max-width: 1080px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
-.post-page .ec-narrow { max-width: 720px; }
-/* 한 요소에 wrap 과 narrow 가 같이 걸린 자리도 본문 시작점을 그림과 같게 맞춘다 */
-.post-page .ec-wrap.ec-narrow { max-width: 1080px; }
-.post-page .ec-wrap.ec-narrow > * { max-width: 720px; }
-.post-page .ec h1,
-.post-page .ec h2,
-.post-page .ec h3 {
-  word-break: keep-all;
-  font-family: var(--font-display);
-  color: var(--fg-strong);
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-.post-page .ec p { font-size: clamp(16px, 1.7vw, 17px); line-height: 1.85; margin: 0 0 1em; }
-.post-page .ec b { color: var(--fg-strong); }
-.post-page .ec code {
-  font-family: var(--font-mono);
-  font-size: 0.88em;
-  background: var(--bg-muted);
-  padding: 1px 6px;
-  border-radius: var(--radius-xs);
-  /* 공백에서만 줄을 바꾼다. 110 이 11/0 으로 쪼개지지 않게 토큰 안쪽은 자르지 않는다 */
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: keep-all;
-}
-.post-page .ec-term {
-  border-bottom: 2px solid var(--bg-primary-tint);
-  color: var(--fg-strong);
-  font-weight: 600;
-}
+.post-page .ub { --ub-ok: rgb(46, 170, 120); --ub-warn: rgb(226, 150, 20); --ub-bad: rgb(232, 72, 72); --ub-odd: rgb(150, 100, 235);
+  --ub-ascii: color-mix(in srgb, var(--ub-ok) 20%, var(--bg-base)); --ub-ko: color-mix(in srgb, var(--ub-warn) 24%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); }
+.post-page .ub * { box-sizing: border-box; }
+.post-page .ub-wrap { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+.post-page .ub-col > * { max-width: 700px; }
+.post-page .ub h1, .post-page .ub h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ub p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; word-break: keep-all; }
+.post-page .ub b { color: var(--fg-strong); }
+.post-page .ub code, .post-page .ub .hx { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ub-tag { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; letter-spacing: 0.04em; }
+.post-page .ub-cap { font-size: 14px !important; color: var(--fg-alternative); margin-top: 12px !important; line-height: 1.6 !important; }
+.post-page .ub-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.post-page .ub-chips button { font: inherit; font-family: var(--font-mono); font-size: 13px; padding: 7px 13px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; }
+.post-page .ub-chips button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); border-color: var(--fg-strong); }
+.post-page .ub-tile { font-family: var(--font-mono); font-weight: 600; color: var(--fg-strong); display: grid; place-items: center; border-radius: 6px; }
 
-/* ───── 히어로 ───── */
-.post-page .ec-hero { padding: clamp(40px, 7vw, 88px) 0 clamp(28px, 4vw, 48px); }
-.post-page .ec-eyebrow {
-  font-family: var(--font-mono);
-  font-size: clamp(11px, 1.2vw, 13px);
-  letter-spacing: 0.08em;
-  color: var(--fg-alternative);
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.post-page .ec-hero h1 { font-size: clamp(28px, 5.4vw, 54px); line-height: 1.18; max-width: 760px; }
-.post-page .ec-lede {
-  font-size: clamp(16px, 1.9vw, 19px) !important;
-  color: var(--fg-neutral);
-  margin-top: 20px !important;
-  max-width: 660px;
-}
-.post-page .ec-hook {
-  margin: 28px 0 0;
-  padding: 18px 20px;
-  border-left: 3px solid var(--bg-primary);
-  background: var(--bg-subtle);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  max-width: 660px;
-}
-.post-page .ec-hook p { margin: 0; font-size: clamp(14px, 1.5vw, 15px); color: var(--fg-neutral); line-height: 1.8; }
-.post-page .ec-hook p + p { margin-top: 0.7em; }
+/* 히어로 */
+.post-page .ub-hero { padding: clamp(48px, 8vw, 96px) 0 clamp(40px, 6vw, 64px); }
+.post-page .ub-hero h1 { font-size: clamp(30px, 5vw, 54px); line-height: 1.18; max-width: 16em; }
+.post-page .ub-lede { font-size: clamp(17px, 1.9vw, 19px) !important; color: var(--fg-neutral); max-width: 38em; margin-top: 20px !important; }
+.post-page .ub-lens { margin-top: clamp(28px, 4vw, 44px); padding: clamp(20px, 3vw, 32px); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .ub-lens-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.post-page .ub-lens-head span { font-size: 14px; color: var(--fg-alternative); }
+.post-page .ub-tape { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 560px; margin: 0 auto; }
+.post-page .ub-tape .ub-tile { height: clamp(56px, 9vw, 76px); font-size: clamp(20px, 3.4vw, 30px); background: var(--ub-ko); border: 2px solid color-mix(in srgb, var(--ub-warn) 50%, transparent); }
+.post-page .ub-tape .ub-tile small { display: block; font-size: 11px; font-weight: 400; color: var(--fg-alternative); }
+.post-page .ub-groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 560px; margin: 8px auto 0; }
+.post-page .ub-group { text-align: center; animation: pg-ub-in 0.35s ease both; }
+.post-page .ub-group i { display: block; height: 14px; border: 3px solid var(--c); border-top: 0; border-radius: 0 0 8px 8px; margin: 0 4px; }
+.post-page .ub-group b { display: block; font-size: clamp(34px, 6vw, 56px); line-height: 1.2; margin-top: 6px; color: var(--c); font-weight: 600; }
+.post-page .ub-group em { font-style: normal; font-size: 12px; color: var(--fg-alternative); font-family: var(--font-mono); }
+@keyframes pg-ub-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.post-page .ub p.ub-verdict { margin: 18px auto 0; max-width: 560px; text-align: center; font-size: 15px; font-weight: 600; color: var(--fg-strong); min-height: 1.5em; }
+.post-page .ub-legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--fg-alternative); }
+.post-page .ub-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c); margin-right: 6px; vertical-align: -1px; }
 
-/* ───── 공통 그림틀 ───── */
-.post-page .ec-fig {
-  margin: clamp(28px, 4vw, 44px) 0;
-  padding: clamp(16px, 2.5vw, 26px);
-  border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--bg-base);
-  box-shadow: var(--shadow-1);
-}
-.post-page .ec-fig-head { margin-bottom: 18px; }
-.post-page .ec-fig-head h3 { font-size: clamp(15px, 1.8vw, 18px); line-height: 1.4; }
-.post-page .ec-fig-head p {
-  margin: 8px 0 0;
-  font-size: clamp(13px, 1.4vw, 14px);
-  color: var(--fg-neutral);
-  line-height: 1.7;
-}
-.post-page .ec-note {
-  font-size: clamp(12.5px, 1.35vw, 13.5px);
-  color: var(--fg-neutral);
-  line-height: 1.7;
-  margin: 14px 0 0;
-}
-.post-page .ec-example-tag {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--fg-alternative);
-  border: 1px solid var(--line-normal);
-  border-radius: var(--radius-full);
-  padding: 2px 10px;
-  margin-bottom: 12px;
-}
+.post-page .ub-sec { padding: clamp(52px, 7vw, 88px) 0; border-top: 1px solid var(--line-normal); }
+.post-page .ub-sec h2 { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.3; margin-bottom: 18px; }
+.post-page .ub-fig { margin: 26px 0 8px; padding: clamp(18px, 3vw, 28px); border-radius: var(--radius-md); background: var(--bg-subtle); }
 
-/* ───── 바이트 칸 ───── */
-.post-page .ec-bytes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 4px;
-  padding: 0;
-  list-style: none;
-}
-.post-page .ec-byte {
-  font-family: var(--font-mono);
-  font-size: clamp(12px, 1.5vw, 15px);
-  font-weight: 600;
-  padding: 8px 9px;
-  min-width: 42px;
-  text-align: center;
-  border-radius: var(--radius-xs);
-  background: var(--bg-muted);
-  color: var(--fg-strong);
-  border: 1px solid transparent;
-  line-height: 1.2;
-}
-.post-page .ec-byte.is-ascii { background: var(--bg-primary-tint); }
-.post-page .ec-byte.is-dead { background: rgba(214, 86, 64, 0.14); color: var(--ec-bad); }
-.post-page .ec-byte-sub { display: block; font-size: 10px; font-weight: 400; color: var(--fg-neutral); margin-top: 3px; }
+/* 1. 전구 여덟 개 */
+.post-page .ub-bits { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; max-width: 520px; }
+.post-page .ub-bit { font: inherit; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--line-strong); background: var(--bg-base); cursor: pointer; position: relative; transition: background 0.2s, box-shadow 0.2s; }
+.post-page .ub-bit[aria-pressed="true"] { background: rgb(255, 200, 60); border-color: rgb(230, 170, 20); box-shadow: 0 0 16px rgba(255, 200, 60, 0.6); }
+.post-page .ub-bit span { position: absolute; left: 0; right: 0; bottom: -20px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
+.post-page .ub-bitout { display: flex; gap: clamp(16px, 4vw, 40px); align-items: flex-end; flex-wrap: wrap; margin-top: 38px; }
+.post-page .ub-bitout div { font-size: 13px; color: var(--fg-alternative); }
+.post-page .ub-bitout b { display: block; font-family: var(--font-mono); font-size: clamp(26px, 4vw, 36px); color: var(--fg-strong); font-weight: 600; }
 
-/* ───── 디코더 바꿔 끼우기 (대표 인터랙션) ───── */
-.post-page .ec-swap-grid { display: grid; gap: 20px; }
-@media (min-width: 880px) { .post-page .ec-swap-grid { grid-template-columns: 1fr 1fr; gap: 28px; } }
-.post-page .ec-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fg-alternative);
-  margin-bottom: 10px;
-}
-.post-page .ec-pick { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0 0 14px; border: 0; }
-.post-page .ec-pick button {
-  font: inherit;
-  font-size: clamp(12px, 1.4vw, 13px);
-  font-weight: 600;
-  font-family: var(--font-mono);
-  border: 1px solid var(--line-normal);
-  background: var(--bg-base);
-  color: var(--fg-neutral);
-  padding: 7px 12px;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
-}
-.post-page .ec-pick button:hover { border-color: var(--line-strong); color: var(--fg-strong); }
-.post-page .ec-pick button[aria-pressed="true"] {
-  background: var(--fg-strong);
-  border-color: var(--fg-strong);
-  color: var(--bg-base);
-}
-.post-page .ec-screen {
-  border: 1px solid var(--line-normal);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-  padding: 20px 18px;
-  min-height: 150px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.post-page .ec-out {
-  font-family: var(--font-mono);
-  font-size: clamp(22px, 4.6vw, 34px);
-  font-weight: 700;
-  color: var(--fg-strong);
-  line-height: 1.35;
-  word-break: break-all;
-  margin: 0 0 12px;
-}
-.post-page .ec-out .ec-fffd { color: var(--ec-bad); }
-.post-page .ec-status { font-size: clamp(12px, 1.4vw, 13.5px); line-height: 1.65; margin: 0; }
-.post-page .ec-status b { display: block; margin-bottom: 3px; }
-.post-page .ec-status.is-ok b { color: var(--ec-ok); }
-.post-page .ec-status.is-bad b { color: var(--ec-bad); }
-.post-page .ec-status.is-wrong b { color: var(--ec-warn); }
-.post-page .ec-tally {
-  margin: 18px 0 0;
-  padding-top: 16px;
-  border-top: 1px dashed var(--line-normal);
-  font-size: clamp(13px, 1.5vw, 14px);
-  color: var(--fg-neutral);
-  line-height: 1.75;
-}
+/* 2. 글자 → 번호 → 바이트 */
+.post-page .ub-route { display: grid; grid-template-columns: auto auto 1fr; gap: 14px 18px; align-items: center; margin-top: 22px; }
+.post-page .ub-glyph { grid-row: span 2; width: clamp(72px, 12vw, 104px); aspect-ratio: 1; display: grid; place-items: center; font-size: clamp(40px, 7vw, 60px); color: var(--fg-strong); background: var(--bg-base); border: 2px solid var(--fg-strong); border-radius: var(--radius-md); }
+.post-page .ub-cp { grid-row: span 2; font-family: var(--font-mono); text-align: center; font-size: 13px; color: var(--fg-alternative); position: relative; padding: 0 0 0 26px; }
+.post-page .ub-cp::before { content: "→"; position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--fg-alternative); }
+.post-page .ub-cp b { display: block; font-size: clamp(18px, 2.6vw, 24px); color: var(--fg-strong); }
+.post-page .ub-road { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.post-page .ub-road > span:first-child { font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); min-width: 4.4em; }
+.post-page .ub-road > span:last-child { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.post-page .ub-road .ub-tile { width: 46px; height: 40px; font-size: 16px; }
+.post-page .ub-road .none { font-size: 14px; color: var(--ub-bad); font-weight: 600; }
 
-/* ───── 표 ───── */
-.post-page .ec-tablewrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  background:
-    linear-gradient(to right, var(--bg-base) 30%, rgba(255, 255, 255, 0)) left center / 28px 100% no-repeat,
-    linear-gradient(to left, var(--bg-base) 30%, rgba(255, 255, 255, 0)) right center / 28px 100% no-repeat,
-    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.14), transparent) left center / 12px 100% no-repeat,
-    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.14), transparent) right center / 12px 100% no-repeat;
-  background-attachment: local, local, scroll, scroll;
-}
-.post-page .ec table { border-collapse: collapse; width: 100%; min-width: 380px; font-size: clamp(12px, 1.4vw, 14px); }
-.post-page .ec td { word-break: keep-all; }
-/* 좁은 화면에서는 표를 가로로 숨기지 않고 접어 넣는다 — 결론이 적힌 열이 잘리면 표를 둘 이유가 없다 */
-@media (max-width: 430px) {
-  .post-page .ec table { min-width: 0; font-size: 11.5px; }
-  .post-page .ec th,
-  .post-page .ec td { padding: 8px 5px; }
-  .post-page .ec td.ec-mono { white-space: normal; }
-}
-.post-page .ec th,
-.post-page .ec td {
-  text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line-subtle);
-  vertical-align: middle;
-}
-.post-page .ec th { font-size: 11px; letter-spacing: 0.05em; color: var(--fg-neutral); font-weight: 600; }
-.post-page .ec th code { text-transform: none; font-size: 12px; }
-.post-page .ec td.ec-mono { font-family: var(--font-mono); color: var(--fg-strong); white-space: nowrap; }
-.post-page .ec tr.is-same td { background: var(--bg-primary-tint); }
-[data-theme="dark"] .post-page .ec tr.is-same td { background: rgba(105, 197, 170, 0.14); }
-[data-theme="dark"] .post-page .ec-tablewrap {
-  background:
-    linear-gradient(to right, var(--bg-base) 30%, rgba(0, 0, 0, 0)) left center / 28px 100% no-repeat,
-    linear-gradient(to left, var(--bg-base) 30%, rgba(0, 0, 0, 0)) right center / 28px 100% no-repeat,
-    radial-gradient(farthest-side at 0 50%, rgba(255, 255, 255, 0.18), transparent) left center / 12px 100% no-repeat,
-    radial-gradient(farthest-side at 100% 50%, rgba(255, 255, 255, 0.18), transparent) right center / 12px 100% no-repeat;
-  background-attachment: local, local, scroll, scroll;
-}
+/* 3. 비트 띠 */
+.post-page .ub-strips { display: grid; gap: 10px; margin-top: 20px; }
+.post-page .ub-strip { display: grid; grid-template-columns: 3.2em repeat(8, minmax(0, 1fr)) minmax(0, 9em); gap: 4px; align-items: center; }
+.post-page .ub-strip > span:first-child { font-family: var(--font-mono); font-weight: 600; color: var(--fg-strong); font-size: 14px; }
+.post-page .ub-cell { height: 34px; border-radius: 4px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
+.post-page .ub-cell.head { background: rgb(28, 28, 32); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.post-page .ub-cell.data { background: color-mix(in srgb, var(--ub-ok) 26%, var(--bg-base)); color: var(--fg-strong); }
+.post-page .ub-strip em { font-style: normal; font-size: 12px; color: var(--fg-alternative); padding-left: 8px; line-height: 1.35; }
+.post-page .ub-join { margin-top: 16px; font-family: var(--font-mono); font-size: 14px; color: var(--fg-neutral); word-break: break-all; }
+.post-page .ub-join b { color: var(--ub-ok); }
 
-/* ───── 비트 탐색기 ───── */
-.post-page .ec-bitrow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-.post-page .ec-bitbyte {
-  display: flex;
-  border-radius: var(--radius-xs);
-  overflow: hidden;
-  border: 1px solid var(--line-normal);
-}
-.post-page .ec-bit {
-  font-family: var(--font-mono);
-  font-size: clamp(11px, 1.4vw, 14px);
-  font-weight: 600;
-  width: clamp(17px, 2.6vw, 22px);
-  height: clamp(28px, 4vw, 34px);
-  display: grid;
-  place-items: center;
-  color: var(--fg-neutral);
-  background: var(--bg-base);
-}
-.post-page .ec-bit.is-marker { background: var(--fg-strong); color: var(--bg-base); }
-.post-page .ec-bit.is-payload { background: var(--bg-primary-tint); color: var(--fg-strong); }
-.post-page .ec-bitlegend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: 12px; color: var(--fg-alternative); }
-.post-page .ec-chip { display: inline-flex; align-items: center; gap: 6px; }
-.post-page .ec-sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line-normal); }
-.post-page .ec-sw.m { background: var(--fg-strong); }
-.post-page .ec-sw.p { background: var(--bg-primary-tint); }
-.post-page .ec-bitwhy {
-  margin: 16px 0 0;
-  font-size: clamp(13px, 1.5vw, 14px);
-  color: var(--fg-neutral);
-  line-height: 1.75;
-}
+/* 4. 세 갈래 */
+.post-page .ub-tree { display: grid; justify-items: center; gap: 0; margin-top: 22px; }
+.post-page .ub-node { padding: 12px 18px; border-radius: var(--radius-sm); background: var(--bg-base); border: 2px solid var(--line-strong); font-size: 15px; font-weight: 600; color: var(--fg-strong); text-align: center; }
+.post-page .ub-node.q { border-style: dashed; }
+.post-page .ub-stem { width: 2px; height: 22px; background: var(--line-strong); }
+.post-page .ub-branches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: 100%; position: relative; padding-top: 22px; }
+.post-page .ub-branches::before { content: ""; position: absolute; top: 0; left: 16.6%; right: 16.6%; height: 22px; border: 2px solid var(--line-strong); border-bottom: 0; border-radius: 10px 10px 0 0; }
+.post-page .ub-leaf { border-radius: var(--radius-sm); padding: 14px; background: var(--bg-base); border-top: 5px solid var(--c); text-align: center; }
+.post-page .ub-leaf small { display: block; font-size: 12px; color: var(--fg-alternative); }
+.post-page .ub-leaf b { display: block; font-size: 15px; margin: 4px 0 8px; }
+.post-page .ub-leaf span { display: block; font-size: clamp(24px, 4vw, 32px); color: var(--c); }
+.post-page .ub-leaf i { display: block; font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); margin-top: 4px; }
+.post-page .ub-meter { display: block; height: 8px; border-radius: 99px; margin-top: 10px; background: linear-gradient(90deg, var(--c) var(--w), var(--bg-muted) var(--w)); }
 
-/* ───── 세 갈래 ───── */
-.post-page .ec-forks { display: grid; gap: 14px; margin-top: 18px; }
-@media (min-width: 760px) { .post-page .ec-forks { grid-template-columns: repeat(3, 1fr); } }
-.post-page .ec-fork { padding: 16px; border-radius: var(--radius-md); background: var(--bg-subtle); border-top: 3px solid var(--line-normal); }
-.post-page .ec-fork.f1 { border-top-color: var(--ec-ok); }
-.post-page .ec-fork.f2 { border-top-color: var(--ec-warn); }
-.post-page .ec-fork.f3 { border-top-color: var(--ec-bad); }
-.post-page .ec-fork h4 { margin: 0 0 8px; font-size: clamp(13px, 1.5vw, 15px); color: var(--fg-strong); font-family: var(--font-display); }
-.post-page .ec-fork p { margin: 0; font-size: clamp(12.5px, 1.4vw, 13.5px); line-height: 1.7; color: var(--fg-neutral); }
-.post-page .ec-fork .ec-fork-ex {
-  font-family: var(--font-mono);
-  font-size: clamp(14px, 2vw, 18px);
-  font-weight: 700;
-  color: var(--fg-strong);
-  margin: 10px 0 8px;
-  word-break: break-all;
-}
+/* 5. 저장 전후 */
+.post-page .ub-save-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.post-page .ub-btn { font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: var(--radius-sm); border: 0; background: var(--fg-strong); color: var(--bg-base); cursor: pointer; }
+.post-page .ub-stat { font-size: 13px; color: var(--fg-alternative); }
+.post-page .ub-stat b { font-family: var(--font-mono); font-size: 16px; }
+.post-page .ub-text { font-family: var(--font-mono); font-size: 15px; padding: 10px 12px; border-radius: 6px; background: var(--bg-base); margin-bottom: 12px; white-space: pre-wrap; color: var(--fg-strong); min-height: 3.6em; }
+.post-page .ub-bytes { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .ub-bytes .ub-tile { min-width: 30px; height: 30px; padding: 0 4px; font-size: 12px; font-weight: 500; transition: background 0.3s; }
+.post-page .ub-bytes .a { background: var(--ub-ascii); }
+.post-page .ub-bytes .k { background: var(--ub-ko); }
+.post-page .ub-bytes .r { background: color-mix(in srgb, var(--ub-bad) 30%, var(--bg-base)); }
+.post-page .ub-bytes .s { background: color-mix(in srgb, var(--ub-odd) 30%, var(--bg-base)); }
+.post-page .ub-bytes .grp { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; outline: 1px dashed transparent; }
+.post-page .ub-bytes .grp.r3 { outline-color: var(--ub-bad); }
 
-/* ───── 파괴 (되돌릴 수 없음) ───── */
-.post-page .ec-destroy-stage { display: grid; gap: 16px; }
-.post-page .ec-stage-box { padding: 14px; border-radius: var(--radius-md); background: var(--bg-subtle); }
-.post-page .ec-stage-box .ec-label { margin-bottom: 8px; }
-.post-page .ec-filetext {
-  font-family: var(--font-mono);
-  font-size: clamp(12px, 1.5vw, 14px);
-  color: var(--fg-strong);
-  white-space: pre-wrap;
-  word-break: break-all;
-  margin: 0;
-  line-height: 1.7;
-}
-.post-page .ec-filetext .ec-fffd { color: var(--ec-bad); font-weight: 700; }
-.post-page .ec-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
-.post-page .ec-btn {
-  font: inherit;
-  font-size: clamp(13px, 1.5vw, 14px);
-  font-weight: 600;
-  padding: 10px 18px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--fg-strong);
-  background: var(--fg-strong);
-  color: var(--bg-base);
-  cursor: pointer;
-}
-.post-page .ec-btn[disabled] { opacity: 1; cursor: not-allowed; background: transparent; color: var(--fg-alternative); border-color: var(--line-normal); border-style: dashed; }
-.post-page .ec-btn.ec-btn-ghost { background: transparent; color: var(--fg-neutral); border-color: var(--line-normal); }
-.post-page .ec-counts { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; }
-.post-page .ec-count { font-family: var(--font-mono); }
-.post-page .ec-count span { display: block; font-size: 11px; color: var(--fg-alternative); text-transform: uppercase; letter-spacing: 0.05em; }
-.post-page .ec-count strong { font-size: clamp(18px, 2.6vw, 24px); color: var(--fg-strong); }
+/* 6. 비둘기집 */
+.post-page .ub-pigeon { width: 100%; height: auto; display: block; overflow: visible; }
+.post-page .ub-pigeon text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ub-pigeon .mono { font-family: var(--font-mono); fill: var(--fg-alternative); }
+.post-page .ub-buckets { display: flex; height: 44px; border-radius: 8px; overflow: hidden; margin-top: 22px; }
+.post-page .ub-buckets span { height: 100%; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; }
+.post-page .ub-bucket-lbl { word-break: keep-all; display: flex; justify-content: space-between; font-size: 13px; color: var(--fg-alternative); margin-top: 8px; gap: 10px; }
 
-/* ───── 본문 흐름 ───── */
-.post-page .ec-section { padding: clamp(28px, 5vw, 56px) 0 0; }
-.post-page .ec-section > .ec-wrap > h2 { font-size: clamp(21px, 3.4vw, 32px); line-height: 1.3; margin-bottom: 18px; }
-.post-page .ec-section h3.ec-sub { font-size: clamp(16px, 2vw, 19px); margin: 28px 0 12px; }
-.post-page .ec-analogy {
-  margin: 20px 0;
-  padding: 16px 18px;
-  border-radius: var(--radius-md);
-  background: var(--bg-primary-tint);
-}
-.post-page .ec-analogy p { margin: 0; font-size: clamp(14px, 1.6vw, 15.5px); line-height: 1.8; }
-.post-page .ec-analogy p + p { margin-top: 0.8em; }
-.post-page .ec-analogy .ec-limit { color: var(--fg-neutral); font-size: clamp(13px, 1.5vw, 14.5px); }
-.post-page .ec-refs { padding: clamp(32px, 5vw, 64px) 0 clamp(40px, 6vw, 80px); }
-.post-page .ec-refs ul { padding-left: 20px; margin: 0; }
-.post-page .ec-refs li { font-size: clamp(13px, 1.5vw, 14.5px); line-height: 1.8; margin-bottom: 10px; color: var(--fg-neutral); }
-.post-page .ec-refs a { color: var(--fg-primary-strong); }
+/* 7. 두 갈래 흐름 */
+.post-page .ub-paths { display: grid; gap: 18px; margin-top: 22px; }
+.post-page .ub-path { display: grid; grid-template-columns: 7em 1fr; gap: 12px; align-items: center; }
+.post-page .ub-path > b { font-size: 14px; }
+.post-page .ub-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.post-page .ub-steps span { padding: 8px 12px; border-radius: 99px; background: var(--bg-base); border: 1px solid var(--line-strong); font-size: 14px; color: var(--fg-strong); }
+.post-page .ub-steps i { font-style: normal; color: var(--fg-alternative); }
+.post-page .ub-steps .end { color: #fff; border: 0; font-weight: 600; background: var(--c); }
 
+.post-page .ub details { margin-top: 10px; border-left: 3px solid var(--line-strong); padding: 4px 0 4px 16px; }
+.post-page .ub summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
+.post-page .ub details p { font-size: 16px; margin-top: 10px; }
+.post-page .ub-refs { padding-left: 1.2em; font-size: 15px; }
+.post-page .ub-refs li { margin: 8px 0; line-height: 1.6; }
+.post-page .ub-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
+
+@media (max-width: 640px) {
+  .post-page .ub-wrap { padding: 0 20px; }
+  .post-page .ub p { font-size: 16px; }
+  .post-page .ub-tape, .post-page .ub-groups { gap: 6px; }
+  .post-page .ub-bits { gap: 5px; }
+  .post-page .ub-route { grid-template-columns: auto 1fr; }
+  .post-page .ub-glyph { grid-row: auto; }
+  .post-page .ub-cp { grid-row: auto; text-align: left; }
+  .post-page .ub-road { grid-column: 1 / -1; }
+  .post-page .ub-strip { grid-template-columns: 2.6em repeat(8, minmax(0, 1fr)); }
+  .post-page .ub-strip em { grid-column: 2 / -1; padding: 0; }
+  .post-page .ub-cell { height: 28px; font-size: 13px; }
+  .post-page .ub-branches { grid-template-columns: 1fr; }
+  .post-page .ub-branches::before { display: none; }
+  .post-page .ub-path { grid-template-columns: 1fr; gap: 6px; }
+  .post-page .ub-buckets span { font-size: 11px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .post-page .ec * { transition: none !important; animation: none !important; }
+  .post-page .ub * { animation: none !important; transition: none !important; }
 }
 </style>
 
-<section class="ec">
-
-  <!-- ─────────── 히어로 ─────────── -->
-  <header class="ec-hero">
-    <div class="ec-wrap">
-      <div class="ec-eyebrow">Encoding · 바이트와 글자</div>
-      <h1>한글 주석 한 줄에 파일이 깨지는 이유</h1>
-      <p class="ec-lede">영문 코드는 한 글자도 변하지 않았는데, 한글 주석만 물음표 같은 기호로 바뀌어 있습니다. 주석은 프로그램이 실행하지 않고 사람이 읽으라고 적어 두는 설명 줄입니다. 왜 한글에서만 그럴까요. 파일 안에 글자가 들어 있지 않기 때문입니다.</p>
-      <div class="ec-hook">
-        <p>2026년 10월 9일에 나온 Claude Code 2.1.296 의 수정 목록에서 이런 줄을 봤습니다. UTF-8 이 아닌 파일(Windows-1252, Shift-JIS, GBK)을 편집하면 <b>ASCII 가 아닌 글자가 전부 다른 기호로 바뀌어 저장되고 있었고 이제 그런 편집은 거부한다</b>는 내용입니다. ASCII 는 영어 알파벳과 숫자에만 번호를 붙인 오래된 약속입니다. 한글은 여기에 들어가지 않습니다.</p>
-        <p>고치지 않고 거부하는 쪽을 택한 이유를 이 글에서 다룹니다. 한 번 바뀌면 되돌릴 방법이 없기 때문입니다.</p>
+<div class="ub" data-ub>
+  <header class="ub-hero">
+    <div class="ub-wrap">
+      <span class="ub-tag">AI Shift Track · 바이트와 글자</span>
+      <h1>한글 주석만 깨진 파일 안에서는 무슨 일이 일어났을까요</h1>
+      <p class="ub-lede">코드는 멀쩡한데 한글 <b>주석</b>(사람이 읽으라고 코드 사이에 적어 둔 설명)만 이상한 기호로 바뀌어 있는 파일이 있습니다. 파일 안에는 글자가 아니라 <b>숫자</b>만 들어 있기 때문입니다. 아래 네 숫자는 그대로 두고, 읽는 약속만 바꿔 보세요.</p>
+      <div class="ub-lens" data-figure>
+        <div class="ub-lens-head">
+          <span>파일에 저장된 네 바이트 (그대로)</span>
+          <div class="ub-chips" role="group" aria-label="읽는 약속 고르기" data-ub-lenses></div>
+        </div>
+        <div class="ub-tape" aria-hidden="true">
+          <div class="ub-tile">C7<small>199</small></div><div class="ub-tile">D1<small>209</small></div><div class="ub-tile">B1<small>177</small></div><div class="ub-tile">DB<small>219</small></div>
+        </div>
+        <div class="ub-groups" data-ub-groups aria-live="polite"></div>
+        <p class="ub-verdict" data-ub-verdict></p>
+        <div class="ub-legend" data-ub-legend><span data-c="var(--ub-ok)" style="--c:var(--ub-ok)">제대로 읽음</span><span data-c="var(--ub-warn)" style="--c:var(--ub-warn)">오류 없이 엉뚱한 글자</span><span data-c="var(--ub-bad)" style="--c:var(--ub-bad)">규칙 위반(오류·�)</span></div>
       </div>
+      <p class="ub-cap">네 바이트는 "한글"을 CP949로 저장한 값입니다. CP949는 한국어 윈도우, Windows-1252는 서유럽, Shift-JIS는 일본어, GBK는 중국어(간체)에 쓰던 약속입니다. 다섯 결과는 모두 실제로 변환해 확인했습니다.</p>
     </div>
   </header>
 
-  <!-- ─────────── 대표 인터랙션 ─────────── -->
-  <div class="ec-wrap">
-    <div class="ec-fig" id="ec-swap">
-      <div class="ec-fig-head">
-        <h3>같은 네 개의 숫자를 다섯 가지 약속으로 읽어 보기</h3>
-        <p>
-          아래 숫자 네 개는 어떤 파일에 실제로 저장된 내용입니다. 오른쪽에서
-          <b>읽는 약속</b>을 바꿔 끼우면 같은 숫자가 다른 글자로 보입니다.
-          왼쪽 아래에서 <b>저장할 때 쓴 약속</b>을 바꾸면 파일에 든 숫자 자체가 달라집니다.
-        </p>
-      </div>
-
-      <div class="ec-swap-grid">
-        <div>
-          <div class="ec-label">파일에 저장된 숫자 (고정)</div>
-          <ul class="ec-bytes" id="ec-swap-bytes">
-            <li class="ec-byte">C7<span class="ec-byte-sub">199</span></li>
-            <li class="ec-byte">D1<span class="ec-byte-sub">209</span></li>
-            <li class="ec-byte">B1<span class="ec-byte-sub">177</span></li>
-            <li class="ec-byte">DB<span class="ec-byte-sub">219</span></li>
-          </ul>
-          <p class="ec-note" id="ec-swap-origin">
-            이 파일은 <b>CP949</b> 라는 약속으로 저장됐습니다. CP949 는 윈도우가 오랫동안 한글에 쓴 약속입니다.
-          </p>
-
-          <div class="ec-label" style="margin-top:22px">저장할 때 쓴 약속 바꾸기</div>
-          <fieldset class="ec-pick" id="ec-swap-src">
-            <button type="button" data-src="cp949" aria-pressed="true">CP949로 저장</button>
-            <button type="button" data-src="utf8" aria-pressed="false">UTF-8로 저장</button>
-          </fieldset>
-        </div>
-
-        <div>
-          <div class="ec-label">읽을 때 쓰는 약속</div>
-          <fieldset class="ec-pick" id="ec-swap-dec">
-            <button type="button" data-dec="cp949" aria-pressed="false">CP949</button>
-            <button type="button" data-dec="utf8" aria-pressed="true">UTF-8</button>
-            <button type="button" data-dec="cp1252" aria-pressed="false">Windows-1252</button>
-            <button type="button" data-dec="sjis" aria-pressed="false">Shift-JIS</button>
-            <button type="button" data-dec="gbk" aria-pressed="false">GBK</button>
-          </fieldset>
-          <div class="ec-screen">
-            <p class="ec-out" id="ec-swap-out"><span class="ec-fffd">&#xFFFD;</span>&#x471;<span class="ec-fffd">&#xFFFD;</span></p>
-            <p class="ec-status is-bad" id="ec-swap-status">
-              <b>오류가 났습니다</b>
-              이어지는 조각이 와야 할 자리에 맞지 않는 숫자가 왔습니다. 가운데 두 숫자만 우연히 규칙에 맞아 키릴 문자 &#x471; 이 됐습니다.
-            </p>
-          </div>
-          <p class="ec-note">
-            지금 보이는 것이 글자가 깨진 상태입니다. <b>CP949 를 눌러 보면</b> 같은 숫자가 제대로 된 글자로 돌아옵니다.
-            나머지 셋은 다른 나라 글자를 담으려고 만든 약속입니다. Shift-JIS 는 일본어, GBK 는 중국어 간체,
-            Windows-1252 는 서유럽 문자에 쓰던 것입니다.
-          </p>
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">숫자</span>
+      <h2>파일 안에는 0부터 255까지의 숫자만 들어 있습니다</h2>
+      <p>파일은 <b>바이트(byte)</b>가 줄지어 있는 것입니다. 바이트 하나는 전구 여덟 개가 켜지고 꺼진 상태라고 생각하면 됩니다. 여덟 개로 만들 수 있는 경우는 256가지라서, 바이트 하나에는 0~255 중 숫자 하나가 들어갑니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-bits" data-ub-bits role="group" aria-label="바이트 하나의 전구 여덟 개"></div>
+        <div class="ub-bitout">
+          <div>10진수<b data-ub-dec>65</b></div>
+          <div>16진수<b data-ub-hex>41</b></div>
+          <div>ASCII로 읽으면<b data-ub-chr>A</b></div>
         </div>
       </div>
-
-      <p class="ec-tally" id="ec-swap-tally">다섯 가지 약속으로 다 읽어 보면, <b>오류가 나는 것은 UTF-8 하나뿐입니다.</b> 제대로 읽는 CP949 를 빼면 남은 세 약속은 아무 불평 없이 엉뚱한 글자를 내놓습니다. 틀린 약속으로 읽어도 눈에 보이는 사고가 늘 나지는 않습니다.</p>
-      <p class="ec-note">
-        위 숫자와 결과는 모두 실제로 변환해 확인한 값입니다. 이 글의 모든 바이트값은 꾸며 낸 예시가 아닙니다.
-      </p>
-    </div>
-  </div>
-
-  <!-- ─────────── 1. 바이트 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap ec-narrow">
-      <h2>파일 안에 든 것은 글자가 아니라 숫자입니다</h2>
-      <p>먼저 <span class="ec-term">바이트</span>라는 말을 풀어야 합니다. 바이트는 컴퓨터가 정보를 담는 가장 흔한 칸 하나입니다. 그 칸에는 <b>0부터 255까지의 정수 하나</b>가 들어갑니다. 파일은 그 칸이 줄줄이 이어진 것입니다.</p>
-      <p>그러니까 메모장에 <code>한글</code>이라고 적고 저장했을 때, 파일 안에 한글 모양이 들어가지는 않습니다. 숫자 몇 개가 들어갑니다. 위 그림의 <code>199 209 177 219</code> 가 그 숫자입니다.</p>
-      <p>
-        프로그래머들은 이 숫자를 보통 <span class="ec-term">16진수</span>로 적습니다. 16진수는 0부터 9까지 쓴 다음
-        10부터 15까지를 A, B, C, D, E, F 로 적는 표기법입니다. 그래서 199는 <code>C7</code> 로,
-        219는 <code>DB</code> 로 적습니다. 두 자리로 딱 떨어져서 바이트를 적기에 편하기 때문입니다.
-        이 글에서 <code>C7</code> 같은 것이 나오면 그냥 0~255 사이의 숫자 하나라고 읽으면 됩니다.
-      </p>
-      <p>
-        16진수가 편한 이유가 하나 더 있습니다. <b>한 자리가 0과 1 네 개에 정확히 대응합니다.</b>
-        <code>C</code> 는 <code>1100</code>, <code>7</code> 은 <code>0111</code> 입니다.
-        그래서 <code>C7</code> 을 0과 1로 펼치면 둘을 이어 붙인 <code>11000111</code> 이 됩니다.
-        뒤에서 이 여덟 자리를 자주 보게 됩니다.
-      </p>
-      <p>파일에는 숫자만 있습니다. <b>그 숫자를 어떤 글자로 읽어야 하는지는 파일 안에 거의 적혀 있지 않습니다.</b> 프로그램이 짐작해야 합니다.</p>
+      <p class="ub-cap">전구를 눌러 켜고 꺼 보세요. 16진수는 0~9 다음에 A~F를 써서 바이트를 두 자리로 적는 방법입니다. 한 자리가 전구 네 개와 딱 맞아서, 41은 0100 0001입니다.</p>
+      <p>영어 알파벳과 숫자는 <b>ASCII</b>라는 오래된 약속으로 0~127 안에 번호가 정해져 있습니다. 그래서 영문 코드는 어떤 약속으로 읽어도 대개 똑같이 보입니다. 한글은 이 범위에 없습니다.</p>
     </div>
   </section>
 
-  <!-- ─────────── 2. 인코딩 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap ec-narrow">
-      <h2>숫자를 글자로 바꾸는 약속, 인코딩</h2>
-      <p>
-        숫자와 글자를 짝지어 둔 표가 있어야 숫자가 글자가 됩니다. 그 표를
-        <span class="ec-term">인코딩</span>이라고 부릅니다. 글자를 숫자로 바꿔 저장하는 일을 인코딩,
-        숫자를 다시 글자로 되돌려 읽는 일을 <span class="ec-term">디코딩</span>이라고 합니다.
-      </p>
-
-      <div class="ec-analogy">
-        <p>
-          <b>공연장 좌석표와 비슷합니다.</b> 표에 적힌 "3열 12번"은 그 자체로는 아무 자리도 아닙니다.
-          어느 공연장의 배치도를 보고 찾느냐에 따라 전혀 다른 자리가 됩니다. 숫자 <code>199</code> 도 마찬가지로,
-          CP949 배치도에서 찾으면 한글의 한 조각이고 다른 배치도에서 찾으면 다른 글자입니다.
-        </p>
-        <p class="ec-limit">다만 비유가 맞지 않는 데가 있습니다. 공연장 표에는 어느 공연장인지가 큼직하게 찍혀 있지만 파일에는 어느 배치도를 써야 하는지가 대개 적혀 있지 않습니다. 이 글에서 다루는 사고가 전부 여기서 시작합니다.</p>
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">약속</span>
+      <h2>글자를 숫자로 바꾸는 약속이 인코딩입니다</h2>
+      <p>먼저 글자마다 전 세계 공통 번호가 있습니다. 이것을 <b>유니코드(Unicode) 코드 포인트</b>라고 합니다. "한"은 <span class="hx">U+D55C</span>번입니다. 이 번호를 파일에 바이트로 어떻게 적을지 정한 규칙이 <b>인코딩(encoding)</b>입니다. 같은 학생 번호라도 반마다 좌석표가 다르면 앉는 자리가 다른 것처럼, 인코딩마다 적는 바이트가 다릅니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-chips" role="group" aria-label="글자 고르기" data-ub-chars></div>
+        <div class="ub-route">
+          <div class="ub-glyph" data-ub-glyph>한</div>
+          <div class="ub-cp">유니코드 번호<b data-ub-cp>U+D55C</b></div>
+          <div class="ub-road"><span>UTF-8</span><span data-ub-u8></span></div>
+          <div class="ub-road"><span>CP949</span><span data-ub-cp949></span></div>
+        </div>
       </div>
-
-      <p>약속은 여러 개가 있습니다. 나라마다 자기 글자를 집어넣으려고 따로 만들었기 때문입니다. <code>CP949</code> 는 윈도우가 한국어에 쓰던 약속입니다. <code>Shift-JIS</code> 는 일본어, <code>GBK</code> 는 중국어 간체, <code>Windows-1252</code> 는 서유럽 문자에 쓰던 약속입니다.</p>
-      <p>그러다 모든 나라의 글자에 번호를 하나씩 붙여 두자는 작업이 나왔습니다. 그것이 <span class="ec-term">유니코드</span>입니다. 유니코드는 글자마다 고유 번호를 정해 둔 목록입니다. 그 번호를 <span class="ec-term">코드 포인트</span>라고 하고 <code>U+D55C</code> 처럼 적습니다. <code>한</code> 의 코드 포인트가 <code>U+D55C</code> 입니다.</p>
-      <p>그런데 번호를 정한 것과 그 번호를 파일에 몇 바이트로 적을지는 다른 문제입니다. 그 적는 방식이 <span class="ec-term">UTF-8</span> 입니다. 오늘날 거의 모든 파일이 UTF-8 로 저장됩니다. 이 글의 사고는 UTF-8 이 아닌 옛 파일이 섞여 들어올 때 생깁니다.</p>
+      <p class="ub-cap">같은 "한"이 UTF-8로는 세 바이트, CP949로는 두 바이트가 됩니다. CP949는 한글 윈도우가 오래 쓴 약속이라 이모지 같은 글자는 아예 적지 못합니다.</p>
     </div>
   </section>
 
-  <!-- ─────────── 3. ASCII 공통 구간 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap">
-      <h2>영문 코드만 멀쩡해 보이는 이유</h2>
-      <div class="ec-narrow">
-        <p>여기까지 읽으면 한 가지가 이상합니다. 약속이 그렇게 여러 개라면 영문 코드도 진작 깨졌어야 하는데, 실제로는 한글 주석만 깨집니다. 왜 그럴까요.</p>
-        <p>위에 나온 약속들이 <b>영문·숫자·기호 구간에서는 번호를 똑같이 매겼기</b> 때문입니다. 그 공통 구간을 <span class="ec-term">ASCII</span> 라고 합니다. ASCII 는 영어 알파벳과 숫자, 기본 기호에만 번호를 붙인 오래된 약속입니다. 번호는 0부터 127까지입니다. 뒤에 나온 약속들은 이 128칸을 그대로 물려받고 그 위쪽 번호에 자기 나라 글자를 넣었습니다.</p>
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">UTF-8의 규칙</span>
+      <h2>UTF-8은 첫 바이트 앞자리에 글자 길이를 적어 둡니다</h2>
+      <p>UTF-8은 바이트마다 앞자리 몇 칸을 "표지"로 씁니다. 첫 바이트가 <span class="hx">0</span>으로 시작하면 1바이트, <span class="hx">110</span>이면 2바이트, <span class="hx">1110</span>이면 3바이트 글자입니다. 뒤따르는 바이트는 모두 <span class="hx">10</span>으로 시작합니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-chips" role="group" aria-label="글자 고르기" data-ub-chars2></div>
+        <div class="ub-strips" data-ub-strips></div>
+        <div class="ub-join" data-ub-join></div>
       </div>
-
-      <div class="ec-fig">
-        <div class="ec-fig-head">
-          <h3><code>print(x)</code> 는 어느 약속으로 저장해도 숫자가 같습니다</h3>
-          <p>같은 글자를 다섯 약속으로 저장해 바이트를 한 줄씩 적어 두었습니다. 색칠한 줄은 결과가 완전히 같은 줄입니다.</p>
-        </div>
-        <div class="ec-tablewrap">
-          <table>
-            <thead>
-              <tr><th>저장할 때 쓴 약속</th><th><code>print(x)</code> 의 바이트</th></tr>
-            </thead>
-            <tbody>
-              <tr class="is-same"><td class="ec-mono">UTF-8</td><td class="ec-mono">70 72 69 6E 74 28 78 29</td></tr>
-              <tr class="is-same"><td class="ec-mono">CP949</td><td class="ec-mono">70 72 69 6E 74 28 78 29</td></tr>
-              <tr class="is-same"><td class="ec-mono">Shift-JIS</td><td class="ec-mono">70 72 69 6E 74 28 78 29</td></tr>
-              <tr class="is-same"><td class="ec-mono">GBK</td><td class="ec-mono">70 72 69 6E 74 28 78 29</td></tr>
-              <tr class="is-same"><td class="ec-mono">Windows-1252</td><td class="ec-mono">70 72 69 6E 74 28 78 29</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="ec-note">
-          다섯 줄이 한 글자도 다르지 않습니다. 그래서 영문만 든 파일은 약속을 틀리게 짐작해도 멀쩡히 열립니다.
-          <b>파일이 어떤 약속으로 저장됐는지 틀린 채로도 몇 달이고 아무 문제가 없을 수 있습니다.</b>
-          한글이나 일본어가 한 줄 들어가는 순간에만 드러납니다.
-        </p>
-      </div>
-
-      <div class="ec-narrow">
-        <p>처음에 꺼낸 수정 내용도 같은 이야기입니다. 코드를 고치는 도구가 파일을 UTF-8 이라고 짐작하고 열어도, 영문 코드 부분은 아무 일도 없었던 것처럼 통과합니다. 주석에 적힌 한글만 망가집니다. 그래서 사고가 늦게 발견됩니다.</p>
-      </div>
+      <p class="ub-cap">검은 칸이 길이 표지, 초록 칸이 글자 번호입니다. 택배 상자에 "1/3"이라고 붙여 두면 나머지 두 상자를 기다리는 것과 같습니다. 초록 칸만 이어 붙이면 유니코드 번호가 됩니다.</p>
+      <p>이 표지 덕분에 UTF-8은 <b>틀린 바이트를 알아챌 수 있습니다.</b> <span class="hx">10</span>으로 시작해야 할 자리에 다른 바이트가 오면 바로 "UTF-8이 아니다"라고 판단합니다. 히어로에서 UTF-8만 빨간색이 나온 이유입니다.</p>
     </div>
   </section>
 
-  <!-- ─────────── 4. UTF-8 구조 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap">
-      <h2>첫 바이트에 글자 길이를 적어 두는 UTF-8</h2>
-      <div class="ec-narrow">
-        <p>
-          UTF-8 은 글자에 따라 쓰는 바이트 수가 다릅니다. 영문은 1바이트, 한글은 3바이트, 그림문자는 4바이트입니다.
-          길이가 글자마다 다르면 읽는 쪽이 헷갈릴 것 같은데, UTF-8 은 그 문제를
-          <b>첫 바이트에 길이를 적어 두는 방식</b>으로 풀었습니다.
-        </p>
-      </div>
-
-      <div class="ec-analogy ec-narrow">
-        <p>
-          <b>묶음 택배와 비슷합니다.</b> 상자 세 개로 온 짐이라면 첫 상자에 "이 짐은 상자 세 개짜리입니다"라고
-          적어 두는 것과 같습니다. 그러면 받는 쪽이 세 개를 모아서 하나로 풀어야 한다는 것을 압니다.
-        </p>
-        <p class="ec-limit">맞지 않는 부분은 이렇습니다. 택배는 송장을 상자 겉에 따로 붙이지만 UTF-8 은 숫자 자체의 앞부분 몇 자리를 길이 표시로 씁니다. 표시를 담을 별도의 칸이 없습니다.</p>
-      </div>
-
-      <div class="ec-fig" id="ec-bits">
-        <div class="ec-fig-head">
-          <h3>글자를 눌러 첫 바이트의 앞자리를 보기</h3>
-          <p>바이트 하나는 0과 1 여덟 개로 적을 수 있습니다. 그 여덟 자리 가운데 앞쪽 몇 개가 길이 표시입니다. 나머지에는 글자 번호가 들어갑니다.</p>
-        </div>
-        <fieldset class="ec-pick" id="ec-bit-pick">
-          <button type="button" data-ch="A" aria-pressed="true">A</button>
-          <button type="button" data-ch="e" aria-pressed="false">é</button>
-          <button type="button" data-ch="han" aria-pressed="false">한</button>
-          <button type="button" data-ch="emoji" aria-pressed="false">😀</button>
-        </fieldset>
-        <div class="ec-bitrow" id="ec-bit-row"></div>
-        <div class="ec-bitlegend">
-          <span class="ec-chip"><span class="ec-sw m"></span> 길이를 알려 주는 앞자리</span>
-          <span class="ec-chip"><span class="ec-sw p"></span> 글자 번호가 담기는 자리</span>
-        </div>
-        <p class="ec-bitwhy" id="ec-bit-why"></p>
-        <p class="ec-bitwhy">규칙은 이렇습니다. 첫 자리가 <code>0</code> 이면 1바이트 글자, <code>110</code> 으로 시작하면 2바이트, <code>1110</code> 이면 3바이트, <code>11110</code> 이면 4바이트입니다. 그리고 이어지는 바이트는 전부 <code>10</code> 으로 시작합니다. 이 <code>10</code> 이 "나는 앞 글자에 딸린 조각이다"라는 표시입니다.</p>
-        <p class="ec-bitwhy">이 표시가 왜 필요할까요. 덕분에 숫자 하나만 떼어 봐도 그것이 글자의 시작인지 꼬리인지 알 수 있습니다. 꼬리가 와야 할 자리에 시작이 오면 그 자리에서 바로 어긋났다고 판단할 수 있습니다. <b>이 표시가 있어서 UTF-8 만 틀린 것을 알아챕니다.</b> CP949 나 GBK 는 앞 숫자의 범위만 보고 두 개씩 끊어 읽어서 꼬리인지 시작인지를 구분할 표시가 아예 없습니다.</p>
-      </div>
-
-      <div class="ec-narrow">
-        <p>이 규칙 덕분에 UTF-8 은 <b>틀린 숫자를 알아차릴 수 있습니다.</b> 이어지는 조각이 와야 하는 자리에 <code>10</code> 으로 시작하지 않는 숫자가 오면, 그 파일은 UTF-8 이 아니라고 판단할 수 있습니다. 방금 본 다섯 약속 중 UTF-8 만 오류를 낸 것이 바로 이 때문입니다. 다른 약속에는 이런 검사 장치가 없어서 아무 숫자나 받아 자기 표에 있는 글자로 바꿔 놓습니다.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─────────── 5. 세 갈래 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap">
-      <h2>틀린 약속으로 읽을 때 일어나는 세 가지</h2>
-      <div class="ec-narrow">
-        <p>틀린 약속으로 읽으면 깨진 글자가 나온다고 뭉뚱그리기 쉽지만 실제로는 결말이 세 가지로 나뉩니다. 셋 중 둘은 프로그램이 오류조차 내지 않습니다.</p>
-      </div>
-
-      <div class="ec-forks">
-        <div class="ec-fork f1">
-          <h4>1. 오류를 내고 멈춘다</h4>
-          <p class="ec-fork-ex">오류</p>
-          <p>
-            UTF-8 규칙에 맞지 않는 숫자를 만나면 읽기를 실패합니다. CP949 로 저장한 한글을 UTF-8 로 읽으면
-            이어지는 조각이 와야 할 자리가 어긋났다는 오류가 납니다. 셋 중 <b>가장 나은 결말</b>입니다.
-            적어도 문제가 있다는 것을 알 수 있습니다.
-          </p>
-        </div>
-        <div class="ec-fork f2">
-          <h4>2. 못 읽은 자리를 기호로 메운다</h4>
-          <p class="ec-fork-ex"><span style="color:var(--ec-bad)">&#xFFFD;&#x442;&#x44A;&#xFFFD;</span></p>
-          <p>
-            오류를 내고 멈추는 대신 못 읽은 자리에 <code>&#xFFFD;</code> 를 끼워 넣고 계속 읽는 방식도 있습니다.
-            이 기호를 <span class="ec-term">교체 문자</span>라고 합니다. 유니코드가 "여기 뭐가 있었는지 모른다"를
-            나타내려고 따로 만들어 둔 글자입니다. 처음에 꺼낸 사고가 바로 이 방식에서 나왔습니다.
-          </p>
-        </div>
-        <div class="ec-fork f3">
-          <h4>3. 오류 없이 엉뚱한 글자가 된다</h4>
-          <p class="ec-fork-ex">茄臂</p>
-          <p>가장 고약한 결말입니다. 그 약속의 표에 그 숫자가 들어 있으면, 프로그램은 아무 문제가 없다고 보고 엉뚱한 글자를 내놓습니다. CP949 로 저장한 <code>한글</code>을 GBK 로 읽으면 중국어 글자 <code>茄臂</code> 가 됩니다. GBK 표에서는 그 자리에 이 한자가 앉아 있기 때문입니다. <b>프로그램은 이것을 오류로 보지 않고 성공으로 처리합니다.</b></p>
-        </div>
-      </div>
-
-      <div class="ec-fig">
-        <div class="ec-fig-head">
-          <h3>네 숫자를 UTF-8 규칙으로 왼쪽부터 읽어 가면</h3>
-          <p>앞 절의 규칙을 그대로 적용한 것입니다. 각 숫자의 앞자리가 무엇으로 시작하는지만 보면 됩니다.</p>
-        </div>
-        <div class="ec-tablewrap">
-          <table>
-            <thead>
-              <tr><th>숫자</th><th>8자리로 적으면</th><th>앞자리가 뜻하는 것</th><th>결과</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="ec-mono">C7</td><td class="ec-mono">11000111</td>
-                <td><code>110</code> 으로 시작 — 2바이트 글자의 첫 조각</td>
-                <td>다음에 <code>10</code> 이 와야 하는데 <code>D1</code> 은 <code>110</code> 으로 시작합니다. 어긋남</td>
-              </tr>
-              <tr>
-                <td class="ec-mono">D1</td><td class="ec-mono">11010001</td>
-                <td><code>110</code> 으로 시작 — 2바이트 글자의 첫 조각</td>
-                <td>다음 <code>B1</code> 이 <code>10</code> 으로 시작합니다. 맞음</td>
-              </tr>
-              <tr class="is-same">
-                <td class="ec-mono">B1</td><td class="ec-mono">10110001</td>
-                <td><code>10</code> 으로 시작 — 앞 글자에 딸린 조각</td>
-                <td><code>D1 B1</code> 이 한 글자로 완성됩니다 → <code>&#x471;</code></td>
-              </tr>
-              <tr>
-                <td class="ec-mono">DB</td><td class="ec-mono">11011011</td>
-                <td><code>110</code> 으로 시작 — 2바이트 글자의 첫 조각</td>
-                <td>뒤에 아무 숫자도 남지 않았습니다. 어긋남</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="ec-note">어긋난 두 자리는 교체 문자가 되고 맞은 한 자리는 글자 하나로 완성됩니다. 그래서 숫자 넷이 글자 셋이 됩니다.</p>
-      </div>
-
-      <div class="ec-narrow">
-        <h3 class="ec-sub">깨진 글자가 멀쩡한 글자일 때</h3>
-        <p>2번에도 한 겹이 더 있습니다. CP949 로 저장한 <code>한글</code> 의 네 숫자 <code>C7 D1 B1 DB</code> 를 UTF-8 로 읽으면 네 자리가 전부 교체 문자가 되지는 않습니다. 가운데 <code>D1 B1</code> 두 개가 <b>UTF-8 규칙에 우연히 들어맞습니다.</b> <code>D1</code> 은 <code>110</code> 으로 시작하니 2바이트 글자의 첫 조각입니다. <code>B1</code> 은 <code>10</code> 으로 시작하니 딸린 조각으로 딱 맞습니다.</p>
-        <p>번호를 구하는 방법도 앞에서 본 그대로입니다. 길이를 알려 주는 앞자리를 떼고 남은 자리만 이어 붙입니다. <code>D1</code> 은 <code>11010001</code> 이니 앞의 <code>110</code> 을 떼면 <code>10001</code> 이 남습니다. <code>B1</code> 은 <code>10110001</code> 이니 앞의 <code>10</code> 을 떼면 <code>110001</code> 이 남습니다. 둘을 이어 붙인 수가 글자 번호 <code>U+0471</code> 입니다.</p>
-        <p>그래서 그 두 숫자는 깨지지 않고 <code>&#x471;</code> 이라는 글자가 됩니다. 러시아어 등을 적는 키릴 문자 계열에 들어 있는 글자입니다. 결과는 <code><span style="color:var(--ec-bad)">&#xFFFD;</span>&#x471;<span style="color:var(--ec-bad)">&#xFFFD;</span></code> 이 되어 네 숫자가 세 글자로 줄어듭니다.</p>
-        <p>
-          <b>깨짐은 전부 깨지거나 전부 멀쩡하지 않습니다.</b> 틀린 약속은 어떤 자리는 버리고 어떤 자리는
-          그럴듯한 글자로 바꿉니다. 그래서 남은 글자를 보고 원래 무엇이었는지 짐작하기가 더 어려워집니다.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─────────── 6. 되돌릴 수 없음 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap">
-      <h2>저장하는 순간 사라지는 원본</h2>
-      <div class="ec-narrow">
-        <p>
-          지금까지는 읽기만 했습니다. 읽기만 하면 파일은 그대로이니 약속을 바꿔 다시 읽으면 됩니다.
-          문제는 <b>그 상태로 저장할 때</b> 생깁니다.
-        </p>
-      </div>
-
-      <div class="ec-fig" id="ec-destroy">
-        <div class="ec-fig-head">
-          <h3>CP949 파일을 UTF-8 이라고 짐작하고 고친 뒤 저장하기</h3>
-          <p>
-            한글 주석이 한 줄 든 짧은 파일입니다. 아래 버튼을 누르면 실제로 일어나는 변환이 그대로 적용됩니다.
-            되돌리는 버튼은 일부러 꺼 두었습니다.
-          </p>
-        </div>
-        <span class="ec-example-tag">설명을 위한 예시 파일</span>
-
-        <div class="ec-destroy-stage">
-          <div class="ec-stage-box">
-            <div class="ec-label" id="ec-d-label">지금 파일에 든 숫자 — 38바이트</div>
-            <ul class="ec-bytes" id="ec-d-bytes"></ul>
-          </div>
-          <div class="ec-stage-box">
-            <div class="ec-label">CP949 로 제대로 읽었을 때</div>
-            <p class="ec-filetext" id="ec-d-text"># 사용자 이름을 받는다
-name = input()</p>
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">틀린 약속</span>
+      <h2>틀린 약속으로 읽으면 결말은 세 갈래입니다</h2>
+      <p>프로그램이 약속을 잘못 고르면 셋 중 하나가 일어납니다. 오류가 <b>나지 않는</b> 쪽이 가장 위험합니다. 틀린 줄도 모르고 다음 단계로 넘어가기 때문입니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-tree">
+          <div class="ub-node">바이트 C7 D1 B1 DB 를 다른 약속으로 읽는다</div>
+          <div class="ub-stem"></div>
+          <div class="ub-node q">그 약속의 규칙에 맞는가?</div>
+          <div class="ub-stem"></div>
+          <div class="ub-branches">
+            <div class="ub-leaf" style="--c:var(--ub-bad)"><small>맞지 않음 · 엄격하게 읽기</small><b>멈추고 오류</b><span>⚠</span><i>UTF-8 strict</i><span class="ub-meter" style="--w:30%" title="위험도"></span></div>
+            <div class="ub-leaf" style="--c:var(--ub-bad)"><small>맞지 않음 · 너그럽게 읽기</small><b>�로 메우고 계속</b><span>�ѱ�</span><i>UTF-8 replace</i><span class="ub-meter" style="--w:62%" title="위험도"></span></div>
+            <div class="ub-leaf" style="--c:var(--ub-warn)"><small>우연히 맞음</small><b>조용히 엉뚱한 글자</b><span>茄臂 · ÇÑ±Û</span><i>GBK · Windows-1252</i><span class="ub-meter" style="--w:95%" title="위험도"></span></div>
           </div>
         </div>
-
-        <div class="ec-actions">
-          <button type="button" class="ec-btn" id="ec-d-go">UTF-8 이라고 짐작하고 열어서 저장</button>
-          <button type="button" class="ec-btn ec-btn-ghost" id="ec-d-undo" disabled>되돌리기</button>
-        </div>
-
-        <div class="ec-counts">
-          <div class="ec-count"><span>파일 크기</span><strong id="ec-d-size">38바이트</strong></div>
-          <div class="ec-count"><span>교체 문자 수</span><strong id="ec-d-fffd">0개</strong></div>
-          <div class="ec-count"><span>살아남은 한글</span><strong id="ec-d-alive">9자</strong></div>
-        </div>
-
-        <p class="ec-note" id="ec-d-note">
-          민트색으로 칠한 칸이 ASCII 구간입니다. 버튼을 누르면 무엇이 남고 무엇이 사라지는지 바이트 칸에서 바로 보입니다.
-        </p>
       </div>
-
-      <div class="ec-narrow">
-        <p>
-          버튼을 눌러 보면 파일이 38바이트에서 59바이트로 오히려 커집니다. 교체 문자
-          <code>&#xFFFD;</code> 하나가 UTF-8 로는 <code>EF BF BD</code> 세 바이트이기 때문입니다.
-          앞에서 본 규칙 그대로입니다. 교체 문자도 번호가 큰 글자라 3바이트를 씁니다.
-          원래 한 바이트였던 자리에 세 바이트가 들어앉습니다.
-        </p>
-        <p>그리고 <code>name = input()</code> 은 한 글자도 다치지 않습니다. ASCII 구간이라 어느 약속으로 읽어도 숫자가 같았습니다. <b>코드는 멀쩡하고 주석만 사라진 파일</b>이 남습니다.</p>
-
-        <div class="ec-analogy">
-          <p>
-            <b>받아쓰기와 비슷합니다.</b> 선생님이 읽어 주는 문장을 적다가 못 알아들은 낱말을
-            물음표로 적어 두고 넘어가는 것과 같습니다. 교체 문자가 그 물음표에 해당합니다.
-          </p>
-          <p class="ec-limit">다만 받아쓰기는 선생님에게 다시 물어볼 수 있습니다. 파일은 그렇지 않습니다. 저장하는 순간 원래 숫자가 덮여 없어지고 어떤 글자였는지는 파일 어디에도 남지 않습니다.</p>
-        </div>
-
-        <p><b>읽기는 짐작이지만 저장은 확정입니다.</b> 짐작으로 읽은 결과를 저장하면 짐작이 사실이 되어 버립니다. 원래 <code>C7</code> 이 무엇이었는지 알려 주는 단서가 파일에서 지워집니다.</p>
-      </div>
-
-      <h3 class="ec-sub ec-narrow">되돌릴 수 없다는 말의 뜻</h3>
-      <div class="ec-narrow">
-        <p>
-          "되돌릴 수 없다"는 말은 복구 도구가 아직 없다는 뜻이 아닙니다. 산수로 확인할 수 있습니다.
-          서로 다른 글자들이 저장을 거치면 <b>완전히 같은 숫자로 합쳐지기</b> 때문입니다.
-        </p>
-      </div>
-
-      <div class="ec-fig">
-        <div class="ec-fig-head">
-          <h3>서로 다른 일곱 글자가 저장 뒤에 같은 숫자가 됩니다</h3>
-          <p>
-            왼쪽은 CP949 로 저장했을 때 파일에 든 숫자입니다. 글자마다 다릅니다.
-            오른쪽은 UTF-8 로 짐작해 읽고 저장한 뒤의 숫자입니다.
-          </p>
-        </div>
-        <div class="ec-tablewrap">
-          <table>
-            <thead>
-              <tr><th>글자</th><th>CP949 로 저장한 숫자</th><th>UTF-8 로 짐작해 읽고 저장한 뒤</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>강</td><td class="ec-mono">B0 AD</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>물</td><td class="ec-mono">B9 B0</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>불</td><td class="ec-mono">BA D2</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>꽃</td><td class="ec-mono">B2 C9</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>별</td><td class="ec-mono">BA B0</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>집</td><td class="ec-mono">C1 FD</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-              <tr><td>밥</td><td class="ec-mono">B9 E4</td><td class="ec-mono">EF BF BD EF BF BD</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="ec-note">
-          왼쪽 일곱 줄은 서로 다른데 오른쪽 일곱 줄은 한 글자도 다르지 않습니다.
-          남은 숫자만 보고 원래가 <code>강</code> 이었는지 <code>물</code> 이었는지 고를 방법이 없습니다.
-        </p>
-      </div>
-
-      <div class="ec-narrow">
-        <p>
-          한글 글자는 모두 <b>11,172자</b>이고 전부 CP949 로 저장할 수 있습니다. 그 11,172자를 하나씩
-          이 과정에 넣어 보면 <b>결과가 398가지로 줄어듭니다.</b> 그중 가장 큰 덩어리 하나에
-          <b>7,221자</b>가 몰려 같은 숫자가 됩니다. 위 표의 일곱 글자가 그 덩어리에 들어 있습니다.
-        </p>
-        <p>왜 이렇게까지 줄어들까요. CP949 로 쓴 한글은 거의 다 두 숫자가 모두 UTF-8 규칙에 어긋나서 글자가 무엇이었든 <code>&#xFFFD;</code> 두 개로 똑같이 뭉개지기 때문입니다. 앞에서 본 <code>한글</code>처럼 가운데가 우연히 규칙에 맞아 글자 하나가 살아남는 경우도 있습니다. 그런 경우들이 나머지 397가지를 만듭니다. 어느 쪽이든 원래 글자 수보다 턱없이 적습니다.</p>
-        <p>11,172가지가 398가지로 줄어들었으니 사라진 정보는 되찾을 수 없습니다. 비둘기 11,172마리를 집 398칸에 넣으면 한 칸에 여러 마리가 들어가고 칸만 보고 어느 마리였는지는 알 수 없는 것과 같습니다. 백업이나 <b>버전 관리 기록</b>(파일을 고칠 때마다 이전 상태를 따로 저장해 두는 기록)이 없으면, 사람이 문맥으로 짐작해 다시 써 넣는 수밖에 없습니다.</p>
-      </div>
+      <p class="ub-cap">카드 아래 막대는 위험도입니다. 길수록 문제를 알아채기 어렵습니다.</p>
+      <p><span class="hx">�</span>는 <b>교체 문자(replacement character)</b>라는 진짜 글자입니다. "여기 뭔가 있었는데 읽지 못했다"는 표시로 쓰고, 유니코드 번호는 <span class="hx">U+FFFD</span>입니다.</p>
     </div>
   </section>
 
-  <!-- ─────────── 7. 2026년 ─────────── -->
-  <section class="ec-section">
-    <div class="ec-wrap ec-narrow">
-      <h2>편집을 거부하는 쪽으로 바뀐 2026년</h2>
-      <p>처음에 꺼낸 수정으로 돌아가겠습니다. 2026년 10월 9일 Claude Code 2.1.296 은 이 상황에서 <b>편집을 거부하도록</b> 바뀌었습니다. 고쳐서 저장하지 않고 아예 하지 않는 쪽입니다.</p>
-      <p>규칙을 알고 보면 다른 선택이 마땅치 않습니다. 도구가 파일을 열었을 때 원래 약속이 무엇이었는지는 파일에 적혀 있지 않습니다. CP949 인지 Shift-JIS 인지 GBK 인지 짐작해야 하고 그 짐작이 틀린 채로 저장하면 원본이 사라집니다. 사용자에게 돌려주고 멈추는 것이 되돌릴 수 없는 저장보다 낫습니다.</p>
-      <p>
-        같은 릴리스에 글자 문제가 두 건 더 들어 있습니다. 유니코드에는
-        <code>U+2028</code>, <code>U+2029</code> 라는 줄 구분 글자가 있습니다. 눈에는 보이지 않지만
-        줄을 나누는 글자입니다. 이것이 든 텍스트가 기록 파일에서 사라지거나, 지워야 할 기록이
-        남아 있던 문제를 같이 고쳤습니다.
-      </p>
-      <p>세 건이 다른 기능에서 나왔는데 뿌리는 하나입니다. <b>글자는 보이는 것보다 복잡하고 바이트를 글자로 바꾸는 자리마다 짐작이 들어갑니다.</b> 그 짐작이 어긋나는 자리에서 사고가 납니다.</p>
-      <h3 class="ec-sub">여기까지 읽고 손에 남는 것</h3>
-      <p>파일에는 숫자만 있고 약속은 적혀 있지 않습니다. 영문 구간은 약속이 달라도 숫자가 같아서 약속을 틀리게 짐작해도 한참 동안 멀쩡해 보입니다. 한글이 들어가는 자리에서만 드러나고 틀린 약속은 오류를 내거나 기호로 메우거나 엉뚱한 글자로 성공합니다. 그리고 그 결과를 저장하면 원본이 사라집니다.</p>
-      <p>그래서 오래된 파일을 열었을 때 글자가 이상하면, 고쳐서 저장하기 전에 먼저 <b>어떤 약속으로 저장된 파일인지</b> 확인하는 편이 안전합니다. 실제로는 더 복잡합니다. 약속을 자동으로 알아내려는 도구도 있고 파일 맨 앞에 표시를 붙이는 방식도 있지만 어느 쪽도 확실하지는 않습니다.</p>
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">저장</span>
+      <h2>깨진 채로 저장하면 원래 숫자가 지워집니다</h2>
+      <p>읽기는 짐작이지만 저장은 확정입니다. CP949로 저장된 파일을 UTF-8로 짐작해 열고 그대로 저장하면, 읽지 못한 자리가 모두 <span class="hx">�</span>의 바이트 <span class="hx">EF BF BD</span>로 덮입니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-save-top">
+          <button class="ub-btn" type="button" data-ub-save>UTF-8로 짐작해 열고 저장하기</button>
+          <span class="ub-stat" data-ub-stat></span>
+        </div>
+        <div class="ub-text" data-ub-text></div>
+        <div class="ub-bytes" data-ub-bytes></div>
+        <div class="ub-legend" style="justify-content:flex-start"><span style="--c:var(--ub-ok)">영문·기호(ASCII)</span><span style="--c:var(--ub-warn)" data-ub-before>한글(CP949)</span><span style="--c:var(--ub-bad)" data-ub-after hidden>교체 문자 EF BF BD</span><span style="--c:var(--ub-odd)" data-ub-after hidden>우연히 살아남은 엉뚱한 글자</span></div>
+      </div>
+      <p class="ub-cap">영문 코드 <span class="hx">name = input()</span>은 한 바이트도 바뀌지 않습니다. 그래서 주석만 사라집니다.</p>
+      <details><summary>파일이 왜 오히려 커질까요</summary><p>교체 문자 �는 번호가 큰 글자라 UTF-8로 3바이트를 씁니다. 한 바이트였던 자리에 세 바이트가 들어가서 31바이트 파일이 47바이트가 됩니다.</p></details>
     </div>
   </section>
 
-  <!-- ─────────── 참고 자료 ─────────── -->
-  <section class="ec-refs">
-    <div class="ec-wrap ec-narrow">
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">되돌리기</span>
+      <h2>되돌릴 수 없는 이유는 산수로 보입니다</h2>
+      <p>서로 다른 글자가 저장 뒤에 <b>똑같은 바이트</b>가 되기 때문입니다. 아래 일곱 글자는 CP949로는 모두 다른 숫자인데, UTF-8로 짐작해 저장하면 한 가지 결과로 합쳐집니다.</p>
+      <div class="ub-fig" data-figure>
+        <svg class="ub-pigeon" data-ub-pigeon viewBox="0 0 640 330" role="img" aria-label="서로 다른 한글 일곱 글자가 저장 뒤 같은 바이트 하나로 모이는 그림"></svg>
+        <div class="ub-buckets" data-ub-buckets>
+          <span style="width:64.6%;background:var(--ub-bad)">7,221자 → �� 하나</span>
+          <span style="width:35.4%;background:var(--fg-alternative)">3,951자 → 397가지</span>
+        </div>
+        <div class="ub-bucket-lbl"><span>한글 음절 11,172자 전부를 넣어 본 결과</span><span>남은 결과는 398가지</span></div>
+      </div>
+      <p class="ub-cap">비둘기 11,172마리를 집 398칸에 넣으면 한 칸에 여러 마리가 들어갑니다. 칸만 보고 어느 비둘기였는지는 알 수 없습니다.</p>
+      <p>남은 바이트만 보고 원래 "강"이었는지 "물"이었는지 고를 방법이 없습니다. 백업이나 Git 같은 버전 기록이 없으면 사람이 문맥으로 다시 써넣는 수밖에 없습니다.</p>
+    </div>
+  </section>
+
+  <section class="ub-sec">
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">요즘 도구</span>
+      <h2>그래서 Claude Code는 고치지 않고 멈추는 쪽을 골랐습니다</h2>
+      <p>Claude Code 2.1.296의 변경 기록에는 UTF-8이 아닌 파일을 편집할 때 ASCII가 아닌 글자를 모두 바꿔 버리던 문제를 고쳤고 이제 그런 편집은 거부한다는 항목이 있습니다. 파일에는 원래 약속이 적혀 있지 않으니, 짐작으로 저장하느니 멈추는 편이 안전합니다.</p>
+      <div class="ub-fig" data-figure>
+        <div class="ub-paths">
+          <div class="ub-path"><b>예전</b><div class="ub-steps"><span>파일 열기</span><i>→</i><span>UTF-8로 짐작</span><i>→</i><span>편집</span><i>→</i><span>저장</span><i>→</i><span class="end" style="--c:var(--ub-bad)">한글이 �로 바뀜</span></div></div>
+          <div class="ub-path"><b>2.1.296부터</b><div class="ub-steps"><span>파일 열기</span><i>→</i><span>UTF-8 아님을 감지</span><i>→</i><span>편집 거부</span><i>→</i><span class="end" style="--c:var(--ub-ok)">원본 그대로</span></div></div>
+        </div>
+      </div>
+      <p class="ub-cap">UTF-8의 길이 표지 덕분에 "UTF-8이 아니다"는 알아챌 수 있습니다. 하지만 "그럼 무엇인가"는 파일만 보고 확정할 수 없습니다.</p>
+    </div>
+  </section>
+
+  <section class="ub-sec" data-text-only>
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">정리</span>
+      <h2>한 문장으로 줄이면</h2>
+      <p>파일에는 숫자만 있고, 숫자를 글자로 바꾸는 약속은 파일 밖에 있습니다. 약속을 잘못 고르면 글자가 깨지고 그 상태로 저장하면 원래 숫자가 지워져 되돌릴 수 없습니다. 새 파일은 처음부터 UTF-8로 저장하는 것이 가장 확실한 예방입니다.</p>
+    </div>
+  </section>
+
+  <section class="ub-sec" data-text-only>
+    <div class="ub-wrap ub-col">
+      <span class="ub-tag">참고</span>
       <h2>참고 자료</h2>
-      <ul>
-        <li><a href="https://code.claude.com/docs/en/changelog" target="_blank" rel="noopener">Claude Code changelog 2.1.296 (2026-10-09)</a> — UTF-8 이 아닌 파일의 편집을 거부하도록 바뀐 항목, <code>U+2028</code>·<code>U+2029</code> 관련 두 항목</li>
-        <li><a href="https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md" target="_blank" rel="noopener">anthropics/claude-code CHANGELOG.md</a> — 같은 항목의 원본 텍스트</li>
-        <li><a href="https://registry.npmjs.org/@anthropic-ai/claude-code" target="_blank" rel="noopener">npm registry, @anthropic-ai/claude-code</a> — 2.1.296 의 발행 시각 확인</li>
-        <li>이 글에 나오는 모든 바이트값과 디코딩 결과는 직접 변환해 확인한 값입니다. <code>한</code> 의 UTF-8 <code>ED 95 9C</code>, CP949 <code>C7 D1</code>, <code>C7 D1 B1 DB</code> 를 다섯 약속으로 읽은 결과, 교체 문자가 <code>EF BF BD</code> 로 저장되는 것까지 모두 포함합니다.</li>
-        <li>한글 11,172자가 398가지로 줄고 그중 7,221자가 한 덩어리에 몰린다는 수치도 11,172자를 전부 변환해 센 값입니다.</li>
+      <ul class="ub-refs">
+        <li><a href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md" target="_blank" rel="noopener">anthropics/claude-code CHANGELOG — 2.1.296 항목</a></li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc3629" target="_blank" rel="noopener">RFC 3629, UTF-8, a transformation format of ISO 10646</a></li>
+        <li><a href="https://www.unicode.org/charts/PDF/UFFF0.pdf" target="_blank" rel="noopener">Unicode, Specials (U+FFF0–U+FFFF): U+FFFD REPLACEMENT CHARACTER</a></li>
+        <li><a href="https://github.com/vishnuharidas/utf8-playground" target="_blank" rel="noopener">UTF-8 Playground: 비트를 눌러 글자를 바꾸는 설명 방식</a></li>
       </ul>
+      <p class="ub-cap">이 글의 바이트값·디코딩 결과·11,172→398 수치는 Python의 cp949·utf-8 코덱으로 직접 변환해 확인했습니다.</p>
     </div>
   </section>
-
-</section>
+</div>
 
 <script>
-(function () {
-  var root = (window.postPage && window.postPage.root) || document;
-  var signal = window.postPage && window.postPage.signal;
-  function on(el, ev, fn) {
-    if (!el) return;
-    if (signal) el.addEventListener(ev, fn, { signal: signal });
-    else el.addEventListener(ev, fn);
-  }
-  function q(sel) { return root.querySelector(sel); }
-  function qa(sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); }
+(() => {
+  const { root, signal } = window.postPage;
+  const el = root.querySelector("[data-ub]");
+  if (!el) return;
+  const $ = (s) => el.querySelector(s);
+  const OK = "var(--ub-ok)", WARN = "var(--ub-warn)", BAD = "var(--ub-bad)";
 
-  var FFFD = "�";
-
-  /* ───────── 1. 디코더 바꿔 끼우기 ───────── */
-  var SRC = {
-    cp949: {
-      bytes: ["C7", "D1", "B1", "DB"],
-      dec: [199, 209, 177, 219],
-      origin: "이 파일은 <b>CP949</b> 라는 약속으로 저장됐습니다. CP949 는 윈도우가 오랫동안 한글에 쓴 약속입니다.",
-      out: {
-        cp949:  { text: "한글", kind: "ok" },
-        utf8:   { text: FFFD + "ѱ" + FFFD, kind: "bad", why: "이어지는 조각이 와야 할 자리에 맞지 않는 숫자가 왔습니다. 가운데 두 숫자만 우연히 규칙에 맞아 키릴 문자 ѱ 이 됐습니다." },
-        cp1252: { text: "ÇÑ±Û", kind: "wrong" },
-        sjis:   { text: "ﾇﾑｱﾛ", kind: "wrong" },
-        gbk:    { text: "茄臂", kind: "wrong" }
-      }
-    },
-    utf8: {
-      bytes: ["ED", "95", "9C", "EA", "B8", "80"],
-      dec: [237, 149, 156, 234, 184, 128],
-      origin: "이 파일은 <b>UTF-8</b> 로 저장됐습니다. 오늘날 거의 모든 파일이 쓰는 약속입니다. 한글 한 자가 3바이트라 숫자가 여섯 개입니다.",
-      out: {
-        utf8:   { text: "한글", kind: "ok" },
-        cp949:  { text: FFFD + "븳湲" + FFFD, kind: "bad", why: "CP949 표에 없는 조합을 만나 읽기를 실패했습니다. 못 읽은 자리는 교체 문자로 메웠습니다." },
-        cp1252: { text: "í•œê¸€", kind: "wrong" },
-        sjis:   { text: FFFD + "復" + FFFD + "ｸ" + FFFD, kind: "bad", why: "Shift-JIS 표에 없는 조합이 섞여 일부만 글자가 됐습니다." },
-        gbk:    { text: "頃滉竴", kind: "wrong" }
-      }
-    }
+  // ── 히어로: 같은 네 바이트, 다섯 가지 약속 ─────────────────────
+  const LENSES = {
+    "CP949": { g: [[2, "한", OK], [2, "글", OK]], v: "저장할 때 쓴 약속입니다. 두 바이트씩 묶어 \"한글\"이 됩니다." },
+    "UTF-8": { g: [[1, "�", BAD, "짝 없는 시작"], [2, "ѱ", WARN], [1, "�", BAD, "짝 없는 시작"]], v: "C7 은 2바이트 글자의 시작인데 짝이 오지 않아 �가 되고 D1 B1 만 우연히 규칙에 맞아 옛 러시아 글자 ѱ가 됩니다." },
+    "Windows-1252": { g: [[1, "Ç", WARN], [1, "Ñ", WARN], [1, "±", WARN], [1, "Û", WARN]], v: "한 바이트에 한 글자씩. 오류 없이 서유럽 글자·기호 네 개가 나옵니다." },
+    "Shift-JIS": { g: [[1, "ﾇ", WARN], [1, "ﾑ", WARN], [1, "ｱ", WARN], [1, "ﾛ", WARN]], v: "일본어 약속은 이 네 바이트를 반각 가타카나 네 글자로 읽습니다." },
+    "GBK": { g: [[2, "茄", WARN], [2, "臂", WARN]], v: "중국어 약속도 두 바이트씩 묶지만, 표가 달라 전혀 다른 한자가 됩니다." },
   };
-  var DEC_NAME = { cp949: "CP949", utf8: "UTF-8", cp1252: "Windows-1252", sjis: "Shift-JIS", gbk: "GBK" };
-  var state = { src: "cp949", dec: "utf8" };
-
-  function renderSwap() {
-    var s = SRC[state.src];
-    var r = s.out[state.dec];
-    var bytesEl = q("#ec-swap-bytes");
-    var outEl = q("#ec-swap-out");
-    var statEl = q("#ec-swap-status");
-    var originEl = q("#ec-swap-origin");
-    var tallyEl = q("#ec-swap-tally");
-    if (!bytesEl || !outEl || !statEl) return;
-
-    bytesEl.innerHTML = s.bytes.map(function (b, i) {
-      return '<li class="ec-byte">' + b + '<span class="ec-byte-sub">' + s.dec[i] + "</span></li>";
-    }).join("");
-    if (originEl) originEl.innerHTML = s.origin;
-
-    outEl.innerHTML = String(r.text).split("").map(function (ch) {
-      return ch === FFFD ? '<span class="ec-fffd">' + FFFD + "</span>" : ch;
-    }).join("");
-
-    var head, body;
-    if (r.kind === "ok") {
-      head = "제대로 읽혔습니다";
-      body = "저장할 때 쓴 약속과 읽을 때 쓴 약속이 같습니다.";
-    } else if (r.kind === "bad") {
-      head = "오류가 났습니다";
-      body = r.why || "";
-    } else {
-      head = "오류 없이 엉뚱한 글자가 됐습니다";
-      body = DEC_NAME[state.dec] + "표에 그 숫자들이 모두 들어 있어서 프로그램은 아무 문제가 없다고 보고 이 글자를 내놓습니다. 가장 알아차리기 어려운 경우입니다.";
-    }
-    statEl.className = "ec-status " + (r.kind === "ok" ? "is-ok" : r.kind === "bad" ? "is-bad" : "is-wrong");
-    statEl.innerHTML = "<b>" + head + "</b>" + body;
-
-    if (tallyEl) {
-      var KO = ["", "한", "두", "세", "네", "다섯"];
-      var keys = Object.keys(s.out);
-      var errs = keys.filter(function (k) { return s.out[k].kind === "bad"; });
-      var wrong = keys.filter(function (k) { return s.out[k].kind === "wrong"; });
-      var right = keys.filter(function (k) { return s.out[k].kind === "ok"; });
-      tallyEl.innerHTML =
-        "다섯 가지 약속으로 다 읽어 보면, 오류가 나는 것은 <b>" +
-        errs.map(function (k) { return DEC_NAME[k]; }).join(", ") +
-        "</b> 입니다. 제대로 읽는 " + right.map(function (k) { return DEC_NAME[k]; }).join(", ") +
-        " 하나를 빼면, 남은 <b>" + (KO[wrong.length] || wrong.length) + " 약속</b>은 아무 불평 없이 " +
-        "엉뚱한 글자를 내놓습니다. 틀린 약속으로 읽는 일이 늘 눈에 보이는 사고로 나타나지는 않는다는 뜻입니다.";
-    }
-
-    qa("#ec-swap-src button").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.src === state.src));
-    });
-    qa("#ec-swap-dec button").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.dec === state.dec));
-    });
-  }
-
-  qa("#ec-swap-src button").forEach(function (b) {
-    on(b, "click", function () { state.src = b.dataset.src; renderSwap(); });
-  });
-  qa("#ec-swap-dec button").forEach(function (b) {
-    on(b, "click", function () { state.dec = b.dataset.dec; renderSwap(); });
-  });
-  if (q("#ec-swap-bytes")) renderSwap();
-
-  /* ───────── 2. 비트 탐색기 ───────── */
-  var CH = {
-    A:     { label: "A", cp: "U+0041", bytes: [0x41], why: "영문 <code>A</code> 는 1바이트입니다. 첫 자리가 <code>0</code> 이면 그 바이트 하나로 글자가 끝난다는 표시입니다. 남은 일곱 자리에 글자 번호가 들어갑니다. ASCII 와 숫자가 같은 구간이 바로 이 1바이트 글자들입니다." },
-    e:     { label: "é", cp: "U+00E9", bytes: [0xC3, 0xA9], why: "<code>é</code> 는 2바이트입니다. 첫 바이트가 <code>110</code> 으로 시작해 상자가 둘이라고 알려 주고 둘째 바이트는 <code>10</code> 으로 시작해 딸린 조각임을 밝힙니다." },
-    han:   { label: "한", cp: "U+D55C", bytes: [0xED, 0x95, 0x9C], why: "한글 <code>한</code> 은 3바이트입니다. 첫 바이트가 <code>1110</code> 으로 시작하고 뒤의 두 바이트가 <code>10</code> 으로 시작합니다. CP949 에서는 같은 글자가 2바이트라서 같은 글자인데도 파일에 들어가는 숫자가 다릅니다." },
-    emoji: { label: "😀", cp: "U+1F600", bytes: [0xF0, 0x9F, 0x98, 0x80], why: "그림문자는 4바이트입니다. 첫 바이트가 <code>11110</code> 으로 시작합니다. 글자 번호가 커질수록 쓰는 바이트가 늘어나는 구조입니다." }
+  const lensBox = $("[data-ub-lenses]"), groups = $("[data-ub-groups]"), verdict = $("[data-ub-verdict]");
+  const legend = [...el.querySelectorAll("[data-ub-legend] span")];
+  const showLens = (name) => {
+    [...lensBox.children].forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === name)));
+    groups.innerHTML = LENSES[name].g.map(([n, ch, c, note]) => `<div class="ub-group" style="grid-column:span ${n};--c:${c}"><i></i><b>${ch}</b><em>${note || n + "바이트"}</em></div>`).join("");
+    const used = new Set(LENSES[name].g.map((g) => g[2]));
+    legend.forEach((sp) => (sp.style.display = used.has(sp.dataset.c) ? "" : "none"));
+    verdict.textContent = LENSES[name].v;
   };
-
-  function bits(n) {
-    var s = n.toString(2);
-    while (s.length < 8) s = "0" + s;
-    return s;
-  }
-  function markerLen(b, isFirst) {
-    if (!isFirst) return 2;
-    if (b < 0x80) return 1;
-    if (b >= 0xF0) return 5;
-    if (b >= 0xE0) return 4;
-    return 3;
-  }
-  function renderBits(key) {
-    var c = CH[key];
-    var rowEl = q("#ec-bit-row");
-    var whyEl = q("#ec-bit-why");
-    if (!c || !rowEl) return;
-    rowEl.innerHTML = c.bytes.map(function (b, i) {
-      var s = bits(b);
-      var m = markerLen(b, i === 0);
-      var cells = s.split("").map(function (bit, j) {
-        return '<span class="ec-bit ' + (j < m ? "is-marker" : "is-payload") + '">' + bit + "</span>";
-      }).join("");
-      return '<span class="ec-bitbyte">' + cells + "</span>";
-    }).join("");
-    if (whyEl) {
-      whyEl.innerHTML =
-        "<b>" + c.label + "</b> — 유니코드 번호 <code>" + c.cp + "</code>, UTF-8 로 " +
-        c.bytes.length + "바이트 <code>" +
-        c.bytes.map(function (b) { return ("0" + b.toString(16).toUpperCase()).slice(-2); }).join(" ") +
-        "</code>. " + c.why;
-    }
-    qa("#ec-bit-pick button").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.ch === key));
-    });
-  }
-  qa("#ec-bit-pick button").forEach(function (b) {
-    on(b, "click", function () { renderBits(b.dataset.ch); });
+  Object.keys(LENSES).forEach((name) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = name;
+    b.addEventListener("click", () => showLens(name), { signal }); lensBox.appendChild(b);
   });
-  if (q("#ec-bit-row")) renderBits("A");
 
-  /* ───────── 3. 되돌릴 수 없는 저장 ───────── */
-  var BEFORE = [
-    0x23, 0x20, 0xBB, 0xE7, 0xBF, 0xEB, 0xC0, 0xDA, 0x20, 0xC0, 0xCC, 0xB8, 0xA7, 0xC0, 0xBB, 0x20,
-    0xB9, 0xDE, 0xB4, 0xC2, 0xB4, 0xD9, 0x0A, 0x6E, 0x61, 0x6D, 0x65, 0x20, 0x3D, 0x20, 0x69, 0x6E,
-    0x70, 0x75, 0x74, 0x28, 0x29, 0x0A
-  ];
-  var AFTER = [
-    0x23, 0x20, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF,
-    0xBD, 0x20, 0xEF, 0xBF, 0xBD, 0xCC, 0xB8, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD,
-    0x20, 0xEF, 0xBF, 0xBD, 0xDE, 0xB4, 0xC2, 0xB4, 0xEF, 0xBF, 0xBD, 0x0A, 0x6E, 0x61, 0x6D, 0x65,
-    0x20, 0x3D, 0x20, 0x69, 0x6E, 0x70, 0x75, 0x74, 0x28, 0x29, 0x0A
-  ];
-  var AFTER_TEXT = "# " + FFFD + FFFD + FFFD + FFFD + FFFD + " " + FFFD + "̸" + FFFD + FFFD + FFFD +
-    " " + FFFD + "޴´" + FFFD + "\nname = input()";
+  // ── 1. 전구 여덟 개 ─────────────────────────────────────────
+  const bitsBox = $("[data-ub-bits]");
+  let val = 65;
+  const drawBits = () => {
+    [...bitsBox.children].forEach((b, i) => b.setAttribute("aria-pressed", String(!!(val & (1 << (7 - i))))));
+    $("[data-ub-dec]").textContent = val;
+    $("[data-ub-hex]").textContent = val.toString(16).toUpperCase().padStart(2, "0");
+    $("[data-ub-chr]").textContent = val >= 33 && val <= 126 ? String.fromCharCode(val) : val === 32 ? "공백" : val < 128 ? "제어 문자" : "ASCII 밖";
+  };
+  for (let i = 0; i < 8; i++) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "ub-bit"; b.setAttribute("aria-label", `${8 - i}번째 비트`);
+    b.innerHTML = `<span>${1 << (7 - i)}</span>`;
+    b.addEventListener("click", () => { val ^= 1 << (7 - i); drawBits(); }, { signal });
+    bitsBox.appendChild(b);
+  }
 
-  function hex(b) { return ("0" + b.toString(16).toUpperCase()).slice(-2); }
-  function drawBytes(arr, dead) {
-    var el = q("#ec-d-bytes");
-    if (!el) return;
-    el.innerHTML = arr.map(function (b) {
-      var cls = "ec-byte";
-      if (b < 0x80) cls += " is-ascii";
-      else if (dead && b === 0xEF) cls += " is-dead";
-      else if (dead && (b === 0xBF || b === 0xBD)) cls += " is-dead";
-      return '<li class="' + cls + '">' + hex(b) + "</li>";
+  // ── 2·3. 글자 → 번호 → 바이트, 비트 띠 ──────────────────────────
+  const CHARS = [
+    { ch: "A", cp: 0x41, u8: [0x41], cp949: [0x41] },
+    { ch: "é", cp: 0xe9, u8: [0xc3, 0xa9], cp949: null },
+    { ch: "한", cp: 0xd55c, u8: [0xed, 0x95, 0x9c], cp949: [0xc7, 0xd1] },
+    { ch: "😀", cp: 0x1f600, u8: [0xf0, 0x9f, 0x98, 0x80], cp949: null },
+  ];
+  const hex = (n) => n.toString(16).toUpperCase().padStart(2, "0");
+  const tiles = (arr, cls) => arr.map((n) => `<span class="ub-tile" style="background:${cls}">${hex(n)}</span>`).join("");
+  const charsA = $("[data-ub-chars]"), charsB = $("[data-ub-chars2]");
+  const showChar = (i) => {
+    const c = CHARS[i];
+    [charsA, charsB].forEach((box) => [...box.children].forEach((b, j) => b.setAttribute("aria-pressed", String(j === i))));
+    $("[data-ub-glyph]").textContent = c.ch;
+    $("[data-ub-cp]").textContent = "U+" + c.cp.toString(16).toUpperCase().padStart(4, "0");
+    $("[data-ub-u8]").innerHTML = tiles(c.u8, "var(--ub-ascii)") + ` <span class="ub-stat">${c.u8.length}바이트</span>`;
+    $("[data-ub-cp949]").innerHTML = c.cp949 ? tiles(c.cp949, "var(--ub-ko)") + ` <span class="ub-stat">${c.cp949.length}바이트</span>` : `<span class="none">이 약속에는 없는 글자</span>`;
+    const n = c.u8.length, head = (k) => (k === 0 ? (n === 1 ? 1 : n + 1) : 2);
+    const role = (k) => (k === 0 ? (n === 1 ? "1바이트 글자" : `${n}바이트 글자의 첫 조각`) : "이어지는 조각");
+    $("[data-ub-strips]").innerHTML = c.u8.map((byte, k) => {
+      const bits = byte.toString(2).padStart(8, "0"), h = head(k);
+      return `<div class="ub-strip"><span>${hex(byte)}</span>${[...bits].map((d, j) => `<span class="ub-cell ${j < h ? "head" : "data"}">${d}</span>`).join("")}<em>${role(k)}</em></div>`;
     }).join("");
-  }
+    const data = c.u8.map((byte, k) => byte.toString(2).padStart(8, "0").slice(head(k))).join("");
+    $("[data-ub-join]").innerHTML = `초록 칸 이어 붙이기: <b>${data}</b> = ${parseInt(data, 2)} = U+${c.cp.toString(16).toUpperCase().padStart(4, "0")}`;
+  };
+  CHARS.forEach((c, i) => [charsA, charsB].forEach((box) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = c.ch;
+    b.addEventListener("click", () => showChar(i), { signal }); box.appendChild(b);
+  }));
 
-  function setStage(done) {
-    var text = q("#ec-d-text");
-    var label = q("#ec-d-label");
-    var note = q("#ec-d-note");
-    drawBytes(done ? AFTER : BEFORE, done);
-    if (label) label.textContent = "지금 파일에 든 숫자 — " + (done ? AFTER.length : BEFORE.length) + "바이트";
-    if (text) {
-      text.innerHTML = (done ? AFTER_TEXT : "# 사용자 이름을 받는다\nname = input()")
-        .split("").map(function (ch) {
-          return ch === FFFD ? '<span class="ec-fffd">' + FFFD + "</span>" : ch;
-        }).join("");
-    }
-    var size = q("#ec-d-size"), f = q("#ec-d-fffd"), alive = q("#ec-d-alive");
-    if (size) size.textContent = (done ? AFTER.length : BEFORE.length) + "바이트";
-    if (f) f.textContent = (done ? 11 : 0) + "개";
-    if (alive) alive.textContent = (done ? 0 : 9) + "자";
-    var go = q("#ec-d-go");
-    if (go) go.disabled = done;
-    if (note) {
-      note.innerHTML = done
-        ? "한글 아홉 자가 전부 사라졌습니다. 파일은 38바이트에서 59바이트로 커졌고 교체 문자 자리마다 <code>EF BF BD</code> 세 바이트가 들어앉았습니다. 반면 <code>name = input()</code> 은 그대로입니다. <b>되돌리기 버튼이 꺼져 있는 것은 장치의 한계가 아니라 이 사고의 성질입니다</b> — 원래 숫자가 파일에서 지워져 무엇이었는지 알 수 없습니다."
-        : "민트색으로 칠한 칸이 ASCII 구간입니다. 버튼을 누르면 무엇이 남고 무엇이 사라지는지 바이트 칸에서 바로 보입니다.";
-    }
-  }
+  // ── 5. 저장 전후 ───────────────────────────────────────────
+  // CP949 로 저장한 "# 이름을 묻는다\nname = input()\n" 을 UTF-8 로 읽었을 때의 바이트 묶음과 결과 글자(파이썬으로 확인)
+  const SEGS = [["23","#"],["20"," "],["C0","�"],["CC B8","̸"],["A7","�"],["C0","�"],["BB","�"],["20"," "],["B9","�"],["AF","�"],["B4","�"],["C2 B4","´"],["D9","�"],["0A","\n"],["6E","n"],["61","a"],["6D","m"],["65","e"],["20"," "],["3D","="],["20"," "],["69","i"],["6E","n"],["70","p"],["75","u"],["74","t"],["28","("],["29",")"],["0A","\n"]];
+  const ORIG = "# 이름을 묻는다\nname = input()\n";
+  let saved = false;
+  const byteHtml = (h, cls) => `<span class="ub-tile ${cls}">${h}</span>`;
+  const drawSave = () => {
+    const out = [];
+    let total = 0;
+    SEGS.forEach(([h, ch]) => {
+      const bs = h.split(" "), ascii = parseInt(bs[0], 16) < 0x80;
+      if (!saved) { bs.forEach((x) => out.push(byteHtml(x, ascii ? "a" : "k"))); total += bs.length; return; }
+      if (ascii) { out.push(byteHtml(bs[0], "a")); total += 1; }
+      else if (ch === "�") { out.push(`<span class="grp r3">${["EF","BF","BD"].map((x) => byteHtml(x, "r")).join("")}</span>`); total += 3; }
+      else { bs.forEach((x) => out.push(byteHtml(x, "s"))); total += bs.length; }
+    });
+    $("[data-ub-bytes]").innerHTML = out.join("");
+    $("[data-ub-text]").textContent = saved ? SEGS.map((s) => s[1]).join("") : ORIG;
+    $("[data-ub-stat]").innerHTML = `파일 크기 <b>${total}</b>바이트 · 남은 한글 <b>${saved ? 0 : 6}</b>자`;
+    el.querySelectorAll("[data-ub-after]").forEach((x) => (x.hidden = !saved));
+    el.querySelectorAll("[data-ub-before]").forEach((x) => (x.hidden = saved));
+    $("[data-ub-save]").textContent = saved ? "원래 파일 보기" : "UTF-8로 짐작해 열고 저장하기";
+  };
+  $("[data-ub-save]").addEventListener("click", () => { saved = !saved; drawSave(); }, { signal });
 
-  on(q("#ec-d-go"), "click", function () { setStage(true); });
-  if (q("#ec-d-bytes")) setStage(false);
+  // ── 6. 비둘기집 ────────────────────────────────────────────
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = $("[data-ub-pigeon]");
+  const mk = (tag, a, txt) => { const n = document.createElementNS(NS, tag); for (const k in a) n.setAttribute(k, a[k]); if (txt != null) n.textContent = txt; svg.appendChild(n); return n; };
+  const P = [["강", "B0 AD"], ["물", "B9 B0"], ["불", "BA D2"], ["꽃", "B2 C9"], ["별", "BA B0"], ["집", "C1 FD"], ["밥", "B9 E4"]];
+  mk("text", { x: 20, y: 22, class: "mono", "font-size": 19 }, "CP949로 저장한 바이트");
+  mk("text", { x: 620, y: 22, class: "mono", "font-size": 19, "text-anchor": "end" }, "UTF-8로 짐작해 저장한 뒤");
+  P.forEach(([ch, b], i) => {
+    const y = 52 + i * 40;
+    mk("path", { d: `M210,${y} C330,${y} 330,170 410,170`, fill: "none", stroke: "var(--ub-bad)", "stroke-width": 2, opacity: 0.55 });
+    mk("rect", { x: 20, y: y - 17, width: 190, height: 34, rx: 6, fill: "var(--ub-ko)" });
+    mk("text", { x: 32, y: y + 8, "font-size": 25, "font-weight": 700 }, ch);
+    mk("text", { x: 78, y: y + 8, class: "mono", "font-size": 23 }, b);
+  });
+  mk("rect", { x: 410, y: 118, width: 220, height: 104, rx: 10, fill: "color-mix(in srgb, var(--ub-bad) 22%, var(--bg-base))", stroke: "var(--ub-bad)", "stroke-width": 2 });
+  mk("text", { x: 520, y: 160, "text-anchor": "middle", "font-size": 30, "font-weight": 700 }, "��");
+  mk("text", { x: 520, y: 200, "text-anchor": "middle", class: "mono", "font-size": 19 }, "EF BF BD EF BF BD");
+
+  showLens("UTF-8"); drawBits(); showChar(2); drawSave();
 })();
 </script>

@@ -129,6 +129,38 @@ category: ai
 .post-page .tp-table th, .post-page .tp-table td { padding: 10px 8px; border-bottom: 1px solid var(--line-normal); text-align: right; }
 .post-page .tp-table th:first-child, .post-page .tp-table td:first-child { text-align: left; color: var(--fg-strong); font-weight: 600; }
 .post-page .tp-table th { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--fg-alternative); }
+/* 다음 토큰 고리 */
+.post-page .tp-loop { margin: 28px 0 32px; }
+.post-page .tp-loop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; position: relative; }
+.post-page .tp-st { position: relative; padding: 14px 12px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--line-normal); min-height: 132px; transition: border-color 0.25s, box-shadow 0.25s; }
+.post-page .tp-st.is-on { border-color: var(--tp-heat, var(--fg-strong)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-heat, var(--fg-strong)) 22%, transparent); }
+.post-page .tp-st small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .tp-st b.big { display: block; font-size: 15px; line-height: 1.5; color: var(--fg-strong); word-break: keep-all; }
+.post-page .tp-st:not(:last-child)::after { content: "→"; position: absolute; right: -22px; top: 50%; transform: translateY(-50%); color: var(--fg-alternative); font-size: 18px; }
+.post-page .tp-st .tp-word { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--tp-heat, var(--fg-strong)); color: #fff; }
+.post-page .tp-lbar { display: grid; grid-template-columns: 4.6em 1fr; gap: 6px; align-items: center; font-size: 12px; margin: 3px 0; }
+.post-page .tp-lbar i { display: block; height: 8px; border-radius: 99px; background: var(--tp-heat, var(--fg-strong)); transition: width 0.25s; }
+.post-page .tp-loop-back { margin-top: 10px; height: 26px; border: 2px dashed var(--line-strong); border-top: 0; border-radius: 0 0 14px 14px; margin-left: 12%; margin-right: 12%; position: relative; }
+.post-page .tp-loop-back span { position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); background: var(--bg-base); padding: 0 8px; font-size: 12px; color: var(--fg-alternative); white-space: nowrap; }
+.post-page .tp-loop-ctl { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+/* softmax 세 단계 */
+.post-page .tp-sm { margin: 28px 0 8px; padding: 20px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .tp-sm-head, .post-page .tp-sm-row { display: grid; grid-template-columns: 4.6em 1fr 1fr; gap: 14px; align-items: center; }
+.post-page .tp-sm-head { font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .tp-sm-row { margin: 8px 0; font-size: 14px; }
+.post-page .tp-sm-row > span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .tp-sm-cell { display: grid; grid-template-columns: 1fr 3.4em; gap: 8px; align-items: center; }
+.post-page .tp-sm-cell i { display: block; height: 14px; border-radius: 3px; background: var(--fg-strong); transition: width 0.2s; }
+.post-page .tp-sm-cell em { font-style: normal; font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--fg-neutral); }
+.post-page .tp-sm-pie { display: flex; height: 34px; border-radius: var(--radius-sm); overflow: hidden; }
+.post-page .tp-sm-pie span { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; transition: width 0.2s; }
+.post-page .tp-sm-ctl { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }
+.post-page .tp-sm-ctl input { flex: 1; accent-color: var(--fg-strong); min-width: 0; }
+.post-page .tp-sm-ctl output { font-family: var(--font-mono); color: var(--fg-strong); min-width: 3em; }
+.post-page details.tp-more { margin: 24px 0; padding: 14px 18px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.post-page details.tp-more summary { cursor: pointer; font-weight: 700; color: var(--fg-strong); }
+.post-page details.tp-more p { margin-top: 12px; }
+.post-page details.tp-more p:last-child { margin-bottom: 0; }
 .post-page .tp-callout { margin: 28px 0 24px; padding: 20px 22px; border-left: 3px solid var(--fg-strong); background: var(--bg-subtle); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .post-page .tp-callout p:last-child { margin-bottom: 0; }
 .post-page .tp-refs { font-size: 15px; padding-left: 1.2em; }
@@ -149,6 +181,13 @@ category: ai
   .post-page .tp-phys { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  .post-page .tp-loop-grid { grid-template-columns: 1fr 1fr; gap: 26px 22px; }
+  .post-page .tp-loop-grid .tp-st:nth-child(3) { order: 4; }
+  .post-page .tp-loop-grid .tp-st:nth-child(4) { order: 3; }
+  .post-page .tp-st:not(:last-child)::after { display: none; }
+  .post-page .tp-loop-back { display: none; }
+  .post-page .tp-sm { padding: 14px; }
+  .post-page .tp-sm-head, .post-page .tp-sm-row { grid-template-columns: 4.2em 1fr 1fr; gap: 8px; }
   .post-page .tp-wrap { padding: 0 20px; }
   .post-page .tp-line text, .post-page .tp-line .lbl { font-size: 20px; }
   .post-page .tp p { font-size: 16px; }
@@ -193,6 +232,19 @@ category: ai
         <h2>모델은 단어를 고르기 전에 확률표부터 만듭니다</h2>
         <p>휴대폰 키보드로 "오늘 점심은"까지 치면 자판 위에 다음 단어 후보가 몇 개 뜹니다. 평소 자주 쓴 말일수록 앞에 나옵니다. LLM이 글을 쓰는 방식도 이 자동완성과 비슷합니다. 앞에 나온 글을 보고 다음에 올 말을 하나 고르고 그 말을 붙인 뒤 다시 다음 말을 고르기를 반복합니다.</p>
         <p>모델이 한 번에 고르는 단위는 <b>토큰(token)</b>입니다. 토큰은 모델이 글을 읽고 쓰는 단위로, 단어 하나일 때도 있고 단어보다 작은 조각일 때도 있습니다. 이 글에서는 설명을 쉽게 하려고 토큰 하나를 단어 하나로 보겠습니다.</p>
+        <div class="tp-loop" data-figure data-tp-loop role="img" aria-label="문장을 보고 확률표를 만들고 한 단어를 뽑아 붙인 뒤 다시 처음으로 돌아가는 네 단계 고리">
+          <div class="tp-loop-grid">
+            <div class="tp-st" data-st="0"><small>1 · 지금까지의 문장</small><b class="big" data-tp-sent>오늘 점심은</b></div>
+            <div class="tp-st" data-st="1"><small>2 · 모델</small><b class="big">후보마다 점수를 매긴다</b></div>
+            <div class="tp-st" data-st="2"><small>3 · 확률표</small><div data-tp-lbars></div></div>
+            <div class="tp-st" data-st="3"><small>4 · 하나 뽑기</small><b class="big" data-tp-picked>…</b></div>
+          </div>
+          <div class="tp-loop-back"><span>뽑은 단어를 문장 끝에 붙이고 1로 돌아간다</span></div>
+          <div class="tp-loop-ctl">
+            <button class="tp-btn" type="button" data-tp-step>한 바퀴 돌리기</button>
+            <span class="tp-sim-note" data-tp-stepnote>누를 때마다 단어가 하나씩 붙습니다. 후보와 점수는 예시 값입니다.</span>
+          </div>
+        </div>
         <p>다음 토큰을 고르기 전에 모델은 후보마다 <b>확률</b>을 매깁니다. 확률은 어떤 일이 일어날 가능성을 0에서 1 사이 숫자로 나타낸 값이고 퍼센트로 쓰면 0%에서 100%입니다. 모든 후보의 확률을 더하면 정확히 1이 됩니다. 맨 위 막대그래프가 "오늘 점심은" 다음 단어의 확률표입니다.</p>
         <p>자동완성 비유와 다른 부분도 있습니다. 키보드는 후보를 서너 개만 보여 주지만 모델은 자기가 아는 토큰 전부에 확률을 매깁니다. GPT-2만 해도 토큰 종류가 50,257개였습니다. 그림에는 설명을 위해 여덟 개만 남겼습니다.</p>
         <p>온도계를 낮추면 1등이 확률을 거의 다 가져가고 올리면 꼴찌 후보까지 확률이 고르게 퍼집니다. 빈칸의 단어도 이 표에서 계속 새로 뽑힙니다. 그럼 확률표의 숫자는 어디서 나올까요?</p>
@@ -203,8 +255,15 @@ category: ai
         <h2>모델은 확률보다 점수를 먼저 내놓습니다</h2>
         <p>모델이 처음 계산하는 값은 후보마다 붙은 점수입니다. 이 점수를 <b>로짓(logit)</b>이라고 부릅니다. 로짓이 클수록 그 후보가 다음에 올 만하다는 뜻입니다. 다만 로짓은 음수가 될 수도 있고 다 더해도 1이 되지 않습니다.</p>
         <p>그래서 점수를 확률로 바꾸는 단계가 필요합니다. 피자 한 판을 점수에 따라 나눠 갖는 장면과 비슷합니다. 점수가 높은 후보일수록 큰 조각을 받고 조각을 모두 합치면 늘 한 판입니다. 여기서 피자 한 판이 확률 1, 곧 100%에 해당합니다.</p>
-        <p>이 일을 하는 함수가 <b>softmax</b>입니다. softmax는 점수 z마다 e<sup>z</sup>를 계산한 뒤, 그 값들을 모두 더한 합으로 나눠 비율을 구합니다. e는 약 2.718인 수학 상수이고 e<sup>z</sup>는 z가 1 커질 때마다 약 2.7배씩 커지는 거듭제곱입니다.</p>
-        <p>후보가 김치찌개(3.1), 짜장면(2.6), 라면(2.2) 세 개뿐이라고 해 보겠습니다. e<sup>z</sup>는 각각 22.2, 13.5, 9.0이고 합은 44.7입니다. 합으로 나누면 확률은 49.7%, 30.1%, 20.2%가 됩니다.</p>
+        <p>이 일을 하는 함수가 <b>softmax</b>입니다. softmax는 점수 z마다 e<sup>z</sup>를 계산한 뒤 그 값들을 모두 더한 합으로 나눠 비율을 구합니다. e는 약 2.718인 수학 상수이고 e<sup>z</sup>는 z가 1 커질 때마다 약 2.7배씩 커지는 거듭제곱입니다.</p>
+        <p>후보가 김치찌개(3.1), 짜장면(2.6), 라면(2.2) 세 개뿐이라고 해 보겠습니다. 아래 그림이 이 셋으로 softmax를 계산한 과정입니다. 김치찌개 점수를 움직여 보세요.</p>
+        <div class="tp-sm" data-figure data-tp-sm role="img" aria-label="세 후보의 점수, e의 거듭제곱 값, 확률을 나란히 그린 막대">
+          <div class="tp-sm-head"><span></span><span>① 점수 z</span><span>② e<sup>z</sup></span></div>
+          <div data-tp-smrows></div>
+          <div class="tp-sm-head" style="margin-top:14px"><span></span><span style="grid-column: 2 / -1">③ e<sup>z</sup>를 합으로 나눈 확률 (전체 = 100%)</span></div>
+          <div class="tp-sm-pie" data-tp-smpie></div>
+          <label class="tp-sm-ctl">김치찌개 점수<input type="range" min="0" max="5" step="0.1" value="3.1" data-tp-smz><output data-tp-smzout>3.1</output></label>
+        </div>
         <p>거듭제곱을 쓰는 이유는 두 가지입니다. 첫째, e<sup>z</sup>는 z가 음수여도 늘 양수라서 확률이 음수로 나오지 않습니다. "우주식량"의 점수 −1.5도 e<sup>−1.5</sup> ≈ 0.22로 바뀝니다. 둘째, 두 후보의 확률 비율은 점수 차이만으로 정해집니다. 점수 차이가 1이면 확률은 약 2.7배, 2면 약 7.4배 차이가 납니다.</p>
         <p>피자 비유와 맞지 않는 부분은 나누는 방식입니다. 피자라면 점수에 비례해 자르면 되지만 softmax는 점수 차이를 거듭제곱으로 키워서 나눕니다. 점수가 2배라고 확률이 2배가 되지는 않습니다.</p>
       </section>
@@ -230,7 +289,7 @@ category: ai
           </tbody>
         </table>
         <p class="tp-sim-note">후보가 세 개뿐이라고 가정하고 계산한 예시 값입니다.</p>
-        <p>세 열 모두 순위는 같습니다. 바뀌는 건 1등이 얼마나 앞서느냐입니다. 아래 수직선 위쪽은 원래 점수, 아래쪽은 <code>T</code>로 나눈 점수입니다. 온도가 1보다 작으면 점들이 서로 멀어지고 1보다 크면 한곳으로 모입니다. 빨간 선이 1등과 2등 사이의 간격입니다.</p>
+        <p>세 열 모두 순위는 같고 1등이 얼마나 앞서느냐만 달라집니다. 아래 수직선 위쪽은 원래 점수, 아래쪽은 <code>T</code>로 나눈 점수입니다. 온도가 1보다 작으면 점들이 서로 멀어지고 1보다 크면 한곳으로 모입니다. 빨간 선이 1등과 2등 사이의 간격입니다.</p>
         <svg class="tp-line" data-tp-line viewBox="0 0 640 230" role="img" aria-label="원래 로짓과 온도로 나눈 로짓을 비교하는 수직선"></svg>
         <div class="tp-callout">
           <p>간격이 k배로 벌어지면 확률 비율은 원래 비율의 k거듭제곱이 됩니다. 1등과 2등의 점수 차가 0.5일 때 확률 비율은 e<sup>0.5</sup> ≈ 1.6배입니다. <code>T = 0.25</code>로 나누면 차이가 4배인 2.0이 되어 비율은 e<sup>2</sup> ≈ 7.4배로 벌어집니다. 순위는 그대로인데 1등이 훨씬 유리해집니다.</p>
@@ -252,13 +311,14 @@ category: ai
           <div class="tp-binlbl" data-tp-binlbl></div>
           <div class="tp-samples" data-tp-samples></div>
         </div>
-        <p>제비뽑기와 다른 부분은 쪽지가 줄지 않는다는 점입니다. 모델은 한 번 뽑을 때마다 상자를 새로 채웁니다. 다음 토큰을 고를 때는 방금 뽑은 단어까지 붙은 문장을 보고 새 확률표를 만들어 다시 뽑습니다.</p>
-        <p>온도가 0이면 매번 1등만 나옵니다. 이렇게 늘 1등만 고르는 방식을 <b>greedy decoding</b>이라고 부릅니다. 정답이 하나인 일에는 잘 맞지만 긴 글에서는 같은 말을 되풀이하기 쉽습니다. top-p를 제안한 논문도 greedy나, 후보 문장 몇 개를 함께 이어 가며 확률이 가장 높은 문장을 고르는 beam search가 밋밋하거나 같은 말을 반복하는 글을 만든다고 보고했습니다.</p>
-        <div class="tp-callout">
-          <p><b>온도 0이면 늘 같은 답일까요?</b> 이론상으로는 그렇지만 실제 서비스에서는 온도 0에서도 답이 조금씩 달라지곤 합니다. 원인은 덧셈 순서입니다.</p>
+        <p>제비뽑기와 달리 쪽지는 줄지 않습니다. 모델은 한 번 뽑을 때마다 상자를 새로 채웁니다. 다음 토큰을 고를 때는 방금 뽑은 단어까지 붙은 문장을 보고 새 확률표를 만들어 다시 뽑습니다.</p>
+        <p>온도가 0이면 매번 1등만 나옵니다. 이렇게 늘 1등만 고르는 방식을 <b>greedy decoding</b>이라고 부릅니다. 정답이 하나인 일에는 잘 맞지만 긴 글에서는 같은 말을 되풀이하기 쉽습니다. top-p를 제안한 논문도 greedy나 beam search(후보 문장 몇 개를 함께 이어 가며 확률이 가장 높은 문장을 고르는 방식)가 밋밋하거나 같은 말을 반복하는 글을 만든다고 보고했습니다.</p>
+        <details class="tp-more">
+          <summary>온도 0이면 늘 같은 답일까요?</summary>
+          <p>이론상으로는 그렇지만 실제 서비스에서는 온도 0에서도 답이 조금씩 달라지곤 합니다. 원인은 덧셈 순서입니다.</p>
           <p>화면에 8자리까지만 나오는 계산기가 있다고 해 보겠습니다. 10,000,000에 0.4를 한 번씩 열 번 더하면 매번 0.4가 버려져 10,000,000 그대로입니다. 0.4 열 개를 먼저 더해 4를 만든 뒤 더하면 10,000,004가 됩니다. 같은 수를 더했는데 순서만 바꿔서 결과가 달라졌습니다.</p>
           <p>GPU가 쓰는 부동소수점도 표현할 수 있는 자릿수가 정해져 있어서 같은 일이 생깁니다. 서버는 여러 사용자의 요청을 묶어서 계산하는데, 묶음 크기에 따라 GPU 커널의 덧셈 순서가 바뀝니다. 그 미세한 차이로 1등과 2등이 뒤집힐 수 있습니다. 묶음 크기는 서버가 얼마나 붐비느냐에 따라 달라지므로 사용자 쪽에서는 통제할 수 없습니다.</p>
-        </div>
+        </details>
       </section>
 
       <section>
@@ -280,7 +340,7 @@ category: ai
       <section>
         <span class="tp-num">06</span>
         <h2>top-p는 확률표의 꼬리를 잘라냅니다</h2>
-        <p>온도를 올리면 답이 다양해지지만 "우주식량" 같은 엉뚱한 후보에도 확률이 생깁니다. 후보 하나하나의 확률은 낮아도, 이런 후보가 수만 개 모이면 그중 하나가 뽑힐 가능성은 꽤 커집니다. 문장 중간에 엉뚱한 단어가 하나 끼면 그 뒤 문장도 그 단어를 따라 흐트러집니다.</p>
+        <p>온도를 올리면 답이 다양해지지만 "우주식량" 같은 엉뚱한 후보에도 확률이 생깁니다. 후보 하나하나의 확률은 낮아도 이런 후보가 수만 개 모이면 그중 하나가 뽑힐 가능성은 꽤 커집니다. 문장 중간에 엉뚱한 단어가 하나 끼면 그 뒤 문장도 그 단어를 따라 흐트러집니다.</p>
         <p>학급 회장 선거로 비유해 보겠습니다. 득표가 많은 순서로 후보를 줄 세우고 득표율을 위에서부터 더해 90%가 되면 거기까지만 결선에 올립니다. 결선에 오른 후보끼리 다시 투표해 한 명을 뽑습니다.</p>
         <p><b>top-p</b>(nucleus sampling)가 이 방식입니다. 확률이 높은 순서로 후보를 쌓다가 누적 확률이 p를 넘는 순간 나머지를 버립니다. 누적 확률은 위에서부터 차례로 더한 확률을 말합니다. 남은 후보끼리 확률을 다시 나눠 가진 다음 뽑습니다.</p>
         <p>예시 값으로 계산해 보겠습니다. T = 1일 때 확률은 김치찌개 37.2%, 짜장면 22.6%, 라면 15.1%, 제육볶음 11.2%, 샐러드 6.2% 순입니다. 위에서부터 더하면 샐러드까지 92.3%라서 p = 0.9이면 다섯 개가 남습니다. 같은 p라도 T = 0.3이면 두 개, T = 1.6이면 여섯 개가 남습니다.</p>
@@ -291,7 +351,7 @@ category: ai
           <output data-tp-pout>0.90</output>
         </div>
         <p class="tp-kept" data-tp-kept></p>
-        <p>선거 비유와 다른 부분은 결선 후보 수가 매번 바뀐다는 점입니다. 모델은 토큰 하나를 고를 때마다 새 확률표를 만듭니다. 1등이 압도적인 순간에는 한두 개만 남고 비슷한 후보가 많은 순간에는 여러 개가 남습니다. 온도로 분포 모양을 정하고 top-p로 꼬리를 자르는 순서입니다.</p>
+        <p>선거 비유와 다른 부분은 결선 후보 수가 매번 바뀐다는 점입니다. 모델은 토큰 하나를 고를 때마다 새 확률표를 만듭니다. 1등이 압도적인 순간에는 한두 개만 남고 비슷한 후보가 많은 순간에는 여러 개가 남습니다. 온도로 분포 모양을 먼저 정한 뒤 top-p로 꼬리를 자릅니다.</p>
         <p>top-k는 같은 일을 개수로 합니다. 상위 k개만 남기는 식입니다. 다만 분포가 뾰족할 때와 평평할 때 알맞은 k가 다르다는 약점이 있어서 누적 확률로 자르는 top-p를 더 널리 씁니다.</p>
         <p>최근에는 <b>min-p</b>도 오픈소스 추론 엔진에서 많이 씁니다. min-p는 1등 확률에 비례하는 기준선을 정하고 그보다 낮은 후보를 버립니다. min-p = 0.1이고 1등 확률이 37.2%이면 기준선은 3.72%입니다. 위 예시라면 마라탕(2.8%)과 우주식량(0.4%)이 빠집니다.</p>
       </section>
@@ -310,20 +370,20 @@ category: ai
         </div>
         <p class="tp-sim-note">범위는 흔히 쓰는 출발점이며 모델과 API에 따라 다릅니다. 세로선은 지금 온도계 위치입니다.</p>
         <p>코드 작성을 낮게 두는 이유는 함수 이름 하나만 엉뚱하게 뽑혀도 프로그램이 실행되지 않기 때문입니다. 정보 추출과 분류도 정해진 형식에 맞는 답이 하나뿐이라 낮게 둡니다. 아이디어 발산은 낮은 순위 후보가 가끔 뽑혀야 평소와 다른 결과가 나오므로 높게 둡니다.</p>
-        <p>글짓기 비유와 맞지 않는 부분도 있습니다. 글짓기를 잘하는 학생은 새로운 생각을 떠올리지만 온도를 올린 모델은 새 지식을 만들지 않습니다. 원래 덜 뽑히던 후보가 더 자주 뽑힐 뿐이라, 너무 높이면 창의적인 글 대신 앞뒤가 맞지 않는 글이 나옵니다.</p>
+        <p>글짓기 비유와 맞지 않는 부분도 있습니다. 글짓기를 잘하는 학생은 새로운 생각을 떠올리지만 온도를 올린 모델은 새 지식을 만들지 않습니다. 원래 덜 뽑히던 후보가 더 자주 뽑힐 뿐이라 너무 높이면 창의적인 글 대신 앞뒤가 맞지 않는 글이 나옵니다.</p>
         <p>실제로 쓸 때는 세 가지를 함께 기억하면 좋습니다. 첫째, 허용 범위는 API마다 다릅니다. Claude API는 0부터 1까지 받고 기본값은 1입니다. 같은 숫자라도 API 문서부터 확인합니다.</p>
         <p>둘째, 최근 모델은 온도를 직접 바꾸지 못하게 막아 둔 경우가 늘고 있습니다. OpenAI의 GPT-5 같은 추론 모델은 기본값 1 외의 값을 넣으면 오류가 납니다. Claude API도 Claude Opus 4.7부터 나온 모델은 temperature·top_p·top_k를 기본값이 아닌 값으로 보내면 오류를 돌려줍니다.</p>
         <p>셋째, 온도와 top-p를 동시에 크게 바꾸면 어느 쪽 효과인지 가려내기 어렵습니다. 보통은 하나만 조절합니다.</p>
       </section>
 
-      <section>
+      <section data-text-only>
         <span class="tp-num">08</span>
         <h2>정리하면</h2>
         <p>모델은 다음 토큰 후보마다 로짓이라는 점수를 매기고 softmax로 확률표를 만들어 그중 하나를 뽑습니다. 온도는 softmax 직전에 점수를 <code>T</code>로 나눠 간격을 넓히거나 좁히는 숫자입니다. 그래서 순위와 모델의 지식은 그대로이고 확률표의 모양만 뾰족해지거나 평평해집니다.</p>
-        <p>실제 단어는 그 확률표에서 무작위로 뽑습니다. top-p와 top-k, min-p는 뽑기 전에 꼬리를 잘라 엉뚱한 후보를 걸러 냅니다. Self-Attention에서 점수를 <code>√d</code>로 나누는 것도 같은 원리로 확률 분포가 얼마나 뾰족할지를 조절하는 일입니다.</p>
+        <p>실제 단어는 그 확률표에서 무작위로 뽑습니다. top-p와 top-k, min-p는 뽑기 전에 꼬리를 잘라 엉뚱한 후보를 걸러 냅니다. Self-Attention에서 점수를 <code>√d</code>로 나누는 것도 같은 원리로 확률 분포가 얼마나 뾰족할지 조절합니다.</p>
       </section>
 
-      <section>
+      <section data-text-only>
         <span class="tp-num">참고</span>
         <h2>참고 자료</h2>
         <ul class="tp-refs" data-tp-refs>
@@ -505,6 +565,47 @@ category: ai
   const range = $("[data-tp-range]"), val = $("[data-tp-val]"), mood = $("[data-tp-mood]"), word = $("[data-tp-word]"), blank = $("[data-tp-blank]"), now = $("[data-tp-now]");
   const moodOf = (t) => (t < 0.01 ? "항상 1등" : t < 0.5 ? "차분함" : t < 1.2 ? "보통" : t < 1.6 ? "들뜸" : "횡설수설");
   let rollTimer = 0;
+  // 01 다음 토큰 고리 — 메뉴 다음에는 예시 후보 넷으로 한 번 더 돈다
+  const W2 = ["먹을래요", "어때요", "괜찮아요", "."], Z2 = [2.0, 1.6, 1.2, 0.4];
+  const pOf = (z, t) => { if (t < 0.01) return z.map((_, i) => (i === 0 ? 1 : 0)); const m = Math.max(...z), e = z.map((x) => Math.exp((x - m) / t)), sm = e.reduce((a, b) => a + b, 0); return e.map((x) => x / sm); };
+  const sentEl = $("[data-tp-sent]"), lbars = $("[data-tp-lbars]"), pickedEl = $("[data-tp-picked]"), stepBtn = $("[data-tp-step]"), stepNote = $("[data-tp-stepnote]");
+  const stEls = [...el.querySelectorAll("[data-st]")];
+  let words = [], busy = false;
+  const cand = () => (words.length === 0 ? [W, Z] : [W2, Z2]);
+  const drawLoop = () => {
+    const [cw, cz] = cand(), p = pOf(cz, T);
+    const top = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 4);
+    lbars.innerHTML = top.map(([v, i]) => `<div class="tp-lbar"><span>${cw[i]}</span><i style="width:${Math.max(v * 100, 1)}%"></i></div>`).join("");
+    sentEl.innerHTML = "오늘 점심은" + words.map((w) => ` <span class="tp-word">${w}</span>`).join("");
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+  stepBtn.addEventListener("click", async () => {
+    if (busy) return;
+    if (words.length >= 2) { words = []; pickedEl.textContent = "…"; drawLoop(); stepBtn.textContent = "한 바퀴 돌리기"; return; }
+    busy = true;
+    for (const k of [0, 1, 2]) { stEls.forEach((x, j) => x.classList.toggle("is-on", j === k)); await wait(380); if (signal.aborted) return; }
+    const [cw, cz] = cand(), i = pick(pOf(cz, T));
+    stEls.forEach((x, j) => x.classList.toggle("is-on", j === 3));
+    pickedEl.innerHTML = `<span class="tp-word">${cw[i]}</span>`;
+    await wait(450); if (signal.aborted) return;
+    words.push(cw[i]); stEls.forEach((x) => x.classList.remove("is-on"));
+    drawLoop();
+    stepNote.textContent = words.length >= 2 ? "두 단어를 붙였습니다. 처음부터 다시 하려면 버튼을 누르세요." : "뽑은 단어가 문장에 붙었고 확률표가 다음 단어 후보로 바뀌었습니다.";
+    if (words.length >= 2) stepBtn.textContent = "처음부터";
+    busy = false;
+  }, { signal });
+
+  // 02 softmax 세 단계
+  const smRows = $("[data-tp-smrows]"), smPie = $("[data-tp-smpie]"), smZ = $("[data-tp-smz]"), smZout = $("[data-tp-smzout]");
+  const SMC = ["var(--tp-cold)", "rgb(130, 120, 200)", "var(--tp-hot)"];
+  const drawSm = () => {
+    const z = [+smZ.value, 2.6, 2.2], e = z.map(Math.exp), sum = e.reduce((a, b) => a + b, 0);
+    smZout.textContent = z[0].toFixed(1);
+    smRows.innerHTML = W.slice(0, 3).map((w, i) => `<div class="tp-sm-row"><span>${w}</span><span class="tp-sm-cell"><i style="width:${Math.max(z[i] / Math.max(...z), 0.01) * 100}%"></i><em>${z[i].toFixed(1)}</em></span><span class="tp-sm-cell"><i style="width:${(e[i] / Math.max(...e)) * 100}%"></i><em>${e[i].toFixed(1)}</em></span></div>`).join("");
+    smPie.innerHTML = e.map((v, i) => `<span style="width:${(v / sum) * 100}%;background:${SMC[i]}">${v / sum > 0.12 ? W[i] + " " + ((v / sum) * 100).toFixed(1) + "%" : ""}</span>`).join("");
+  };
+  smZ.addEventListener("input", drawSm, { signal });
+
   const render = () => {
     const p = probs(T);
     el.style.setProperty("--tp-heat", heat(T));
@@ -521,6 +622,7 @@ category: ai
     offTxt.textContent = T < 0.01 ? "T = 0 → 간격이 무한대" : off ? `${off}개 점이 화면 밖으로 밀려났습니다` : "";
     now.style.left = (T / 2) * 100 + "%";
     renderP();
+    drawLoop();
     clearTimeout(rollTimer);
     blank.classList.add("is-roll");
     rollTimer = setTimeout(() => { blank.textContent = W[pick(p)]; blank.classList.remove("is-roll"); }, 220);
@@ -532,6 +634,7 @@ category: ai
   const heroTick = setInterval(() => { if (!reduce && root.querySelector("[data-tp-blank]")) { blank.classList.add("is-roll"); setTimeout(() => { blank.textContent = W[pick(probs(T))]; blank.classList.remove("is-roll"); }, 180); } }, 1600);
   signal.addEventListener("abort", () => { clearInterval(heroTick); clearTimeout(rollTimer); });
 
+  drawSm();
   fit(); seed();
   render();
   runAll(true);
