@@ -71,11 +71,11 @@ Sources(제목+URL). 말미에 "그 외 눈에 띈 것" 3~5불릿(각 링크 포
   그림은 전부 인라인 SVG·Canvas·JS 로 만든다. 같은 슬러그가 이미 있으면 뒤에 날짜를 붙인다.
 - **화면 점검(4단계)**: `npm ci` → `npx playwright install chromium` → `npm run dev` 를 띄우고
   `npm run check:page -- <slug> <캡처폴더>` 와 `--dark` 를 돌린다. 360px 폭에서 가로 넘침 0,
-  스크립트 오류 0, **호흡(rhythm) 위반 0**(섹션마다 그린 그림, 단락 220자, 그림 없이 이어지는 글 650자 —
+  스크립트 오류 0, **호흡(rhythm) 위반 0**(첫 화면에 대표 그림, 그림 있는 섹션 절반 이상, 단락 220자, 그림 없이 이어지는 글 650자 —
   `POSTING.md` 5-6)이어야 한다. GitHub Actions 가 발행 직전에 같은 점검을 다시 돌리고, 실패하면 발행하지 않는다.
   샌드박스가 브라우저 설치나 dev 서버를 막으면 **Critic 을 HTML 코드로 대신하지 않는다** — 코드로는 그림이
   이해되는지 판단할 수 없다. 그날은 `publish` 를 넣지 않고 초안으로만 적재하고 그 사실을 보고한다.
-- **그림이 먼저다.** `/study` 3단계 스토리보드(대표 인터랙션 + 섹션마다 그릴 그림)를 확정하기 전에는 본문을 쓰지 않는다.
+- **그림이 먼저다.** `/study` 3단계 스토리보드(대표 인터랙션 + 섹션별로 그릴 그림)를 확정하기 전에는 본문을 쓰지 않는다. 모든 섹션에 그림을 억지로 넣지는 않는다.
   이 샌드박스는 인터랙티브 설명 사이트(`*.github.io`·distill·observable 등)가 막혀 README 만 열린다.
   README 는 사실 확인용이고, 그림 아이디어는 `docs/visual-references.md` 와 견본 세 편
   (`auto-drafts/posts/llm-temperature-sampling.html`·`self-attention-qkv.html`·`rag-retrieval-pipeline.html`)의

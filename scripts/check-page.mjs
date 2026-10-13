@@ -4,40 +4,40 @@
 // 넘침이나 오류가 있으면 종료 코드 1 — 자동 학습 글은 이걸 통과해야 발행된다(auto-draft-ingest.yml).
 // 전제: npm run dev (기본 http://localhost:3000, PAGE_BASE 로 바꿀 수 있다)
 // 호흡 점검(POSTING.md 5-6) — 스크립트가 그린 뒤의 DOM 으로 잰다(데스크톱·라이트 한 번만).
-//   · 섹션(조상에 section 이 없는 section 중 h2 가 있는 것)마다 그린 그림이 하나 이상
-//     그림 = 160×100 이상인 svg·canvas, 또는 data-figure 를 단 요소. 표·버튼·카드는 그림이 아니다
-//     맺음·참고 섹션처럼 그림이 필요 없는 섹션은 data-text-only 로 빼되 글 하나에 두 개까지
+//   그림 = 160×100 이상인 svg·canvas, 또는 data-figure 를 단 요소. 표·버튼·카드는 그림이 아니다
+//   · 첫 화면(첫 h2 섹션까지)에 그림이 있다 — 대표 인터랙션
+//   · 그림이 있는 섹션이 전체 섹션의 절반 이상 — 섹션마다 강제하지는 않는다(억지 그림 방지)
 //   · 단락(p·li) 하나는 한글 LIMITS.para 자 이하
-//   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하 (접힌 <details> 안은 세지 않는다)
+//   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하. 그림이나 h2 를 만나면 끊는다
+//     (접힌 <details> 안은 세지 않는다)
 import { chromium } from "playwright";
-const LIMITS = { para: 220, run: 650, textOnly: 2 };
+const LIMITS = { para: 220, run: 650, figShare: 0.5 };
 function rhythm(L) {
   const root = document.querySelector(".post-page");
   const ko = (t) => (t.match(/[가-힣]/g) || []).length;
   const isFig = (el) => {
     if (el.hasAttribute("data-figure")) return true;
-    if (el.tagName !== "svg" && el.tagName !== "CANVAS" && el.tagName !== "svg".toUpperCase()) return false;
+    if (el.tagName !== "svg" && el.tagName !== "CANVAS") return false;
     const b = el.getBoundingClientRect();
     return b.width >= 160 && b.height >= 100;
   };
+  const figsIn = (node) => [...node.querySelectorAll("svg, canvas, [data-figure]")].filter((e) => isFig(e) && !e.parentElement.closest("[data-figure]"));
   const hidden = (el) => !!el.closest("details:not([open])") && !el.matches("summary") && !el.closest("summary");
   const problems = [];
   const secs = [...root.querySelectorAll("section")].filter((s) => !s.parentElement.closest("section") && s.querySelector("h2"));
-  let textOnly = 0, figures = 0;
-  for (const s of secs) {
-    const h = s.querySelector("h2").textContent.trim().slice(0, 30);
-    const n = [...s.querySelectorAll("svg, canvas, [data-figure]")].filter((e) => isFig(e) && !e.parentElement.closest("[data-figure]")).length;
-    figures += n;
-    if (s.hasAttribute("data-text-only")) { textOnly++; continue; }
-    if (!n) problems.push(`그림 없는 섹션: "${h}"`);
-  }
-  if (textOnly > L.textOnly) problems.push(`data-text-only 섹션이 ${textOnly}개 (최대 ${L.textOnly})`);
-  // 문서 순서로 훑으며 그림을 만나면 글 구간을 끊는다
+  const all = figsIn(root);
+  const withFig = secs.filter((s) => figsIn(s).length).length;
+  if (secs.length && withFig / secs.length < L.figShare) problems.push(`그림 있는 섹션이 ${withFig}/${secs.length} — 절반 이상이어야 한다`);
+  // 첫 화면: 두 번째 h2 섹션보다 앞에 그림이 하나 있어야 한다
+  const second = secs[1];
+  const early = all.some((e) => !second || second.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_PRECEDING);
+  if (!early) problems.push("첫 화면(첫 섹션까지)에 그림이 없다");
+  // 문서 순서로 훑으며 그림이나 h2 를 만나면 글 구간을 끊는다
   let run = 0, maxRun = 0, runStart = "", maxPara = 0;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
   for (let el = walker.currentNode; el; el = walker.nextNode()) {
-    if (el.matches("svg, canvas, [data-figure]") && isFig(el)) { run = 0; continue; }
-    if (el.closest("svg, [data-figure], [data-text-only]") || hidden(el)) continue;
+    if ((el.matches("svg, canvas, [data-figure]") && isFig(el)) || el.matches("h2")) { run = 0; continue; }
+    if (el.closest("svg, [data-figure]") || hidden(el)) continue;
     if (!el.matches("p, li")) continue;
     if (el.querySelector("p, li")) continue;
     const c = ko(el.textContent);
@@ -48,7 +48,7 @@ function rhythm(L) {
     if (run > maxRun) maxRun = run;
     if (run > L.run && run - c <= L.run) problems.push(`그림 없이 ${L.run}자를 넘는 글 구간: "${runStart}…" 부터`);
   }
-  return { sections: secs.length, figures, maxPara, maxRun, problems };
+  return { sections: secs.length, withFig, figures: all.length, maxPara, maxRun, problems };
 }
 const [slug, out] = process.argv.slice(2);
 const dark = process.argv.includes("--dark");
@@ -73,7 +73,7 @@ for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 8
   const ov = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (name === "desk" && !dark) {
     const r = await p.evaluate(rhythm, LIMITS);
-    console.log(`rhythm: 섹션 ${r.sections} · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
+    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
     if (r.problems.length) { bad = true; r.problems.forEach((x) => console.log("  ✗ " + x)); }
   }
   await p.screenshot({ path: `${out}/${slug}-${name}${dark ? "-dark" : ""}.png`, fullPage: true });
