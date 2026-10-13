@@ -3,7 +3,7 @@
 //
 // 실행: npm run setup:skills
 
-import { symlinkSync, mkdirSync, existsSync, lstatSync, readlinkSync, unlinkSync, readFileSync } from "node:fs";
+import { symlinkSync, mkdirSync, existsSync, lstatSync, readlinkSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 
@@ -42,14 +42,5 @@ for (const name of SKILLS) {
   console.log(`✓ ${name} → ${to}`);
 }
 
-// 글 작성 파이프라인이 기대는 플러그인. 레포의 .claude/settings.json 이 설치를 권하지만,
-// 권유를 넘겼거나 다른 도구로 열었으면 여기서 알아챈다.
-const PLUGINS = [
-  ["humanize-korean@im-not-ai", "/plugin marketplace add epoko77-ai/im-not-ai → /plugin install humanize-korean@im-not-ai"],
-];
-const installed = join(homedir(), ".claude", "plugins", "installed_plugins.json");
-const have = existsSync(installed) ? readFileSync(installed, "utf8") : "";
-for (const [id, how] of PLUGINS) {
-  if (have.includes(`"${id}"`)) console.log(`✓ 플러그인 ${id}`);
-  else console.warn(`⚠ 플러그인 ${id} 가 없다 — Claude Code 에서: ${how}`);
-}
+// humanize-korean 은 플러그인 설치가 아니라 레포 .claude/ 에 들어 있다(클라우드 루틴도 쓰게).
+// 출처·갱신법: .claude/.claude-plugin/VENDORED.md

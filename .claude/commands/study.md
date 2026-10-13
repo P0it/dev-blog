@@ -83,8 +83,8 @@ general-purpose 에이전트에게 **글의 의도를 알려 주지 않고** 캡
 ## 6. humanize (빼먹지 않는다)
 
 1. `npm run humanize:page -- extract auto-drafts/posts/<slug>.html <작업폴더>`
-2. `humanize-korean:humanize-monolith` 에이전트에게 `<작업폴더>/<slug>.md` 를 주고
-   `<slug>.final.md` 로 받는다. 프롬프트에 반드시 넣는다: `[[id]]` 블록 수·순서 유지, 태그·`${…}`·숫자 보존,
+2. `humanize-monolith` 에이전트(`.claude/agents/`)에게 `<작업폴더>/<slug>.md` 를 주고
+   `<slug>.final.md` 로 받는다. `quick_rules_path` 로 `<레포 절대경로>/.claude/skills/humanize-korean/references/quick-rules.md` 를 넘긴다. 프롬프트에 반드시 넣는다: `[[id]]` 블록 수·순서 유지, 태그·`${…}`·숫자 보존,
    장르 블로그, -습니다 체, `~죠` 금지, **AI·LLM 업계 용어는 영어·음차 유지**(이 글의 용어 목록을 적는다),
    사실·수치 변경 금지, **용어 풀이 문장을 지우거나 줄이지 말 것**(중학생 눈높이, `POSTING.md` 5-0).
 3. 에이전트가 사실 오류를 짚으면 출처로 확인해서 고친다.
@@ -93,7 +93,7 @@ general-purpose 에이전트에게 **글의 의도를 알려 주지 않고** 캡
 6. `POSTING.md` 2-4 점검표를 돈다. `npm run lint:draft -- <파일>` 이 검색 항목을 센다.
 7. `npm run check:page` 를 다시 돌려 오류 0 을 확인한다(윤문 뒤에도 스크립트가 멀쩡한지).
 
-`humanize-korean` 플러그인이 없으면 멈추고 사용자에게 설치를 요청한다(설치법: `CLAUDE.md`).
+`humanize-korean` 은 레포 `.claude/` 에 들어 있다(`CLAUDE.md`). `humanize-monolith` 에이전트가 안 보이면 멈추고 알린다.
 
 ## 7. 적재
 

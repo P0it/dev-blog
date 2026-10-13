@@ -3,7 +3,7 @@
 // 윤문본을 같은 자리에 되돌려 넣는다. 태그·${…}·엔티티가 달라진 블록은 원문을 유지한다.
 //
 //   npm run humanize:page -- extract <page.html> <work>/   → <work>/<slug>.md, <slug>.json
-//   (humanize-korean:humanize-monolith 에이전트에 <slug>.md 를 주고 <slug>.final.md 로 받는다)
+//   (humanize-monolith 에이전트에 <slug>.md 를 주고 <slug>.final.md 로 받는다)
 //   npm run humanize:page -- apply   <page.html> <work>/   ← <work>/<slug>.final.md
 //
 // 뽑는 범위: 본문의 h1~h3·p·li·summary·em·small·button·label 안쪽, 스크립트 안의 한글 문자열.

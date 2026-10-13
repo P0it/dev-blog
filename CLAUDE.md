@@ -40,11 +40,13 @@ URL 없이 **질문·생각을 주며 "이걸로 글 써줘"** 라고 하면 →
 
 ## 모든 글은 /humanize 를 거친다
 
-어느 경로로 쓴 글이든 적재 전에 `humanize-korean` 플러그인으로 윤문하고(`POSTING.md` 2-4),
+어느 경로로 쓴 글이든 적재 전에 `humanize-korean` 으로 윤문하고(`POSTING.md` 2-4),
 AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 순화어 ✗). 사용자가 2026-10-12 에 정했다.
-플러그인은 레포의 `.claude/settings.json` 이 설치를 권한다. 새 머신에서 권유가 안 떴으면
-Claude Code 에서 `/plugin marketplace add epoko77-ai/im-not-ai` → `/plugin install humanize-korean@im-not-ai`.
-`npm run setup:skills` 가 설치 여부를 알려 준다. 플러그인이 없으면 윤문을 건너뛰지 말고 멈춰서 설치를 요청한다.
+`humanize-korean`(MIT, epoko77-ai/im-not-ai)은 플러그인으로 깔지 않고 **레포 `.claude/` 에 넣어 두었다**
+(에이전트 `.claude/agents/humanize-*.md`, 스킬 `.claude/skills/humanize*`, 스크립트 `.claude/scripts/`).
+클라우드 루틴은 레포 밖 플러그인을 설치하지 않아서다(2026-10-13). 에이전트 이름은 `humanize-monolith` —
+`humanize-korean:` 접두어를 붙이지 않는다. 갱신법은 `.claude/.claude-plugin/VENDORED.md`.
+윤문을 건너뛰지 않는다. 에이전트가 안 보이면 멈추고 알린다.
 
 ## 스킬·커맨드를 고칠 때
 
@@ -60,8 +62,8 @@ Claude Code 에서 `/plugin marketplace add epoko77-ai/im-not-ai` → `/plugin i
 | 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
 | `/lab` 화면 규약 | `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md` |
 
-`.gitignore` 가 `/.claude/*` 를 무시하되 `!/.claude/commands/` 와 `!/.claude/settings.json`(플러그인 설치 권유)만 살려 둔다.
-새 머신에서는 `npm run setup:skills` 로 링크를 걸고 플러그인 설치 여부를 확인한다.
+`.gitignore` 가 `/.claude/*` 를 무시하되 `commands/` 와 humanize-korean 이 든 `agents/` `skills/` `scripts/` `.claude-plugin/` 만 살려 둔다.
+새 머신에서는 `npm run setup:skills` 로 `/portfolio` 링크를 건다.
 `/study` 의 화면 점검(`npm run check:page`)은 `npx playwright install chromium` 이 먼저 필요하다.
 
 **화면을 고쳤으면 규약도 같이 고친다.** 렌더러만 바꾸고 규약 문서를 두면, 다음에
