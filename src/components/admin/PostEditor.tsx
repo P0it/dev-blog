@@ -11,6 +11,8 @@ import { AiDraftModal, AiReviseModal } from "@/components/admin/AiModals";
 import { TagInput } from "@/components/admin/TagInput";
 import { CategoryPicker } from "@/components/admin/CategoryPicker";
 import { ThumbnailField } from "@/components/admin/ThumbnailField";
+import { PageVisualEditor } from "@/components/admin/PageVisualEditor";
+import { isPageBody } from "@/lib/page-html";
 import {
   saveDraft,
   publishPost,
@@ -87,6 +89,8 @@ export function PostEditor({
   const [publishedAt, setPublishedAt] = useState<string | null>(initial.publishedAt);
   const [sourceDate, setSourceDate] = useState<string | null>(initial.sourceDate);
   const [tagDraft, setTagDraft] = useState("");
+  // 페이지 글이면 비주얼 편집기. 편집 중에 표시가 지워져도 모드가 흔들리지 않게 처음 값으로 정한다.
+  const isPage = useMemo(() => isPageBody(initial.bodyMd), [initial.bodyMd]);
   const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -319,16 +323,145 @@ export function PostEditor({
     });
   };
 
+  // 카테고리 · 태그 · 날짜 · 썸네일 → 큰 제목 → 짧은 밑줄. 마크다운·페이지 편집기 공용.
+  const metaHeader = (
+    <div style={{ padding: "20px 48px 0" }}>
+      {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다.
+          폭이 모자라면 접어 내린다. 안 접으면 태그 칸이 `flex:1` 로 0 까지
+          쪼그라들고 칩은 제 칸 밖으로 삐져나와 날짜 입력 위에 겹쳐 앉는다. */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 18,
+        }}
+      >
+        <CategoryPicker
+          categories={categories}
+          value={categorySlug}
+          onChange={setCategorySlug}
+        />
+        {/* 칩 하나와 입력 자리는 늘 확보한다 — 이 아래로 줄어들면 칩이 넘친다. */}
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <TagInput
+            tags={tags}
+            draft={tagDraft}
+            onTagsChange={setTags}
+            onDraftChange={setTagDraft}
+          />
+        </div>
+        <input
+          type="date"
+          value={toDateInputValue(publishedAt)}
+          max={todayDate}
+          onChange={(e) =>
+            setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
+          }
+          aria-label="작성일"
+          title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
+          style={{
+            padding: "6px 10px",
+            border: publishedBeforeSource
+              ? "1px solid var(--danger, #d33)"
+              : "1px solid var(--line-subtle)",
+            borderRadius: 8,
+            fontSize: 13,
+            background: "transparent",
+            color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
+            fontFamily: "inherit",
+            outline: "none",
+            colorScheme: "light dark",
+          }}
+        />
+        <input
+          type="date"
+          value={sourceDate ?? ""}
+          max={todayDate}
+          onChange={(e) => setSourceDate(e.target.value || null)}
+          aria-label="원문 작성일"
+          title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
+          style={{
+            padding: "6px 10px",
+            border: "1px dashed var(--line-subtle)",
+            borderRadius: 8,
+            fontSize: 13,
+            background: "transparent",
+            color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
+            fontFamily: "inherit",
+            outline: "none",
+            colorScheme: "light dark",
+          }}
+        />
+        {publishedBeforeSource && (
+          <span
+            role="alert"
+            title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
+            style={{
+              fontSize: 12,
+              color: "var(--danger, #d33)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ⚠ 원문보다 앞선 발행일
+          </span>
+        )}
+        <ThumbnailField
+          coverImage={coverImage}
+          coverBrightness={coverBrightness}
+          thumbKind={thumbKind}
+          onChange={(next) => {
+            setCoverImage(next.coverImage);
+            setCoverBrightness(next.coverBrightness);
+            setThumbKind(next.thumbKind);
+          }}
+        />
+      </div>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="제목을 입력하세요"
+        style={{
+          width: "100%",
+          border: "none",
+          outline: "none",
+          fontSize: 36,
+          fontWeight: 800,
+          lineHeight: 1.2,
+          fontFamily: "inherit",
+          background: "transparent",
+          color: "var(--fg-strong)",
+          padding: 0,
+          letterSpacing: "-0.02em",
+        }}
+      />
+      <div
+        style={{
+          width: 60,
+          height: 4,
+          background: "var(--fg-strong)",
+          marginTop: 18,
+          marginBottom: 0,
+          borderRadius: 2,
+        }}
+      />
+    </div>
+  );
+
   return (
     <>
       <AdminTopbar>
         <Link href="/admin/posts" onClick={confirmLeaveIfDirty}>
           <Button variant="ghost" size="sm">← 목록</Button>
         </Link>
+        {/* 페이지 글 전체 개선은 마크다운용 워커 프롬프트라 HTML 을 망가뜨린다 — Claude Code /revise 로 한다. */}
         {initial.originalSlug ? (
-          <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
-            AI 개선
-          </Button>
+          !isPage && (
+            <Button variant="ghost" size="sm" onClick={() => setAiReviseOpen(true)} disabled={pending}>
+              AI 개선
+            </Button>
+          )
         ) : (
           <Button variant="ghost" size="sm" onClick={() => setAiDraftOpen(true)} disabled={pending}>
             URL로 초안
@@ -357,6 +490,15 @@ export function PostEditor({
           {status === "published" ? "업데이트" : "발행"}
         </Button>
       </AdminTopbar>
+      {isPage ? (
+        <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", minHeight: 0 }}>
+          {metaHeader}
+          <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <PageVisualEditor value={bodyMd} onChange={setBodyMd} slug={initial.originalSlug} />
+          </div>
+        </div>
+      ) : (
       <div
         style={{
           display: "grid",
@@ -375,128 +517,7 @@ export function PostEditor({
             position: "relative",
           }}
         >
-          <div style={{ padding: "20px 48px 0" }}>
-            {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다.
-                폭이 모자라면 접어 내린다. 안 접으면 태그 칸이 `flex:1` 로 0 까지
-                쪼그라들고 칩은 제 칸 밖으로 삐져나와 날짜 입력 위에 겹쳐 앉는다. */}
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 18,
-              }}
-            >
-              <CategoryPicker
-                categories={categories}
-                value={categorySlug}
-                onChange={setCategorySlug}
-              />
-              {/* 칩 하나와 입력 자리는 늘 확보한다 — 이 아래로 줄어들면 칩이 넘친다. */}
-              <div style={{ flex: 1, minWidth: 220 }}>
-                <TagInput
-                  tags={tags}
-                  draft={tagDraft}
-                  onTagsChange={setTags}
-                  onDraftChange={setTagDraft}
-                />
-              </div>
-              <input
-                type="date"
-                value={toDateInputValue(publishedAt)}
-                max={todayDate}
-                onChange={(e) =>
-                  setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
-                }
-                aria-label="작성일"
-                title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
-                style={{
-                  padding: "6px 10px",
-                  border: publishedBeforeSource
-                    ? "1px solid var(--danger, #d33)"
-                    : "1px solid var(--line-subtle)",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  background: "transparent",
-                  color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
-                  fontFamily: "inherit",
-                  outline: "none",
-                  colorScheme: "light dark",
-                }}
-              />
-              <input
-                type="date"
-                value={sourceDate ?? ""}
-                max={todayDate}
-                onChange={(e) => setSourceDate(e.target.value || null)}
-                aria-label="원문 작성일"
-                title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
-                style={{
-                  padding: "6px 10px",
-                  border: "1px dashed var(--line-subtle)",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  background: "transparent",
-                  color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
-                  fontFamily: "inherit",
-                  outline: "none",
-                  colorScheme: "light dark",
-                }}
-              />
-              {publishedBeforeSource && (
-                <span
-                  role="alert"
-                  title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
-                  style={{
-                    fontSize: 12,
-                    color: "var(--danger, #d33)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  ⚠ 원문보다 앞선 발행일
-                </span>
-              )}
-              <ThumbnailField
-                coverImage={coverImage}
-                coverBrightness={coverBrightness}
-                thumbKind={thumbKind}
-                onChange={(next) => {
-                  setCoverImage(next.coverImage);
-                  setCoverBrightness(next.coverBrightness);
-                  setThumbKind(next.thumbKind);
-                }}
-              />
-            </div>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
-              style={{
-                width: "100%",
-                border: "none",
-                outline: "none",
-                fontSize: 36,
-                fontWeight: 800,
-                lineHeight: 1.2,
-                fontFamily: "inherit",
-                background: "transparent",
-                color: "var(--fg-strong)",
-                padding: 0,
-                letterSpacing: "-0.02em",
-              }}
-            />
-            <div
-              style={{
-                width: 60,
-                height: 4,
-                background: "var(--fg-strong)",
-                marginTop: 18,
-                marginBottom: 0,
-                borderRadius: 2,
-              }}
-            />
-          </div>
+          {metaHeader}
           <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
           <textarea
             ref={textareaRef}
@@ -559,6 +580,7 @@ export function PostEditor({
           </div>
         </div>
       </div>
+      )}
       {aiDraftOpen && (
         <AiDraftModal
           busy={pending}
