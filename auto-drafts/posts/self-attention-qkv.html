@@ -1,7 +1,7 @@
 ---
 title: Self-Attention은 "그것"이 무엇을 가리키는지 어떻게 알까요
 slug: self-attention-qkv
-excerpt: Self-Attention은 문장 속 단어마다 질문(Q)을 들고 다른 단어의 이름표(K)와 맞춰 본 뒤, 잘 맞는 단어의 내용(V)을 섞어 자기 뜻을 고쳐 쓰는 과정입니다. 화살표를 끌고 색을 섞으면서 그 계산을 손으로 따라가 봅니다.
+excerpt: Self-Attention은 문장 속 단어마다 질문(Q)을 들고 다른 단어의 이름표(K)와 맞춰 본 뒤, 잘 맞는 단어의 내용(V)을 섞어 자기 뜻을 고쳐 쓰는 과정입니다. 벡터·내적·softmax가 무엇인지부터 설명하고 화살표를 끌어 색을 섞으면서 그 계산을 직접 해 봅니다.
 tags: [LLM, Transformer, Self-Attention, AI Shift Track]
 category: ai
 ---
@@ -113,6 +113,20 @@ category: ai
 .post-page .sa-refs li { margin: 8px 0; line-height: 1.6; }
 .post-page .sa-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
 
+/* 예시 계산·비유 한계 */
+.post-page .sa-ex { margin: 24px 0; padding: 18px 20px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .sa-ex p { font-size: 15px; margin: 12px 0 0; }
+.post-page .sa-ex-t { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); margin-bottom: 10px; }
+.post-page .sa-tbl { border-collapse: collapse; font-size: 14px; width: 100%; font-variant-numeric: tabular-nums; }
+.post-page .sa-tbl th, .post-page .sa-tbl td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line-normal); }
+.post-page .sa-tbl th { font-weight: 600; color: var(--fg-alternative); font-size: 13px; }
+.post-page .sa-note { margin: 24px 0 0; padding: 4px 0 4px 16px; border-left: 3px solid var(--line-strong); font-size: 15px; line-height: 1.75; color: var(--fg-neutral); }
+.post-page .sa-note b { display: block; font-size: 13px; color: var(--fg-alternative); margin-bottom: 4px; }
+.post-page .sa-soft { display: grid; gap: 10px; margin: 8px 0 0; }
+.post-page .sa-soft label { display: grid; grid-template-columns: 6.5em 1fr 2.5em; gap: 10px; align-items: center; font-size: 14px; }
+.post-page .sa-soft input[type=range] { min-width: 0; accent-color: var(--fg-strong); }
+.post-page .sa-soft output { font-family: var(--font-mono); text-align: right; }
+
 .post-page .sa-reveal { animation: pg-sa-in linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
 @keyframes pg-sa-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 
@@ -159,10 +173,80 @@ category: ai
 
   <section class="sa-sec">
     <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">먼저 알아 둘 것 ①</span>
+      <h2>모델은 단어를 숫자 목록으로 바꿔서 받습니다</h2>
+      <p>컴퓨터는 글자를 그대로 계산하지 못합니다. 그래서 모델은 문장을 먼저 <b>토큰</b>으로 자릅니다. 토큰은 모델이 글을 읽는 단위로, 단어와 같거나 단어보다 조금 작은 조각입니다. 이 글에서는 이해하기 쉽게 단어 하나를 토큰 하나로 보겠습니다.</p>
+      <p>그다음 토큰마다 숫자 목록을 하나씩 붙입니다. 이렇게 순서가 있는 숫자 목록을 <b>벡터</b>라고 하고 단어를 벡터로 바꾼 결과를 <b>임베딩</b>이라고 부릅니다.</p>
+      <p>지도 앱을 떠올려 보면 이해가 쉽습니다. 지도 앱은 학교의 위치를 위도와 경도라는 숫자 두 개로 저장합니다. 숫자가 비슷하면 실제로도 가까운 곳에 있습니다. 임베딩도 비슷합니다. 단어를 숫자 여러 개로 적어 두고 뜻이 비슷한 단어는 숫자도 비슷하게 만듭니다.</p>
+      <div class="sa-ex">
+        <span class="sa-ex-t">설명을 위한 예시 값 (2차원)</span>
+        <table class="sa-tbl">
+          <tr><th>단어</th><th>벡터</th></tr>
+          <tr><td>dog</td><td>(2.0, 0.9)</td></tr>
+          <tr><td>cat</td><td>(1.8, 1.1)</td></tr>
+          <tr><td>street</td><td>(−1.5, 2.0)</td></tr>
+        </table>
+        <p>dog와 cat은 숫자가 비슷하고 street은 많이 다릅니다. 숫자를 좌표로 보고 평면에 점을 찍으면 원점에서 그 점까지 화살표를 그릴 수 있습니다. 이 글에서는 벡터를 이런 화살표로 그립니다.</p>
+      </div>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 지도 좌표는 숫자 두 개이고 "북쪽·동쪽"처럼 축마다 뜻이 정해져 있습니다. 실제 임베딩은 숫자가 수백~수천 개이고(원 논문 Transformer는 512개), 각 숫자가 무엇을 뜻하는지 사람이 이름을 붙일 수 없습니다. 숫자 값은 모두 학습으로 정해집니다.</aside>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
       <span class="sa-kicker">왜 필요할까요</span>
       <h2>처음 받은 단어 벡터에는 문맥이 없습니다</h2>
-      <p>모델은 단어(정확히는 토큰)를 <b>임베딩 벡터</b>로 바꿔서 받습니다. 문제는 이 벡터가 문장과 상관없이 늘 같다는 점입니다. "it"의 벡터는 동물 문장에서도, 길 문장에서도 똑같습니다. "bank"도 강둑이든 은행이든 출발점은 같은 벡터입니다.</p>
-      <p>그래서 각 단어는 문장 안의 다른 단어를 둘러보고, 자기와 관련 있는 단어의 정보를 가져와 자기 벡터를 고쳐 써야 합니다. Self-Attention에서는 모든 단어가 이 "둘러보고 가져오기"를 동시에 합니다.</p>
+      <p>단톡방에서 친구가 "그거 가져왔어?"라고 물으면 위로 올려서 앞 대화를 봐야 "그거"가 체육복인지 숙제인지 알 수 있습니다. "그거"라는 말에는 답이 없고 주변 문장에 답이 있습니다.</p>
+      <p>모델도 같은 문제를 겪습니다. 임베딩은 단어마다 미리 정해 둔 벡터라서 문장과 상관없이 늘 같습니다. "it"의 벡터는 동물 문장에서도, 길 문장에서도 똑같습니다. "bank"도 강둑이든 은행이든 출발점은 같은 벡터입니다.</p>
+      <p>그래서 각 단어는 문장 안의 다른 단어를 둘러보고 자기와 관련 있는 단어의 정보를 가져와 자기 벡터를 고쳐 써야 합니다. Self-Attention에서는 문장 속 모든 단어가 이 "둘러보고 가져오기"를 동시에 합니다. 이름에 Self가 붙은 이유는 같은 문장 안의 단어끼리 서로를 보기 때문입니다.</p>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 사람은 앞 대화 말고도 상식과 기억을 함께 씁니다. Self-Attention 한 번이 보는 것은 지금 입력된 토큰들뿐입니다. 모델이 학습으로 익힌 일반 지식은 다른 층(MLP)의 가중치에 들어 있습니다.</aside>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">먼저 알아 둘 것 ②</span>
+      <h2>내적은 두 벡터가 얼마나 같은 쪽을 향하는지 잽니다</h2>
+      <p>관련 있는 단어를 찾으려면 두 벡터가 얼마나 닮았는지 숫자 하나로 잴 방법이 필요합니다. 여기에 <b>내적</b>을 씁니다. 내적은 두 벡터에서 같은 자리의 숫자끼리 곱한 뒤 모두 더한 값입니다.</p>
+      <p>친구와 영화 취향을 맞춰 보는 장면으로 생각해 보겠습니다. 액션과 로맨스를 각각 −2점(싫음)에서 +2점(좋음)으로 매기고 같은 장르 점수끼리 곱해서 더합니다. 둘 다 좋아하면 곱이 양수, 둘 다 싫어해도 양수, 한쪽만 좋아하면 음수가 됩니다. 합계가 크면 취향이 잘 맞는 친구입니다.</p>
+      <div class="sa-ex">
+        <span class="sa-ex-t">작은 숫자로 계산해 보기</span>
+        <table class="sa-tbl">
+          <tr><th></th><th>액션</th><th>로맨스</th><th>나와의 내적</th></tr>
+          <tr><td>나</td><td>2</td><td>1</td><td>—</td></tr>
+          <tr><td>민지</td><td>2</td><td>0</td><td>2×2 + 1×0 = <b>4</b></td></tr>
+          <tr><td>서준</td><td>−1</td><td>2</td><td>2×(−1) + 1×2 = <b>0</b></td></tr>
+          <tr><td>하윤</td><td>−2</td><td>−1</td><td>2×(−2) + 1×(−1) = <b>−5</b></td></tr>
+        </table>
+        <p>화살표로 그리면 민지는 나와 비슷한 방향, 서준은 직각 방향, 하윤은 반대 방향을 가리킵니다. 내적이 크면 같은 쪽, 0이면 서로 관계없는 쪽, 음수면 반대쪽입니다.</p>
+      </div>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 취향 점수는 "액션"처럼 항목 이름이 있지만 벡터의 숫자에는 이름이 없습니다. 또 내적은 방향뿐 아니라 화살표 길이에도 영향을 받습니다. 숫자가 큰 벡터는 방향이 조금만 맞아도 내적이 커집니다. 이 성질 때문에 뒤에서 나올 √d 나누기가 필요해집니다.</aside>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">먼저 알아 둘 것 ③</span>
+      <h2>softmax는 점수를 합이 100%인 비율로 바꿉니다</h2>
+      <p>내적으로 단어마다 점수가 나오면 그 점수를 얼마씩 참고할지 정하는 비율로 바꿔야 합니다. 점수는 음수도 나오고 합도 일정하지 않아서 바로 비율로 쓸 수 없습니다. 이때 쓰는 함수가 <b>softmax</b>입니다.</p>
+      <p>모둠 발표 점수에 따라 상품권을 나누는 상황과 비슷합니다. 점수가 높은 모둠이 더 많이 받고 전체를 합하면 정확히 100%가 됩니다. softmax는 이 나누기를 조금 특별하게 합니다. 점수를 그대로 쓰지 않고 e(약 2.718)를 그 점수만큼 거듭제곱한 값으로 바꾼 뒤 비율을 냅니다.</p>
+      <div class="sa-ex">
+        <span class="sa-ex-t">점수 2, 1, 0을 softmax에 넣으면</span>
+        <table class="sa-tbl">
+          <tr><th>점수</th><th>e<sup>점수</sup></th><th>비율</th></tr>
+          <tr><td>2</td><td>7.39</td><td>7.39 ÷ 11.11 = <b>66.5%</b></td></tr>
+          <tr><td>1</td><td>2.72</td><td>2.72 ÷ 11.11 = <b>24.5%</b></td></tr>
+          <tr><td>0</td><td>1.00</td><td>1.00 ÷ 11.11 = <b>9.0%</b></td></tr>
+        </table>
+        <p>점수는 1씩 차이 나는데 비율은 66.5%와 24.5%로 크게 벌어집니다. 거듭제곱을 쓰기 때문에 가장 높은 점수가 더 많이 가져갑니다. 아래 막대를 움직여 직접 확인해 보세요.</p>
+      </div>
+      <div class="sa-soft" data-sa-soft>
+        <label>animal 점수 <input type="range" min="-4" max="6" step="0.5" value="2" data-sa-s="0"><output>2</output></label>
+        <label>street 점수 <input type="range" min="-4" max="6" step="0.5" value="1" data-sa-s="1"><output>1</output></label>
+        <label>the 점수 <input type="range" min="-4" max="6" step="0.5" value="0" data-sa-s="2"><output>0</output></label>
+        <div data-sa-softout></div>
+      </div>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 상품권은 보통 점수에 정비례해서 나누지만 softmax는 거듭제곱 때문에 차이를 더 키웁니다. 점수가 음수여도 몫이 0이 되지 않고 아주 작은 비율이라도 반드시 받습니다.</aside>
     </div>
   </section>
 
@@ -170,13 +254,21 @@ category: ai
     <div class="sa-wrap sa-narrow">
       <span class="sa-kicker">세 가지 소지품</span>
       <h2>단어마다 질문, 이름표, 내용을 하나씩 들고 있습니다</h2>
-      <p>각 단어 벡터에 서로 다른 가중치 행렬 세 개를 곱해서 역할이 다른 벡터 세 개를 만듭니다. 세 행렬의 값은 학습으로 정해집니다.</p>
+      <p>이제 Self-Attention의 재료를 볼 차례입니다. 학교 도서관에서 책을 찾는 장면을 떠올려 보겠습니다. 검색창에 "고양이 키우기"라고 치면 컴퓨터가 이 검색어를 책마다 붙은 제목·키워드와 비교해서 잘 맞는 책을 찾고 우리는 그 책의 내용을 읽습니다.</p>
+      <p>Self-Attention은 단어 하나가 이 세 가지를 모두 들고 있게 합니다.</p>
       <div class="sa-person">
-        <div><h3 class="q">Q</h3><em>Query · 질문</em><p>"나는 지금 어떤 정보가 필요하지?" it이라면 "내가 가리키는 명사가 뭐지?"쯤 되는 질문을 던집니다.</p></div>
-        <div><h3 class="k">K</h3><em>Key · 이름표</em><p>"나는 이런 정보를 가지고 있어." 다른 단어의 Query가 이 Key와 얼마나 맞는지 비교합니다.</p></div>
-        <div><h3 class="v">V</h3><em>Value · 내용</em><p>"선택되면 건네줄 실제 정보." Key와 Value를 따로 두기 때문에 찾는 기준과 건네는 정보가 달라도 됩니다.</p></div>
+        <div><h3 class="q">Q</h3><em>Query · 검색어</em><p>"나는 지금 어떤 정보가 필요하지?" it이라면 "내가 가리키는 명사가 뭐지?"쯤 되는 질문입니다.</p></div>
+        <div><h3 class="k">K</h3><em>Key · 키워드</em><p>"나는 이런 정보를 가지고 있어." 다른 단어의 Query가 이 Key와 얼마나 맞는지 내적으로 비교합니다.</p></div>
+        <div><h3 class="v">V</h3><em>Value · 책 내용</em><p>"선택되면 건네줄 실제 정보." Key와 Value를 따로 두기 때문에 찾는 기준과 건네는 정보가 달라도 됩니다.</p></div>
       </div>
-      <div class="sa-formula">Attention(Q, K, V) = softmax( QK<sup>T</sup> / √d<sub>k</sub> ) · V<small>Query와 Key를 맞춰 점수를 내고(QK<sup>T</sup>), 확률로 바꾼 뒤(softmax), 그 비율로 Value를 섞습니다(· V)</small></div>
+      <p>그럼 단어 벡터 하나에서 Q, K, V 세 벡터를 어떻게 만들까요? 단어 벡터에 서로 다른 <b>가중치 행렬</b> 세 개를 곱합니다. <b>가중치</b>는 모델이 학습하면서 스스로 정하는 숫자이고 <b>행렬</b>은 그런 숫자를 가로세로 표로 늘어놓은 것입니다. 벡터에 행렬을 곱한다는 건 "입력 숫자에 정해진 비율을 곱해 더해서 새 숫자를 만드는 규칙"을 여러 개 한꺼번에 적용한다는 뜻입니다.</p>
+      <div class="sa-ex">
+        <span class="sa-ex-t">설명을 위한 예시 값</span>
+        <p>it의 벡터가 (2, 1)이라고 해 보겠습니다. Q를 만드는 규칙이 "첫째 숫자 = 첫째 + 둘째, 둘째 숫자 = 첫째 − 둘째"라면 Q는 (3, 1)입니다. K를 만드는 규칙이 "첫째 숫자 = 첫째, 둘째 숫자 = 둘째 × 2"라면 K는 (2, 2)입니다. 같은 단어에서 출발했지만 규칙이 다르니 다른 벡터가 나옵니다. 이 규칙 세 벌을 숫자 표로 적어 둔 것이 W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub> 행렬입니다.</p>
+      </div>
+      <p>계산 순서를 말로 적으면 이렇습니다. 내 Query를 모든 단어의 Key와 내적해서 점수를 냅니다. 점수를 √d<sub>k</sub>로 나눕니다(이유는 아래에서 봅니다). softmax로 비율을 만들고 그 비율대로 모든 단어의 Value를 섞습니다. 논문은 이 과정을 한 줄로 적습니다.</p>
+      <div class="sa-formula">Attention(Q, K, V) = softmax( QK<sup>T</sup> / √d<sub>k</sub> ) · V<small>QK<sup>T</sup>는 모든 Query와 모든 Key의 내적을 한꺼번에 계산한 점수표, d<sub>k</sub>는 Key 벡터의 숫자 개수, 마지막 · V는 그 비율대로 Value를 섞는 계산입니다</small></div>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 도서관 검색은 책 한 권을 골라 가져오지만 Self-Attention은 모든 책을 비율만큼 조금씩 섞어 읽습니다. 또 도서관에서는 검색하는 사람과 책이 따로 있지만 여기서는 모든 단어가 검색하는 쪽이면서 동시에 검색되는 책입니다.</aside>
     </div>
   </section>
 
@@ -185,7 +277,7 @@ category: ai
       <div class="sa-narrow">
         <span class="sa-kicker">직접 계산해 보기</span>
         <h2>질문 화살표를 끌면 섞이는 색이 바뀝니다</h2>
-        <p>실제 벡터는 수백 차원이지만, 여기서는 2차원으로 줄였습니다. 주황 화살표가 it의 <span class="q">질문 Q</span>, 파란 화살표가 다른 단어의 <span class="k">이름표 K</span>입니다. 각 단어의 <span class="v">내용 V</span>는 색으로 표시했습니다. 주황 화살표 끝을 끌어 보세요.</p>
+        <p>실제 벡터는 수백 차원이지만 여기서는 2차원으로 줄였습니다. 주황 화살표가 it의 <span class="q">질문 Q</span>, 파란 화살표가 다른 단어의 <span class="k">이름표 K</span>입니다. 각 단어의 <span class="v">내용 V</span>는 색으로 표시했습니다. 주황 화살표 끝을 끌어 보세요.</p>
       </div>
       <div class="sa-play">
         <svg class="sa-plane" data-sa-plane viewBox="-160 -160 320 320" role="img" aria-label="질문 벡터와 키 벡터 네 개가 그려진 2차원 평면. 질문 벡터 끝을 끌어서 움직일 수 있습니다"></svg>
@@ -198,7 +290,8 @@ category: ai
         </div>
       </div>
       <div class="sa-narrow" style="margin-top:28px">
-        <p>Q가 animal의 K와 같은 방향을 가리키면 내적이 커지고, softmax를 거친 가중치도 animal에 몰립니다. 그러면 새 it의 색은 animal의 색에 가까워집니다. 단어 하나를 고르는 게 아니라 <b>섞는다</b>는 점을 기억해 두세요. 가장 관련 있는 단어에서 정보를 가장 많이 가져오고, 나머지 단어에서도 조금씩 가져옵니다.</p>
+        <p>Q가 animal의 K와 같은 방향을 가리키면 내적이 커지고 softmax를 거친 가중치도 animal에 몰립니다. 그러면 새 it의 색은 animal의 색에 가까워집니다. 단어 하나를 고르는 게 아니라 <b>섞는다</b>는 점을 기억해 두세요. 가장 관련 있는 단어에서 정보를 가장 많이 가져오고 나머지 단어에서도 조금씩 가져옵니다.</p>
+        <p>Q를 the 쪽으로 돌리면 결과가 회색에 가까워집니다. 실제 모델에서는 학습하는 동안 Q와 K를 만드는 가중치 행렬의 숫자가 조금씩 고쳐지고 그 결과 it의 Query가 앞에 나온 명사의 Key와 잘 맞게 됩니다. 이 그림의 화살표 위치는 사람이 정한 예시 값입니다.</p>
       </div>
     </div>
   </section>
@@ -207,8 +300,11 @@ category: ai
     <div class="sa-wrap sa-narrow">
       <span class="sa-kicker">숨은 온도 조절</span>
       <h2>√d로 나누지 않으면 한 단어만 보게 됩니다</h2>
-      <p>차원 d가 커지면 내적 값도 함께 커집니다. 각 성분이 평균 0, 분산 1인 무작위 값이면 내적의 분산은 d가 됩니다. 점수 차이가 크면 softmax는 거의 한 단어에 모든 가중치를 몰아줍니다. 그러면 학습 신호(기울기)가 거의 0이 되어 학습이 막힙니다.</p>
-      <p>그래서 점수를 √d로 나눕니다. <a href="/posts/llm-temperature-sampling">Temperature 글</a>에서 본 "로짓을 T로 나누기"와 똑같은 일입니다. 아래에서 d를 키워 보세요. 왼쪽은 나누지 않은 경우, 오른쪽은 나눈 경우입니다.</p>
+      <p>벡터의 숫자 개수를 <b>차원</b>이라 하고 d로 적습니다. 내적은 같은 자리 숫자를 곱해서 모두 더하므로 d가 커지면 더하는 항이 많아지고 점수도 크게 벌어집니다.</p>
+      <p>시험으로 생각해 보겠습니다. 10문제짜리 시험과 100문제짜리 시험이 있습니다. 100문제 시험은 문제가 많은 만큼 학생 사이 총점 차이도 크게 벌어집니다. 총점만 보면 실력 차이가 실제보다 커 보이니 문제 수에 맞춰 점수를 줄여서 비교해야 공정합니다.</p>
+      <p>Self-Attention에서 줄이는 값은 √d입니다. Q와 K의 각 숫자가 평균 0, 분산 1인 무작위 값이라고 가정하면 내적이 흔들리는 폭(표준편차)이 √d배로 커지기 때문입니다. d = 64면 흔들림이 8배가 되므로 8로 나눕니다.</p>
+      <p>나누지 않으면 무슨 일이 생길까요? 앞에서 본 softmax는 점수 차이를 키우는 함수였습니다. 점수 차이가 처음부터 크면 softmax는 거의 한 단어에 모든 가중치를 몰아줍니다. 그러면 학습할 때 어느 쪽으로 얼마나 고칠지 알려 주는 신호(기울기)가 거의 0이 되어 학습이 잘 진행되지 않습니다. <a href="/posts/llm-temperature-sampling">Temperature 글</a>에서 본 "로짓을 T로 나누기"와 같은 원리입니다.</p>
+      <p>아래에서 d를 키워 보세요. 왼쪽은 나누지 않은 경우, 오른쪽은 나눈 경우입니다.</p>
       <div class="sa-ctrl">
         <label for="sa-d">차원 d</label>
         <input id="sa-d" type="range" min="1" max="10" step="1" value="7" data-sa-d>
@@ -220,6 +316,7 @@ category: ai
         <div class="sa-scale-card"><h3>softmax(Q·K / √d)</h3><div data-sa-scaled></div></div>
       </div>
       <p class="sa-cap">무작위 Q와 K 6개의 내적으로 계산합니다. 원 논문은 d<sub>k</sub> = 64를 써서 8로 나눴습니다.</p>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 시험 점수는 보통 문제 수 d로 나눠 평균을 내지만 여기서는 √d로 나눕니다. 무작위 값을 여러 개 더하면 합의 흔들림은 항 개수의 제곱근만큼 커지기 때문입니다.</aside>
     </div>
   </section>
 
@@ -228,8 +325,8 @@ category: ai
       <div class="sa-narrow">
         <span class="sa-kicker">한꺼번에 보기</span>
         <h2>모든 단어가 동시에 서로를 봅니다</h2>
-        <p>지금까지는 it 한 단어만 따라갔습니다. 실제로는 모든 단어가 동시에 Query를 던지므로 결과는 단어 수 × 단어 수 크기의 표가 됩니다. 한 줄에 한 단어의 attention weight가 담깁니다. 그래서 문장이 두 배 길어지면 계산량은 네 배가 됩니다.</p>
-        <p>또 모델은 이 계산을 여러 벌 따로 돌립니다. 이를 <b>멀티 헤드</b>라고 합니다. 헤드마다 다른 관계를 잡도록 학습되는데, 아래 세 헤드는 흔히 관찰되는 패턴을 흉내 낸 예시입니다.</p>
+        <p>지금까지는 it 한 단어만 따라갔습니다. 실제로는 모든 단어가 동시에 Query를 던집니다. 반 학생 30명이 서로를 한 명씩 전부 평가해서 표를 만든다고 생각해 보세요. 자기 자신까지 포함하면 30 × 30 = 900칸짜리 표가 나옵니다. 학생이 60명으로 늘면 3,600칸, 네 배가 됩니다.</p>
+        <p>Self-Attention의 결과도 단어 수 × 단어 수 크기의 표이고 한 줄에 한 단어의 attention weight가 담깁니다. 그래서 문장이 두 배 길어지면 계산량은 네 배가 됩니다. 긴 문서를 한 번에 넣을수록 계산 비용이 빠르게 늘어나는 이유 중 하나입니다.</p>
       </div>
       <div class="sa-matrix-wrap">
         <div>
@@ -243,7 +340,8 @@ category: ai
         </div>
         <div>
           <p><b>표 읽는 법:</b> 왼쪽 단어가 위쪽 단어를 얼마나 참고하는지 진하기로 나타냅니다. 칸에 마우스를 올리면 그 줄이 강조됩니다.</p>
-          <p><b>causal mask를 켜면</b> 대각선 위쪽이 빗금으로 막힙니다. GPT 같은 생성 모델은 다음 단어를 맞히도록 학습되기 때문에 아직 나오지 않은 뒤쪽 단어를 볼 수 없게 점수를 −∞로 바꿉니다. 그러면 tired를 보지 못한 it은 동물인지 길인지 아직 정할 수 없습니다. 실제 모델은 뒤 단어가 나온 뒤 다음 층과 다음 토큰에서 이 정보를 다시 모읍니다.</p>
+          <p>표는 대각선을 기준으로 대칭이 아닙니다. it이 animal을 보는 비율과 animal이 it을 보는 비율은 다릅니다. 앞의 것은 it의 Query와 animal의 Key로, 뒤의 것은 animal의 Query와 it의 Key로 계산하기 때문입니다.</p>
+          <p><b>causal mask를 켜면</b> 대각선 위쪽이 빗금으로 막힙니다. GPT 같은 생성 모델은 다음 단어를 맞히도록 학습합니다. 받아쓰기 시험에서 뒤 문장을 미리 보면 안 되는 것처럼, 아직 나오지 않은 뒤쪽 단어의 점수를 −∞로 바꿔서 softmax 결과가 0이 되게 합니다. 그러면 tired를 보지 못한 it은 동물인지 길인지 아직 정할 수 없습니다. 이 정보는 tired 뒤에 오는 토큰이 it과 tired를 함께 보면서 모읍니다.</p>
           <p data-sa-rowinfo style="color:var(--fg-alternative);font-size:15px"></p>
         </div>
       </div>
@@ -252,12 +350,33 @@ category: ai
 
   <section class="sa-sec">
     <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">여러 벌 돌리기</span>
+      <h2>헤드를 여러 개 두면 여러 관계를 한 번에 봅니다</h2>
+      <p>한 문장 안에는 관계가 여러 겹 있습니다. it이 무엇을 가리키는지, 바로 앞 단어가 무엇인지, 주어와 동사가 어떻게 이어지는지 같은 것들입니다. attention을 한 번만 계산하면 이 관계들이 비율 하나에 뒤섞입니다.</p>
+      <p>그래서 모델은 같은 계산을 여러 벌 따로 돌립니다. 이를 <b>멀티 헤드</b>라고 하고 한 벌을 <b>헤드</b>라고 부릅니다. 글짓기 숙제를 국어 선생님은 문법 위주로, 사회 선생님은 사실관계 위주로 각자 읽고 의견을 낸 뒤 합치는 것과 비슷합니다. 헤드마다 W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub>를 따로 가지므로 같은 문장에서 서로 다른 관계를 잡을 수 있습니다.</p>
+      <p>원 논문 Transformer는 512차원 벡터를 8개 헤드로 나눠 헤드마다 64차원으로 계산하고 결과를 다시 이어 붙였습니다. 앞 표 위쪽 버튼으로 헤드를 바꿔 보면 같은 문장에서도 헤드마다 다른 무늬가 나옵니다. 세 헤드의 값은 흔히 관찰되는 패턴을 흉내 낸 예시입니다.</p>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 선생님들은 과목이 정해져 있지만 헤드에는 역할을 정해 주지 않습니다. 학습이 끝난 뒤 들여다보면 일부 헤드가 지시어나 직전 단어 같은 패턴을 보일 뿐이고 무엇을 하는지 설명하기 어려운 헤드가 더 많습니다.</aside>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
+      <span class="sa-kicker">그다음</span>
+      <h2>고쳐 쓴 벡터는 원래 벡터에 더해져 다음 층으로 갑니다</h2>
+      <p>Self-Attention으로 만든 새 벡터가 원래 벡터를 통째로 대신하지는 않습니다. 원래 벡터에 더해지는데, 이를 <b>residual connection</b>이라고 합니다. 공책 필기를 지우고 다시 쓰는 대신, 수업에서 새로 알게 된 내용을 포스트잇으로 덧붙이는 것과 비슷합니다. 원래 뜻은 남기고 문맥에서 얻은 정보만 보탭니다.</p>
+      <p>그 뒤에는 단어마다 따로 계산하는 MLP 층이 붙고 이 묶음 전체가 한 층이 됩니다. 원 논문 Transformer는 이런 층을 6개 쌓았고 요즘 대형 언어 모델은 수십 개를 쌓습니다. 층을 지날 때마다 단어 벡터에 문맥 정보가 더해져서 위쪽 층의 it 벡터에는 "피곤한 동물"을 가리킨다는 정보까지 담길 수 있습니다.</p>
+      <aside class="sa-note"><b>비유가 맞지 않는 부분</b> 포스트잇은 나중에 따로 떼어 볼 수 있지만 여기서는 숫자끼리 더해서 벡터 하나로 합칩니다. 더한 뒤에는 어디까지가 원래 정보이고 어디부터가 문맥 정보인지 나눠 볼 수 없습니다.</aside>
+    </div>
+  </section>
+
+  <section class="sa-sec">
+    <div class="sa-wrap sa-narrow">
       <span class="sa-kicker">자주 하는 오해</span>
       <h2>어텐션 그림을 볼 때 조심할 점</h2>
       <div class="sa-myth">
-        <details open><summary>헤드마다 정해진 역할이 있다</summary><p>헤드에 역할을 미리 정해 주지 않습니다. 학습 결과 일부 헤드가 지시어나 직전 단어 같은 패턴을 보일 뿐이고, 해석하기 어려운 헤드가 훨씬 많습니다.</p></details>
+        <details open><summary>헤드마다 정해진 역할이 있다</summary><p>헤드에 역할을 미리 정해 주지 않습니다. 학습 결과 일부 헤드가 지시어나 직전 단어 같은 패턴을 보일 뿐이고 해석하기 어려운 헤드가 훨씬 많습니다.</p></details>
         <details><summary>가중치가 크면 그 단어 때문에 답이 나왔다</summary><p>어텐션 가중치는 정보가 어디서 섞였는지 보여 줄 뿐, 최종 답의 원인을 그대로 설명하지는 않습니다. 층이 수십 개 쌓이고 그 뒤에 MLP 층도 있기 때문입니다.</p></details>
-        <details><summary>어텐션은 가까운 단어끼리만 연결한다</summary><p>거리와 상관없이 모든 단어 쌍을 한 번에 비교합니다. 위치 정보는 따로 더해 주는 위치 인코딩으로 들어갑니다. 대신 계산이 길이의 제곱만큼 늘어나서 문맥이 길수록 비쌉니다.</p></details>
+        <details><summary>어텐션은 가까운 단어끼리만 연결한다</summary><p>거리와 상관없이 모든 단어 쌍을 한 번에 비교합니다. 그래서 단어 순서는 따로 알려 줘야 합니다. 원 논문은 위치마다 정해진 값을 더하는 위치 인코딩을 썼고 Llama 같은 요즘 모델은 Q와 K를 위치만큼 돌려 주는 RoPE를 많이 씁니다. 대신 계산이 길이의 제곱만큼 늘어나서 문맥이 길수록 비쌉니다.</p></details>
         <details><summary>단어 하나가 토큰 하나다</summary><p>모델이 보는 단위는 토큰입니다. didn't가 did와 n't로 나뉘는 것처럼 한 단어가 여러 토큰이 되기도 합니다. 이 페이지는 설명을 위해 단어 단위로 그렸습니다.</p></details>
       </div>
     </div>
@@ -268,9 +387,11 @@ category: ai
       <span class="sa-kicker">정리</span>
       <h2>한 문장으로 줄이면</h2>
       <p>Self-Attention에서는 모든 단어가 <span class="q">질문(Query)</span>을 들고 다른 단어들의 <span class="k">이름표(Key)</span>와 내적으로 맞춰 본 뒤, softmax로 비율을 정해 그 단어들의 <span class="v">내용(Value)</span>을 섞어 자기 벡터를 고쳐 씁니다. √d로 나누는 건 softmax가 한 단어에 쏠리지 않도록 온도를 조절하는 일입니다.</p>
+      <p>이 계산이 여러 헤드로 나뉘어 동시에 돌고 층마다 반복되면서 it 벡터에 자기가 가리키는 대상의 정보가 담깁니다. GPT 같은 생성 모델이 긴 문장에서도 앞뒤를 맞춰 말할 수 있는 것도 이 계산 덕분입니다. 반대로 단어 수의 제곱만큼 늘어나는 계산량은 긴 문맥을 다룰 때 큰 부담으로 남습니다.</p>
       <h2 style="margin-top:56px">참고 자료</h2>
       <ul class="sa-refs">
-        <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Vaswani et al., Attention Is All You Need (2017)</a></li>
+        <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Vaswani et al., Attention Is All You Need (2017)</a>: d<sub>model</sub> = 512, 헤드 8개, d<sub>k</sub> = 64, 층 6개, residual connection, √d<sub>k</sub> 나누기와 마스킹</li>
+        <li><a href="https://arxiv.org/abs/2104.09864" target="_blank" rel="noopener">Su et al., RoFormer: Enhanced Transformer with Rotary Position Embedding (RoPE)</a></li>
         <li><a href="https://www.3blue1brown.com/lessons/attention" target="_blank" rel="noopener">3Blue1Brown, Attention in transformers, step-by-step</a></li>
         <li><a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">Jay Alammar, The Illustrated Transformer</a></li>
         <li><a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer: GPT-2 어텐션을 직접 들여다보는 도구</a></li>
@@ -434,6 +555,19 @@ category: ai
     head = b.dataset.head; el.querySelectorAll("[data-head]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); drawMatrix();
   }, { signal }));
 
+  // ── softmax 맛보기 ─────────────────────────────────────────
+  const softBox = $("[data-sa-soft]"), softOut = $("[data-sa-softout]");
+  const softIn = [...softBox.querySelectorAll("[data-sa-s]")];
+  const SOFT_C = ["rgb(46,170,120)", "rgb(80,140,255)", "rgb(150,150,160)"];
+  const drawSoft = () => {
+    const v = softIn.map((x) => +x.value);
+    softIn.forEach((x, i) => (x.nextElementSibling.textContent = v[i]));
+    const w = softmax(v);
+    softOut.innerHTML = ["animal", "street", "the"].map((t, i) => row(t, SOFT_C[i], null, w[i] * 100, "rgb(255,122,69)", (w[i] * 100).toFixed(1) + "%")).join("");
+  };
+  softIn.forEach((x) => x.addEventListener("input", drawSoft, { signal }));
+
   reroll(); drawScale(); drawPlay(); drawLinks(); drawMatrix();
+  drawSoft();
 })();
 </script>
