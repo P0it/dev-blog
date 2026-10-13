@@ -131,8 +131,42 @@ category: ai
 .post-page .sa-reveal { animation: pg-sa-in linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
 @keyframes pg-sa-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 
+/* it 하나 따라가기 — 그림 고정 스크롤리텔링: 그림은 sticky, 단계 글이 옆으로 지나가며 그림 상태를 바꾼다 */
+.post-page .sa-story { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: clamp(28px, 4vw, 64px); margin-top: 36px; align-items: start; }
+.post-page .sa-story-fig { position: sticky; top: 84px; display: grid; gap: 12px; padding-bottom: 8px; margin: 0; }
+.post-page .sa-story-fig .sa-plane { width: min(100%, 52svh); max-width: 500px; margin: 0 auto; }
+.post-page .sa-stagelbl { font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); text-align: center; min-height: 1.4em; }
+.post-page .sa-story-panel { display: grid; gap: 10px; min-height: 120px; max-width: 520px; width: 100%; margin: 0 auto; }
+.post-page .sa-story-panel > div { display: none; }
+.post-page .sa-story-fig[data-stage="3"] [data-p="dots"],
+.post-page .sa-story-fig[data-stage="4"] [data-p="w"],
+.post-page .sa-story-fig[data-stage="5"] [data-p="mix"],
+.post-page .sa-story-fig[data-stage="6"] [data-p="w"],
+.post-page .sa-story-fig[data-stage="6"] [data-p="mix"] { display: block; }
+.post-page .sa-story-fig .sa-q, .post-page .sa-story-fig .sa-score { transition: opacity 0.3s; }
+.post-page .sa-story-fig[data-stage="1"] .sa-q,
+.post-page .sa-story-fig[data-stage="1"] .sa-score,
+.post-page .sa-story-fig[data-stage="2"] .sa-score { opacity: 0; }
+.post-page .sa-story-steps { padding: 6svh 0 22svh; }
+.post-page .sa-step { min-height: 64svh; display: flex; flex-direction: column; justify-content: center; }
+.post-page .sa-js .sa-step { opacity: 0.32; transition: opacity 0.3s; }
+.post-page .sa-js .sa-step.is-on { opacity: 1; }
+.post-page .sa-step .n { font-family: var(--font-mono); font-size: 12px; color: var(--sa-q); font-weight: 700; margin-bottom: 8px; }
+.post-page .sa .sa-step p { margin: 0 0 0.7em; }
 @media (max-width: 900px) {
   .post-page .sa-hero-grid, .post-page .sa-play, .post-page .sa-matrix-wrap { grid-template-columns: 1fr; }
+  .post-page .sa-story { grid-template-columns: 1fr; gap: 0; }
+  .post-page .sa-story-fig { top: 56px; z-index: 2; background: var(--bg-base); padding: 8px 0 10px; box-shadow: 0 10px 14px -12px rgba(0,0,0,0.25); }
+  .post-page .sa-story-fig .sa-plane { width: min(100%, 26svh); }
+  .post-page .sa-story-fig .sa-plane { overflow: visible; }
+  .post-page .sa-story-fig .sa-plane text { font-size: 19px; }
+  .post-page .sa-story-panel { min-height: 0; }
+  .post-page .sa-story-panel .sa-row { margin: 2px 0; font-size: 12px; }
+  .post-page .sa-story-panel .sa-track { height: 10px; }
+  .post-page .sa-story-panel .sa-mixbar { height: 24px; }
+  .post-page .sa-story-panel .sa-mixout { width: 40px; height: 40px; font-size: 11px; }
+  .post-page .sa-story-steps { padding: 4svh 0 14svh; }
+  .post-page .sa-step { min-height: 46svh; }
 }
 @media (max-width: 640px) {
   .post-page .sa-wrap { padding: 0 20px; }
@@ -358,26 +392,33 @@ category: ai
     </div>
   </section>
 
-  <section class="sa-sec">
+  <section class="sa-sec" data-sa-story>
     <div class="sa-wrap">
       <div class="sa-narrow">
-        <span class="sa-kicker">직접 계산해 보기</span>
-        <h2>질문 화살표를 끌면 섞이는 색이 바뀝니다</h2>
-        <p>실제 벡터에는 숫자가 수백 개 들어 있지만(이 개수를 차원이라고 합니다) 여기서는 두 개로 줄였습니다. 주황 화살표가 it의 <span class="q">질문 Q</span>, 파란 화살표가 다른 단어의 <span class="k">이름표 K</span>입니다. 각 단어의 <span class="v">내용 V</span>는 색으로 표시했습니다. 주황 화살표 끝을 끌어 보세요.</p>
+        <span class="sa-kicker">it 하나 따라가기</span>
+        <h2>it의 새 벡터는 점수, 비율, 섞기 세 단계로 만들어집니다</h2>
+        <p>앞에서 본 내적과 softmax를 이제 it 하나에 차례로 씁니다. 글을 내리면 그림이 한 단계씩 바뀝니다. 실제 벡터에는 숫자가 수백 개 들어 있지만(이 개수를 차원이라고 합니다) 그림에서는 두 개로 줄였습니다.</p>
       </div>
-      <div class="sa-play">
-        <svg class="sa-plane" data-sa-plane viewBox="-160 -160 320 320" role="img" aria-label="질문 벡터와 키 벡터 네 개가 그려진 2차원 평면. 질문 벡터 끝을 끌어서 움직일 수 있습니다"></svg>
-        <div class="sa-steps">
-          <div><div class="sa-step-t">① 점수 = Q · K (내적. 같은 방향이면 오른쪽 +, 반대면 왼쪽 −)</div><div data-sa-dots></div></div>
-          <div><div class="sa-step-t">② 가중치 = softmax(점수 / √d)</div><div data-sa-weights></div></div>
-          <div><div class="sa-step-t">③ 새 it = 가중치대로 V를 섞은 결과</div>
-            <div class="sa-mix"><div class="sa-mixbar" data-sa-mixbar></div><div class="sa-mixout" data-sa-mixout>it</div></div>
+      <div class="sa-story">
+        <figure class="sa-story-fig" data-figure data-stage="6" data-sa-stage>
+          <div class="sa-stagelbl" data-sa-stagelbl>주황 화살표 끝을 끌어 보세요</div>
+          <svg class="sa-plane" data-sa-plane viewBox="-160 -160 320 320" role="img" aria-label="it의 Query 화살표와 다른 단어들의 Key 화살표 네 개가 그려진 2차원 평면. Query 화살표 끝을 끌어서 움직일 수 있습니다"></svg>
+          <div class="sa-story-panel">
+            <div data-p="dots"><div class="sa-step-t">점수 = Query · Key (같은 방향이면 +, 반대면 −)</div><div data-sa-dots></div></div>
+            <div data-p="w"><div class="sa-step-t">가중치 = softmax(점수 / √d)</div><div data-sa-weights></div></div>
+            <div data-p="mix"><div class="sa-step-t">새 it = 가중치대로 Value를 섞은 결과</div>
+              <div class="sa-mix"><div class="sa-mixbar" data-sa-mixbar></div><div class="sa-mixout" data-sa-mixout>it</div></div>
+            </div>
           </div>
+        </figure>
+        <div class="sa-story-steps">
+          <div class="sa-step" data-step="1"><div class="n">1 · Key</div><p>파란 화살표는 문장 속 다른 단어들의 <span class="k">Key</span>입니다. 점의 색은 그 단어의 <span class="v">Value</span>, 곧 건네줄 내용입니다.</p></div>
+          <div class="sa-step" data-step="2"><div class="n">2 · Query</div><p>주황 화살표가 it의 <span class="q">Query</span>입니다. "내가 가리키는 명사가 뭐지?"라는 질문을 숫자로 적은 것입니다.</p></div>
+          <div class="sa-step" data-step="3"><div class="n">3 · 점수</div><p>Query를 Key 하나하나와 내적합니다. 방향이 같을수록 점수가 크고 반대 방향이면 음수입니다. 지금은 animal이 가장 높습니다.</p></div>
+          <div class="sa-step" data-step="4"><div class="n">4 · 비율</div><p>점수를 √d로 나눈 뒤 softmax에 넣으면 합이 100%인 비율이 됩니다. 이 비율이 <b>attention weight</b>이고 점이 클수록 그 단어를 많이 참고합니다.</p></div>
+          <div class="sa-step" data-step="5"><div class="n">5 · 섞기</div><p>각 단어의 Value를 이 비율대로 섞으면 새 it이 됩니다. Self-Attention은 단어 하나를 고르지 않고 <b>섞습니다</b>. 새 it은 animal 색에 가깝지만 다른 색도 조금 섞여 있습니다.</p></div>
+          <div class="sa-step" data-step="6"><div class="n">6 · 직접</div><p>이제 주황 화살표 끝을 끌어 보세요. Query를 the 쪽으로 돌리면 결과가 회색에 가까워집니다.</p><p>화살표 위치는 사람이 정한 예시 값입니다. 실제 모델에서는 학습하면서 가중치 행렬이 고쳐지고 it의 Query가 앞에 나온 명사의 Key와 잘 맞게 됩니다.</p></div>
         </div>
-      </div>
-      <div class="sa-narrow" style="margin-top:28px">
-        <p>Q가 animal의 K와 같은 방향을 가리키면 내적이 커지고 softmax를 거친 가중치도 animal에 몰립니다. 그러면 새 it의 색은 animal의 색에 가까워집니다. Self-Attention은 단어 하나를 고르지 않고 <b>섞습니다</b>. 가장 관련 있는 단어에서 정보를 가장 많이 가져오고 나머지 단어에서도 조금씩 가져옵니다.</p>
-        <p>Q를 the 쪽으로 돌리면 결과가 회색에 가까워집니다. 실제 모델에서는 학습하는 동안 Q와 K를 만드는 가중치 행렬의 숫자가 조금씩 고쳐지고 그 결과 it의 Query가 앞에 나온 명사의 Key와 잘 맞게 됩니다. 이 그림의 화살표 위치는 사람이 정한 예시 값입니다.</p>
       </div>
     </div>
   </section>
@@ -581,13 +622,17 @@ category: ai
   KEYS.forEach((k) => {
     // y 는 화면 아래가 + 이므로 뒤집어 그린다
     mk("line", { x1: 0, y1: 0, x2: k.v[0], y2: -k.v[1], stroke: "rgb(80,140,255)", "stroke-width": 3, "marker-end": `url(#sa-k-${uid})` }, plane);
-    mk("circle", { cx: k.v[0] * 1.18, cy: -k.v[1] * 1.18, r: 7, fill: `rgb(${k.c})` }, plane);
+    k.dot = mk("circle", { cx: k.v[0] * 1.18, cy: -k.v[1] * 1.18, r: 7, fill: `rgb(${k.c})` }, plane);
+    k.score = mk("text", { x: k.v[0] * 1.18 + (k.v[0] >= 0 ? 14 : -14), y: -k.v[1] * 1.18 + 5, "text-anchor": k.v[0] >= 0 ? "start" : "end", class: "sa-score", fill: "rgb(255,122,69)", "font-weight": 700 }, plane);
     mk("text", { x: k.v[0] * 1.18, y: -k.v[1] * 1.18 + (k.v[1] > 0 ? -14 : 22), "text-anchor": "middle", fill: "var(--fg-strong)" }, plane).textContent = k.t;
   });
   let q = [90, 30];
-  const qLine = mk("line", { x1: 0, y1: 0, stroke: "rgb(255,122,69)", "stroke-width": 4, "marker-end": `url(#sa-q-${uid})` }, plane);
-  const qLbl = mk("text", { fill: "rgb(255,122,69)", "font-weight": 700 }, plane); qLbl.textContent = "Q (it)";
-  const qHit = mk("circle", { r: 18, fill: "rgba(255,122,69,0.18)", class: "handle", stroke: "rgb(255,122,69)", "stroke-dasharray": "3 3" }, plane);
+  const qLine = mk("line", { x1: 0, y1: 0, stroke: "rgb(255,122,69)", "stroke-width": 4, "marker-end": `url(#sa-q-${uid})`, class: "sa-q" }, plane);
+  const qLbl = mk("text", { fill: "rgb(255,122,69)", "font-weight": 700, class: "sa-q" }, plane); qLbl.textContent = "Q (it)";
+  const qHit = mk("circle", { r: 18, fill: "rgba(255,122,69,0.18)", class: "handle sa-q", stroke: "rgb(255,122,69)", "stroke-dasharray": "3 3" }, plane);
+  const stageFig = $("[data-sa-stage]"), stageLbl = $("[data-sa-stagelbl]");
+  const STAGE_LBL = ["", "다른 단어들의 Key", "it의 Query", "Query · Key = 점수", "softmax → attention weight", "Value 섞기", "주황 화살표 끝을 끌어 보세요"];
+  let stage = 6;
   const dotsBox = $("[data-sa-dots]"), wBox = $("[data-sa-weights]"), mixbar = $("[data-sa-mixbar]"), mixout = $("[data-sa-mixout]");
   const row = (label, color, pctLeft, pctW, fill, num) =>
     `<div class="sa-row"><span><i class="sw" style="background:${color}"></i>${label}</span><span class="sa-track">${pctLeft !== null ? '<i class="zero"></i>' : ""}<b style="left:${pctLeft ?? 0}%;width:${pctW}%;background:${fill}"></b></span><span class="sa-num">${num}</span></div>`;
@@ -607,7 +652,21 @@ category: ai
     mixbar.innerHTML = KEYS.map((k, i) => `<span style="width:${w[i] * 100}%;background:rgb(${k.c})"></span>`).join("");
     const mix = [0, 1, 2].map((ch) => Math.round(KEYS.reduce((s, k, i) => s + k.c[ch] * w[i], 0)));
     mixout.style.background = `rgb(${mix})`;
+    KEYS.forEach((k, i) => {
+      k.score.textContent = (dots[i] >= 0 ? "+" : "") + dots[i].toFixed(1);
+      k.dot.setAttribute("r", stage >= 4 ? (5 + 11 * w[i]).toFixed(1) : 7);
+    });
   };
+  const setStage = (n) => { stage = n; stageFig.dataset.stage = n; stageLbl.textContent = STAGE_LBL[n]; drawPlay(); };
+  // 단계 글이 화면 가운데를 지날 때 그림 상태를 바꾼다. 스크립트가 없으면 그림은 마지막 상태(6), 글은 모두 진하게 보인다
+  const storySec = $("[data-sa-story]");
+  storySec.classList.add("sa-js");
+  const steps = [...storySec.querySelectorAll("[data-step]")];
+  const io = new IntersectionObserver((ents) => {
+    ents.forEach((e) => { if (e.isIntersecting) { steps.forEach((x) => x.classList.toggle("is-on", x === e.target)); setStage(+e.target.dataset.step); } });
+  }, { rootMargin: matchMedia("(max-width: 900px)").matches ? "-66% 0px -24% 0px" : "-45% 0px -45% 0px" }); // 모바일은 위에 붙은 그림 아래쪽에서 바꾼다
+  steps.forEach((x) => io.observe(x));
+  signal.addEventListener("abort", () => io.disconnect());
   const toLocal = (e) => { const pt = plane.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(plane.getScreenCTM().inverse()); return [Math.max(-150, Math.min(150, p.x)), Math.max(-150, Math.min(150, -p.y))]; };
   let drag = false;
   plane.addEventListener("pointerdown", (e) => { drag = true; plane.setPointerCapture(e.pointerId); q = toLocal(e); drawPlay(); }, { signal });
