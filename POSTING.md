@@ -1241,6 +1241,8 @@ category: ...
 - `<html>` `<head>` `<body>` 는 쓰지 않는다. 본문에 들어갈 조각만 쓴다.
 - 적재는 마크다운 글과 같다: `npm run draft -- push <file>`. 원고는 `auto-drafts/posts/<slug>.html`.
 - 처음부터 끝까지의 절차(레퍼런스 탐색 → Visual Brief → 구현 → Critic → humanize → 적재)는 `/study` 커맨드에 있다.
+- **썸네일은 그 글의 대표 그림을 찍어 쓴다.** 대표 그림에 `data-thumb`(필요하면 `data-thumb-act`)를 달고 `npm run thumb -- <slug>` —
+  1200×630 JPEG 를 post-images 버킷 `thumbs/` 에 올리고 `cover_image` 를 채운다. 따로 그린 장식 이미지는 쓰지 않는다(2026-10-14 합의).
 - 적재 전에 실제 화면으로 본다. `npm run dev` 를 띄우고 `/internal/page/<slug>` 를 열면 원고 파일을
   메뉴·푸터가 붙은 상세 화면 그대로 그린다(개발 서버 전용). `npm run check:page -- <slug> <폴더> [--dark]`
   는 데스크톱·모바일 전체 화면을 찍고 가로 넘침과 스크립트 오류를 출력한다.

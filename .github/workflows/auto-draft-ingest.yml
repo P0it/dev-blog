@@ -140,12 +140,25 @@ jobs:
               slug=$(basename "$f" .html)
               if node scripts/check-page.mjs "$slug" /tmp/shots && node scripts/check-page.mjs "$slug" /tmp/shots --dark; then
                 flag="--publish"
+                # 썸네일이 없으면 대표 그림(data-thumb)을 찍어 올리고 cover_image 를 채운다
+                grep -q '^cover_image:' "$f" || node --env-file=.env.local scripts/thumb.mjs "$slug" || echo "::warning::$f 썸네일 생성 실패 — 기본 패턴 썸네일로 둡니다."
               else
                 echo "::warning::$f 화면 점검 실패 — 발행하지 않고 draft 로 남깁니다."
               fi
             fi
             npm run draft -- push "$f" $flag
           done
+
+      - name: 썸네일 주소 되돌려 커밋
+        if: steps.pub.outputs.files != ''
+        run: |
+          if git diff --quiet -- auto-drafts/posts; then
+            echo "새 썸네일 없음 — 커밋 생략"
+          else
+            git add auto-drafts/posts
+            git commit -m "학습 페이지 글 썸네일(cover_image)을 채웠다 [skip ci]"
+            git pull --rebase origin main && git push origin HEAD:main
+          fi
 
       - name: 화면 점검 캡처
         if: always() && steps.pub.outputs.files != ''
