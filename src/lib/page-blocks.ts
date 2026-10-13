@@ -6,7 +6,8 @@
 // DOMParser 로 만든 문서는 스크립트가 돌지 않으므로, 글 스크립트가 바꾼 DOM 이
 // 저장본에 섞일 일이 없다.
 
-export const INERT_SCRIPT = "text/post-page";
+import { INERT_SCRIPT_TYPE as INERT_SCRIPT, ORIG_SCRIPT_TYPE } from "./page-html.ts";
+
 export const TEXT_TAGS = "h1,h2,h3,h4,h5,h6,p,li,figcaption,td,th,blockquote,button,dt,dd,label,summary";
 const NON_TEXT_CHILDREN = "input,output,select,textarea,svg,canvas,img,video,audio,iframe,button";
 
@@ -78,7 +79,9 @@ export function removeBlock(body: string, index: number): string {
 export function replaceBlock(body: string, index: number, html: string): string {
   const frag = parse(html);
   const els = Array.from(frag.children);
-  if (els.length !== 1 || els[0].tagName.toLowerCase() !== "section") {
+  // section 밖 글자는 말없이 버려지므로 받지 않는다(AI 가 설명 문장을 붙여 오는 경우 등).
+  const stray = Array.from(frag.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? "").trim());
+  if (stray || els.length !== 1 || els[0].tagName.toLowerCase() !== "section") {
     throw new Error("블록 HTML 은 <section> 하나여야 합니다");
   }
   const root = parse(body);
@@ -109,12 +112,16 @@ export function inContext(body: string, index: number, html: string): string {
   return out;
 }
 
-// 캔버스용: 스크립트를 잠그고(원래 type 은 data-type 에 보관) 블록에 번호를 붙인다.
+// 캔버스용: 스크립트를 잠그고(원래 type 은 편집기 전용 속성에 보관) 블록에 번호를 붙인다.
+// 보관 속성 이름은 글이 쓸 리 없는 data-pve-* 로 둔다 — data-type 은 글 스크립트가 직접 쓸 수 있다.
+const ORIG_TYPE = ORIG_SCRIPT_TYPE;
+const NO_TYPE = "data-pve-notype";
 export function annotateForCanvas(body: string): string {
   const root = parse(body);
   root.querySelectorAll("script").forEach((s) => {
     const type = s.getAttribute("type");
-    if (type) s.setAttribute("data-type", type);
+    if (type === null) s.setAttribute(NO_TYPE, "");
+    else s.setAttribute(ORIG_TYPE, type);
     s.setAttribute("type", INERT_SCRIPT);
   });
   blocks(root).forEach((el, i) => el.setAttribute("data-edit-block", String(i)));
@@ -125,10 +132,11 @@ export function annotateForCanvas(body: string): string {
 export function cleanCanvasHtml(html: string): string {
   const root = parse(html);
   root.querySelectorAll(`script[type="${INERT_SCRIPT}"]`).forEach((s) => {
-    const type = s.getAttribute("data-type");
-    s.removeAttribute("data-type");
-    if (type) s.setAttribute("type", type);
-    else s.removeAttribute("type");
+    const type = s.getAttribute(ORIG_TYPE);
+    if (s.hasAttribute(NO_TYPE) || type === null) s.removeAttribute("type");
+    else s.setAttribute("type", type);
+    s.removeAttribute(ORIG_TYPE);
+    s.removeAttribute(NO_TYPE);
   });
   root.querySelectorAll("[data-edit-block]").forEach((el) => el.removeAttribute("data-edit-block"));
   root.querySelectorAll("[data-edit-text]").forEach((el) => {
@@ -188,4 +196,21 @@ export function editableTarget(start: Element, hooks: string[]): Element | null 
   if (el.querySelector(NON_TEXT_CHILDREN)) return null;
   if (hooks.some((h) => safeQuery(el, h))) return null;
   return el;
+}
+
+// AI 가 돌려준 블록을 비교 창에 그리거나 본문에 넣기 전에 실행될 수 있는 것을 걷어낸다.
+// 블록 규약상 <style>·<script> 는 블록 안에 두지 않는다(POSTING.md 5장).
+export function sanitizeBlock(html: string): string {
+  const root = parse(html);
+  root.querySelectorAll("script,style,iframe,object,embed,link,meta,base").forEach((el) => el.remove());
+  root.querySelectorAll("*").forEach((el) => {
+    for (const { name, value } of Array.from(el.attributes)) {
+      const n = name.toLowerCase();
+      if (n.startsWith("on")) el.removeAttribute(name);
+      else if (["href", "src", "xlink:href", "action", "formaction"].includes(n) && /^\s*javascript:/i.test(value)) {
+        el.removeAttribute(name);
+      }
+    }
+  });
+  return out(root);
 }

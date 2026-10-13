@@ -7,7 +7,7 @@ import { pageText } from "./page-html.ts";
 import {
   listBlocks, blockHtml, moveBlock, moveBlockTo, duplicateBlock, removeBlock,
   replaceBlock, findBlockIndex, annotateForCanvas, cleanCanvasHtml,
-  scriptHooks, missingHooks, editableTarget, inContext,
+  scriptHooks, missingHooks, editableTarget, inContext, sanitizeBlock,
 } from "./page-blocks.ts";
 
 (globalThis as any).DOMParser = DOMParser;
@@ -133,4 +133,25 @@ test("editableTarget — 훅·입력 요소를 품은 요소는 편집하지 않
   assert.equal(editableTarget(doc.querySelector("b") as Element, hooks), p);
   // 훅이 없어도 입력 요소를 품으면 편집하지 않는다
   assert.equal(editableTarget(doc.querySelector("label") as Element, []), null);
+});
+
+test("잠금·해제 — 원래 있던 data-type 속성은 type 으로 바뀌지 않는다", () => {
+  const body = '<!-- page --><section><h2>a</h2></section><script data-type="cfg">x()</script><script type="module" data-type="m">y()</script>';
+  const back = cleanCanvasHtml(annotateForCanvas(body));
+  assert.match(back, /<script data-type="cfg">x\(\)<\/script>/);
+  assert.match(back, /<script type="module" data-type="m">y\(\)<\/script>/);
+});
+
+test("replaceBlock — section 밖에 글자가 있으면 거부한다", () => {
+  assert.throws(() => replaceBlock(SAMPLE, 1, "설명입니다 <section><h2>새것</h2></section>"), /section/);
+  assert.doesNotThrow(() => replaceBlock(SAMPLE, 1, "\n  <section><h2>새것</h2></section>\n"));
+});
+
+test("sanitizeBlock — 스크립트·스타일·이벤트 속성·javascript: 링크를 뺀다", () => {
+  const dirty = '<section data-k class="a"><h2 onclick="x()">제목</h2><img src="a.png" onerror="alert(1)"><a href="javascript:alert(1)">링크</a><a href="https://ok.example">정상</a><script>bad()</script><style>.a{}</style><iframe src="x"></iframe><p>본문</p></section>';
+  const clean = sanitizeBlock(dirty);
+  assert.doesNotMatch(clean, /onclick|onerror|javascript:|<script|<style|<iframe/);
+  assert.match(clean, /<section data-k(="")? class="a">/);
+  assert.match(clean, /href="https:\/\/ok.example"/);
+  assert.match(clean, /<p>본문<\/p>/);
 });

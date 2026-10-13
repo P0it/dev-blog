@@ -14,7 +14,7 @@ import { requestBlockRevise, getBlockJob, cancelBlockJob } from "@/app/admin/edi
 import {
   listBlocks, blockHtml, moveBlock, moveBlockTo, duplicateBlock, removeBlock,
   replaceBlock, annotateForCanvas, cleanCanvasHtml, scriptHooks, editableTarget,
-  findBlockIndex, missingHooks, inContext, type BlockInfo,
+  findBlockIndex, missingHooks, inContext, sanitizeBlock, type BlockInfo,
 } from "@/lib/page-blocks";
 
 // HTML 페이지 글 비주얼 편집기. 설계: docs/superpowers/specs/2026-10-13-admin-html-visual-editor-design.md
@@ -26,6 +26,7 @@ import {
 // 선택한 블록 위에 떠 있는 어두운 막대에 모은다. 왼쪽 블록 목록은 레이어 패널처럼 선택과 함께 움직인다.
 
 const SIDEBAR_W = 300;
+const MAX_POLL_FAILURES = 5; // 3초 간격이니 15초 연속 실패하면 포기한다
 const ACCENT = "#0d99ff"; // 피그마 선택색. 테마와 상관없이 같은 색을 쓴다.
 const asideStyle: React.CSSProperties = {
   borderRight: "1px solid var(--line-subtle)", overflow: "auto", padding: "12px 8px", minHeight: 0,
@@ -77,6 +78,7 @@ export function PageVisualEditor({
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [side, setSide] = useState<"blocks" | "meta">("blocks");
   const [sel, setSel] = useState<Selection | null>(null);
+  const [dragParent, setDragParent] = useState<number | null>(null); // 끌고 있는 블록의 부모
   const [hover, setHover] = useState<Box | null>(null);
   const [boxes, setBoxes] = useState<{ sel: Box; block: Box; tag: string } | null>(null);
   const [measureTick, setMeasureTick] = useState(0);
@@ -91,6 +93,10 @@ export function PageVisualEditor({
   const [aiJob, setAiJob] = useState<AiJob | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
+  // 블록이 없는 글은 원본 HTML 편집으로 연다. 처음 연 순간에 정해 두어, 원본 칸에 <section> 을
+  // 치는 도중에 비주얼 편집기로 바뀌어 포커스를 잃지 않게 한다.
+  const [rawMode, setRawMode] = useState<boolean | null>(null);
+
   // DOMParser 는 브라우저에만 있다 — 마운트 전엔 계산하지 않는다.
   const blocks: BlockInfo[] = useMemo(() => (mounted ? listBlocks(value) : []), [mounted, value]);
   const hooks = useMemo(() => (mounted ? scriptHooks(value) : []), [mounted, value]);
@@ -98,6 +104,10 @@ export function PageVisualEditor({
   // React 19 는 dangerouslySetInnerHTML 을 객체 동일성으로 비교한다. 렌더마다 새 객체를 주면
   // 선택·호버만 바뀌어도 캔버스 innerHTML 이 다시 들어가 편집 중인 요소가 문서에서 떨어져 나간다.
   const canvasInner = useMemo(() => ({ __html: canvasHtml }), [canvasHtml]);
+
+  useEffect(() => {
+    if (mounted && rawMode === null) setRawMode(blocks.length === 0);
+  }, [mounted, rawMode, blocks.length]);
 
   // 되돌리기 등으로 블록 수가 줄면 선택을 푼다.
   useEffect(() => {
@@ -132,12 +142,17 @@ export function PageVisualEditor({
   const aiJobId = aiJob && !aiJob.after ? aiJob.id : null;
   useEffect(() => {
     if (aiJobId === null) return;
+    // 상태 확인이 잠깐 실패해도(네트워크·배포) 결과는 워커가 계속 만들고 있으니 바로 버리지 않는다.
+    let failures = 0;
     const t = setInterval(async () => {
       setNow(Date.now());
       try {
         const j = await getBlockJob(aiJobId);
+        failures = 0;
         if (j.status === "done" && j.resultHtml) {
-          setAiJob((cur) => (cur && cur.id === aiJobId ? { ...cur, status: "done", after: j.resultHtml! } : cur));
+          // 비교 창에 그리고 본문에 넣기 전에 실행될 수 있는 것(script·on* 등)을 걷어낸다.
+          const after = sanitizeBlock(j.resultHtml);
+          setAiJob((cur) => (cur && cur.id === aiJobId ? { ...cur, status: "done", after } : cur));
         } else if (j.status === "error") {
           setAiJob(null);
           setNotice(`AI 수정 실패: ${j.message ?? "알 수 없는 오류"}`);
@@ -145,6 +160,7 @@ export function PageVisualEditor({
           setAiJob((cur) => (cur && cur.id === aiJobId ? { ...cur, status: j.status } : cur));
         }
       } catch (err) {
+        if (++failures < MAX_POLL_FAILURES) return;
         setAiJob(null);
         setNotice(`AI 상태 확인 실패: ${(err as Error).message}`);
       }
@@ -225,6 +241,18 @@ export function PageVisualEditor({
     setHover(null);
   };
 
+  // 글자를 고치는 중(아직 확정 전)에 창을 닫으면 묻는다. 확정된 변경은 PostEditor 가 따로 묻는다.
+  useEffect(() => {
+    const h = (e: BeforeUnloadEvent) => {
+      const el = canvasRef.current?.querySelector("[data-edit-text]");
+      if (!el || el.innerHTML === editStart.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, []);
+
   // 키보드 — 글자 편집 중이나 입력칸에서는 가로채지 않는다.
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -264,6 +292,13 @@ export function PageVisualEditor({
     if (!el.hasAttribute("data-edit-text")) return;
     el.removeAttribute("contenteditable");
     el.removeAttribute("data-edit-text");
+    // 브라우저는 연속·끝 공백을 nbsp 로 넣는다. 원래 nbsp 가 없던 요소라면 일반 공백으로 되돌린다.
+    if (!editStart.current?.includes("\u00a0") && !editStart.current?.includes("&nbsp;")) {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (n.nodeValue?.includes("\u00a0")) n.nodeValue = n.nodeValue.replace(/\u00a0/g, " ");
+      }
+    }
     const unchanged = el.innerHTML === editStart.current;
     editStart.current = null;
     if (!unchanged && canvasRef.current) commit(cleanCanvasHtml(canvasRef.current.innerHTML));
@@ -296,6 +331,8 @@ export function PageVisualEditor({
       e.preventDefault();
       el.blur();
     }
+    // 굵게·기울임·밑줄 단축키는 태그를 끼워 넣는다 — 글자만 고치는 자리라 막는다.
+    if ((e.ctrlKey || e.metaKey) && ["b", "i", "u"].includes(e.key.toLowerCase())) e.preventDefault();
   };
 
   // 붙여넣기는 순수 텍스트만 — 다른 페이지의 서식·태그가 섞이지 않게.
@@ -303,6 +340,19 @@ export function PageVisualEditor({
     if (!(e.target as HTMLElement).closest("[data-edit-text]")) return;
     e.preventDefault();
     document.execCommand("insertText", false, e.clipboardData.getData("text/plain").replace(/\s+/g, " "));
+  };
+
+  // 끌어다 놓기도 순수 텍스트만. 편집 중인 요소가 아니면 아예 받지 않는다.
+  const onCanvasDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!(e.target as HTMLElement).closest("[data-edit-text]")) return;
+    const range = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    const s = window.getSelection();
+    if (range && s) {
+      s.removeAllRanges();
+      s.addRange(range);
+    }
+    document.execCommand("insertText", false, e.dataTransfer.getData("text/plain").replace(/\s+/g, " "));
   };
 
   // 마우스를 올린 곳 — 고칠 수 있는 글자면 그 요소, 아니면 블록.
@@ -389,10 +439,10 @@ export function PageVisualEditor({
     }
   };
 
-  if (!mounted) return null;
+  if (!mounted || rawMode === null) return null;
 
   // 블록을 못 찾는 글은 원본 HTML 을 그대로 고친다.
-  if (blocks.length === 0) {
+  if (rawMode) {
     return (
       <div style={{ display: "grid", gridTemplateColumns: `${SIDEBAR_W}px minmax(0,1fr)`, height: "100%", minHeight: 0 }}>
         <aside style={asideStyle}>{meta}</aside>
@@ -436,10 +486,14 @@ export function PageVisualEditor({
         {side === "blocks" ? (
           <>
             <div className="meta" style={{ fontSize: 12, padding: "0 8px 8px" }}>블록 {blocks.length}개 · 끌어서 순서 변경</div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter}
+              onDragStart={(e) => setDragParent(blocks[Number(e.active.id)]?.parentKey ?? null)}
+              onDragCancel={() => setDragParent(null)}
+              onDragEnd={(e) => { setDragParent(null); onDragEnd(e); }}>
               <SortableContext items={blocks.map((b) => String(b.index))} strategy={verticalListSortingStrategy}>
                 {blocks.map((b) => (
                   <BlockRow key={`${b.index}-${b.label}`} block={b} selected={sel?.block === b.index}
+                    locked={dragParent !== null && b.parentKey !== dragParent}
                     onClick={() => selectBlock(b.index)} />
                 ))}
               </SortableContext>
@@ -489,6 +543,7 @@ export function PageVisualEditor({
                   onKeyDown={onCanvasKeyDown}
                   onInput={() => setMeasureTick((t) => t + 1)}
                   onPaste={onCanvasPaste}
+                  onDrop={onCanvasDrop}
                   onMouseMove={onCanvasMove}
                   dangerouslySetInnerHTML={canvasInner}
                 />
@@ -595,12 +650,22 @@ function ToolBtn({ label, onClick, disabled, children }: {
   );
 }
 
-function BlockRow({ block, selected, onClick }: { block: BlockInfo; selected: boolean; onClick: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(block.index) });
+// locked: 끌고 있는 블록과 부모가 달라 놓을 수 없는 자리(흐리게, 놓기 대상에서 뺀다).
+function BlockRow({ block, selected, locked, onClick }: {
+  block: BlockInfo;
+  selected: boolean;
+  locked: boolean;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(block.index),
+    disabled: { draggable: false, droppable: locked },
+  });
   return (
     <div ref={setNodeRef} {...attributes} {...listeners} onClick={onClick} data-pve-block-row
       className={selected ? undefined : "pve-layer"}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1,
+      data-locked={locked || undefined}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : locked ? 0.35 : 1,
         padding: "7px 10px", borderRadius: 6, fontSize: 13, cursor: "grab", userSelect: "none",
         display: "flex", gap: 8, alignItems: "center",
         background: selected ? `color-mix(in srgb, ${ACCENT} 18%, transparent)` : undefined,
