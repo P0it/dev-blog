@@ -157,6 +157,15 @@ launchctl load ~/Library/LaunchAgents/blog.backup.plist
 복원: 백업 JSON의 `tables.*`를 Supabase 클라이언트로 읽어
 `upsert`(`onConflict: "slug"`)로 되돌리면 된다.
 
+## block_revise — 어드민 비주얼 편집기의 블록 AI 수정
+
+- 넣는 곳: 페이지 글 편집기 블록 툴바 ✨ (`src/app/admin/editor/block-actions.ts`)
+- 입력: `block_html`(section 하나) + `instruction`
+- 출력: `result_html` 에만 쓴다. **`posts` 는 건드리지 않는다.** 편집기가 비교 창에서 수락할 때 반영된다.
+- 프롬프트: POSTING.md 2-4 점검표와 5장 발췌, class·id·data-* 유지 지시.
+- 마이그레이션: `db/migrations/0016_ai_jobs_block_revise.sql`
+- 편집기는 3초마다 상태를 본다. 30초 넘게 pending 이면 워커 실행 안내와 취소 버튼을 띄운다.
+
 ## 트러블슈팅
 
 - **job이 계속 pending**: 워커 미실행 또는 폴링 실패. `/tmp/blog-ai-worker.log` 확인.
