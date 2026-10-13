@@ -9,8 +9,11 @@ category: ai
 <style>
 .post-page .rg { --rg-a: rgb(46, 170, 120); --rg-b: rgb(80, 140, 255); --rg-c: rgb(235, 160, 30); --rg-d: rgb(170, 110, 240); --rg-q: rgb(255, 92, 92); color: var(--fg-normal); font-family: var(--font-sans); }
 .post-page .rg * { box-sizing: border-box; }
-.post-page .rg-wrap { max-width: 860px; margin: 0 auto; padding: 0 40px; }
-/* 히어로·글·그림이 같은 한 열을 가운데에 쓴다 — POSTING 5-2 */
+.post-page .rg-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+/* 글 단락은 가운데 720px, 대화 비교·노선도·지도 같은 넓은 블록은 더 넓게 — 축은 모두 화면 가운데 (POSTING 5-2) */
+.post-page .rg .rg-col > * { max-width: 720px; margin-left: auto; margin-right: auto; }
+.post-page .rg .rg-hero .rg-wrap > * { max-width: 720px; margin-left: auto; margin-right: auto; }
+.post-page .rg .rg-hero .rg-wrap > .rg-chat, .post-page .rg .rg-hero .rg-wrap > .rg-route { max-width: 960px; }
 .post-page .rg h1, .post-page .rg h2, .post-page .rg h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
 .post-page .rg p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; }
 .post-page .rg b { color: var(--fg-strong); }
@@ -48,7 +51,7 @@ category: ai
 .post-page .rg-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 22px; }
 
 /* 직접 그린 개념도 공통 — viewBox 400 폭을 최대 560px 로 키운다 */
-.post-page .rg-fig { margin: 26px auto 10px; max-width: 640px; }
+.post-page .rg .rg-col > .rg-fig { margin: 26px auto 10px; max-width: 640px; }
 .post-page .rg-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
 .post-page .rg-fig text { font-family: var(--font-sans); font-size: 13px; fill: var(--fg-normal); }
 .post-page .rg-fig .t-s { font-size: 11.5px; fill: var(--fg-alternative); }
@@ -64,8 +67,14 @@ category: ai
 .post-page .rg-fig .arrowhead { fill: var(--fg-alternative); }
 .post-page .rg-fig .arrowhead.go { fill: var(--rg-a); }
 .post-page .rg-cap { font-size: 13px !important; color: var(--fg-alternative); margin-top: 6px !important; }
-.post-page .rg details { margin: 4px 0 16px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
-.post-page .rg details summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+/* 곁가지 접기 — 상자 없이 글줄 하나. 펼치면 왼쪽 선만 (POSTING 5-6) */
+.post-page .rg details { margin: 6px 0 18px; padding: 0; border: 0; background: none; }
+.post-page .rg details summary { cursor: pointer; list-style: none; display: inline-flex; gap: 8px; align-items: baseline; font-size: 14px; font-weight: 600; color: var(--fg-alternative); }
+.post-page .rg details summary::-webkit-details-marker { display: none; }
+.post-page .rg details summary::before { content: "+"; font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
+.post-page .rg details summary:hover { color: var(--fg-strong); }
+.post-page .rg details[open] summary::before { content: "−"; }
+.post-page .rg details[open] > :not(summary) { border-left: 2px solid var(--line-strong); padding-left: 14px; margin-left: 4px; }
 .post-page .rg details p { font-size: 15px; margin: 10px 0 0; }
 
 /* 오픈북 비유 */
@@ -153,7 +162,7 @@ category: ai
 
 /* 임베딩 예시 벡터 표 */
 .post-page .rg-vec { margin: 24px 0 8px; display: grid; gap: 6px; font-size: 14px; }
-.post-page .rg-vec .row { display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr)) 5.6em; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.post-page .rg-vec .row { display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr)) 5.6em; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line-normal); }
 .post-page .rg-vec .hd { background: none; padding-top: 0; padding-bottom: 0; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); }
 .post-page .rg-vec .q { box-shadow: inset 3px 0 0 var(--rg-q); }
 .post-page .rg-vec .c { font-family: var(--font-mono); font-size: 12px; color: var(--fg-strong); }
