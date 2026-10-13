@@ -141,6 +141,39 @@ ${post.body_md ?? ""}
 ${JSON_CONTRACT}`;
 }
 
+// POSTING.md 에서 블록 수정에 필요한 절만: 2-4 퇴고 점검표, 5장 HTML 페이지 글.
+function postingSection(startHeading, endHeading) {
+  const s = POSTING.indexOf(startHeading);
+  if (s < 0) return "";
+  const e = endHeading ? POSTING.indexOf(endHeading, s + startHeading.length) : -1;
+  return POSTING.slice(s, e < 0 ? undefined : e);
+}
+
+function blockRevisePrompt(job) {
+  return `당신은 한국어 기술 블로그의 편집자입니다. HTML 페이지 글에서 <section> 블록 하나만 고칩니다.
+
+[문체 규약 — POSTING.md 발췌]
+${postingSection("## 2-4.", "## 3.")}
+${postingSection("## 5. HTML 페이지 글")}
+
+[지킬 것]
+- 결과는 <section> 요소 하나입니다. 블록 밖 내용은 만들지 않습니다.
+- 원래 블록에 있는 class·id·data-* 속성은 요청이 따로 말하지 않는 한 그대로 둡니다.
+  글의 스크립트가 이 속성으로 요소를 찾기 때문에, 바뀌면 인터랙션이 끊어집니다.
+- <style>·<script> 는 넣지 않습니다. 스타일은 기존 클래스를 씁니다.
+- AI·LLM 업계 용어는 영어·음차로 둡니다(청크·리랭킹 등).
+- 요청에 없는 사실은 만들지 않습니다.
+
+[요청]
+${job.instruction ?? ""}
+
+[원래 블록]
+${job.block_html ?? ""}
+
+결과는 다른 텍스트 없이 JSON 객체 하나만 출력하세요:
+{"html":"<section ...>...</section>"}`;
+}
+
 async function applyResult(slug, parsed) {
   const patch = {};
   if (typeof parsed.title === "string" && parsed.title.trim()) patch.title = parsed.title.trim();
@@ -167,6 +200,20 @@ async function processJob(job) {
     .eq("id", job.id);
 
   try {
+    if (job.type === "block_revise") {
+      if (!job.block_html) throw new Error("block_html 누락");
+      const parsed = extractJson(await callClaude(blockRevisePrompt(job)));
+      if (typeof parsed.html !== "string" || !/^\s*<section[\s>]/i.test(parsed.html)) {
+        throw new Error("결과가 <section> HTML 이 아님");
+      }
+      await sb
+        .from("ai_jobs")
+        .update({ status: "done", finished_at: nowIso(), result_html: parsed.html, result: "블록 수정 완료" })
+        .eq("id", job.id);
+      console.log(`✓ job#${job.id} done (block)`);
+      return;
+    }
+
     let prompt;
     if (job.type === "draft_from_url") {
       if (!job.source_url) throw new Error("source_url 누락");

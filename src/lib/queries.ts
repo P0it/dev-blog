@@ -769,6 +769,7 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
     const { data: jobs, error: jErr } = await sb
       .from("ai_jobs")
       .select("post_slug,status,created_at")
+      .neq("type", "block_revise")
       .order("created_at", { ascending: false });
     if (!jErr) {
       for (const j of jobs ?? []) {
