@@ -9,13 +9,13 @@
 - **공통 실습:** 가상 IT 헬프데스크 Agent. 편마다 앞 편의 결과물을 키운다. 데이터(FAQ·매뉴얼·티켓)는 전부 새로 만든다.
 - **코드:** 글 속 발췌만 싣고 별도 레포는 없다. 모델은 `init_chat_model` 로 교체할 수 있게 쓴다. 1~3편의 raw SDK 예제는
   OpenAI 호환 SDK 하나로 쓰고, 다른 provider 차이는 접힌 블록으로 둔다. 모든 코드는 쓰기 전에 scratchpad 에서 돌려 본다.
-- **사내 자료:** `docs/AI Agent 설계 및 구축.pdf`(A), `docs/생성형 AI를 활용한 서비스 개발 실무.pdf`(B).
-  무엇을 다룰지 고르는 데만 쓰고 문장·도식은 가져오지 않는다(`/study` 입력 규칙). 글자가 외곽선이라 텍스트가 안 뽑힌다.
-  PyMuPDF 로 PNG 를 만들어 읽는다. 표의 `사내 자료` 칸이 대응 쪽이다.
-  - A: 1장 LangGraph(p3–40) · 2장 Architecture Pattern(p41–66) · 3장 Memory(p67–86) · 4장 Multi Agent(p87–110)
-  - B: 1장 Introduction(p3–20) · 2장 LangChain(p21–60) · 3장 Basic Agent(p61–79) · 4장 Advanced Agent(p80–121) · 5장 RAG(p122–162)
-  - 자료에서 그대로 옮기면 안 되는 곳: LCEL 체인 중심 예제(B 2·5장), `langchain_core.stores.InMemoryStore` 로 만든 장기 기억(A p83·B p113 — LangGraph `Store` 로 쓴다),
-    `model_name=` 별칭·옛 모델 id(B p25), PDF 로더 설명의 C/Python 뒤바뀜(B p133). 사내 자료는 MCP·평가·보안·배포를 다루지 않는다(20~26편은 조사로만).
+- **근거 자료 (2026-10-14 사용자 지시):** 최신 기준이면서 믿을 만한 1차 자료로만 쓴다. 우선순위는 다음과 같다.
+  1. 공식 문서·스펙: docs.langchain.com(LangChain·LangGraph), modelcontextprotocol.io 스펙과 공식 블로그, 각 provider 공식 문서
+  2. 버전과 패키지 상태: PyPI, 공식 GitHub 릴리스 노트
+  3. 원저자 글·논문: Anthropic Engineering("Building effective agents", "Effective context engineering"), ReAct 논문, Simon Willison(lethal trifecta) 등
+  4. 2차 해설은 1차 자료로 확인될 때만 쓴다
+- **사내 PDF 두 권은 근거로 쓰지 않는다.** 사내에 돌던 학습용 자료라 신뢰도가 낮다(옛 모델 id, 비표준 장기 기억 구현, 사실 오류가 실제로 있었다).
+  커리큘럼을 짤 때 범위만 한 번 대조했고, 글을 쓸 때는 열지 않는다.
 - **버전 기준(2026-10-13 조사):** langchain 1.4.x, langgraph 1.2.x, langchain-mcp-adapters 0.3.x, deepagents 0.7.x,
   MCP 스펙 2026-07-28(공식 Python SDK v2 는 RC). **편마다 쓰기 직전에 PyPI·공식 문서로 다시 확인한다.**
 
@@ -38,56 +38,56 @@
 
 ### Part 1. Agent 의 뼈대 — 프레임워크 없이
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 1 | 챗봇과 Agent 는 무엇이 다른가 | 질문에 답하는 프로그램과 일을 해 주는 프로그램은 어디서 갈리나? | 챗봇→워크플로→Agent 스펙트럼 · 4요소(모델·지시·도구·상태) · LLM 은 글만 낸다 · 헬프데스크 실습 소개 | LLM, 프롬프트, 메시지(role), 토큰, 컨텍스트, Agent, 워크플로 | SDK 로 LLM 한 번 호출(`model`·`messages`·`temperature` 해설) | — | B p4–20 | 계획 |
-| 2 | LLM 은 어떻게 도구를 "부르는가" | 글만 쓰는 모델이 어떻게 티켓을 조회하나? | 모델은 실행을 요청만 한다 · JSON Schema 는 메뉴판 · `tool_calls`·`tool_call_id` · 결과를 메시지로 되돌리기 | Tool Calling(Function Calling), JSON Schema, 도구 결과 메시지 | raw SDK 로 티켓 조회 도구 1개 | 1 | B p58–60 | 계획 |
-| 3 | 프레임워크 없이 Agent 루프 짜기 | Agent 는 언제 멈추나? | while 루프와 종료 조건 · 최대 반복 · 에러를 결과로 돌려주기 · ReAct(생각→행동→관찰) · 다른 provider 는 어떻게 다른가(접힘) | Agent 루프, ReAct, 종료 조건 | 50줄 루프(도구 2개) | 2 | B p9·62–63 | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 1 | 챗봇과 Agent 는 무엇이 다른가 | 질문에 답하는 프로그램과 일을 해 주는 프로그램은 어디서 갈리나? | 챗봇→워크플로→Agent 스펙트럼 · 4요소(모델·지시·도구·상태) · LLM 은 글만 낸다 · 헬프데스크 실습 소개 | LLM, 프롬프트, 메시지(role), 토큰, 컨텍스트, Agent, 워크플로 | SDK 로 LLM 한 번 호출(`model`·`messages`·`temperature` 해설) | — | 계획 |
+| 2 | LLM 은 어떻게 도구를 "부르는가" | 글만 쓰는 모델이 어떻게 티켓을 조회하나? | 모델은 실행을 요청만 한다 · JSON Schema 는 메뉴판 · `tool_calls`·`tool_call_id` · 결과를 메시지로 되돌리기 | Tool Calling(Function Calling), JSON Schema, 도구 결과 메시지 | raw SDK 로 티켓 조회 도구 1개 | 1 | 계획 |
+| 3 | 프레임워크 없이 Agent 루프 짜기 | Agent 는 언제 멈추나? | while 루프와 종료 조건 · 최대 반복 · 에러를 결과로 돌려주기 · ReAct(생각→행동→관찰) · 다른 provider 는 어떻게 다른가(접힘) | Agent 루프, ReAct, 종료 조건 | 50줄 루프(도구 2개) | 2 | 계획 |
 
 ### Part 2. LangChain v1 으로 Single Agent
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 4 | LangChain 첫걸음, 모델을 갈아 끼우기 | 모델을 바꿀 때마다 코드를 다 고쳐야 하나? | `init_chat_model` · Message 종류 · `ChatPromptTemplate`(짧게) · `invoke`/`stream`/`batch` · `content_blocks` · provider 교체 · LCEL 은 예전 방식(한 줄) | 프레임워크, provider, 스트리밍 | 모델 선택 가능한 호출 모듈 | 3 | B p22–38 | 계획 |
-| 5 | LLM 답을 정해진 모양으로 받기 | 자유로운 글을 어떻게 프로그램이 믿고 쓰는 데이터로 받나? | Pydantic 모델 · `response_format` · ToolStrategy vs ProviderStrategy · 실패와 재시도 | Structured Output, Pydantic, 스키마 검증 | 요청 의도 분류기 | 4 | B p39–43·75–79 | 계획 |
-| 6 | 좋은 도구 만드는 법 | 모델이 도구를 잘못 고르는 건 누구 탓인가? | `@tool` · docstring=설명서, 타입힌트=스키마 · 이름·설명·반환 크기·에러 메시지 설계 · ToolRuntime·`context_schema` 로 사용자 정보 받기 | 도구 설명(description), 인자 스키마 | FAQ 검색·계산·티켓 조회 3도구 | 5 | B p58–60·82–87 | 계획 |
-| 7 | `create_agent` 해부 | 3편의 50줄은 한 줄로 어떻게 줄어드나? | 루프를 맡기기 · `system_prompt` · 스트리밍으로 단계 보기 · recursion limit · 속은 그래프(11편 예고) | system prompt, recursion limit | 3도구 헬프데스크 Agent | 3, 6 | B p61–69 | 계획 |
-| 8 | Middleware, 루프 사이사이의 검문소 | 루프를 고치지 않고 동작을 끼워 넣을 수 있나? | 훅 위치(before/after model, wrap tool) · 내장(Summarization·HITL·PII·CallLimit·ModelFallback·ToolRetry) · 커스텀(데코레이터 훅) · Guardrail(`jump_to` 로 막기, 답 고쳐 쓰기) | Middleware, 훅, Guardrail | 호출 제한·PII 가림·재시도 붙인 Agent | 7 | B p88–107 | 계획 |
-| 9 | Agent 의 기억과 Context Engineering | Agent 는 어제 대화를 어떻게 기억하고, 무엇을 잊어야 하나? | 단기 기억(checkpointer·`thread_id`) · 장기 기억(Store) · 컨텍스트 창=책상 크기 · write/select/compress/isolate | 단기·장기 기억, checkpointer, thread, Context Engineering | 대화를 이어 가는 Agent | 8 | B p71–73·81·108–121 · A p83–86 | 계획 |
-| 10 | 검색을 도구로 쓰는 Agent(Agentic RAG) | 검색할지, 다시 검색할지는 누가 정하나? | 리트리버를 도구로 · 청킹·임베딩·벡터 DB 요약(기존 RAG 글 링크) · 근거 표시 · 검색 실패·재검색 | Agentic RAG, 리트리버, 청크, 임베딩, 벡터 DB | IT 매뉴얼 검색 도구 | 9 | B p122–162 | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 4 | LangChain 첫걸음, 모델을 갈아 끼우기 | 모델을 바꿀 때마다 코드를 다 고쳐야 하나? | `init_chat_model` · Message 종류 · `ChatPromptTemplate`(짧게) · `invoke`/`stream`/`batch` · `content_blocks` · provider 교체 · LCEL 은 예전 방식(한 줄) | 프레임워크, provider, 스트리밍 | 모델 선택 가능한 호출 모듈 | 3 | 계획 |
+| 5 | LLM 답을 정해진 모양으로 받기 | 자유로운 글을 어떻게 프로그램이 믿고 쓰는 데이터로 받나? | Pydantic 모델 · `response_format` · ToolStrategy vs ProviderStrategy · 실패와 재시도 | Structured Output, Pydantic, 스키마 검증 | 요청 의도 분류기 | 4 | 계획 |
+| 6 | 좋은 도구 만드는 법 | 모델이 도구를 잘못 고르는 건 누구 탓인가? | `@tool` · docstring=설명서, 타입힌트=스키마 · 이름·설명·반환 크기·에러 메시지 설계 · ToolRuntime·`context_schema` 로 사용자 정보 받기 | 도구 설명(description), 인자 스키마 | FAQ 검색·계산·티켓 조회 3도구 | 5 | 계획 |
+| 7 | `create_agent` 해부 | 3편의 50줄은 한 줄로 어떻게 줄어드나? | 루프를 맡기기 · `system_prompt` · 스트리밍으로 단계 보기 · recursion limit · 속은 그래프(11편 예고) | system prompt, recursion limit | 3도구 헬프데스크 Agent | 3, 6 | 계획 |
+| 8 | Middleware, 루프 사이사이의 검문소 | 루프를 고치지 않고 동작을 끼워 넣을 수 있나? | 훅 위치(before/after model, wrap tool) · 내장(Summarization·HITL·PII·CallLimit·ModelFallback·ToolRetry) · 커스텀(데코레이터 훅) · Guardrail(`jump_to` 로 막기, 답 고쳐 쓰기) | Middleware, 훅, Guardrail | 호출 제한·PII 가림·재시도 붙인 Agent | 7 | 계획 |
+| 9 | Agent 의 기억과 Context Engineering | Agent 는 어제 대화를 어떻게 기억하고, 무엇을 잊어야 하나? | 단기 기억(checkpointer·`thread_id`) · 장기 기억(Store) · 컨텍스트 창=책상 크기 · write/select/compress/isolate | 단기·장기 기억, checkpointer, thread, Context Engineering | 대화를 이어 가는 Agent | 8 | 계획 |
+| 10 | 검색을 도구로 쓰는 Agent(Agentic RAG) | 검색할지, 다시 검색할지는 누가 정하나? | 리트리버를 도구로 · 청킹·임베딩·벡터 DB 요약(기존 RAG 글 링크) · 근거 표시 · 검색 실패·재검색 | Agentic RAG, 리트리버, 청크, 임베딩, 벡터 DB | IT 매뉴얼 검색 도구 | 9 | 계획 |
 
 ### Part 3. LangGraph 로 흐름 직접 설계
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 11 | LangGraph 입문: State·Node·Edge | 흐름을 왜 그래프로 그리나? | `create_agent` 도 그래프 · StateGraph · TypedDict 상태 · reducer · START/END | 그래프, State, Node, Edge, reducer | 3노드 그래프 | 7 | A p4–13·22–25 | 계획 |
-| 12 | Agent 를 그래프로 다시 짓기 | `create_agent` 속을 직접 열면 무엇이 있나? | LLM 노드 + ToolNode · conditional edge · 루프 · `Command` | conditional edge, ToolNode, Command | 그래프판 헬프데스크 Agent | 11 | A p14–21 | 계획 |
-| 13 | 워크플로 패턴 ①: 체이닝과 라우팅 | 정해진 순서로 충분한 일에 Agent 가 필요한가? | 워크플로 vs Agent(Anthropic) · 순차 체이닝 · 계정·장비·SW 라우팅 | Prompt Chaining, Routing | 문의 유형별 분기 | 12 | A p42–50 | 계획 |
-| 14 | 워크플로 패턴 ②: 병렬·Orchestrator-Worker·Evaluator-Optimizer | 일을 나눠 맡기고 다시 모으려면? | 병렬 분기 · `Send` 로 나눠 주기(map-reduce) · 평가자-생성자 반복과 종료 조건 | Parallelization, Orchestrator-Worker, Evaluator-Optimizer, Send | 여러 문서 병렬 분석 후 통합 | 13 | A p51–66 | 계획 |
-| 15 | 멈췄다 다시 이어 가는 Agent | 사람 승인을 기다리는 동안 Agent 는 어디에 있나? | checkpointer · `interrupt`/`Command(resume=)` · 승인 흐름 · state history·time travel · durable execution | Human-in-the-loop, interrupt, time travel, durable execution | 승인 후 처리하는 Agent | 9, 12 | A p68–82 | 계획 |
-| 16 | 실무형 그래프: 실패에 강하게, 고치기 쉽게 | 요구사항 문장을 어떻게 노드와 상태로 바꾸나? | 상태 설계 · RetryPolicy·에러 경로 · Studio·스트리밍 디버깅 · 미니 프로젝트 | RetryPolicy, 상태 스키마 | 이메일 문의 분류·검색·답변 초안 | 15 | A p26–40 | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 11 | LangGraph 입문: State·Node·Edge | 흐름을 왜 그래프로 그리나? | `create_agent` 도 그래프 · StateGraph · TypedDict 상태 · reducer · START/END | 그래프, State, Node, Edge, reducer | 3노드 그래프 | 7 | 계획 |
+| 12 | Agent 를 그래프로 다시 짓기 | `create_agent` 속을 직접 열면 무엇이 있나? | LLM 노드 + ToolNode · conditional edge · 루프 · `Command` | conditional edge, ToolNode, Command | 그래프판 헬프데스크 Agent | 11 | 계획 |
+| 13 | 워크플로 패턴 ①: 체이닝과 라우팅 | 정해진 순서로 충분한 일에 Agent 가 필요한가? | 워크플로 vs Agent(Anthropic) · 순차 체이닝 · 계정·장비·SW 라우팅 | Prompt Chaining, Routing | 문의 유형별 분기 | 12 | 계획 |
+| 14 | 워크플로 패턴 ②: 병렬·Orchestrator-Worker·Evaluator-Optimizer | 일을 나눠 맡기고 다시 모으려면? | 병렬 분기 · `Send` 로 나눠 주기(map-reduce) · 평가자-생성자 반복과 종료 조건 | Parallelization, Orchestrator-Worker, Evaluator-Optimizer, Send | 여러 문서 병렬 분석 후 통합 | 13 | 계획 |
+| 15 | 멈췄다 다시 이어 가는 Agent | 사람 승인을 기다리는 동안 Agent 는 어디에 있나? | checkpointer · `interrupt`/`Command(resume=)` · 승인 흐름 · state history·time travel · durable execution | Human-in-the-loop, interrupt, time travel, durable execution | 승인 후 처리하는 Agent | 9, 12 | 계획 |
+| 16 | 실무형 그래프: 실패에 강하게, 고치기 쉽게 | 요구사항 문장을 어떻게 노드와 상태로 바꾸나? | 상태 설계 · RetryPolicy·에러 경로 · Studio·스트리밍 디버깅 · 미니 프로젝트 | RetryPolicy, 상태 스키마 | 이메일 문의 분류·검색·답변 초안 | 15 | 계획 |
 
 ### Part 4. Multi-Agent
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 17 | 에이전트를 여러 개로 나눠야 할 때 | Agent 를 하나 더 두면 정말 나아지나? | 싱글로 충분한 경우 · 비용·지연 · 컨텍스트 격리 · 공식 5패턴 지도(Subagents·Handoffs·Skills·Router·Custom) | Multi-Agent, 컨텍스트 격리 | 역할 분리 설계도 | 16 | A p88–92 | 계획 |
-| 18 | Subagent 와 Handoff 구현 | 일을 맡길 때와 넘길 때는 무엇이 다른가? | 하위 Agent 를 도구로(supervisor) · 제어권 넘기기(handoff) · 공유 상태·메시지 전달 · supervisor 라이브러리가 접힌 이유 | Subagent, Supervisor, Handoff | 분류 Agent + 해결 Agent | 17 | A p93–110 | 계획 |
-| 19 | Deep Agents: 계획하고 파일에 적는 Agent | 긴 일을 하는 Agent 는 어떻게 길을 잃지 않나? | `write_todos` 계획 · filesystem 오프로딩 · 서브에이전트 격리 · Agent Skills(SKILL.md)와 단계적 공개 | Deep Agent, Agent Skills, progressive disclosure | 계획 세우는 장애 조사 Agent | 18 | | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 17 | 에이전트를 여러 개로 나눠야 할 때 | Agent 를 하나 더 두면 정말 나아지나? | 싱글로 충분한 경우 · 비용·지연 · 컨텍스트 격리 · 공식 5패턴 지도(Subagents·Handoffs·Skills·Router·Custom) | Multi-Agent, 컨텍스트 격리 | 역할 분리 설계도 | 16 | 계획 |
+| 18 | Subagent 와 Handoff 구현 | 일을 맡길 때와 넘길 때는 무엇이 다른가? | 하위 Agent 를 도구로(supervisor) · 제어권 넘기기(handoff) · 공유 상태·메시지 전달 · supervisor 라이브러리가 접힌 이유 | Subagent, Supervisor, Handoff | 분류 Agent + 해결 Agent | 17 | 계획 |
+| 19 | Deep Agents: 계획하고 파일에 적는 Agent | 긴 일을 하는 Agent 는 어떻게 길을 잃지 않나? | `write_todos` 계획 · filesystem 오프로딩 · 서브에이전트 격리 · Agent Skills(SKILL.md)와 단계적 공개 | Deep Agent, Agent Skills, progressive disclosure | 계획 세우는 장애 조사 Agent | 18 | 계획 |
 
 ### Part 5. MCP 로 바깥 세상과 연결
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 20 | MCP 란 무엇인가 | 도구를 이미 부를 수 있는데 MCP 는 왜 필요한가? | USB-C 비유와 한계 · Host/Client/Server · Tools/Resources/Prompts · Tool Calling 과의 관계 · 2026-07-28 변화(stateless·MRTR·Tasks) · A2A 의 자리 | MCP, Host, Client, Server, Resource, A2A | 구조도(코드 최소) | 6 | | 계획 |
-| 21 | Python 으로 MCP Server 만들기 | 내 사내 시스템을 어떤 Agent 든 쓰게 하려면? | FastMCP · 도구·입력 스키마 · stdio vs Streamable HTTP · Inspector 테스트 | stdio, Streamable HTTP, Inspector | 티켓 MCP 서버 | 20 | | 계획 |
-| 22 | Agent 에 MCP 연결하기 | 남이 만든 도구를 내 Agent 에 꽂으면 무엇을 조심하나? | `MultiServerMCPClient` · 도구 발견 · 타임아웃·인증(OAuth)·권한 · 실패 처리 | OAuth, 권한 범위 | MCP 연동 헬프데스크 Agent | 12, 21 | | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 20 | MCP 란 무엇인가 | 도구를 이미 부를 수 있는데 MCP 는 왜 필요한가? | USB-C 비유와 한계 · Host/Client/Server · Tools/Resources/Prompts · Tool Calling 과의 관계 · 2026-07-28 변화(stateless·MRTR·Tasks) · A2A 의 자리 | MCP, Host, Client, Server, Resource, A2A | 구조도(코드 최소) | 6 | 계획 |
+| 21 | Python 으로 MCP Server 만들기 | 내 사내 시스템을 어떤 Agent 든 쓰게 하려면? | FastMCP · 도구·입력 스키마 · stdio vs Streamable HTTP · Inspector 테스트 | stdio, Streamable HTTP, Inspector | 티켓 MCP 서버 | 20 | 계획 |
+| 22 | Agent 에 MCP 연결하기 | 남이 만든 도구를 내 Agent 에 꽂으면 무엇을 조심하나? | `MultiServerMCPClient` · 도구 발견 · 타임아웃·인증(OAuth)·권한 · 실패 처리 | OAuth, 권한 범위 | MCP 연동 헬프데스크 Agent | 12, 21 | 계획 |
 
 ### Part 6. 운영과 최종 프로젝트
 
-| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 사내 자료 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| 23 | Agent 를 평가하고 들여다보기 | Agent 가 "잘한다"는 걸 어떻게 숫자로 보이나? | 트레이싱(LangSmith·OTel GenAI) · 데이터셋 · 최종 답 vs 궤적 평가 · LLM-as-judge · `LLMToolEmulator` 로 도구 흉내 내 테스트 · 비용·지연 | trace, span, eval, 궤적(trajectory), LLM-as-judge | 평가 데이터셋 + 실행 기록 | 16 | | 계획 |
-| 24 | Agent 보안 | 문서 한 장이 Agent 를 조종할 수 있나? | Prompt Injection · lethal trifecta · 최소 권한·승인·샌드박스 · PII · MCP 서버 신뢰 | Prompt Injection, 최소 권한, 샌드박스 | 위험 도구 승인·권한 통제 | 22, 23 | A p75–79(인젝션 예) | 계획 |
-| 25 | 최종 프로젝트 ①: 설계와 조립 | 지금까지의 부품은 한 서비스에서 어떻게 맞물리나? | 요구사항 → 아키텍처 · 부품 조립(RAG·그래프·MCP·HITL) · FastAPI 스트리밍 API | API, SSE | 헬프데스크 서비스 API | 1~24 | | 계획 |
-| 26 | 최종 프로젝트 ②: 배포·평가·회고 | 만든 Agent 를 남에게 넘기려면 무엇이 더 필요한가? | Docker · 평가 결과 · 설계 의사결정 기록(ADR) · README | Docker, ADR | 실행 환경 + 평가 리포트 | 25 | | 계획 |
+| # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
+|---|---|---|---|---|---|---|---|
+| 23 | Agent 를 평가하고 들여다보기 | Agent 가 "잘한다"는 걸 어떻게 숫자로 보이나? | 트레이싱(LangSmith·OTel GenAI) · 데이터셋 · 최종 답 vs 궤적 평가 · LLM-as-judge · `LLMToolEmulator` 로 도구 흉내 내 테스트 · 비용·지연 | trace, span, eval, 궤적(trajectory), LLM-as-judge | 평가 데이터셋 + 실행 기록 | 16 | 계획 |
+| 24 | Agent 보안 | 문서 한 장이 Agent 를 조종할 수 있나? | Prompt Injection · lethal trifecta · 최소 권한·승인·샌드박스 · PII · MCP 서버 신뢰 | Prompt Injection, 최소 권한, 샌드박스 | 위험 도구 승인·권한 통제 | 22, 23 | 계획 |
+| 25 | 최종 프로젝트 ①: 설계와 조립 | 지금까지의 부품은 한 서비스에서 어떻게 맞물리나? | 요구사항 → 아키텍처 · 부품 조립(RAG·그래프·MCP·HITL) · FastAPI 스트리밍 API | API, SSE | 헬프데스크 서비스 API | 1~24 | 계획 |
+| 26 | 최종 프로젝트 ②: 배포·평가·회고 | 만든 Agent 를 남에게 넘기려면 무엇이 더 필요한가? | Docker · 평가 결과 · 설계 의사결정 기록(ADR) · README | Docker, ADR | 실행 환경 + 평가 리포트 | 25 | 계획 |
