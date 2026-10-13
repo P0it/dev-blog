@@ -19,6 +19,13 @@
 | [Jay Alammar, Illustrated Word2vec](https://jalammar.github.io/illustrated-word2vec/) | 임베딩을 색 칸 띠로 그려 비슷한 단어는 같은 열 색이 겹쳐 보이게 한다 | 임베딩 벡터의 "비슷함"을 보일 때 | 2026-10-12 | |
 | [Red Blob Games, Introduction to A*](https://www.redblobgames.com/pathfinding/a-star/introduction.html) | (다른 분야·지도 탐색) 시작점·목표를 끌어서 옮기고, 탐색 경계가 퍼지는 과정을 단계별로 본다 | 공간 위 탐색(최근접 이웃 등)을 조작하게 할 때 | 2026-10-12 | rag-retrieval-pipeline |
 | [Lost in the Middle](https://arxiv.org/abs/2307.03172) | 정답 문서 위치에 따른 정확도 U자 곡선 | 긴 컨텍스트에서 위치 효과를 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [UTF-8 Playground (vishnuharidas)](https://github.com/vishnuharidas/utf8-playground) | 상태의 주체가 비트다. 독자가 비트를 눌러 뒤집으면 글자가 따라 바뀐다. 제어비트는 진한 색, 데이터비트는 연한 색으로 갈라 "앞 몇 비트는 길이 표지판"이 설명 없이 보인다. overlong 경고 배너로 "같은 글자를 가리키는 바이트열이 여럿"이라는 오해를 깬다 | 비트·플래그가 값의 일부인 형식을 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
+| [utf8splain (ThinkR-open)](https://github.com/ThinkR-open/utf8splain) | 한 글자를 행 단위 표로 분해한다. 칸은 byte(hex)·decimal·binary(8비트). 이모지 하나가 표에서 4행을 차지하는 모습으로 "글자 1개 = 바이트 1개" 오해를 깬다 | 글자와 바이트의 개수가 어긋나는 것을 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
+| [chardet](https://github.com/chardet/chardet) | 정답 하나가 아니라 신뢰도 순위가 매겨진 후보 목록을 보여 준다. 한 바이트열에 Windows-1252·ISO-8859-15·ISO-8859-1 이 0.31 로 거의 동점이 뜬다 | "데이터만 보면 형식을 알 수 있다"는 오해를 숫자로 깰 때 | 2026-10-13 | utf8-encoding-mojibake |
+| [ftfy (rspeer)](https://github.com/rspeer/python-ftfy) | 깨진 글자와 복구본을 before/after 쌍으로 늘어놓은 카탈로그. 복구되는 사례만이 아니라 복구가 깨지는 경계(no-break space 가 보통 공백으로 합쳐지는 자리)도 같이 적는다 | 되돌릴 수 있는 손상과 없는 손상을 가를 때 | 2026-10-13 | utf8-encoding-mojibake |
+| [charset-normalizer (Ousret)](https://github.com/Ousret/charset_normalizer) | 모호함을 chaos(깨진 정도)·coherence(언어다움) 두 수치로 재고 `alternative_encodings` 를 같이 준다. "두 표가 같은 글자를 만들 수 있다"를 전제로 "덜 깨진 쪽 고르기"임을 드러낸다 | 추측에 눈금을 달 때 | 2026-10-13 | |
+| [Morse Code Visualizer (Berkanktk)](https://github.com/Berkanktk/morse-code) | (다른 분야·모스 부호) 코드북을 7단 이진 결정트리로 그리고, 입력하는 동안 경로에 실시간으로 불이 들어온다. 조회표가 아니라 "지금 어디까지 왔는지" 보이는 상태 기계로 제시한다 | 해독 과정을 단계별 경로로 보일 때 | 2026-10-13 | |
+| [Enigma Forge (systemslibrarian)](https://github.com/systemslibrarian/crypto-lab-enigma-forge) | (다른 분야·암호) 키 하나를 누를 때마다 lampboard·로터창·신호경로 세 뷰가 동시에 갱신된다. 독자가 만지는 것은 코드북 설정 자체(로터·링·플러그보드)라, 같은 입력이 설정에 따라 다른 출력이 되는 것을 조작으로 겪는다 | 같은 입력에 다른 약속을 끼우는 구조를 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
 
 ## 미확인
 
@@ -27,9 +34,16 @@
 - [bbycroft.net/llm](https://bbycroft.net/llm) — 3D LLM 시각화. 제목만 읽혔다
 - [BertViz](https://github.com/jessevig/bertviz) — README 로 head/model/neuron 뷰가 있다는 것만 확인
 - ByteByteGo RAG 글 — 404
+- [sixfoisneuf.fr/text-encoding](https://sixfoisneuf.fr/text-encoding) — 검색상 가장 유망했던 인코딩 인터랙티브 데모. DNS 차단으로 열지 못했다. 외부 망에서 다시 시도할 것
+- unicodefyi.com 인코딩 시각화, codeshack.io UTF-8 디코더, utf8-playground 라이브 데모(netlify) — 전부 차단
+- `*.github.io`·observablehq.com·distill.pub·setosa.io·pudding.cool·explorabl.es — 인터랙티브 explainer 생태계 대부분이 이 샌드박스에서 막힌다. 레퍼런스 탐색을 GitHub 저장소 README·소스로 돌려야 했다
+- 유전 암호(코돈·리딩프레임), 악보 기보, 지도학 축 — 확인된 레퍼런스를 하나도 확보하지 못했다
 
 ## 잘 먹힌 기법
 
 - **온도계 하나로 모든 그림 연동** (llm-temperature-sampling) — 같은 변수 하나가 확률표·수직선·샘플링·물리 비유를 동시에 바꾸니, 그림 여러 개가 한 원리로 묶여 보였다
 - **값을 색으로 섞기** (self-attention-qkv) — Value 를 색으로 두면 가중 평균 결과가 "섞인 색"으로 바로 보인다
+- **바이트는 고정, 약속만 바꿔 끼우기** (utf8-encoding-mojibake) — 입력을 고정해 두고 해석 규칙만 갈아 끼우게 하니, "데이터는 그대로인데 뜻이 달라진다"가 조작 자체에 들어갔다. 다섯 중 넷이 오류 없이 엉뚱한 답을 내놓는 것도 같은 장치에서 한 번에 보인다
+- **비가역성은 선언하지 말고 충돌로 보이기** (utf8-encoding-mojibake) — "되돌릴 수 없다"를 문장으로 말하는 대신, 서로 다른 일곱 글자가 같은 결과로 합쳐지는 표를 놓고 11,172 → 398 이라는 수를 적었다. 주장이 아니라 산수가 됐다
+- **되돌리기 버튼을 꺼 둔 채로 두기** (utf8-encoding-mojibake) — 끄고 "장치의 한계가 아니라 이 사고의 성질"이라고 적으니, 비활성 버튼 자체가 설명이 됐다
 - **기본값을 실패 상태로** (rag-retrieval-pipeline) — 청킹 실험을 답이 잘린 상태로 시작해 독자가 슬라이더로 고치게 했다
