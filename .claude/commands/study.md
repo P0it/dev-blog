@@ -16,6 +16,7 @@ description: 학습 주제·시리즈 목차·수업 자료를 받아 개념이 
 **독자는 그 주제를 처음 접하는 중학생이다.** 눈높이 규칙은 `POSTING.md` 5-0 을 따른다.
 글 하나가 그 주제만을 위한 페이지다. 견본: `auto-drafts/posts/llm-temperature-sampling.html`,
 `self-attention-qkv.html`, `rag-retrieval-pipeline.html`. 견본은 수준을 맞추는 기준이지 복제할 틀이 아니다.
+길이·섹션 수도 견본을 따르지 않는다. 다룰 개념이 정한다(`POSTING.md` 5-0 "분량").
 
 ## 0. 준비
 
