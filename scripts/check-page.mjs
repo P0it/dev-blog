@@ -10,6 +10,7 @@
 //   · 단락(p·li) 하나는 한글 LIMITS.para 자 이하
 //   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하. 그림이나 h2 를 만나면 끊는다
 //     (접힌 <details> 안은 세지 않는다)
+//   · 열보다 좁은 그림은 열 가운데에 놓는다(좌우 여백 차이 24px 이하)
 import { chromium } from "playwright";
 const LIMITS = { para: 220, run: 650, figShare: 0.5 };
 function rhythm(L) {
@@ -32,6 +33,27 @@ function rhythm(L) {
   const second = secs[1];
   const early = all.some((e) => !second || second.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_PRECEDING);
   if (!early) problems.push("첫 화면(첫 섹션까지)에 그림이 없다");
+  // 열보다 좁은 그림은 열 가운데에 둔다 — 열 = 그 그림이 든 섹션의 h2 를 감싼 블록 폭
+  for (const s of secs) {
+    const col = s.querySelector("h2").parentElement.getBoundingClientRect();
+    for (const e of figsIn(s)) {
+      const r = e.getBoundingClientRect();
+      if (r.width >= col.width - 24 || e.closest("[data-figure]") !== e && e.closest("[data-figure]")) continue;
+      // 옆에 다른 내용이 나란히 있는 2단 배치(그림 + 설명)는 치우친 게 아니다
+      let beside = false;
+      for (let a = e; a && a !== s && !beside; a = a.parentElement) {
+        const ar = a.getBoundingClientRect();
+        beside = [...(a.parentElement?.children || [])].some((sib) => {
+          if (sib === a) return false;
+          const q = sib.getBoundingClientRect();
+          return q.width > 40 && q.top < ar.bottom && q.bottom > ar.top && (q.left >= ar.right - 4 || q.right <= ar.left + 4);
+        });
+      }
+      if (beside) continue;
+      const gapL = r.left - col.left, gapR = col.right - r.right;
+      if (Math.abs(gapL - gapR) > 24) problems.push(`한쪽으로 치우친 그림(왼쪽 ${Math.round(gapL)} · 오른쪽 ${Math.round(gapR)}px): "${s.querySelector("h2").textContent.trim().slice(0, 20)}" 섹션`);
+    }
+  }
   // 문서 순서로 훑으며 그림이나 h2 를 만나면 글 구간을 끊는다
   let run = 0, maxRun = 0, runStart = "", maxPara = 0;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
