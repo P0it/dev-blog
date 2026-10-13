@@ -9,6 +9,8 @@
 //   npm run draft -- push <file.md>       프런트매터+본문 .md 를 posts 에 upsert
 //   npm run draft -- pull <slug> [file]   기존 글을 .md 로 내려받기(개선용)
 //   옵션: --force   발행된 글의 본문을 갱신할 때 필수(실수 방지)
+//         --publish 초안이 아니라 발행 상태로 적재(published_at 이 없으면 지금). 매일 자동
+//                   학습 글(docs/auto-daily-draft.md)의 화면 점검을 통과한 원고에만 쓴다
 //
 // .md 파일 형식 — 맨 위 YAML 풍 프런트매터 + 그 아래 본문(body_md):
 //   ---
@@ -217,7 +219,7 @@ function serializeFrontmatter(post) {
 
 // --- push: .md → posts upsert ----------------------------------------
 
-async function push(file, force) {
+async function push(file, force, publish) {
   const { data: fm, body } = parseFrontmatter(readFileSync(file, "utf8"));
   const title = unquote(fm.title);
   if (!title) throw new Error("프런트매터에 title 이 필요합니다");
@@ -294,7 +296,7 @@ async function push(file, force) {
   const write = async (row) => {
     const q = existing
       ? sb.from("posts").update(row).eq("slug", slug)
-      : sb.from("posts").insert({ ...row, slug, status: "draft", is_featured: false });
+      : sb.from("posts").insert({ status: "draft", is_featured: false, ...row, slug });
     const { error } = await q;
     if (error && /series_(slug|order)/.test(error.message) && row.series_slug !== undefined) {
       console.warn("⚠ posts.series_slug 컬럼이 없어 시리즈 지정을 건너뜁니다 — db/migrations/0003_series.sql 을 적용하세요.");
@@ -303,9 +305,21 @@ async function push(file, force) {
     }
     if (error) throw error;
   };
+  // --publish: 에디터의 publishPost 와 같은 규칙 — 발행일이 비어 있으면 지금으로 채운다.
+  if (publish) {
+    content.status = "published";
+    if (!content.published_at) {
+      const { data: prev } = existing
+        ? await sb.from("posts").select("published_at").eq("slug", slug).maybeSingle()
+        : { data: null };
+      content.published_at = prev?.published_at ?? new Date().toISOString();
+    }
+  }
   await write(content);
 
-  if (existing) {
+  if (publish) {
+    console.log(`✓ 발행 — ${slug}`);
+  } else if (existing) {
     console.log(`✓ 기존 글 갱신 — ${slug} (status 유지: ${existing.status})`);
     if (existing.status === "published")
       console.log("  발행글 — 공개 페이지 캐시는 즉시 갱신 안 됨(어드민 에디터 저장 또는 재배포 필요).");
@@ -343,16 +357,18 @@ function usage() {
   console.log(`사용법:
   npm run draft -- push <file.md>      .md(프런트매터+본문)를 posts 에 upsert
   npm run draft -- pull <slug> [file]  기존 글을 .md 로 내려받기(개선용)
-  옵션: --force   발행된 글의 본문을 갱신할 때 필수`);
+  옵션: --force   발행된 글의 본문을 갱신할 때 필수
+        --publish 발행 상태로 적재(published_at 이 없으면 지금)`);
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const force = argv.includes("--force");
-  const args = argv.filter((a) => a !== "--force");
+  const publish = argv.includes("--publish");
+  const args = argv.filter((a) => a !== "--force" && a !== "--publish");
   const [cmd, a1, a2] = args;
 
-  if (cmd === "push" && a1) await push(a1, force);
+  if (cmd === "push" && a1) await push(a1, force, publish);
   else if (cmd === "pull" && a1) await pull(a1, a2);
   else {
     usage();

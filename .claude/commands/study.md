@@ -99,6 +99,8 @@ general-purpose 에이전트에게 **글의 의도를 알려 주지 않고** 캡
 
 - `.env.local` 이 있으면: `npm run draft -- push auto-drafts/posts/<slug>.html`. 출력된 `/admin/editor?slug=…` 를 알린다.
 - 없으면(클라우드 루틴): 파일을 커밋·푸시한다. GitHub Actions(`auto-draft-ingest`)가 적재한다.
+  매일 루틴은 4~6을 모두 마쳤을 때 프런트매터에 `publish: true` 를 넣는다 — Actions 가 화면 점검을
+  다시 돌려 통과하면 바로 발행한다(`docs/auto-daily-draft.md`). 로컬 실행에서는 넣지 않는다.
   HTML 글은 외부 이미지 재호스팅을 거치지 않으니 그림은 인라인 SVG·Canvas 로 만든다.
 - 원고와 함께 커밋한다. 커밋 메시지에 AI attribution 을 넣지 않는다.
 

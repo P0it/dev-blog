@@ -1,8 +1,18 @@
-# 매일 아침 자동 초안 — Claude 클라우드 루틴 → GitHub Actions → Supabase
+# 매일 아침 자동 학습 글 — Claude 클라우드 루틴 → GitHub Actions → Supabase
 
-매일 07:00(KST) Claude 클라우드 루틴이 최근 AI·B2B·인디개발·국내 테크 소식을 조사해
-아이디어 브리핑과 완성 원고 1편을 이 저장소에 커밋하고, GitHub Actions 가 그 원고를
-Supabase `posts` 에 **`draft`** 로 적재한다. 발행은 사람이 어드민에서 한다.
+매일 07:00(KST) Claude 클라우드 루틴이 최근 AI·개발·디자인·CSM 소식을 조사하고, 그 소식을
+이해하는 데 필요한 원리 하나를 골라 **`/study` 절차로 HTML 학습 페이지 글**을 만들어 커밋한다.
+GitHub Actions 가 화면 점검(`check:page` — 가로 넘침·스크립트 오류, 라이트·다크)을 돌려
+통과하면 **바로 발행**한다. 점검에 실패하거나 루틴이 `publish: true` 를 넣지 않았으면 `draft` 로 남는다.
+
+### 2026-10-13 — 초안 → 바로 발행, 마크다운 의견 글 → `/study` 학습 페이지
+
+현우가 매일 새 글을 바로 읽고 싶다고 해서 바꿨다. 그 전에는 `/research` 로 마크다운 원고를 쓰고
+`draft` 까지만 적재했다("직접 써본 관점"을 검토 단계에서 얹는 전제). 학습 페이지는 개인 경험이 아니라
+원리 설명이라 그 전제가 필요 없고, 대신 사람 검토가 빠진 자리를 이렇게 메운다:
+- 확인 못 한 사실은 글에 넣지 않는다(이전엔 `⚠ 원문 미확인` 표시 후 검토자가 확인).
+- humanize 를 못 돌렸으면 `publish: true` 를 넣지 않는다.
+- Actions 가 발행 직전에 화면 점검을 다시 돌린다. 샌드박스에서 브라우저를 못 띄운 날도 같은 문턱을 지난다.
 
 ## 왜 이렇게 나눴나
 
@@ -14,18 +24,20 @@ Supabase `posts` 에 **`draft`** 로 적재한다. 발행은 사람이 어드민
 적재를 맡는다. 초안이 git 에 남아 되돌리기도 쉽다.
 
 ```
-07:00 KST  Claude 클라우드 루틴 (WebSearch 리서치 → 원고 작성)
-   ↓ auto-drafts/ideas/<날짜>.md + auto-drafts/posts/<slug>.md 커밋·푸시
+07:00 KST  Claude 클라우드 루틴 (리서치 → 원리 고르기 → /study 1~8)
+   ↓ auto-drafts/ideas/<날짜>.md + auto-drafts/posts/<slug>.html 커밋·푸시
 GitHub Actions  auto-draft-ingest.yml (push: auto-drafts/posts/**)
-   ↓ npm run fetch:image -- --rewrite   (REHOST: 마커 → 자체 버킷 URL)
-   ↓ 치환된 원고를 되돌려 커밋 [skip ci]
-   ↓ npm run draft -- push
-Supabase posts  status=draft
-   ↓
-/admin/editor?slug=…  ← 사람이 검토·보강·발행
+   ↓ publish: true 인 .html → npm run dev + check:page (라이트·다크)
+   ↓ 통과: npm run draft -- push --publish   실패: npm run draft -- push (draft)
+Supabase posts  status=published (published_at=지금)
+   ↓ 공개 페이지 revalidate 60초
+/posts/<slug>
 ```
 
-## 이미지가 오는 길
+## 이미지가 오는 길 (마크다운 원고 — 지금 루틴은 쓰지 않는다)
+
+HTML 학습 페이지는 그림을 전부 인라인 SVG·Canvas 로 그려 이 경로를 타지 않는다.
+손으로 커밋한 마크다운 원고나 `/research` 클라우드 실행에는 여전히 쓰인다.
 
 **독자는 공식 문서·발표의 진짜 스크린샷과 다이어그램을 볼 때 글을 신뢰한다.** 반대로 매
 글에 똑같은 톤의 SVG 도식이 네다섯 장 깔려 있으면 "AI 가 찍어낸 글"로 읽힌다. 초기 원고들이
@@ -79,10 +91,9 @@ gh workflow run auto-draft-ingest.yml -f file=auto-drafts/posts/<slug>.md
 
 ## 지켜야 할 선
 
-- **자동 발행 금지.** 적재는 `draft` 까지. `POSTING.md` 가 요구하는 "직접 써본 관점"은
-  클라우드 세션이 알 수 없으므로, 검토 단계에서 현우의 경험을 얹는 걸 전제로 한다.
-- **수치는 발행 전에 확인한다.** egress 프록시에 막혀 WebFetch 로 원문을 못 연 출처는
-  루틴이 브리핑에 `⚠ 원문 미확인` 으로 표시한다. 그 숫자는 검색 스니펫에서 온 것이다.
+- **자동 발행은 `publish: true` + 화면 점검 통과일 때만.** `--publish` 는 이 워크플로만 붙인다.
+  로컬 `/study` 가 커밋한 `.html` 은 `publish:` 줄이 없어 기존처럼 `draft` 로 들어간다.
+- **확인 못 한 수치는 글에 넣지 않는다.** egress 프록시에 막혀 원문을 못 연 출처의 숫자는 뺀다.
 - **루틴 프롬프트는 이제 저장소 파일만 고치면 된다.** 2026-09-13 부터 루틴에 등록된 건
   전체 프롬프트가 아니라 "`docs/auto-daily-draft.prompt.md` 를 읽고 그대로 수행하라"는
   다섯 줄짜리 부트스트랩이다. 그 파일이 유일한 정본이므로, 고치고 `main` 에 푸시하면
@@ -93,10 +104,10 @@ gh workflow run auto-draft-ingest.yml -f file=auto-drafts/posts/<slug>.md
     짐작해서 쓴 원고가 적재되는 것보다 낫다.
   - 루틴 자체의 설정(모델·저장소·도구·스케줄)을 바꿀 때만 `/schedule` 로 루틴을 연다.
 - 커밋 메시지에 AI attribution 금지(`CLAUDE.md`). 루틴 프롬프트에도 그 조항이 들어 있다.
-- **루틴은 `/research` 커맨드를 그대로 쓴다(2026-09-14 부터).** STEP 2 브리핑의 핵심 앵글이 인자다. `.claude/commands/{draft,insight,research}.md`
+- **루틴은 `/study` 커맨드를 그대로 쓴다(2026-10-13 부터, 그 전엔 `/research`).** STEP 2 브리핑의 "설명할 원리"가 인자다. `.claude/commands/{draft,insight,research}.md`
   의 적재 단계가 `.env.local` 유무로 로컬/클라우드를 가른다 — 클라우드면 `auto-drafts/posts/` +
   `REHOST:` 마커 + 커밋. 그래서 규약·점검표는 커맨드 한 곳만 고치면 로컬 세션과 루틴이 같이
-  바뀐다. 루틴 프롬프트(STEP 3)는 커맨드를 가리키고 샌드박스 특이사항만 적는다.
+  바뀐다. 루틴 프롬프트(STEP 3)는 커맨드를 가리키고 샌드박스 특이사항(브라우저를 못 띄울 때, humanize 를 못 돌릴 때)만 적는다.
   같은 원리로 `/research`·`/draft` 도 루틴에서 부를 수 있다(영상 캡처만 로컬 전용).
 
 ## 루틴 프롬프트
