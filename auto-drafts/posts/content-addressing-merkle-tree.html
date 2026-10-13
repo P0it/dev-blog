@@ -1,0 +1,812 @@
+---
+title: git이 파일을 위치 대신 지문으로 부르는 이유
+slug: content-addressing-merkle-tree
+excerpt: git은 파일과 폴더에 내용에서 계산한 지문(hash)으로 이름을 붙입니다. 파일 하나를 고치면 왜 그 위 폴더들의 이름만 바뀌는지, 그 덕분에 Anthropic의 새 버전 관리 시스템 Scion이 왜 아무 서버에나 데이터를 복사해 둘 수 있는지 직접 고쳐 보며 확인합니다.
+tags: [git, 해시, Merkle tree, Scion, 버전 관리]
+category: ai
+publish: true
+---
+<!-- page -->
+<style>
+.post-page .ca { --ca-new: rgb(236, 92, 60); --ca-ok: rgb(34, 150, 100); --ca-bad: rgb(222, 60, 60); --ca-dim: color-mix(in srgb, var(--fg-alternative) 55%, var(--bg-base));
+  --ca-p1: rgb(59, 130, 246); --ca-p2: rgb(168, 85, 247); --ca-p3: rgb(20, 160, 140); --ca-p4: rgb(217, 119, 6);
+  color: var(--fg-normal); font-family: var(--font-sans); }
+[data-theme="dark"] .post-page .ca { --ca-new: rgb(255, 122, 88); --ca-ok: rgb(70, 200, 140); --ca-bad: rgb(255, 100, 100); --ca-dim: color-mix(in srgb, var(--fg-alternative) 70%, var(--bg-base)); }
+.post-page .ca * { box-sizing: border-box; }
+.post-page .ca-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.post-page .ca-col { max-width: 720px; margin-left: auto; margin-right: auto; }
+.post-page .ca h1, .post-page .ca h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ca p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; word-break: keep-all; }
+.post-page .ca b { color: var(--fg-strong); }
+.post-page .ca code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ca p.ca-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 14px; line-height: 1.65; }
+.post-page .ca-fig { margin: clamp(24px, 4vw, 40px) auto 0; }
+/* 고르는 버튼(상태)과 실행 버튼(동작)은 모양을 다르게: 고르기 = 붙은 세그먼트, 실행 = 테두리 + ▶ */
+.post-page .ca-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+.post-page .ca-seg button { font: inherit; font-size: 14px; padding: 8px 14px; border: 0; background: var(--bg-base); color: var(--fg-neutral); cursor: pointer; }
+.post-page .ca-seg button + button { border-left: 1px solid var(--line-strong); }
+.post-page .ca-seg button[aria-pressed="true"] { background: var(--bg-muted); color: var(--fg-strong); font-weight: 700; box-shadow: inset 0 -3px 0 var(--fg-strong); }
+.post-page .ca-act { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--ca-new); background: transparent; color: var(--ca-new); cursor: pointer; }
+.post-page .ca-act::before { content: "▶ "; font-size: 11px; }
+.post-page .ca-act.back { border-color: var(--line-strong); color: var(--fg-neutral); }
+.post-page .ca-act.back::before { content: "↺ "; font-size: 13px; }
+.post-page .ca-ctl { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+/* 지문 표기: 바뀐 지문은 주황, 그대로인 지문은 회색 */
+.post-page .ca-h { font-family: var(--font-mono); font-size: 14px; color: var(--fg-strong); white-space: nowrap; }
+.post-page .ca-h.new { color: var(--ca-new); font-weight: 700; }
+.post-page .ca-sum { margin-top: 14px; font-size: 16px; color: var(--fg-strong); font-weight: 600; min-height: 1.5em; }
+.post-page .ca-sum span { color: var(--ca-new); }
+
+/* 분할 히어로(docs/visual-references.md): 왼쪽 제목·위치 이름 vs 지문 이름, 오른쪽 살아 있는 폴더 나무 */
+.post-page .ca-hero { padding: clamp(40px, 7vw, 88px) 0 clamp(36px, 5vw, 56px); }
+.post-page .ca-hero-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .ca-hero h1 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.18; }
+.post-page .ca-lede { font-size: clamp(17px, 1.8vw, 18px) !important; color: var(--fg-neutral); margin-top: clamp(18px, 2.6vw, 28px) !important; }
+.post-page .ca-names { margin-top: 22px; display: grid; gap: 10px; }
+.post-page .ca-name { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); gap: 10px; align-items: baseline; padding-bottom: 10px; border-bottom: 1px dashed var(--line-strong); font-size: 15px; }
+.post-page .ca-name > span:first-child { color: var(--fg-alternative); font-size: 14px; }
+.post-page .ca-name b { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+.post-page .ca-name em { font-style: normal; display: block; font-size: 13px; color: var(--fg-alternative); margin-top: 2px; }
+.post-page .ca-name.same b { color: var(--fg-strong); }
+.post-page .ca-name.diff b { color: var(--ca-new); }
+.post-page .ca-play { padding: clamp(14px, 2vw, 22px); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.post-page .ca-tree { width: 100%; height: auto; display: block; margin: 0 auto; }
+.post-page .ca-tree text { font-family: var(--font-sans); fill: var(--fg-strong); font-size: 17px; }
+.post-page .ca-tree .mono { font-family: var(--font-mono); font-size: 15px; fill: var(--fg-neutral); }
+.post-page .ca-tree.w text { font-size: 21px; }
+.post-page .ca-tree.w .mono { font-size: 19px; }
+.post-page .ca-tree .mono.new { fill: var(--ca-new); font-weight: 700; }
+.post-page .ca-tree .edge { stroke: color-mix(in srgb, var(--fg-alternative) 60%, transparent); stroke-width: 2; fill: none; }
+.post-page .ca-tree .edge.hot { stroke: var(--ca-new); stroke-width: 3.5; }
+.post-page .ca-tree .box { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.5; cursor: pointer; }
+.post-page .ca-tree .box.dir { stroke-width: 2.5; stroke: var(--fg-alternative); }
+.post-page .ca-tree .box.sel { stroke-dasharray: 5 3; stroke: var(--fg-strong); stroke-width: 2.5; }
+.post-page .ca-tree .box.hot { stroke: var(--ca-new); stroke-width: 3; }
+.post-page .ca-tree g.node:focus { outline: none; }
+.post-page .ca-tree g.node:focus-visible .box { stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .ca-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.post-page .ca-edit label { font-size: 14px; color: var(--fg-alternative); }
+.post-page .ca-edit input { font: inherit; font-family: var(--font-mono); font-size: 15px; flex: 1 1 200px; min-width: 0; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--bg-base); color: var(--fg-strong); }
+
+.post-page .ca-sec { padding: clamp(52px, 7vw, 88px) 0; border-top: 1px solid var(--line-normal); }
+.post-page .ca-sec h2, .post-page .ca-layer h2 { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.3; margin-bottom: 18px; }
+
+/* 층 쌓기(docs/visual-references.md '카드 쌓기'): 파일 → 폴더 → 커밋 세 층. 넓고 높은 화면에서만 sticky */
+.post-page .ca-stack { position: relative; }
+.post-page .ca-layer { background: var(--bg-base); border-top: 1px solid var(--line-normal); padding: clamp(40px, 5vw, 64px) 0; }
+.post-page .ca-layer-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 64px); align-items: start; }
+.post-page .ca-layer-row .ca-fig { margin: 0; }
+.post-page .ca-layer-row.one { grid-template-columns: 1fr; gap: 8px; }
+.post-page .ca-layer-row.one > .ca-fig { width: 100%; max-width: 980px; margin: 0 auto; }
+.post-page .ca-floor { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; font-weight: 600; color: var(--fg-alternative); margin-bottom: 12px; }
+.post-page .ca-floor i { display: inline-block; width: 26px; height: 8px; border-radius: 4px; background: var(--line-strong); }
+.post-page .ca-floor i.on { background: var(--fg-strong); }
+@media (min-width: 1000px) and (min-height: 760px) {
+  .post-page .ca-layer { position: sticky; box-shadow: 0 -18px 30px -24px rgba(0, 0, 0, 0.35); }
+  .post-page .ca-layer:nth-child(1) { top: 64px; }
+  .post-page .ca-layer:nth-child(2) { top: 80px; }
+  .post-page .ca-layer:nth-child(3) { top: 96px; }
+}
+
+/* 1. 두 글의 지문, 160칸 */
+.post-page .ca-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.post-page .ca-pair label { display: block; font-size: 14px; color: var(--fg-alternative); margin-bottom: 6px; }
+.post-page .ca-pair input { font: inherit; font-size: 16px; width: 100%; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--bg-base); color: var(--fg-strong); }
+.post-page .ca-pair .ca-hex { display: block; margin-top: 8px; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; color: var(--fg-neutral); word-break: break-all; }
+.post-page .ca-bits { display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 3px; margin-top: 18px; }
+.post-page .ca-bits i { aspect-ratio: 1; border-radius: 3px; background: var(--bg-muted); transition: background 0.25s; }
+.post-page .ca-bits i.d { background: var(--ca-new); }
+
+/* 2. 같은 내용 하나로 */
+.post-page .ca-dedupe { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 0.8fr); gap: 10px; align-items: center; }
+.post-page .ca-files, .post-page .ca-store { display: grid; gap: 8px; }
+.post-page .ca-file { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-sm); border: 2px solid var(--pc); font-size: 14px; }
+.post-page .ca-file span:first-child { font-family: var(--font-mono); font-size: 14px; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-page .ca-arrow { font-size: 22px; color: var(--fg-alternative); text-align: center; }
+.post-page .ca-blob { padding: 10px 12px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--pc) 16%, var(--bg-base)); border: 2px solid var(--pc); font-size: 14px; color: var(--fg-neutral); }
+.post-page .ca-blob b { display: block; font-size: 15px; margin-top: 4px; }
+.post-page .ca-blob .dots { display: flex; gap: 4px; margin-top: 6px; }
+.post-page .ca-blob .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--pc); }
+
+/* 3. 폴더 상자 속 목록 */
+.post-page .ca-box { border: 2px solid var(--fg-alternative); border-radius: var(--radius-md); padding: 12px 14px 14px; }
+.post-page .ca-box.hot { border-color: var(--ca-new); }
+.post-page .ca-box-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--fg-strong); margin-bottom: 8px; }
+.post-page .ca-line { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 14px; color: var(--fg-neutral); }
+.post-page .ca-line.hot { background: color-mix(in srgb, var(--ca-new) 16%, transparent); color: var(--fg-strong); }
+.post-page .ca-line em { font-style: normal; color: var(--fg-alternative); }
+.post-page .ca-link { display: flex; align-items: center; gap: 10px; margin: 6px 0 6px 22px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .ca-link i { width: 3px; height: 34px; border-radius: 2px; background: var(--line-strong); }
+.post-page .ca-link.hot i { background: var(--ca-new); }
+.post-page .ca-link.hot { color: var(--ca-new); font-weight: 600; }
+
+/* 4. 커밋 사슬 */
+.post-page .ca-chain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px; margin-top: 34px; }
+.post-page .ca-commit { position: relative; border: 2px solid var(--line-strong); border-radius: var(--radius-md); padding: 14px; font-size: 14px; }
+.post-page .ca-commit.hot { border-color: var(--ca-new); }
+.post-page .ca-commit + .ca-commit::before { content: "→"; position: absolute; left: -27px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--fg-alternative); }
+.post-page .ca-commit > b { display: block; font-size: 15px; margin-bottom: 10px; }
+.post-page .ca-commit > div { display: flex; justify-content: space-between; gap: 6px; color: var(--fg-alternative); margin-top: 5px; }
+.post-page .ca-commit .msg { color: var(--fg-strong); background: var(--bg-subtle); padding: 4px 8px; border-radius: 6px; margin: 2px 0 6px; }
+.post-page .ca-commit .msg.hot { background: color-mix(in srgb, var(--ca-new) 18%, transparent); color: var(--ca-new); font-weight: 700; }
+.post-page .ca-commit .me { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line-strong); color: var(--fg-strong); font-weight: 600; }
+.post-page .ca-tagm { position: absolute; right: 10px; top: -15px; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--bg-base); background: var(--fg-strong); padding: 3px 10px; border-radius: 99px; }
+
+/* 5. 두 나무 비교 */
+.post-page .ca-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 3vw, 40px); max-width: 860px; margin: 0 auto; }
+.post-page .ca-two svg { width: 100%; height: auto; display: block; }
+.post-page .ca-two text { font-family: var(--font-sans); font-size: 16px; fill: var(--fg-strong); }
+.post-page .ca-two .lbl { font-size: 14px; fill: var(--fg-alternative); }
+.post-page .ca-two line { stroke: color-mix(in srgb, var(--fg-alternative) 55%, transparent); stroke-width: 1.5; }
+.post-page .ca-two line.walk { stroke: var(--ca-new); stroke-width: 3; }
+.post-page .ca-two circle { stroke-width: 2.5; cursor: pointer; }
+.post-page .ca-two circle.same { fill: var(--fg-alternative); stroke: var(--bg-base); }
+.post-page .ca-two circle.diff { fill: var(--ca-new); stroke: var(--bg-base); }
+.post-page .ca-two circle.skip { fill: var(--bg-base); stroke: var(--fg-alternative); stroke-dasharray: 3 2; }
+.post-page .ca-two circle.hit { fill: transparent; stroke: none; cursor: pointer; }
+.post-page .ca-two circle.plain { fill: var(--bg-muted); stroke: var(--fg-alternative); stroke-width: 1.5; }
+.post-page .ca-legend { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin-top: 12px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .ca-legend span { white-space: nowrap; }
+.post-page .ca-legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; background: var(--c); border: 2px solid var(--b, transparent); }
+.post-page .ca-walk { text-align: center; }
+
+/* 6. 캐시 — 요청이 흐르는 길 */
+.post-page .ca-flow { display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr) 120px minmax(0, 1fr); align-items: stretch; max-width: 1000px; margin: 0 auto; }
+.post-page .ca-tier { border-radius: var(--radius-md); border: 1.5px solid var(--line-strong); padding: 14px; background: var(--bg-base); }
+.post-page .ca-tier h3 { font-size: 16px; margin: 0 0 2px; color: var(--fg-strong); }
+.post-page .ca-tier small { display: block; font-size: 13px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .ca-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 6px; margin-top: 6px; font-size: 14px; background: var(--bg-subtle); flex-wrap: wrap; }
+.post-page .ca-item.stale { background: color-mix(in srgb, var(--ca-bad) 18%, transparent); }
+.post-page .ca-item.fresh { background: color-mix(in srgb, var(--ca-ok) 18%, transparent); }
+.post-page .ca-item em { font-style: normal; font-size: 13px; font-weight: 700; }
+.post-page .ca-item.stale em { color: var(--ca-bad); }
+.post-page .ca-item.fresh em { color: var(--ca-ok); }
+.post-page .ca-pipe { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 0 6px; text-align: center; font-size: 13px; color: var(--fg-neutral); line-height: 1.35; }
+.post-page .ca-pipe i { display: block; width: 100%; height: 3px; background: var(--line-strong); position: relative; border-radius: 2px; }
+.post-page .ca-pipe i::after { content: ""; position: absolute; right: -2px; top: -5px; border: 6.5px solid transparent; border-left: 9px solid var(--line-strong); border-right: 0; }
+.post-page .ca-pipe.go i { background: var(--fg-strong); }
+.post-page .ca-pipe.go i::after { border-left-color: var(--fg-strong); }
+.post-page .ca-pipe.no i { background: repeating-linear-gradient(90deg, var(--fg-alternative) 0 6px, transparent 6px 11px); }
+.post-page .ca-pipe.no i::after { content: "×"; border: 0; top: -12px; right: 40%; font-size: 18px; font-weight: 700; color: var(--ca-bad); }
+.post-page .ca-item.warn { background: transparent; border: 1.5px dashed var(--ca-bad); color: var(--ca-bad); font-weight: 600; }
+.post-page .ca-ask { text-align: center; font-size: 15px; color: var(--fg-strong); margin: 0 auto 14px; }
+.post-page .ca-ask .ca-h, .post-page .ca-ask code { font-size: 15px; }
+
+/* 7. main 이름표와 동시에 옮기기 */
+.post-page .ca-race { display: grid; gap: 12px; }
+.post-page .ca-dots { display: flex; align-items: center; padding: 30px 0 6px; }
+.post-page .ca-fork { display: grid; gap: 18px; margin-left: 30px; position: relative; padding-left: 0; }
+.post-page .ca-fork::before { content: ""; position: absolute; left: -30px; top: 27px; bottom: 27px; width: 16px; border: 2px solid var(--line-strong); border-right: 0; border-radius: 12px 0 0 12px; }
+.post-page .ca-fork > div { display: flex; align-items: center; min-height: 54px; }
+.post-page .ca-c.no { border-color: var(--ca-bad); color: var(--ca-bad); text-decoration: line-through; }
+.post-page .ca-fork .ca-c:first-child::before { display: none; }
+.post-page .ca-who { font-size: 13px; font-weight: 700; margin-left: 10px; }
+.post-page .ca-c { position: relative; flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; font-weight: 700; border: 2.5px solid var(--fg-alternative); color: var(--fg-strong); background: var(--bg-base); }
+.post-page .ca-c.a { border-color: var(--ca-p1); }
+.post-page .ca-c.b { border-color: var(--ca-p2); }
+.post-page .ca-c.ghost { border-style: dashed; opacity: 0.85; }
+.post-page .ca-c + .ca-c { margin-left: 30px; }
+.post-page .ca-fork .ca-c:first-child { margin-left: 0; }
+.post-page .ca-c + .ca-c::before { content: ""; position: absolute; left: -32px; top: 50%; width: 30px; height: 2px; background: var(--line-strong); }
+.post-page .ca-c .ca-tagm { right: auto; left: 50%; transform: translateX(-50%); top: -26px; }
+.post-page .ca-log { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.post-page .ca-log li { font-size: 15px; padding: 8px 12px; border-radius: 8px; background: var(--bg-subtle); line-height: 1.5; }
+.post-page .ca-log li.ok { background: color-mix(in srgb, var(--ca-ok) 16%, transparent); }
+.post-page .ca-log li.no { background: color-mix(in srgb, var(--ca-bad) 16%, transparent); }
+.post-page .ca-log b.a { color: var(--ca-p1); }
+.post-page .ca-log b.b { color: var(--ca-p2); }
+
+/* 8. 비둘기집 — 칸을 줄이면 지문이 겹친다 */
+.post-page .ca-holes { display: grid; gap: 4px; }
+.post-page .ca-holes.k1 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.post-page .ca-holes.k2 { grid-template-columns: repeat(16, minmax(0, 1fr)); }
+.post-page .ca-hole { min-height: 46px; border-radius: 6px; background: var(--bg-muted); padding: 4px 2px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 3px; position: relative; }
+.post-page .ca-holes.k2 .ca-hole { min-height: 22px; padding: 3px 1px; }
+.post-page .ca-hole i { width: 9px; height: 9px; border-radius: 50%; background: var(--fg-alternative); }
+.post-page .ca-hole.clash { background: color-mix(in srgb, var(--ca-new) 26%, var(--bg-base)); }
+.post-page .ca-hole.clash i { background: var(--ca-new); }
+.post-page .ca-hole span { position: absolute; left: 4px; bottom: 2px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-neutral); }
+.post-page .ca-holes.k2 .ca-hole span { display: none; }
+
+.post-page .ca details { margin-top: 10px; border-left: 3px solid var(--line-strong); padding: 4px 0 4px 16px; }
+.post-page .ca summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
+.post-page .ca details p { font-size: 16px; margin-top: 10px; }
+.post-page .ca-refs { padding-left: 1.2em; font-size: 15px; }
+.post-page .ca-refs li { margin: 8px 0; line-height: 1.6; }
+.post-page .ca-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .post-page .ca-hero-row, .post-page .ca-layer-row { grid-template-columns: 1fr; }
+  .post-page .ca-chain { grid-template-columns: 1fr; gap: 34px; }
+  .post-page .ca-commit + .ca-commit::before { content: "↓"; left: 50%; top: -30px; transform: translateX(-50%); }
+  .post-page .ca-flow { grid-template-columns: 1fr; gap: 0; }
+  .post-page .ca-pipe { flex-direction: row; padding: 8px 0; min-height: 52px; }
+  .post-page .ca-pipe i { width: 3px; height: 38px; flex: none; }
+  .post-page .ca-pipe i::after { right: auto; top: auto; bottom: -3px; left: -5px; border: 6.5px solid transparent; border-top: 9px solid var(--line-strong); border-bottom: 0; }
+  .post-page .ca-pipe.go i::after { border-left-color: transparent; border-top-color: var(--fg-strong); }
+}
+@media (max-width: 640px) {
+  .post-page .ca-wrap { padding: 0 20px; }
+  .post-page .ca p { font-size: 16px; }
+  .post-page .ca-play { padding: 12px; }
+  .post-page .ca-pair { grid-template-columns: 1fr; }
+  .post-page .ca-bits { gap: 2px; }
+  .post-page .ca-dedupe { grid-template-columns: 1fr; }
+  .post-page .ca-arrow { transform: rotate(90deg); }
+  .post-page .ca-two { grid-template-columns: 1fr; }
+  .post-page .ca-holes.k1 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .post-page .ca-holes.k2 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .post-page .ca-c { width: 46px; height: 46px; font-size: 12px; }
+  .post-page .ca-c + .ca-c { margin-left: 22px; }
+  .post-page .ca-c + .ca-c::before { left: -24px; width: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ca * { animation: none !important; transition: none !important; }
+}
+</style>
+<div class="ca" data-ca>
+  <header class="ca-hero">
+    <div class="ca-wrap ca-hero-row">
+      <div>
+        <h1>git이 파일을 위치 대신 지문으로 부르는 이유</h1>
+        <p class="ca-lede">파일을 부르는 방법은 두 가지입니다. 어느 폴더에 있는지로 부르거나, 내용에서 계산한 <b>지문</b>으로 부르거나. 코드가 바뀌어 온 기록을 저장하는 프로그램 <b>git</b>은 뒤쪽을 씁니다. Anthropic이 10월 13일 git 대신 쓰기 시작했다고 밝힌 자체 시스템 <b>Scion</b>도 같습니다.</p>
+        <p class="ca-lede" style="margin-top:0!important">옆(좁은 화면에서는 아래) 나무에서 파일을 하나 골라 글자를 고쳐 보세요.</p>
+        <div class="ca-names" aria-live="polite">
+          <div class="ca-name same"><span>위치 이름</span><div><b data-ca-loc>docs/faq.md</b><em>어느 폴더의 어느 파일인지. 고쳐도 그대로</em></div></div>
+          <div class="ca-name diff"><span>지문 이름</span><div><b data-ca-fp>4961b5b</b><em data-ca-fpnote>내용에서 계산한 값. 고치기 전에는 49d472f</em></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="ca-play" data-figure>
+          <svg class="ca-tree" data-ca-tree role="img" aria-label="폴더 나무. 파일을 고치면 그 파일에서 꼭대기까지의 지문만 바뀐다"></svg>
+          <div class="ca-edit">
+            <label for="ca-edit-input" data-ca-edit-label>docs/faq.md 의 내용</label>
+            <input id="ca-edit-input" type="text" data-ca-edit-input value="자주 묻는 질문?" autocomplete="off">
+            <button type="button" class="ca-act back" data-ca-reset>고치기 전으로</button>
+          </div>
+          <p class="ca-sum" data-ca-count aria-live="polite"></p>
+        </div>
+        <p class="ca-cap">상자마다 위 줄이 위치 이름, 아래 줄이 지문(앞 7자리)입니다. 주황 상자는 지문이 바뀐 곳입니다. faq.md 끝에 물음표를 하나 더한 상태로 시작합니다. 지문은 git과 같은 방식(SHA-1)으로 이 자리에서 계산합니다. 고치기 전 꼭대기 지문 <code>9349304</code>는 같은 파일로 만든 저장소에서 git이 낸 값과 같습니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="ca-sec">
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>지문은 파일 내용만 보고 계산합니다</h2>
+        <p><b>해시 함수(hash function)</b>는 어떤 내용이든 받아서 정해진 길이의 숫자 하나를 내놓는 계산 규칙입니다. 그 숫자를 해시라고 하고 이 글에서는 <b>지문</b>이라고 부르겠습니다.</p>
+        <p>git이 쓰는 <b>SHA-1</b>은 0과 1을 160개 늘어놓은 지문을 만듭니다. 0이나 1 한 자리를 <b>비트</b>라고 합니다. 160비트는 길어서 네 비트씩 묶어 0~9, a~f 한 글자로 적습니다(16진수). 그러면 40글자가 됩니다.</p>
+      </div>
+      <div class="ca-col ca-fig" data-figure>
+        <div class="ca-pair">
+          <div><label for="ca-a">글 A</label><input id="ca-a" type="text" data-ca-a value="점심은 김밥" autocomplete="off"><span class="ca-hex" data-ca-ha></span></div>
+          <div><label for="ca-b">글 B</label><input id="ca-b" type="text" data-ca-b value="점심은 김밥!" autocomplete="off"><span class="ca-hex" data-ca-hb></span></div>
+        </div>
+        <div class="ca-bits" data-ca-bits aria-hidden="true"></div>
+        <p class="ca-sum" data-ca-bitsum aria-live="polite"></p>
+        <p class="ca-cap">칸 하나가 비트 하나입니다. 두 지문에서 값이 다른 칸만 주황으로 칠했습니다. 두 칸의 글을 바꿔 보세요.</p>
+      </div>
+      <div class="ca-col">
+        <p>사람 지문처럼 내용마다 다르고 같은 내용이면 누가 언제 계산해도 같습니다. 다만 사람 지문과 달리 <b>느낌표 하나만 붙여도 지문이 통째로 달라집니다</b>. 비슷한 글이라고 지문이 비슷해지지 않습니다.</p>
+        <p>거꾸로 지문에서 원래 글을 되살릴 수는 없습니다. 아무리 긴 파일도 160비트로 줄이니 대부분의 정보는 남지 않습니다. 지문은 잠갔다 여는 암호가 아니라 <b>같은지 확인하는 데 쓰는 요약</b>입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="ca-stack">
+    <section class="ca-layer">
+      <div class="ca-wrap ca-layer-row">
+        <div>
+          <span class="ca-floor"><i class="on"></i><i></i><i></i> 1층 · 파일</span>
+          <h2>같은 내용이면 어디에 있든 지문이 같습니다</h2>
+          <p>git은 파일 내용을 <b>blob</b>이라는 덩어리로 저장하고 blob의 이름은 내용의 지문입니다. 파일이 어느 폴더에 있는지, 파일 이름이 무엇인지는 지문 계산에 들어가지 않습니다.</p>
+          <p>저장소는 지문을 주면 내용을 돌려주는 사전처럼 동작합니다. 히어로의 프로젝트에 LICENSE를 src/와 docs/에도 복사해 넣었다고 해 보겠습니다. 같은 내용이 세 군데 있어도 저장소에는 blob 하나만 들어가고 파일 이름을 바꿔도 blob은 그대로입니다. git 공식 문서가 적어 둔 성질입니다.</p>
+        </div>
+        <div class="ca-fig" data-figure>
+          <div class="ca-ctl">
+            <button type="button" class="ca-act" aria-pressed="false" data-ca-dd="edit">src/LICENSE 에 한 줄 더 쓰기</button>
+            <button type="button" class="ca-act" aria-pressed="false" data-ca-dd="rename">docs/LICENSE 이름 바꾸기</button>
+          </div>
+          <div class="ca-dedupe">
+            <div class="ca-files" data-ca-files></div>
+            <div class="ca-arrow" aria-hidden="true">→</div>
+            <div class="ca-store" data-ca-store></div>
+          </div>
+          <p class="ca-cap">위(넓은 화면에서는 왼쪽)는 폴더 속 파일, 아래(오른쪽)는 저장소에 실제로 들어간 blob입니다. 테두리 색은 blob마다 하나씩 붙였고 점 하나가 그 blob을 쓰는 파일 하나입니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ca-layer">
+      <div class="ca-wrap ca-layer-row">
+        <div>
+          <span class="ca-floor"><i></i><i class="on"></i><i></i> 2층 · 폴더</span>
+          <h2>폴더의 지문은 안에 든 지문들로 만듭니다</h2>
+          <p>폴더는 <b>tree</b>로 저장됩니다. tree의 내용은 "종류, 이름, 지문"을 한 줄씩 적은 목록입니다. 이 목록을 다시 해시 함수에 넣은 값이 폴더의 지문입니다.</p>
+          <p>파일 하나가 바뀌면 목록의 한 줄이 바뀌고 그래서 폴더 지문이 바뀝니다. 그 폴더 지문은 다시 바깥 폴더 목록의 한 줄입니다. 이렇게 지문을 묶어 지문을 만들며 쌓은 나무를 <b>Merkle tree</b>라고 부릅니다. 암호학자 Ralph Merkle의 이름을 땄습니다.</p>
+        </div>
+        <div class="ca-fig" data-figure>
+          <div class="ca-ctl">
+            <div class="ca-seg" role="group" aria-label="faq.md 내용">
+              <button type="button" aria-pressed="false" data-ca-lst="0">고치기 전</button>
+              <button type="button" aria-pressed="true" data-ca-lst="1">물음표를 더한 뒤</button>
+            </div>
+          </div>
+          <div data-ca-boxes></div>
+          <p class="ca-cap">히어로의 나무와 같은 프로젝트입니다(LICENSE 복사본은 넣지 않은 원래 상태). 목록은 git이 보여 주는 모양(<code>git ls-tree</code>) 그대로이고 바뀐 줄을 칠했습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ca-layer">
+      <div class="ca-wrap ca-layer-row one">
+        <div class="ca-col">
+          <span class="ca-floor"><i></i><i></i><i class="on"></i> 3층 · 커밋</span>
+          <h2>커밋은 꼭대기 지문과 바로 앞 커밋을 묶은 것입니다</h2>
+          <p><b>커밋(commit)</b>은 "이 시점의 프로젝트 전체"를 저장한 기록입니다. 안에는 꼭대기 tree의 지문, 바로 앞 커밋(<b>부모</b>)의 지문, 무엇을 했는지 적은 메시지가 들어 있고 이 묶음으로 다시 지문을 계산합니다.</p>
+          <p>부모 지문이 커밋 안에 들어가니, 옛 커밋 하나만 고쳐도 그 뒤 커밋의 지문이 줄줄이 바뀝니다. 기록을 몰래 고치면 마지막 지문만 봐도 들킵니다.</p>
+        </div>
+        <div class="ca-fig" data-figure>
+          <div class="ca-ctl">
+            <button type="button" class="ca-act" aria-pressed="false" data-ca-fix>첫 커밋 메시지의 띄어쓰기 고치기</button>
+          </div>
+          <div class="ca-chain" data-ca-chain></div>
+          <p class="ca-sum" data-ca-chainsum aria-live="polite"></p>
+          <p class="ca-cap">같은 프로젝트를 세 번에 나눠 커밋했습니다. 마지막 커밋의 tree가 히어로의 꼭대기 지문 9349304입니다. 설명을 위해 커밋 내용을 tree·부모·메시지로 줄여 계산했고 실제 git 커밋에는 작성자와 시각도 들어갑니다.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="ca-sec">
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>꼭대기 지문 하나로 무엇이 바뀌었는지 찾습니다</h2>
+        <p>어제와 오늘의 프로젝트가 같은지 알고 싶으면 꼭대기 지문 두 개만 비교하면 됩니다. 다르면 한 층 내려가서 같은 이름의 폴더끼리 지문을 비교합니다. <b>지문이 같은 폴더는 열어 보지 않고 넘어갑니다.</b> 그 안의 내용이 전부 같기 때문입니다.</p>
+      </div>
+      <div class="ca-fig" data-figure>
+        <div class="ca-two">
+          <svg data-ca-yday viewBox="0 0 340 200" role="img" aria-label="어제의 폴더 나무"></svg>
+          <svg data-ca-today viewBox="0 0 340 200" role="img" aria-label="오늘의 폴더 나무. 바뀐 길만 열어 본다"></svg>
+        </div>
+        <div class="ca-legend"><span style="--c:var(--ca-new)">비교했더니 지문이 다름</span><span style="--c:var(--fg-alternative)">비교했더니 같음</span><span style="--c:transparent;--b:var(--ca-dim)">비교하지 않고 건너뜀</span></div>
+        <p class="ca-sum ca-walk" data-ca-walk aria-live="polite"></p>
+        <p class="ca-cap" style="text-align:center">오늘 나무의 맨 아래 점(파일)을 눌러 바뀐 파일을 늘리거나 줄여 보세요.</p>
+      </div>
+      <div class="ca-col">
+        <p>파일이 16개든 1,600만 개든, 하나만 바뀌었다면 내려가는 길은 나무의 층 수만큼입니다. git 공식 문서도 두 tree를 비교할 때 지문이 같은 항목은 무시할 수 있어서 차이를 빨리 찾는다고 설명합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ca-sec">
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>이름이 내용이면 어디에 복사해 둬도 틀리지 않습니다</h2>
+        <p>여기서 Scion 이야기로 돌아옵니다. 서버 한 대가 모든 요청을 받으면 느리니까, 가까운 곳에 데이터를 복사해 두는 <b>캐시(cache)</b>를 둡니다. 캐시가 늘 부딪히는 문제가 있습니다. 원본이 바뀌었는데 복사본이 옛 내용을 들고 있으면 어떻게 할까요?</p>
+      </div>
+      <div class="ca-fig" data-figure>
+        <div class="ca-ctl" style="justify-content:center">
+          <div class="ca-seg" role="group" aria-label="부르는 방식">
+            <button type="button" aria-pressed="true" data-ca-mode="loc">위치 이름으로 요청</button>
+            <button type="button" aria-pressed="false" data-ca-mode="hash">지문 이름으로 요청</button>
+          </div>
+          <button type="button" class="ca-act back" data-ca-push>고치기 전으로</button>
+        </div>
+        <p class="ca-ask" data-ca-ask></p>
+        <div class="ca-flow" data-ca-flow></div>
+        <p class="ca-sum" data-ca-verdict aria-live="polite" style="margin-top:20px;text-align:center;max-width:680px;margin-left:auto;margin-right:auto"></p>
+        <p class="ca-cap" style="text-align:center;max-width:680px;margin-left:auto;margin-right:auto">원본 서버의 app.js 를 이미 고친 상태로 시작합니다. 빨간 칸은 옛 내용을 들고 있는 사본, 초록 칸은 새 내용입니다. 위의 두 요청 방식을 바꿔 가며 보세요.</p>
+      </div>
+      <div class="ca-col">
+        <p>지문으로 부르면 한 이름에 담긴 내용은 영원히 같습니다. 새 내용은 새 이름을 받으니 옛 복사본도 틀리지 않습니다. <b>옛 이름의 정확한 사본</b>으로 남을 뿐입니다. Anthropic은 Scion의 데이터가 전부 내용 주소(지문 이름)이고 바뀌지 않아서 "어느 서버든 조율 없이 캐시할 수 있다"고 적었습니다.</p>
+        <details>
+          <summary>Scion은 git과 무엇이 다를까요</summary>
+          <p>Scion은 작업 컴퓨터마다 하나씩 도는 프로그램(scion-daemon), 지역 캐시, 원본 서버의 세 층으로 데이터를 나눠 둡니다. 층마다 찾는 것이 이미 캐시에 있는 비율이 99%를 넘는다고 밝혔습니다. 회사 저장소에 하루 합쳐지는 변경은 2026년 5월 약 2,500건에서 9월 3만 건 이상으로 늘었다고 합니다.</p>
+          <p>git은 처음 받을 때 서버와 "내가 가진 것"을 주고받으며 보낼 것을 맞춥니다. Scion의 작업 컴퓨터는 그 대화를 하지 않고 꼭대기 tree부터 <b>필요한 지문을 하나씩 불러</b> 내려갑니다. 요청마다 바뀌지 않는 데이터 하나를 가리키니 어느 캐시가 답해도 되고 보지 않을 폴더는 아예 받지 않습니다.</p>
+          <p>기록 방식도 다릅니다. git 커밋은 꼭대기 tree를 가리키지만 Scion의 changeset은 첫째 부모와 비교해 바뀐 파일만 적고 그 내용은 지문을 주소로 삼아 따로 저장합니다.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="ca-sec">
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>바뀌는 것은 main 이름표 하나뿐입니다</h2>
+        <p>캐시 그림에서 작업 컴퓨터는 "main 이 가리키는 새 지문"을 먼저 알아냈습니다. 지문으로 부르는 데이터는 바뀌지 않으니, "지금 최신 버전"은 따로 적어 둬야 합니다. <b>브랜치(branch)</b>가 그 일을 합니다. 브랜치는 커밋 하나의 지문을 가리키는 이름표이고 보통 <b>main</b>이 최신 커밋을 가리킵니다. 위 커밋 그림의 main 딱지입니다.</p>
+      </div>
+      <div class="ca-col ca-fig" data-figure>
+        <div class="ca-ctl">
+          <button type="button" class="ca-act" data-ca-race>다음 단계</button>
+          <button type="button" class="ca-act back" data-ca-race0>처음부터</button>
+        </div>
+        <div class="ca-race">
+          <div class="ca-dots" data-ca-dots></div>
+          <ol class="ca-log" data-ca-log></ol>
+        </div>
+        <p class="ca-cap">A와 B가 같은 main(c3)을 보고 각자 c3 위에 커밋을 하나씩 만들어 동시에 올리려 합니다. 점선 원은 아직 main에 붙지 못한 커밋입니다. "다음 단계"를 눌러 보세요.</p>
+      </div>
+      <div class="ca-col">
+        <p>이름표는 여러 사람이 동시에 옮기려 하는 곳이라, 저장소에서 유일하게 조심해서 다뤄야 합니다. Scion은 이름표를 옮길 때 "내가 처음 본 값이 아직 그대로일 때만 바꾸고 그 사이 누가 먼저 옮겼으면 실패로 돌려보내는" 방식(compare-and-swap)을 씁니다. 그래서 줄을 세워 한 명씩 기다리게 하지 않아도 남의 커밋을 덮어쓰지 않습니다.</p>
+        <p>Scion은 main과 배포용 브랜치 말고는 이름표를 거의 쓰지 않습니다. 여럿이 함께 바꾸는 값이 늘어날수록 규모를 키우기 어려워서라고 설명합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ca-sec">
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>지문이 겹칠 수는 없을까요</h2>
+        <p>겹칠 수 있습니다. 파일 내용은 끝없이 다양한데 지문의 가짓수는 정해져 있기 때문입니다. 반 친구가 13명이면 달은 12개뿐이라 생일이 같은 달인 친구가 반드시 생기는 것과 같습니다. 아래는 단어 40개의 지문을 앞 몇 글자로만 줄여 상자에 넣은 모습입니다.</p>
+      </div>
+      <div class="ca-col ca-fig" data-figure>
+        <div class="ca-ctl">
+          <div class="ca-seg" role="group" aria-label="지문 길이">
+            <button type="button" aria-pressed="true" data-ca-k="1">지문 1글자 (상자 16개)</button>
+            <button type="button" aria-pressed="false" data-ca-k="2">2글자 (상자 256개)</button>
+          </div>
+        </div>
+        <div class="ca-holes k1" data-ca-holes></div>
+        <p class="ca-sum" data-ca-holesum aria-live="polite"></p>
+        <p class="ca-cap">점 하나가 단어 하나입니다. 지문의 앞 글자가 같으면 같은 상자에 들어갑니다. 글자가 하나 늘 때마다 상자는 16배가 됩니다. git의 40글자 지문이라면 상자가 2의 160제곱 개, 10의 48제곱 개쯤 됩니다.</p>
+      </div>
+      <div class="ca-col">
+        <p>40글자면 우연히 겹칠 걱정은 사실상 하지 않습니다. 문제는 누군가 <b>일부러</b> 같은 지문을 가진 두 파일을 만들어 내는 경우입니다. SHA-1에서는 실제로 그런 일이 일어났습니다. 그래서 git은 더 긴 지문으로 옮겨 가는 중입니다.</p>
+        <details>
+          <summary>SHA-1에는 무슨 일이 있었나요</summary>
+          <p>2017년 2월 23일, 연구자들이 SHAttered라는 방법으로 지문이 같은 서로 다른 PDF 문서 두 개를 만들어 보였습니다. git은 2.13.0 버전부터 이런 조작 파일을 알아채는 SHA-1 계산 방식을 기본으로 씁니다.</p>
+          <p>git은 256비트 지문을 쓰는 <b>SHA-256</b> 저장소도 지원하고 앞으로 새 저장소의 기본값을 SHA-256으로 바꾸겠다고 문서에 밝혀 두었습니다. 지문 계산법이 바뀌어도 내용으로 이름을 붙이는 원리는 같습니다.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="ca-sec" data-text-only>
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>내용으로 이름을 붙이면 얻는 것</h2>
+        <p>정리하면 세 가지입니다. 이름만 비교해서 같은지 압니다. 꼭대기 지문 하나로 전체를 확인합니다. 이름이 곧 내용이니 복사본이 틀릴 일이 없습니다. git이 오래 써 온 이 성질을, Scion은 하루 3만 건이 넘는 변경을 받는 저장소의 캐시 설계까지 밀고 나갔습니다.</p>
+        <p>Anthropic은 Scion이 일반적인 git 대체품은 아니라고 밝혔습니다. 아주 큰 저장소 하나를 수만 명이나 수많은 AI 에이전트가 함께 쓰는 경우를 위한 설계이고 공개 계획도 없습니다. 대신 git 사용자가 쓸 수 있는 아이디어를 GitHub·GitLab과 함께 나누겠다고 했습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ca-sec" data-text-only>
+    <div class="ca-wrap">
+      <div class="ca-col">
+        <h2>참고 자료</h2>
+        <ul class="ca-refs">
+          <li><a href="https://www.anthropic.com/engineering/redesigning-source-control">Anthropic, Redesigning source control at Anthropic</a> (2026-10-13)</li>
+          <li><a href="https://github.com/git/git/blob/master/Documentation/user-manual.adoc">git user manual — The Object Database, Object storage format</a></li>
+          <li><a href="https://github.com/git/git/blob/master/Documentation/technical/hash-function-transition.adoc">git — hash function transition (SHA-1 → SHA-256)</a></li>
+          <li><a href="https://github.com/git/git/blob/master/Documentation/BreakingChanges.adoc">git — BreakingChanges (새 저장소 기본 해시 sha256)</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const el = root.querySelector("[data-ca]");
+  if (!el) return;
+  const $ = (s) => el.querySelector(s);
+
+  // SHA-1 — git 이 객체 이름에 쓰는 해시. crypto.subtle 은 비동기라 직접 계산한다
+  function sha1(bytes) {
+    const l = bytes.length, bl = ((l + 8) >> 6) + 1, w = new Uint32Array(bl * 16);
+    for (let i = 0; i < l; i++) w[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+    w[l >> 2] |= 0x80 << (24 - (l % 4) * 8);
+    w[bl * 16 - 1] = l * 8;
+    let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+    const W = new Uint32Array(80);
+    for (let b = 0; b < bl * 16; b += 16) {
+      for (let t = 0; t < 16; t++) W[t] = w[b + t];
+      for (let t = 16; t < 80; t++) { const x = W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]; W[t] = (x << 1) | (x >>> 31); }
+      let a = h0, B = h1, c = h2, d = h3, e = h4;
+      for (let t = 0; t < 80; t++) {
+        let f, k;
+        if (t < 20) { f = (B & c) | (~B & d); k = 0x5a827999; }
+        else if (t < 40) { f = B ^ c ^ d; k = 0x6ed9eba1; }
+        else if (t < 60) { f = (B & c) | (B & d) | (c & d); k = 0x8f1bbcdc; }
+        else { f = B ^ c ^ d; k = 0xca62c1d6; }
+        const T = (((a << 5) | (a >>> 27)) + f + e + k + W[t]) >>> 0;
+        e = d; d = c; c = (B << 30) | (B >>> 2); B = a; a = T;
+      }
+      h0 = (h0 + a) >>> 0; h1 = (h1 + B) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0; h4 = (h4 + e) >>> 0;
+    }
+    const o = new Uint8Array(20);
+    [h0, h1, h2, h3, h4].forEach((h, i) => { o[i * 4] = h >>> 24; o[i * 4 + 1] = (h >>> 16) & 255; o[i * 4 + 2] = (h >>> 8) & 255; o[i * 4 + 3] = h & 255; });
+    return o;
+  }
+  const enc = new TextEncoder();
+  const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  const short = (b) => hex(b).slice(0, 7);
+  const cat = (...a) => { const o = new Uint8Array(a.reduce((s, x) => s + x.length, 0)); let p = 0; for (const x of a) { o.set(x, p); p += x.length; } return o; };
+  const obj = (type, body) => sha1(cat(enc.encode(type + " " + body.length + "\0"), body));
+  const H = (raw, isNew) => `<span class="ca-h${isNew ? " new" : ""}">${short(raw)}</span>`;
+  const PAL = ["var(--ca-p1)", "var(--ca-p2)", "var(--ca-p3)", "var(--ca-p4)"];
+
+  // git 방식 tree 지문: 항목을 이름순(폴더는 이름 뒤 "/")으로 놓고 "<mode> <name>\0<20바이트>" 를 잇는다
+  const order = (a, b) => { const ka = a.name + (a.kids ? "/" : ""), kb = b.name + (b.kids ? "/" : ""); return ka < kb ? -1 : ka > kb ? 1 : 0; };
+  function hashNode(n) {
+    if (n.kids == null) { n.raw = obj("blob", enc.encode(n.c)); return n.raw; }
+    const kids = [...n.kids].sort(order);
+    n.raw = obj("tree", cat(...kids.map((k) => cat(enc.encode((k.kids ? "40000" : "100644") + " " + k.name + "\0"), hashNode(k)))));
+    return n.raw;
+  }
+  // 글 전체가 쓰는 하나의 프로젝트
+  const FILES = { "README.md": "# 우리 반 시간표\n", "LICENSE": "MIT License\n", "src/app.js": "console.log('안녕');\n", "src/style.css": "body { color: navy; }\n", "docs/intro.md": "처음 오셨나요?\n", "docs/faq.md": "자주 묻는 질문\n" };
+  function project(files) {
+    const rootN = { name: "", path: "", kids: [] };
+    for (const [p, c] of Object.entries(files)) {
+      const parts = p.split("/"); let cur = rootN;
+      parts.slice(0, -1).forEach((d, i) => { let n = cur.kids.find((k) => k.name === d && k.kids); if (!n) { n = { name: d, path: parts.slice(0, i + 1).join("/") + "/", kids: [] }; cur.kids.push(n); } cur = n; });
+      cur.kids.push({ name: parts.at(-1), path: p, c });
+    }
+    hashNode(rootN); return rootN;
+  }
+
+  // ── 히어로: 폴더 나무 ──
+  const T = project(FILES);
+  const nodes = [];
+  (function walk(n, p, d) { n.parent = p; n.depth = d; nodes.push(n); (n.kids || []).forEach((k) => walk(k, n, d + 1)); })(T, null, 0);
+  const leaves = nodes.filter((n) => !n.kids);
+  const base = new Map(nodes.map((n) => [n, hex(n.raw)]));
+  let sel = leaves.find((n) => n.path === "docs/faq.md");
+  sel.c = "자주 묻는 질문?\n"; // 물음표 하나를 더한 상태로 연다 — 바뀐 길이 첫 화면에 보이게
+  const svg = $("[data-ca-tree]"), input = $("[data-ca-edit-input]");
+  const POS_WIDE = { "": [400, 34], "README.md": [75, 146], "LICENSE": [218, 146], "src/": [380, 146], "docs/": [658, 146],
+    "src/app.js": [300, 262], "src/style.css": [442, 262], "docs/intro.md": [584, 262], "docs/faq.md": [726, 262] };
+  function layout() {
+    const wide = svg.getBoundingClientRect().width > 520;
+    svg.classList.toggle("w", wide);
+    if (wide) { svg.setAttribute("viewBox", "0 -8 800 306"); return { wide, w: 136, h: 58, pos: (n) => POS_WIDE[n.path] }; }
+    svg.setAttribute("viewBox", `0 0 340 ${nodes.length * 60 + 4}`);
+    return { wide, h: 50, pos: (n) => [n.depth * 26, nodes.indexOf(n) * 60 + 4] };
+  }
+  function draw() {
+    hashNode(T);
+    const L = layout();
+    const changed = new Set(nodes.filter((n) => hex(n.raw) !== base.get(n)));
+    let s = "";
+    for (const n of nodes) {
+      if (!n.parent) continue;
+      const [x, y] = L.pos(n), [px, py] = L.pos(n.parent), hot = changed.has(n) ? " hot" : "";
+      s += L.wide ? `<path class="edge${hot}" d="M${px} ${py + L.h / 2} C${px} ${py + L.h / 2 + 30} ${x} ${y - L.h / 2 - 30} ${x} ${y - L.h / 2}"/>`
+        : `<path class="edge${hot}" d="M${px + 12} ${py + L.h} V${y + L.h / 2} H${x}"/>`;
+    }
+    for (const n of nodes) {
+      const [x, y] = L.pos(n), isDir = !!n.kids, isNew = changed.has(n);
+      const w = L.wide ? L.w : 340 - x, bx = L.wide ? x - w / 2 : x, by = L.wide ? y - L.h / 2 : y;
+      const tx = L.wide ? x : x + 14, anchor = L.wide ? "middle" : "start";
+      const cls = "box" + (isDir ? " dir" : "") + (isNew ? " hot" : n === sel ? " sel" : "");
+      const label = n.parent ? n.name + (isDir ? "/" : "") : "꼭대기 폴더";
+      s += `<g class="node" ${isDir ? "" : `tabindex="0" role="button" aria-label="${n.path} 고르기"`} data-path="${isDir ? "" : n.path}">`
+        + `<rect class="${cls}" x="${bx}" y="${by}" width="${w}" height="${L.h}" rx="9"/>`
+        + `<text x="${tx}" y="${by + 23}" text-anchor="${anchor}" font-weight="${isDir ? 700 : 500}">${label}</text>`
+        + `<text class="mono${isNew ? " new" : ""}" x="${tx}" y="${by + L.h - 11}" text-anchor="${anchor}">${short(n.raw)}${isNew && !L.wide ? " ← 새 지문" : ""}</text></g>`;
+    }
+    svg.innerHTML = s;
+    $("[data-ca-count]").innerHTML = changed.size
+      ? `지문이 바뀐 상자 <span>${changed.size}개</span>, 그대로인 상자 ${nodes.length - changed.size}개. ${leaves.filter((n) => changed.has(n)).length > 1 ? "고친 파일마다 꼭대기까지 가는 길만" : "고친 파일에서 꼭대기까지 한 줄만"} 바뀌었습니다`
+      : `고치기 전 상태입니다. 위 칸에서 ${sel.name} 의 글자를 하나 바꿔 보세요`;
+    $("[data-ca-loc]").textContent = sel.path;
+    const was = short(obj("blob", enc.encode(FILES[sel.path])));
+    $("[data-ca-fp]").textContent = short(sel.raw);
+    $("[data-ca-fpnote]").textContent = was === short(sel.raw) ? "내용에서 계산한 값. 아직 고치지 않음" : `내용에서 계산한 값. 고치기 전에는 ${was}`;
+  }
+  function pick(path) {
+    const n = leaves.find((x) => x.path === path);
+    if (!n) return;
+    sel = n; input.value = n.c.replace(/\n$/, "");
+    $("[data-ca-edit-label]").textContent = `${n.path} 의 내용`;
+    draw();
+  }
+  svg.addEventListener("click", (e) => { const g = e.target.closest("g.node[data-path]"); if (g && g.dataset.path) pick(g.dataset.path); }, { signal });
+  svg.addEventListener("keydown", (e) => { if (e.key !== "Enter" && e.key !== " ") return; const g = e.target.closest("g.node[data-path]"); if (g && g.dataset.path) { e.preventDefault(); pick(g.dataset.path); } }, { signal });
+  input.addEventListener("input", () => { sel.c = input.value + "\n"; draw(); }, { signal });
+  $("[data-ca-reset]").addEventListener("click", () => { leaves.forEach((n) => { n.c = FILES[n.path]; }); pick(sel.path); }, { signal });
+  window.addEventListener("resize", draw, { signal });
+  draw();
+
+  // ── 1. 두 글의 지문, 160칸 ──
+  const bits = $("[data-ca-bits]");
+  bits.innerHTML = "<i></i>".repeat(160);
+  function avalanche() {
+    const a = sha1(enc.encode($("[data-ca-a]").value)), b = sha1(enc.encode($("[data-ca-b]").value));
+    $("[data-ca-ha]").textContent = hex(a);
+    $("[data-ca-hb]").textContent = hex(b);
+    let n = 0;
+    [...bits.children].forEach((c, i) => { const d = ((a[i >> 3] ^ b[i >> 3]) >> (7 - (i & 7))) & 1; c.classList.toggle("d", !!d); n += d; });
+    $("[data-ca-bitsum]").innerHTML = n ? `160칸 중 <span>${n}칸</span>이 다릅니다. 글은 한 글자 차이입니다` : "두 글이 같아서 지문도 같습니다. 다른 칸이 하나도 없습니다";
+  }
+  $("[data-ca-a]").addEventListener("input", avalanche, { signal });
+  $("[data-ca-b]").addEventListener("input", avalanche, { signal });
+  avalanche();
+
+  // ── 2. 같은 내용은 blob 하나로 ──
+  const dd = { edit: false, rename: false };
+  function dedupe() {
+    const lic = FILES.LICENSE;
+    const files = [
+      { p: "LICENSE", c: lic },
+      { p: "src/LICENSE", c: dd.edit ? lic + "Copyright 우리 반\n" : lic },
+      { p: dd.rename ? "docs/COPYING" : "docs/LICENSE", c: lic },
+      { p: "README.md", c: FILES["README.md"] } ];
+    const store = new Map();
+    for (const f of files) { f.raw = obj("blob", enc.encode(f.c)); const k = hex(f.raw); if (!store.has(k)) store.set(k, { raw: f.raw, c: f.c, n: 0, pc: PAL[store.size % PAL.length] }); const s = store.get(k); s.n++; f.pc = s.pc; }
+    $("[data-ca-files]").innerHTML = files.map((f) => `<div class="ca-file" style="--pc:${f.pc}"><span>${f.p}</span>${H(f.raw)}</div>`).join("");
+    $("[data-ca-store]").innerHTML = [...store.values()].map((s) => `<div class="ca-blob" style="--pc:${s.pc}">blob ${H(s.raw)}<b>${s.c.trim().split("\n").join(" / ")}</b><span class="dots">${"<i></i>".repeat(s.n)}</span></div>`).join("")
+      + `<p class="ca-sum" style="margin:4px 0 0">파일 ${files.length}개, blob ${store.size}개</p>`;
+  }
+  el.querySelectorAll("[data-ca-dd]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.caDd; dd[k] = !dd[k]; b.setAttribute("aria-pressed", dd[k]); b.classList.toggle("back", dd[k]); b.textContent = dd[k] ? "되돌리기" : (k === "edit" ? "src/LICENSE 에 한 줄 더 쓰기" : "docs/LICENSE 이름 바꾸기"); dedupe(); }, { signal }));
+  dedupe();
+
+  // ── 3. 폴더 상자 속 목록 ──
+  const before = project(FILES), after = project({ ...FILES, "docs/faq.md": "자주 묻는 질문?\n" });
+  let more = true;
+  function boxes() {
+    const t = more ? after : before, docs = t.kids.find((k) => k.name === "docs");
+    const line = (k, hot) => `<div class="ca-line${hot ? " hot" : ""}"><em>${k.kids ? "tree" : "blob"}</em><span>${k.name}${k.kids ? "/" : ""}</span>${H(k.raw, hot)}</div>`;
+    $("[data-ca-boxes]").innerHTML =
+      `<div class="ca-box${more ? " hot" : ""}"><div class="ca-box-head"><span>docs/ 폴더의 목록</span><span>목록의 지문 ${H(docs.raw, more)}</span></div>${[...docs.kids].sort(order).map((k) => line(k, more && k.name === "faq.md")).join("")}</div>`
+      + `<div class="ca-link${more ? " hot" : ""}"><i></i>이 지문이 그대로 아래 목록의 docs/ 줄에 들어갑니다</div>`
+      + `<div class="ca-box${more ? " hot" : ""}"><div class="ca-box-head"><span>꼭대기 폴더의 목록</span><span>목록의 지문 ${H(t.raw, more)}</span></div>${[...t.kids].sort(order).map((k) => line(k, more && k.name === "docs")).join("")}</div>`;
+  }
+  el.querySelectorAll("[data-ca-lst]").forEach((b) => b.addEventListener("click", () => { more = b.dataset.caLst === "1"; el.querySelectorAll("[data-ca-lst]").forEach((x) => x.setAttribute("aria-pressed", x === b)); boxes(); }, { signal }));
+  boxes();
+
+  // ── 4. 커밋 사슬: 같은 프로젝트를 세 번에 나눠 커밋 ──
+  const pick3 = (keys) => Object.fromEntries(keys.map((k) => [k, FILES[k]]));
+  const TREES = [project(pick3(["README.md"])).raw, project(pick3(["README.md", "LICENSE", "src/app.js", "src/style.css"])).raw, project(FILES).raw];
+  const MSGS = ["README 첫판", "src 폴더 추가", "docs 폴더 추가"];
+  const chainOf = (first) => { let parent = null; return MSGS.map((m, i) => { const msg = i === 0 ? first : m; const raw = obj("commit", enc.encode(`tree ${hex(TREES[i])}\n` + (parent ? `parent ${hex(parent)}\n` : "") + `\n${msg}\n`)); const c = { msg, parent, raw }; parent = raw; return c; }); };
+  const orig = chainOf("README 첫판");
+  let fixed = false;
+  function chain() {
+    const cur = chainOf(fixed ? "README 첫 판" : "README 첫판");
+    $("[data-ca-chain]").innerHTML = cur.map((c, i) => {
+      const hot = hex(c.raw) !== hex(orig[i].raw);
+      return `<div class="ca-commit${hot ? " hot" : ""}">${i === cur.length - 1 ? '<span class="ca-tagm">main</span>' : ""}<b>커밋 ${i + 1}</b>`
+        + `<div class="msg${hot && i === 0 ? " hot" : ""}">메시지 "${c.msg}"</div>`
+        + `<div><span>tree</span>${H(TREES[i])}</div>`
+        + `<div><span>부모</span>${c.parent ? H(c.parent, hot && i > 0) : '<span class="ca-h">없음 (첫 커밋)</span>'}</div>`
+        + `<div class="me"><span>이 커밋의 지문</span>${H(c.raw, hot)}</div></div>`;
+    }).join("");
+    const n = cur.filter((c, i) => hex(c.raw) !== hex(orig[i].raw)).length;
+    $("[data-ca-chainsum]").innerHTML = n ? `띄어쓰기 하나를 고쳤을 뿐인데 커밋 <span>${n}개</span>의 지문이 모두 바뀌었습니다. tree 지문은 그대로입니다` : "버튼을 눌러 첫 커밋 메시지를 고쳐 보세요";
+  }
+  const fix = $("[data-ca-fix]");
+  fix.addEventListener("click", () => { fixed = !fixed; fix.setAttribute("aria-pressed", fixed); fix.classList.toggle("back", fixed); fix.textContent = fixed ? "되돌리기" : "첫 커밋 메시지의 띄어쓰기 고치기"; chain(); }, { signal });
+  chain();
+
+  // ── 5. 두 나무 비교: 꼭대기 1 → 폴더 4 → 파일 16 ──
+  const big = (ch) => { const f = {}; for (let i = 0; i < 16; i++) f[`d${i >> 2}/f${i & 3}.txt`] = `파일 ${i}\n` + (ch.has(i) ? "고침\n" : ""); return project(f); };
+  const yday = big(new Set());
+  let picked = new Set([6]);
+  const LX = (i) => 12 + i * 21.1, DX = (d) => 43 + d * 84.4;
+  function drawTree(svgEl, t, other, title) {
+    const diff = (a, b) => hex(a.raw) !== hex(b.raw);
+    let s = `<text x="170" y="18" text-anchor="middle" font-weight="700">${title}</text>`;
+    let dirs = 0, cmp = 0, found = 0, files = 0;
+    const rootDiff = other && diff(t, other);
+    if (other) cmp++;
+    t.kids.forEach((d, di) => {
+      const od = other && other.kids[di], seen = other && rootDiff, dDiff = seen && diff(d, od);
+      s += `<line class="${dDiff ? "walk" : ""}" x1="170" y1="48" x2="${DX(di)}" y2="104"/>`;
+      d.kids.forEach((f, fi) => { const fDiff = dDiff && diff(f, od.kids[fi]); s += `<line class="${fDiff ? "walk" : ""}" x1="${DX(di)}" y1="104" x2="${LX(di * 4 + fi)}" y2="164"/>`; });
+    });
+    const cls = (seen, isDiff) => (!other ? "plain" : !seen ? "skip" : isDiff ? "diff" : "same");
+    s += `<circle cx="170" cy="44" r="11" class="${cls(true, rootDiff)}"/>`;
+    t.kids.forEach((d, di) => {
+      const od = other && other.kids[di], seen = other && rootDiff, dDiff = seen && diff(d, od);
+      if (seen) cmp++;
+      if (dDiff) dirs++;
+      s += `<circle cx="${DX(di)}" cy="104" r="10" class="${cls(seen, dDiff)}"/>`;
+      d.kids.forEach((f, fi) => {
+        const i = di * 4 + fi, fSeen = dDiff, fDiff = fSeen && diff(f, od.kids[fi]);
+        if (fSeen) { cmp++; files++; }
+        if (fDiff) found++;
+        s += `<circle cx="${LX(i)}" cy="166" r="8" class="${cls(fSeen, fDiff)}"/>`;
+        if (other) s += `<circle data-leaf="${i}" class="hit" cx="${LX(i)}" cy="166" r="10.5" tabindex="0" role="button" aria-label="파일 ${i} 바꾸기"/>`;
+      });
+    });
+    s += `<text class="lbl" x="170" y="196" text-anchor="middle">꼭대기 1 · 폴더 4 · 파일 16</text>`;
+    svgEl.innerHTML = s;
+    return { dirs, cmp, found, files };
+  }
+  function compare() {
+    drawTree($("[data-ca-yday]"), yday, null, "어제");
+    const r = drawTree($("[data-ca-today]"), big(picked), yday, "오늘");
+    $("[data-ca-walk]").innerHTML = picked.size
+      ? `지문 <span>${r.cmp}번</span> 비교로 바뀐 파일 ${r.found}개를 찾았습니다. 파일 ${16 - r.files}개는 비교하지도 않았습니다`
+      : "바뀐 파일이 없어 꼭대기 지문 하나만 비교하고 끝났습니다";
+  }
+  const toggleLeaf = (t) => { const c = t.closest("circle[data-leaf]"); if (!c) return; const i = +c.dataset.leaf; picked.has(i) ? picked.delete(i) : picked.add(i); compare(); };
+  $("[data-ca-today]").addEventListener("click", (e) => toggleLeaf(e.target), { signal });
+  $("[data-ca-today]").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleLeaf(e.target); } }, { signal });
+  compare();
+
+  // ── 6. 캐시: 작업 컴퓨터 → 지역 캐시 → 원본 서버 ──
+  let mode = "loc", pushed = true;
+  const V1 = obj("blob", enc.encode(FILES["src/app.js"])), V2 = obj("blob", enc.encode("console.log('안녕하세요');\n"));
+  function tiers() {
+    const loc = mode === "loc";
+    const nm = (raw) => (loc ? "<code>main 의 src/app.js</code>" : H(raw, raw === V2));
+    const item = (raw, state, note) => `<div class="ca-item ${state}"><span>${nm(raw)}</span>${note ? `<em>${note}</em>` : ""}</div>`;
+    const pipe = (txt, go, no) => `<div class="ca-pipe${go ? " go" : ""}${no ? " no" : ""}"><span>${txt}</span><i></i></div>`;
+    let local, region, server, p1, p2, ask, verdict;
+    if (!pushed) {
+      local = item(V1, "", ""); region = item(V1, "", ""); server = item(V1, "", "");
+      p1 = pipe("", false); p2 = pipe("", false);
+      ask = "세 층이 모두 같은 app.js 를 들고 있습니다";
+      verdict = "위 버튼으로 원본 서버의 app.js 를 다시 고쳐 보세요.";
+    } else if (loc) {
+      local = item(V1, "stale", "옛 내용");
+      region = item(V1, "stale", "옛 내용");
+      server = item(V2, "fresh", "새 내용") + `<div class="ca-item warn">캐시마다 "옛 사본 버려" 알림을 보내야 함</div>`;
+      p1 = pipe("같은 이름이 있어 위로 묻지 않음", false, true); p2 = pipe("요청 없음", false, true);
+      ask = `작업 컴퓨터의 요청: <code>main 의 src/app.js</code> 주세요`;
+      verdict = "이름은 같은데 내용이 다릅니다. 서버가 모든 캐시에 \"그 사본은 버려\"라고 알리고 확인받기 전까지 옛 내용이 나갑니다.";
+    } else {
+      local = item(V1, "", "옛 지문, 그대로 정확") + item(V2, "fresh", "처음 한 번 받음");
+      region = item(V1, "", "옛 지문, 그대로 정확") + item(V2, "fresh", "처음 한 번 받음");
+      server = item(V1, "", "") + item(V2, "fresh", "새 지문");
+      p1 = pipe("없는 지문 → 위로 묻고 받아 옴", true); p2 = pipe("없는 지문 → 위로 묻고 받아 옴", true);
+      ask = `main 이 가리키는 새 지문을 알아낸 뒤 요청: ${H(V2, true)} 주세요`;
+      verdict = "새 내용은 새 지문이라, 캐시끼리 서로 연락할 필요가 없습니다. 없는 지문은 한 번 받아 오고 있던 사본은 틀린 적이 없습니다.";
+    }
+    $("[data-ca-ask]").innerHTML = ask;
+    $("[data-ca-flow]").innerHTML =
+      `<div class="ca-tier"><h3>작업 컴퓨터</h3><small>Scion에서는 scion-daemon</small>${local}</div>${p1}`
+      + `<div class="ca-tier"><h3>지역 캐시</h3><small>Scion에서는 scion-cache</small>${region}</div>${p2}`
+      + `<div class="ca-tier"><h3>원본 서버</h3><small>Scion에서는 scion-server</small>${server}</div>`;
+    $("[data-ca-verdict]").textContent = verdict;
+    const pb = $("[data-ca-push]");
+    pb.textContent = pushed ? "고치기 전으로" : "원본 서버의 app.js 고치기";
+    pb.classList.toggle("back", pushed);
+  }
+  el.querySelectorAll("[data-ca-mode]").forEach((b) => b.addEventListener("click", () => { mode = b.dataset.caMode; el.querySelectorAll("[data-ca-mode]").forEach((x) => x.setAttribute("aria-pressed", x === b)); tiers(); }, { signal }));
+  $("[data-ca-push]").addEventListener("click", () => { pushed = !pushed; tiers(); }, { signal });
+  tiers();
+
+  // ── 7. main 이름표를 둘이 동시에 옮기기 (compare-and-swap) ──
+  // 위: A 의 줄, 아래: B 의 줄. 둘 다 c3 에서 갈라진다
+  const C = (n, cls, tag) => `<div class="ca-c ${cls || ""}">${tag ? `<span class="ca-tagm">${tag}</span>` : ""}${n}</div>`;
+  const STEPS = [
+    { main3: true, top: [C("A1", "a ghost")], bot: [C("B1", "b ghost")], log: ["", "A와 B가 둘 다 main 이 <b>c3</b> 을 가리키는 것을 보고 각자 c3 위에 커밋을 하나씩 만들었습니다. 아직 main 은 c3 입니다."] },
+    { top: [C("A1", "a", "main")], bot: [C("B1", "b ghost")], log: ["ok", "<b class=\"a\">A</b>: \"main 이 아직 c3 이면 A1 로 바꿔 주세요.\" 아직 c3 이라 바뀝니다."] },
+    { top: [C("A1", "a", "main")], bot: [C("B1 ×", "b no")], log: ["no", "<b class=\"b\">B</b>: \"main 이 아직 c3 이면 B1 로 바꿔 주세요.\" 지금은 A1 이라 <b>거절</b>됩니다. A1 을 덮어쓰지 않았습니다."] },
+    { top: [C("A1", "a"), C("B2", "b", "main")], bot: [], log: ["ok", "<b class=\"b\">B</b> 는 A1 위에 커밋을 다시 만들고(B2), \"main 이 A1 이면 B2 로\"를 다시 요청합니다. 이번엔 바뀝니다."] } ];
+  let step = 0;
+  function race() {
+    const st = STEPS[step];
+    $("[data-ca-dots]").innerHTML = C("c1") + C("c2") + C("c3", "", st.main3 ? "main" : "")
+      + `<div class="ca-fork"><div>${st.top.join("")}<span class="ca-who" style="color:var(--ca-p1)">A</span></div><div>${st.bot.join("")}${st.bot.length ? '<span class="ca-who" style="color:var(--ca-p2)">B</span>' : ""}</div></div>`;
+    const [c, t] = st.log;
+    $("[data-ca-log]").innerHTML = `<li class="${c}">${step + 1}/4 · ${t}</li>`;
+    $("[data-ca-race]").disabled = step === STEPS.length - 1;
+  }
+  $("[data-ca-race]").addEventListener("click", () => { step = Math.min(step + 1, STEPS.length - 1); race(); }, { signal });
+  $("[data-ca-race0]").addEventListener("click", () => { step = 0; race(); }, { signal });
+  race();
+
+  // ── 8. 비둘기집: 단어 40개의 지문을 앞 k 글자로 줄이면 ──
+  const WORDS = "사과 바나나 포도 딸기 수박 참외 복숭아 자두 귤 감 배 키위 망고 레몬 라임 체리 앵두 살구 무화과 석류 호두 밤 대추 은행 땅콩 고구마 감자 당근 오이 호박 가지 양파 마늘 생강 배추 상추 시금치 부추 파 무".split(" ");
+  let k = 1;
+  function holes() {
+    const n = 16 ** k, box = Array.from({ length: n }, () => 0);
+    for (const w of WORDS) box[parseInt(hex(sha1(enc.encode(w))).slice(0, k), 16)]++;
+    const g = $("[data-ca-holes]");
+    g.className = `ca-holes k${k}`;
+    g.innerHTML = box.map((c, i) => `<div class="ca-hole${c > 1 ? " clash" : ""}">${"<i></i>".repeat(c)}<span>${i.toString(16)}</span></div>`).join("");
+    const clash = box.filter((c) => c > 1).length, empty = box.filter((c) => !c).length;
+    $("[data-ca-holesum]").innerHTML = `단어 40개, 상자 ${n}개. 둘 이상 들어간 상자 <span>${clash}개</span>, 빈 상자 ${empty}개`;
+  }
+  el.querySelectorAll("[data-ca-k]").forEach((b) => b.addEventListener("click", () => { k = +b.dataset.caK; el.querySelectorAll("[data-ca-k]").forEach((x) => x.setAttribute("aria-pressed", x === b)); holes(); }, { signal }));
+  holes();
+})();
+</script>
