@@ -59,6 +59,7 @@ AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 �
 | `/portfolio` | `skills/portfolio/SKILL.md` (`~/.claude/skills/portfolio` 가 여기로 걸린 심볼릭 링크) |
 | `/draft` `/insight` `/project` `/research` `/revise` `/study` | `.claude/commands/*.md` |
 | 시각 설명 레퍼런스 (`/study` 가 쌓는다) | `docs/visual-references.md` |
+| 시리즈 계획 (편 목록·질문·소주제·상태) | `docs/series/<slug>.md` — `/study docs/series/ai-agent.md N편` |
 | 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
 | `/lab` 화면 규약 | `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md` |
 
