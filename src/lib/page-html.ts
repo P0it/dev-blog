@@ -22,3 +22,16 @@ export function pageText(html: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// 서버 HTML 의 글 스크립트를 잠근다(PageBody 가 마운트 뒤 순서대로 실행). 원래 type 은 글이 쓸 리 없는
+// data-pve-type 에 보관한다 — data-type 은 글 스크립트가 제 용도로 쓸 수 있다.
+export const INERT_SCRIPT_TYPE = "text/post-page";
+export const ORIG_SCRIPT_TYPE = "data-pve-type";
+
+export function lockScripts(html: string): string {
+  return html.replace(/<script\b([^>]*)>/gi, (_m, attrs: string) => {
+    const type = /\stype\s*=\s*["']?([^"'\s>]+)/i.exec(attrs)?.[1];
+    const rest = attrs.replace(/\stype\s*=\s*(["'][^"']*["']|[^\s>]+)/i, "");
+    return `<script type="${INERT_SCRIPT_TYPE}"${rest}${type ? ` ${ORIG_SCRIPT_TYPE}="${type}"` : ""}>`;
+  });
+}

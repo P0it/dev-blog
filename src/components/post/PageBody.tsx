@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { INERT_SCRIPT_TYPE, ORIG_SCRIPT_TYPE, lockScripts } from "@/lib/page-html";
 
 // HTML 페이지형 글의 본문. HTML 은 서버 렌더에 그대로 실려 검색엔진이 읽는다.
 //
@@ -15,16 +16,6 @@ declare global {
   interface Window {
     postPage?: { root: HTMLElement; signal: AbortSignal };
   }
-}
-
-const INERT = "text/post-page";
-
-function lockScripts(html: string): string {
-  return html.replace(/<script\b([^>]*)>/gi, (_m, attrs: string) => {
-    const type = /\stype\s*=\s*["']?([^"'\s>]+)/i.exec(attrs)?.[1];
-    const rest = attrs.replace(/\stype\s*=\s*(["'][^"']*["']|[^\s>]+)/i, "");
-    return `<script type="${INERT}"${type ? ` data-type="${type}"` : ""}${rest}>`;
-  });
 }
 
 export function PageBody({ html }: { html: string }) {
@@ -42,15 +33,16 @@ export function PageBody({ html }: { html: string }) {
     window.postPage = { root, signal: ctrl.signal };
 
     // src 스크립트(라이브러리)가 다 받아진 뒤에 다음 인라인 스크립트가 돌도록 하나씩 실행.
-    const scripts = Array.from(root.querySelectorAll<HTMLScriptElement>(`script[type="${INERT}"]`));
+    const scripts = Array.from(root.querySelectorAll<HTMLScriptElement>(`script[type="${INERT_SCRIPT_TYPE}"]`));
     (async () => {
       for (const old of scripts) {
         if (ctrl.signal.aborted) return;
         const s = document.createElement("script");
         for (const { name, value } of Array.from(old.attributes)) {
-          if (name !== "type" && name !== "data-type") s.setAttribute(name, value);
+          if (name !== "type" && name !== ORIG_SCRIPT_TYPE) s.setAttribute(name, value);
         }
-        if (old.dataset.type) s.type = old.dataset.type;
+        const type = old.getAttribute(ORIG_SCRIPT_TYPE);
+        if (type) s.type = type;
         added.push(s);
         if (old.src) {
           await new Promise<void>((resolve) => {
