@@ -10,9 +10,10 @@
 //   · 단락(p·li) 하나는 한글 LIMITS.para 자 이하
 //   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하. 그림이나 h2 를 만나면 끊는다
 //     (접힌 <details> 안은 세지 않는다)
+//   · SVG 그림 속 글자는 화면에서 10~28px(글자 상자 높이). 데스크톱에서 너무 크면 max-width, 모바일에서 너무 작으면 글자를 키운다
 //   · 글 열과 그림은 화면 가운데를 축으로(좌우 여백 차이 24px 이하). 폭은 자유, 2단 배치는 제외
 import { chromium } from "playwright";
-const LIMITS = { para: 220, run: 650, figShare: 0.5 };
+const LIMITS = { para: 220, run: 650, figShare: 0.5, svgTextMax: 28, svgTextMin: 10 };
 function rhythm(L) {
   const root = document.querySelector(".post-page");
   const ko = (t) => (t.match(/[가-힣]/g) || []).length;
@@ -65,6 +66,15 @@ function rhythm(L) {
       if (gg) problems.push(`그림이 한쪽으로 쏠림(왼쪽 ${gg[0]} · 오른쪽 ${gg[1]}px): "${name}" 섹션`);
     }
   }
+  // SVG 그림 속 글자는 화면에서 본문과 비슷한 크기여야 한다. viewBox 그림이 넓은 칸에서 늘어나면 글자도 같이 커진다
+  for (const svg of all.filter((e) => e.tagName === "svg")) {
+    const sizes = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect().height).filter((h) => h > 0);
+    if (!sizes.length) continue;
+    const big = Math.max(...sizes), small = Math.min(...sizes);
+    const sec = svg.closest("section")?.querySelector("h2")?.textContent.trim().slice(0, 20) || "히어로";
+    if (big > L.svgTextMax) problems.push(`그림 속 글자가 너무 큼(${Math.round(big)}px): "${sec}" — SVG 에 max-width 를 준다`);
+    if (small < L.svgTextMin) problems.push(`그림 속 글자가 너무 작음(${Math.round(small)}px): "${sec}"`);
+  }
   // 문서 순서로 훑으며 그림이나 h2 를 만나면 글 구간을 끊는다
   let run = 0, maxRun = 0, runStart = "", maxPara = 0;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -108,6 +118,17 @@ for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 8
     const r = await p.evaluate(rhythm, LIMITS);
     console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
     if (r.problems.length) { bad = true; r.problems.forEach((x) => console.log("  ✗ " + x)); }
+  }
+  if (name === "mob" && !dark) {
+    // 모바일에서는 SVG 가 좁아지며 글자가 작아진다 — 가장 작은 글자만 본다
+    const tiny = await p.evaluate((min) => [...document.querySelectorAll(".post-page svg")].flatMap((svg) => {
+      const b = svg.getBoundingClientRect();
+      if (b.width < 160 || b.height < 100) return [];
+      const hs = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect().height).filter((h) => h > 0);
+      const m = hs.length ? Math.min(...hs) : 99;
+      return m < min ? [`모바일에서 그림 속 글자가 너무 작음(${Math.round(m)}px): "${(svg.closest("section")?.querySelector("h2")?.textContent || "히어로").trim().slice(0, 20)}"`] : [];
+    }), LIMITS.svgTextMin);
+    if (tiny.length) { bad = true; tiny.forEach((x) => console.log("  ✗ " + x)); }
   }
   await p.screenshot({ path: `${out}/${slug}-${name}${dark ? "-dark" : ""}.png`, fullPage: true });
   if (ov > 0 || errs.length) bad = true;
