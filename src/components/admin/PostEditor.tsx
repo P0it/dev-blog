@@ -323,7 +323,95 @@ export function PostEditor({
     });
   };
 
-  // 카테고리 · 태그 · 날짜 · 썸네일 → 큰 제목 → 짧은 밑줄. 마크다운·페이지 편집기 공용.
+  // 메타 입력칸 — 마크다운 편집기는 제목 위 한 줄(metaHeader)에, 페이지 편집기는 사이드바 "글 정보" 탭(metaPanel)에 놓는다.
+  const categoryField = (
+    <CategoryPicker
+      categories={categories}
+      value={categorySlug}
+      onChange={setCategorySlug}
+    />
+  );
+  const tagField = (
+    <TagInput
+      tags={tags}
+      draft={tagDraft}
+      onTagsChange={setTags}
+      onDraftChange={setTagDraft}
+    />
+  );
+  const publishedField = (
+    <input
+      type="date"
+      value={toDateInputValue(publishedAt)}
+      max={todayDate}
+      onChange={(e) =>
+        setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
+      }
+      aria-label="작성일"
+      title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
+      style={{
+        padding: "6px 10px",
+        border: publishedBeforeSource
+          ? "1px solid var(--danger, #d33)"
+          : "1px solid var(--line-subtle)",
+        borderRadius: 8,
+        fontSize: 13,
+        background: "transparent",
+        color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
+        fontFamily: "inherit",
+        outline: "none",
+        colorScheme: "light dark",
+      }}
+    />
+  );
+  const sourceField = (
+    <input
+      type="date"
+      value={sourceDate ?? ""}
+      max={todayDate}
+      onChange={(e) => setSourceDate(e.target.value || null)}
+      aria-label="원문 작성일"
+      title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
+      style={{
+        padding: "6px 10px",
+        border: "1px dashed var(--line-subtle)",
+        borderRadius: 8,
+        fontSize: 13,
+        background: "transparent",
+        color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
+        fontFamily: "inherit",
+        outline: "none",
+        colorScheme: "light dark",
+      }}
+    />
+  );
+  const dateWarning = publishedBeforeSource && (
+    <span
+      role="alert"
+      title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
+      style={{
+        fontSize: 12,
+        color: "var(--danger, #d33)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      ⚠ 원문보다 앞선 발행일
+    </span>
+  );
+  const thumbField = (
+    <ThumbnailField
+      coverImage={coverImage}
+      coverBrightness={coverBrightness}
+      thumbKind={thumbKind}
+      onChange={(next) => {
+        setCoverImage(next.coverImage);
+        setCoverBrightness(next.coverBrightness);
+        setThumbKind(next.thumbKind);
+      }}
+    />
+  );
+
+  // 카테고리 · 태그 · 날짜 · 썸네일 → 큰 제목 → 짧은 밑줄. 마크다운 편집기용.
   const metaHeader = (
     <div style={{ padding: "20px 48px 0" }}>
       {/* 카테고리 · 태그 · 썸네일 — 한 줄. 태그가 가운데서 늘어난다.
@@ -338,85 +426,15 @@ export function PostEditor({
           marginBottom: 18,
         }}
       >
-        <CategoryPicker
-          categories={categories}
-          value={categorySlug}
-          onChange={setCategorySlug}
-        />
+        {categoryField}
         {/* 칩 하나와 입력 자리는 늘 확보한다 — 이 아래로 줄어들면 칩이 넘친다. */}
         <div style={{ flex: 1, minWidth: 220 }}>
-          <TagInput
-            tags={tags}
-            draft={tagDraft}
-            onTagsChange={setTags}
-            onDraftChange={setTagDraft}
-          />
+          {tagField}
         </div>
-        <input
-          type="date"
-          value={toDateInputValue(publishedAt)}
-          max={todayDate}
-          onChange={(e) =>
-            setPublishedAt(fromDateInputValue(e.target.value, publishedAt))
-          }
-          aria-label="작성일"
-          title="작성일 (백데이트 전용 — 비우면 발행 시 오늘로 설정)"
-          style={{
-            padding: "6px 10px",
-            border: publishedBeforeSource
-              ? "1px solid var(--danger, #d33)"
-              : "1px solid var(--line-subtle)",
-            borderRadius: 8,
-            fontSize: 13,
-            background: "transparent",
-            color: publishedAt ? "var(--fg-strong)" : "var(--fg-neutral)",
-            fontFamily: "inherit",
-            outline: "none",
-            colorScheme: "light dark",
-          }}
-        />
-        <input
-          type="date"
-          value={sourceDate ?? ""}
-          max={todayDate}
-          onChange={(e) => setSourceDate(e.target.value || null)}
-          aria-label="원문 작성일"
-          title="원문(인용·번역 대상) 작성·업로드 일자. 발행일을 이보다 앞으로 잡으면 경고."
-          style={{
-            padding: "6px 10px",
-            border: "1px dashed var(--line-subtle)",
-            borderRadius: 8,
-            fontSize: 13,
-            background: "transparent",
-            color: sourceDate ? "var(--fg-strong)" : "var(--fg-neutral)",
-            fontFamily: "inherit",
-            outline: "none",
-            colorScheme: "light dark",
-          }}
-        />
-        {publishedBeforeSource && (
-          <span
-            role="alert"
-            title={`발행일이 원문 작성일(${sourceDate?.slice(0, 10)})보다 앞섭니다`}
-            style={{
-              fontSize: 12,
-              color: "var(--danger, #d33)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            ⚠ 원문보다 앞선 발행일
-          </span>
-        )}
-        <ThumbnailField
-          coverImage={coverImage}
-          coverBrightness={coverBrightness}
-          thumbKind={thumbKind}
-          onChange={(next) => {
-            setCoverImage(next.coverImage);
-            setCoverBrightness(next.coverBrightness);
-            setThumbKind(next.thumbKind);
-          }}
-        />
+        {publishedField}
+        {sourceField}
+        {dateWarning}
+        {thumbField}
       </div>
       <input
         value={title}
@@ -446,6 +464,58 @@ export function PostEditor({
           borderRadius: 2,
         }}
       />
+    </div>
+  );
+
+  // 페이지 글: 제목은 본문 HTML 의 h1 이 화면에 나오므로 크게 고정하지 않고 사이드바에서 고친다.
+  const fieldLabel = (text: string) => (
+    <div className="meta" style={{ fontSize: 12, marginBottom: 6 }}>{text}</div>
+  );
+  const metaPanel = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "4px 8px" }}>
+      <div>
+        {fieldLabel("제목 (목록·검색·OG 에 쓰임)")}
+        <textarea
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="제목을 입력하세요"
+          rows={3}
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            border: "1px solid var(--line-subtle)",
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.5,
+            fontFamily: "inherit",
+            background: "transparent",
+            color: "var(--fg-strong)",
+            resize: "vertical",
+            outline: "none",
+          }}
+        />
+      </div>
+      <div>
+        {fieldLabel("카테고리")}
+        {categoryField}
+      </div>
+      <div>
+        {fieldLabel("태그")}
+        {tagField}
+      </div>
+      <div>
+        {fieldLabel("작성일 · 원문 작성일")}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {publishedField}
+          {sourceField}
+        </div>
+        {dateWarning}
+      </div>
+      <div>
+        {fieldLabel("썸네일")}
+        {thumbField}
+      </div>
     </div>
   );
 
@@ -491,12 +561,8 @@ export function PostEditor({
         </Button>
       </AdminTopbar>
       {isPage ? (
-        <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", minHeight: 0 }}>
-          {metaHeader}
-          <div style={{ height: 1, background: "var(--line-subtle)", margin: "20px 0 0" }} />
-          <div style={{ flex: 1, minHeight: 0 }}>
-            <PageVisualEditor value={bodyMd} onChange={setBodyMd} slug={initial.originalSlug} />
-          </div>
+        <div style={{ height: "calc(100vh - 56px)", minHeight: 0 }}>
+          <PageVisualEditor value={bodyMd} onChange={setBodyMd} slug={initial.originalSlug} meta={metaPanel} />
         </div>
       ) : (
       <div

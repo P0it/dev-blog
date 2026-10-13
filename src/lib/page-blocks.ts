@@ -93,6 +93,21 @@ export function findBlockIndex(body: string, html: string, hint: number): number
   return all.indexOf(html);
 }
 
+// 블록 HTML 을 그 블록의 원래 조상 래퍼(빈 껍데기)로 감싼다. 글 CSS 가 `.post-page .sa p` 처럼
+// 래퍼 기준으로 걸려 있어, section 만 떼어 그리면 실제 모양과 달라진다(AI 비교 창용).
+export function inContext(body: string, index: number, html: string): string {
+  const el = blocks(parse(body))[index];
+  if (!el) return html;
+  let out = html;
+  for (let p = el.parentElement; p && p.tagName.toLowerCase() !== "body"; p = p.parentElement) {
+    const shell = p.cloneNode(false) as Element;
+    const tag = shell.outerHTML;
+    const close = tag.lastIndexOf("</");
+    out = close < 0 ? out : tag.slice(0, close) + out + tag.slice(close);
+  }
+  return out;
+}
+
 // 캔버스용: 스크립트를 잠그고(원래 type 은 data-type 에 보관) 블록에 번호를 붙인다.
 export function annotateForCanvas(body: string): string {
   const root = parse(body);

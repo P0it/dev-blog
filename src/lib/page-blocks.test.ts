@@ -7,7 +7,7 @@ import { pageText } from "./page-html.ts";
 import {
   listBlocks, blockHtml, moveBlock, moveBlockTo, duplicateBlock, removeBlock,
   replaceBlock, findBlockIndex, annotateForCanvas, cleanCanvasHtml,
-  scriptHooks, missingHooks, editableTarget,
+  scriptHooks, missingHooks, editableTarget, inContext,
 } from "./page-blocks.ts";
 
 (globalThis as any).DOMParser = DOMParser;
@@ -114,4 +114,10 @@ test("견본 원고 왕복 — 블록 수·훅·평문 동일", () => {
     assert.deepEqual(scriptHooks(round), scriptHooks(body), f);
     assert.equal(text(round), pageText(body), f);
   }
+});
+
+test("inContext — 블록 HTML 을 원래 조상 래퍼로 감싼다(글 CSS 가 래퍼 기준이라)", () => {
+  const html = inContext(SAMPLE, 1, "<section><h2>새것</h2></section>");
+  assert.equal(html, '<div class="wrap"><div class="grid"><section><h2>새것</h2></section></div></div>');
+  assert.equal(inContext(SAMPLE, 99, "<section></section>"), "<section></section>");
 });
