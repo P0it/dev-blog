@@ -39,6 +39,12 @@
 | [Jay Alammar, How GPT3 Works](https://jalammar.github.io/how-gpt3-works-visualizations-animations/) | 프롬프트와 출력을 색으로 나누고, 가중치를 바꾸는 학습과 그대로 두는 추론을 따로 그린다 | "퓨샷은 학습이 아니다"를 보일 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
 | [Zhao 외, Calibrate Before Use](https://arxiv.org/abs/2102.09690) | 같은 예시를 순서·개수만 바꿔 정확도가 54.3%~93.4%로 흔들리는 것을 표로 보인다(표 1은 모델 크기 × 예시 수) | 예시 수·순서 효과를 실제 숫자로 그릴 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
 | [Min 외, Rethinking the Role of Demonstrations](https://arxiv.org/abs/2202.12837) | 예시의 정답·입력·답 후보·형식을 하나씩 망가뜨려 무엇이 성능을 떠받치는지 가른다 | "예시가 실제로 가르치는 것"을 보일 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
+| [Jay Alammar, A Visual and Interactive Guide to the Basics of Neural Networks](https://jalammar.github.io/visual-interactive-guide-basics-neural-networks/) | 집값 직선에 weight·bias 다이얼을 독자가 직접 돌려 Error 를 줄이게 한 다음, GD Step 버튼으로 같은 일을 자동화해 "학습 = 손잡이 찾기"를 겪게 한다 | 파라미터·학습을 처음 설명할 때 | 2026-10-14 | llm-parameters-7b-explained |
+| [3Blue1Brown, But what is a neural network?](https://www.3blue1brown.com/lessons/neural-networks) | 파라미터를 "13,002 knobs and dials"로 센다. 가중치를 28×28 칸에 파랑(+)·빨강(−) 밝기로 칠한다 | 파라미터 개수를 손에 잡히게 할 때 | 2026-10-14 | llm-parameters-7b-explained |
+| [Powers of Ten (Eames, 1977)](https://en.wikipedia.org/wiki/Powers_of_Ten_(film)) | (다른 분야·물리) 한 장면에서 10초마다 10배씩 물러나며 규모를 체감시킨다 | 숫자가 몇 자리씩 커지는 규모를 보일 때 | 2026-10-14 | llm-parameters-7b-explained |
+| [Google ML Crash Course, Gradient descent](https://developers.google.com/machine-learning/crash-course/linear-regression/gradient-descent) | "손실이 줄어드는 쪽으로 weight·bias 를 조금 움직인다"를 되풀이하고, 손실 곡선이 처음엔 가파르다가 평평해지는 모습으로 수렴을 보인다 | 학습 과정을 한 걸음씩 보일 때 | 2026-10-14 | llm-parameters-7b-explained |
+| [IBM, AI vs. ML vs. DL vs. Neural Networks](https://www.ibm.com/think/topics/ai-vs-machine-learning-vs-deep-learning-vs-neural-networks) | 큰 것이 작은 것을 감싸는 포함 관계로 용어 넷을 정리하고 deep 을 "층의 깊이"로 푼다 | 비슷한 용어의 범위를 가를 때 | 2026-10-14 | llm-parameters-7b-explained |
+| [huggingface/safetensors README](https://github.com/huggingface/safetensors) | 파일 형식을 "8바이트 길이 → JSON 헤더(dtype·shape·data_offsets) → 바이트 덩어리" 세 줄로 정의한다 | 모델 파일 안을 열어 보일 때 | 2026-10-14 | llm-parameters-7b-explained |
 
 ## 미확인
 
@@ -70,10 +76,16 @@
 - **모든 메시지를 한 줄 띠로 이어 붙이기** (prompt-engineering-roles-few-shot) — 메시지 목록이 역할 표시를 끼운 글 한 줄로 이어지고 끝에 assistant 표시가 열린 채 놓이는 그림 하나로, 역할·예시·대화 기록이 모두 "이어 쓸 글의 앞부분"이라는 것을 한 번에 보였다. 같은 띠를 히어로·퓨샷 두 방법 비교에서 다시 써 글 전체의 시각 언어가 됐다. 히어로에 "바뀐 가중치 0개"를 함께 두니 "퓨샷은 학습이 아니다"가 문장 없이 전해졌다. Critic 4점
 - **먼저 예상을 고르게 하고 결과 공개** (prompt-engineering-roles-few-shot) — 첫 판은 흐린 미리보기에 숫자 라벨이 비쳐 답이 새어 나갔다는 지적을 받았다. 대기 상태에서는 막대 길이와 라벨을 모두 숨긴다
 
+- **손잡이 하나 = 파라미터 하나로 끝까지 세기** (llm-parameters-7b-explained) — 히어로에서 다이얼 2개를 돌려 직선을 맞추게 하고, 같은 다이얼 그림을 학습 띠(자동으로 돌아감)·추론(자물쇠로 잠금)·줌아웃(작은 칸 하나 = 손잡이 하나)까지 이어 썼다. "7B"를 설명하는 문장 없이 단위가 그림으로 이어졌다
+- **넓이 = 개수 줌아웃** (llm-parameters-7b-explained) — 손잡이 2개 → 뉴런 3,584칸 격자 → 표 한 장(앞 단계는 맨 윗줄) → 층 트리맵(앞 단계는 굵은 테두리) → 28층 → 단어표 두 장. 단계마다 앞 단계를 다음 그림 안에 표시해 "어디서 커졌는지"를 놓치지 않게 했다
+- **실제 파일의 첫 바이트를 받아 보여 주기** (llm-parameters-7b-explained) — HTTP Range 로 safetensors 첫 8바이트(헤더 길이)·헤더·본문 첫 16바이트를 받아 BF16 값(−0.0152…)까지 풀어 적었다. 네 파일 헤더 길이를 다 받아 "본문 합 = 개수 × 2바이트"가 바이트 하나까지 맞는 것도 확인했다
+
 ## 페이지 레이아웃
 
-그림 하나가 아니라 **페이지 구조**를 고를 때 본다. `/study` 3단계 스토리보드에서 글마다 하나를 고르고,
-같은 시리즈 앞 편과 겹치지 않게 한다. 기준: `POSTING.md` 5-2(섹션마다 다른 배치, 가운데 한 열은 절반 이하).
+그림 하나가 아니라 **페이지 구조**를 고를 때 본다. 기준은 `POSTING.md` 5-2 **읽기 축 하나**(2026-10-14)다 —
+읽는 글은 모두 틀 왼쪽 시작선의 글 열(680px)에 두고, 그림은 그 위아래에 글 열 폭·넓게·전폭 띠로 놓는다.
+아래 표의 `상태` 칸이 `접음` 인 패턴은 글을 그림 옆에 두거나 좌우로 오가게 해서 읽는 순서를 흐린다는 지적으로 접었다.
+이미 그 패턴으로 만든 글은 고칠 때 읽기 축 규칙으로 옮긴다.
 2026-10-13 조사. "열었음"은 이 세션에서 페이지를 열어 본 것이다(WebFetch 는 글만 받아 와서 화면 구조는 설명으로 짐작한 것).
 
 ### 갤러리
@@ -94,20 +106,20 @@
 
 ### 구조 패턴
 
-| 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 |
-|---|---|---|---|
-| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot |
-| 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv |
-| 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
-| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
-| 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
-| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot |
-| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot |
-| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot |
-| 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
+| 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 | 상태 |
+|---|---|---|---|---|
+| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, llm-parameters-7b-explained | 접음 — 제목·리드는 글 열, 그림은 그 아래 넓게 |
+| 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling | 접음 — 조작판은 그림 위 sticky 바로 |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained | 허용(유일한 옆 배치) — 단계 글은 글 열 시작선 |
+| 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline | 허용 — 그림 안에서만 |
+| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot | 허용 |
+| 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake | 접음 |
+| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained | 허용 — 그림 안의 비교만, 글은 그림 아래 |
+| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, llm-parameters-7b-explained | 접음 |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, llm-parameters-7b-explained | 접음 |
+| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot | 접음 — 해설은 코드 아래 |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained | 허용 |
+| 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot | 접음 |
 
 벤토 격자·잡지형·장 표지의 실제 예시는 아직 열어 보지 못했다. 다음 조사 때 브라우저로 직접 본다.
 

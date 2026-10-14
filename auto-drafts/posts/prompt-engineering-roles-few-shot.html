@@ -6,10 +6,10 @@ tags: [프롬프트 엔지니어링, LLM, OpenAI API, Python, 퓨샷, AI Service
 category: ai
 series: ai-service-track
 series_order: 1
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/prompt-engineering-roles-few-shot-mv85c56t.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/prompt-engineering-roles-few-shot-mv85yrkj.jpg
 ---
 <!-- page -->
-<!-- layout: 분할 히어로 + 장 표지 띠 3개(부르고 받기·누가 말하나·예시로 보여 주기) + 섹션마다 다른 배치(스크롤리텔링, 코드|해설, 실험판 띠, 글|그림, 지그재그, 비교 나란히) | 글의 성격: 세 덩어리(API 호출·역할·예시)가 이어지는 입문 글, 대표 장치는 예시 개수 토글 하나 | 버린 후보: 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 가로 스크롤 띠(순서 있는 파이프라인 글이 아님) -->
+<!-- layout: 읽기 축 하나(왼쪽 시작선 글 열 680px) + 그림 폭 세 가지(글 열·넓게·전폭 띠) + 장 표지 띠 3개 + 그림 고정 스크롤리텔링 1곳 | 글의 성격: 세 덩어리(API 호출·역할·예시)가 이어지는 입문 글, 대표 장치는 예시 개수 토글 하나 | 버린 후보: 섹션마다 다른 배치(2026-10-14 읽는 순서가 흐려진다는 지적으로 접음) -->
 <style>
 .post-page .ps {
   --ps-dev: rgb(16, 140, 110); --ps-user: rgb(37, 112, 235); --ps-ai: rgb(222, 102, 24); --ps-bad: rgb(208, 52, 52); --ps-think: rgb(140, 140, 150);
@@ -17,10 +17,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 }
 [data-theme="dark"] .post-page .ps { --ps-dev: rgb(60, 205, 165); --ps-user: rgb(110, 165, 255); --ps-ai: rgb(255, 150, 80); --ps-bad: rgb(255, 110, 110); --ps-think: rgb(150, 150, 165); }
 .post-page .ps * { box-sizing: border-box; }
-.post-page .ps-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.post-page .ps-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+/* 읽기 축 하나: 읽는 글은 모두 틀 왼쪽 시작선의 글 열(680px)에. 그림은 그 위아래에 글 열 폭(.ps-fig) · 넓게(.wide) · 전폭 띠(.ps-band) */
+.post-page .ps-col, .post-page .ps-stack > *, .post-page .ps-codepair > *, .post-page .ps-two > * { max-width: 680px; }
+.post-page .ps-stack > .ps-fig, .post-page .ps-fig { margin-top: clamp(36px, 5vw, 56px); margin-bottom: clamp(36px, 5vw, 56px); }
+.post-page .ps-stack > .ps-fig.wide, .post-page .ps-fig.wide { max-width: none; }
 .post-page .ps h1, .post-page .ps h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
 .post-page .ps h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
 .post-page .ps h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.35; margin-bottom: 28px; }
+.post-page .ps h1, .post-page .ps h2, .post-page .ps details { max-width: 680px; }
 .post-page .ps p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
 .post-page .ps b { color: var(--fg-strong); }
 .post-page .ps code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
@@ -53,7 +58,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 /* 히어로 */
 .post-page .ps-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
-.post-page .ps-hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 72px); align-items: start; }
+.post-page .ps-hero-grid > div:first-child { max-width: 680px; }
+/* 히어로 그림은 넓게: 왼쪽 메시지 묶음 · 오른쪽 답과 후보 */
+.post-page .ps-herofig { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 20px clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .ps-herofig > .ps-ctrl, .post-page .ps-herofig > .ps-cap { grid-column: 1 / -1; }
+.post-page .ps-herofig .ps-doc { margin-top: 0; }
+.post-page .ps-herofig .ps-cands { margin-top: 0; }
 .post-page .ps-lede { font-size: 18px !important; color: var(--fg-neutral); margin-top: 32px !important; }
 .post-page .ps-review { font-family: var(--font-display); font-size: clamp(19px, 2vw, 22px); color: var(--fg-strong); line-height: 1.5; margin: 8px 0 0; }
 .post-page .ps-review::before { content: "“"; } .post-page .ps-review::after { content: "”"; }
@@ -64,7 +74,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-exrow.hide { grid-template-rows: 0fr; opacity: 0; }
 .post-page .ps-exrow.hide > div { margin-top: -6px; }
 .post-page .ps-exlbl { font-size: 12.5px; color: var(--fg-neutral); font-weight: 700; margin: 2px 0 -2px; }
-.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; padding: 10px 14px; font-size: 15.5px; line-height: 1.6; min-height: 3.4em; margin-top: 4px; }
+.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; padding: 10px 14px; font-size: 15.5px; line-height: 1.6; min-height: 3.4em; margin: 0 0 22px; }
+.post-page .ps-side { position: sticky; top: 100px; }
 .post-page .ps-out .ps-r { margin-right: 6px; }
 .post-page .ps-cands { margin-top: 18px; }
 .post-page .ps-cands h4, .post-page .ps-fig h4 { margin: 0 0 8px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
@@ -87,17 +98,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-chap-s { font-size: 15px; color: var(--fg-neutral); }
 
 /* 배치 */
-.post-page .ps-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
-.post-page .ps-head > h2 { margin: 0; }
-.post-page .ps-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
-.post-page .ps-split.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
-.post-page .ps-split.rev > :first-child { order: 2; }
-.post-page .ps-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 7vw, 72px) 0 0; }
-.post-page .ps-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-.post-page .ps-codepair.rev > :first-child { order: 2; }
+.post-page .ps-head { max-width: 680px; }
+.post-page .ps-split { display: block; }
+.post-page .ps-codepair { display: block; margin: clamp(40px, 6vw, 56px) 0 0; }
+.post-page .ps-codepair > :first-child { margin-bottom: 28px; }
 .post-page .ps-band { background: var(--bg-subtle); padding: clamp(40px, 6vw, 72px) 0; margin: clamp(40px, 6vw, 64px) 0 0; }
-.post-page .ps-two { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 4vw, 56px); margin-top: clamp(40px, 6vw, 56px); }
-.post-page .ps-pull { font-family: var(--font-display); font-size: clamp(21px, 2.6vw, 28px) !important; line-height: 1.6 !important; color: var(--fg-strong); max-width: 820px; margin: 0 auto 1.2em !important; text-align: center; }
+.post-page .ps-two { margin-top: clamp(32px, 5vw, 48px); }
+.post-page .ps-pull { font-family: var(--font-display); font-size: clamp(20px, 2.3vw, 25px) !important; line-height: 1.6 !important; color: var(--fg-strong); max-width: 680px; margin: clamp(40px, 6vw, 56px) 0 1.2em !important; }
 .post-page .ps-fig { margin: 0; }
 
 /* 1. 이어 쓰기 스크롤리텔링 */
@@ -156,7 +163,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: var(--fg-strong); animation: pg-ps-blink 1s steps(1) infinite; }
 
 /* 3. 토큰 상한 실험 */
-.post-page .ps-lab { max-width: 900px; margin: 0 auto; }
+.post-page .ps-lab { max-width: 900px; margin: 0; }
 .post-page .ps-lab input[type="range"] { width: min(360px, 100%); accent-color: var(--fg-strong); }
 .post-page .ps-tokline { position: relative; margin-top: 26px; padding-top: 26px; }
 .post-page .ps-toks { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -189,7 +196,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-who-won { font-size: 14px; color: var(--fg-strong); font-weight: 600; margin-top: 12px; min-height: 3em; line-height: 1.55; }
 
 /* 5. 차트 */
-.post-page .ps-chart { width: 100%; max-width: 640px; height: auto; display: block; margin: 0 auto; }
+.post-page .ps-chart { width: 100%; max-width: 640px; height: auto; display: block; margin: 0; }
 .post-page .ps-chart .ax { stroke: var(--line-strong); stroke-width: 1; }
 .post-page .ps-chart .grid { stroke: var(--line-subtle); stroke-width: 1; }
 .post-page .ps-chart .chance { stroke: var(--fg-alternative); stroke-width: 1.5; stroke-dasharray: 5 5; }
@@ -203,10 +210,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-chart .t-dim { fill: var(--fg-neutral); font-size: 13px; }
 .post-page .ps-chart .t-big { fill: var(--ps-ai); font-weight: 700; font-size: 14px; }
 .post-page .ps-chart .t-small { fill: var(--ps-user); font-weight: 700; font-size: 14px; }
-.post-page .ps-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px; font-size: 14px; font-weight: 700; margin-top: 10px; }
+.post-page .ps-legend { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px 20px; font-size: 14px; font-weight: 700; margin-top: 10px; }
 .post-page .ps-legend span::before { content: ""; display: inline-block; width: 18px; height: 4px; border-radius: 2px; background: currentColor; vertical-align: 4px; margin-right: 6px; }
 .post-page .ps-legend .big { color: var(--ps-ai); } .post-page .ps-legend .small { color: var(--ps-user); }
-.post-page .ps-zig { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(32px, 5vw, 72px); align-items: center; margin-top: clamp(32px, 5vw, 48px); }
+.post-page .ps-zig { display: block; }
 
 /* 6. 하락 폭 */
 .post-page .ps-bet { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -234,7 +241,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-card b { display: block; font-size: 16px; color: var(--c); margin-bottom: 2px; }
 .post-page .ps-card.p { --c: var(--ps-dev); } .post-page .ps-card.n { --c: var(--ps-bad); }
 .post-page .ps-card .k { display: block; font-size: 11.5px; color: var(--fg-neutral); }
-.post-page .ps-arrow { text-align: center; color: var(--fg-alternative); font-size: 18px; margin: 10px 0; }
+.post-page .ps-arrow { text-align: left; color: var(--fg-alternative); font-size: 18px; margin: 10px 0; }
 .post-page .ps-split2 { display: flex; height: 34px; border-radius: 8px; overflow: hidden; font-size: 13.5px; font-weight: 700; }
 .post-page .ps-split2 div { display: flex; align-items: center; padding: 0 10px; white-space: nowrap; transition: flex-grow .7s cubic-bezier(.2,.7,.2,1); color: var(--bg-base); min-width: 0; overflow: hidden; }
 .post-page .ps-split2 .p { background: var(--ps-dev); } .post-page .ps-split2 .n { background: var(--ps-bad); justify-content: flex-end; }
@@ -248,10 +255,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-merge { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 3vw, 40px); }
 .post-page .ps-mini { font-family: var(--font-mono); font-size: 12.5px; line-height: 2; padding: 10px 12px; border-radius: 12px; border: 1.5px dashed var(--line-strong); word-break: keep-all; overflow-wrap: anywhere; }
 .post-page .ps-mini .ps-mk { font-size: 11px; }
-.post-page .ps-same { text-align: center; font-size: 14px; color: var(--fg-strong); font-weight: 600; margin-top: 14px; }
+.post-page .ps-same { text-align: left; font-size: 14px; color: var(--fg-strong); font-weight: 600; margin-top: 14px; }
 
 /* 9. 대응 */
-.post-page .ps-map { display: grid; grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); row-gap: 10px; align-items: center; max-width: 860px; margin: clamp(32px, 5vw, 48px) auto 0; }
+.post-page .ps-map { display: grid; grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); row-gap: 10px; align-items: center; max-width: 860px; margin: 0; }
 .post-page .ps-map h4 { margin: 0 0 4px; font-size: 15px; color: var(--fg-strong); font-family: var(--font-display); }
 .post-page .ps-map .f { font-family: var(--font-mono); font-size: 13.5px; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--line-strong); background: var(--bg-base); overflow-wrap: anywhere; line-height: 1.45; }
 .post-page .ps-map .f small { display: block; font-family: var(--font-sans); font-size: 12.5px; color: var(--fg-neutral); }
@@ -265,7 +272,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
 .post-page .ps details p { font-size: 16px; margin-top: 10px; }
 .post-page .ps details.ps-more { margin-top: clamp(32px, 5vw, 48px); }
-.post-page .ps-check { counter-reset: ck; list-style: none; padding: 0; margin: 0 auto; max-width: 760px; }
+.post-page .ps-check { counter-reset: ck; list-style: none; padding: 0; margin: 0; max-width: 680px; }
 .post-page .ps-check li { counter-increment: ck; display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 10px; font-size: 16.5px; line-height: 1.7; padding: 14px 0; border-top: 1px solid var(--line-subtle); word-break: keep-all; }
 .post-page .ps-check li::before { content: counter(ck); font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--ps-ai); line-height: 1.2; }
 .post-page .ps-refs { padding-left: 1.2em; font-size: 15px; margin: 0; }
@@ -274,9 +281,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-end-pad { height: clamp(48px, 8vw, 96px); }
 
 @media (max-width: 900px) {
+  .post-page .ps-herofig { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ps-side { position: static; }
   .post-page .ps-hero-grid, .post-page .ps-head, .post-page .ps-split, .post-page .ps-split.rev, .post-page .ps-codepair, .post-page .ps-codepair.rev, .post-page .ps-two, .post-page .ps-zig, .post-page .ps-story { grid-template-columns: minmax(0, 1fr); }
   .post-page .ps-split.rev > :first-child, .post-page .ps-codepair.rev > :first-child { order: 0; }
-  .post-page .ps-head > h2 { margin-bottom: 4px; }
   .post-page .ps-story { gap: 0; }
   .post-page .ps-stick { order: -1; top: 60px; padding: 8px 0 10px; }
   .post-page .ps-flat { min-height: 250px; }
@@ -322,7 +330,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p class="ps-review">맛은 최고인데 배달이 한 시간 걸렸어요</p>
         <p class="ps-lede">그림에서 프롬프트에 넣는 예시를 0개, 1개, 3개로 바꿔 보세요. 모델은 하나도 바뀌지 않는데 답의 모양이 달라집니다.</p>
       </div>
-      <div class="ps-fig" data-figure data-thumb data-thumb-act="el.querySelector('[data-ps-shot=&quot;3&quot;]').click(); el.querySelectorAll('.ps-cap, .ps-meter, .ps-exlbl').forEach(x =&gt; x.style.display='none'); el.style.maxWidth='560px'">
+      <div class="ps-fig wide ps-herofig" data-figure data-thumb data-thumb-act="el.querySelector('[data-ps-shot=&quot;3&quot;]').click(); el.querySelectorAll('.ps-cap, .ps-meter, .ps-exlbl').forEach(x =&gt; x.style.display='none')">
         <div class="ps-ctrl">
           <span>예시</span>
           <div class="ps-seg" role="group" aria-label="예시 개수 고르기">
@@ -349,8 +357,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <span class="ps-m ast ex"><span class="ps-r ast">assistant</span>섞임</span>
           </div></div>
           <span class="ps-m usr"><span class="ps-r usr">user</span>맛은 최고인데 배달이 한 시간 걸렸어요</span>
-          <div class="ps-out" aria-live="polite"><span class="ps-r ast">답</span><span data-ps-ans>이 리뷰는 음식 맛은 칭찬하지만 배달 시간에는 불만이 있어, 긍정과 부정이 섞인 의견으로 볼 수 있습니다.</span></div>
         </div>
+        <div class="ps-side">
+        <div class="ps-out" aria-live="polite"><span class="ps-r ast">답</span><span data-ps-ans>이 리뷰는 음식 맛은 칭찬하지만 배달 시간에는 불만이 있어, 긍정과 부정이 섞인 의견으로 볼 수 있습니다.</span></div>
         <div class="ps-cands" data-ps-cands>
           <h4>답의 첫 토큰 후보와 그 확률</h4>
           <div class="ps-cand top"><span>“이 리뷰는…”</span><span class="bar"><i style="--w:52%"></i></span><span>52%</span></div>
@@ -361,6 +370,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="ps-meter">
           <span>보낸 토큰 약 <b data-ps-tok>38</b>개</span>
           <span class="lock">🔒 바뀐 모델 가중치 <b>0</b>개</span>
+        </div>
         </div>
         <p class="ps-cap">답과 확률은 설명을 위해 만든 예시 값입니다. 예시가 하나면 형식을 반쯤만 따라 하고 셋이면 한 단어로 몰립니다. 가중치는 모델이 학습하며 정해 둔 수많은 숫자인데, 예시를 넣어도 하나도 바뀌지 않습니다.</p>
       </div>
@@ -388,7 +398,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <li data-ps-st="2"><span>맨 끝에는 <b>assistant 표시가 열린 채로</b> 놓입니다. 모델은 앞의 글 전체를 읽고 다음 토큰 후보마다 <b>확률</b>을 매깁니다. 이 계산을 정하는 건 모델이 학습으로 정해 둔 수십억 개의 숫자, <b>가중치</b>입니다.</span></li>
           <li data-ps-st="3"><span>확률이 높은 쪽에서 토큰을 하나 고르고 그 토큰을 붙인 글로 다시 계산합니다. <b>끝 표시</b>를 고르면 멈춥니다. 가중치는 그대로라도 앞의 글이 바뀌면 계산 결과인 확률이 바뀝니다.</span></li>
         </ol>
-        <div class="ps-stick" data-ps-stick>
+        <div class="ps-stick" data-ps-stick data-sticky-figure>
           <div class="ps-flat" data-ps-flat data-st="0" data-figure>
             <div class="ps-cards">
               <span class="ps-m dev"><span class="ps-r dev">developer</span>리뷰를 긍정, 부정, 섞임 중 하나로 분류해.</span>
@@ -417,7 +427,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
   <section class="ps-sec">
     <div class="ps-wrap">
-      <div class="ps-split rev">
+      <div class="ps-split ps-stack">
         <div>
           <h2>응답은 문장 하나가 아니라 겹겹이 싼 상자입니다</h2>
           <p>프로그램이 LLM을 쓸 때는 <b>API</b>로 부릅니다. API는 다른 프로그램에 일을 시키는 정해진 주문 양식입니다. 답은 <b>JSON</b>이라는 형식으로 돌아오는데, 이름표가 붙은 칸 안에 또 칸이 들어 있는 구조입니다.</p>
@@ -591,7 +601,7 @@ print(response.choices[0].message.content)</code></pre>
       <span class="ps-chap-s">역할마다 무게가 다르고 순서가 정해져 있습니다</span>
     </div></div>
     <div class="ps-wrap">
-      <div class="ps-split">
+      <div class="ps-split ps-stack">
         <div>
           <h2>역할은 누가 한 말인지 붙이는 이름표입니다</h2>
           <p>메시지의 <b>role</b>은 세 가지를 주로 씁니다. <code>developer</code>는 프로그램을 만든 개발자의 지시, <code>user</code>는 사용자의 말, <code>assistant</code>는 모델이 앞서 한 말입니다.</p>
@@ -646,9 +656,11 @@ print(response.choices[0].message.content)</code></pre>
     </div></div>
     <div class="ps-wrap">
       <h2>제로샷·원샷·퓨샷은 예시 개수에 붙인 이름입니다</h2>
-      <div class="ps-zig">
+      <div class="ps-zig ps-stack">
+          <p>여기서 <b>샷</b>은 예시 한 개를 말합니다. 예시 없이 지시만 주면 <b>제로샷</b>, 하나 주면 <b>원샷</b>, 여러 개 주면 <b>퓨샷</b>입니다. 2020년 GPT-3 논문이 이 이름을 널리 퍼뜨렸습니다.</p>
+          <p>시험지 맨 위의 "보기" 문제와 비슷합니다. 풀이 하나를 보여 주면 나머지 문제를 같은 형식으로 풉니다. 다만 학생은 보기에서 배운 걸 다음 시험까지 기억하지만 모델은 이번 요청이 끝나면 예시를 잊습니다.</p>
         <div class="ps-fig" data-figure>
-          <div class="ps-ctrl" style="justify-content:center;margin-bottom:12px">
+          <div class="ps-ctrl" style="margin-bottom:12px">
             <span>예시 개수</span>
             <div class="ps-seg" role="group" aria-label="예시 개수 고르기">
               <button type="button" data-ps-k="0" aria-pressed="false">0</button>
@@ -670,12 +682,8 @@ print(response.choices[0].message.content)</code></pre>
           <div class="ps-legend"><span class="big">큰 모델 · GPT-3 175B</span><span class="small">작은 모델 · GPT-3 2.7B</span></div>
           <p class="ps-cap">영화 리뷰가 긍정인지 부정인지 맞히는 SST-2라는 문제 묶음에서 GPT-3 두 크기의 정확도입니다(Zhao 외, 2021, 표 1). 175B는 가중치가 1,750억 개, 2.7B는 27억 개라는 뜻입니다. 예시 묶음을 여러 번 바꿔 가며 잰 평균값입니다.</p>
         </div>
-        <div>
-          <p>여기서 <b>샷</b>은 예시 한 개를 말합니다. 예시 없이 지시만 주면 <b>제로샷</b>, 하나 주면 <b>원샷</b>, 여러 개 주면 <b>퓨샷</b>입니다. 2020년 GPT-3 논문이 이 이름을 널리 퍼뜨렸습니다.</p>
-          <p>시험지 맨 위의 "보기" 문제와 비슷합니다. 풀이 하나를 보여 주면 나머지 문제를 같은 형식으로 풉니다. 다만 학생은 보기에서 배운 걸 다음 시험까지 기억하지만 모델은 이번 요청이 끝나면 예시를 잊습니다.</p>
           <p>모델 안의 숫자인 <b>가중치</b>는 하나도 바뀌지 않습니다. 논문도 세 방식 모두 가중치를 고치지 않는다고 적었습니다. 프롬프트 안에서만 일어나는 이 배움을 <b>in-context learning</b>이라고 부릅니다. 모델에게 주어진 글, 곧 context 안에서 배운다는 뜻입니다.</p>
           <p>그래프를 보면 예시가 늘 도움이 되지도 않습니다. 큰 모델은 예시 하나에 71.6%에서 93.3%로 뛰었습니다. 작은 모델은 8개를 주자 54.0%로, 찍어서 맞히는 수준까지 내려갔습니다.</p>
-        </div>
       </div>
     </div>
   </section>
@@ -685,19 +693,20 @@ print(response.choices[0].message.content)</code></pre>
       <div class="ps-head">
         <h2>예시가 알려 주는 건 정답보다 형식입니다</h2>
         <div>
-          <p>예시의 정답을 일부러 틀리게 적으면 어떻게 될까요? "긍정" 리뷰에 "부정"이라고 적어 보여 주는 식입니다. 아래에서 먼저 예상을 골라 보세요.</p>
-          <div class="ps-bet" role="group" aria-label="예상 고르기">
-            <button type="button" data-ps-bet="a" aria-pressed="false">크게 떨어진다</button>
-            <button type="button" data-ps-bet="b" aria-pressed="false">조금 떨어진다</button>
-            <button type="button" data-ps-bet="c" aria-pressed="false">오히려 오른다</button>
-          </div>
+          <p>예시의 정답을 일부러 틀리게 적으면 어떻게 될까요? "긍정" 리뷰에 "부정"이라고 적어 보여 주는 식입니다. 아래 실험판에서 먼저 예상을 골라 보세요.</p>
         </div>
       </div>
     </div>
     <div class="ps-band">
       <div class="ps-wrap">
         <div class="ps-lab ps-fig" data-figure>
-          <h4>예시를 이렇게 망가뜨리면 정확도가 얼마나 떨어지나 (정답을 맞게 적은 예시와 비교)</h4>
+          <h4>먼저 예상을 골라 보세요</h4>
+          <div class="ps-bet" role="group" aria-label="예상 고르기">
+            <button type="button" data-ps-bet="a" aria-pressed="false">크게 떨어진다</button>
+            <button type="button" data-ps-bet="b" aria-pressed="false">조금 떨어진다</button>
+            <button type="button" data-ps-bet="c" aria-pressed="false">오히려 오른다</button>
+          </div>
+          <h4 style="margin-top:26px">예시를 이렇게 망가뜨리면 정확도가 얼마나 떨어지나 (정답을 맞게 적은 예시와 비교)</h4>
           <div class="ps-drops" data-ps-drops>
             <div class="ps-drop mild"><span>정답을 무작위로 바꿈<small>리뷰·형식은 그대로</small></span><span class="track" style="--a:0.3;--b:5"><span class="rng"></span><em>0~5%p</em></span></div>
             <div class="ps-drop"><span>리뷰를 엉뚱한 글로 바꿈<small>뉴스 같은 다른 분야 문장</small></span><span class="track" style="--a:3;--b:16"><span class="rng"></span><em class="in">3~16%p</em></span></div>
@@ -720,7 +729,7 @@ print(response.choices[0].message.content)</code></pre>
 
   <section class="ps-sec">
     <div class="ps-wrap">
-      <div class="ps-split rev">
+      <div class="ps-split ps-stack">
         <div>
           <h2>예시 순서만 바꿔도 답이 쏠립니다</h2>
           <p>Zhao 외(2021)는 같은 예시 4개를 순서만 바꿔 넣었습니다. 작은 GPT-3(2.7B)의 정확도가 <b>54.3%에서 93.4%</b>까지 오갔습니다. 찍는 수준과 거의 최고 수준이 순서 하나로 갈렸습니다.</p>
@@ -755,7 +764,7 @@ print(response.choices[0].message.content)</code></pre>
           <p>두 번째는 예시를 <b>지난 대화처럼</b> 넣는 방법입니다. user 메시지에 예시 리뷰를, assistant 메시지에 정답을 직접 써 넣습니다. 모델은 자기가 앞서 그렇게 답했다고 읽고 같은 모양으로 이어 갑니다.</p>
         </div>
       </div>
-      <div class="ps-fig" data-figure style="margin-top:clamp(40px,6vw,56px)">
+      <div class="ps-fig wide" data-figure>
         <div class="ps-ways">
           <div class="ps-way">
             <h4>A. 지시 안에 태그로</h4>
@@ -787,7 +796,7 @@ print(response.choices[0].message.content)</code></pre>
         </div>
         <p class="ps-same">↑ 모델이 읽는 한 줄 글로 바꾸면 둘 다 "예시 세 개 다음에 새 리뷰"라는 같은 흐름입니다</p>
       </div>
-      <div class="ps-codepair rev">
+      <div class="ps-codepair">
         <div>
 <pre data-title="few_shot.py" data-hl="4,11,23,38"><code class="language-python"># ... client, TASK, REVIEW 는 first_call.py 와 같다
 
@@ -909,8 +918,8 @@ print(response.output_text)</code></pre>
 
   <section class="ps-sec">
     <div class="ps-wrap">
-      <h2 class="ps-pull" style="margin-bottom:.6em !important">예시는 모델을 가르치는 게 아니라 이어 쓸 글의 모양을 보여 줍니다</h2>
-      <p class="ps-pull" style="font-size:clamp(17px,1.8vw,19px) !important;color:var(--fg-neutral)">가중치는 그대로이고 다음 요청에는 남지 않습니다. 그래서 프롬프트를 고칠 때는 아래 순서로 점검합니다.</p>
+      <h2>예시는 모델을 가르치는 게 아니라 이어 쓸 글의 모양을 보여 줍니다</h2>
+      <p class="ps-col">가중치는 그대로이고 다음 요청에는 남지 않습니다. 그래서 프롬프트를 고칠 때는 아래 순서로 점검합니다.</p>
       <ol class="ps-check">
         <li><span>developer 메시지에 할 일과 답의 모양(한 단어, 목록, JSON 등)을 적었는가</span></li>
         <li><span>제로샷으로 먼저 돌려 보고 <code>finish_reason</code>과 <code>usage</code>까지 확인했는가</span></li>
