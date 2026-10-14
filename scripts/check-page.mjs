@@ -11,10 +11,10 @@
 //   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하. 그림이나 h2 를 만나면 끊는다
 //     (접힌 <details> 안은 세지 않는다)
 //   · SVG 그림 속 글자는 화면에서 10~28px(글자 상자 높이). 데스크톱에서 너무 크면 max-width, 모바일에서 너무 작으면 글자를 키운다
-//   · 읽기 축 하나(POSTING 5-2): 읽는 글(그림·접힌 상자 밖의 h1·h2·p·li·summary)과 그림이 모두 같은 왼쪽 시작선에서
-//     출발하고, 글 폭은 LIMITS.textMax 이하. 스크롤리텔링의 고정 그림([data-sticky-figure] 안)과 화면 끝까지 닿는 띠는 제외
+//   · 혼자 떨어진 좁은 글 열·그림이 한쪽으로 24px 넘게 쏠리지 않는다(옆에 다른 블록이 있는 2단은 제외)
+//   · 배치 다양성: 가운데 한 열 섹션(나란히 놓인 블록도, 화면 끝까지 닿는 색 띠도 없는 h2 섹션)이 절반을 넘지 않는다(POSTING 5-2)
 import { chromium } from "playwright";
-const LIMITS = { para: 220, run: 650, figShare: 0.5, textMax: 720, svgTextMax: 28, svgTextMin: 10 };
+const LIMITS = { para: 220, run: 650, figShare: 0.5, singleMax: 0.5, svgTextMax: 28, svgTextMin: 10 };
 function rhythm(L) {
   const root = document.querySelector(".post-page");
   const ko = (t) => (t.match(/[가-힣]/g) || []).length;
@@ -35,31 +35,64 @@ function rhythm(L) {
   const second = secs[1];
   const early = all.some((e) => !second || second.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_PRECEDING);
   if (!early) problems.push("첫 화면(첫 섹션까지)에 그림이 없다");
-  // 읽기 축 — 글은 고정된 글 열 하나로 흐르고 그림도 같은 시작선에서 출발한다(2026-10-14 사용자 지시).
-  // 시작선은 h1 의 왼쪽이다. 4px 넘게 벗어나거나 글 폭이 textMax 를 넘으면 잡는다.
-  const vw = window.innerWidth;
-  const h1 = root.querySelector("h1");
-  const axisL = h1 ? h1.getBoundingClientRect().left : root.getBoundingClientRect().left;
-  const skip = (e) => e.closest("[data-figure], [data-sticky-figure], svg, pre, .pg-code, button, nav, table") || hidden(e);
-  const reads = [...root.querySelectorAll("h1, h2, p, li, summary")].filter((e) => !skip(e) && !e.parentElement.closest("p, li") && e.getBoundingClientRect().height > 0);
-  const off = [];
-  for (const e of reads) {
-    const r = e.getBoundingClientRect();
-    if (Math.abs(r.left - axisL) > 4 && !e.closest("ol, ul")?.parentElement?.closest("li")) {
-      const li = e.closest("ol, ul");
-      const lr = li ? li.getBoundingClientRect().left : r.left;
-      if (Math.abs(lr - axisL) > 4) off.push(`글이 시작선(${Math.round(axisL)}px)에서 벗어남(${Math.round(lr)}px): "${e.textContent.trim().slice(0, 18)}"`);
+  // 한쪽 쏠림 — 혼자 떨어진 좁은 글 열(h2 가 든 블록)이나 그림이 넓은 틀 한쪽에 붙어 반대편이 비면 잡는다.
+  // 옆에 다른 내용이 나란히 있는 2단 배치(글 | 그림, 제목 | 글, 코드 | 해설)는 쏠린 게 아니다.
+  const axis = root.getBoundingClientRect();
+  const besideSomething = (e, stop) => {
+    for (let a = e; a && a !== stop; a = a.parentElement) {
+      const ar = a.getBoundingClientRect();
+      const hit = [...(a.parentElement?.children || [])].some((sib) => {
+        if (sib === a || sib.matches("script, style")) return false;
+        const q = sib.getBoundingClientRect();
+        return q.width > 40 && q.height > 0 && q.top < ar.bottom && q.bottom > ar.top && (q.left >= ar.right - 4 || q.right <= ar.left + 4);
+      });
+      if (hit) return true;
     }
-    if (r.width > L.textMax + 1) off.push(`글 폭 ${Math.round(r.width)}px > ${L.textMax}: "${e.textContent.trim().slice(0, 18)}"`);
-  }
-  for (const e of all) {
-    if (e.closest("[data-sticky-figure]")) continue;
+    return false;
+  };
+  const offAxis = (e) => {
     const r = e.getBoundingClientRect();
-    if (r.width >= vw - 20) continue;
-    if (Math.abs(r.left - axisL) > 4) off.push(`그림이 시작선(${Math.round(axisL)}px)에서 벗어남(${Math.round(r.left)}px): "${(e.closest("section")?.querySelector("h2")?.textContent || "히어로").trim().slice(0, 18)}"`);
+    if (r.width >= axis.width - 48) return null;
+    const gapL = r.left - axis.left, gapR = axis.right - r.right;
+    return Math.abs(gapL - gapR) > 24 ? [Math.round(gapL), Math.round(gapR)] : null;
+  };
+  for (const s of secs) {
+    const name = s.querySelector("h2").textContent.trim().slice(0, 20);
+    const h2 = s.querySelector("h2");
+    const g = !besideSomething(h2, root) && offAxis(h2);
+    if (g) problems.push(`글 열이 한쪽으로 쏠림(왼쪽 ${g[0]} · 오른쪽 ${g[1]}px): "${name}" 섹션`);
+    for (const e of figsIn(s)) {
+      const gg = !besideSomething(e, root) && offAxis(e);
+      if (gg) problems.push(`그림이 한쪽으로 쏠림(왼쪽 ${gg[0]} · 오른쪽 ${gg[1]}px): "${name}" 섹션`);
+    }
   }
-  problems.push(...[...new Set(off)].slice(0, 12));
-  if (off.length > 12) problems.push(`…시작선 위반 ${off.length - 12}건 더`);
+  // 배치 다양성 — 가운데 한 열 섹션이 절반을 넘으면 마크다운 글과 다를 게 없다(2026-10-14 사용자 지시)
+  const vw = window.innerWidth;
+  const INLINE = new Set(["SCRIPT", "STYLE", "SPAN", "B", "CODE", "I", "EM", "A", "BR", "SMALL", "STRONG", "LABEL", "BUTTON"]);
+  const sideBySide = (sec) => {
+    const els = [...sec.querySelectorAll("*")]
+      .filter((e) => !INLINE.has(e.tagName) && !e.closest("svg") && !hidden(e))
+      .map((e) => [e, e.getBoundingClientRect()])
+      .filter(([, r]) => r.width >= 180 && r.height >= 30);
+    for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+      const [a, ra] = els[i], [c, rc] = els[j];
+      if (a.contains(c) || c.contains(a)) continue;
+      const overlapY = Math.min(ra.bottom, rc.bottom) - Math.max(ra.top, rc.top);
+      if (overlapY >= 24 && (ra.right <= rc.left + 4 || rc.right <= ra.left + 4)) return true;
+    }
+    return false;
+  };
+  const band = (sec) => [...sec.querySelectorAll("*")].some((e) => {
+    if (e.closest("svg")) return false;
+    const r = e.getBoundingClientRect();
+    if (r.width < vw - 20 || r.height < 120) return false;
+    const bg = getComputedStyle(e).backgroundColor;
+    return bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent";
+  });
+  // 섹션 바깥에 붙어 다니는 조작판(옆 sticky 패널)도 나란히 놓인 것으로 본다
+  const single = secs.filter((s) => !sideBySide(s) && !band(s) && !besideSomething(s, root));
+  if (secs.length && single.length / secs.length > L.singleMax)
+    problems.push(`가운데 한 열 섹션이 ${single.length}/${secs.length} — 절반 이하여야 한다(글|그림·제목|글·코드|해설·전폭 띠 등으로 바꾼다): ${single.map((s) => '"' + s.querySelector("h2").textContent.trim().slice(0, 14) + '"').join(", ")}`);
   // SVG 그림 속 글자는 화면에서 본문과 비슷한 크기여야 한다. viewBox 그림이 넓은 칸에서 늘어나면 글자도 같이 커진다
   for (const svg of all.filter((e) => e.tagName === "svg")) {
     const sizes = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect().height).filter((h) => h > 0);
@@ -85,7 +118,7 @@ function rhythm(L) {
     if (run > maxRun) maxRun = run;
     if (run > L.run && run - c <= L.run) problems.push(`그림 없이 ${L.run}자를 넘는 글 구간: "${runStart}…" 부터`);
   }
-  return { sections: secs.length, withFig, offAxis: off.length, figures: all.length, maxPara, maxRun, problems };
+  return { sections: secs.length, withFig, single: single.length, figures: all.length, maxPara, maxRun, problems };
 }
 const [slug, out] = process.argv.slice(2);
 const dark = process.argv.includes("--dark");
@@ -110,7 +143,7 @@ for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 8
   const ov = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (name === "desk" && !dark) {
     const r = await p.evaluate(rhythm, LIMITS);
-    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}, 시작선 위반 ${r.offAxis}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
+    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}, 가운데 한 열 ${r.single}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
     if (r.problems.length) { bad = true; r.problems.forEach((x) => console.log("  ✗ " + x)); }
   }
   if (name === "mob" && !dark) {
