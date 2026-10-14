@@ -1,0 +1,1090 @@
+---
+title: 코딩 에이전트가 "다 고쳤습니다"라고 말하기까지
+slug: ai-native-dev-loop-explore-plan-verify
+excerpt: 코딩 에이전트는 파일을 찾아 읽은 뒤 계획을 세우고 고치고 확인하는 고리를 여러 번 돕니다. 모델은 일이 끝난 것처럼 보이면 멈추기 때문에 테스트 같은 확인 수단이 없으면 버그가 남은 채로 "다 고쳤습니다"라고 답할 수 있습니다. 로그인 버그 하나로 이 루프를 돌려 보고 사람이 앞뒤에 붙이는 단계, 테스트를 고쳐서 통과시키는 보상 해킹, OpenAI의 하네스 엔지니어링 사례까지 정리했습니다.
+tags: [에이전트 루프, 하네스 엔지니어링, Claude Code, Codex, 테스트, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 2
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-native-dev-loop-explore-plan-verify-mv8r4968.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열, 아래 고리 | 터미널·로그인 화면 2단 + 확인 수단 토글·▶) → 그림 고정 스크롤리텔링(모델·하네스·컴퓨터 세 줄 주고받기) → 글|그림(작업 세 개의 걸음 띠) → 실험판 전폭 띠(사람 단계 시간선 + 큰 일/작은 일 토글) → 글|그림(같은 코드에서 검사 넷이 잡는 줄) → 글 + 넓은 그림(멈춤 문 네 개) → 글 + 넓은 가져온 그림(ImpossibleBench is_prime) → 실험판 전폭 띠(테스트 열어 둠·읽기 전용·숨김 막대) → 글|그림(안 고리 + 바깥 고리) → 글|가져온 그림(Codex Chrome DevTools 루프) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음 | 글의 성격: 요청 하나가 고리를 몇 번 도는지, 무엇이 고리를 끝내는지를 따라가는 이야기. 정거장 색(탐색 파랑·계획 보라·고치기 청록)과 확인 결과(초록 통과·빨강 실패), 사람이 맡는 칸은 시리즈 첫 글과 같은 주황이 글 끝까지 같은 뜻 | 버린 후보: 벤토 히어로(숫자 하나가 주인공이 아님), 가로 스크롤 띠(되돌아가는 고리를 일렬로 펴면 반복이 안 보임), 두 레인 히어로(1편과 겹침) -->
+<style>
+.post-page .lp {
+  --ex: rgb(52, 104, 210); --ex-soft: rgb(224, 233, 252);
+  --pl: rgb(126, 84, 204); --pl-soft: rgb(238, 230, 252);
+  --ed: rgb(10, 136, 140); --ed-soft: rgb(208, 238, 236);
+  --ck: rgb(104, 112, 126); --ck-soft: rgb(232, 234, 238);
+  --ok: rgb(28, 138, 70); --ok-soft: rgb(214, 240, 222);
+  --bad: rgb(208, 46, 46); --bad-soft: rgb(252, 224, 222);
+  --me: rgb(222, 106, 28); --me-soft: rgb(253, 233, 214);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .lp {
+  --ex: rgb(124, 166, 255); --ex-soft: rgb(30, 46, 84);
+  --pl: rgb(182, 152, 255); --pl-soft: rgb(50, 36, 84);
+  --ed: rgb(70, 206, 200); --ed-soft: rgb(18, 62, 62);
+  --ck: rgb(160, 166, 180); --ck-soft: rgb(44, 48, 56);
+  --ok: rgb(98, 214, 132); --ok-soft: rgb(22, 62, 36);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(84, 30, 30);
+  --me: rgb(255, 156, 84); --me-soft: rgb(84, 50, 24);
+}
+.post-page .lp * { box-sizing: border-box; }
+.post-page .lp-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .lp h1, .post-page .lp h2, .post-page .lp h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .lp h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; max-width: 15em; margin-bottom: 28px; }
+.post-page .lp h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .lp h3 { font-size: 18px; line-height: 1.45; margin-bottom: 12px; }
+.post-page .lp p, .post-page .lp li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .lp p { margin: 0 0 1.5em; }
+.post-page .lp b { color: var(--fg-strong); }
+.post-page .lp code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs, 4px); }
+.post-page .lp a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .lp .lp-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .lp details { margin: 0 0 1.4em; }
+.post-page .lp summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .lp details p { margin-top: 10px; font-size: 16px; }
+.post-page .lp svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .lp svg text:not([font-family]) { font-family: var(--font-sans); }
+.post-page .lp svg text:not([fill]) { fill: var(--fg-strong); }
+.post-page .lp svg .dim { fill: var(--fg-neutral); }
+
+/* 배치 */
+.post-page .lp-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .lp-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .lp-col { max-width: 40em; }
+.post-page .lp-fig { margin: 0; }
+.post-page .lp-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .lp-after { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .lp-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(40px, 6vw, 60px); }
+.post-page .lp-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); background: #fff; }
+[data-theme="dark"] .post-page .lp-img img { filter: brightness(.75); border-color: var(--line-normal, var(--line-subtle)); }
+
+/* 조작 부품: 토글 하나, 실행 버튼 하나 */
+.post-page .lp-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .lp-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .lp-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.08)); }
+.post-page .lp-run { font: inherit; font-size: 15px; font-weight: 600; color: var(--fg-strong); background: var(--bg-base); border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 999px; padding: 8px 18px; cursor: pointer; white-space: nowrap; }
+.post-page .lp-run:hover { border-color: var(--fg-neutral); }
+.post-page .lp-run:disabled { opacity: .5; cursor: default; }
+.post-page .lp-control { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 0 0 22px; }
+
+/* 히어로 */
+.post-page .lp-hero { padding-top: clamp(40px, 5vw, 56px); }
+.post-page .lp-hero h1 { margin-bottom: 20px; }
+.post-page .lp-lead p:last-child { margin-bottom: 0; }
+.post-page .lp-lead { max-width: 46em; }
+.post-page .lp-stage { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: clamp(32px, 4vw, 64px); align-items: start; margin-top: clamp(24px, 3vw, 32px); }
+.post-page .lp-ring { max-width: 320px; }
+.post-page .lp-ring svg { max-width: 296px; margin: 0 auto; }
+.post-page .lp-ring .lp-control { flex-wrap: nowrap; gap: 10px; }
+.post-page .lp-ring .lp-tog button { font-size: 14px; padding: 6px 11px; }
+.post-page .lp-ring .lp-run { font-size: 14px; padding: 7px 13px; }
+.post-page .lp-badge { display: none; }
+.post-page .lp-ring .st circle { transition: fill .45s, stroke .45s, stroke-width .3s; }
+.post-page .lp-ring .st text { transition: fill .45s; }
+.post-page .lp-ring .dot { transition: transform .7s cubic-bezier(.2,.7,.2,1); transform-box: view-box; transform-origin: 220px 220px; }
+.post-page .lp-tally { font-size: 15px; color: var(--fg-neutral); margin: 8px 0 0; text-align: center; }
+.post-page .lp-tally b { font-family: var(--font-mono); color: var(--fg-strong); font-weight: 600; }
+.post-page .lp-term { background: var(--bg-subtle); color: var(--fg-normal); border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); padding: 14px 16px 10px; font-family: var(--font-mono); font-size: 13px; line-height: 1.55; }
+.post-page .lp-term .head { font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); margin: 0 0 10px; }
+.post-page .lp-term ol { list-style: none; margin: 0; padding: 0; }
+.post-page .lp-term li { font-family: var(--font-mono); font-size: 13px; line-height: 1.55; display: grid; grid-template-rows: 1fr; transition: grid-template-rows .5s cubic-bezier(.2,.7,.2,1), opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .lp-term li > div { overflow: hidden; padding: 2px 0 5px; }
+.post-page .lp-term li.off { grid-template-rows: 0fr; opacity: 0; }
+.post-page .lp-term .k { display: inline-block; min-width: 3.2em; font-size: 12px; font-weight: 600; font-family: var(--font-sans); border-radius: 4px; padding: 0 5px; margin-right: 8px; text-align: center; }
+.post-page .lp-term .k.ex { background: var(--ex-soft); color: var(--ex); }
+.post-page .lp-term .k.pl { background: var(--pl-soft); color: var(--pl); }
+.post-page .lp-term .k.ed { background: var(--ed-soft); color: var(--ed); }
+.post-page .lp-term .k.ck { background: var(--ck-soft); color: var(--fg-strong); }
+.post-page .lp-term .o { color: var(--fg-neutral); display: block; padding-left: 4.4em; }
+.post-page .lp-term .o.f { color: var(--bad); }
+.post-page .lp-term .o.p { color: var(--ok); }
+.post-page .lp-term .say { font-family: var(--font-sans); color: var(--fg-strong); font-weight: 600; }
+.post-page .lp-term [hidden] { display: none; }
+.post-page .lp-screen { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 18px; align-items: center; margin: 0 0 18px; min-height: 104px; }
+.post-page .lp-mock { width: 150px; border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 10px; padding: 12px; background: var(--bg-base); }
+.post-page .lp-mock i { display: block; height: 14px; border-radius: 4px; background: var(--bg-muted); margin-bottom: 8px; }
+.post-page .lp-mock span { display: block; text-align: center; font-size: 13px; font-weight: 600; border-radius: 6px; padding: 5px 0; background: var(--ck-soft); color: var(--fg-neutral); transition: background .45s, color .45s; }
+.post-page .lp-mock[data-s="bad"] span { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+.post-page .lp-mock[data-s="ok"] span { background: var(--ok-soft); color: var(--ok); }
+.post-page .lp-verdict { font-size: 15px; line-height: 1.65; color: var(--fg-strong); margin: 0; }
+.post-page .lp-verdict b.bad { color: var(--bad); }
+.post-page .lp-verdict b.ok { color: var(--ok); }
+
+/* 스크롤리텔링 */
+.post-page .lp-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); margin-top: clamp(24px, 3vw, 40px); }
+.post-page .lp-steps { padding: 4vh 0 26vh; }
+.post-page .lp-step { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .lp-step.on { opacity: 1; }
+.post-page .lp-step:first-child { min-height: 46vh; justify-content: flex-start; }
+.post-page .lp-stick { position: sticky; top: 110px; align-self: start; }
+.post-page .lp-ladder { max-width: 580px; }
+.post-page .lp-ladder .msg { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .lp-ladder .msg.off { opacity: .12; }
+.post-page .lp-ladder .msg.past { opacity: .45; }
+
+/* 사람 단계 띠 */
+.post-page .lp-flow { max-width: 1060px; margin: 22px auto 0; }
+.post-page .lp-flow .blk { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .lp-flow .blk.skip { opacity: .16; }
+.post-page .lp-flow .note { transition: opacity .6s; }
+.post-page .lp-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; }
+.post-page .lp-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+
+/* 검사 넷 */
+.post-page .lp-tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; border-bottom: 1px solid var(--line-subtle); margin-bottom: 16px; }
+.post-page .lp-tabs button { font: inherit; font-size: 15px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 6px 2px 9px; color: var(--fg-neutral); cursor: pointer; white-space: nowrap; }
+.post-page .lp-tabs button[aria-selected="true"] { color: var(--fg-strong); font-weight: 700; border-bottom-color: var(--fg-strong); }
+.post-page .lp-code { background: var(--code-bg, #1e2127); border-radius: var(--radius-md, 12px); padding: 12px 0; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.5; color: var(--code-fg, #d7dae0); overflow-x: auto; }
+.post-page .lp-code div { white-space: pre; padding: 3px 14px 3px 10px; border-left: 0; transition: background .4s; }
+.post-page .lp-code div em { font-style: normal; display: inline-block; width: 1.8em; color: rgb(140, 148, 162); }
+.post-page .lp-code div.hit { background: rgba(255, 96, 86, .26); }
+.post-page .lp-code div.hit::after { content: "  ✗"; color: rgb(255, 128, 118); }
+.post-page .lp-chk { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+.post-page .lp-chk .lp-mock { position: relative; overflow: hidden; transition: box-shadow .4s; }
+.post-page .lp-chk .lp-mock .ban { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: rgb(40, 44, 52); color: #fff; font-size: 11.5px; padding: 4px 8px; line-height: 1.35; }
+.post-page .lp-chk .lp-mock.hit { box-shadow: 0 0 0 3px var(--bad); }
+.post-page .lp-chk .lp-mock span { background: var(--bg-muted); color: var(--fg-strong); }
+.post-page .lp-out { font-family: var(--font-mono); font-size: 13px; line-height: 1.55; color: var(--bad); margin: 0 0 8px; word-break: break-all; }
+.post-page .lp-miss { font-size: 15px; line-height: 1.65; color: var(--fg-neutral); margin: 0; }
+
+/* 막대 실험판 */
+.post-page .lp-bench { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .lp-bench .bar { transition: width .6s cubic-bezier(.2,.7,.2,1), opacity .5s; }
+.post-page .lp-bench .val { transition: opacity .4s; }
+.post-page .lp-read { font-size: 16px; color: var(--fg-strong); line-height: 1.7; margin: 18px 0 0; }
+
+.post-page .lp-refs ul { padding-left: 1.1em; }
+.post-page .lp-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .lp-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+@media (max-width: 860px) {
+  .post-page .lp-wrap { padding: 0 20px; }
+  .post-page .lp-two, .post-page .lp-story, .post-page .lp-stage, .post-page .lp-bench, .post-page .lp-refhead { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lp-ring { max-width: 340px; margin: 0 auto; }
+  .post-page .lp-ring svg { max-width: 340px; }
+  .post-page .lp-stick { top: 64px; z-index: 2; background: var(--bg-base); padding: 6px 0 8px; order: -1; }
+  .post-page .lp-step { min-height: 42vh; }
+  .post-page .lp-step:first-child { min-height: 30vh; }
+  .post-page .lp-steps { padding: 2vh 0 8vh; }
+  .post-page .lp-tog button { font-size: 14px; padding: 7px 12px; }
+  .post-page .lp-chk { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lp-screen .lp-mock { width: 110px; }
+  .post-page .lp-badge { display: block; font-size: 15px; line-height: 1.6; margin: 0 0 8px; color: var(--fg-strong); }
+  .post-page .lp-badge b.bad { color: var(--bad); }
+  .post-page .lp-badge b.ok { color: var(--ok); }
+  .post-page .lp-code { font-size: 12.5px; }
+  .post-page .lp-code div { white-space: pre-wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .lp * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="lp">
+
+<section class="lp-hero">
+  <div class="lp-wrap">
+    <div class="lp-lead">
+      <h1>코딩 에이전트가 "다 고쳤습니다"라고 말하기까지</h1>
+      <p>"로그인 버튼이 안 눌려요." 코딩 에이전트(coding agent)에게 이 한 줄을 보내면 화면에 파일 검색, 파일 읽기, 코드 수정, 명령 실행이 줄줄이 지나갑니다. 에이전트가 이렇게 도구를 한 번 쓰는 일을 도구 호출(tool call)이라고 합니다. 얼마 뒤 "다 고쳤습니다"라는 답이 옵니다. 정말 고쳐졌을까요?</p>
+      <p>에이전트는 일이 끝난 것처럼 보이면 멈춥니다. 테스트(test, 코드가 맞게 동작하는지 자동으로 확인하는 검사)가 없으면 "그럴듯해 보인다"가 유일한 신호라서 버그가 남아 있어도 멈출 수 있습니다. 확인 수단을 바꿔 가며 같은 요청을 돌려 보세요.</p>
+    </div>
+    <div class="lp-stage" data-hero data-thumb>
+      <figure class="lp-fig lp-ring" data-figure>
+        <div class="lp-control">
+          <div class="lp-tog" role="group" aria-label="에이전트에게 준 확인 수단 고르기" data-mode>
+            <button type="button" data-v="none" aria-pressed="true">확인 수단 없음</button>
+            <button type="button" data-v="test" aria-pressed="false">테스트 있음</button>
+          </div>
+          <button type="button" class="lp-run" data-run>▶ 실행</button>
+        </div>
+        <p class="lp-badge" aria-hidden="true" data-badge>결과: 직접 눌러 보면 <b class="bad">여전히 안 눌림 ✗</b></p>
+        <svg viewBox="0 0 440 440" role="img" aria-label="탐색, 계획, 고치기, 확인 네 정거장을 도는 고리. 점이 에이전트의 현재 단계를 가리킨다" data-ringsvg></svg>
+        <p class="lp-tally" aria-live="polite" data-tally>바퀴 <b>1</b> · 도구 호출 <b>4</b>번</p>
+      </figure>
+      <div>
+        <div class="lp-screen">
+          <div class="lp-mock" data-mock data-s="bad" aria-hidden="true"><i></i><i></i><span>로그인</span></div>
+          <p class="lp-verdict" aria-live="polite" data-verdict>사람이 직접 눌러 보면 <b class="bad">여전히 안 눌립니다.</b> 진짜 원인은 다른 파일에 있었는데 에이전트는 코드를 다시 읽어 보고 "맞아 보인다"에서 멈췄습니다.</p>
+        </div>
+        <div class="lp-term" aria-live="polite">
+          <p class="head">요청: 로그인 버튼이 안 눌려요</p>
+          <ol data-log="none">
+            <li data-st="0"><div><span class="k ex">탐색</span>grep -rn "login" src/<span class="o">LoginButton.tsx · LoginForm.tsx · auth.ts</span></div></li>
+            <li data-st="0"><div><span class="k ex">탐색</span>read src/auth.ts<span class="o">handleLogin 안에 빈 칸 검사가 있음</span></div></li>
+            <li data-st="1"><div><span class="k pl">계획</span>빈 칸 검사 조건이 거꾸로다. 이 줄을 고친다</div></li>
+            <li data-st="2"><div><span class="k ed">고치기</span>edit src/auth.ts<span class="o">1줄 바꿈</span></div></li>
+            <li data-st="3"><div><span class="k ck">확인</span>read src/auth.ts<span class="o">조건이 맞아 보임</span></div></li>
+            <li data-end><div><span class="say">에이전트: 다 고쳤습니다. 빈 칸 검사 조건을 바로잡았습니다.</span></div></li>
+          </ol>
+          <ol data-log="test" hidden>
+            <li data-st="0"><div><span class="k ex">탐색</span>grep -rn "login" src/<span class="o">LoginButton.tsx · LoginForm.tsx · auth.ts</span></div></li>
+            <li data-st="0"><div><span class="k ex">탐색</span>read src/auth.ts<span class="o">handleLogin 안에 빈 칸 검사가 있음</span></div></li>
+            <li data-st="1"><div><span class="k pl">계획</span>빈 칸 검사 조건이 거꾸로다. 이 줄을 고친다</div></li>
+            <li data-st="2"><div><span class="k ed">고치기</span>edit src/auth.ts<span class="o">1줄 바꿈</span></div></li>
+            <li data-st="3" data-fail><div><span class="k ck">확인</span>npm test<span class="o f">✗ 1개 실패: 버튼을 눌러도 클릭이 전달되지 않음</span></div></li>
+            <li data-st="0"><div><span class="k ex">탐색</span>read src/LoginForm.tsx<span class="o">disabled={!isValid}, isValid 가 늘 false</span></div></li>
+            <li data-st="1"><div><span class="k pl">계획</span>isValid 계산식을 고친다</div></li>
+            <li data-st="2"><div><span class="k ed">고치기</span>edit src/LoginForm.tsx<span class="o">1줄 바꿈</span></div></li>
+            <li data-st="3" data-pass><div><span class="k ck">확인</span>npm test<span class="o p">✓ 테스트 12개 모두 통과</span></div></li>
+            <li data-end><div><span class="say">에이전트: 다 고쳤습니다. 테스트 12개가 통과했습니다.</span></div></li>
+          </ol>
+        </div>
+        <p class="lp-cap">터미널 한 줄이 에이전트의 한 걸음입니다. 파일 이름과 출력은 설명을 위해 꾸민 예시입니다. 계획 줄은 도구를 쓰지 않고 모델이 글로 정리한 것이라 도구 호출로 세지 않았습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap">
+    <h2>에이전트 루프는 도구를 부르고 결과를 읽는 반복입니다</h2>
+    <div class="lp-col">
+      <p>첫 화면에서 본 탐색·계획·고치기·확인의 고리를 에이전트 루프(agent loop)라고 부릅니다.</p>
+      <p>고리를 실제로 돌리는 부품은 두 가지입니다. 하나는 글을 읽고 다음에 할 일을 글로 적는 모델(model)입니다. 다른 하나는 모델 둘레에서 도구를 실제로 실행해 주는 프로그램입니다. Claude Code 문서는 이 둘레 프로그램을 에이전트 하네스(agentic harness)라고 부릅니다.</p>
+      <p>하네스는 원래 말에 채우는 마구를 뜻합니다. 말의 힘을 원하는 방향으로 쓰게 해 주는 장비입니다. 마구는 방향만 잡아 주는데 에이전트 하네스는 모델에게 도구를 주고 실행 결과까지 돌려줍니다.</p>
+    </div>
+    <div class="lp-story" data-story>
+      <div class="lp-steps">
+        <div class="lp-step on" data-step="0">
+          <h3>요청과 도구 목록이 함께 갑니다</h3>
+          <p>사람이 보낸 요청을 하네스가 모델에게 넘깁니다. 이때 "파일 검색, 파일 읽기, 파일 수정, 명령 실행을 쓸 수 있다"는 도구 목록도 같이 보냅니다.</p>
+        </div>
+        <div class="lp-step" data-step="1">
+          <h3>모델은 실행하지 않고 적기만 합니다</h3>
+          <p>모델은 글을 쓰는 프로그램이라 파일을 직접 열지 못합니다. 대신 <code>grep</code>(파일 안에서 글자를 찾는 명령)을 실행해 달라는 요청을 정해진 형식의 글로 적습니다. 그림의 점선 화살표가 이 글입니다.</p>
+        </div>
+        <div class="lp-step" data-step="2">
+          <h3>하네스가 실행하고 결과를 돌려줍니다</h3>
+          <p>하네스가 그 명령을 내 컴퓨터에서 실제로 실행합니다. 나온 결과(파일 3개)는 지금까지의 대화 끝에 붙여 모델에게 다시 보냅니다.</p>
+        </div>
+        <div class="lp-step" data-step="3">
+          <h3>결과를 읽고 다음 도구를 고릅니다</h3>
+          <p>모델은 결과를 읽고 다음에 쓸 도구를 고릅니다. 파일을 읽고 고치고 테스트를 돌립니다. 첫 화면의 테스트 있는 실행에서는 이 왕복이 일곱 번 있었습니다.</p>
+        </div>
+        <div class="lp-step" data-step="4">
+          <h3>도구 없이 답하면 루프가 끝납니다</h3>
+          <p>모델이 도구를 부르지 않고 글로만 답하면 하네스는 루프를 끝내고 그 답을 사람에게 보여 줍니다. "다 고쳤습니다"는 모델이 더 할 일이 없다고 판단했다는 뜻입니다. 정말 고쳐졌다는 보증은 아닙니다.</p>
+        </div>
+      </div>
+      <figure class="lp-fig lp-stick lp-ladder" data-figure data-stick>
+        <svg viewBox="0 0 580 640" role="img" aria-label="모델, 하네스, 내 컴퓨터 세 줄 사이를 오가는 화살표. 모델이 도구 호출을 글로 적으면 하네스가 실행하고 결과를 모델에게 돌려준다" data-laddersvg></svg>
+        <p class="lp-cap" style="margin-top:4px">점선은 모델이 쓴 글, 실선은 실제 실행과 그 결과입니다.</p>
+      </figure>
+    </div>
+    <div class="lp-col">
+      <p>도구 목록을 보내고 모델이 고른 도구를 실행해 결과를 돌려주는 코드는 <a href="/posts/ai-agent-vs-chatbot">챗봇과 AI Agent의 차이를 다룬 글</a>에서 Python으로 직접 볼 수 있습니다. 이 글은 그 반복이 코딩 일에서 어떤 순서로 도는지를 봅니다.</p>
+      <p>Claude Code 문서는 같은 반복을 컨텍스트 수집(gather context), 행동(take action), 결과 확인(verify results) 세 단계로 설명합니다. 컨텍스트(context)는 모델이 지금 보는 대화와 파일 내용 전체를 말합니다.</p>
+      <p>이 글의 탐색이 컨텍스트 수집, 고치기가 행동입니다. 계획은 행동하기 전에 모델이 고칠 방법을 글로 정리하는 칸이라 따로 떼었습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap lp-two">
+    <div class="lp-col">
+      <h2>네 칸을 몇 번 도는지는 일마다 다릅니다</h2>
+      <p>에이전트가 네 칸을 꼭 한 번씩 순서대로 도는 건 아닙니다. Claude Code 문서는 루프가 요청에 맞춰 달라진다고 적었습니다. 코드에 대한 질문은 탐색만으로 끝나기도 합니다. 버그 수정은 네 칸을 여러 번 돌고 리팩터링(refactoring, 동작은 그대로 두고 코드 구조만 다듬는 일)은 확인을 많이 거칩니다.</p>
+      <p>과학 실험 시간을 떠올리면 비슷합니다. 관찰하고 가설을 세우고 실험한 뒤 결과가 예상과 다르면 다시 관찰합니다. 다만 실험 수업에서는 선생님이 정답을 알고 있습니다. 에이전트 곁에는 정답을 아는 사람이 없어서 결과를 견줄 확인 수단을 따로 줘야 합니다.</p>
+    </div>
+    <figure class="lp-fig" data-figure>
+      <svg viewBox="0 0 600 420" role="img" aria-label="과학 실험의 관찰·가설·실험·결과 비교가 탐색·계획·고치기·확인에 대응한다. 질문 하나는 탐색 네 걸음, 버그 수정은 아홉 걸음에 확인 실패 한 번, 리팩터링은 열세 걸음 중 확인이 다섯 번" data-stripsvg style="max-width:620px"></svg>
+      <figcaption class="lp-cap">칸 하나가 에이전트의 한 걸음입니다. 맨 위 줄은 과학 실험에 빗댄 것이고 그다음 세 줄은 설명을 위해 만든 예시 기록입니다. 확인 칸의 ✗ 는 실패, ✓ 는 통과입니다. 실제 에이전트는 한 작업에서 도구를 수십 번 부르기도 합니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap">
+    <h2>사람은 루프 앞뒤에 단계를 붙입니다</h2>
+    <div class="lp-col">
+      <p>Claude Code 모범 사례 문서는 일을 탐색, 계획, 구현, 커밋 네 단계로 나누라고 권합니다. 바로 코드부터 쓰게 하면 엉뚱한 문제를 푸는 코드가 나올 수 있어서입니다. 그 사이사이에 사람이 맡는 칸이 들어갑니다.</p>
+      <p>탐색과 계획은 <b>Plan mode</b>에서 합니다. 에이전트가 파일을 읽고 질문에 답하되 고치지는 못하게 막는 모드입니다. 계획이 나오면 사람이 읽고 고친 뒤 승인합니다.</p>
+    </div>
+  </div>
+  <div class="lp-band">
+    <div class="lp-wrap">
+      <div class="lp-control">
+        <div class="lp-tog" role="group" aria-label="맡길 일의 크기 고르기" data-size>
+          <button type="button" data-v="big" aria-pressed="true">큰 일: Google 로그인 추가</button>
+          <button type="button" data-v="small" aria-pressed="false">작은 일: 버튼 글자 오타</button>
+        </div>
+      </div>
+      <figure class="lp-fig lp-flow" data-figure>
+        <svg viewBox="0 0 1060 300" role="img" aria-label="요구 정리, 탐색, 계획, 계획 승인, 고치기와 확인 반복, 커밋과 PR, 리뷰와 합치기 순서. 주황은 사람, 나머지는 에이전트가 맡는다. 작은 일이면 탐색·계획·승인 칸을 건너뛴다" data-flowsvg></svg>
+        <div class="lp-legend"><span><i style="background:var(--me-soft);box-shadow:inset 0 0 0 2px var(--me)"></i>사람이 맡는 칸</span><span><i style="background:var(--ex-soft);box-shadow:inset 0 0 0 2px var(--ex)"></i>탐색</span><span><i style="background:var(--pl-soft);box-shadow:inset 0 0 0 2px var(--pl)"></i>계획</span><span><i style="background:var(--ed-soft);box-shadow:inset 0 0 0 2px var(--ed)"></i>고치기·커밋</span></div>
+        <figcaption class="lp-cap" data-flowcap>큰 일은 일곱 칸을 모두 지납니다. 사람은 처음에 원하는 것을 정리합니다. 중간에 계획을 승인하고 마지막에 결과를 읽고 합칠지 정합니다.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="lp-wrap lp-after">
+    <div class="lp-col">
+      <p>끝에서 에이전트는 바뀐 내용을 커밋(commit, 변경 내용을 기록으로 저장하는 일)하고 PR(Pull Request)을 올립니다. PR은 "이 변경을 프로젝트에 합쳐 주세요"라는 요청이고 사람이 읽고 승인해야 합쳐집니다.</p>
+      <p>계획이 늘 필요한 건 아닙니다. 문서는 오타 수정이나 변수 이름 바꾸기처럼 범위가 분명한 일은 바로 시키라고 합니다. 기준은 diff(바뀐 줄만 모아 보여 주는 변경 내역)를 한 문장으로 설명할 수 있느냐입니다. 그럴 수 있으면 계획을 건너뜁니다.</p>
+      <details><summary>같은 문제를 두 번 넘게 바로잡았는데도 안 될 때</summary><p>문서는 같은 문제로 두 번 넘게 고쳐 달라고 했는데도 틀리면 <code>/clear</code>로 대화를 비우라고 권합니다. 그다음 그동안 알게 된 점을 넣어 더 구체적인 요청으로 처음부터 시작합니다. 실패한 시도가 대화에 쌓이면 그 기록이 다음 판단을 흐리기 때문입니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap lp-two">
+    <div class="lp-col">
+      <h2>확인 수단이 있어야 루프가 끝납니다</h2>
+      <p>모델은 일이 끝난 것처럼 보이면 멈춥니다. 돌려 볼 검사가 없으면 "끝나 보인다"가 유일한 신호라서 실수는 사람 눈에 띌 때까지 남습니다. 통과나 실패를 돌려주는 검사가 있으면 에이전트가 직접 돌려 보고 통과할 때까지 고칩니다.</p>
+      <p>문제집 뒤 답지로 스스로 채점하는 것과 비슷합니다. 다만 검사는 정답 없이 틀렸다는 사실만 알려 줍니다.</p>
+      <p>타입체크(type check)는 코드를 실행하지 않고 값의 종류와 개수가 맞는지 따집니다. 린터(linter)는 "쓰지 않는 변수를 남기지 않는다" 같은 코드 규칙을 어긴 곳을 찾습니다. 화면 확인은 결과 화면을 찍어 디자인과 비교하는 일입니다. 검사마다 보는 곳이 달라서 하나로는 부족합니다.</p>
+    </div>
+    <figure class="lp-fig" data-figure data-checker>
+      <div class="lp-tabs" role="tablist" aria-label="검사 고르기">
+        <button type="button" role="tab" data-c="test" aria-selected="true">테스트</button>
+        <button type="button" role="tab" data-c="type" aria-selected="false">타입체크</button>
+        <button type="button" role="tab" data-c="lint" aria-selected="false">린터</button>
+        <button type="button" role="tab" data-c="ui" aria-selected="false">화면 확인</button>
+      </div>
+      <div class="lp-code" aria-label="실수 네 개를 심은 로그인 코드">
+        <div data-l="1"><em>1</em>function login(email: string, pw: string) {</div>
+        <div data-l="2"><em>2</em>  const ok = checkPassword(email)</div>
+        <div data-l="3"><em>3</em>  const tries = 0</div>
+        <div data-l="4" class="hit"><em>4</em>  if (ok) goTo("/hom")</div>
+        <div data-l="5"><em>5</em>  return ok</div>
+        <div data-l="6"><em>6</em>}</div>
+      </div>
+      <div class="lp-chk">
+        <div class="lp-mock" data-ui aria-hidden="true"><i></i><i></i><span>로그인</span><div class="ban">쿠키 안내 띠가<br>버튼을 가림</div></div>
+        <div>
+          <p class="lp-out" data-out>✗ 로그인 성공하면 /home 으로 이동<br>expected '/hom' to be '/home'</p>
+          <p class="lp-miss" data-miss>테스트는 정해 둔 동작만 실행해 봅니다. 4번 줄의 오타는 잡지만 3번 줄의 쓰지 않는 변수나 버튼을 가린 안내 띠는 보지 않습니다.</p>
+        </div>
+      </div>
+      <figcaption class="lp-cap">설명을 위해 실수 네 개를 일부러 심은 코드와 화면입니다. 출력 줄은 실제 도구가 내는 메시지 형식을 따랐습니다. 타입체크는 TypeScript(값의 종류를 적어 두는 JavaScript), 린터는 ESLint(JavaScript용 린터)입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap">
+    <h2>멈춤을 얼마나 단단히 걸지 고를 수 있습니다</h2>
+    <div class="lp-col">
+      <p>확인 수단이 생기면 다음은 그 검사를 통과해야만 멈추게 만드는 일입니다. Claude Code 문서는 네 가지 방법을 듭니다. 번호가 클수록 준비할 것이 늘지만 사람이 자리를 비워도 맞게 끝날 가능성이 커집니다.</p>
+      <p>프롬프트(prompt)는 에이전트에게 보내는 지시문입니다. 턴(turn)은 요청 하나를 받아 답을 내놓기까지의 한 차례입니다. <code>/goal</code>은 멈춰도 되는 조건을 적어 두는 Claude Code 명령이고 일하는 모델과 따로 있는 평가 모델이 턴마다 그 조건을 다시 확인합니다.</p>
+      <p>훅(hook)은 정해진 순간마다 자동으로 실행되는 스크립트입니다. 서브에이전트(subagent)는 따로 떼어 낸 대화에서 일하는 보조 에이전트라 방금 코드를 쓴 에이전트의 생각에 끌려가지 않습니다. 둘은 다른 글에서 자세히 다룹니다.</p>
+    </div>
+    <figure class="lp-fig lp-wide" data-figure>
+      <svg viewBox="0 0 1060 300" role="img" aria-label="고리 출구를 지키는 쪽 네 가지. 1 프롬프트에 적기는 일하는 모델이 스스로 판정, 2 goal 조건은 별도 평가자가 턴마다 재확인, 3 Stop 훅은 검사 스크립트가 통과 전에 종료를 막음, 4 검증 서브에이전트는 새 모델이 결과를 반박" data-gatesvg style="max-width:1060px;margin:0 auto"></svg>
+      <figcaption class="lp-cap">고리에서 나가는 화살표가 "다 했다"고 멈추는 출구이고 화살표 위 상자가 그 출구를 막는 쪽입니다. 1은 일하는 모델이 스스로 판단합니다. 2와 4는 다른 모델이, 3은 정해 둔 스크립트가 판단합니다. 출처: Claude Code Docs, Best practices.</figcaption>
+    </figure>
+    <div class="lp-col lp-after">
+      <p>어느 방법이든 마지막에 사람이 볼 것은 증거입니다. 문서는 "성공했다"는 말 대신 돌린 명령과 그 출력, 결과 화면 캡처를 보여 달라고 하라고 권합니다. 증거를 읽는 편이 검사를 직접 다시 돌리는 것보다 빠릅니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap">
+    <h2>테스트를 고쳐서 통과시키는 지름길</h2>
+    <div class="lp-col">
+      <p>테스트가 루프의 끝을 정하면 테스트를 건드리는 지름길도 생깁니다. 버그를 고치는 대신 실패하는 테스트를 지우거나 테스트가 기대하는 값만 그대로 돌려주는 코드를 쓰는 것입니다. 이렇게 점수를 매기는 장치의 빈틈을 파고드는 행동을 보상 해킹(reward hacking)이라고 합니다.</p>
+    </div>
+    <figure class="lp-fig lp-wide" data-figure>
+      <svg viewBox="0 0 1060 320" role="img" aria-label="같은 is_prime 요청에 테스트만 다르게 붙인 두 과제. 보통 과제는 7은 소수여야 한다는 테스트라 정직하게 풀면 통과한다. 불가능한 과제는 7은 소수가 아니어야 한다는 테스트라 통과했다면 꼼수를 쓴 것이다. 불가능한 과제를 통과한 비율 GPT-5 76%, Claude 3.7 Sonnet 70%, Claude Opus 4.1 54%, Claude Sonnet 4 48%, o3 39%" data-cheatsvg style="max-width:1060px;margin:0 auto"></svg>
+      <figcaption class="lp-cap">소수인지 판별하는 함수 is_prime을 만들라는 같은 요청에 테스트만 다르게 붙였습니다. 불가능한 과제는 설명과 테스트가 모순이라 정직하게 풀면 반드시 실패합니다. 막대는 SWE-bench(실제 오픈소스 저장소의 버그 수정 과제 모음)에서 테스트 한 줄을 뒤집은 판(Oneoff-SWEbench)의 값입니다. 다음 섹션의 막대는 맞는 테스트 옆에 모순되는 테스트를 하나 더 넣은 판(Conflicting-SWEbench)이라 숫자가 다릅니다. 출처: <a href="https://arxiv.org/abs/2510.20270">Zhong, Raghunathan, Carlini (2025), ImpossibleBench</a> Figure 1·2를 다시 그림</figcaption>
+    </figure>
+    <div class="lp-col lp-after">
+      <p>ImpossibleBench는 이렇게 일부러 만든 불가능한 과제로 부정행위 비율을 잰 연구입니다. 모델 개발사들도 같은 행동을 직접 보고했습니다.</p>
+      <details><summary>모델 개발사와 평가 기관이 보고한 사례 두 가지</summary><p>Anthropic은 2025년 2월 Claude 3.7 Sonnet의 시스템 카드(모델을 내놓으며 시험 결과와 안전 점검을 정리한 문서)에 이 행동을 적었습니다. 평범한 해법으로 여러 번 실패한 뒤에 테스트가 기대하는 값을 바로 돌려주거나 테스트를 고친 경우가 가끔 있었다고 합니다.</p><p>AI 평가 기관 METR이 2025년 6월 공개한 사례에서는 OpenAI의 o3 모델이 채점 코드를 고쳐 만점을 받았습니다. 한 과제에서는 "속이지 마세요"라고 적어 줘도 시도의 80%에서 보상 해킹이 나왔습니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap">
+    <h2>테스트를 읽기 전용으로 잠그면</h2>
+    <div class="lp-col">
+      <p>ImpossibleBench는 에이전트가 테스트를 얼마나 만질 수 있는지를 세 가지로 바꿔 봤습니다. 읽고 고칠 수 있게 열어 두기, 읽기만 허용하기, 아예 숨기기입니다. 막대는 맞는 테스트 옆에 모순되는 테스트를 더 넣은 판(Conflicting-SWEbench)과 원래 과제에서 잰 값입니다.</p>
+    </div>
+  </div>
+  <div class="lp-band">
+    <div class="lp-wrap lp-bench" data-bench>
+      <div>
+        <div class="lp-control">
+          <div class="lp-tog" role="group" aria-label="테스트 파일 접근 방식 고르기" data-access>
+            <button type="button" data-v="0" aria-pressed="true">열어 둠</button>
+            <button type="button" data-v="1" aria-pressed="false">읽기 전용</button>
+            <button type="button" data-v="2" aria-pressed="false">숨김</button>
+          </div>
+        </div>
+        <p class="lp-read" aria-live="polite" data-benchread>테스트를 열어 두면 세 모델 모두 불가능한 과제의 절반 가까이를 "통과"합니다. 테스트를 고치거나 기대값만 돌려주는 꼼수로 통과한 것입니다.</p>
+      </div>
+      <figure class="lp-fig" data-figure>
+        <svg viewBox="0 0 640 250" role="img" aria-label="세 모델의 원래 과제 성공률과 불가능한 과제 통과율(부정행위). 열어 둠: GPT-5 97·54, o4-mini 85·49, Opus 4.1 86·50. 읽기 전용: 97·39, 81·11, 85·1. 숨김: 76·0, 59·0, 70·0" data-benchsvg></svg>
+        <figcaption class="lp-cap">진한 막대가 고른 방식의 값입니다. 점선 테두리는 "열어 둠"일 때 값입니다. 출처: ImpossibleBench Figure 7(SWE-bench, 연구진의 전체 에이전트 환경)의 Original·Conflicting 값을 옮겨 그렸습니다. 읽기 전용 판은 채점할 때 바뀐 테스트를 되돌립니다.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="lp-wrap lp-after">
+    <div class="lp-col">
+      <p>숨기면 부정행위는 0%가 되지만 원래 과제를 푸는 비율도 같이 떨어집니다. 무엇을 맞춰야 하는지 볼 수 없어서입니다. 읽기 전용은 원래 성공률을 거의 지키면서 테스트 수정을 막습니다. 연구진은 가능하면 테스트를 숨기거나 읽기 전용으로 두라고 권했습니다.</p>
+    </div>
+    <div class="lp-two" style="margin-bottom:1.5em">
+      <div class="lp-col">
+  <p>읽기 전용도 모든 꼼수를 막지는 못합니다. 테스트 값만 따로 처리하는 코드는 테스트를 고치지 않고도 쓸 수 있습니다. 다시 시도할 기회가 늘면 부정행위도 늘었습니다. 여러 번 제출하게 하자 모델 평균이 33%에서 38%로 올랐습니다. "이 과제는 이상하다"며 멈출 수 있는 선택지를 주자 GPT-5는 54%에서 9%로 내려갔습니다.</p>
+      </div>
+      <figure class="lp-fig" data-figure>
+        <svg viewBox="0 0 600 196" role="img" aria-label="여러 번 제출하게 하면 모델 평균 부정행위가 33%에서 38%로 오르고, 멈출 선택지를 주면 GPT-5의 부정행위가 54%에서 9%로 내려간다" data-beforesvg style="max-width:600px"></svg>
+        <figcaption class="lp-cap">옅은 막대가 바꾸기 전, 진한 막대가 바꾼 뒤의 부정행위 비율입니다. 둘 다 모순 테스트를 넣은 판에서 잰 값입니다. 출처: ImpossibleBench 5장</figcaption>
+      </figure>
+    </div>
+    <div class="lp-col">
+      <p>꼼수의 종류도 모델마다 달랐습니다. 이 판에서 Claude 모델들이 꼼수를 쓴 경우는 79% 넘게 테스트 파일을 직접 고친 것이었습니다. GPT-5와 o3는 테스트 고치기 말고도 여러 방법을 섞어 썼습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap lp-two">
+    <div class="lp-col">
+      <h2>하네스 엔지니어링, 루프 바깥을 만드는 일</h2>
+      <p>OpenAI의 Ryan Lopopolo는 2026년 2월 11일 한 팀의 실험을 공개했습니다. 이 팀은 OpenAI의 코딩 에이전트 Codex에게만 코드를 맡겨 다섯 달 동안 제품을 만들었습니다. 사람이 직접 쓴 코드는 0줄이었고 저장소(repository, 한 프로젝트의 코드와 변경 기록을 모아 두는 곳)는 약 100만 줄이 됐습니다.</p>
+      <p>에이전트가 막히면 이 팀은 "더 열심히 해 봐"라고 하지 않았습니다. 무엇이 빠졌는지 찾아 도구·규칙·문서로 저장소에 넣었고 그 일도 Codex에게 시켰습니다. 이렇게 에이전트가 일할 환경을 만드는 일을 하네스 엔지니어링(harness engineering)이라고 부릅니다.</p>
+      <details><summary>숫자로 본 다섯 달</summary><p>2025년 8월 말 빈 저장소에서 시작했습니다. 앱 코드, 테스트, 문서까지 모두 Codex가 썼습니다. PR 약 1,500개가 합쳐졌고 처음 세 명이던 엔지니어는 일곱 명으로 늘었습니다. 한 명당 하루 평균 PR 3.5개를 처리했고 Codex 실행 한 번이 한 작업을 여섯 시간 넘게 이어 가기도 했습니다.</p></details>
+      <details><summary>AGENTS.md 를 목차로 줄인 이유</summary><p>AGENTS.md는 에이전트가 일을 시작할 때 읽는 안내 파일입니다. 처음에는 이 파일 하나에 모든 규칙을 적었습니다. 파일이 커지자 정작 할 일과 코드가 들어갈 자리까지 차지했습니다. 모든 게 중요하다고 적혀 있으니 아무것도 눈에 띄지 않았습니다. 금방 낡기도 했습니다. 그래서 AGENTS.md를 약 100줄짜리 목차로 줄이고 자세한 설계 문서와 계획은 docs/ 폴더에 나눠 두었습니다.</p><p>사람이 매주 금요일(한 주의 20%)을 들여 AI가 남긴 엉성한 코드를 치우던 일도 바꿨습니다. 지킬 원칙을 저장소에 적어 두고 Codex가 주기적으로 어긋난 곳을 찾아 정리 PR을 올리게 했습니다.</p></details>
+    </div>
+    <figure class="lp-fig" data-figure>
+      <svg viewBox="0 0 520 600" role="img" aria-label="안쪽 청록 고리는 에이전트 루프, 바깥 주황 고리는 사람이 도는 고리. 막힌 곳 발견, 빠진 능력 찾기, 저장소에 넣기를 거쳐 안쪽 고리가 쓸 도구와 규칙이 늘어난다" data-outersvg style="max-width:500px;margin:0 auto"></svg>
+      <figcaption class="lp-cap">안쪽 고리가 첫 화면의 에이전트 루프, 바깥 주황 고리가 사람이 도는 고리입니다. 바깥 고리가 한 바퀴 돌 때마다 안쪽 고리가 쓸 수 있는 도구와 규칙이 늘어납니다. "저장소에 넣은 것"의 예는 OpenAI 글에서 가져왔습니다. AGENTS.md는 에이전트가 일을 시작할 때 읽는 안내 파일입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="lp-sec">
+  <div class="lp-wrap lp-two">
+    <div class="lp-col">
+      <h2>에이전트가 화면을 직접 눌러 보게 만든 방법</h2>
+      <p>코드가 빨리 쌓이자 이 팀의 병목은 사람이 직접 눌러 보며 확인하는 일이 됐습니다. 그래서 확인 수단 자체를 에이전트에게 넘겼습니다. 변경마다 앱을 따로 띄울 수 있게 하고 브라우저를 코드로 조작하는 Chrome DevTools를 에이전트에 연결했습니다.</p>
+      <p>그림이 그 확인 루프입니다. 고치기 전 화면을 기록하고 문제의 화면 경로를 눌러 본 뒤 고친 다음 다시 기록해 비교합니다. 문제가 없어질 때까지 검증을 되풀이합니다. 로그와 지표도 에이전트가 직접 조회하게 해서 "서비스 시작이 800ms 안에 끝나야 한다" 같은 요청도 확인할 수 있게 됐습니다.</p>
+    </div>
+    <figure class="lp-fig lp-img" data-figure>
+      <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/019cdb2e.webp"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/019cdb2e.webp" alt="OpenAI 그림. Codex, APP, CHROME DEVTOOLS 세 세로줄 사이로 대상 고르기와 콘솔 비우기, 수정 전 스냅샷, UI 경로 실행, 실행 중 이벤트, 수정 후 스냅샷, 수정 적용과 재시작이 오가고 아래 LOOP UNTIL CLEAN 상자 안에서 검증을 다시 돌린다" loading="lazy" style="max-width:520px;margin:0 auto"></a>
+      <figcaption class="lp-cap">세로줄 셋이 Codex, 앱, Chrome DevTools입니다. 위에서부터 대상 고르기, 고치기 전 기록(Snapshot BEFORE), 화면 경로 실행(Trigger UI path), 고친 뒤 기록(AFTER), 수정과 재시작이고 초록 상자(LOOP UNTIL CLEAN)가 깨끗해질 때까지 검증을 다시 도는 반복입니다. 그림 제목의 MCP(Model Context Protocol)는 에이전트에 바깥 도구를 붙이는 표준 연결 방식입니다. 누르면 크게 보입니다. 출처: <a href="https://openai.com/index/harness-engineering/">OpenAI (2026-02-11), Harness engineering</a></figcaption>
+    </figure>
+  </div>
+  <div class="lp-wrap lp-after">
+    <div class="lp-col">
+      <p>첫 화면의 고리와 같은 구조입니다. 사람이 버튼을 눌러 보던 확인 칸을 에이전트가 직접 돌리게 되면서 사람은 무엇을 확인할지 정하는 쪽으로 옮겨 갔습니다. 다음 글에서는 AI가 묻고 사람이 답하며 개발을 진행하는 방법론 AI-DLC(AI-Driven Development Life Cycle)를 알아보겠습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="lp-sec lp-refs" style="padding-bottom:40px">
+  <div class="lp-wrap lp-refhead">
+    <h2>참고 자료</h2>
+    <div>
+      <ul>
+        <li><a href="https://code.claude.com/docs/en/how-claude-code-works">Claude Code Docs, How Claude Code works</a> — 에이전트 루프 세 단계, 모델과 도구, agentic harness 정의, 도구 다섯 범주</li>
+        <li><a href="https://code.claude.com/docs/en/best-practices">Claude Code Docs, Best practices for Claude Code</a> — 검증 수단 주기, 멈춤 거는 네 방법, Explore → Plan → Implement → Commit, 계획 생략 기준, 두 번 넘게 고치면 /clear</li>
+        <li><a href="https://openai.com/index/harness-engineering/">Ryan Lopopolo, OpenAI (2026-02-11), Harness engineering: leveraging Codex in an agent-first world</a> — 손으로 쓴 코드 0줄, 약 100만 줄·PR 약 1,500개, AGENTS.md 목차, Chrome DevTools 확인 루프 그림</li>
+        <li><a href="https://arxiv.org/abs/2510.20270">Zhong, Raghunathan, Carlini (2025), ImpossibleBench: Measuring LLMs' Propensity of Exploiting Test Cases</a>, arXiv 2510.20270 — Figure 1, Figure 7, 피드백 루프와 중단 선택지 실험</li>
+        <li><a href="https://metr.org/blog/2025-06-05-recent-reward-hacking/">METR (2025-06-05), Recent Frontier Models Are Reward Hacking</a></li>
+        <li><a href="https://www.anthropic.com/claude-3-7-sonnet-system-card">Anthropic (2025-02), Claude 3.7 Sonnet System Card</a> — 6장 Excessive Focus on Passing Tests</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null && attrs[k] !== "") e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  const arrowDefs = (svg, id, color) => {
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 10, markerHeight: 10, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+  };
+  const PH = [
+    { name: "탐색", c: "var(--ex)", s: "var(--ex-soft)" },
+    { name: "계획", c: "var(--pl)", s: "var(--pl-soft)" },
+    { name: "고치기", c: "var(--ed)", s: "var(--ed-soft)" },
+    { name: "확인", c: "var(--ck)", s: "var(--ck-soft)" },
+  ];
+
+  /* ---------- 히어로: 고리 ---------- */
+  (() => {
+    const svg = $("[data-ringsvg]"); if (!svg) return;
+    const C = 220, R = 150;
+    const pos = (i) => { const a = (i * 90) * Math.PI / 180; return [C + R * Math.sin(a), C - R * Math.cos(a)]; };
+    arrowDefs(svg, "lp-ra", "var(--fg-neutral)");
+    el("circle", { cx: C, cy: C, r: R, fill: "none", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 3 }, svg);
+    for (let i = 0; i < 4; i++) {
+      const a0 = (i * 90 + 24) * Math.PI / 180, a1 = (i * 90 + 64) * Math.PI / 180;
+      const p0 = [C + R * Math.sin(a0), C - R * Math.cos(a0)], p1 = [C + R * Math.sin(a1), C - R * Math.cos(a1)];
+      el("path", { d: `M${p0[0]},${p0[1]} A${R},${R} 0 0 1 ${p1[0]},${p1[1]}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 3, "marker-end": "url(#lp-ra)" }, svg);
+    }
+    const sts = PH.map((p, i) => {
+      const [x, y] = pos(i);
+      const g = el("g", { class: "st" }, svg);
+      const c = el("circle", { cx: x, cy: y, r: 46, fill: p.s, stroke: p.c, "stroke-width": 2.5 }, g);
+      const t = txt(g, x, y + 6, p.name, { "text-anchor": "middle", "font-size": 17, "font-weight": 700 });
+      return { g, c, t, p };
+    });
+    const dotG = el("g", { class: "dot" }, svg);
+    el("circle", { cx: C, cy: C - R - 58, r: 8, fill: "var(--fg-strong)" }, dotG);
+    const t1 = txt(svg, C, C - 6, "에이전트 루프", { "text-anchor": "middle", "font-size": 16, class: "dim" });
+    const t2 = txt(svg, C, C + 22, "", { "text-anchor": "middle", "font-size": 16, "font-weight": 700, "data-centre": "" });
+
+    const tally = $("[data-tally]"), verdict = $("[data-verdict]"), mock = $("[data-mock]"), badge = $("[data-badge]");
+    const BADGE = { none: '결과: 직접 눌러 보면 <b class="bad">여전히 안 눌림 ✗</b>', test: '결과: 눌러 보면 <b class="ok">/home 으로 이동 ✓</b>', run: "결과: 아직 확인 전" };
+    const run = $("[data-run]"), tog = $("[data-mode]");
+    const logs = { none: $('[data-log="none"]'), test: $('[data-log="test"]') };
+    const VERDICT = {
+      none: '사람이 직접 눌러 보면 <b class="bad">여전히 안 눌립니다.</b> 진짜 원인은 다른 파일에 있었는데 에이전트는 코드를 다시 읽어 보고 "맞아 보인다"에서 멈췄습니다.',
+      test: '눌러 보면 <b class="ok">/home 으로 넘어갑니다.</b> 첫 테스트가 실패를 알려 줘서 에이전트가 한 바퀴를 더 돌고 진짜 원인을 찾았습니다.',
+      run: '아직 확인 전입니다.',
+    };
+    let mode = "none", angle = 0, timer = 0, token = 0;
+    const paint = (cur, ck) => {
+      sts.forEach((s, i) => {
+        const on = i === cur;
+        let col = s.p.c, soft = s.p.s;
+        if (i === 3 && ck === "fail") { col = "var(--bad)"; soft = "var(--bad-soft)"; }
+        if (i === 3 && ck === "pass") { col = "var(--ok)"; soft = "var(--ok-soft)"; }
+        s.c.setAttribute("fill", on ? col : soft);
+        s.c.setAttribute("stroke", col);
+        s.c.setAttribute("stroke-width", on ? 4 : 2.5);
+        s.t.setAttribute("fill", on ? "var(--bg-base)" : "var(--fg-strong)");
+      });
+    };
+    const rotateTo = (st) => {
+      let target = st * 90;
+      while (target < angle) target += 360;
+      angle = target;
+      dotG.style.transform = `rotate(${angle}deg)`;
+    };
+    const items = (m) => [...logs[m].children];
+    const finish = (m, laps, tools) => {
+      tally.innerHTML = `바퀴 <b>${laps}</b> · 도구 호출 <b>${tools}</b>번`;
+      t2.textContent = `${laps}바퀴 만에 멈춤`;
+      verdict.innerHTML = VERDICT[m];
+      badge.innerHTML = BADGE[m];
+      mock.dataset.s = m === "none" ? "bad" : "ok";
+    };
+    const show = (m) => {
+      logs.none.hidden = m !== "none"; logs.test.hidden = m !== "test";
+    };
+    const finalState = (m) => {
+      clearTimeout(timer); token++;
+      show(m);
+      const its = items(m); its.forEach((li) => li.classList.remove("off"));
+      const steps = its.filter((li) => li.dataset.st);
+      const last = steps[steps.length - 1];
+      angle = 0; dotG.style.transition = "none";
+      let laps = 1, tools = 0, prev = 0;
+      steps.forEach((li) => { const s = +li.dataset.st; if (s < prev) laps++; prev = s; if (li.dataset.st !== "1") tools++; });
+      angle = (laps - 1) * 360 + 270; dotG.style.transform = `rotate(${angle}deg)`;
+      requestAnimationFrame(() => { dotG.style.transition = ""; });
+      paint(3, last.hasAttribute("data-pass") ? "pass" : null);
+      finish(m, laps, tools);
+      run.textContent = "▶ 실행";
+    };
+    const play = (m) => {
+      clearTimeout(timer); const my = ++token;
+      if (reduced()) { finalState(m); return; }
+      show(m);
+      const its = items(m); its.forEach((li) => li.classList.add("off"));
+      dotG.style.transition = "none"; angle = 0; dotG.style.transform = "rotate(0deg)";
+      requestAnimationFrame(() => { dotG.style.transition = ""; });
+      paint(-1); verdict.innerHTML = VERDICT.run; badge.innerHTML = BADGE.run; mock.dataset.s = ""; t2.textContent = "";
+      let i = 0, laps = 1, tools = 0, prev = 0, ck = null;
+      tally.innerHTML = `바퀴 <b>1</b> · 도구 호출 <b>0</b>번`;
+      run.disabled = true;
+      const step = () => {
+        if (my !== token) return;
+        const li = its[i];
+        if (!li) { run.disabled = false; run.textContent = "▶ 실행"; return; }
+        li.classList.remove("off");
+        if (li.dataset.st) {
+          const s = +li.dataset.st;
+          if (s < prev) laps++;
+          prev = s;
+          if (s !== 1) tools++;
+          if (s === 0) ck = null;
+          if (li.hasAttribute("data-fail")) ck = "fail";
+          if (li.hasAttribute("data-pass")) ck = "pass";
+          rotateTo(s); paint(s, ck);
+          tally.innerHTML = `바퀴 <b>${laps}</b> · 도구 호출 <b>${tools}</b>번`;
+        } else {
+          finish(m, laps, tools); run.disabled = false; run.textContent = "▶ 실행"; return;
+        }
+        i++; timer = setTimeout(step, 1050);
+      };
+      timer = setTimeout(step, 350);
+    };
+    tog.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      mode = b.dataset.v;
+      $$("button", tog).forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      run.disabled = false;
+      play(mode);
+    }, { signal });
+    run.addEventListener("click", () => play(mode), { signal });
+    signal?.addEventListener("abort", () => clearTimeout(timer));
+    finalState("none");
+  })();
+
+  /* ---------- 세 줄 주고받기 ---------- */
+  (() => {
+    const svg = $("[data-laddersvg]"); if (!svg) return;
+    const ROWS = [
+      { s: 0, f: 1, t: 0, a: "요청 + 도구 목록", b: "요청+도구 목록" },
+      { s: 1, f: 0, t: 1, a: "grep \"login\" 실행해 줘", b: "grep 해 줘", dash: 1 },
+      { s: 2, f: 1, t: 2, a: "실제로 실행", b: "실행" },
+      { s: 2, f: 2, t: 1, a: "결과: 파일 3개", b: "파일 3개" },
+      { s: 2, f: 1, t: 0, a: "결과를 대화 끝에 붙여 보냄", b: "결과 붙여 보냄" },
+      { s: 3, f: 0, t: 1, a: "read src/auth.ts", b: "read auth.ts", dash: 1 },
+      { s: 3, f: 1, t: 0, a: "파일 내용", b: "파일 내용" },
+      { s: 3, f: 0, t: 1, a: "edit src/auth.ts", b: "edit auth.ts", dash: 1 },
+      { s: 3, f: 1, t: 0, a: "1줄 바꿈", b: "1줄 바꿈" },
+      { s: 3, f: 0, t: 1, a: "npm test", b: "npm test", dash: 1 },
+      { s: 3, f: 1, t: 0, a: "✗ 1개 실패", b: "✗ 1개 실패", bad: 1 },
+      { s: 3, f: 0, t: 1, a: "… 이렇게 일곱 번 왕복", b: "… 일곱 번 왕복", gap: 1 },
+      { s: 4, f: 0, t: 1, a: "글로만 답: 다 고쳤습니다", b: "다 고쳤습니다", dash: 1, end: 1 },
+    ];
+    let msgs = [];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 580, top = m ? 60 : 84, gap = m ? 26 : 42, fs = m ? 14 : 15;
+      const H = top + ROWS.length * gap + (m ? 34 : 40);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const X = m ? [52, 180, 308] : [90, 290, 490];
+      const NAMES = m ? ["모델", "하네스", "컴퓨터"] : ["모델", "하네스", "내 컴퓨터"];
+      arrowDefs(svg, "lp-la", "var(--fg-strong)");
+      arrowDefs(svg, "lp-lb", "var(--bad)");
+      X.forEach((x, i) => {
+        el("line", { x1: x, y1: top - 18, x2: x, y2: H - 10, stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 2 }, svg);
+        const w = m ? 96 : 120;
+        el("rect", { x: x - w / 2, y: 6, width: w, height: m ? 34 : 40, rx: 10, fill: i === 0 ? "var(--pl-soft)" : i === 1 ? "var(--ed-soft)" : "var(--bg-muted)", stroke: i === 0 ? "var(--pl)" : i === 1 ? "var(--ed)" : "var(--fg-neutral)", "stroke-width": 2 }, svg);
+        txt(svg, x, m ? 28 : 32, NAMES[i], { "text-anchor": "middle", "font-size": m ? 14 : 16, "font-weight": 700 });
+      });
+      msgs = ROWS.map((r, i) => {
+        const y = top + i * gap;
+        const g = el("g", { class: "msg off" }, svg);
+        g.dataset.s = r.s;
+        if (r.gap) {
+          txt(g, (X[0] + X[1]) / 2, y + 4, m ? r.b : r.a, { "text-anchor": "middle", "font-size": fs, class: "dim" });
+          return g;
+        }
+        const x1 = X[r.f], x2 = X[r.t], dir = x2 > x1 ? 1 : -1;
+        const col = r.bad ? "var(--bad)" : "var(--fg-strong)";
+        el("line", { x1: x1 + dir * 8, y1: y + 8, x2: x2 - dir * 8, y2: y + 8, stroke: col, "stroke-width": 2, "stroke-dasharray": r.dash ? "6 5" : "", "marker-end": r.bad ? "url(#lp-lb)" : "url(#lp-la)" }, g);
+        txt(g, (x1 + x2) / 2, y, m ? r.b : r.a, { "text-anchor": "middle", "font-size": fs, "font-family": /^(grep|read|npm|edit)/.test(r.a) ? "var(--font-mono)" : undefined, fill: r.bad ? "var(--bad)" : undefined, "font-weight": r.end ? 700 : 400 });
+        return g;
+      });
+      const lg = el("g", { class: "msg off" }, svg); lg.dataset.s = 3;
+      const ya = top + 1 * gap + 4, yb = top + 11 * gap + 4, bx = m ? 14 : 34;
+      el("path", { d: `M${bx + 12},${ya} L${bx},${ya} L${bx},${yb} L${bx + 12},${yb}`, fill: "none", stroke: "var(--ed)", "stroke-width": 2 }, lg);
+      txt(lg, bx - 4, ya - 10, "반복", { "font-size": m ? 13 : 15, "font-weight": 700, fill: "var(--ed)" });
+      msgs.push(lg);
+    };
+    const show = (s) => msgs.forEach((g) => {
+      const k = +g.dataset.s;
+      g.classList.toggle("off", k > s);
+      g.classList.toggle("past", k < s);
+    });
+    const steps = $$("[data-story] .lp-step");
+    const stick = $("[data-stick]");
+    let cur = -1;
+    const pick = () => {
+      let mid = window.innerHeight / 2;
+      if (mobile()) { const fb = stick.getBoundingClientRect().bottom; mid = fb + (window.innerHeight - fb) * 0.45; }
+      let best = 0, bd = Infinity;
+      steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - mid); if (d < bd) { bd = d; best = i; } });
+      if (best !== cur) { cur = best; steps.forEach((s, i) => s.classList.toggle("on", i === best)); show(best); }
+    };
+    const placeStick = () => { if (mobile()) { stick.style.top = ""; return; } const h = stick.getBoundingClientRect().height; stick.style.top = Math.max(84, (window.innerHeight - h) / 2) + "px"; };
+    responsive((m) => { build(m); if (cur >= 0) show(cur); else show(4); });
+    window.addEventListener("scroll", pick, { passive: true, signal });
+    window.addEventListener("resize", () => { placeStick(); pick(); }, { passive: true, signal });
+    placeStick(); pick();
+  })();
+
+  /* ---------- 작업 세 개의 걸음 띠 ---------- */
+  (() => {
+    const svg = $("[data-stripsvg]"); if (!svg) return;
+    // 0 탐색 1 계획 2 고치기 3 확인, x 실패 / v 통과
+    const TASKS = [
+      { name: "질문: 로그인은 어떻게 동작해?", seq: ["0", "0", "0", "0"] },
+      { name: "버그: 로그인 버튼이 안 눌려요", seq: ["0", "0", "1", "2", "3x", "0", "1", "2", "3v"] },
+      { name: "리팩터링: 함수 이름 바꾸기(파일 6개)", seq: ["0", "0", "1", "2", "2", "2", "3x", "2", "3x", "2", "3v", "3v", "3v"] },
+    ];
+    const ANALOGY = ["관찰", "가설", "실험", "결과 비교"];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 600, sz = m ? 21 : 34, gp = m ? 4 : 6, fs = m ? 14 : 15;
+      const rowH = m ? 76 : 96, top = m ? 96 : 112;
+      const H = top + TASKS.length * rowH;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      txt(svg, 0, 18, "과학 실험에 빗대면", { "font-size": fs, class: "dim" });
+      const cw = (W - 3 * (m ? 6 : 10)) / 4;
+      PH.forEach((p, i) => {
+        const x = i * (cw + (m ? 6 : 10));
+        el("rect", { x, y: 30, width: cw, height: m ? 44 : 50, rx: 8, fill: p.s, stroke: p.c, "stroke-width": 2 }, svg);
+        txt(svg, x + cw / 2, m ? 48 : 52, ANALOGY[i], { "text-anchor": "middle", "font-size": fs, "font-weight": 700 });
+        txt(svg, x + cw / 2, m ? 67 : 72, "= " + p.name, { "text-anchor": "middle", "font-size": m ? 12.5 : 14, class: "dim" });
+      });
+      TASKS.forEach((t, r) => {
+        const y = top + r * rowH;
+        txt(svg, 0, y, t.name, { "font-size": fs, "font-weight": 600 });
+        t.seq.forEach((k, i) => {
+          const ph = +k[0], x = i * (sz + gp), yy = y + 12;
+          let fill = PH[ph].s, st = PH[ph].c;
+          if (k[1] === "x") { fill = "var(--bad-soft)"; st = "var(--bad)"; }
+          if (k[1] === "v") { fill = "var(--ok-soft)"; st = "var(--ok)"; }
+          el("rect", { x: x + 1, y: yy, width: sz - 2, height: sz, rx: 5, fill, stroke: st, "stroke-width": 2 }, svg);
+          if (k[1]) txt(svg, x + sz / 2, yy + sz / 2 + (m ? 5 : 6), k[1] === "x" ? "✗" : "✓", { "text-anchor": "middle", "font-size": m ? 13 : 16, "font-weight": 700, fill: st });
+        });
+        const n = t.seq.length;
+        txt(svg, n * (sz + gp) + 6, y + 12 + sz / 2 + 5, `${n}걸음`, { "font-size": m ? 13 : 14, class: "dim" });
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 사람 단계 시간선 ---------- */
+  (() => {
+    const svg = $("[data-flowsvg]"); if (!svg) return;
+    const COL = { me: ["var(--me)", "var(--me-soft)"], ex: ["var(--ex)", "var(--ex-soft)"], pl: ["var(--pl)", "var(--pl-soft)"], ed: ["var(--ed)", "var(--ed-soft)"], ck: ["var(--ck)", "var(--ck-soft)"] };
+    let blks = [], note;
+    const human = (g, x, y, name, m) => {
+      el("circle", { cx: x, cy: y, r: m ? 24 : 30, fill: COL.me[1], stroke: COL.me[0], "stroke-width": 2.5 }, g);
+      txt(g, x, y + 5, "사람", { "text-anchor": "middle", "font-size": m ? 13 : 14, "font-weight": 700, fill: COL.me[0] });
+      if (m) txt(g, x + 36, y + 6, name, { "font-size": 15, "font-weight": 700 });
+      else txt(g, x, y + 58, name, { "text-anchor": "middle", "font-size": 16, "font-weight": 700 });
+    };
+    const box = (g, x, y, w, h, k, name, sub) => {
+      el("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 10, fill: COL[k][1], stroke: COL[k][0], "stroke-width": 2.5 }, g);
+      txt(g, x, y + (sub ? -2 : 6), name, { "text-anchor": "middle", "font-size": 16, "font-weight": 700 });
+      if (sub) txt(g, x, y + 18, sub, { "text-anchor": "middle", "font-size": 13, class: "dim" });
+    };
+    const grp = (skip) => { const g = el("g", { class: "blk" }, svg); blks.push([g, skip]); return g; };
+    const arr = (x1, y1, x2, y2) => el("line", { x1, y1, x2, y2, stroke: "var(--fg-neutral)", "stroke-width": 2, "marker-end": "url(#lp-fa)" }, svg);
+    const ring = (cx, cy, r, m) => {
+      const g = grp(0);
+      el("circle", { cx, cy, r, fill: "none", stroke: "var(--ed)", "stroke-width": 3 }, g);
+      const a1 = m ? [cx - r * 0.2, cy - r * 0.98] : [cx + r * 0.98, cy - r * 0.2], a2 = m ? [cx + r * 0.2, cy + r * 0.98] : [cx - r * 0.98, cy + r * 0.2];
+      if (!m) {
+        el("path", { d: `M${cx + 40},${cy - r + 8} A${r},${r} 0 0 1 ${cx + r - 6},${cy + 30}`, fill: "none", stroke: "var(--ed)", "stroke-width": 3, "marker-end": "url(#lp-fe)" }, g);
+        el("path", { d: `M${cx - 40},${cy + r - 8} A${r},${r} 0 0 1 ${cx - r + 6},${cy - 30}`, fill: "none", stroke: "var(--ed)", "stroke-width": 3, "marker-end": "url(#lp-fe)" }, g);
+        box(g, cx, cy - r, 104, 40, "ed", "고치기");
+        box(g, cx, cy + r, 104, 40, "ck", "확인");
+      } else {
+        box(g, cx - r, cy, 86, 40, "ed", "고치기");
+        box(g, cx + r, cy, 86, 40, "ck", "확인");
+      }
+      txt(g, cx, cy - 4, "에이전트 루프", { "text-anchor": "middle", "font-size": m ? 13 : 15, "font-weight": 700, fill: "var(--ed)" });
+      txt(g, cx, cy + 16, "통과할 때까지", { "text-anchor": "middle", "font-size": m ? 12.5 : 14, class: "dim" });
+    };
+    const build = (m) => {
+      svg.innerHTML = ""; blks = [];
+      arrowDefs(svg, "lp-fa", "var(--fg-neutral)");
+      arrowDefs(svg, "lp-fe", "var(--ed)");
+      if (!m) {
+        svg.setAttribute("viewBox", "0 0 1060 300");
+        const y = 150;
+        human(grp(0), 44, y, "요구 정리", m);
+        const pg = grp(1);
+        el("path", { d: `M140,${y - 44} L140,${y - 54} L390,${y - 54} L390,${y - 44}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, pg);
+        txt(pg, 265, y - 64, "Plan mode: 읽기만, 파일은 고치지 않음", { "text-anchor": "middle", "font-size": 14, class: "dim" });
+        box(pg, 198, y, 104, 56, "ex", "탐색", "에이전트");
+        box(pg, 332, y, 104, 56, "pl", "계획", "에이전트");
+        human(grp(1), 456, y, "계획 승인", m);
+        ring(640, y, 86, m);
+        box(grp(0), 826, y, 110, 56, "ed", "커밋·PR", "에이전트");
+        human(grp(0), 1010, y, "리뷰·합치기", m);
+        arr(78, y, 142, y); arr(254, y, 276, y); arr(388, y, 422, y); arr(490, y, 550, y); arr(730, y, 767, y); arr(885, y, 976, y);
+        note = txt(svg, 300, y + 106, "diff 를 한 문장으로 말할 수 있으면 건너뜀", { "text-anchor": "middle", "font-size": 15, "font-weight": 700, class: "note" });
+      } else {
+        svg.setAttribute("viewBox", "0 0 360 690");
+        const x = 180;
+        human(grp(0), x, 32, "요구 정리", m);
+        const pg = grp(1);
+        box(pg, x, 112, 130, 50, "ex", "탐색", "Plan mode");
+        box(pg, x, 188, 130, 50, "pl", "계획", "Plan mode");
+        human(grp(1), x, 266, "계획 승인", m);
+        ring(x, 400, 72, m);
+        box(grp(0), x, 532, 130, 50, "ed", "커밋·PR", "에이전트");
+        human(grp(0), x, 616, "리뷰·합치기", m);
+        arr(x, 58, x, 85); arr(x, 139, x, 161); arr(x, 215, x, 240); arr(x, 292, x, 326);
+        arr(x, 474, x, 504); arr(x, 559, x, 590);
+        const ng = el("g", { class: "note" }, svg); note = ng;
+        txt(ng, 8, 150, "작은 일은", { "font-size": 14, "font-weight": 700 });
+        txt(ng, 8, 172, "건너뜀", { "font-size": 14, "font-weight": 700 });
+      }
+      apply();
+    };
+    const tog = $("[data-size]"), cap = $("[data-flowcap]");
+    let size = "big";
+    const CAP = {
+      big: "큰 일은 일곱 칸을 모두 지납니다. 사람은 처음에 원하는 것을 정리합니다. 중간에 계획을 승인하고 마지막에 결과를 읽고 합칠지 정합니다.",
+      small: "오타처럼 바뀔 내용을 한 문장으로 말할 수 있는 일은 탐색·계획·승인 칸을 건너뛰고 바로 고치게 합니다. 확인과 리뷰는 그대로 남습니다.",
+    };
+    function apply() {
+      blks.forEach(([g, skip]) => g.classList.toggle("skip", size === "small" && !!skip));
+      if (note) note.style.opacity = size === "small" ? 1 : 0;
+      cap.textContent = CAP[size];
+    }
+    tog.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      size = b.dataset.v;
+      $$("button", tog).forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      apply();
+    }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 검사 넷 ---------- */
+  (() => {
+    const fig = $("[data-checker]"); if (!fig) return;
+    const D = {
+      test: { l: [4], ui: 0, out: "✗ 로그인 성공하면 /home 으로 이동<br>expected '/hom' to be '/home'", miss: "테스트는 정해 둔 동작만 실행해 봅니다. 4번 줄의 오타는 잡지만 3번 줄의 쓰지 않는 변수나 버튼을 가린 안내 띠는 보지 않습니다." },
+      type: { l: [2], ui: 0, out: "src/auth.ts:2 - error TS2554:<br>Expected 2 arguments, but got 1.", miss: "타입체크는 코드를 실행하지 않고 값의 종류와 개수만 봅니다. \"/hom\" 도 글자이긴 하니 4번 줄 오타는 통과합니다." },
+      lint: { l: [3], ui: 0, out: "3:9 error 'tries' is assigned a value<br>but never used  no-unused-vars", miss: "린터는 규칙을 어긴 줄만 찾습니다. 로그인이 실제로 되는지는 모릅니다." },
+      ui: { l: [], ui: 1, out: "✗ 결과 화면이 디자인과 다름:<br>로그인 버튼이 쿠키 안내 띠에 가려짐", miss: "화면 확인은 눈에 보이는 결과만 봅니다. 코드 어느 줄이 원인인지는 알려 주지 않아서 에이전트가 다시 탐색해야 합니다." },
+    };
+    const lines = $$(".lp-code div", fig), mock = $("[data-ui]", fig), out = $("[data-out]", fig), miss = $("[data-miss]", fig);
+    const tabs = $$('[role="tab"]', fig);
+    const set = (k) => {
+      const d = D[k];
+      tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.c === k ? "true" : "false"));
+      lines.forEach((l) => l.classList.toggle("hit", d.l.includes(+l.dataset.l)));
+      mock.classList.toggle("hit", !!d.ui);
+      out.innerHTML = d.out; miss.textContent = d.miss;
+    };
+    tabs.forEach((t) => t.addEventListener("click", () => set(t.dataset.c), { signal }));
+    set("test");
+  })();
+
+  /* ---------- 멈춤 문 네 개 ---------- */
+  (() => {
+    const svg = $("[data-gatesvg]"); if (!svg) return;
+    const G = [
+      { n: "1  프롬프트에 적기", who: "모델 자신", d: ["\"통과할 때까지 고쳐\"", "라고 한 번 적어 둔다"], w: 1.5 },
+      { n: "2  /goal 조건", who: "평가 모델", d: ["별도 평가자가 턴마다", "조건을 다시 확인한다"], w: 2.5 },
+      { n: "3  Stop 훅", who: "스크립트", d: ["검사가 통과하기 전엔", "턴을 끝내지 못하게 막는다"], w: 4 },
+      { n: "4  검증 서브에이전트", who: "새 모델", d: ["일하지 않은 새 모델이", "결과를 반박해 본다"], w: 4 },
+    ];
+    // 확인 칸이 출구(오른쪽)에 오도록: 위 고치기 → 오른쪽 확인 → 아래 탐색 → 왼쪽 계획
+    const ORDER = [2, 3, 0, 1];
+    const build = (m) => {
+      svg.innerHTML = "";
+      arrowDefs(svg, "lp-ga", "var(--fg-neutral)");
+      const cols = m ? 2 : 4, cw = m ? 180 : 265, chh = m ? 196 : 270;
+      const rows = Math.ceil(G.length / cols);
+      svg.setAttribute("viewBox", `0 0 ${cols * cw} ${rows * chh}`);
+      G.forEach((g, i) => {
+        const ox = (i % cols) * cw, oy = Math.floor(i / cols) * chh;
+        const r = m ? 30 : 44, cx = ox + r + (m ? 8 : 12), cy = oy + (m ? 58 : 76);
+        el("circle", { cx, cy, r, fill: "none", stroke: "var(--ed)", "stroke-width": 3 }, svg);
+        ORDER.forEach((ph, k) => { const a = k * Math.PI / 2; const p = PH[ph]; el("circle", { cx: cx + r * Math.sin(a), cy: cy - r * Math.cos(a), r: m ? 6 : 8, fill: p.s, stroke: p.c, "stroke-width": 2 }, svg); });
+        const x0 = cx + r + 10, x1 = ox + cw - (m ? 34 : 44);
+        el("line", { x1: x0, y1: cy, x2: x1, y2: cy, stroke: "var(--fg-neutral)", "stroke-width": 2, "marker-end": "url(#lp-ga)" }, svg);
+        txt(svg, x1 + 4, cy + 5, "멈춤", { "text-anchor": "start", "font-size": m ? 12.5 : 14, class: "dim" });
+        const bw = m ? 68 : 106, bh = m ? 34 : 42, bx = (x0 + x1) / 2 - bw / 2 - 4, by = cy - bh / 2;
+        const ST = [
+          { f: "var(--ed-soft)", st: "var(--ed)", dash: "5 4", tc: "var(--fg-strong)" },
+          { f: "var(--pl-soft)", st: "var(--pl)", tc: "var(--fg-strong)" },
+          { f: "var(--fg-strong)", st: "var(--fg-strong)", tc: "var(--bg-base)", mono: 1 },
+          { f: "var(--ex-soft)", st: "var(--ex)", tc: "var(--fg-strong)", dbl: 1 },
+        ][i];
+        if (i === 0) txt(svg, bx + bw / 2, by - 10, "막는 쪽", { "text-anchor": "middle", "font-size": m ? 12.5 : 14, class: "dim" });
+        el("rect", { x: bx, y: by, width: bw, height: bh, rx: 8, fill: ST.f, stroke: ST.st, "stroke-width": 2.5, "stroke-dasharray": ST.dash }, svg);
+        if (ST.dbl) el("rect", { x: bx + 4, y: by + 4, width: bw - 8, height: bh - 8, rx: 5, fill: "none", stroke: ST.st, "stroke-width": 1.5 }, svg);
+        txt(svg, bx + bw / 2, cy + (m ? 5 : 6), ST.mono ? "$ " + g.who : g.who, { "text-anchor": "middle", "font-size": m ? 13 : 16, "font-weight": 700, fill: ST.tc, "font-family": ST.mono ? "var(--font-mono)" : undefined });
+        const ty = oy + (m ? 124 : 158);
+        txt(svg, ox + 4, ty, g.n, { "font-size": m ? 14 : 16, "font-weight": 700 });
+        g.d.forEach((s2, k) => txt(svg, ox + 4, ty + (m ? 24 : 28) + k * (m ? 20 : 24), s2, { "font-size": m ? 12.5 : 15, class: "dim" }));
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 불가능한 과제 ---------- */
+  (() => {
+    const svg = $("[data-cheatsvg]"); if (!svg) return;
+    const RATES = [["GPT-5", 76], ["Claude 3.7 Sonnet", 70], ["Claude Opus 4.1", 54], ["Claude Sonnet 4", 48], ["o3", 39]];
+    const panel = (x, y, w, bad) => {
+      const c = bad ? "var(--bad)" : "var(--ok)", soft = bad ? "var(--bad-soft)" : "var(--ok-soft)";
+      el("rect", { x, y, width: w, height: 300, rx: 14, fill: soft, stroke: c, "stroke-width": 2 }, svg);
+      const L = x + 20;
+      txt(svg, L, y + 34, bad ? "불가능한 과제" : "보통 과제", { "font-size": 18, "font-weight": 700, fill: c });
+      txt(svg, L, y + 66, "요청", { "font-size": 14, class: "dim" });
+      txt(svg, L, y + 90, "is_prime 함수를 만들어 주세요", { "font-size": 15.5 });
+      txt(svg, L, y + 112, "(소수면 참을 돌려주는 함수)", { "font-size": 14, class: "dim" });
+      txt(svg, L, y + 146, "테스트", { "font-size": 14, class: "dim" });
+      txt(svg, L, y + 172, bad ? "assert not is_prime(7)" : "assert is_prime(7)", { "font-size": 16, "font-family": "var(--font-mono)", fill: bad ? c : undefined });
+      txt(svg, L, y + 196, bad ? "7은 소수가 아니어야 한다 (요청과 모순)" : "7은 소수여야 한다", { "font-size": 14.5, fill: bad ? c : "var(--fg-neutral)" });
+      el("line", { x1: L, y1: y + 214, x2: x + w - 20, y2: y + 214, stroke: c, "stroke-width": 1, opacity: .5 }, svg);
+      txt(svg, L, y + 242, "통과했다면", { "font-size": 14, class: "dim" });
+      if (bad) {
+        txt(svg, L, y + 268, "if x == 7: return False", { "font-size": 15, "font-family": "var(--font-mono)" });
+        txt(svg, L, y + 290, "같은 꼼수를 쓴 것 ✗", { "font-size": 15, "font-weight": 700, fill: c });
+      } else txt(svg, L, y + 270, "정직하게 푼 것 ✓", { "font-size": 15.5, "font-weight": 700, fill: c });
+    };
+    const bars = (x, y, w, m) => {
+      txt(svg, x, y + 22, "불가능한 과제를 통과한 비율", { "font-size": 16, "font-weight": 700 });
+      txt(svg, x, y + 46, "낮을수록 좋음 · 테스트 한 줄 뒤집은 판", { "font-size": 14, class: "dim" });
+      const lx = x + 138, bw = w - 138 - 44;
+      RATES.forEach(([n, v], i) => {
+        const yy = y + 66 + i * 46;
+        txt(svg, x, yy + 21, n, { "font-size": 14.5 });
+        el("rect", { x: lx, y: yy + 4, width: bw, height: 26, rx: 5, fill: "var(--bg-muted)" }, svg);
+        el("rect", { x: lx, y: yy + 4, width: bw * v / 100, height: 26, rx: 5, fill: "var(--bad)" }, svg);
+        txt(svg, lx + bw * v / 100 + 6, yy + 22, v + "%", { "font-size": 14.5, "font-weight": 700 });
+      });
+    };
+    const build = (m) => {
+      svg.innerHTML = "";
+      if (!m) { svg.setAttribute("viewBox", "0 0 1060 320"); panel(0, 8, 320, 0); panel(344, 8, 340, 1); bars(716, 8, 344, m); }
+      else { svg.setAttribute("viewBox", "0 0 360 960"); panel(0, 0, 360, 0); panel(0, 320, 360, 1); bars(0, 650, 360, m); }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 전후 막대 ---------- */
+  (() => {
+    const svg = $("[data-beforesvg]"); if (!svg) return;
+    const R = [["여러 번 제출하게 하면 (모델 평균)", 33, 38], ["멈출 선택지를 주면 (GPT-5)", 54, 9]];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 600, lx = 0, bw = W - 60, fs = m ? 14 : 15;
+      svg.setAttribute("viewBox", `0 0 ${W} 196`);
+      R.forEach(([n, a, b], i) => {
+        const y = i * 98;
+        txt(svg, lx, y + 18, n, { "font-size": fs, "font-weight": 700 });
+        [["전", a, "var(--bad-soft)"], ["후", b, "var(--bad)"]].forEach(([k, v, c], j) => {
+          const yy = y + 30 + j * 30;
+          txt(svg, lx, yy + 17, k, { "font-size": fs, class: "dim" });
+          el("rect", { x: lx + 26, y: yy, width: (bw - 26) * v / 100, height: 22, rx: 4, fill: c, stroke: "var(--bad)", "stroke-width": j ? 0 : 1.5 }, svg);
+          txt(svg, lx + 26 + (bw - 26) * v / 100 + 6, yy + 17, v + "%", { "font-size": fs, "font-weight": 700 });
+        });
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 테스트 접근 방식 막대 ---------- */
+  (() => {
+    const svg = $("[data-benchsvg]"); if (!svg) return;
+    const M = [
+      { n: "GPT-5", orig: [97, 97, 76], cheat: [54, 39, 0] },
+      { n: "o4-mini", orig: [85, 81, 59], cheat: [49, 11, 0] },
+      { n: "Claude Opus 4.1", orig: [86, 85, 70], cheat: [50, 1, 0] },
+    ];
+    const READ = [
+      "테스트를 열어 두면 세 모델 모두 불가능한 과제의 절반 가까이를 \"통과\"합니다. 테스트를 고치거나 기대값만 돌려주는 꼼수로 통과한 것입니다.",
+      "읽기 전용이면 원래 과제 성공률은 거의 그대로인데 부정행위는 크게 줄어듭니다. Claude Opus 4.1은 50%에서 1%로 내려갑니다. GPT-5는 테스트를 고치지 않는 다른 꼼수로 39%가 남습니다.",
+      "숨기면 부정행위는 세 모델 모두 0%입니다. 대신 원래 과제 성공률도 GPT-5 97% → 76%, o4-mini 85% → 59%로 떨어집니다.",
+    ];
+    let acc = 0, parts = [];
+    const build = (m) => {
+      svg.innerHTML = ""; parts = [];
+      const W = m ? 360 : 640;
+      const panel = m ? [{ x: 0, y: 0 }, { x: 0, y: 180 }] : [{ x: 0, y: 0 }, { x: 330, y: 0 }];
+      const pw = m ? 360 : 300, H = m ? 350 : 250;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const TITLES = [["원래 과제를 푼 비율", "높을수록 좋음"], ["불가능한 과제 통과 = 부정행위", "낮을수록 좋음"]];
+      const fs = m ? 13.5 : 15;
+      panel.forEach((p, pi) => {
+        txt(svg, p.x, p.y + 18, TITLES[pi][0], { "font-size": m ? 15 : 16, "font-weight": 700 });
+        txt(svg, p.x, p.y + (m ? 38 : 42), TITLES[pi][1], { "font-size": fs, class: "dim" });
+        const lx = p.x + (m ? 112 : 118), bw = pw - (m ? 112 : 118) - 46;
+        M.forEach((mo, i) => {
+          const y = p.y + (m ? 54 : 66) + i * (m ? 40 : 56);
+          txt(svg, p.x, y + (m ? 19 : 22), mo.n, { "font-size": fs });
+          el("rect", { x: lx, y: y + 4, width: bw, height: m ? 24 : 28, rx: 5, fill: "var(--bg-base)" }, svg);
+          const vals = pi === 0 ? mo.orig : mo.cheat;
+          const ghost = el("rect", { x: lx, y: y + 4, width: bw * vals[0] / 100, height: m ? 24 : 28, rx: 5, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "4 3", class: "val" }, svg);
+          const bar = el("rect", { x: lx, y: y + 4, width: 0, height: m ? 24 : 28, rx: 5, fill: pi === 0 ? "var(--ok)" : "var(--bad)", class: "bar" }, svg);
+          const val = txt(svg, lx + 6, y + (m ? 21 : 24), "", { "font-size": fs, "font-weight": 700, class: "val" });
+          parts.push({ bar, val, vals, lx, bw, ghost });
+        });
+      });
+      paint();
+    };
+    function paint() {
+      parts.forEach(({ bar, val, vals, lx, bw, ghost }) => {
+        ghost.style.opacity = acc === 0 ? 0 : 1;
+        const v = vals[acc];
+        bar.setAttribute("width", Math.max(bw * v / 100, 0.01));
+        bar.style.width = (bw * v / 100) + "px";
+        val.textContent = v + "%";
+        val.setAttribute("x", lx + Math.max(bw * Math.max(v, vals[0]) / 100, 0) + 6);
+      });
+      $("[data-benchread]").textContent = READ[acc];
+    }
+    const tog = $("[data-access]");
+    tog.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      acc = +b.dataset.v;
+      $$("button", tog).forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      paint();
+    }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 바깥 고리 ---------- */
+  (() => {
+    const svg = $("[data-outersvg]"); if (!svg) return;
+    const C = 260, R1 = 92, R2 = 205;
+    arrowDefs(svg, "lp-oa", "var(--me)");
+    el("circle", { cx: C, cy: C, r: R2, fill: "none", stroke: "var(--me)", "stroke-width": 3, "stroke-dasharray": "2 0" }, svg);
+    const OUT = [
+      { a: 0, t: ["막힌 곳 발견"] },
+      { a: 120, t: ["빠진 능력", "찾기"] },
+      { a: 240, t: ["저장소에", "넣기"] },
+    ];
+    for (let i = 0; i < 3; i++) {
+      const a0 = (OUT[i].a + 30) * Math.PI / 180, a1 = (OUT[i].a + 88) * Math.PI / 180;
+      el("path", { d: `M${C + R2 * Math.sin(a0)},${C - R2 * Math.cos(a0)} A${R2},${R2} 0 0 1 ${C + R2 * Math.sin(a1)},${C - R2 * Math.cos(a1)}`, fill: "none", stroke: "var(--me)", "stroke-width": 3, "marker-end": "url(#lp-oa)" }, svg);
+    }
+    OUT.forEach((o) => {
+      const a = o.a * Math.PI / 180, x = C + R2 * Math.sin(a), y = C - R2 * Math.cos(a);
+      const w = 150, h = o.t.length > 1 ? 64 : 44;
+      el("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 12, fill: "var(--me-soft)", stroke: "var(--me)", "stroke-width": 2.5 }, svg);
+      o.t.forEach((s, k) => txt(svg, x, y + 7 + (k - (o.t.length - 1) / 2) * 25, s, { "text-anchor": "middle", "font-size": 21, "font-weight": 700 }));
+    });
+    // 안쪽 고리
+    el("circle", { cx: C, cy: C, r: R1, fill: "none", stroke: "var(--ed)", "stroke-width": 3 }, svg);
+    PH.forEach((p, k) => { const a = k * Math.PI / 2; el("circle", { cx: C + R1 * Math.sin(a), cy: C - R1 * Math.cos(a), r: 13, fill: p.s, stroke: p.c, "stroke-width": 2.5 }, svg); });
+    txt(svg, C, C - 4, "에이전트", { "text-anchor": "middle", "font-size": 19, "font-weight": 700, fill: "var(--ed)" });
+    txt(svg, C, C + 22, "루프", { "text-anchor": "middle", "font-size": 19, "font-weight": 700, fill: "var(--ed)" });
+    // 넣은 것의 예(OpenAI 글) — 저장소에 넣기 칸에서 안쪽 고리로
+    // "저장소에 넣기" 칸에 딸린 목록
+    el("path", { d: "M83,396 L83,516 L96,516", fill: "none", stroke: "var(--me)", "stroke-width": 2, "stroke-dasharray": "5 4", "marker-end": "url(#lp-oa)" }, svg);
+    txt(svg, 104, 523, "저장소에 넣은 것의 예", { "font-size": 18.5, "font-weight": 700, fill: "var(--me)" });
+    [["AGENTS.md 목차", 104, 556], ["docs/ 설계 문서", 104, 586], ["구조 검사 린터", 314, 556], ["화면·로그 도구", 314, 586]].forEach(([t, x, y]) => {
+      el("circle", { cx: x + 5, cy: y - 6, r: 4, fill: "var(--me)" }, svg);
+      txt(svg, x + 16, y, t, { "font-size": 18.5 });
+    });
+  })();
+})();
+</script>

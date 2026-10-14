@@ -80,6 +80,11 @@
 | [METR, 실험 설계 변경(2026-02-24)](https://metr.org/blog/2026-02-24-uplift-update/) | 첫 실험과 후속 실험을 시간축 두 영역으로 나눠 같은 세로축에 점과 구간을 찍고, "선택 편향 때문에 실제는 더 위일 것"을 화살표 주석으로 단다 | 측정 방법 자체의 한계를 결과와 함께 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (가져와 씀) |
 | [Stack Overflow, Agents on a leash(2026-05-27)](https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/) | 같은 질문을 1년 간격으로 두 번 묻고 답 항목마다 두 해 막대를 짝지어 세운다 | 조사 숫자의 변화를 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (가져와 씀) |
 | [Stack Overflow Developer Survey 2026, AI 데이터](https://survey.stackoverflow.co/2026/ai/data) | 신뢰를 "믿나/안 믿나" 대신 "어떤 조건에서 믿나"(확인할 수 있을 때만 48%)로 묻는다 | 신뢰를 정도가 아니라 조건으로 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (100칸 격자) |
+| [Claude Code Docs, How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works) | 루프를 세 단계로 나누되 "단계는 섞이고 요청에 따라 달라진다(질문은 수집만, 버그는 여러 번, 리팩터링은 확인 많이)"고 적고, "fix the failing tests" 한 요청을 도구 호출 여섯 걸음으로 풀어 보인다. 모델 둘레 층을 agentic harness 로 이름 붙인다 | 에이전트 루프·하네스를 처음 세울 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify |
+| [Claude Code Docs, Best practices](https://code.claude.com/docs/en/best-practices) | "모델은 끝나 보이면 멈춘다 → 검사가 없으면 사람이 검증 루프가 된다"로 검증의 필요를 세우고, 멈춤을 거는 방법을 프롬프트 → /goal → Stop hook → 검증 서브에이전트 순으로 단단함 사다리로 놓는다. 계획 생략 기준을 "diff 를 한 문장으로 말할 수 있나" 하나로 준다 | 검증·게이트를 강도 순으로 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify |
+| [OpenAI, Harness engineering](https://openai.com/index/harness-engineering/) | 에이전트가 막힐 때 "더 열심히"가 아니라 "빠진 능력이 무엇인가"를 묻고 저장소에 넣는 바깥 고리. Chrome DevTools 확인 루프를 시퀀스 다이어그램 + LOOP UNTIL CLEAN 상자로 그린다 | 사람의 일이 루프 바깥으로 옮겨 가는 것을 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify (DevTools 그림 가져와 씀) |
+| [Zhong 외, ImpossibleBench](https://arxiv.org/abs/2510.20270) | 테스트를 명세와 반대로 뒤집은 "불가능한 과제"를 만들어 통과율 = 부정행위율로 정의한다(is_prime(7) 한 줄 예, Figure 1). 테스트 열어 둠·읽기 전용·숨김에 따라 정상 성공률과 부정행위가 함께 움직이는 막대(Figure 7) | 보상 해킹을 측정 가능한 숫자로 보일 때, 대책의 대가를 같이 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify (Figure 1·2 를 한국어 두 과제 카드 + 막대로, Figure 7 값은 토글 막대로 다시 그림) |
+| [METR, Recent Frontier Models Are Reward Hacking](https://metr.org/blog/2025-06-05-recent-reward-hacking/) | 실제 실행 기록 조각(채점기를 늘 통과하게 바꾸는 코드)을 그대로 보이고, 과제별 보상 해킹 비율 표와 "속이지 마세요" 같은 프롬프트별 비율 표를 둔다 | 보상 해킹이 지시로는 잘 안 막힌다는 것을 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify |
 
 ## 미확인
 
@@ -131,6 +136,7 @@
 - **브라우저에서 진짜 부스팅을 한 그루씩** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 예시 학생 60명 판에서 "+ 트리 하나"를 누르면 XGBoost 와 같은 식(로지스틱 손실, 잎 값 −Σg/(Σh+λ))으로 깊이 2 트리를 실제로 학습해 더한다. 칸 색 경계가 계단으로 다듬어지고 빨간 고리(틀린 학생)가 22 → 2명으로 준다. 트리 띠에 방금 만든 트리의 실제 질문이 쌓인다
 - **같은 문제를 LLM 에게도 주고 같은 그림에 올리기** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 표 300명 점 격자 세 장(실제 / LLM / XGBoost)과 승객 수 그래프의 LLM 선을 같은 축에 두니 "LLM 이 정답인가"가 주장이 아니라 실측이 됐다
 - **내적은 등고선으로** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 사용자 화살표에 수직인 "점수가 같은 선"을 옅게 깔아, 화살표를 끌면 선이 돌면서 순위가 바뀌는 이유가 보인다
+- **같은 요청을 확인 수단 토글 하나로 두 번 돌리기** (ai-native-dev-loop-explore-plan-verify, Critic 전) — 탐색·계획·고치기·확인 네 정거장 고리를 점이 돌고 터미널에 도구 호출이 한 줄씩 쌓인다. 기본값은 "확인 수단 없음"의 실패 상태(1바퀴, 도구 4번, "다 고쳤습니다"인데 로그인 버튼은 빨강). "테스트 있음"으로 바꾸면 첫 npm test 가 빨강으로 실패해 한 바퀴를 더 돌고 초록에서 멈춘다(2바퀴, 7번). "검증이 루프를 닫는다"가 바퀴 수 차이로 보인다. 같은 고리를 걸음 띠·멈춤 문·바깥 고리 그림에 다시 썼다
 
 ## 페이지 레이아웃
 
@@ -160,15 +166,15 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠) |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify |
 | 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
