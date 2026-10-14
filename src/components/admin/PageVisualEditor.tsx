@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { AiReviseModal } from "@/components/admin/AiModals";
 import { BlockAiCompare } from "@/components/admin/BlockAiCompare";
 import { requestBlockRevise, getBlockJob, cancelBlockJob } from "@/app/admin/editor/block-actions";
+import { renderPagePreview } from "@/app/admin/editor/page-preview-actions";
 import {
   listBlocks, blockHtml, moveBlock, moveBlockTo, duplicateBlock, removeBlock,
   replaceBlock, annotateForCanvas, cleanCanvasHtml, scriptHooks, editableTarget,
@@ -76,6 +77,15 @@ export function PageVisualEditor({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+  // 실행 미리보기는 실제 글 화면처럼 서버에서 코드 블록을 칠한 HTML 로 그린다(page-code.ts)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  useEffect(() => {
+    if (tab !== "preview") return;
+    let alive = true;
+    setPreviewHtml(null);
+    renderPagePreview(value).then((h) => { if (alive) setPreviewHtml(h); }, () => { if (alive) setPreviewHtml(value); });
+    return () => { alive = false; };
+  }, [tab, value]);
   const [side, setSide] = useState<"blocks" | "meta">("blocks");
   const [sel, setSel] = useState<Selection | null>(null);
   const [dragParent, setDragParent] = useState<number | null>(null); // 끌고 있는 블록의 부모
@@ -548,7 +558,7 @@ export function PageVisualEditor({
                   dangerouslySetInnerHTML={canvasInner}
                 />
               ) : (
-                <PageBody html={value} />
+                previewHtml === null ? <div className="meta" style={{ fontSize: 12 }}>미리보기 준비 중…</div> : <PageBody html={previewHtml} />
               )}
             </div>
           </div>
