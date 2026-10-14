@@ -1,0 +1,1092 @@
+---
+title: 벡터 DB가 100만 개 문서에서 쓰는 지름길
+slug: rag-embedding-vector-db
+excerpt: 벡터 DB는 질문과 비슷한 문서를 찾을 때 문서를 하나하나 다 재지 않습니다. 단어 벡터 118만 개로 직접 재 보니 전부 비교하면 질문 하나에 7.1ms, 층 있는 지름길 그래프 HNSW는 1,029곳만 재고 0.07ms였습니다. 대신 가장 가까운 것을 일부 놓칩니다. 임베딩과 코사인 유사도부터 HNSW·IVF, 키워드 검색을 섞는 하이브리드 검색과 리랭커까지 그림으로 담았습니다.
+tags: [Vector DB, Embedding, HNSW, 벡터 검색, 하이브리드 검색, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 8
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/rag-embedding-vector-db-mv8jpd9d.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(h1·리드·두 막대 판독 | 세 층 판 그림, 모바일은 글 → 그림 → 판독) → 글|그림(384칸 색 띠) → 실험판 전폭 띠(글·판독 | 끄는 화살표) → 글 + 넓은 그림(넓이 = 계산량 직사각형) → 글|그림(10칸 정답 자리 + 세로 로그 기울기 그림) → 글|그림(층별 점 개수 계단) → 실험판 전폭 띠(글 | 손잡이 위 실측 곡선, 모바일은 곡선 → 손잡이 → M 설명) → 글|그림(보로노이 구역) + 넓은 그림(nprobe 실측 막대) → 해설|코드(pgvector) + 기본값 표 → 글 + 넓은 그림(순위 사다리 네 열, 리랭커 원리는 접기) + 정리 → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 제목|글 머리는 참고 자료 한 번만. 다양함은 그림 쪽(오른쪽 그림, 전폭 띠, 넓은 그림, 코드 짝)으로 낸다 | 글의 성격: "다 재지 않는다"를 거리 잰 횟수로 끝까지 센다. 히어로의 층 판·주황 고리(잰 점)·빨간 별(질문)·빨간 점선 고리(놓친 정답)가 실측 곡선·보로노이 지도·순위 사다리까지 같은 뜻으로 이어진다 | 버린 후보: 그림 고정 스크롤리텔링(1·3편, 탐색 과정은 히어로가 이미 재생), 가로 스크롤 띠(rag-retrieval-pipeline), 2D 임베딩 지도에 질문 점 끌기(rag-retrieval-pipeline 히어로), 벤토 히어로(4편), 순환 노선도(2편), 옆 조작판(모든 그림을 움직일 변수 하나가 없음) -->
+<style>
+.post-page .vd {
+  --l2: rgb(118, 88, 222); --l2-soft: rgb(236, 231, 252);
+  --l1: rgb(18, 140, 140); --l1-soft: rgb(222, 243, 242);
+  --l0: rgb(118, 126, 140); --l0-soft: rgb(238, 240, 244);
+  --q: rgb(222, 52, 52); --hot: rgb(236, 120, 14); --hot-soft: rgb(253, 233, 210);
+  --kw: rgb(46, 104, 200); --pos: rgb(236, 120, 14); --neg: rgb(46, 104, 200);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .vd {
+  --l2: rgb(168, 142, 255); --l2-soft: rgb(52, 44, 84);
+  --l1: rgb(70, 200, 196); --l1-soft: rgb(24, 62, 62);
+  --l0: rgb(150, 158, 174); --l0-soft: rgb(44, 47, 56);
+  --q: rgb(255, 104, 96); --hot: rgb(255, 160, 70); --hot-soft: rgb(84, 52, 22);
+  --kw: rgb(110, 165, 245); --pos: rgb(255, 160, 70); --neg: rgb(110, 165, 245);
+}
+.post-page .vd * { box-sizing: border-box; }
+.post-page .vd-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .vd h1, .post-page .vd h2, .post-page .vd h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .vd h1 { font-size: clamp(32px, 4vw, 46px); line-height: 1.22; max-width: 13em; margin-bottom: 28px; }
+.post-page .vd h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .vd h3 { font-size: 20px; line-height: 1.45; margin-bottom: 20px; }
+.post-page .vd p, .post-page .vd li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .vd p { margin: 0 0 1.5em; }
+.post-page .vd b { color: var(--fg-strong); }
+.post-page .vd code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .vd a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .vd .vd-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .vd details { margin: 0 0 1.4em; }
+.post-page .vd summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .vd details p, .post-page .vd details li { margin-top: 10px; font-size: 16px; }
+.post-page .vd .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.post-page .vd svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .vd svg .dim { fill: var(--fg-neutral); }
+
+/* 배치 */
+.post-page .vd-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .vd-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .vd-two.code { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 56px); }
+.post-page .vd-col { max-width: 40em; }
+.post-page .vd-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .vd-sec > .vd-wrap + .vd-wrap { margin-top: clamp(56px, 7vw, 96px); }
+.post-page .vd-band { background: var(--bg-subtle); padding: clamp(64px, 7vw, 84px) 0 clamp(48px, 6vw, 68px); margin-top: clamp(40px, 6vw, 64px); }
+.post-page .vd-sec.band { padding-top: clamp(96px, 12vw, 150px); }
+.post-page .vd-fig { margin: 0; }
+
+/* 조작 부품 */
+.post-page .vd-seg { display: inline-flex; flex-wrap: wrap; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .vd-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1.25 var(--font-sans); padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .vd-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.post-page .vd-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .vd-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--fg-strong); margin-top: 12px; }
+.post-page .vd-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; }
+.post-page .vd-legend i.ring { background: transparent; border: 2.5px solid var(--hot); }
+.post-page .vd-legend i.miss { background: transparent; border: 2px dashed var(--q); }
+.post-page .vd-legend i.star { border-radius: 0; background: var(--q); clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.post-page .vd-legend i.line { height: 4px; border-radius: 2px; width: 20px; vertical-align: 3px; background: var(--hot); }
+
+/* ---------- 히어로 ---------- */
+.post-page .vd-hero { padding: clamp(32px, 4vw, 48px) 0 0; }
+.post-page .vd-herogrid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "text fig" "read cap"; grid-template-rows: auto auto; gap: 0 clamp(36px, 4.5vw, 64px); align-items: start; }
+.post-page .vd-herotext { grid-area: text; }
+.post-page .vd-herofig { grid-area: fig; }
+.post-page .vd-heroread { grid-area: read; margin-top: 24px; }
+.post-page .vd-herocap { grid-area: cap; margin-top: 16px; }
+.post-page .vd-lede p { font-size: 17px; }
+.post-page .vd-lede p:last-child { margin-bottom: 0; }
+.post-page .vd-layers { width: 100%; max-width: 680px; display: block; touch-action: manipulation; cursor: crosshair; }
+.post-page .vd-layers .plane { stroke-width: 1.2; }
+.post-page .vd-layers .edge { stroke-width: 1; fill: none; }
+.post-page .vd-layers .ring { fill: none; stroke: var(--hot); stroke-width: 2.2; opacity: 0; transition: opacity .25s; }
+.post-page .vd-layers .ring.on { opacity: 1; }
+.post-page .vd-layers .hop { stroke: var(--hot); stroke-width: 3.4; fill: none; stroke-linecap: round; }
+.post-page .vd-layers .drop { stroke: var(--hot); stroke-width: 2.4; stroke-dasharray: 5 5; fill: none; }
+.post-page .vd-layers .res { fill: var(--hot); }
+.post-page .vd-layers .miss { fill: none; stroke: var(--q); stroke-width: 2; stroke-dasharray: 3 3; }
+.post-page .vd-layers .qstar { fill: var(--q); }
+.post-page .vd-herobar { display: grid; gap: 16px; justify-items: start; }
+.post-page .vd-race { display: grid; gap: 10px; width: 100%; }
+.post-page .vd-race .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .vd-race .row b { font-family: var(--font-mono); }
+.post-page .vd-race .track { height: 16px; background: transparent; position: relative; }
+.post-page .vd-race .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; transition: width .3s; }
+.post-page .vd-race .row.hn i { background: var(--hot); }
+.post-page .vd-race .row.bf i { background: var(--l0); width: 100%; }
+.post-page .vd-herohint { font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin: 12px 0 0 !important; min-height: 3.2em; }
+.post-page .vd-herohint b { color: var(--fg-strong); }
+
+/* ---------- 임베딩 띠 ---------- */
+.post-page .vd-strips { display: grid; gap: 30px; }
+.post-page .vd-strip small { display: block; font-size: 14px; font-weight: 700; color: var(--fg-strong); margin-bottom: 8px; line-height: 1.5; }
+.post-page .vd-strip small span { color: var(--fg-neutral); font-weight: 600; }
+.post-page .vd-grid { display: grid; grid-template-columns: repeat(48, minmax(0, 1fr)); gap: 1px; max-width: 560px; }
+.post-page .vd-grid i { aspect-ratio: 1; display: block; border-radius: 1px; }
+.post-page .vd-cosrow { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; color: var(--fg-strong); margin-top: 4px; }
+.post-page .vd-cosrow b { font-family: var(--font-mono); }
+.post-page .vd-scale { display: flex; align-items: center; gap: 10px; font: 600 13px/1 var(--font-mono); color: var(--fg-neutral); margin-top: 6px; }
+.post-page .vd-scale i { display: block; width: 140px; height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--neg), var(--bg-base) 50%, var(--pos)); border: 1px solid var(--line-subtle); }
+.post-page .vd-cellread { font: 600 14px/1.5 var(--font-sans); color: var(--fg-neutral); min-height: 1.5em; margin-top: 8px; }
+
+/* ---------- 코사인 ---------- */
+.post-page .vd-cos { width: 100%; max-width: 470px; display: block; touch-action: none; }
+.post-page .vd-cos .grid line { stroke: var(--line-subtle); stroke-width: 1; }
+.post-page .vd-cos .axis { stroke: var(--fg-neutral); stroke-width: 1.4; }
+.post-page .vd-cos .knob { cursor: grab; }
+.post-page .vd-reads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 4px 0 24px; }
+.post-page .vd-read { display: grid; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .vd-read small { font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); line-height: 1.45; }
+.post-page .vd-read b { font: 700 21px/1.3 var(--font-mono); color: var(--fg-strong); }
+.post-page .vd-read b.o { color: var(--hot); }
+.post-page .vd-read span { font: 600 13px/1.5 var(--font-mono); color: var(--fg-neutral); overflow-wrap: anywhere; }
+
+/* ---------- 넓이 = 계산량 ---------- */
+.post-page .vd-area { width: 100%; max-width: 980px; display: block; }
+.post-page .vd-axes { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0 0 20px !important; font: 700 clamp(18px, 2vw, 21px)/1.4 var(--font-sans) !important; color: var(--fg-strong); }
+.post-page .vd-axes span { white-space: nowrap; }
+.post-page .vd-axes i { font-style: normal; color: var(--l1); margin-right: 6px; }
+.post-page .vd-axes span:last-child { color: var(--fg-neutral); }
+@media (min-width: 641px) { .post-page .vd-axes { display: none; } }
+
+/* ---------- recall 자리 ---------- */
+.post-page .vd-slots { display: grid; gap: 12px; }
+.post-page .vd-slots small { font-size: 14px; font-weight: 700; color: var(--fg-strong); display: block; margin-bottom: 6px; }
+.post-page .vd-slotrow { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; max-width: 520px; }
+.post-page .vd-slotrow i { aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font: 700 13px/1 var(--font-mono); font-style: normal; color: var(--fg-strong); }
+.post-page .vd-slotrow i.t { background: var(--l0-soft); box-shadow: inset 0 0 0 1.5px var(--l0); }
+.post-page .vd-slotrow i.h { background: var(--hot); color: #fff; }
+[data-theme="dark"] .post-page .vd-slotrow i.h { color: #1b1206; }
+.post-page .vd-slotrow i.m { box-shadow: inset 0 0 0 2px var(--q); background: transparent; color: var(--q); }
+.post-page .vd-slotrow i.x { background: var(--bg-muted); color: var(--fg-neutral); }
+.post-page .vd-slope { width: 100%; max-width: 520px; display: block; margin-top: 40px; }
+
+/* ---------- 층 계단 ---------- */
+.post-page .vd-stairs { display: grid; gap: 10px; max-width: 580px; }
+.post-page .vd-stair { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 12px; align-items: center; }
+.post-page .vd-stair > span { font-size: 14px; font-weight: 700; color: var(--fg-strong); line-height: 1.3; }
+.post-page .vd-stair > span em { display: block; font-style: normal; font-weight: 600; font-size: 13px; color: var(--fg-neutral); }
+.post-page .vd-stair .bar { position: relative; height: 34px; }
+.post-page .vd-stair .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.post-page .vd-stair .bar b { position: absolute; top: 50%; transform: translateY(-50%); font: 700 14px/1 var(--font-mono); white-space: nowrap; }
+.post-page .vd-logtag { display: inline-block; font: 700 15px/1.4 var(--font-sans) !important; color: var(--fg-strong); background: var(--bg-muted); border-radius: 999px; padding: 6px 14px; margin: 0 0 18px !important; }
+.post-page .vd-true { max-width: 580px; margin-top: 36px; display: grid; gap: 8px; }
+.post-page .vd-true > small { font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .vd-true .tr { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 12px; align-items: center; font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .vd-true .tr div { height: 14px; position: relative; }
+.post-page .vd-true .tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; min-width: 2px; }
+.post-page .vd-stair .ratio { grid-column: 2; font: 600 12.5px/1 var(--font-mono); color: var(--fg-neutral); padding-left: 6px; margin: -2px 0; }
+
+/* ---------- ef 실험판 ---------- */
+.post-page .vd-two.lab { grid-template-columns: minmax(0, 5fr) minmax(0, 6.4fr); }
+.post-page .vd-ef { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6.4fr); grid-template-areas: "p1 ctl" "m fig"; gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .vd-ef .ef-p1 { grid-area: p1; }
+.post-page .vd-ef .ef-ctl { grid-area: ctl; max-width: 640px; }
+.post-page .vd-ef .ef-fig { grid-area: fig; }
+.post-page .vd-ef .ef-m { grid-area: m; }
+.post-page .vd-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; margin: 4px 0 22px; }
+.post-page .vd-range label { grid-column: 1 / -1; font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .vd-range input { width: 100%; accent-color: var(--hot); }
+.post-page .vd-range output { font: 700 20px/1 var(--font-mono); color: var(--hot); min-width: 2.6em; text-align: right; }
+.post-page .vd-curve { width: 100%; max-width: 640px; display: block; }
+
+/* ---------- IVF ---------- */
+.post-page .vd-ivf { width: 100%; max-width: 620px; display: block; touch-action: none; }
+.post-page .vd-ivf .cell { stroke: var(--bg-base); stroke-width: 2.5; transition: fill .3s; }
+.post-page .vd-ivfctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+.post-page .vd-ivfctl span { font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .vd-ivfread { font-size: 14.5px; color: var(--fg-strong); margin-top: 10px; line-height: 1.7; min-height: 3.4em; }
+.post-page .vd-ivfread b { font-family: var(--font-mono); }
+.post-page .vd-probe { width: 100%; max-width: 980px; display: block; }
+
+/* ---------- 표·코드 ---------- */
+.post-page .vd ol.pg-code-notes { margin: 0 0 1.5em; }
+.post-page .vd-tbl { width: 100%; border-collapse: collapse; margin-top: clamp(48px, 6vw, 72px); font-size: 15.5px; }
+.post-page .vd-tbl th, .post-page .vd-tbl td { text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.6; word-break: keep-all; }
+.post-page .vd-tbl th { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .vd-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .vd-tbl td.num { white-space: nowrap; }
+
+/* ---------- 순위 사다리 ---------- */
+.post-page .vd-ladderhead { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-bottom: 18px; }
+.post-page .vd-ladderhead span { font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .vd-qtext { font-size: 16px; color: var(--fg-strong); }
+.post-page .vd-ladder { width: 100%; max-width: 1000px; display: block; }
+.post-page .vd-ladder .chip rect { stroke-width: 1.4; }
+.post-page .vd-ladder .lk { fill: none; stroke-width: 2; transition: opacity .3s; }
+.post-page .vd-docs ol { margin: 8px 0 0; padding-left: 1.4em; columns: 2; column-gap: 40px; }
+.post-page .vd-docs li { font-size: 15px; line-height: 1.6; margin-bottom: 6px; break-inside: avoid; }
+
+.post-page .vd-sum { font-size: clamp(18px, 1.8vw, 20px) !important; line-height: 1.8 !important; font-weight: 600; color: var(--fg-strong); margin: 0 0 1.2em !important; padding-top: 28px; border-top: 1px solid var(--line-subtle); }
+.post-page .vd-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .vd-refs li { font-size: 15px; margin-bottom: .5em; }
+.post-page .vd-refgrid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 40px; }
+
+@media (max-width: 900px) {
+  .post-page .vd-wrap { padding: 0 20px; }
+  .post-page .vd-two, .post-page .vd-two.code, .post-page .vd-two.lab, .post-page .vd-refgrid { grid-template-columns: minmax(0, 1fr); }
+  .post-page .vd-ef { grid-template-columns: minmax(0, 1fr); grid-template-areas: "p1" "ctl" "fig" "m"; }
+  .post-page .vd-ef .ef-fig { margin-bottom: 24px; }
+  .post-page .vd-ef .ef-ctl .vd-reads { margin-bottom: 12px !important; }
+  .post-page .vd-two.mo { row-gap: 0; }
+  .post-page .vd-two.mo > div:first-child { display: contents; }
+  .post-page .vd-two.mo > figure { order: 1; margin: 8px 0 40px; }
+  .post-page .vd-two.mo .mo-after { order: 2; }
+  .post-page .vd-herogrid { display: flex; flex-direction: column; }
+  .post-page .vd-herotext, .post-page .vd-lede { display: contents; }
+  .post-page .vd-herofig { order: 1; margin: 4px 0 28px; }
+  .post-page .vd-lede2 { order: 2; }
+  .post-page .vd-heroread { order: 3; width: 100%; }
+  .post-page .vd-heroread .vd-herobar { justify-items: stretch; }
+  .post-page .vd-heroread .vd-act { justify-self: start; }
+  .post-page .vd-herocap { order: 4; }
+  .post-page .vd-herogrid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "fig" "read" "cap"; grid-template-rows: auto; }
+  .post-page .vd-herofig { margin-top: 32px; }
+  .post-page .vd-heroread { margin-top: 20px; }
+  .post-page .vd-docs ol { columns: 1; }
+}
+@media (max-width: 560px) {
+  .post-page .vd-tbl thead { display: none; }
+  .post-page .vd-tbl tr { display: grid; grid-template-columns: minmax(0, 1fr); padding: 12px 0; border-bottom: 1px solid var(--line-subtle); }
+  .post-page .vd-tbl td { border: 0; padding: 2px 0 !important; }
+  .post-page .vd-tbl td.num { white-space: normal; }
+  .post-page .vd-reads { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; }
+  .post-page .vd-read b { font-size: 18px; }
+  .post-page .vd-grid { grid-template-columns: repeat(32, minmax(0, 1fr)); }
+  .post-page .vd-slotrow i { font-size: 12px; }
+  .post-page .vd-tbl { font-size: 14px; }
+  .post-page .vd-tbl th, .post-page .vd-tbl td { padding: 10px 6px; }
+  .post-page .vd-tbl td:first-child { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .vd *, .post-page .vd *::before, .post-page .vd *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="vd" data-vd>
+
+  <header class="vd-hero">
+    <div class="vd-wrap vd-herogrid">
+      <div class="vd-herotext">
+        <h1>벡터 DB가 100만 개 문서에서 쓰는 지름길</h1>
+        <div class="vd-lede">
+          <p>학교 안내문을 잔뜩 넣어 둔 챗봇에 "책을 늦게 돌려주면 어떻게 되나요?"라고 물었다고 해 봅시다. 챗봇은 먼저 질문과 뜻이 비슷한 문장을 찾아야 합니다. 문장마다 숫자 좌표, 곧 벡터(vector)를 붙여 두고 질문의 좌표와 가까운 것을 찾아 주는 저장소가 벡터 DB(vector database)입니다. 문장이 100만 개라면 100만 번을 다 재야 할까요?</p>
+          <p class="vd-lede2">벡터 DB는 다 재지 않습니다. 미리 층이 있는 지름길을 깔아 두고 그 길을 따라 아주 일부만 잽니다. 그림의 맨 아래 판 아무 곳이나 눌러 질문을 놓아 보세요.</p>
+        </div>
+      </div>
+      <figure class="vd-fig vd-herofig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('vd-finish'))" data-vd-hero>
+        <svg class="vd-layers" data-vd-layers role="img" aria-label="비스듬히 쌓은 판 세 장. 맨 위 판에는 점 몇 개가 긴 선으로, 가운데 판에는 점 수십 개가, 맨 아래 판에는 점 400개가 짧은 선으로 이어져 있다. 빨간 별(질문)을 향해 주황 길이 위 판에서 출발해 아래 판으로 떨어지며 다가간다"></svg>
+        <div class="vd-legend">
+            <span><i class="star"></i>질문</span>
+            <span><i class="line"></i>지나간 길</span>
+            <span><i class="ring"></i>거리를 잰 점</span>
+            <span><i style="background:var(--hot)"></i>찾은 5개</span>
+            <span><i class="miss"></i>놓친 정답</span>
+          </div>
+      </figure>
+      <div class="vd-herocap">
+          <p class="vd-cap">HNSW(Hierarchical Navigable Small World) 방식을 점 400개짜리 장난감으로 줄인 그림입니다. 세 판은 같은 지도를 겹쳐 놓은 것이고 위 판에 있는 점은 아래 판에도 같은 자리에 있습니다. 점의 위치와 연결은 설명하려고 만든 예시이고 탐색 순서는 실제 HNSW 규칙을 따릅니다.</p>
+      </div>
+      <div class="vd-heroread">
+        <div class="vd-herobar">
+          <div class="vd-race" aria-live="polite">
+            <div class="row hn"><span>지름길로 거리 잰 점 <b data-vd-hn>0개</b></span><div class="track"><i data-vd-hnbar style="width:0%"></i></div></div>
+            <div class="row bf"><span>전부 재면 <b>400개</b></span><div class="track"><i></i></div></div>
+          </div>
+          <button type="button" class="vd-act" data-vd-replay>▶ 다시 찾기</button>
+        </div>
+        <p class="vd-herohint" data-vd-herohint>가장 가까운 점 5개를 찾는 중입니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="vd-sec">
+    <div class="vd-wrap vd-two mo">
+      <div>
+        <h2>임베딩 모델은 문장을 숫자 수백 개로 바꿉니다</h2>
+        <p>벡터는 숫자 여러 개를 순서대로 늘어놓은 묶음입니다. (3, 1)은 숫자 두 개짜리 벡터이고 평면 위의 한 점으로 그릴 수 있습니다. 숫자가 몇 개 들어 있는지를 차원(dimension)이라고 합니다. (3, 1)은 2차원입니다.</p>
+        <p>문장을 벡터로 바꿔 주는 모델이 임베딩 모델(embedding model)입니다. 그림은 다국어 임베딩 모델 <code>paraphrase-multilingual-MiniLM-L12-v2</code>에 문장 세 개를 넣고 받은 실제 숫자 384개를 색 칸으로 칠한 것입니다. 384차원 공간의 점 하나인 셈입니다.</p>
+        <p>학습을 거치며 뜻이 비슷한 문장은 비슷한 방향을 가리키게 됩니다. 첫째·둘째 문장은 "책 반납이 늦음"이라는 같은 내용을 서로 다른 단어로 말합니다. 그래도 칸 무늬가 닮았습니다.</p>
+        <p class="mo-after">사람에 빗대면 성격 검사표와 비슷합니다. 문항 384개의 점수로 사람을 적어 두면 점수표가 닮은 사람끼리 성격이 비슷합니다. 다른 점이 하나 있습니다. 이 검사표의 문항은 아무도 모릅니다. 모델이 학습하면서 스스로 정한 기준이라 칸 하나만 떼어 읽을 수는 없습니다.</p>
+        <details class="mo-after"><summary>요즘 임베딩 모델은 몇 차원인가요</summary><p>요즘 많이 쓰는 모델은 숫자를 더 많이 냅니다. Qwen3-Embedding은 크기에 따라 1024·2560·4096차원이고, 모델 카드에는 2025년 6월 5일 기준 MTEB(Massive Text Embedding Benchmark) 다국어 순위 1위라고 적혀 있습니다.</p></details>
+      </div>
+      <figure class="vd-fig" data-figure>
+        <div class="vd-strips" data-vd-strips></div>
+        <div class="vd-scale"><span>−</span><i></i><span>+</span></div>
+        <p class="vd-cellread" data-vd-cellread>칸에 마우스를 올리거나 눌러 보세요.</p>
+        <p class="vd-cap">세 문장의 숫자는 길이를 1로 맞추는 정규화(normalization)를 한 다음 칠했습니다(다음 절). 주황은 양수, 파랑은 음수이고 진할수록 0에서 멉니다. 한 줄에 48칸, 8줄이 384칸입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="vd-sec band">
+    <div class="vd-wrap">
+      <h2>코사인 유사도는 길이를 빼고 방향만 견줍니다</h2>
+      <div class="vd-col">
+        <p>두 벡터가 얼마나 비슷한지는 보통 코사인 유사도(cosine similarity)로 잽니다. 원점에서 두 점으로 화살표를 그었을 때 두 화살표가 얼마나 같은 쪽을 가리키는지 나타내는 값입니다. 같은 쪽이면 1, 직각이면 0, 정반대면 −1입니다.</p>
+      </div>
+    </div>
+    <div class="vd-band">
+      <div class="vd-wrap vd-two lab mo">
+        <div>
+          <p>계산은 두 단계입니다. 먼저 같은 자리 숫자끼리 곱해서 모두 더합니다. 이것을 내적(dot product)이라고 합니다. 그다음 내적을 두 화살표 길이의 곱으로 나눕니다. 길이로 나누니 화살표가 길든 짧든 방향만 남습니다.</p>
+          <p>화살표 끝의 동그라미를 끌어 보세요. 판독 칸의 숫자는 그림 좌표로 바로 계산한 값입니다.</p>
+          <div class="vd-reads mo-after" aria-live="polite">
+            <div class="vd-read"><small>질문 화살표 A</small><b data-vd-a>(4, 1)</b><span data-vd-al>길이 4.12</span></div>
+            <div class="vd-read"><small>문서 화살표 B</small><b data-vd-b>(2, 3)</b><span data-vd-bl>길이 3.61</span></div>
+            <div class="vd-read"><small>내적 A·B</small><b data-vd-dot>11.00</b><span data-vd-dotf>4×2 + 1×3</span></div>
+            <div class="vd-read"><small>코사인 유사도</small><b class="o" data-vd-cosv>0.74</b><span data-vd-cosf>11.00 ÷ (4.12 × 3.61)</span></div>
+          </div>
+          <div class="vd-seg mo-after" role="group" aria-label="화살표 길이 표시">
+            <button type="button" aria-pressed="true" data-vd-norm="0">원래 길이</button>
+            <button type="button" aria-pressed="false" data-vd-norm="1">길이 1로 맞추기</button>
+          </div>
+          <p class="mo-after" style="margin-top:24px">길이를 1로 맞추는 일이 정규화입니다. 정규화한 벡터끼리는 내적이 곧 코사인 유사도라서 나눗셈을 건너뛸 수 있습니다. 그래서 벡터 DB에 넣기 전에 정규화해 두고 내적만 계산하는 경우가 많습니다.</p>
+        </div>
+        <figure class="vd-fig" data-figure>
+          <svg class="vd-cos" data-vd-cos viewBox="0 0 470 430" role="img" aria-label="격자 위에 원점에서 나온 빨간 화살표 A와 회색 화살표 B, 두 화살표 사이의 주황 각도 호, 반지름 1인 점선 원"></svg>
+          <p class="vd-cap">빨간 화살표가 질문, 회색 화살표가 문서입니다. 점선 원은 길이가 1인 자리입니다. 각도기로 두 화살표 사이 각을 재는 것과 비슷하지만 코사인 유사도는 384차원에서도 같은 식으로 계산합니다.</p>
+        </figure>
+      </div>
+    </div>
+    <div class="vd-wrap" style="margin-top:clamp(48px,6vw,72px)">
+      <div class="vd-col">
+        <p>실제 숫자로 보면 색 띠 그림의 질문 벡터는 길이가 4.02, "반납이 늦으면…" 벡터는 3.74였습니다. 그대로 내적하면 7.86이 나오지만 길이로 나누면 코사인 유사도는 0.52입니다. 이 값은 같은 모델 안에서 순서를 매기는 데 씁니다. 0.52가 "52% 비슷하다"는 뜻은 아니고 다른 모델의 0.52와 견줄 수도 없습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap">
+      <h2>전부 재면 정확하지만 문서 수만큼 느려집니다</h2>
+      <div class="vd-col">
+        <p>가장 확실한 방법은 질문 벡터와 모든 문서 벡터의 코사인 유사도를 하나씩 계산해 큰 순서로 줄 세우는 것입니다. 이를 전수 비교(brute force)라고 합니다. 정답과 가장 가까운 문서, 곧 최근접 이웃(nearest neighbor)을 절대 놓치지 않습니다.</p>
+        <p>대신 계산량이 정직하게 늘어납니다. 문서가 N개, 벡터가 d차원이면 질문 하나에 곱셈을 N × d번 해야 합니다. 전교생 키를 한 명씩 재는 것과 비슷합니다. 학생 수가 열 배면 열 배 오래 걸립니다. 키는 숫자 하나지만 벡터는 숫자 수백 개라서 한 명 재는 데에도 수백 번을 곱합니다.</p>
+      </div>
+      <figure class="vd-fig vd-wide" data-figure>
+        <p class="vd-axes"><span><i>↔</i>가로 = 문서 수</span><span><i>↕</i>세로 = 차원</span><span>넓이 = 곱셈 횟수</span></p>
+        <svg class="vd-area" data-vd-area viewBox="0 0 980 330" role="img" aria-label="세 직사각형. 가로는 문서 수, 세로는 차원 수이고 넓이가 곱셈 횟수다. 10만×100은 작은 띠, 118만×100은 긴 띠, 100만×1024는 큰 사각형이다. 각각 질문 하나에 0.58ms, 7.1ms, 62ms가 걸렸다"></svg>
+        <p class="vd-cap">M4 맥북에서 벡터 검색 라이브러리 Faiss의 <code>IndexFlatIP</code>로 질문 한 개씩, CPU 코어 하나로 직접 잰 시간입니다(2026-10-15). ms는 밀리초, 1000분의 1초입니다. 100차원은 단어마다 벡터를 붙여 둔 공개 시험 데이터 GloVe, 1024차원은 무작위 숫자입니다. 넓이가 열 배면 시간도 거의 열 배입니다.</p>
+      </figure>
+      <div class="vd-col" style="margin-top:clamp(40px,5vw,56px)">
+        <p>질문 하나에 62ms면 빨라 보입니다. 하지만 동시에 질문 100개가 들어오면 코어 하나로는 6초가 넘게 걸리고 문서가 1억 개로 늘면 질문 하나에 6초가 됩니다. 그래서 문서가 많아지면 정확함을 조금 내주고 속도를 사는 방법을 씁니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap vd-two mo">
+      <div>
+        <h2>근사 탐색은 조금 놓치는 대신 일부만 잽니다</h2>
+        <p>모든 문서를 재지 않고 가까울 만한 곳만 골라 재는 방식을 근사 최근접 이웃 탐색, ANN(Approximate Nearest Neighbor)이라고 합니다. 벡터 DB가 빠른 이유는 거의 전부 이 ANN 색인(index) 덕분입니다. 색인은 책 뒤의 찾아보기처럼 검색을 빠르게 하려고 미리 만들어 두는 자료입니다.</p>
+        <p>얼마나 잘 찾았는지는 recall로 잽니다. 진짜로 가장 가까운 10개 가운데 몇 개를 돌려줬는지의 비율입니다. 10개 중 7개를 찾았다면 recall은 0.7입니다. 순서가 조금 바뀌어도 10개 안에만 들어 있으면 맞힌 것으로 셉니다.</p>
+        <p class="mo-after">ANN의 진짜 장점은 따로 있습니다. 문서가 늘어도 재는 곳이 거의 늘지 않습니다. 단어 벡터 10만 개에서 118만 개로 열두 배 늘렸을 때 전수 비교는 거리 계산이 그대로 열두 배가 됐습니다. 다음 절에서 볼 HNSW는 922번에서 1,029번으로 12%만 늘었습니다.</p>
+      </div>
+      <figure class="vd-fig" data-figure>
+        <div class="vd-slots">
+          <div><small>진짜 가장 가까운 10개</small><div class="vd-slotrow"><i class="t">1</i><i class="t">2</i><i class="t">3</i><i class="t">4</i><i class="t">5</i><i class="t">6</i><i class="t">7</i><i class="t">8</i><i class="t">9</i><i class="t">10</i></div></div>
+          <div><small>근사 탐색이 돌려준 10개 — recall 0.7</small><div class="vd-slotrow"><i class="h">1</i><i class="h">2</i><i class="h">4</i><i class="h">3</i><i class="h">6</i><i class="h">7</i><i class="h">9</i><i class="x">14</i><i class="x">12</i><i class="x">18</i></div></div>
+          <div><small>놓친 정답</small><div class="vd-slotrow"><i class="m">5</i><i class="m">8</i><i class="m">10</i></div></div>
+        </div>
+        <svg class="vd-slope" data-vd-slope viewBox="0 0 520 330" role="img" aria-label="세로축이 열 배 눈금인 기울기 그림. 문서 10만 개에서 118만 개로 갈 때 전수 비교의 거리 계산은 10만에서 118만으로 가파르게 오르고, HNSW는 922에서 1,029로 거의 평평하다"></svg>
+        <p class="vd-cap">위 두 줄은 recall을 세는 법을 보인 예시이고 숫자는 "진짜 순위"입니다. 아래 그림은 GloVe 단어 벡터(100차원)로 직접 잰 질문 하나당 거리 계산 횟수입니다(HNSW M 16·efSearch 40, 질문 1,000개 평균). 세로축은 한 칸 오를 때마다 열 배입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap vd-two mo">
+      <div>
+        <h2>HNSW는 위층일수록 점이 적고 연결이 깁니다</h2>
+        <p>HNSW는 점들을 그래프로 이어 둔 색인입니다. 그래프(graph)는 점과 그 점들을 잇는 선으로 이뤄진 그림입니다. 이 그래프를 여러 층으로 쌓는데, 맨 아래층에는 모든 점이 있고 위층으로 갈수록 일부만 남습니다.</p>
+        <p>지도 앱을 떠올리면 쉽습니다. 많이 축소하면 큰 도시만 보이고 도시 사이를 긴 고속도로가 잇습니다. 확대할수록 작은 동네와 골목이 나타납니다. 멀리 갈 때는 축소한 지도로 방향을 잡고, 가까워지면 확대해 골목을 찾습니다. HNSW의 위층이 축소한 지도, 맨 아래층이 가장 확대한 지도입니다.</p>
+        <p class="mo-after">비유와 다른 점도 있습니다. 지도의 큰 도시는 중요해서 남지만 HNSW의 위층 점은 주사위로 뽑힙니다. 새 점을 넣을 때마다 그 점이 몇 층까지 올라갈지를 확률로 정합니다. 기본 설정에서는 한 층 올라갈 때마다 남는 점이 약 16분의 1로 줄어듭니다.</p>
+        <details class="mo-after"><summary>위층 선은 왜 길까요</summary><p>새 점은 자기가 속한 층마다 가까운 점 M개와 선으로 이어집니다. 맨 아래층에서는 2M개까지 잇습니다. 위층은 점이 드문드문해서 가장 가까운 점이라도 멀리 있고, 그래서 선이 길어집니다. 긴 선은 일부러 놓은 지름길이 아니라 점이 적어서 저절로 생긴 것입니다.</p></details>
+        <details class="mo-after"><summary>16분의 1은 어디서 나오나요</summary><p>HNSW 논문은 점의 층을 −ln(무작위 수) × m<sub>L</sub>로 뽑고 m<sub>L</sub> = 1/ln(M)을 권합니다. 이렇게 하면 한 층 위에 남을 확률이 1/M입니다. pgvector·Qdrant의 기본 M이 16이라서 약 16분의 1이 됩니다. 계단 그림의 실측 비율도 14~18배 사이였습니다.</p></details>
+      </div>
+      <figure class="vd-fig" data-figure>
+        <p class="vd-logtag">로그 눈금 · 막대가 같은 길이만큼 길어질 때마다 점은 10배</p>
+        <div class="vd-stairs" data-vd-stairs></div>
+        <div class="vd-true" aria-label="실제 비율 막대">
+          <small>같은 개수를 실제 비율로 그리면</small>
+          <div class="tr"><span>0층</span><div><i style="width:100%;background:var(--l0)"></i></div></div>
+          <div class="tr"><span>1층</span><div><i style="width:6.26%;background:var(--l1)"></i></div></div>
+          <div class="tr"><span>2층 이상</span><div><i style="width:0.42%;background:var(--l2)"></i></div></div>
+        </div>
+        <p class="vd-cap">GloVe 단어 벡터 1,183,514개를 Faiss HNSW(M 16)에 넣고 층마다 점 개수를 센 값입니다(2026-10-15 직접 실행). 실제 비율로 그리면 위층 막대는 거의 보이지 않습니다. 맨 위 5층에는 점이 1개뿐이고 모든 검색이 거기서 출발합니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="vd-sec band">
+    <div class="vd-wrap">
+      <h2>efSearch를 키울수록 정확해지고 느려집니다</h2>
+      <div class="vd-col">
+        <p>검색은 맨 위층 입구에서 시작합니다. 지금 점의 이웃 가운데 질문에 더 가까운 점이 있으면 그리로 옮기고, 더 가까운 이웃이 없으면 한 층 내려갑니다. 맨 아래층에서는 후보 목록을 들고 다니며 넓게 살핍니다. 이 목록의 길이가 efSearch입니다.</p>
+      </div>
+    </div>
+    <div class="vd-band">
+      <div class="vd-wrap vd-ef">
+        <p class="ef-p1">목록이 짧으면 몇 곳만 보고 빨리 끝내지만 근처에 더 가까운 점이 있어도 그쪽 길을 보지 못하고 멈출 수 있습니다. 목록을 늘리면 더 많은 길을 살펴 놓치는 점이 줄어드는 대신 거리를 재는 횟수가 늘어납니다.</p>
+        <div class="ef-ctl">
+          <div class="vd-range">
+            <label for="vd-ef">efSearch (맨 아래층 후보 목록 길이)</label>
+            <input id="vd-ef" type="range" min="0" max="5" step="1" value="2" data-vd-ef>
+            <output data-vd-efout>40</output>
+          </div>
+          <div class="vd-reads" style="margin-bottom:28px" aria-live="polite">
+            <div class="vd-read"><small>M 16 · recall</small><b class="o" data-vd-r16>0.640</b><span data-vd-n16>거리 계산 1,029번 · 0.070ms</span></div>
+            <div class="vd-read"><small>M 32 · recall</small><b data-vd-r32>0.785</b><span data-vd-n32>거리 계산 1,914번 · 0.121ms</span></div>
+          </div>
+        </div>
+        <figure class="vd-fig ef-fig" data-figure>
+          <svg class="vd-curve" data-vd-curve viewBox="0 0 640 430" role="img" aria-label="가로축은 질문 하나당 거리 계산 횟수, 세로축은 recall인 곡선 두 개. M 16 곡선은 440번에 0.41에서 4,991번에 0.86까지, M 32 곡선은 808번에 0.57에서 18,440번에 0.97까지 오른다. 손잡이 값에 해당하는 점이 주황으로 표시된다"></svg>
+          <p class="vd-cap">GloVe 단어 벡터 118만 개, 질문 1,000개, 가장 가까운 10개 기준 실측입니다(Faiss 1.15.1, M4 맥북 코어 하나). 전수 비교는 거리 계산 1,183,514번, 7.1ms로 이 그래프 폭의 약 60배 밖에 있습니다.</p>
+        </figure>
+        <p class="ef-m">M은 점 하나가 잇는 이웃 수입니다. M을 32로 늘리면 같은 efSearch에서 recall이 오르지만 색인을 만드는 시간이 23초에서 105초로 늘고 메모리도 더 듭니다. pgvector의 기본값은 M 16, efSearch 40입니다.</p>
+      </div>
+    </div>
+    <div class="vd-wrap" style="margin-top:clamp(48px,6vw,72px)">
+      <div class="vd-col">
+        <p>efSearch 40에서 recall 0.64는 낮아 보입니다. 같은 설정이 문서 10만 개에서는 0.75였고 뭉친 덩어리가 뚜렷한 384차원 시험 데이터 10만 개에서는 0.97이었습니다. 데이터 모양과 양에 따라 같은 설정의 결과가 이만큼 달라집니다. 그래서 기본값을 믿기보다 내 데이터로 recall을 재 보고 efSearch를 고릅니다.</p>
+        <details><summary>efConstruction은 무엇인가요</summary><p>점을 넣을 때 이웃 M개를 고르려고 살펴보는 후보 목록의 길이입니다. 크게 잡으면 더 좋은 이웃을 골라 그래프 품질이 오르지만 색인 만드는 시간이 늘어납니다. 검색 때 쓰는 efSearch와 이름이 비슷하지만 만들 때 한 번만 씁니다. 기본값은 pgvector 64, Qdrant 100, hnswlib 200입니다.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap vd-two">
+      <div>
+        <h2>IVF는 지도를 구역으로 나눠 가까운 몇 칸만 뒤집니다</h2>
+        <p>IVF(Inverted File Index)는 그래프 대신 구역을 씁니다. 먼저 점들을 비슷한 것끼리 몇 무리로 묶습니다. 이 무리를 군집(cluster), 무리의 한가운데 점을 중심점(centroid)이라고 합니다. 모든 점은 가장 가까운 중심점의 구역에 들어갑니다.</p>
+        <p>검색할 때는 질문과 중심점들의 거리만 먼저 잽니다. 그다음 가장 가까운 구역 몇 개를 골라 그 안의 점만 잽니다. 몇 구역을 뒤질지가 nprobe입니다. 우편물을 동네별 칸에 미리 나눠 두고 받는 사람 동네 칸만 뒤지는 것과 비슷합니다.</p>
+        <p>비유와 달리 구역은 데이터를 보고 계산해서 긋습니다. 그래서 질문이 구역 경계 근처에 있으면 진짜 가까운 점이 바로 옆 구역에 들어가 있기도 합니다. nprobe를 늘리거나 빨간 별을 끌어 보세요.</p>
+      </div>
+      <figure class="vd-fig" data-figure>
+        <div class="vd-ivfctl">
+          <span>뒤질 구역 수 nprobe</span>
+          <div class="vd-seg" role="group" aria-label="nprobe">
+            <button type="button" aria-pressed="true" data-vd-np="1">1</button>
+            <button type="button" aria-pressed="false" data-vd-np="2">2</button>
+            <button type="button" aria-pressed="false" data-vd-np="4">4</button>
+          </div>
+        </div>
+        <svg class="vd-ivf" data-vd-ivf viewBox="0 0 620 400" role="img" aria-label="점 400개가 열두 구역으로 나뉜 지도. 빨간 별 질문이 있는 구역만 색이 칠해지고 그 안의 점에 주황 고리가 붙는다. 경계 너머의 진짜 가까운 점은 빨간 점선 고리로 표시된다"></svg>
+        <p class="vd-ivfread" aria-live="polite" data-vd-ivfread></p>
+        <p class="vd-cap">맨 위 그림과 같은 점 400개를 비슷한 것끼리 묶는 계산(k-means)으로 12구역에 나눈 예시입니다. 흰 십자가 중심점입니다.</p>
+      </figure>
+    </div>
+    <div class="vd-wrap">
+      <div class="vd-col">
+        <p>실제 데이터에서도 같은 일이 일어납니다. GloVe 단어 벡터 118만 개를 1,087구역으로 나누고 nprobe를 바꿔 가며 쟀습니다. pgvector IVFFlat의 기본 nprobe(설정 이름은 <code>ivfflat.probes</code>)는 1입니다.</p>
+      </div>
+      <figure class="vd-fig vd-wide" data-figure>
+        <svg class="vd-probe" data-vd-probe viewBox="0 0 980 300" role="img" aria-label="nprobe 1, 2, 4, 8, 16, 32, 64마다 위 줄은 recall 막대, 아래 줄은 거리 계산 횟수 막대. recall은 0.40에서 0.93으로 천천히 오르고 거리 계산은 1,321번에서 74,719번으로 두 배씩 늘어난다"></svg>
+        <p class="vd-cap">Faiss <code>IndexIVFFlat</code>, 구역 1,087개(√N), 질문 1,000개 평균 실측입니다. 거리 계산에는 중심점과 잰 1,087번이 포함됩니다.</p>
+      </figure>
+      <div class="vd-col" style="margin-top:clamp(40px,5vw,56px)">
+        <p>nprobe를 두 배로 늘리면 재는 횟수도 거의 두 배가 됩니다. 같은 recall 0.8 언저리를 보면 HNSW는 거리 계산 2,856번, IVF는 19,520번이 들었습니다. 대신 IVF는 색인이 가볍고 빨리 만들어집니다. pgvector 문서도 HNSW가 속도와 recall의 균형은 낫지만 만드는 시간이 길고 메모리를 더 쓴다고 적어 두었습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap vd-two code">
+      <div>
+        <h2>pgvector에서는 색인 한 줄과 설정 한 줄입니다</h2>
+        <p>pgvector는 많이 쓰는 데이터베이스 PostgreSQL에 벡터 칸과 벡터 색인을 더해 주는 확장입니다(0.8.7 기준). 이미 PostgreSQL을 쓰는 서비스라면 따로 DB를 띄우지 않고 시작할 수 있습니다.</p>
+        <ol class="pg-code-notes">
+          <li><b>벡터 칸을 만듭니다.</b> 괄호 안 숫자가 차원입니다. 임베딩 모델이 내는 숫자 개수와 같아야 합니다. 색인은 2,000차원까지 걸 수 있습니다.</li>
+          <li><b>HNSW 색인을 만듭니다.</b> <code>vector_cosine_ops</code>는 코사인 거리로 재겠다는 뜻이고 <code>m</code>·<code>ef_construction</code>은 앞에서 본 M과 efConstruction입니다. 적은 값이 기본값입니다.</li>
+          <li><b>검색할 때 후보 목록 길이를 정합니다.</b> 기본값 40에서 100으로 늘리면 더 정확하고 더 느려집니다.</li>
+          <li><b>가까운 순서로 5개를 꺼냅니다.</b> <code>&lt;=&gt;</code>는 코사인 거리(1 − 코사인 유사도)라서 작을수록 가깝습니다.</li>
+        </ol>
+      </div>
+      <div>
+<pre data-title="search.sql" data-hl="7,11-13,16,19-21" data-start="1"><code class="language-sql">CREATE EXTENSION vector;
+
+-- ① 1024차원 벡터 칸
+CREATE TABLE docs (
+  id bigserial PRIMARY KEY,
+  body text,
+  embedding vector(1024)
+);
+
+-- ② 층 있는 지름길 그래프 만들기
+CREATE INDEX ON docs USING hnsw
+  (embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
+
+-- ③ 이번 검색에서 볼 후보 목록 길이
+SET hnsw.ef_search = 100;
+
+-- ④ 질문 벡터와 가까운 5개
+SELECT body FROM docs
+  ORDER BY embedding &lt;=&gt; '[0.06, 0.06, ...]'
+  LIMIT 5;</code></pre>
+      </div>
+    </div>
+    <div class="vd-wrap">
+      <table class="vd-tbl">
+        <thead><tr><th>벡터 DB</th><th>어떤 것</th><th>HNSW 기본값</th><th>그 밖에</th></tr></thead>
+        <tbody>
+          <tr><td>pgvector</td><td>PostgreSQL 확장</td><td class="num">m 16<br>ef_construction 64<br>ef_search 40</td><td>IVFFlat: 구역 수는 100만 행까지 행 수 ÷ 1000으로 시작, probes 기본 1</td></tr>
+          <tr><td>Qdrant</td><td>벡터 검색 전용 DB</td><td class="num">m 16<br>ef_construct 100</td><td>검색 ef 기본값은 ef_construct와 같음</td></tr>
+          <tr><td>Milvus</td><td>대규모용 벡터 DB</td><td class="num">M 30<br>efConstruction 360</td><td>검색 ef 기본값은 찾을 개수(TopK)</td></tr>
+        </tbody>
+      </table>
+      <p class="vd-cap">각 DB 공식 문서에서 2026-10-15에 확인한 값입니다.</p>
+    </div>
+  </section>
+
+  <section class="vd-sec">
+    <div class="vd-wrap">
+      <h2>뜻 검색이 틀리는 곳은 키워드 검색이 메웁니다</h2>
+      <div class="vd-col">
+        <p>임베딩 검색은 글자가 똑같이 들어 있는데도 뜻 점수가 낮아 놓칠 때가 있습니다. 그래서 단어가 겹치는 정도로 점수를 매기는 키워드 검색(keyword search)을 함께 씁니다. 가장 널리 쓰는 BM25(Best Matching 25)는 질문 단어가 그 문서에 자주 나오고 전체 문서에서는 드물수록 점수를 높게 줍니다.</p>
+        <p>안내문 12문장 가운데 "결석"은 한 문장에만 나오고 "선생님"은 세 문장에 나옵니다. 그래서 "결석"이 겹친 문서가 점수를 더 받습니다. 두 검색의 점수는 단위가 달라서 순위로 합칩니다. 이것을 하이브리드 검색(hybrid search)이라고 합니다. 가장 흔한 RRF(Reciprocal Rank Fusion)는 목록마다 1 ÷ (60 + 순위)를 더합니다.</p>
+      </div>
+      <figure class="vd-fig vd-wide" data-figure>
+        <div class="vd-ladderhead">
+          <span>질문</span>
+          <div class="vd-seg" role="group" aria-label="질문 고르기">
+            <button type="button" aria-pressed="true" data-vd-qq="2">결석</button>
+            <button type="button" aria-pressed="false" data-vd-qq="0">반납</button>
+            <button type="button" aria-pressed="false" data-vd-qq="1">와이파이</button>
+          </div>
+          <b class="vd-qtext" data-vd-qtext>"배가 아파서 학교에 못 갔어요"</b>
+        </div>
+        <svg class="vd-ladder" data-vd-ladder viewBox="0 0 1000 440" role="img" aria-label="네 열짜리 순위 사다리. 임베딩 순위, BM25 순위, 둘을 합친 RRF 순위, 리랭커 순위가 열마다 1위부터 5위까지 놓이고 같은 문서끼리 선으로 이어진다. 정답 문서는 주황 굵은 선이다"></svg>
+        <p class="vd-cap">학교 안내문 12문장에 직접 돌린 실제 순위입니다.</p>
+      </figure>
+      <div class="vd-col" style="margin-top:clamp(40px,5vw,56px)">
+        <p>기본 질문에서 RRF는 정답을 2위까지 올렸지만 1위는 "학교"가 겹친 와이파이 안내였습니다. 마지막 열의 리랭커(reranker)는 질문과 문서를 한 모델에 함께 넣고 답이 되는지를 점수로 매깁니다. 세 질문 모두 리랭커가 정답을 1위로 올렸습니다.</p>
+        <p>대신 문서마다 모델을 한 번씩 돌려야 해서 느립니다. 그래서 검색으로 후보를 수십 개로 줄인 다음 그 후보에만 씁니다. 문서를 잘라 임베딩하고 찾은 내용을 질문 앞에 붙이는 RAG(Retrieval-Augmented Generation)의 전체 흐름은 <a href="/posts/rag-retrieval-pipeline">RAG 학습 페이지</a>에 따로 정리했습니다.</p>
+        <details class="vd-docs"><summary>안내문 12문장 보기</summary><ol data-vd-doclist></ol></details>
+        <details><summary>리랭커는 왜 더 정확하고 더 느린가요</summary><p>임베딩 모델은 문서를 미리 혼자 읽고 숫자로 줄여 둡니다. 질문이 오면 질문만 따로 숫자로 바꿔 견줍니다. 이런 구조를 bi-encoder라고 합니다. 문서 쪽 계산을 미리 해 둘 수 있어 빠르지만 문장 하나의 뜻을 숫자 몇백 개에 눌러 담는 동안 빠지는 정보가 생깁니다.</p><p>리랭커처럼 두 글을 함께 읽는 구조는 cross-encoder라고 합니다. "아파서 못 갔다"와 "아파서 결석하면"이 같은 상황임을 더 잘 잡아내지만 미리 계산해 둘 수가 없습니다. M4 맥북에서 리랭커가 12문장을 읽는 데 0.16~0.19초가 걸렸습니다. 이 속도로 118만 문장을 다 읽으면 <span class="num" style="white-space:nowrap">4~5시간</span>이 걸립니다.</p><p>순위 사다리 그림에서 임베딩은 MiniLM 다국어 모델의 코사인 유사도, BM25는 띄어쓰기를 빼고 두 글자씩 끊어 센 점수(점수가 0인 문서는 목록에서 뺌), 리랭커는 <code>bge-reranker-v2-m3</code>를 8비트로 줄인 판입니다.</p><p>RRF 칸의 숫자는 1 ÷ (60 + 순위)의 합입니다. 60은 2009년 원 논문이 예비 실험에서 정하고 바꾸지 않은 값입니다. 리랭커 칸은 모델이 낸 원점수라 대부분 음수입니다. 클수록(0에 가까울수록) 관련이 높습니다. 답과 상관없는 문서는 −10에서 −11 사이에 몰려 서로 비슷합니다.</p></details>
+      </div>
+    </div>
+    <div class="vd-wrap" style="margin-top:clamp(64px,8vw,104px)">
+      <div class="vd-col">
+        <p class="vd-sum">다 재면 정확하지만 느리고, 지름길로 재면 빠르지만 가끔 놓칩니다. 벡터 DB를 쓴다는 건 그 사이 어디에 설지를 efSearch·nprobe 같은 손잡이로 고르는 일입니다.</p>
+        <p>그런데 이 모든 부품, 곧 임베딩 모델·벡터 DB·리랭커·LLM을 인터넷이 끊긴 회사 안에서 돌려야 한다면 어떻게 할까요? 다음 글에서는 폐쇄망에서 RAG를 돌리려면 무엇을 들여와야 하는지 알아보겠습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vd-sec vd-refs" style="padding-bottom:40px">
+    <div class="vd-wrap vd-refgrid">
+      <h2>참고 자료</h2>
+      <div><ul>
+        <li><a href="https://arxiv.org/abs/1603.09320">Malkov·Yashunin, Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs</a> — arXiv 2016(v4 2018), IEEE TPAMI 42(4), 2020. 층 배정 m<sub>L</sub> = 1/ln(M), 로그 규모 탐색</li>
+        <li><a href="https://arxiv.org/abs/2401.08281">Douze 외, The Faiss library (2024)</a> · <a href="https://github.com/facebookresearch/faiss">Faiss</a> 1.15.1 — IndexFlatIP, IndexHNSWFlat, IndexIVFFlat</li>
+        <li><a href="https://github.com/pgvector/pgvector">pgvector README</a> — 0.8.7, HNSW m 16·ef_construction 64·ef_search 40, IVFFlat lists·probes 1, 색인 2,000차원, HNSW와 IVFFlat 비교</li>
+        <li><a href="https://qdrant.tech/documentation/concepts/indexing/">Qdrant 문서, Indexing</a> · <a href="https://milvus.io/docs/hnsw.md">Milvus 문서, HNSW</a> · <a href="https://github.com/nmslib/hnswlib">hnswlib</a></li>
+        <li><a href="https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf">Cormack·Clarke·Büttcher, Reciprocal Rank Fusion outperforms Condorcet and individual rank learning methods (SIGIR 2009)</a> — k = 60</li>
+        <li><a href="https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity">Elasticsearch 문서, Similarity</a> — BM25 기본, k1 1.2·b 0.75</li>
+        <li><a href="https://www.sbert.net/examples/cross_encoder/applications/README.html">Sentence Transformers, Cross-Encoder 응용</a> — Bi-Encoder와 Cross-Encoder</li>
+        <li><a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B">Qwen3-Embedding 모델 카드</a> — 1024/2560/4096차원, 2025-06-05 MTEB 다국어 1위(70.58) · <a href="https://huggingface.co/spaces/mteb/leaderboard">MTEB 리더보드</a></li>
+        <li><a href="https://www.pinecone.io/learn/series/faiss/hnsw/">Pinecone, Hierarchical Navigable Small Worlds</a> · <a href="https://www.pinecone.io/learn/series/faiss/vector-indexes/">Pinecone, Nearest Neighbor Indexes</a> — 지도 확대·축소와 구역 경계 문제 설명</li>
+        <li><a href="https://jalammar.github.io/illustrated-word2vec/">Jay Alammar, The Illustrated Word2vec</a> — 임베딩을 색 칸으로 그리기</li>
+        <li><a href="http://ann-benchmarks.com/">ANN-Benchmarks</a> — glove-100-angular 데이터(118만 개, 100차원)</li>
+        <li>직접 실행(2026-10-15, M4 맥북, Faiss 1.15.1·fastembed): GloVe 전수 비교·HNSW(M 16/32)·IVF 측정, 무작위 100만×1024 전수 비교, 학교 안내문 12문장의 MiniLM 임베딩·BM25·RRF·bge-reranker-v2-m3 순위</li>
+      </ul></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-vd]');
+  if (!box) return;
+  const on = (el, ev, fn, o) => el && el.addEventListener(ev, fn, Object.assign({}, o || {}, signal ? { signal } : {}));
+  const $ = (s, el = box) => el.querySelector(s);
+  const $$ = (s, el = box) => [...el.querySelectorAll(s)];
+  const NS = 'http://www.w3.org/2000/svg';
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const timers = [];
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
+  const clearTimers = () => { while (timers.length) clearTimeout(timers.pop()); };
+  signal && signal.addEventListener('abort', clearTimers);
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const txt = (t, attrs, parent) => { const e = el('text', attrs, parent); e.textContent = t; return e; };
+  const css = (v) => getComputedStyle(box).getPropertyValue(v).trim();
+  const star = (cx, cy, r) => { let d = ''; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * rr).toFixed(1) + ' ' + (cy + Math.sin(a) * rr).toFixed(1); } return d + 'Z'; };
+
+  /* ---------- 장난감 점 400개와 HNSW ---------- */
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const N = 400, M = 6, K = 5;
+  const R = rng(7), P = [];
+  const CEN = []; for (let i = 0; i < 9; i++) CEN.push([0.08 + R() * 0.84, 0.1 + R() * 0.8]);
+  while (P.length < N) {
+    let x, y;
+    if (R() < 0.35) { x = R(); y = R(); }
+    else { const c = CEN[Math.floor(R() * CEN.length)]; const a = R() * 6.283, d = Math.sqrt(-2 * Math.log(R() + 1e-9)) * 0.07; x = c[0] + Math.cos(a) * d; y = c[1] + Math.sin(a) * d * 1.2; }
+    if (x < 0.02 || x > 0.98 || y < 0.04 || y > 0.96) continue;
+    if (P.some((p) => Math.hypot(p.x - x, p.y - y) < 0.019)) continue;
+    P.push({ x, y });
+  }
+  const mL = 1 / Math.log(M);
+  const LV = P.map(() => Math.min(2, Math.floor(-Math.log(R() + 1e-12) * mL)));
+  const LAY = [0, 1, 2].map((l) => P.map((_, i) => i).filter((i) => LV[i] >= l));
+  const dd = (i, j) => Math.hypot(P[i].x - P[j].x, P[i].y - P[j].y);
+  const ADJ = [0, 1, 2].map((l) => {
+    const m = l ? M : 2 * M, mp = new Map();
+    for (const i of LAY[l]) mp.set(i, new Set(LAY[l].filter((j) => j !== i).sort((a, b) => dd(i, a) - dd(i, b)).slice(0, Math.min(m, LAY[l].length - 1))));
+    for (const i of LAY[l]) for (const j of mp.get(i)) mp.get(j).add(i);
+    return mp;
+  });
+  const ENTRY = LAY[2].slice().sort((a, b) => Math.hypot(P[a].x - .5, P[a].y - .5) - Math.hypot(P[b].x - .5, P[b].y - .5))[0];
+  function hnsw(q, ef) {
+    const dq = (i) => Math.hypot(P[i].x - q.x, P[i].y - q.y);
+    const seen = new Set(); const steps = [];
+    let cur = ENTRY; seen.add(cur); steps.push({ l: 2, evals: [cur], to: cur, start: true });
+    for (let l = 2; l >= 1; l--) {
+      for (;;) {
+        const evals = []; let best = cur;
+        for (const j of ADJ[l].get(cur)) { if (!seen.has(j)) { seen.add(j); } evals.push(j); if (dq(j) < dq(best)) best = j; }
+        steps.push({ l, evals, from: cur, to: best });
+        if (best === cur) break;
+        cur = best;
+      }
+      steps.push({ drop: true, i: cur, from: l, to: l - 1 });
+    }
+    const vis = new Set([cur]); let cand = [cur], W = [cur];
+    while (cand.length) {
+      cand.sort((a, b) => dq(a) - dq(b)); const c = cand.shift();
+      W.sort((a, b) => dq(a) - dq(b));
+      if (W.length >= ef && dq(c) > dq(W[W.length - 1])) break;
+      const evals = [];
+      for (const j of ADJ[0].get(c)) {
+        if (vis.has(j)) continue; vis.add(j); seen.add(j); evals.push(j);
+        if (W.length < ef || dq(j) < dq(W[W.length - 1])) { cand.push(j); W.push(j); W.sort((a, b) => dq(a) - dq(b)); if (W.length > ef) W.pop(); }
+      }
+      if (evals.length) steps.push({ l: 0, evals, from: c, to: c, beam: true });
+    }
+    const res = W.slice(0, K);
+    const truth = P.map((_, i) => i).sort((a, b) => dq(a) - dq(b)).slice(0, K);
+    return { steps, res, truth, n: seen.size };
+  }
+
+  /* ---------- 히어로: 세 층 판 ---------- */
+  const heroFig = $('[data-vd-hero]'), lsvg = $('[data-vd-layers]');
+  let G = null, Q = { x: 0.66, y: 0.58 }, run = null;
+  function geom() {
+    const w = lsvg.getBoundingClientRect().width || 1000;
+    return w < 480
+      ? { VW: 400, L: 4, PW: 338, PH: 168, SK: 54, GAP: 22, LAB: 30, TOP: 4, FS: 17, R: 4.6, mob: true }
+      : { VW: 680, L: 4, PW: 520, PH: 128, SK: 150, GAP: 16, LAB: 28, TOP: 4, FS: 16, R: 3.8, mob: false };
+  }
+  function drawHero() {
+    G = geom();
+    const topY = (l) => G.TOP + (2 - l) * (G.PH + G.GAP + G.LAB) + G.LAB;
+    G.topY = topY;
+    G.pr = (x, y, l) => [G.L + x * G.PW + (1 - y) * G.SK, topY(l) + y * G.PH];
+    const VH = topY(0) + G.PH + 14;
+    lsvg.setAttribute('viewBox', `0 0 ${G.VW} ${VH}`);
+    lsvg.innerHTML = '';
+    const COL = ['--l0', '--l1', '--l2'], SOFT = ['--l0-soft', '--l1-soft', '--l2-soft'];
+    const names = ['맨 아래층', '가운데 층', '맨 위층'];
+    G.g = {};
+    for (let l = 2; l >= 0; l--) {
+      const g = el('g', {}, lsvg); G.g[l] = g;
+      const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => G.pr(x, y, l).join(',')).join(' ');
+      el('polygon', { points: c, class: 'plane', fill: `var(${SOFT[l]})`, stroke: `var(${COL[l]})`, 'stroke-opacity': .5 }, g);
+      const eg = el('g', { stroke: `var(${COL[l]})`, 'stroke-opacity': l ? .55 : .3 }, g);
+      for (const [i, s] of ADJ[l]) for (const j of s) if (i < j) { const a = G.pr(P[i].x, P[i].y, l), b = G.pr(P[j].x, P[j].y, l); el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'edge' }, eg); }
+      const pg = el('g', { fill: `var(${COL[l]})` }, g);
+      for (const i of LAY[l]) { const a = G.pr(P[i].x, P[i].y, l); el('circle', { cx: a[0], cy: a[1], r: l ? G.R * 1.35 : G.R }, pg); }
+      G.g['ring' + l] = el('g', {}, g);
+      G.g['path' + l] = el('g', {}, g);
+      const lx = G.L + G.SK, ly = topY(l) - 9;
+      txt(names[l], { x: lx, y: ly, 'font-size': G.FS, 'font-weight': 700, fill: `var(${COL[l]})` }, lsvg);
+      txt(`점 ${LAY[l].length}개`, { x: lx + G.FS * 5.3, y: ly, 'font-size': G.FS * 0.9, class: 'dim' }, lsvg);
+    }
+    G.g.drop = el('g', {}, lsvg);
+    G.g.top = el('g', {}, lsvg);
+  }
+  function ring(l, i, big) { const a = G.pr(P[i].x, P[i].y, l); return el('circle', { cx: a[0], cy: a[1], r: G.R * (big ? 2.4 : 2), class: 'ring' }, G.g['ring' + l]); }
+  function setCount(n, done) {
+    $('[data-vd-hn]').textContent = n + '개';
+    $('[data-vd-hnbar]').style.width = (n / N * 100).toFixed(1) + '%';
+  }
+  function search(instant) {
+    clearTimers();
+    if (!G) drawHero();
+    for (const k of ['ring0', 'ring1', 'ring2', 'path0', 'path1', 'path2', 'drop', 'top']) G.g[k].innerHTML = '';
+    const out = hnsw(Q, 10);
+    const qs = G.pr(Q.x, Q.y, 0);
+    el('path', { d: star(qs[0], qs[1], G.R * 3.6), class: 'qstar' }, G.g.top);
+    // 위 판에도 질문 위치를 옅게
+    for (const l of [1, 2]) { const a = G.pr(Q.x, Q.y, l); el('path', { d: star(a[0], a[1], G.R * 2.6), class: 'qstar', opacity: .45 }, G.g.top); }
+    const counted = new Set();
+    const hint = $('[data-vd-herohint]');
+    hint.textContent = '맨 위층 입구에서 출발해 질문 쪽으로 이동하는 중입니다.';
+    const acts = [];
+    for (const s of out.steps) {
+      if (s.drop) {
+        acts.push(() => { const a = G.pr(P[s.i].x, P[s.i].y, s.from), b = G.pr(P[s.i].x, P[s.i].y, s.to); el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'drop' }, G.g.drop); hint.textContent = s.to ? '더 가까운 이웃이 없어 한 층 내려갑니다.' : '맨 아래층에서는 후보 10개를 들고 넓게 살핍니다.'; });
+        continue;
+      }
+      acts.push(() => {
+        for (const j of s.evals) { if (!counted.has(j)) { counted.add(j); const r = ring(s.l, j, s.start); requestAnimationFrame(() => r.classList.add('on')); } }
+        if (s.from !== undefined && s.to !== s.from) { const a = G.pr(P[s.from].x, P[s.from].y, s.l), b = G.pr(P[s.to].x, P[s.to].y, s.l); el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'hop' }, G.g['path' + s.l]); }
+        setCount(counted.size);
+      });
+    }
+    acts.push(() => {
+      for (const i of out.res) { const a = G.pr(P[i].x, P[i].y, 0); el('circle', { cx: a[0], cy: a[1], r: G.R * 1.6, class: 'res' }, G.g.top); }
+      const miss = out.truth.filter((i) => !out.res.includes(i));
+      for (const i of miss) { const a = G.pr(P[i].x, P[i].y, 0); el('circle', { cx: a[0], cy: a[1], r: G.R * 2.6, class: 'miss' }, G.g.top); }
+      const hit = K - miss.length;
+      hint.innerHTML = `400개 중 <b>${counted.size}개</b>만 재고 가장 가까운 5개 중 <b>${hit}개</b>를 찾았습니다. 아래 판의 다른 곳을 눌러 보세요.`;
+    });
+    if (instant || reduce) { acts.forEach((f) => f()); return; }
+    let t = 0; acts.forEach((f, k) => { later(f, t); t += k === 0 ? 500 : 380; });
+  }
+  drawHero();
+  on(lsvg, 'pointerdown', (e) => {
+    const pt = lsvg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(lsvg.getScreenCTM().inverse());
+    let y = (p.y - G.topY(0)) / G.PH; let x = (p.x - G.L - (1 - y) * G.SK) / G.PW;
+    if (x < -0.06 || x > 1.06 || y < -0.12 || y > 1.12) return;
+    x = Math.max(0.01, Math.min(0.99, x)); y = Math.max(0.02, Math.min(0.98, y));
+    Q = { x, y }; search(false);
+  });
+  on($('[data-vd-replay]'), 'click', () => search(false));
+  on(heroFig, 'vd-finish', () => search(true));
+  let lastMob = G.mob;
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => { const m = (lsvg.getBoundingClientRect().width || 1000) < 480; if (m !== lastMob) { lastMob = m; drawHero(); search(true); } }); ro.observe(lsvg); signal && signal.addEventListener('abort', () => ro.disconnect()); }
+  if ('IntersectionObserver' in window && !reduce) {
+    search(true);
+    let played = false;
+    const io = new IntersectionObserver((es) => { if (!played && es[0].isIntersecting) { played = true; search(false); io.disconnect(); } }, { threshold: .35 });
+    io.observe(lsvg); signal && signal.addEventListener('abort', () => io.disconnect());
+  } else search(true);
+
+  /* ---------- 384칸 색 띠 ---------- */
+  const VEC = [[.061,.06,-.014,-.008,.051,-.047,-.048,.049,.068,.026,.013,.094,.007,.024,-.069,-.01,.016,.036,-.116,.024,-.042,.091,.022,.06,.068,.018,.007,-.075,-.098,-.049,-.043,-.072,-.083,-.022,.008,.105,.018,.009,.02,-.049,-.031,.071,-.022,.079,.0,-.015,-.059,-.08,-.031,.02,.018,.024,-.049,-.01,-.003,.076,.017,.055,.011,.013,.001,-.021,-.014,.022,-.027,-.01,-.089,.014,-.037,.125,-.017,.038,-.049,.014,.043,.105,-.046,-.04,.016,-.059,-.043,-.031,-.034,-.042,-.016,.031,.052,.052,-.034,-.057,.083,-.082,.124,.083,-.071,.013,-.003,.026,-.014,.06,.01,.064,-.067,-.001,.088,-.004,.09,-.077,-.028,-.054,-.012,-.025,.047,.011,-.015,.066,.076,.078,-.01,.001,-.011,.019,-.019,-.036,-.108,-.087,-.006,-.01,.014,-.047,-.033,.022,.018,-.052,-.002,.042,-.056,.023,-.004,-.032,.003,.033,-.041,.052,.009,.003,.098,-.051,.001,-.023,-.034,.022,-.003,-.049,-.081,-.114,-.031,-.022,-.099,-.02,.02,.004,.073,-.013,.013,.072,.095,.012,-.023,.029,.007,-.046,-.032,.005,.037,-.017,-.035,.025,-.026,-.017,.009,.067,-.046,.035,-.008,-.056,.029,-.019,.075,.067,.075,.01,.016,-.013,-.073,.033,-.011,-.037,-.042,-.019,-.075,-.002,.071,-.089,-.018,-.089,.047,-.135,.07,-.069,-.049,-.109,.022,-.005,.022,-.018,-.072,.037,-.05,.071,.048,-.036,.069,-.055,.104,-.09,-.095,.018,.047,-.009,-.049,-.006,-.012,.039,-.081,-.078,.071,.016,-.011,-.114,-.018,-.031,-.013,.003,.04,-.069,-.061,.015,.056,.055,.059,-.001,-.023,.056,.049,.009,-.019,-.04,.031,.013,.002,-.07,-.071,.013,.056,.0,.024,-.077,.064,-.011,.021,-.021,.185,.033,.05,-.036,.11,.08,-.036,.027,-.008,-.06,.045,.099,-.021,-.031,.052,-.008,.083,-.067,.007,-.037,-.04,-.022,.031,-.033,-.039,.048,.1,.026,.018,-.014,-.032,-.063,.0,.001,.01,.025,-.025,-.059,.026,-.035,.021,.006,.073,.012,.009,-.028,-.025,-.096,-.005,-.07,.031,.102,.018,.048,.081,-.001,.013,-.054,-.021,-.036,-.003,-.031,-.025,.007,-.044,-.086,-.069,.052,-.001,.016,.049,-.004,.028,.074,.033,.092,-.009,-.019,.047,.068,.011,.078,-.028,-.078,.032,.035,.019,.002,-.027,.032,-.052,.126,-.013,-.083,.036,.003,-.065,.041,.001,-.034,-.015,-.085,.072,-.066,.041,.056,-.11,-.003,.028,-.04,-.006,.016],[-.047,.021,-.058,-.033,.02,-.041,-.028,.041,.045,.012,-.031,.063,-.045,.034,-.037,-.026,.038,-.003,-.026,.032,.035,.005,.021,.087,.136,-.006,.084,-.064,-.02,.004,.01,-.056,-.007,-.069,.084,.043,.008,.017,.025,.001,-.022,.022,-.031,.026,.025,.016,.02,-.026,-.073,-.003,.055,-.0,-.014,.039,-.012,.065,.033,-.051,-.047,-.0,.03,.008,.017,-.049,-.017,.055,.032,.002,.003,.068,-.083,-.033,-.035,-.019,-.067,.095,.06,.019,.01,.004,-.014,-.01,-.039,-.091,-.036,.012,.046,.09,.056,-.042,.067,.059,.085,.053,-.091,-.061,.05,-.003,-.016,.055,.028,.127,-.105,-.003,.081,.058,.006,.019,.022,-.123,-.043,.097,.06,.005,-.013,.138,-.011,.038,.048,-.0,.008,.046,-.013,-.031,-.053,-.021,-.027,.019,.005,-.085,-.038,-.031,-.003,-.047,.008,.046,-.031,.004,-.019,-.134,.041,-.025,.018,.02,-.003,.015,.059,.019,-.013,-.094,-.066,-.034,.094,-.077,-.036,-.072,.001,-.024,-.053,.031,.003,.03,.037,.012,.018,.008,.078,-.056,.024,.077,.045,.036,-.022,-.086,.005,-.004,-.032,-.028,-.043,-.047,-.086,.001,-.023,-.003,.031,-.042,-.024,-.062,.078,-.082,.01,-.061,-.037,.001,-.038,-.016,-.044,.035,.014,-.002,-.059,.027,.029,-.049,-.035,.039,.038,-.1,.087,-.048,-.034,.053,.069,.042,.013,-.07,-.011,.016,-.112,-.029,-.007,-.052,.149,-.032,.047,.006,-.07,.061,.008,-.055,-.046,.007,-.062,-.005,-.066,-.046,.03,.022,.084,-.034,-.004,-.031,.034,-.065,.039,-.017,-.01,-.031,.03,-.023,-.031,-.049,.011,.021,-.01,-.093,-.012,.03,-.005,-.034,.057,-.042,.007,.06,.13,.009,.035,-.02,-.002,-.027,-.044,-.04,.089,.084,.027,-.049,.091,.108,.006,.07,.024,-.005,-.008,.086,-.001,.028,.052,-.053,.066,-.078,-.018,-.086,.07,-.06,.03,-.076,-.092,.02,.024,-.025,-.091,-.026,-.012,-.079,-.024,.036,.051,.08,-.08,-.078,.087,.008,.024,-.045,.048,.03,.005,.039,-.059,-.064,.027,-.037,-.01,.1,.047,-.008,.008,-.011,.061,-.094,.048,.037,.009,-.04,.019,-.023,-.107,-.033,-.106,.012,-.035,.046,-.013,.06,.007,.024,.045,.228,-.007,-.065,.069,.035,-.005,.052,-.037,-.021,.056,-.013,-.003,.003,-.006,-.042,-.061,.089,.005,-.093,-.085,-.031,.022,-.001,-.032,-.043,.021,-.079,.067,-.068,.014,.008,.018,-.01,.006,-.023,.062,-.031],[.016,.078,-.019,.058,.084,.118,.036,-.027,-.044,.005,-.008,-.055,-.046,.097,.085,-.071,.085,.04,.021,-.043,.025,-.058,-.027,.059,-.037,-.097,.039,.045,-.002,-.02,-.122,-.015,.026,.022,-.031,.019,-.002,.036,-.121,-.001,-.036,-.053,-.016,.076,.005,.054,.025,-.045,-.058,-.029,.033,-.001,.034,-.024,.003,.055,-.037,.008,-.028,-.017,-.042,.028,-.017,-.017,.039,-.042,-.063,.073,.009,-.053,-.033,.029,-.028,.044,.077,.045,.008,-.017,.065,.026,-.031,-.082,-.002,.013,.019,.037,-.069,.031,-.027,.047,.057,.024,-.042,-.024,.033,-.06,-.093,.028,-.034,-.009,.002,.012,-.057,.117,.025,-.035,-.052,.036,.016,.068,.044,.073,.06,.024,-.024,.033,-.002,.047,-.008,.087,-.019,-.069,.072,-.012,-.056,.004,-.012,.061,-.055,.003,-.013,-.021,.038,-.087,.007,-.116,-.036,-.01,.06,.047,.023,.087,.02,.065,.05,.044,-.063,.004,.012,.005,-.054,.028,.016,.063,-.009,.043,-.034,-.042,-.019,-.117,-.008,-.006,.019,.027,.013,-.008,.022,-.028,-.022,-.047,-.029,-.055,.036,-.034,.051,-.003,-.015,-.073,-.02,-.009,.069,-.085,-.025,-.082,.098,-.067,-.032,.024,.055,.084,-.042,-.012,-.064,.035,.004,.039,-.004,.038,.064,-.053,.059,.032,.097,-.004,.032,.012,-.084,-.037,.041,.046,-.054,.03,.008,-.083,.042,.09,.003,.009,-.091,-.007,-.019,.05,.005,.016,-.061,.042,.028,.048,.081,.025,.048,.048,-.066,.046,.064,-.048,-.14,.042,.022,.001,.012,.038,-.083,.043,.06,-.019,.024,-.012,.035,-.002,.01,.07,-.01,-.042,-.045,-.068,-.0,.031,-.058,-.02,-.036,.022,.04,.036,.019,-.017,.001,.037,-.085,-.006,-.013,-.075,-.112,.055,-.029,-.058,-.046,.025,.072,.018,-.076,-.006,-.073,-.005,.068,-.019,.015,.029,.115,-.029,.014,.138,.017,-.032,.012,.117,.019,-.017,-.088,.008,.018,.079,.072,.035,-.013,-.103,-.034,.025,.01,.045,-.027,.137,.074,.027,.035,-.007,.061,.068,-.051,.027,-.021,.054,.006,-.064,-.096,.039,.029,-.136,-.049,.101,-.079,-.01,.045,-.053,.008,.004,.002,.039,-.021,-.063,-.016,-.019,-.035,-.007,-.053,-.079,-.105,-.064,-.03,.021,-.015,-.018,.045,-.048,.034,.005,.021,-.084,-.072,-.004,-.085,-.119,.073,-.019,.074,-.091,-.066,-.087,-.075,.018,.008,-.006,-.013,-.021,-.018,.125,-.034,.025,.015,.038,-.025,-.041,.003,-.033]];
+  const SENT = ['질문 · "책을 늦게 돌려주면 어떻게 되나요?"', '비슷한 뜻 · "반납이 늦으면 늦은 날짜만큼 대출이 정지됩니다."', '다른 뜻 · "체육복은 체육 시간과 체육대회 날에만 입습니다."'];
+  const strips = $('[data-vd-strips]'), cellread = $('[data-vd-cellread]');
+  VEC.forEach((v, s) => {
+    const w = document.createElement('div'); w.className = 'vd-strip';
+    const [a, b] = SENT[s].split(' · ');
+    w.innerHTML = `<small>${a} <span>${b}</span></small>`;
+    const g = document.createElement('div'); g.className = 'vd-grid';
+    v.forEach((x, k) => { const i = document.createElement('i'); const t = Math.min(1, Math.abs(x) / 0.16); i.style.background = `color-mix(in srgb, var(${x >= 0 ? '--pos' : '--neg'}) ${Math.round(t * 100)}%, var(--bg-base))`; i.dataset.k = k; i.dataset.s = s; g.appendChild(i); });
+    w.appendChild(g); strips.appendChild(w);
+  });
+  const cr = document.createElement('div'); cr.className = 'vd-cosrow';
+  cr.innerHTML = '<span>질문 ↔ 비슷한 뜻 코사인 유사도 <b>0.52</b></span><span>질문 ↔ 다른 뜻 <b>−0.13</b></span>';
+  strips.appendChild(cr);
+  const showCell = (t) => { if (!t || !t.dataset || t.dataset.k === undefined) return; const k = +t.dataset.k; cellread.textContent = `${k + 1}번째 칸 — 질문 ${VEC[0][k].toFixed(3)} · 비슷한 뜻 ${VEC[1][k].toFixed(3)} · 다른 뜻 ${VEC[2][k].toFixed(3)}`; };
+  on(strips, 'pointerover', (e) => showCell(e.target));
+  on(strips, 'pointerdown', (e) => showCell(e.target));
+
+  /* ---------- 코사인 화살표 ---------- */
+  const cs = $('[data-vd-cos]');
+  const O = [150, 330], U = 52;
+  const vec = { A: [4, 1], B: [2, 3] }; let normed = false;
+  const toS = (v) => [O[0] + v[0] * U, O[1] - v[1] * U];
+  const gG = el('g', { class: 'grid' }, cs);
+  for (let x = -2; x <= 6; x++) el('line', { x1: O[0] + x * U, y1: 18, x2: O[0] + x * U, y2: 420 }, gG);
+  for (let y = -1; y <= 6; y++) el('line', { x1: 20, y1: O[1] - y * U, x2: 462, y2: O[1] - y * U }, gG);
+  el('line', { x1: 20, y1: O[1], x2: 462, y2: O[1], class: 'axis' }, cs);
+  el('line', { x1: O[0], y1: 18, x2: O[0], y2: 420, class: 'axis' }, cs);
+  el('circle', { cx: O[0], cy: O[1], r: U, fill: 'none', stroke: 'var(--fg-neutral)', 'stroke-dasharray': '4 4', 'stroke-width': 1.4 }, cs);
+  for (const x of [1, 2, 3, 4, 5]) txt(x, { x: O[0] + x * U, y: O[1] + 22, 'font-size': 16, 'text-anchor': 'middle', class: 'dim' }, cs);
+  for (const y of [1, 2, 3, 4, 5]) txt(y, { x: O[0] - 10, y: O[1] - y * U + 6, 'font-size': 16, 'text-anchor': 'end', class: 'dim' }, cs);
+  const arc = el('path', { fill: 'var(--hot-soft)', stroke: 'var(--hot)', 'stroke-width': 2 }, cs);
+  const ghost = { A: el('line', { stroke: 'var(--q)', 'stroke-width': 2, 'stroke-dasharray': '4 5', opacity: 0 }, cs), B: el('line', { stroke: 'var(--l0)', 'stroke-width': 2, 'stroke-dasharray': '4 5', opacity: 0 }, cs) };
+  const shaft = { A: el('line', { stroke: 'var(--q)', 'stroke-width': 4, 'stroke-linecap': 'round' }, cs), B: el('line', { stroke: 'var(--l0)', 'stroke-width': 4, 'stroke-linecap': 'round' }, cs) };
+  const lab = { A: txt('A 질문', { 'font-size': 15, 'font-weight': 700, fill: 'var(--q)' }, cs), B: txt('B 문서', { 'font-size': 15, 'font-weight': 700 }, cs) };
+  const angT = txt('', { 'font-size': 14, 'font-weight': 700, fill: 'var(--hot)' }, cs);
+  const knob = { A: el('circle', { r: 11, fill: 'var(--q)', stroke: 'var(--bg-base)', 'stroke-width': 3, class: 'knob' }, cs), B: el('circle', { r: 11, fill: 'var(--l0)', stroke: 'var(--bg-base)', 'stroke-width': 3, class: 'knob' }, cs) };
+  const f2 = (x) => (Math.round(x * 100) / 100).toFixed(2);
+  const f1 = (x) => { const r = Math.round(x * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
+  function drawCos() {
+    const la = Math.hypot(...vec.A), lb = Math.hypot(...vec.B);
+    const show = { A: normed ? [vec.A[0] / la, vec.A[1] / la] : vec.A, B: normed ? [vec.B[0] / lb, vec.B[1] / lb] : vec.B };
+    for (const k of ['A', 'B']) {
+      const s = toS(show[k]), raw = toS(vec[k]);
+      shaft[k].setAttribute('x1', O[0]); shaft[k].setAttribute('y1', O[1]); shaft[k].setAttribute('x2', s[0]); shaft[k].setAttribute('y2', s[1]);
+      ghost[k].setAttribute('x1', O[0]); ghost[k].setAttribute('y1', O[1]); ghost[k].setAttribute('x2', raw[0]); ghost[k].setAttribute('y2', raw[1]); ghost[k].setAttribute('opacity', normed ? .55 : 0);
+      knob[k].setAttribute('cx', raw[0]); knob[k].setAttribute('cy', raw[1]);
+      const len = Math.hypot(...vec[k]) || 1;
+      lab[k].setAttribute('x', raw[0] + vec[k][0] / len * 18 - (vec[k][0] < 0 ? 52 : 0)); lab[k].setAttribute('y', raw[1] - vec[k][1] / len * 18 + 5);
+    }
+    const a1 = Math.atan2(vec.A[1], vec.A[0]), a2 = Math.atan2(vec.B[1], vec.B[0]);
+    let da = a2 - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    const rr = 34, p1 = [O[0] + Math.cos(a1) * rr, O[1] - Math.sin(a1) * rr], p2 = [O[0] + Math.cos(a2) * rr, O[1] - Math.sin(a2) * rr];
+    arc.setAttribute('d', `M${O[0]} ${O[1]} L${p1[0]} ${p1[1]} A${rr} ${rr} 0 0 ${da > 0 ? 0 : 1} ${p2[0]} ${p2[1]} Z`);
+    const mid = a1 + da / 2; angT.setAttribute('x', O[0] + Math.cos(mid) * 56 - 14); angT.setAttribute('y', O[1] - Math.sin(mid) * 56 + 5);
+    angT.textContent = Math.round(Math.abs(da) * 180 / Math.PI) + '°';
+    const A = show.A, B = show.B, dot = A[0] * B[0] + A[1] * B[1], cos = dot / (Math.hypot(...A) * Math.hypot(...B) || 1);
+    const fv = (v) => `(${normed ? f2(v[0]) : f1(v[0])}, ${normed ? f2(v[1]) : f1(v[1])})`;
+    $('[data-vd-a]').textContent = fv(A); $('[data-vd-b]').textContent = fv(B);
+    $('[data-vd-al]').textContent = '길이 ' + f2(Math.hypot(...A)); $('[data-vd-bl]').textContent = '길이 ' + f2(Math.hypot(...B));
+    $('[data-vd-dot]').textContent = f2(dot);
+    $('[data-vd-dotf]').textContent = normed ? `${f2(A[0])}×${f2(B[0])} + ${f2(A[1])}×${f2(B[1])}` : `${f1(A[0])}×${f1(B[0])} + ${f1(A[1])}×${f1(B[1])}`;
+    $('[data-vd-cosv]').textContent = f2(cos);
+    $('[data-vd-cosf]').textContent = normed ? '길이가 둘 다 1이라 내적과 같음' : `${f2(dot)} ÷ (${f2(Math.hypot(...A))} × ${f2(Math.hypot(...B))})`;
+  }
+  let drag = null;
+  const svgPt = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+  on(cs, 'pointerdown', (e) => {
+    const p = svgPt(cs, e); let best = null, bd = 30;
+    for (const k of ['A', 'B']) { const s = toS(vec[k]); const d = Math.hypot(s[0] - p.x, s[1] - p.y); if (d < bd) { bd = d; best = k; } }
+    if (best) { drag = best; cs.setPointerCapture(e.pointerId); e.preventDefault(); }
+  });
+  on(cs, 'pointermove', (e) => {
+    if (!drag) return; const p = svgPt(cs, e);
+    let x = (p.x - O[0]) / U, y = (O[1] - p.y) / U;
+    x = Math.max(-2.5, Math.min(5.8, Math.round(x * 2) / 2)); y = Math.max(-1.5, Math.min(5.8, Math.round(y * 2) / 2));
+    if (Math.hypot(x, y) < 0.5) return;
+    vec[drag] = [x, y]; drawCos();
+  });
+  on(cs, 'pointerup', () => { drag = null; });
+  on(cs, 'pointercancel', () => { drag = null; });
+  $$('[data-vd-norm]').forEach((b) => on(b, 'click', () => { normed = b.dataset.vdNorm === '1'; $$('[data-vd-norm]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); drawCos(); }));
+  drawCos();
+
+  /* ---------- 반응형 그림 도우미 ---------- */
+  const responsive = (svg, draw) => {
+    let lm = null;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const go = () => { const m = mq.matches; if (m !== lm) { lm = m; svg.innerHTML = ''; draw(m); } };
+    go();
+    if (window.ResizeObserver) { const ro = new ResizeObserver(go); ro.observe(svg); signal && signal.addEventListener('abort', () => ro.disconnect()); }
+  };
+
+  /* ---------- 넓이 = 계산량 ---------- */
+  responsive($('[data-vd-area]'), (mob) => {
+    const s = $('[data-vd-area]');
+    const items = [
+      { n: 100000, d: 100, ms: '0.58ms', lab: '10만 개 × 100차원', mul: '곱셈 1,000만 번', c: '--l1' },
+      { n: 1183514, d: 100, ms: '7.1ms', lab: '118만 개 × 100차원', mul: '곱셈 1억 1,835만 번', c: '--l1' },
+      { n: 1000000, d: 1024, ms: '62ms', lab: '100만 개 × 1024차원', mul: '곱셈 10억 2,400만 번', c: '--l2' },
+    ];
+    if (mob) {
+      const kx = 330 / 1183514, ky = 150 / 1024; let y = 0;
+      s.setAttribute('viewBox', '0 0 400 520');
+      items.forEach((it) => {
+        const w = it.n * kx, h = it.d * ky;
+        txt(it.ms, { x: 0, y: y + 22, 'font-size': 22, 'font-weight': 700, 'font-family': 'var(--font-mono)' }, s);
+        txt(it.lab, { x: 96, y: y + 21, 'font-size': 16, class: 'dim' }, s);
+        el('rect', { x: 0, y: y + 34, width: w, height: h, rx: 3, fill: `color-mix(in srgb, var(${it.c}) 70%, transparent)` }, s);
+        txt(it.mul, { x: 0, y: y + 34 + h + 22, 'font-size': 16, 'font-weight': 600 }, s);
+        y += 34 + h + 60;
+      });
+      s.setAttribute('viewBox', `0 0 400 ${y - 20}`);
+      return;
+    }
+    s.setAttribute('viewBox', '0 22 980 308');
+    [['↔ 가로 = 문서 수', 20, ''], ['↕ 세로 = 차원', 210, ''], ['넓이 = 곱셈 횟수', 380, 'dim']].forEach(([t, x, c]) => txt(t, { x, y: 160, 'font-size': 20, 'font-weight': 700, class: c }, s));
+    const base = 290, kx = 300 / 1000000, ky = 200 / 1024; let x = 20;
+    items.forEach((it) => {
+      const w = it.n * kx, h = it.d * ky;
+      el('rect', { x, y: base - h, width: w, height: h, rx: 3, fill: `color-mix(in srgb, var(${it.c}) 70%, transparent)` }, s);
+      txt(it.ms, { x, y: base - h - 40, 'font-size': 22, 'font-weight': 700, 'font-family': 'var(--font-mono)' }, s);
+      txt(it.lab, { x, y: base - h - 16, 'font-size': 14, class: 'dim' }, s);
+      txt(it.mul, { x, y: base + 26, 'font-size': 14, 'font-weight': 600 }, s);
+      x += Math.max(w, 160) + 70;
+    });
+  });
+
+  /* ---------- 기울기 그림 (로그) ---------- */
+  responsive($('[data-vd-slope]'), (mob) => {
+    const s = $('[data-vd-slope]'); const F = mob ? 1.3 : 1;
+    const X0 = mob ? 172 : 120, X1 = mob ? 372 : 400, top = 30, bot = 280, LX = mob ? 66 : 52;
+    s.setAttribute('viewBox', mob ? '0 0 520 340' : '0 0 520 330');
+    const ly = (v) => bot - (Math.log10(v) - 2) / 4.3 * (bot - top);
+    for (const [v, t] of [[100, '100'], [1000, '1천'], [10000, '1만'], [100000, '10만'], [1000000, '100만']]) {
+      el('line', { x1: LX + 8, y1: ly(v), x2: 500, y2: ly(v), stroke: 'var(--line-subtle)' }, s);
+      txt(t, { x: LX, y: ly(v) + 6, 'font-size': 15 * F, 'text-anchor': 'end', class: 'dim' }, s);
+    }
+    txt('문서 10만 개', { x: X0, y: 316, 'font-size': 16 * F, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+    txt('118만 개', { x: X1, y: 316, 'font-size': 16 * F, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+    const lines = [{ a: 100000, b: 1183514, c: 'var(--l0)', t: '전수 비교', la: '100,000', lb: '1,183,514' }, { a: 922, b: 1029, c: 'var(--hot)', t: 'HNSW', la: '922', lb: '1,029' }];
+    for (const L of lines) {
+      el('line', { x1: X0, y1: ly(L.a), x2: X1, y2: ly(L.b), stroke: L.c, 'stroke-width': 4, 'stroke-linecap': 'round' }, s);
+      for (const [x, v, t, anc] of [[X0, L.a, L.la, 'end'], [X1, L.b, L.lb, 'end']]) { el('circle', { cx: x, cy: ly(v), r: 6, fill: L.c }, s); txt(t, { x: x + (x === X0 ? -12 : 10), y: ly(v) - 12, 'font-size': 14 * F, 'font-weight': 700, 'text-anchor': x === X0 ? 'end' : 'start', 'font-family': 'var(--font-mono)' }, s); }
+      txt(L.t, { x: (X0 + X1) / 2, y: (ly(L.a) + ly(L.b)) / 2 + (L.t === 'HNSW' ? 28 : -16), 'font-size': 14 * F, 'font-weight': 700, fill: L.c, 'text-anchor': 'middle' }, s);
+    }
+  });
+
+  /* ---------- 층별 점 개수 계단 ---------- */
+  (() => {
+    const host = $('[data-vd-stairs]');
+    const rows = [[5, 1, '전국'], [4, 18, '도'], [3, 260, '시'], [2, 4644, '구'], [1, 74078, '동'], [0, 1183514, '골목']];
+    const max = Math.log10(1183514);
+    rows.forEach(([l, n, z], k) => {
+      if (k) { const r = document.createElement('div'); r.className = 'vd-stair'; r.innerHTML = `<span></span><div class="ratio">↓ ×${(n / rows[k - 1][1]).toFixed(1)}</div>`; r.querySelector('span').remove(); r.querySelector('.ratio').style.gridColumn = '2'; host.appendChild(r); }
+      const d = document.createElement('div'); d.className = 'vd-stair';
+      const w = Math.max(1.2, Math.log10(n) / max * 60);
+      const c = l === 0 ? '--l0' : l === 1 ? '--l1' : '--l2';
+      d.innerHTML = `<span>${l}층<em>지도: ${z}</em></span><div class="bar"><i style="width:${w}%;background:var(${c})"></i><b style="left:calc(${w}% + 10px)">${fmt(n)}개</b></div>`;
+      host.appendChild(d);
+    });
+  })();
+
+  /* ---------- efSearch 곡선 ---------- */
+  (() => {
+    const s = $('[data-vd-curve]');
+    const EF = [10, 20, 40, 80, 160, 320];
+    const D16 = { r: [.408, .536, .640, .729, .800, .857], n: [440, 662, 1029, 1686, 2856, 4991], ms: [.026, .041, .070, .126, .237, .455] };
+    const D32 = { r: [.574, .694, .785, .852, .906, .943, .972], n: [808, 1206, 1914, 3214, 5647, 10137, 18440], ms: [.046, .072, .121, .214, .402, .770, 1.544] };
+    const inp = $('[data-vd-ef]');
+    let mk = null;
+    responsive(s, (mob) => {
+      const VW = mob ? 420 : 640, FS = mob ? 17 : 16, X0 = mob ? 54 : 70, X1 = VW - 24, Y0 = mob ? 340 : 370, Y1 = 34;
+      s.setAttribute('viewBox', `0 0 ${VW} ${Y0 + 64}`);
+      const sx = (n) => X0 + n / 20000 * (X1 - X0), sy = (r) => Y0 - (r - .3) / .7 * (Y0 - Y1);
+      for (const r of [.4, .6, .8, 1]) { el('line', { x1: X0, y1: sy(r), x2: X1, y2: sy(r), stroke: 'var(--line-subtle)' }, s); txt(r.toFixed(1), { x: X0 - 8, y: sy(r) + 5, 'font-size': FS - 1, 'text-anchor': 'end', class: 'dim' }, s); }
+      for (const n of (mob ? [0, 10000, 20000] : [0, 5000, 10000, 15000, 20000])) txt(n ? fmt(n) : '0', { x: sx(n), y: Y0 + 22, 'font-size': FS - 1, 'text-anchor': n === 20000 ? 'end' : 'middle', class: 'dim' }, s);
+      txt('질문 하나당 거리 계산 횟수 →', { x: X1, y: Y0 + 50, 'font-size': FS, 'text-anchor': 'end', 'font-weight': 600 }, s);
+      txt('recall ↑', { x: X0 - 8, y: 18, 'font-size': FS, 'font-weight': 600 }, s);
+      const line = (D, c, w) => { el('polyline', { points: D.n.map((n, i) => sx(n) + ',' + sy(D.r[i])).join(' '), fill: 'none', stroke: c, 'stroke-width': w, 'stroke-linejoin': 'round' }, s); D.n.forEach((n, i) => el('circle', { cx: sx(n), cy: sy(D.r[i]), r: 3.5, fill: c }, s)); };
+      line(D32, 'var(--l2)', 2.5); line(D16, 'var(--l1)', 3);
+      txt('M 32', { x: sx(18440), y: sy(.972) + 28, 'font-size': FS, 'font-weight': 700, fill: 'var(--l2)', 'text-anchor': 'end' }, s);
+      mk = { sx, sy, FS, X0, m16: el('circle', { r: 9, fill: 'var(--hot)', stroke: 'var(--bg-base)', 'stroke-width': 3 }, s), m32: el('circle', { r: 7, fill: 'none', stroke: 'var(--hot)', 'stroke-width': 3 }, s), tag: txt('', { 'font-size': FS, 'font-weight': 700, fill: 'var(--hot)' }, s), tag32: txt('M 32', { 'font-size': FS, 'font-weight': 700, fill: 'var(--hot)', 'text-anchor': 'end' }, s) };
+      upd();
+    });
+    function upd() {
+      const i = +inp.value; $('[data-vd-efout]').textContent = EF[i];
+      if (mk) {
+        mk.m16.setAttribute('cx', mk.sx(D16.n[i])); mk.m16.setAttribute('cy', mk.sy(D16.r[i]));
+        mk.m32.setAttribute('cx', mk.sx(D32.n[i])); mk.m32.setAttribute('cy', mk.sy(D32.r[i]));
+        mk.tag.textContent = 'M 16 · efSearch ' + EF[i]; mk.tag.setAttribute('x', mk.sx(D16.n[i]) + 14); mk.tag.setAttribute('y', mk.sy(D16.r[i]) + 28);
+        const x32 = mk.sx(D32.n[i]), roomL = x32 - mk.X0 > mk.FS * 4;
+        mk.tag32.setAttribute('text-anchor', roomL ? 'end' : 'start'); mk.tag32.setAttribute('x', roomL ? x32 - 12 : x32 - 6); mk.tag32.setAttribute('y', mk.sy(D32.r[i]) - (roomL ? 12 : 16));
+      }
+      $('[data-vd-r16]').textContent = D16.r[i].toFixed(3); $('[data-vd-n16]').textContent = `거리 계산 ${fmt(D16.n[i])}번 · ${D16.ms[i].toFixed(3)}ms`;
+      $('[data-vd-r32]').textContent = D32.r[i].toFixed(3); $('[data-vd-n32]').textContent = `거리 계산 ${fmt(D32.n[i])}번 · ${D32.ms[i].toFixed(3)}ms`;
+    }
+    on(inp, 'input', upd); upd();
+  })();
+
+  /* ---------- IVF 보로노이 ---------- */
+  (() => {
+    const s = $('[data-vd-ivf]'); const W = 600, H = 380, ox = 10, oy = 10;
+    const px = (p) => [ox + p.x * W, oy + p.y * H];
+    const KC = 12; const r2 = rng(11);
+    let C = []; const used = new Set();
+    while (C.length < KC) { const i = Math.floor(r2() * N); if (!used.has(i)) { used.add(i); C.push({ x: P[i].x, y: P[i].y }); } }
+    let asg = [];
+    for (let it = 0; it < 25; it++) {
+      asg = P.map((p) => { let b = 0, bd = 9; C.forEach((c, k) => { const d = Math.hypot(p.x - c.x, p.y * 0.633 - c.y * 0.633); if (d < bd) { bd = d; b = k; } }); return b; });
+      C = C.map((c, k) => { const m = P.filter((_, i) => asg[i] === k); return m.length ? { x: m.reduce((a, p) => a + p.x, 0) / m.length, y: m.reduce((a, p) => a + p.y, 0) / m.length } : c; });
+    }
+    // 화면 비율로 거리 계산 (x 600, y 380)
+    const dist = (a, b) => Math.hypot((a.x - b.x) * W, (a.y - b.y) * H);
+    asg = P.map((p) => { let b = 0, bd = 1e9; C.forEach((c, k) => { const d = dist(p, c); if (d < bd) { bd = d; b = k; } }); return b; });
+    const clip = (poly, a, b, c) => { const out = []; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; const fp = a * p[0] + b * p[1] - c, fq = a * q[0] + b * q[1] - c; if (fp <= 0) out.push(p); if ((fp < 0) !== (fq < 0) && fp !== fq) { const t = fp / (fp - fq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); } } return out; };
+    const CS = C.map(px);
+    const cells = CS.map((c, k) => { let poly = [[ox, oy], [ox + W, oy], [ox + W, oy + H], [ox, oy + H]]; CS.forEach((d, j) => { if (j === k) return; const a = d[0] - c[0], b = d[1] - c[1]; const cc = (d[0] * d[0] + d[1] * d[1] - c[0] * c[0] - c[1] * c[1]) / 2; poly = clip(poly, a, b, cc); }); return el('polygon', { points: poly.map((p) => p.join(',')).join(' '), class: 'cell', fill: 'var(--l0-soft)' }, s); });
+    const pg = el('g', {}, s);
+    P.forEach((p) => { const a = px(p); el('circle', { cx: a[0], cy: a[1], r: 3.4, fill: 'var(--l0)' }, pg); });
+    const cg = el('g', {}, s);
+    CS.forEach((c) => { el('path', { d: `M${c[0] - 7} ${c[1]}h14M${c[0]} ${c[1] - 7}v14`, stroke: 'var(--bg-base)', 'stroke-width': 6, 'stroke-linecap': 'round' }, cg); el('path', { d: `M${c[0] - 6} ${c[1]}h12M${c[0]} ${c[1] - 6}v12`, stroke: 'var(--fg-strong)', 'stroke-width': 2.4, 'stroke-linecap': 'round' }, cg); });
+    const ov = el('g', {}, s);
+    const qstar = el('path', { class: 'qstar', fill: 'var(--q)', stroke: 'var(--bg-base)', 'stroke-width': 1.5, style: 'cursor:grab' }, s);
+    let np = 1;
+    const runIvf = (q, p) => {
+      const ord = C.map((c, k) => [k, dist(q, c)]).sort((a, b) => a[1] - b[1]).slice(0, p).map((x) => x[0]);
+      const cand = P.map((_, i) => i).filter((i) => ord.includes(asg[i]));
+      const res = cand.sort((a, b) => dist(P[a], q) - dist(P[b], q)).slice(0, K);
+      const truth = P.map((_, i) => i).sort((a, b) => dist(P[a], q) - dist(P[b], q)).slice(0, K);
+      return { ord, cand, res, truth, hit: res.filter((i) => truth.includes(i)).length };
+    };
+    // 기본 질문: nprobe 1에서 놓치고 2에서 다 찾는 자리
+    let Qi = { x: .5, y: .5 }; const r3 = rng(5);
+    for (let t = 0; t < 4000; t++) { const q = { x: .12 + r3() * .76, y: .15 + r3() * .7 }; const a = runIvf(q, 1), b = runIvf(q, 2); if (a.hit <= 3 && a.hit >= 2 && b.hit === K) { Qi = q; break; } }
+    const draw = () => {
+      const o = runIvf(Qi, np); ov.innerHTML = '';
+      cells.forEach((c, k) => c.setAttribute('fill', o.ord.includes(k) ? 'var(--hot-soft)' : 'var(--l0-soft)'));
+      o.cand.forEach((i) => { const a = px(P[i]); el('circle', { cx: a[0], cy: a[1], r: 6.5, fill: 'none', stroke: 'var(--hot)', 'stroke-width': 1.8 }, ov); });
+      o.res.forEach((i) => { const a = px(P[i]); el('circle', { cx: a[0], cy: a[1], r: 6, fill: 'var(--hot)' }, ov); });
+      o.truth.filter((i) => !o.res.includes(i)).forEach((i) => { const a = px(P[i]); el('circle', { cx: a[0], cy: a[1], r: 10, fill: 'none', stroke: 'var(--q)', 'stroke-width': 2.2, 'stroke-dasharray': '3 3' }, ov); });
+      const a = px(Qi); qstar.setAttribute('d', star(a[0], a[1], 13));
+      const miss = K - o.hit;
+      $('[data-vd-ivfread]').innerHTML = `중심점 12개와 구역 ${np}곳 안의 점 ${o.cand.length}개, 모두 <b>${12 + o.cand.length}번</b> 재고 가장 가까운 5개 중 <b>${o.hit}개</b>를 찾았습니다.` + (miss ? ` 놓친 ${miss}개는 옆 구역에 있습니다.` : '');
+    };
+    $$('[data-vd-np]').forEach((b) => on(b, 'click', () => { np = +b.dataset.vdNp; $$('[data-vd-np]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); }));
+    let dg = false;
+    on(s, 'pointerdown', (e) => { const p = svgPt(s, e); const a = px(Qi); if (Math.hypot(p.x - a[0], p.y - a[1]) < 30) { dg = true; s.setPointerCapture(e.pointerId); e.preventDefault(); } else { const x = (p.x - ox) / W, y = (p.y - oy) / H; if (x >= 0 && x <= 1 && y >= 0 && y <= 1) { Qi = { x, y }; draw(); } } });
+    on(s, 'pointermove', (e) => { if (!dg) return; const p = svgPt(s, e); Qi = { x: Math.max(0, Math.min(1, (p.x - ox) / W)), y: Math.max(0, Math.min(1, (p.y - oy) / H)) }; draw(); });
+    on(s, 'pointerup', () => { dg = false; });
+    draw();
+  })();
+
+  /* ---------- nprobe 실측 막대 ---------- */
+  responsive($('[data-vd-probe]'), (mob) => {
+    const s = $('[data-vd-probe]');
+    const NP = [1, 2, 4, 8, 16, 32, 64], RC = [.398, .527, .645, .739, .816, .880, .928], ND = [1321, 2620, 5108, 9975, 19520, 38224, 74719];
+    if (mob) {
+      const rowH = 70, x0 = 92, bwMax = 220; s.setAttribute('viewBox', `0 0 400 ${50 + rowH * NP.length}`);
+      txt('nprobe', { x: 0, y: 20, 'font-size': 16, 'font-weight': 700, class: 'dim' }, s);
+      el('rect', { x: x0, y: 8, width: 14, height: 14, rx: 3, fill: 'var(--hot)' }, s); txt('recall', { x: x0 + 20, y: 20, 'font-size': 16, 'font-weight': 700 }, s);
+      el('rect', { x: x0 + 100, y: 8, width: 14, height: 14, rx: 3, fill: 'var(--l0)' }, s); txt('거리 계산', { x: x0 + 120, y: 20, 'font-size': 16, 'font-weight': 700 }, s);
+      NP.forEach((n, i) => {
+        const y = 44 + i * rowH;
+        txt(n + (i === 0 ? ' 기본' : ''), { x: 0, y: y + 30, 'font-size': 17, 'font-weight': 700 }, s);
+        const w1 = RC[i] * bwMax; el('rect', { x: x0, y: y + 4, width: w1, height: 22, rx: 3, fill: 'var(--hot)' }, s);
+        txt(RC[i].toFixed(2), { x: x0 + w1 + 8, y: y + 21, 'font-size': 16, 'font-weight': 700, 'font-family': 'var(--font-mono)' }, s);
+        const w2 = Math.max(3, ND[i] / 74719 * bwMax); el('rect', { x: x0, y: y + 32, width: w2, height: 22, rx: 3, fill: 'var(--l0)' }, s);
+        txt(fmt(ND[i]), { x: x0 + w2 + 8, y: y + 49, 'font-size': 16, 'font-weight': 700, 'font-family': 'var(--font-mono)' }, s);
+      });
+      return;
+    }
+    s.setAttribute('viewBox', '0 0 980 300');
+    const x0 = 150, cw = 116, bw = 70;
+    txt('recall', { x: 10, y: 66, 'font-size': 14, 'font-weight': 700 }, s);
+    txt('거리 계산', { x: 10, y: 196, 'font-size': 14, 'font-weight': 700 }, s);
+    txt('nprobe', { x: 10, y: 284, 'font-size': 14, 'font-weight': 700, class: 'dim' }, s);
+    NP.forEach((n, i) => {
+      const x = x0 + i * cw;
+      const h = RC[i] * 90; el('rect', { x, y: 110 - h, width: bw, height: h, rx: 3, fill: 'var(--hot)', opacity: i === 0 ? 1 : .75 }, s);
+      txt(RC[i].toFixed(2), { x: x + bw / 2, y: 110 - h - 8, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'middle', 'font-family': 'var(--font-mono)' }, s);
+      const h2 = Math.max(2, ND[i] / 74719 * 90); el('rect', { x, y: 250 - h2, width: bw, height: h2, rx: 3, fill: 'var(--l0)' }, s);
+      txt(fmt(ND[i]), { x: x + bw / 2, y: 250 - h2 - 8, 'font-size': 13.5, 'font-weight': 700, 'text-anchor': 'middle', 'font-family': 'var(--font-mono)' }, s);
+      txt(n + (i === 0 ? ' (기본)' : ''), { x: x + bw / 2, y: 284, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'middle' }, s);
+    });
+  });
+
+  /* ---------- 순위 사다리 ---------- */
+  (() => {
+    const DOCS = ['도서관 책은 한 번에 3권까지 빌릴 수 있고 대출 기간은 14일입니다.', '반납이 늦으면 늦은 날짜만큼 대출이 정지됩니다.', '급식에 알레르기 유발 식품이 들어가면 식단표에 번호로 표시합니다.', '우유를 못 마시는 학생은 보건실에 신청하면 두유로 바꿔 줍니다.', '체육복은 체육 시간과 체육대회 날에만 입습니다.', '교복 재킷을 잃어버리면 학생부에 분실 신고를 합니다.', '학교 와이파이 이름은 SCH-5G이고 비밀번호는 담임 선생님께 받습니다.', '휴대폰은 아침 조회 때 걷어서 종례 때 돌려줍니다.', '수행평가 점수에 이의가 있으면 일주일 안에 담당 선생님께 말합니다.', '시험 기간에는 자습실이 밤 9시까지 열립니다.', '아파서 결석하면 진료확인서를 3일 안에 담임 선생님께 냅니다.', '방과후 수업은 학기 초에 온라인으로 신청합니다.'];
+    const SHORT = ['대출 규칙', '반납 지연', '알레르기', '두유 신청', '체육복', '교복 분실', '와이파이', '휴대폰', '수행평가', '자습실', '결석 서류', '방과후'];
+    const QS = [
+      { ans: 1, cos: [.399, .522, .013, .195, -.126, .332, .041, .169, .26, .263, .28, .102], bm: [0, 0, 0, 0, 0, 0, 0, 2.21, 0, 0, 0, 0], rr: [-10.386, .311, -10.998, -11.011, -10.997, -11.017, -11.009, -10.442, -11.016, -11.029, -11.031, -11.02] },
+      { ans: 6, cos: [.019, .09, .085, -.045, -.012, .042, .656, .13, .055, .034, .008, -.003], bm: [0, 0, 0, 0, 0, 0, 8.87, 0, 0, 0, 0, 0], rr: [-11.027, -11.03, -11.028, -11.034, -10.999, -11.031, -.748, -11.034, -11.026, -11.039, -10.789, -10.982] },
+      { ans: 10, cos: [.048, .136, .166, .312, .005, .371, .318, .136, .198, .093, .256, .112], bm: [0, 0, 0, 0, 0, 0, 1.77, 0, 0, 0, 3.93, 0], rr: [-11.029, -11.024, -11.028, -11.015, -11.022, -11.015, -11.025, -11.018, -11.023, -11.033, -7.333, -10.985] },
+    ];
+    const ol = $('[data-vd-doclist]'); DOCS.forEach((d, i) => { const li = document.createElement('li'); li.innerHTML = `<b>${SHORT[i]}</b> — ${d}`; ol.appendChild(li); });
+    const s = $('[data-vd-ladder]');
+    const COLS = [{ t: '① 임베딩', sub: '코사인 유사도', m: '뜻' }, { t: '② BM25', sub: '키워드 점수', m: '단어' }, { t: '③ RRF', sub: '①과 ② 순위 합치기', m: '①+②' }, { t: '④ 리랭커', sub: '③의 후보 다시 읽기', m: '다시 읽기' }];
+    const QT = ['"책을 늦게 돌려주면 어떻게 되나요?"', '"SCH-5G 접속 방법"', '"배가 아파서 학교에 못 갔어요"'];
+    const draw = (qi, mob) => {
+      s.innerHTML = '';
+      $('[data-vd-qtext]').textContent = QT[qi];
+      const VW = mob ? 420 : 1000, lx = mob ? 0 : 30, cw = (VW - lx) / 4, chipW = mob ? 94 : 170, rowH = mob ? 58 : 64, top = mob ? 70 : 92, ch = mob ? 38 : 40;
+      s.setAttribute('viewBox', `0 0 ${VW} ${top + rowH * 5 + 40}`);
+      const q = QS[qi];
+      const byScore = (arr) => arr.map((v, i) => [i, v]).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+      const er = byScore(q.cos);
+      const emb = er.slice(0, 5);
+      const bmAll = byScore(q.bm).filter((i) => q.bm[i] > 0);
+      const rrf = q.cos.map((_, i) => 1 / (60 + er.indexOf(i) + 1) + (bmAll.includes(i) ? 1 / (60 + bmAll.indexOf(i) + 1) : 0));
+      const fused = byScore(rrf).slice(0, 5);
+      const rer = fused.slice().sort((a, b) => q.rr[b] - q.rr[a]);
+      const lists = [emb.map((i) => [i, q.cos[i].toFixed(2)]), bmAll.slice(0, 5).map((i) => [i, q.bm[i].toFixed(2)]), fused.map((i) => [i, rrf[i].toFixed(4)]), rer.map((i) => [i, q.rr[i].toFixed(2)])];
+      const pos = lists.map((L, c) => new Map(L.map(([i], r) => [i, [lx + c * cw + (cw - chipW) / 2, top + r * rowH]])));
+      COLS.forEach((c, k) => { const cx = lx + k * cw + cw / 2; txt(mob ? c.t : c.t, { x: cx, y: 22, 'font-size': mob ? 16 : 16, 'font-weight': 700, 'text-anchor': 'middle' }, s); txt(mob ? c.m : c.sub, { x: cx, y: 46, 'font-size': mob ? 14 : 13.5, 'text-anchor': 'middle', class: 'dim' }, s); });
+      if (!mob) for (let r = 0; r < 5; r++) txt((r + 1) + '위', { x: 0, y: top + r * rowH + 26, 'font-size': 13, class: 'dim' }, s);
+      if (!mob) txt('0에 가까울수록 관련 높음', { x: lx + 3.5 * cw, y: top - 10, 'font-size': 13, 'font-weight': 700, 'text-anchor': 'middle', fill: 'var(--hot)' }, s);
+      if (!lists[1].length) txt('겹치는 단어 없음', { x: lx + cw * 1.5, y: top + 26, 'font-size': 14, 'text-anchor': 'middle', class: 'dim' }, s);
+      const lg = el('g', {}, s);
+      const link = (c1, c2) => { for (const [i, a] of pos[c1]) { const b = pos[c2].get(i); if (!b) continue; const hot = i === q.ans; const x1 = a[0] + chipW, y1 = a[1] + ch / 2, x2 = b[0], y2 = b[1] + ch / 2, mx = (x1 + x2) / 2; el('path', { d: `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`, class: 'lk', stroke: hot ? 'var(--hot)' : 'var(--l0)', 'stroke-width': hot ? 4 : 1.6, opacity: hot ? 1 : (c1 === 0 ? .35 : .55) }, lg); } };
+      link(0, 2); link(1, 2); link(2, 3);
+      lists.forEach((L, c) => L.forEach(([i, v]) => {
+        const [x, y] = pos[c].get(i); const hot = i === q.ans;
+        const g = el('g', { class: 'chip' }, s);
+        el('rect', { x, y, width: chipW, height: ch, rx: 8, fill: hot ? 'var(--hot-soft)' : 'var(--bg-base)', stroke: hot ? 'var(--hot)' : 'var(--line-strong)' }, g);
+        txt(SHORT[i], { x: mob ? x + chipW / 2 : x + 10, y: y + ch / 2 + 5, 'font-size': 15, 'font-weight': 700, 'text-anchor': mob ? 'middle' : 'start' }, g);
+        if (!mob) txt(v, { x: x + chipW - 10, y: y + 25, 'font-size': 13, 'text-anchor': 'end', class: 'dim', 'font-family': 'var(--font-mono)' }, g);
+      }));
+      txt(mob ? '주황 = 정답 문서 · 위에서부터 1~5위' : '주황 = 정답 문서 · 칸 오른쪽 숫자 = 그 열의 점수', { x: mob ? 0 : lx, y: top + rowH * 5 + 22, 'font-size': 14, class: 'dim' }, s);
+    };
+    let cur = 2;
+    const mq = window.matchMedia('(max-width: 640px)');
+    $$('[data-vd-qq]').forEach((b) => on(b, 'click', () => { cur = +b.dataset.vdQq; $$('[data-vd-qq]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(cur, mq.matches); }));
+    draw(cur, mq.matches);
+    on(mq, 'change', () => draw(cur, mq.matches));
+  })();
+
+})();
+</script>
