@@ -8,7 +8,8 @@
   코드는 5-7 코드 해부를 따른다.
 - **공통 실습:** 가상 IT 헬프데스크 Agent. 편마다 앞 편의 결과물을 키운다. 데이터(FAQ·매뉴얼·티켓)는 전부 새로 만든다.
 - **코드:** 글 속 발췌만 싣고 별도 레포는 없다. 모델은 `init_chat_model` 로 교체할 수 있게 쓴다. 1~3편의 raw SDK 예제는
-  OpenAI 호환 SDK 하나로 쓰고, 다른 provider 차이는 접힌 블록으로 둔다. 모든 코드는 쓰기 전에 scratchpad 에서 돌려 본다.
+  OpenAI 호환 SDK 하나로 쓰고, 다른 provider 차이는 접힌 블록으로 둔다. 코드는 scratchpad 에서 모의 서버로 호출 형태를 확인한다.
+  페이지는 실제 API 를 부르지 않고, 실행 결과는 터미널 칸의 예시 출력을 "실행해 보기" 버튼으로 찍어 보인다(POSTING 5-7).
 - **근거 자료 (2026-10-14 사용자 지시):** 최신 기준이면서 믿을 만한 1차 자료로만 쓴다. 우선순위는 다음과 같다.
   1. 공식 문서·스펙: docs.langchain.com(LangChain·LangGraph), modelcontextprotocol.io 스펙과 공식 블로그, 각 provider 공식 문서
   2. 버전과 패키지 상태: PyPI, 공식 GitHub 릴리스 노트

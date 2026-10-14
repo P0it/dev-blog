@@ -162,6 +162,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-map .done { fill: color-mix(in srgb, var(--ag-model) 16%, var(--bg-base)); stroke: var(--ag-model); stroke-width: 2.5; }
 .post-page .ag-map .todo { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 5 4; }
 
+/* 터미널: 실제 호출 없이 준비한 출력을 찍어 보인다 */
+.post-page .ag-term { border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; margin: 6px 0 0; }
+.post-page .ag-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--line-subtle); font-size: 13px; color: var(--fg-neutral); }
+.post-page .ag-term-bar .ag-act { font-size: 13px; padding: 5px 11px; }
+.post-page .ag-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; min-height: 5.4em; color: var(--fg-normal); }
+.post-page .ag-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: var(--fg-strong); animation: pg-ag-blink 1s steps(1) infinite; }
+@keyframes pg-ag-blink { 50% { opacity: 0; } }
 .post-page .ag details { margin: 6px 0 18px; border-left: 3px solid var(--line-strong); padding: 4px 0 4px 16px; }
 .post-page .ag summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
 .post-page .ag details p { font-size: 16px; margin-top: 10px; }
@@ -336,7 +343,13 @@ print(response.usage.total_tokens)</code></pre>
   <li><b>모델이 쓴 답</b>입니다. <code>choices</code>가 목록인 이유는 한 번에 답을 여러 개 받을 수도 있어서입니다. 보통은 첫 번째 하나만 씁니다. Python 목록은 0번부터 세서 <code>[0]</code>이 첫 번째입니다.</li>
   <li><b>이번 호출에 쓴 토큰 수</b>입니다. 보낸 글과 받은 글을 더한 값입니다. 요금은 토큰 수로 매겨집니다.</li>
 </ol>
-        <p>이 코드는 모의 서버(같은 주문서 양식을 받는 테스트용 서버)로 실행해 확인했습니다. 실제 모델의 답은 받아 보지 않았기 때문에, 위 그림의 답 문장은 예시입니다.</p>
+<div class="ag-term" data-ag-term="ask">
+  <div class="ag-term-bar"><span>터미널</span><button type="button" class="ag-act" data-ag-run="ask">실행해 보기</button></div>
+  <div class="ag-term-out" data-ag-out aria-live="polite">$ python ask.py
+와이파이를 껐다 켜 보세요. 그래도 안 되면 노트북 이름과 증상을 알려 주시면 티켓을 열어 드릴게요.
+57</div>
+</div>
+<p class="ag-cap">출력은 예시 답입니다. 같은 코드라도 모델과 때에 따라 답 문장과 토큰 수는 달라집니다.</p>
         <details>
           <summary>temperature는 왜 안 넣었나요?</summary>
           <p><code>temperature</code>는 답을 얼마나 들쭉날쭉하게 뽑을지 정하는 옵션입니다. 그런데 GPT-5 계열처럼 답하기 전에 먼저 생각하는 추론 모델은 이 옵션을 받지 않는다는 보고가 많습니다. 넣으면 오류가 납니다. 모델을 바꿔 가며 쓸 코드라 기본 예제에서는 뺐습니다.</p>
@@ -403,7 +416,19 @@ while True:
   <li><b>목록 전체를 보냅니다.</b> 호출할 때마다 처음부터 지금까지가 다 실립니다.</li>
   <li><b>모델의 답도 목록에 더합니다.</b> 이걸 빼면 다음 질문을 보낼 때 모델은 자기가 앞에서 무슨 답을 했는지 모릅니다.</li>
 </ol>
-        <p>모의 서버에 붙여 두 번 물었더니 첫 호출에는 메시지 2개가, 두 번째 호출에는 4개가 실려 갔습니다. 여기까지가 가장 단순한 <b>챗봇</b>입니다. 히어로의 첫 번째 칸과 같습니다. 모델은 답을 글로 쓰고 그 글로 무엇을 할지는 사람이 정합니다.</p>
+<div class="ag-term" data-ag-term="chat">
+  <div class="ag-term-bar"><span>터미널</span><button type="button" class="ag-act" data-ag-run="chat">실행해 보기</button></div>
+  <div class="ag-term-out" data-ag-out aria-live="polite">$ python chat.py
+나: 와이파이가 안 잡혀요
+상담원: 재부팅은 해 보셨나요?
+[보낸 메시지 2개]
+나: 네, 해 봤는데도 그래요
+상담원: 그럼 무선 드라이버를 다시 설치해 보세요.
+[보낸 메시지 4개]
+나: 끝</div>
+</div>
+<p class="ag-cap">출력은 예시 대화입니다. 두 번째 질문을 보낼 때 실린 메시지가 4개로 늘어난 것만 눈여겨보면 됩니다.</p>
+        <p>두 번 물어보면 첫 호출에는 메시지 2개가, 두 번째 호출에는 4개가 실려 갑니다. 여기까지가 가장 단순한 <b>챗봇</b>입니다. 히어로의 첫 번째 칸과 같습니다. 모델은 답을 글로 쓰고 그 글로 무엇을 할지는 사람이 정합니다.</p>
       </div>
     </div>
   </section>
@@ -692,6 +717,31 @@ while True:
     drawCalls();
   }, { signal }));
   turn = 3; drawCalls();
+
+  /* 코드 아래 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const RUNS = {
+    ask: [["cmd", "$ python ask.py"], ["wait", 700], ["type", "와이파이를 껐다 켜 보세요. 그래도 안 되면 노트북 이름과 증상을 알려 주시면 티켓을 열어 드릴게요."], ["line", "57"]],
+    chat: [["cmd", "$ python chat.py"], ["line", "나: 와이파이가 안 잡혀요"], ["wait", 600], ["type", "상담원: 재부팅은 해 보셨나요?"], ["line", "[보낸 메시지 2개]"],
+           ["line", "나: 네, 해 봤는데도 그래요"], ["wait", 600], ["type", "상담원: 그럼 무선 드라이버를 다시 설치해 보세요."], ["line", "[보낸 메시지 4개]"], ["line", "나: 끝"]],
+  };
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  $$("[data-ag-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-ag-out]", btn.closest("[data-ag-term]"));
+    const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.agRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!fast) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !fast) { for (const ch of v) { add(ch); await later(28); } }
+      else { add(v); if (!fast) await later(kind === "cmd" ? 400 : 250); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
 
   /* 5. 루프 */
   const LOOP = [
