@@ -6,10 +6,10 @@ tags: [LLM, Parameter, 딥러닝, Hugging Face, safetensors, LLM 인프라 입�
 category: ai
 series: llm-infra-basics
 series_order: 1
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-parameters-7b-explained-mv86q03c.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-parameters-7b-explained-mv89u1hn.jpg
 ---
 <!-- page -->
-<!-- layout: 읽기 축 하나(글 열 680 왼쪽 시작선) — 히어로 제목·리드 아래 넓은 손잡이 실험 → 글 열 폭 그림(포함 관계·계산식) → 실험판 전폭 띠(학습) → 넓은 그림(추론) → 그림 고정 스크롤리텔링(줌아웃, 단계 글은 글 열 자리) → 글 열 폭 그림(층 판) → 넓은 파일 띠 → 글 열 폭 그림(크기 막대) → 넓은 그림 안 두 길 비교 → 글 열 폭 이름 해부 → 글 열 안 큰 정리 문장 | 글의 성격: 손잡이 두 개짜리 장치에서 출발해 규모를 76억 개까지 키워 가는 이야기, 같은 단위(손잡이 = 파라미터)를 끝까지 센다 | 버린 후보: 옆 조작판(접음, 모든 그림을 움직일 변수도 없음), 가로 스크롤 띠(규모 비교는 나열보다 넓이로 겹쳐 보여야 해서 줌아웃이 낫다) -->
+<!-- layout: 분할 히어로(글 | 손잡이 실험, 설명 한 줄은 그래프 위·결론 숫자는 다이얼 아래) → 글|그림(포함 관계) → 글|그림(계산식) → 제목|글 + 실험판 전폭 띠(학습, 띠 아래 산문은 왼쪽 열) → 글|그림(추론) → 제목|글 + 그림 고정 스크롤리텔링(줌아웃, 뒤 산문은 제목|글 본문 열) → 글|그림(층 판) → 제목|글 + 넓은 바이트 띠 + 목록|글 → 글|그림(크기 막대) → 제목|글 + 비교 나란히(작은 캡션, 결론은 본문 열) → 글|그림(이름 해부) → 큰 정리 문장 → 제목|글(참고 자료). 글 시작 위치는 왼쪽과 제목|글 본문 열 두 가지만 | 글의 성격: 손잡이 두 개짜리 장치에서 출발해 규모를 76억 개까지 키워 가는 이야기, 같은 단위(손잡이 = 파라미터)를 끝까지 센다 | 버린 후보: 옆 조작판(모든 그림을 함께 움직일 변수 하나가 없음), 가로 스크롤 띠(규모 비교는 나열보다 넓이로 겹쳐 보여야 해서 줌아웃이 낫다), 그림|글 반전(글 시작 위치가 좌우로 튄다는 시선 흐름 지적) -->
 <style>
 .post-page .pz {
   --pz-knob: rgb(226, 112, 20); --pz-data: rgb(37, 112, 235); --pz-err: rgb(214, 56, 56); --pz-ok: rgb(16, 150, 110);
@@ -44,7 +44,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-two.rev > :first-child { order: 2; }
 .post-page .pz-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
 .post-page .pz-head > h2 { margin: 0; }
-.post-page .pz-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 64px); align-items: start; margin-top: clamp(40px, 6vw, 64px); }
+.post-page .pz-pair > * { grid-column: 2; }
+.post-page .pz-pair { row-gap: 8px !important; }
+.post-page .pz-pair.side > :first-child { grid-column: 1; grid-row: 1 / span 4; }
+.post-page .pz-pair { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 64px); align-items: start; margin-top: clamp(40px, 6vw, 64px); }
 .post-page .pz-fig { margin: clamp(40px, 6vw, 64px) 0; }
 .post-page .pz-two .pz-fig, .post-page .pz-pair .pz-fig { margin: 0; }
 .post-page .pz-band { background: var(--bg-subtle); padding: clamp(44px, 6vw, 72px) 0; margin: clamp(48px, 7vw, 80px) 0; }
@@ -81,7 +84,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-dial.locked .lock { display: inline; }
 
 /* 직선 맞추기 그림 */
-.post-page .pz-plot { width: 100%; max-width: 560px; display: block; margin: 0; overflow: visible; }
+.post-page .pz-plot { width: 100%; max-width: 560px; display: block; margin: 0 auto; overflow: visible; }
 .post-page .pz-plot .ax { stroke: var(--line-strong); stroke-width: 1.5; }
 .post-page .pz-plot .grid { stroke: var(--line-subtle); stroke-width: 1; }
 .post-page .pz-plot .pt { fill: var(--pz-data); }
@@ -100,9 +103,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-hero h1 { margin-bottom: 36px; }
 .post-page .pz-count { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; margin: 36px 0 0; padding: 18px 0 0; border-top: 1.5px solid var(--line-subtle); }
 .post-page .pz-count dt { font-size: 15px; color: var(--fg-neutral); white-space: nowrap; }
-.post-page .pz-count dd { white-space: nowrap; margin: 0; font-family: var(--font-mono); font-weight: 800; color: var(--pz-knob); font-size: clamp(20px, 2.6vw, 28px); letter-spacing: -0.01em; }
+.post-page .pz-count dd { white-space: nowrap; margin: 0; font-family: var(--font-mono); font-weight: 700; color: var(--pz-knob); font-size: 18px; letter-spacing: -0.01em; }
 .post-page .pz-count dd small { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--fg-neutral); margin-left: 4px; }
-.post-page .pz-count dd.big { font-size: clamp(24px, 3.4vw, 36px); }
+.post-page .pz-count dd.big { font-size: 22px; }
 
 /* 포함 관계 */
 .post-page .pz-nest { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
@@ -134,15 +137,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 /* 줌아웃 스크롤리텔링 */
 .post-page .pz-zoom { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(40px, 6vw, 64px); }
-.post-page .pz-zoom-steps { list-style: none; margin: 0; padding: 18vh 0 22vh; }
-.post-page .pz-zoom-steps li { margin: 0 0 46vh; opacity: .3; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .pz-zoom-steps { list-style: none; margin: 0; padding: 12vh 0 16vh; }
+.post-page .pz-zoom-steps li { margin: 0 0 38vh; opacity: .3; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
 .post-page .pz-zoom-steps li:last-child { margin-bottom: 0; }
 .post-page .pz-zoom-steps li.on { opacity: 1; }
 .post-page .pz-zoom-steps li span { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--pz-knob); font-weight: 700; margin-bottom: 6px; }
 .post-page .pz-zoom-stick { position: sticky; top: 96px; align-self: start; background: var(--bg-base); z-index: 2; }
 .post-page .pz-zoom-num { text-align: center; font-family: var(--font-mono); font-weight: 800; color: var(--pz-knob); font-size: clamp(26px, 3.6vw, 40px); line-height: 1.2; }
 .post-page .pz-zoom-num small { display: block; font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--fg-neutral); margin-top: 4px; }
-.post-page .pz-zoomfig { width: 100%; max-width: 500px; display: block; margin: 16px auto 0; }
+.post-page .pz-zoomfig { width: 100%; max-width: 440px; display: block; margin: 12px auto 0; }
 .post-page .pz-zoomfig .lv { opacity: 0; transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); transform-origin: 250px 250px; transform: scale(1.06); }
 .post-page .pz-zoomfig .lv.on { opacity: 1; transform: scale(1); }
 .post-page .pz-zoomfig .lv.past { opacity: 0; transform: scale(.94); }
@@ -160,7 +163,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-stack .base { stroke: var(--line-strong); stroke-width: 1.5; }
 
 /* 파일 띠 */
-.post-page .pz-file { margin: clamp(40px, 6vw, 64px) 0; }
+.post-page .pz-file { max-width: 1060px; margin: clamp(40px, 6vw, 64px) auto; }
 .post-page .pz-strip { display: flex; height: 64px; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--line-strong); }
 .post-page .pz-strip button { all: unset; box-sizing: border-box; height: 100%; cursor: pointer; border-right: 1.5px solid var(--bg-base); display: grid; place-items: center; font-size: 13px; color: var(--fg-strong); font-weight: 600; transition: filter .2s, outline-color .2s; outline: 3px solid transparent; outline-offset: -3px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .post-page .pz-strip button[data-k="emb"] { background: color-mix(in srgb, var(--pz-ok) 30%, var(--bg-base)); }
@@ -179,13 +182,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-zbox .eq { color: var(--fg-neutral); margin-top: 6px; }
 .post-page .pz-zbox .nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 8px; font-family: var(--font-mono); font-size: 13px; color: var(--pz-knob); font-weight: 700; margin-top: 6px; }
 .post-page .pz-zarr { display: grid; place-items: center; color: var(--fg-alternative); font-size: 20px; }
-.post-page .pz-shot img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-subtle); display: block; }
+.post-page .pz-shot img { width: 100%; height: auto; aspect-ratio: 1408 / 820; object-fit: cover; object-position: top; border-radius: 12px; border: 1px solid var(--line-strong); display: block; }
+[data-theme="dark"] .post-page .pz-shot img { filter: brightness(.9); }
 .post-page .pz-shot figcaption { font-size: 14px; color: var(--fg-neutral); margin-top: 10px; line-height: 1.6; }
-.post-page .pz-shot { margin: 0; }
+.post-page .pz-shot { margin: 28px 0 0; }
 .post-page .pz-hf { margin: 0; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; align-self: start; }
 .post-page .pz-hf-head { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; background: var(--bg-subtle); font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); }
-.post-page .pz-hf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 48px; gap: 6px 14px; padding: 10px 14px; border-top: 1px solid var(--line-subtle); font-size: 13.5px; align-items: baseline; }
-.post-page .pz-hf-row code { background: none; padding: 0; font-size: 13.5px; overflow-wrap: anywhere; word-break: normal; color: var(--fg-neutral); }
+.post-page .pz-hf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 10px 14px; border-top: 1px solid var(--line-subtle); font-size: 13.5px; align-items: baseline; }
+.post-page .pz-hf-row code { grid-column: 1 / -1; background: none; padding: 0; font-size: 13.5px; overflow-wrap: anywhere; word-break: normal; color: var(--fg-neutral); }
 .post-page .pz-hf-row code b { color: var(--pz-knob); }
 .post-page .pz-hf-row span { font-family: var(--font-mono); color: var(--fg-strong); white-space: nowrap; }
 .post-page .pz-hf-row.more code { color: var(--fg-alternative); }
@@ -230,38 +234,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .pz-refs ul { margin: 0; padding-left: 1.1em; }
 .post-page .pz-refs li { font-size: 15.5px; margin: 0 0 .6em; line-height: 1.7; }
 
-/* 읽기 축 하나(POSTING 5-2): 글은 왼쪽 시작선의 680px 열로만 흐르고, 그림은 그 위아래에 글 열 폭 또는 넓게 놓는다 */
-.post-page .pz-wrap { max-width: 1160px; }
-.post-page .pz-two, .post-page .pz-two.rev, .post-page .pz-head, .post-page .pz-pair, .post-page .pz-hero-grid { display: block; }
-.post-page .pz-two.rev > :first-child { order: 0; }
-.post-page .pz :is(h1, h2, p, ul, ol, details) { max-width: 680px; }
-.post-page .pz-head > h2 { margin: 0 0 28px; }
-.post-page .pz-two > .pz-fig, .post-page .pz-pair > figure { margin: clamp(40px, 6vw, 64px) 0; }
-.post-page .pz-pair { margin-top: 0; }
-.post-page .pz-narrow { max-width: 680px; }
-.post-page .pz-hero-fig { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 8px clamp(28px, 4vw, 56px); align-items: center; margin-top: 44px; }
-.post-page .pz-hero-fig > svg { grid-row: 1 / span 2; }
-.post-page .pz-hero-fig > .pz-count { grid-column: 1 / -1; max-width: 680px; }
-.post-page .pz-hero-fig > .pz-cap { grid-column: 1 / -1; max-width: 680px; }
-.post-page .pz-hero-fig .pz-count { margin-top: 24px; justify-content: start; }
-.post-page .pz-big { text-align: left; margin: 0 !important; }
-.post-page .pz-nest, .post-page .pz-flow, .post-page .pz-stack, .post-page .pz-size { margin-left: 0; }
-.post-page .pz-nest-read, .post-page .pz-size-read { text-align: left !important; }
-.post-page .pz-flow + .pz-cap, .post-page [data-pz-flow] { margin-left: 0; }
-
 @media (max-width: 900px) {
   .post-page .pz-wrap { padding: 0 20px; }
   .post-page .pz-hero-fig { grid-template-columns: minmax(0, 1fr); }
   .post-page .pz-hero-fig > svg { grid-row: auto; }
   .post-page .pz-hero-grid, .post-page .pz-two, .post-page .pz-two.rev, .post-page .pz-head, .post-page .pz-pair, .post-page .pz-train, .post-page .pz-lanes { grid-template-columns: minmax(0, 1fr); }
   .post-page .pz-two.rev > :first-child { order: 0; }
+  .post-page .pz-pair > *, .post-page .pz-pair.side > :first-child { grid-column: auto; grid-row: auto; }
   .post-page .pz-head > h2 { margin-bottom: 4px; }
   .post-page .pz-zoom { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .post-page .pz-zoom-stick { order: -1; top: 60px; padding: 6px 0 10px; }
   .post-page .pz-zoomfig { max-width: 340px; margin-top: 6px; }
   .post-page .pz-zoom-num { font-size: 22px; }
   .post-page .pz-zoom-steps { padding: 6vh 0 10vh; }
-  .post-page .pz-zoom-steps li { margin-bottom: 40vh; }
+  .post-page .pz-zoom-steps li { margin-bottom: 34vh; }
   .post-page .pz-zoomin { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .post-page .pz-zarr { height: 30px; }
   .post-page .pz-zarr::after { content: "↓"; }
@@ -276,7 +262,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .pz-stack text { font-size: 22px; }
   .post-page .pz-nest text { font-size: 18px; }
   .post-page .pz-nest text.t-strong { font-size: 22px; }
-  .post-page .pz-nest text.d, .post-page .pz-nest text.t-knob { font-size: 18px; }
+  .post-page .pz-nest text.d, .post-page .pz-nest text.t-knob { font-size: 20px; }
   .post-page .pz-plot text, .post-page .pz-loss text { font-size: 18px; }
   .post-page .pz p, .post-page .pz li { font-size: 16.5px; }
   .post-page .pz-dial svg { width: 80px; height: 80px; }
@@ -287,6 +273,34 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (prefers-reduced-motion: reduce) {
   .post-page .pz *, .post-page .pz *::before { transition: none !important; animation: none !important; }
 }
+.post-page .pz-fig-t { margin: 0 0 10px !important; }
+.post-page .pz-train .pz-dials { margin-top: 18px; }
+.post-page .pz-train .pz-loss { margin-top: 4px; }
+.post-page .pz-bytes { display: grid; grid-template-columns: minmax(0, 2.9fr) minmax(0, 2.5fr) minmax(0, 4.6fr); border: 1.5px solid var(--line-strong); border-radius: 12px; margin-top: 12px; }
+.post-page .pz-bg { padding: 14px 14px 12px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+.post-page .pz-bg + .pz-bg { border-left: 1.5px dashed var(--line-strong); }
+.post-page .pz-bg.g1 { background: color-mix(in srgb, var(--fg-neutral) 8%, var(--bg-base)); border-radius: 11px 0 0 11px; }
+.post-page .pz-bg.g2 { background: color-mix(in srgb, var(--fg-neutral) 4%, var(--bg-base)); }
+.post-page .pz-bc { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: flex-start; }
+.post-page .pz-bc .pr { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+.post-page .pz-bc .pr > span { display: inline-flex; gap: 2px; flex-wrap: wrap; }
+.post-page .pz-bc i { font-style: normal; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 4px; background: var(--bg-base); }
+.post-page .g3 .pz-bc i { border-color: color-mix(in srgb, var(--pz-knob) 60%, var(--bg-base)); }
+.post-page .pz-bc em { font-style: normal; font-family: var(--font-mono); font-size: 12.5px; color: var(--pz-knob); font-weight: 700; }
+.post-page .pz-bc code { background: none; padding: 0; font-size: 12.5px; color: var(--fg-neutral); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.post-page .pz-bc code b { color: var(--pz-knob); }
+.post-page .pz-bl { font-size: 13.5px; color: var(--fg-neutral); line-height: 1.5; }
+.post-page .pz-bl b { display: block; color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .pz-bytes { grid-template-columns: minmax(0, 1fr); } .post-page .pz-bg + .pz-bg { border-left: 0; border-top: 1.5px dashed var(--line-strong); } .post-page .pz-bg.g1 { border-radius: 11px 11px 0 0; } }
+[data-theme="dark"] .post-page .pz-shot img { filter: brightness(.62) contrast(1.05); }
+[data-theme="dark"] .post-page .pz-zoomfig .att { fill: color-mix(in srgb, var(--pz-data) 55%, var(--bg-base)); }
+[data-theme="dark"] .post-page .pz-zoomfig .mlp { fill: color-mix(in srgb, var(--pz-knob) 45%, var(--bg-base)); }
+[data-theme="dark"] .post-page .pz-zoomfig .emb { fill: color-mix(in srgb, var(--pz-ok) 45%, var(--bg-base)); }
+[data-theme="dark"] .post-page .pz-zoomfig .cell { fill: color-mix(in srgb, var(--pz-knob) 32%, var(--bg-base)); stroke: var(--pz-knob); }
+[data-theme="dark"] .post-page .pz-stack .slab { fill: color-mix(in srgb, var(--pz-knob) 55%, var(--bg-base)); }
+.post-page .pz-pair.lefty { grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); }
+.post-page .pz-pair.lefty > * { grid-column: 1; }
+@media (max-width: 900px) { .post-page .pz-fig.pz-lanefig { display: flex; flex-direction: column; } .post-page .pz-lanefig > .pz-ctrl { order: 2; margin: 24px 0 0 !important; } }
 </style>
 
 <div class="pz" data-pz>
@@ -295,10 +309,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="pz-wrap pz-hero-grid">
       <div>
         <h1>LLM 이름 뒤의 7B는 무엇을 센 숫자일까요</h1>
-        <p class="pz-lede">AI 모델을 올려 두고 공유하는 사이트인 Hugging Face를 둘러보면 Qwen2.5-7B, Llama-3.1-8B, Qwen2.5-72B처럼 이름 끝에 숫자와 B가 붙어 있습니다. 저도 처음엔 파일 크기인 줄 알았습니다.</p>
-        <p class="pz-lede">B는 Billion, 곧 10억입니다. 7B는 모델 안에서 학습으로 값을 정한 숫자, 곧 <b>파라미터</b>가 70억 개쯤이라는 뜻입니다. 파라미터는 조절 손잡이와 비슷합니다. 아래 모델에는 손잡이가 두 개뿐입니다. 돌려서 선을 점에 맞춰 보세요.</p>
+        <p class="pz-lede">AI(Artificial Intelligence) 모델을 올려 두고 공유하는 사이트인 Hugging Face를 둘러보면 Qwen2.5-7B, Llama-3.1-8B, Qwen2.5-72B처럼 LLM(Large Language Model) 이름 끝에 숫자와 B가 붙어 있습니다. 저도 처음엔 파일 크기인 줄 알았습니다.</p>
+        <p class="pz-lede">B는 Billion, 10억입니다. Qwen2.5-7B에는 학습(training)으로 값을 정한 숫자, 곧 <b>파라미터</b>(parameter)가 76억 개 들어 있고 이름에는 대략 7B로 적었습니다. 파라미터는 조절 손잡이와 비슷합니다. 그래프 속 모델에는 손잡이가 두 개뿐입니다. 돌려서 선을 점에 맞춰 보세요.</p>
       </div>
-      <div class="pz-hero-fig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('pz-fit')); el.querySelector('.pz-cap').style.display='none'; el.style.width='1060px'; el.style.marginTop='0'">
+      <div class="pz-hero-fig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('pz-fit')); el.querySelectorAll('.pz-cap').forEach((x) => x.style.display='none'); el.parentElement.style.gridTemplateColumns = 'minmax(0, 1fr)'; Object.assign(el.style, { display: 'grid', gridTemplateColumns: '560px 400px', gap: '0 48px', alignItems: 'center', width: '1010px' }); el.querySelector('svg').style.gridRow = '1 / span 3'">
+        <p class="pz-cap pz-fig-t">예시 값: 어느 학교 매점의 하루 기온(가로)과 그날 팔린 아이스크림 개수(세로)입니다.</p>
         <svg class="pz-plot" viewBox="0 0 460 300" data-pz-plot="hero" role="img" aria-label="기온과 아이스크림 판매량 점 일곱 개, 손잡이로 가중치와 바이어스를 정한 주황 직선, 점과 직선 사이의 빨간 오차선"></svg>
         <p class="pz-err">예측이 빗나간 정도 <b data-pz-err="hero">0</b><span>개 (하루 평균)</span></p>
         <div class="pz-dials" style="margin-top:20px">
@@ -309,7 +324,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <dt>이 모델의 파라미터</dt><dd>2<small>개</small></dd>
           <dt>Qwen2.5-7B</dt><dd class="big">7,615,616,512<small>개</small></dd>
         </dl>
-        <p class="pz-cap">점은 설명을 위한 예시 값으로, 어느 학교 매점의 하루 기온과 그날 팔린 아이스크림 개수입니다. 빨간 점선은 예측이 빗나간 만큼입니다. <b>가중치</b>는 입력에 곱하는 숫자, <b>바이어스</b>는 마지막에 더하는 숫자입니다. 손잡이를 끌거나 아래 막대를 움직여 보세요.</p>
+        <p class="pz-cap">빨간 점선은 예측이 빗나간 만큼입니다. <b>가중치</b>(weight)는 입력에 곱하는 숫자, <b>바이어스</b>(bias)는 마지막에 더하는 숫자입니다. 손잡이를 끌거나 아래 막대를 움직여 보세요.</p>
       </div>
     </div>
   </header>
@@ -318,8 +333,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="pz-wrap pz-two">
       <div>
         <h2>AI 안에 머신러닝이, 그 안에 딥러닝과 LLM이 있습니다</h2>
-        <p>방금 손잡이 두 개로 맞춘 계산도 AI의 한 종류입니다. AI, 머신러닝, 딥러닝, LLM은 큰 상자 안에 작은 상자가 든 관계라서 주소의 시·구·동과 비슷합니다. 손잡이(파라미터)는 데이터를 보고 숫자를 맞추는 머신러닝부터 생깁니다.</p>
-        <p>딥러닝이 쓰는 <b>신경망</b>은 곱하고 더하는 계산을 여러 <b>층</b>으로 겹쳐 쌓은 구조입니다. <b>LLM</b>(Large Language Model)은 그중 글을 읽고 쓰는 아주 큰 모델입니다. 동네 경계와 달리 몇 개부터 Large인지는 정해진 기준이 없습니다. 수억~수십억 개짜리 작은 모델은 SLM이라고도 부릅니다.</p>
+        <p>방금 손잡이 두 개로 맞춘 계산도 AI의 한 종류입니다. AI, 머신러닝(machine learning), 딥러닝(deep learning), LLM은 큰 상자 안에 작은 상자가 든 관계라서 주소의 시·구·동과 비슷합니다. 손잡이(파라미터)는 데이터를 보고 숫자를 맞추는 머신러닝부터 생깁니다.</p>
+        <p>딥러닝이 쓰는 <b>신경망</b>(neural network)은 곱하고 더하는 계산을 여러 <b>층</b>(layer)으로 겹쳐 쌓은 구조입니다. <b>LLM</b>은 그중 글을 읽고 쓰는 아주 큰 모델입니다. 동네 경계와 달리 몇 개부터 Large인지는 정해진 기준이 없습니다. 수억~수십억 개짜리 작은 모델은 SLM(Small Language Model)이라고도 부릅니다.</p>
       </div>
       <figure class="pz-fig pz-narrow" data-figure>
         <svg class="pz-nest" viewBox="0 0 520 384" data-pz-nest role="img" aria-label="AI 안에 머신러닝, 그 안에 딥러닝, 그 안에 LLM이 든 포함 관계 그림. 머신러닝부터 안쪽은 주황으로 칠해져 학습으로 정하는 숫자가 있는 곳임을 표시">
@@ -329,12 +344,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <rect class="ring learn" data-ring="llm" x="124" y="226" width="272" height="112" rx="16"/>
           <text x="26" y="38" class="t-strong" font-size="19">AI</text><text x="66" y="38" class="t-dim d" font-size="14">사람의 판단을 컴퓨터가 대신함</text>
           <text x="26" y="62" class="t-dim d" font-size="14">예: 사람이 규칙을 다 적은 프로그램</text>
-          <text x="66" y="110" class="t-strong" font-size="18">머신러닝</text><text x="162" y="110" class="t-dim d" font-size="14">데이터를 보고 숫자를 스스로 맞춤</text>
+          <text x="66" y="110" class="t-strong" font-size="18">머신러닝</text><text x="162" y="110" class="t-dim d" font-size="14">데이터로 숫자를 맞춤</text>
           <text x="66" y="134" class="t-dim d" font-size="14">예: 스팸 메일 거르기</text>
-          <text x="106" y="184" class="t-strong" font-size="18">딥러닝</text><text x="182" y="184" class="t-dim d" font-size="14">층을 여러 겹 쌓은 신경망</text>
+          <text x="106" y="184" class="t-strong" font-size="18">딥러닝</text><text x="182" y="184" class="t-dim d" font-size="14">여러 층 신경망</text>
           <text x="106" y="208" class="t-dim d" font-size="14">예: 사진 속 얼굴 찾기</text>
           <text x="146" y="258" class="t-strong" font-size="18">LLM</text><text x="196" y="258" class="t-dim d" font-size="14">다음 말을 이어 씀</text>
-          <text x="146" y="286" class="t-dim d" font-size="14">예: ChatGPT · Claude · Qwen</text>
+          <text x="146" y="286" class="t-dim d" font-size="14">예: ChatGPT · Qwen</text>
           <text x="146" y="314" class="t-knob" font-size="14">손잡이 수십억~수조 개</text>
         </svg>
         <p class="pz-nest-read" data-pz-nest-read aria-live="polite">주황으로 칠한 상자부터 학습으로 정하는 숫자(파라미터)가 있습니다. 상자를 누르면 설명이 나옵니다.</p>
@@ -343,15 +358,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="pz-sec">
-    <div class="pz-wrap pz-two rev">
+    <div class="pz-wrap pz-two">
       <div>
         <h2>모델은 계산식이고 파라미터는 그 식 속의 숫자입니다</h2>
         <p>맨 위 아이스크림 그래프의 모델을 식으로 적으면 "판매량 = 가중치 × 기온 + 바이어스"입니다. <b>모델</b>은 입력을 받아 출력을 내는 이런 계산 규칙입니다. 곱하고 더한다는 모양은 코드가 정하고 빈칸의 숫자인 파라미터는 학습이 정합니다.</p>
-        <p>입력에 곱하는 숫자가 <b>가중치</b>(weight), 마지막에 더하는 숫자가 <b>바이어스</b>(bias)입니다. 입력이 늘면 입력마다 가중치가 하나씩 붙습니다. 이렇게 곱해서 더하는 계산 한 칸을 <b>뉴런</b>이라고 부릅니다.</p>
+        <p>입력에 곱하는 숫자가 <b>가중치</b>, 마지막에 더하는 숫자가 <b>바이어스</b>입니다. 입력이 늘면 입력마다 가중치가 하나씩 붙습니다. 이렇게 곱해서 더하는 계산 한 칸을 <b>뉴런</b>(neuron)이라고 부릅니다.</p>
         <p>손잡이 비유가 맞지 않는 곳도 있습니다. 오디오 믹서의 손잡이에는 "볼륨", "저음"처럼 이름이 적혀 있어서 무엇을 바꾸는지 알 수 있습니다. LLM의 파라미터에는 그런 이름이 없어서 숫자 하나만 떼어 보면 무슨 역할인지 알기 어렵습니다.</p>
       </div>
       <figure class="pz-fig" data-figure>
-        <div class="pz-ctrl" style="margin-bottom:18px">
+        <div class="pz-ctrl" style="justify-content:center;margin-bottom:18px">
           <div class="pz-seg" role="group" aria-label="입력 개수">
             <button type="button" data-pz-inputs="1" aria-pressed="true">입력 1개</button>
             <button type="button" data-pz-inputs="3" aria-pressed="false">입력 3개</button>
@@ -395,7 +410,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="pz-wrap pz-head">
       <h2>학습은 오차가 줄어드는 쪽으로 손잡이를 조금씩 돌리는 일입니다</h2>
       <div>
-        <p>손으로 돌려 보면 "조금 올렸더니 오차가 줄었네, 더 올려 보자"를 되풀이하게 됩니다. 이 일을 컴퓨터가 대신하는 것이 <b>학습</b>입니다. 손잡이를 아무렇게나 둔 채 시작해 정답과 예측의 차이인 <b>오차</b>를 잽니다. 그리고 오차가 줄어드는 쪽으로 모든 손잡이를 조금씩 돌립니다.</p>
+        <p>손으로 돌려 보면 "조금 올렸더니 오차가 줄었네, 더 올려 보자"를 되풀이하게 됩니다. 이 일을 컴퓨터가 대신하는 것이 <b>학습</b>입니다. 손잡이를 아무렇게나 둔 채 시작해 정답과 예측의 차이인 <b>오차</b>(error)를 잽니다. 그리고 오차가 줄어드는 쪽으로 모든 손잡이를 조금씩 돌립니다.</p>
         <p>샤워기 물 온도를 맞출 때와 비슷합니다. 차가우면 따뜻한 쪽으로 조금, 뜨거우면 반대로 조금 돌립니다. 아래에서 한 걸음씩 눌러 보세요.</p>
       </div>
     </div>
@@ -404,14 +419,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="pz-train" data-figure>
           <div>
             <svg class="pz-plot" viewBox="0 0 460 300" data-pz-plot="train" role="img" aria-label="학습 한 걸음마다 주황 직선이 점들 쪽으로 옮겨 가고 빨간 오차선이 짧아지는 그림"></svg>
-            <p class="pz-err">빗나간 정도 <b data-pz-err="train">0</b><span>개 · 학습 <span class="pz-stepn" data-pz-stepn>0</span>걸음</span></p>
           </div>
           <div>
+            <p class="pz-err">빗나간 정도 <b data-pz-err="train">0</b><span>개 · 학습 <span class="pz-stepn" data-pz-stepn>0</span>걸음</span></p>
+            <svg class="pz-loss" viewBox="0 0 420 170" data-pz-loss role="img" aria-label="학습 걸음 수에 따라 빗나간 정도가 처음에는 빠르게, 나중에는 천천히 줄어드는 곡선"></svg>
             <div class="pz-dials">
               <div class="pz-dial" data-pz-dial="train:w" data-min="0" data-max="4" data-step="0.05" data-label="가중치"></div>
               <div class="pz-dial" data-pz-dial="train:b" data-min="-40" data-max="40" data-step="0.5" data-label="바이어스"></div>
             </div>
-            <svg class="pz-loss" viewBox="0 0 420 170" data-pz-loss role="img" aria-label="학습 걸음 수에 따라 빗나간 정도가 처음에는 빠르게, 나중에는 천천히 줄어드는 곡선"></svg>
             <div class="pz-ctrl">
               <button type="button" class="pz-act" data-pz-step>한 걸음 학습</button>
               <button type="button" class="pz-act" data-pz-run>끝까지 학습</button>
@@ -422,9 +437,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </div>
       </div>
     </div>
-    <div class="pz-wrap pz-pair" style="margin-top:0">
+    <div class="pz-wrap pz-pair lefty" style="margin-top:0">
       <div>
-        <p>LLM의 학습도 점에 선을 맞추는 것과 같은 일입니다. 점 대신 문장의 앞부분을 보여 주고 다음에 올 <b>토큰</b>을 맞히게 합니다. 토큰은 모델이 글을 읽는 단위로, 단어보다 조금 작은 조각입니다. 실제 다음 토큰과 모델의 예측이 다른 만큼이 오차입니다.</p>
+        <p>LLM의 학습도 점에 선을 맞추는 것과 같은 일입니다. 점 대신 문장의 앞부분을 보여 주고 다음에 올 <b>토큰</b>(token)을 맞히게 합니다. 토큰은 모델이 글을 읽는 단위로, 단어보다 조금 작은 조각입니다. 실제 다음 토큰과 모델의 예측이 다른 만큼이 오차입니다.</p>
         <p>그 오차를 줄이는 쪽으로 76억 개 손잡이를 한꺼번에 조금씩 돌리고 이걸 아주 많이 되풀이합니다. Qwen2.5는 최대 18조 개 토큰으로 이 과정을 거쳤다고 합니다.</p>
       </div>
       <div>
@@ -441,13 +456,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="pz-wrap pz-two">
       <div>
         <h2>추론은 손잡이를 잠가 두고 계산만 하는 일입니다</h2>
-        <p>학습이 끝난 모델을 쓰는 것을 <b>추론</b>(inference)이라고 합니다. 손잡이는 잠가 두고 새 입력을 식에 넣어 계산만 합니다. 아래에서 내일 기온을 바꿔 보세요. 선 위의 동그라미가 예측값입니다.</p>
+        <p>학습이 끝난 모델을 쓰는 것을 <b>추론</b>(inference)이라고 합니다. 손잡이는 잠가 두고 새 입력을 식에 넣어 계산만 합니다. 그림에서 내일 기온을 바꿔 보세요. 선 위의 동그라미가 예측값입니다.</p>
         <p>ChatGPT에 질문하는 것도 추론입니다. 대화를 아무리 오래 해도 모델 파일 속 숫자는 하나도 바뀌지 않습니다. 앞에서 한 말을 기억하는 것처럼 보이는 건, 프로그램이 지난 대화를 매번 입력에 다시 붙여 보내기 때문입니다.</p>
-        <p>학습은 계산을 한꺼번에 많이 하는 칩(GPU)을 오래 씁니다. 추론은 훨씬 가볍지만 질문마다 되풀이됩니다. 이 시리즈에서 다룰 LLM 인프라는 대부분 이 추론을 빠르고 싸게 만드는 기술입니다.</p>
+        <p>학습은 계산을 한꺼번에 많이 하는 칩(GPU, Graphics Processing Unit)을 오래 씁니다. 추론은 훨씬 가볍지만 질문마다 되풀이됩니다. LLM 인프라(infrastructure)는 LLM을 서버에서 돌리는 데 필요한 장비와 소프트웨어를 말합니다. 이 시리즈에서 다룰 인프라 기술은 대부분 이 추론을 빠르고 싸게 만드는 방법입니다.</p>
       </div>
       <figure class="pz-fig pz-narrow" data-figure>
         <svg class="pz-plot" viewBox="0 0 460 300" data-pz-plot="infer" role="img" aria-label="잠긴 손잡이로 고정된 직선 위에서 내일 기온을 바꾸면 예측 판매량 동그라미가 직선을 따라 움직이는 그림"></svg>
-        <div class="pz-dials" style="margin-top:18px;justify-content:flex-start">
+        <div class="pz-dials" style="margin-top:18px">
           <div class="pz-dial locked" data-pz-dial="infer:w" data-min="0" data-max="4" data-step="0.05" data-label="가중치"></div>
           <div class="pz-dial locked" data-pz-dial="infer:b" data-min="-40" data-max="40" data-step="0.5" data-label="바이어스"></div>
           <div class="pz-dial" style="width:200px">
@@ -466,37 +481,37 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="pz-head">
         <h2>손잡이 2개에서 76억 개까지 세어 보면</h2>
         <div>
-          <p>Qwen2.5-7B와 함께 배포되는 설계도 파일 <code>config.json</code>을 보면 76억이 어디서 나오는지 직접 셀 수 있습니다. 필요한 숫자는 세 개입니다. 이 모델은 토큰 하나를 숫자 3,584개짜리 목록으로 나타냅니다. 이렇게 순서 있는 숫자 목록을 <b>벡터</b>라고 합니다. 층은 28개, 아는 토큰은 152,064개입니다.</p>
+          <p>Qwen2.5-7B와 함께 배포되는 설계도 파일 <code>config.json</code>을 보면 76억이 어디서 나오는지 직접 셀 수 있습니다. 필요한 숫자는 세 개입니다. 이 모델은 토큰 하나를 숫자 3,584개짜리 목록으로 나타냅니다. 이렇게 순서 있는 숫자 목록을 <b>벡터</b>(vector)라고 합니다. 층은 28개, 아는 토큰은 152,064개입니다.</p>
           <p>아래로 내리면 그림이 한 단계씩 물러나며 손잡이 수가 커집니다. 그림의 넓이가 곧 손잡이 수입니다.</p>
         </div>
       </div>
       <div class="pz-zoom" data-pz-zoom>
         <ol class="pz-zoom-steps">
-          <li data-pz-zs="0"><span>2개</span>맨 위 아이스크림 그래프의 모델입니다. 가중치와 바이어스, 손잡이가 두 개였습니다.</li>
-          <li data-pz-zs="1"><span>3,585개</span>LLM의 뉴런 하나는 입력을 3,584개 받습니다. 입력마다 가중치가 하나씩 붙고 바이어스 하나가 더해져 손잡이가 3,585개입니다. 그림의 작은 칸 하나가 손잡이 하나입니다.</li>
-          <li data-pz-zs="2"><span>12,848,640개</span>이런 뉴런 3,584개를 나란히 세우면 가중치가 가로세로 3,584칸인 표 한 장이 됩니다. 앞 단계의 뉴런은 이 표의 한 줄입니다. 숫자를 줄과 칸으로 늘어놓은 이런 표(더 여러 겹일 수도 있습니다)를 <b>텐서</b>라고 합니다. 이 표의 이름은 <code>q_proj</code>입니다.</li>
-          <li data-pz-zs="3"><span>233,057,792개</span>층 하나에는 이런 표가 일곱 장 들어 있습니다. 토큰끼리 서로 참고하는 계산(Attention)에 넉 장, 읽은 내용을 가공하는 계산(MLP)에 큰 표 석 장입니다. 층 하나만 보면 MLP가 약 87%를 차지합니다. 굵은 테두리가 앞 단계의 <code>q_proj</code>입니다.</li>
-          <li data-pz-zs="4"><span>6,525,618,176개</span>같은 모양의 층을 28번 쌓습니다. 층마다 표의 모양은 같고 그 안의 숫자 값만 다릅니다.</li>
-          <li data-pz-zs="5"><span>7,615,616,512개</span>맨 앞에는 토큰 번호를 벡터로 바꾸는 단어표, 맨 뒤에는 다음 토큰의 점수를 매기는 단어표가 있습니다. 둘 다 152,064 × 3,584입니다. 맨 끝에서 값의 크기를 고르게 맞추는 정규화(norm)용 숫자 3,584개까지 더하면 7B의 실제 값이 나옵니다.</li>
+          <li data-pz-zs="0">맨 위 아이스크림 그래프의 모델입니다. 가중치와 바이어스, 손잡이가 두 개였습니다.</li>
+          <li data-pz-zs="1">LLM의 뉴런 하나는 입력을 3,584개 받습니다. 입력마다 가중치가 하나씩 붙고 바이어스 하나가 더해져 손잡이가 3,585개입니다. 그림의 작은 칸 하나가 손잡이 하나입니다.</li>
+          <li data-pz-zs="2">이런 뉴런 3,584개를 나란히 세우면 가중치가 가로세로 3,584칸인 표 한 장이 됩니다. 앞 단계의 뉴런은 이 표의 한 줄입니다. 숫자를 줄과 칸으로 늘어놓은 이런 표(더 여러 겹일 수도 있습니다)를 <b>텐서</b>(tensor)라고 합니다. 이 표의 이름은 <code>q_proj</code>입니다.</li>
+          <li data-pz-zs="3">층 하나에는 이런 표가 일곱 장 들어 있습니다. 토큰끼리 서로 참고하는 계산(Attention)에 넉 장, 읽은 내용을 가공하는 계산(MLP, Multi-Layer Perceptron)에 큰 표 석 장입니다. 층 하나만 보면 MLP가 약 87%를 차지합니다. 굵은 테두리가 앞 단계의 <code>q_proj</code>입니다.</li>
+          <li data-pz-zs="4">같은 모양의 층을 28번 쌓습니다. 층마다 표의 모양은 같고 그 안의 숫자 값만 다릅니다.</li>
+          <li data-pz-zs="5">맨 앞에는 토큰 번호를 벡터로 바꾸는 단어표, 맨 뒤에는 다음 토큰의 점수를 매기는 단어표가 있습니다. 토큰을 벡터로 바꾸는 이 일을 <b>임베딩</b>(embedding)이라고 해서 단어표를 임베딩 표라고도 부릅니다. 둘 다 152,064 × 3,584입니다. 맨 끝에서 값의 크기를 고르게 맞추는 정규화(normalization)용 숫자 3,584개까지 더하면 7B의 실제 값이 나옵니다.</li>
         </ol>
-        <div class="pz-zoom-stick" data-figure data-sticky-figure>
+        <div class="pz-zoom-stick" data-figure>
           <div class="pz-zoom-num" aria-live="polite"><span data-pz-znum>2</span><small data-pz-zlab>손잡이 2개</small></div>
           <svg class="pz-zoomfig" viewBox="0 0 500 500" data-pz-zoomfig role="img" aria-label="손잡이 두 개에서 뉴런 하나, 표 한 장, 층 하나, 28층, 단어표 두 장까지 넓이로 개수를 나타내며 물러나는 그림"></svg>
         </div>
       </div>
       <div class="pz-pair pz-zoom-after">
         <div>
-          <p>모델 전체로 세면 약 75%가 층마다 들어 있는 MLP 표입니다. Attention 표는 약 11%, 앞뒤 단어표 두 장이 약 14%입니다. 이 계산은 모델 카드(모델을 올린 사람이 적은 소개 페이지)에 적힌 7.61B, 단어표를 뺀 6.53B와도 맞습니다.</p>
-          <p>Hugging Face가 파일을 직접 읽어 센 개수도 7,615,616,512개입니다. 그러니 7B는 반올림한 이름입니다. 모델 페이지의 Model size 칸에는 같은 수가 "8B params"로 반올림돼 나옵니다(2026-10-14 확인).</p>
+          <p>모델 전체로 세면 약 75%가 층마다 들어 있는 MLP 표입니다. Attention 표는 약 11%, 앞뒤 단어표 두 장이 약 14%입니다. 이 계산은 모델 카드(model card, 모델을 올린 사람이 적은 소개 페이지)에 적힌 7.61B, 단어표를 뺀 6.53B와도 맞습니다.</p>
+          <p>Hugging Face가 파일을 직접 읽어 센 개수도 7,615,616,512개입니다. 그러니 7B는 대략 붙인 이름입니다. 모델 페이지의 Model size 칸에는 같은 수가 "8B params"로 반올림돼 나옵니다(2026-10-14 확인).</p>
         </div>
         <div>
           <details>
             <summary>Attention 표 넉 장은 왜 크기가 서로 다른가요?</summary>
-            <p><code>q_proj</code>와 <code>o_proj</code>는 3,584 × 3,584인데 <code>k_proj</code>와 <code>v_proj</code>는 512 × 3,584입니다. 헤드는 Attention 계산을 여러 갈래로 나눠 동시에 하는 단위입니다. 이 모델은 메모리를 아끼려고 Key·Value 쪽을 헤드 4개 몫(4 × 128 = 512)만 둡니다. 이 방식을 GQA라고 합니다. Query·Key·Value가 하는 일은 <a href="/posts/self-attention-qkv">Self-Attention 글</a>에서 그림으로 설명합니다.</p>
+            <p><code>q_proj</code>와 <code>o_proj</code>는 3,584 × 3,584인데 <code>k_proj</code>와 <code>v_proj</code>는 512 × 3,584입니다. 헤드(head)는 Attention 계산을 여러 갈래로 나눠 동시에 하는 단위입니다. 이 모델은 메모리를 아끼려고 Key·Value 쪽을 헤드 4개 몫(4 × 128 = 512)만 둡니다. 이 방식을 GQA(Grouped-Query Attention)라고 합니다. Query·Key·Value가 하는 일은 <a href="/posts/self-attention-qkv">Self-Attention 글</a>에서 그림으로 설명합니다.</p>
           </details>
           <details>
             <summary>그림에 안 보이는 작은 숫자들도 있나요?</summary>
-            <p>있습니다. <code>q_proj</code>, <code>k_proj</code>, <code>v_proj</code>에는 바이어스가 붙어 있고 층마다 값의 크기를 고르게 맞추는 정규화(norm)용 숫자 3,584개가 두 줄씩 있습니다. 층 하나에 7,168개라 넓이로는 보이지 않지만 위 개수에는 모두 들어 있습니다.</p>
+            <p>있습니다. <code>q_proj</code>, <code>k_proj</code>, <code>v_proj</code>에는 바이어스가 붙어 있고 층마다 값의 크기를 고르게 맞추는 정규화용 숫자 3,584개가 두 줄씩 있습니다. 층 하나에 7,168개라 넓이로는 보이지 않지만 위 개수에는 모두 들어 있습니다.</p>
           </details>
         </div>
       </div>
@@ -504,16 +519,17 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="pz-sec">
-    <div class="pz-wrap pz-two rev">
+    <div class="pz-wrap pz-two">
       <div>
         <h2>14B·72B는 층이 늘고 폭이 넓어집니다</h2>
         <p>같은 Qwen2.5 모델이라도 크기마다 설계도가 다릅니다. 큰 모델일수록 층이 많고 토큰 하나를 나타내는 벡터도 깁니다. 이 벡터의 숫자 개수를 <b>hidden size</b>, 여기서는 쉽게 <b>폭</b>이라고 부르겠습니다.</p>
-        <p>폭이 넓어지면 파라미터는 더 빨리 늘어납니다. <code>q_proj</code> 같은 표는 가로세로가 둘 다 폭이라서 폭이 2배가 되면 넓이는 4배가 됩니다. 72B는 7B보다 층이 약 2.9배, 폭이 약 2.3배라서 개수는 9.5배쯤 됩니다.</p>
-        <p>이름이 대략값이라는 것도 여기서 다시 확인할 수 있습니다. 7B의 실제 개수는 76억, 72B는 727억입니다. 0.5B처럼 아주 작은 모델은 앞뒤 단어표를 한 장으로 같이 써서 개수를 줄이기도 합니다.</p>
+        <p>폭이 넓어지면 파라미터는 더 빨리 늘어납니다. <code>q_proj</code> 같은 Attention 표는 가로세로가 둘 다 폭이라서 폭이 2배가 되면 넓이는 4배가 됩니다. 하지만 개수의 대부분을 차지하는 MLP 표는 한 변만 폭이고 다른 변은 따로 정한 MLP 폭입니다.</p>
+        <p>72B는 7B보다 층이 약 2.9배, 폭이 약 2.3배인데 MLP 폭은 약 1.6배만 늘었습니다. 그래서 층 하나의 개수는 약 3.8배가 됩니다. 층 수까지 곱하면 약 11배입니다. 단어표는 폭만큼인 2.3배만 늘어서 전체로는 9.5배쯤 됩니다.</p>
+        <p>여기서도 이름은 대략값입니다. 7B의 실제 개수는 76억, 72B는 727억입니다. 0.5B처럼 아주 작은 모델은 앞뒤 단어표를 한 장으로 같이 써서 개수를 줄이기도 합니다.</p>
       </div>
       <figure class="pz-fig" data-figure>
         <svg class="pz-stack" viewBox="0 0 560 380" data-pz-stack role="img" aria-label="Qwen2.5 0.5B, 7B, 14B, 72B를 층 수만큼 쌓은 판으로 그린 그림. 판의 너비는 폭, 판의 장수는 층 수"></svg>
-        <p class="pz-cap">판 한 장이 층 하나입니다. 판의 너비는 폭(hidden size), 쌓인 높이는 층 수입니다. 모든 수는 각 모델의 config.json과 Hugging Face가 센 파라미터 수에서 가져왔습니다. 판 넓이와 개수는 다릅니다. 개수는 층 수에 폭의 제곱을 곱한 값에 대략 비례해서, 72B는 판 넓이로는 7B의 5배쯤이지만 개수로는 9.5배입니다. 판을 누르면 그 모델의 숫자를 보여 줍니다.</p>
+        <p class="pz-cap">판 한 장이 층 하나입니다. 판의 너비는 폭(hidden size), 쌓인 높이는 층 수입니다. 모든 수는 각 모델의 config.json과 Hugging Face가 센 파라미터 수에서 가져왔습니다. 판 넓이는 개수와 비례하지 않아서 실제 개수를 판 아래에 적었습니다. 판을 누르면 그 모델의 숫자를 보여 줍니다.</p>
         <p class="pz-size-read" data-pz-stack-read aria-live="polite"></p>
       </figure>
     </div>
@@ -525,7 +541,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <h2>모델 파일 안에는 이름 붙은 숫자 표가 줄지어 있습니다</h2>
         <div>
           <p>Qwen2.5-7B를 다운받으면 <code>model-00001-of-00004.safetensors</code> 같은 파일 네 개가 들어 있습니다. <b>safetensors</b>는 텐서를 저장하는 파일 형식입니다. 책에 비유하면 앞쪽에 목차가 있고 그 뒤에 본문이 이어지는 구조입니다.</p>
-          <p>파일 맨 앞에 붙은 안내 부분이 목차에 해당하는 <b>헤더</b>입니다. 헤더에는 표마다 이름과 모양, 그리고 본문 몇 번째 <b>바이트</b>부터 몇 번째까지인지가 적혀 있습니다. 바이트는 컴퓨터가 저장하는 기본 단위로, 0과 1을 적는 칸(비트) 8개입니다. 아래 띠는 첫 번째 파일 3,945,441,440바이트를 실제 비율로 그린 것입니다.</p>
+          <p>파일 맨 앞에 붙은 안내 부분이 목차에 해당하는 <b>헤더</b>(header)입니다. 헤더에는 표마다 이름과 모양, 그리고 본문 몇 번째 <b>바이트</b>(byte)부터 몇 번째까지인지가 적혀 있습니다. 바이트는 컴퓨터가 저장하는 기본 단위로, 0과 1을 적는 칸(비트, bit) 8개입니다. 아래 띠는 첫 번째 파일 3,945,441,440바이트를 실제 비율로 그린 것입니다.</p>
         </div>
       </div>
       <figure class="pz-file" data-figure>
@@ -533,28 +549,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="pz-strip-axis"><span>0바이트</span><span>3,945,441,440바이트 (3.95GB)</span></div>
         <p class="pz-strip-read" data-pz-strip-read aria-live="polite">띠의 구간을 누르면 목차에 적힌 그 표의 이름과 모양, 위치를 보여 줍니다.</p>
         <p class="pz-zoom-t">띠의 맨 앞 0바이트 부분을 크게 확대하면 이렇게 생겼습니다.</p>
-        <div class="pz-zoomin">
-          <div class="pz-zbox">
-            <h4>맨 앞 8바이트</h4>
-            <div class="hex">98 24 00 00 00 00 00 00</div>
-            <div class="eq">= 목차 길이 9,368바이트</div>
-          </div>
-          <div class="pz-zarr"><span>→</span></div>
-          <div class="pz-zbox">
-            <h4>목차(헤더) 9,368바이트 중 첫 항목</h4>
-            <div class="js">"<i>model.embed_tokens.weight</i>": {<br>&nbsp;&nbsp;"dtype": "BF16",<br>&nbsp;&nbsp;"shape": [152064, 3584],<br>&nbsp;&nbsp;"data_offsets": [0, 1089994752] }</div>
-            <div class="eq">표 82장의 이름·모양·위치가 이렇게 적혀 있습니다</div>
-          </div>
-          <div class="pz-zarr"><span>→</span></div>
-          <div class="pz-zbox">
-            <h4>본문 첫 16바이트 = 숫자 8개</h4>
-            <div class="hex">79 bc 7e bb 6e 3c b5 3a<br>b8 3c 0a 3c 72 38 3c 3a</div>
-            <div class="nums"><span>-0.0152</span><span>-0.0039</span><span>0.0145</span><span>0.0014</span><span>0.0225</span><span>0.0084</span><span>0.0001</span><span>0.0007</span></div>
-          </div>
+        <div class="pz-bytes">
+          <div class="pz-bg g1"><div class="pz-bc"><span class="pr"><span><i>98</i><i>24</i><i>00</i><i>00</i><i>00</i><i>00</i><i>00</i><i>00</i></span></span></div><div class="pz-bl"><b>맨 앞 8바이트</b>목차 길이 = 9,368바이트</div></div>
+          <div class="pz-bg g2"><div class="pz-bc"><code>{"<b>model.embed_tokens.weight</b>": {"dtype": "BF16", "shape": [152064, 3584], "data_offsets": [0, 1089994752]}, …</code></div><div class="pz-bl"><b>목차 9,368바이트</b>표 82장의 이름·모양·위치</div></div>
+          <div class="pz-bg g3"><div class="pz-bc"><span class="pr"><span><i>79</i><i>bc</i></span><em>-0.0152</em></span><span class="pr"><span><i>7e</i><i>bb</i></span><em>-0.0039</em></span><span class="pr"><span><i>6e</i><i>3c</i></span><em>0.0145</em></span><span class="pr"><span><i>b5</i><i>3a</i></span><em>0.0014</em></span><span class="pr"><span><i>b8</i><i>3c</i></span><em>0.0225</em></span><span class="pr"><span><i>0a</i><i>3c</i></span><em>0.0084</em></span><span class="pr"><span><i>72</i><i>38</i></span><em>0.0001</em></span><span class="pr"><span><i>3c</i><i>3a</i></span><em>0.0007</em></span></div><div class="pz-bl"><b>본문 첫 16바이트</b>2바이트씩 끊으면 숫자 8개</div></div>
         </div>
         <p class="pz-cap">바이트 값은 Hugging Face에 올라간 실제 파일의 앞부분만 받아 확인했습니다(2026-10-14). 본문의 첫 숫자들은 단어표에서 0번 토큰(느낌표 "!")의 벡터 앞부분입니다. 2바이트가 숫자 하나입니다.</p>
       </figure>
       <div class="pz-pair">
+        <p>띠 아래 98 24, 79 bc 같은 두 글자는 바이트 하나를 16진수(hexadecimal)로 적은 것입니다. 16진수는 0~9 다음에 a~f를 이어 써서 한 자리에 16가지를 담는 표기법이라 바이트 하나가 늘 두 글자가 됩니다.</p>
+        <p>맨 앞 8바이트는 순서를 뒤집어 00 00 00 00 00 00 24 98로 읽습니다. 작은 자리 바이트를 먼저 적는 이 순서를 리틀 엔디언(little-endian)이라고 합니다. 16진수 2498을 10진수로 바꾸면 9,368입니다.</p>
+        <p>책과 다른 점은 본문입니다. 본문에는 띄어쓰기도 줄바꿈도 없이 2바이트짜리 숫자가 이어 붙어 있어서 목차가 없으면 어디서 표가 끝나는지 알 수 없습니다. 그리고 그 안 어디에도 문장이나 지식이 글자로 적혀 있지 않습니다.</p>
+      </div>
+      <div class="pz-pair side">
+        <div>
         <figure class="pz-hf pz-narrow">
           <div class="pz-hf-head"><span>model-00001-of-00004.safetensors</span><span>3.95 GB</span></div>
           <div class="pz-hf-row"><code>model.embed_tokens.weight</code><span>[152 064, 3 584]</span><span>BF16</span></div>
@@ -564,10 +572,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <div class="pz-hf-row more"><code>… 표 82장 중 4장</code></div>
           <figcaption>Hugging Face의 <a href="https://huggingface.co/Qwen/Qwen2.5-7B/tree/main">Qwen2.5-7B 파일 화면</a>에서 safetensors 파일을 열면 나오는 목록 가운데 네 줄을 옮겨 적었습니다. 칸은 차례대로 이름, 모양, 저장 형식입니다.</figcaption>
         </figure>
+        </div>
         <div>
-          <p>Hugging Face는 이 목차를 브라우저에서 바로 보여 줍니다. 위 목록처럼 표 이름에 층 번호(<code>layers.0</code>)와 부품 이름(<code>q_proj</code>, <code>mlp</code>)이 붙어 있고 모양과 저장 형식이 함께 적혀 있습니다.</p>
-          <p>저장 형식 칸의 <b>BF16</b>은 숫자 하나를 2바이트(16비트)에 적는 형식입니다. 앞자리 숫자 두세 개 정도만 정확하게 적힙니다. 모델은 숫자 하나의 아주 작은 차이보다 수많은 숫자를 곱하고 더한 전체 결과로 답을 내기 때문에 이 정도로도 쓸 수 있습니다. Qwen2.5-7B 파일의 숫자도 전부 이 형식입니다.</p>
-          <p>책과 다른 점은 본문입니다. 본문에는 띄어쓰기도 줄바꿈도 없이 2바이트짜리 숫자가 이어 붙어 있어서 목차가 없으면 어디서 표가 끝나는지 알 수 없습니다. 그리고 그 안 어디에도 문장이나 지식이 글자로 적혀 있지 않습니다.</p>
+          <p>Hugging Face는 이 목차를 브라우저에서 바로 보여 줍니다. 옮겨 적은 목록처럼 표 이름에 층 번호(<code>layers.0</code>)와 부품 이름(<code>q_proj</code>, <code>mlp</code>)이 붙어 있고 모양과 저장 형식이 함께 적혀 있습니다.</p>
+          <p>저장 형식 칸의 <b>BF16</b>(bfloat16)은 숫자 하나를 2바이트(16비트)에 적는 형식입니다. 예를 들어 원주율 3.14159를 BF16에 적으면 3.140625가 되어 3.14까지만 맞습니다. 모델은 숫자 하나의 아주 작은 차이보다 수많은 숫자를 곱하고 더한 전체 결과로 답을 내기 때문에 이 정도로도 쓸 수 있습니다. Qwen2.5-7B 파일의 숫자도 전부 이 형식입니다.</p>
           <details>
             <summary>2바이트 79 bc가 어떻게 -0.0152가 되나요?</summary>
             <p>파일은 2바이트 중 뒤쪽 바이트를 앞에 적는 순서(리틀 엔디언)라서 79 bc를 bc79로 뒤집어 읽습니다. 2진수로 1011110001111001입니다. BF16은 첫 1비트가 부호(1이면 음수), 다음 8비트가 크기 단계, 나머지 7비트가 세부 값입니다. 계산하면 −1.9453 × 2⁻⁷ ≈ −0.0152입니다.</p>
@@ -576,6 +584,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <summary>이름에 왜 safe가 붙었나요?</summary>
             <p>예전에 많이 쓰던 pickle 형식은 파일을 여는 순간 그 안에 숨겨 둔 코드가 실행될 수 있었습니다. safetensors는 목차와 숫자만 담기 때문에 파일을 열어도 코드가 실행되지 않습니다.</p>
           </details>
+        <figure class="pz-shot">
+          <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/8b5e9037.webp"><img loading="lazy" src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/8b5e9037.webp" alt="Hugging Face에서 Qwen2.5-7B 첫 safetensors 파일을 연 화면. 텐서 이름, 모양, 정밀도 BF16이 표로 나온다" width="1408" height="1400"></a>
+          <figcaption>실제 Hugging Face 화면의 위쪽 일부입니다. 누르면 전체 화면을 원래 크기로 볼 수 있습니다. — 출처: huggingface.co/Qwen/Qwen2.5-7B (Apache-2.0)</figcaption>
+        </figure>
         </div>
       </div>
     </div>
@@ -586,10 +598,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div>
         <h2>파일 크기는 파라미터 개수에 숫자 하나의 바이트를 곱한 값입니다</h2>
         <p>7,615,616,512개에 2바이트를 곱하면 15,231,233,024바이트, 약 15.2GB입니다. 네 파일에서 헤더를 뺀 본문 크기를 더하면 이 숫자와 바이트 하나까지 같습니다. <code>config.json</code>이나 <code>tokenizer.json</code> 같은 나머지 파일은 다 합쳐도 12MB가 안 됩니다.</p>
-        <p>그러니 파일 크기는 숫자 하나를 몇 바이트로 적느냐에 따라 달라집니다. 아래에서 바꿔 보세요. 바이트를 줄이는 것을 <b>양자화</b>라고 합니다. 파일은 작아지지만 숫자가 거칠어져 답의 질이 떨어질 수 있습니다. GPU 메모리와의 관계는 <a href="/posts/gpu-vram-fp16-int4-quantization">GPU 메모리와 양자화 글</a>에서 다룹니다.</p>
+        <p>그러니 파일 크기는 숫자 하나를 몇 바이트로 적느냐에 따라 달라집니다. 막대 그림에서 바꿔 보세요. 바이트를 줄이는 것을 <b>양자화</b>(quantization)라고 합니다. 파일은 작아지지만 숫자가 거칠어져 답의 질이 떨어질 수 있습니다. GPU 메모리와의 관계는 <a href="/posts/gpu-vram-fp16-int4-quantization">GPU 메모리와 양자화 글</a>에서 다룹니다.</p>
       </div>
       <figure class="pz-fig" data-figure>
-        <div class="pz-ctrl">
+        <div class="pz-ctrl" style="justify-content:center">
           <span>숫자 하나를</span>
           <div class="pz-seg" role="group" aria-label="숫자 하나의 크기">
             <button type="button" data-pz-bytes="4" aria-pressed="false">4바이트</button>
@@ -610,18 +622,18 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="pz-head">
         <h2>회사 문서를 모델에 넣었다는 말은 대개 벡터 DB 이야기입니다</h2>
         <div>
-          <p>"우리 회사 문서를 AI에 넣었다"는 말을 들으면 문서가 76억 개 숫자 속으로 들어간 것처럼 들립니다. 대개는 문서를 모델 밖의 <b>벡터 DB</b>에 따로 넣어 둡니다. 질문이 오면 관련된 부분을 찾아 질문과 함께 모델에 건넵니다. 이 방식을 <b>RAG</b>라고 합니다.</p>
-          <p>벡터 DB는 문서 조각을 벡터로 바꿔 저장해 두고 질문과 뜻이 가까운 조각을 빠르게 찾아 주는 저장소입니다. 글을 이런 벡터로 바꾸는 일을 <b>임베딩</b>이라고 합니다. 아래 그림은 새 문서 하나를 두 방식으로 반영한 결과입니다.</p>
+          <p>"우리 회사 문서를 AI에 넣었다"는 말을 들으면 문서가 76억 개 숫자 속으로 들어간 것처럼 들립니다. 대개는 문서를 모델 밖의 <b>벡터 DB</b>(vector database)에 따로 넣어 둡니다. 질문이 오면 관련된 부분을 찾아 질문과 함께 모델에 건넵니다. 이 방식을 <b>RAG</b>(Retrieval-Augmented Generation)라고 합니다.</p>
+          <p>벡터 DB는 문서 조각을 벡터로 바꿔 저장해 두고 질문과 뜻이 가까운 조각을 빠르게 찾아 주는 저장소입니다. 글을 이런 벡터로 바꾸는 일도 임베딩이라고 합니다. 아래 그림은 새 문서 하나를 두 방식으로 반영한 결과입니다.</p>
         </div>
       </div>
-      <div class="pz-fig" data-figure>
-        <div class="pz-ctrl" style="margin-bottom:28px">
+      <div class="pz-fig pz-lanefig" data-figure>
+        <div class="pz-ctrl" style="justify-content:center;margin-bottom:28px">
           <button type="button" class="pz-act" data-pz-doc>새 문서 하나 다시 반영해 보기</button>
         </div>
         <div class="pz-lanes" data-pz-lanes>
           <div class="pz-lane" data-lane="tune">
             <h3>파라미터를 고친다</h3>
-            <p class="sub">외워서 보는 시험. 모델을 추가로 학습시켜 숫자를 고칩니다. 이것을 파인튜닝이라고 합니다.</p>
+            <p class="sub">외워서 보는 시험. 모델을 추가로 학습시켜 숫자를 고칩니다. 이것을 파인튜닝(fine-tuning)이라고 합니다.</p>
             <svg viewBox="0 0 440 230" role="img" aria-label="문서로 모델을 다시 학습하면 모델 안 손잡이 여러 개의 값이 바뀌는 그림">
               <defs><marker id="pz-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
               <g class="moving" data-pz-doc-a><rect class="doc" x="8" y="80" width="66" height="84" rx="8"/><text x="41" y="128" text-anchor="middle" font-size="14">새 문서</text></g>
@@ -653,10 +665,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </div>
         </div>
       </div>
-      <p>같은 문서 하나라도 파인튜닝은 모델 파일을 새로 만들어야 하고 벡터 DB는 저장소에 한 줄만 더하면 됩니다.</p>
       <div class="pz-pair">
         <div>
-          <p>시험에 빗대면 파라미터는 외워 둔 지식이고 벡터 DB는 오픈북 시험에 들고 들어가는 노트입니다. 노트는 한 장 끼워 넣으면 바로 쓸 수 있지만 외운 내용을 고치려면 다시 공부해야 합니다. 위 그림의 첫 번째 길인 <b>파인튜닝</b>이 이 다시 공부하기에 해당합니다.</p>
+          <p>같은 문서 하나라도 파인튜닝은 모델 파일을 새로 만들어야 하고 벡터 DB는 저장소에 한 줄만 더하면 됩니다.</p>
+          <p>시험에 빗대면 파라미터는 외워 둔 지식이고 벡터 DB는 오픈북 시험에 들고 들어가는 노트입니다. 노트는 한 장 끼워 넣으면 바로 쓸 수 있지만 외운 내용을 고치려면 다시 공부해야 합니다.</p>
         </div>
         <div>
           <p>비유와 다른 점도 있습니다. 모델의 숫자 속에는 문서가 글자로 들어 있지 않습니다. 학습한 글에서 자주 본 패턴이 숫자에 흔적처럼 남을 뿐이라서 어느 문서에서 배웠는지 출처를 대지 못합니다. 벡터 DB는 찾아낸 조각을 그대로 보여 줄 수 있습니다. 찾는 과정 전체는 <a href="/posts/rag-retrieval-pipeline">RAG 글</a>에서 그림으로 볼 수 있습니다.</p>
@@ -667,17 +679,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
   <section class="pz-sec">
     <div class="pz-wrap">
-      <div class="pz-head">
-        <h2>모델 이름 속 숫자를 읽는 법</h2>
+      <div class="pz-two">
         <div>
+        <h2>모델 이름 속 숫자를 읽는 법</h2>
           <p>이름 뒤 숫자의 단위는 B(Billion, 10억)와 T(Trillion, 1조)입니다. 2026년 8월에 나온 Qwen3.8-2.4T-A95B는 파라미터가 2,446,182,725,504개라서 조 단위로 적었습니다. 이름은 대략값이라서 정확한 개수는 모델 카드나 Hugging Face가 파일에서 센 수로 확인합니다.</p>
-          <p>숫자 뒤에 FP8 같은 꼬리가 붙기도 합니다. 숫자 하나를 몇 비트로 저장했는지 알려 주는 표시입니다. 개수가 같아도 비트가 줄면 파일이 작아집니다.</p>
+          <p>숫자 뒤에 FP8(8-bit floating point) 같은 꼬리가 붙기도 합니다. 숫자 하나를 몇 비트로 저장했는지 알려 주는 표시입니다. 개수가 같아도 비트가 줄면 파일이 작아집니다.</p>
           <details>
             <summary>A95B의 A는 무엇인가요?</summary>
             <p>A는 Activated, 곧 토큰 하나를 계산할 때 실제로 쓰는 몫입니다. 이런 모델은 층 안에 MLP 표 묶음을 여러 벌 두고 토큰마다 몇 벌만 골라 씁니다. 이 구조를 MoE(Mixture of Experts)라고 합니다. 그래서 파일 크기와 메모리는 전체 개수(2.4T)를 따르고 토큰 하나당 계산량은 A 뒤의 숫자(95B)를 따릅니다.</p>
           </details>
         </div>
-      </div>
       <figure class="pz-fig pz-name1" data-figure>
         <div class="pz-name-t">Qwen3.8-<mark data-n="1">27B</mark>-<mark data-n="2">FP8</mark></div>
         <ol>
@@ -686,6 +697,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </ol>
         <p class="pz-cap">Qwen3.8-27B와 그 FP8 판은 2026년 8월 Hugging Face에 올라온 실제 모델입니다. 개수는 Hugging Face가 파일에서 센 값입니다(2026-10-14 확인).</p>
       </figure>
+      </div>
     </div>
   </section>
 
@@ -968,14 +980,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
   /* 모델 크기 비교 */
   const MODELS = [
-    { n: "0.5B", L: 24, H: 896, P: 494032768 },
-    { n: "7B", L: 28, H: 3584, P: 7615616512 },
-    { n: "14B", L: 48, H: 5120, P: 14770033664 },
-    { n: "72B", L: 80, H: 8192, P: 72706203648 },
+    { n: "0.5B", L: 24, H: 896, P: 494032768, c: "4.9억 개" },
+    { n: "7B", L: 28, H: 3584, P: 7615616512, c: "76억 개" },
+    { n: "14B", L: 48, H: 5120, P: 14770033664, c: "148억 개" },
+    { n: "72B", L: 80, H: 8192, P: 72706203648, c: "727억 개" },
   ];
   const st = $("[data-pz-stack]"), stRead = $("[data-pz-stack-read]");
-  const base = 300, pitch = 3.2, maxW = 150;
-  let xx = 36; const slabs = [];
+  const base = 290, pitch = 3.2, maxW = 130;
+  let xx = 40; const slabs = [];
   MODELS.forEach((m, i) => {
     const w = Math.max(14, m.H / 8192 * maxW), g = S("g", { "data-m": i, style: "cursor:pointer" });
     for (let l = 0; l < m.L; l++) g.append(S("rect", { class: "slab", x: xx, y: base - (l + 1) * pitch, width: w, height: pitch - 1 }));
@@ -983,7 +995,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     g.append(S("text", { x: xx + w / 2, y: base - m.L * pitch - 12, "text-anchor": "middle", "font-size": 15, class: "t-strong" }, m.n));
     g.append(S("text", { x: xx + w / 2, y: base + 24, "text-anchor": "middle", "font-size": 16, class: "t-dim" }, m.L + "층"));
     g.append(S("text", { x: xx + w / 2, y: base + 46, "text-anchor": "middle", "font-size": 16, class: "t-dim" }, "폭 " + fmt(m.H)));
-    st.append(g); slabs.push(g); xx += w + (i === 0 ? 80 : 36);
+    g.append(S("text", { x: xx + w / 2, y: base + 70, "text-anchor": "middle", "font-size": 16, class: "t-knob" }, m.c));
+    st.append(g); slabs.push(g); xx += w + (i === 0 ? 110 : 36);
   });
   st.append(S("line", { class: "base", x1: 8, x2: 552, y1: base + 2, y2: base + 2 }));
   const stShow = (i) => { slabs.forEach((g, j) => $$(".slab", g).forEach((r) => r.classList.toggle("sel", j === i))); const m = MODELS[i]; stRead.innerHTML = `Qwen2.5-${m.n} · ${m.L}층 × 폭 ${fmt(m.H)} → <b>${fmt(m.P)}</b>개`; };
