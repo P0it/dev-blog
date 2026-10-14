@@ -47,6 +47,15 @@
 | [Anthropic, A Mathematical Framework](https://transformer-circuits.pub/2021/framework/index.html) | 잔차 흐름을 각 층이 읽고 결과를 더해 쓰는 통로로 설명 | 잔차 연결을 "덮어쓰기 아님"으로 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
 | [Petrov 외, Tokenizers Introduce Unfairness](https://arxiv.org/abs/2305.15425) | 같은 문장을 언어별로 넣어 토큰 수 배율을 비교(cl100k: 이탈리아어 1.6배 ~ 샨어 15배) | 언어별 토큰 비용을 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
 | [Karpathy, minbpe](https://github.com/karpathy/minbpe) | `aaabdaaabac` 를 세 번 합쳐 `XdXac`, 새 id 를 256·257·258 로 붙인다 | 바이트에서 시작하는 BPE 를 보일 때 | 2026-10-15 | |
+| [NVIDIA, Mastering LLM Techniques: Inference Optimization](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/) | Prefill 을 matrix-matrix(GPU 포화), Decode 를 matrix-vector(memory-bound)로 가르고 KV Cache 크기를 토큰당 공식 하나로 적는다 | 추론 두 단계와 캐시 크기를 처음 세울 때 | 2026-10-15 | prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization (Figure 9 반올림·클리핑 그림을 가져와 씀) |
+| [Databricks, LLM Inference Performance Engineering](https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices) | latency = TTFT + TPOT × 토큰 수로 체감 지표를 쪼개고, 배치를 키울 때 처리량-지연 곡선이 눕는 실측 그래프(Figure 7)를 보인다 | 지표 정의와 배치 트레이드오프를 실제 값으로 보일 때 | 2026-10-15 | prefill-decode-kv-cache |
+| [Ainslie 외, GQA](https://arxiv.org/abs/2305.13245) | MHA·GQA·MQA 를 Query·Key·Value 막대 세 줄로 나란히 그려 "Key·Value 칸 수만 줄어든다"를 한 장에 보인다(Figure 2) | KV 헤드 공유를 보일 때 | 2026-10-15 | prefill-decode-kv-cache |
+| [DistServe](https://arxiv.org/abs/2401.09670) | Prefill 과 Decode 를 TTFT·TPOT 두 지표에 하나씩 대응시키고 서로 간섭한다는 이유로 GPU 를 나눈다 | 두 단계 분리 서빙을 한 줄로 소개할 때 | 2026-10-15 | prefill-decode-kv-cache |
+| [Float Exposed (Bartosz Ciechanowski)](https://float.exposed/) | 비트 패턴과 값을 양방향으로 바꾸고 "다음에 적을 수 있는 값까지의 간격"을 함께 보인다. half·bfloat·float·double 을 바꿔 끼운다 | 부동소수점 칸 배분과 정밀도를 직접 만져 보게 할 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [Maarten Grootendorst, A Visual Guide to Quantization](https://www.maartengrootendorst.com/blog/quantization/) | absmax 로 3.08·3.02 가 같은 정수 36이 되는 예, zero-point, 이상치가 눈금을 몰아 버리는 장면과 클리핑, GGUF 블록 구조를 차례로 그린다. 이미지 8색 줄이기 비유 | 양자화를 대칭 → 비대칭 → 이상치 → 묶음 순서로 쌓을 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [Hugging Face Hub 문서, GGUF](https://huggingface.co/docs/hub/gguf) | GGUF 파일을 바이트 띠 하나로 그리고 헤더·메타데이터·표 정보·본문에 점선 상자로 풀이를 단다(gguf-spec.png). 형식별 bits-per-weight 표 | 파일 형식 구조를 실제 문서 그림으로 보일 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [llama.cpp PR #1684, k-quants](https://github.com/ggml-org/llama.cpp/pull/1684) · [quantize README](https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md) | 같은 모델을 형식만 바꿔 perplexity·파일 크기·생성 속도를 한 표에 둔다(LLaMA-7B, Llama-3.1-8B) | "비트를 줄이면 얼마나 잃나"를 실측 막대로 그릴 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [Qwen 문서, Performance of Quantized Models](https://qwen.readthedocs.io/en/stable/getting_started/quantization_benchmark.html) | 0.5B~72B 크기마다 BF16·GPTQ-Int8·Int4·AWQ 점수를 같은 표에 둬 "작은 모델이 더 잃는다"가 보인다 | 모델 크기와 양자화 손실의 관계를 보일 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
 
 ## 미확인
 
@@ -79,6 +88,11 @@
 - **먼저 예상을 고르게 하고 결과 공개** (prompt-engineering-roles-few-shot) — 첫 판은 흐린 미리보기에 숫자 라벨이 비쳐 답이 새어 나갔다는 지적을 받았다. 대기 상태에서는 막대 길이와 라벨을 모두 숨긴다
 - **실제 모델을 돌린 값으로 노선도 한 바퀴** (transformer-attention-how-llm-reads) — 파이프라인 여섯 단계를 순환선 정거장으로 놓고, 정거장마다 Qwen2.5-1.5B 를 직접 돌린 판독값(토큰·id·벡터 색 칸·확률 상위 5)을 달았다. ▶ 한 번이 토큰 하나라서 "한 바퀴 = 한 토큰"이 조작 자체에 들어간다. 정거장 색이 섹션 표지 색으로 글 끝까지 이어진다
 - **logit lens 두 기둥** (transformer-attention-how-llm-reads) — 같은 질문을 한국어·영어로 넣고 층마다 1등 후보를 나란히 세우니, 한국어 쪽이 24층 '哪个' → 25층 ' Seoul' → 마지막 ' 서울'로 가는 길이 글 없이 보였다
+- **실제 시간으로 재생하는 세 줄 시간 띠** (prefill-decode-kv-cache) — 같은 질문에 붙인 글 길이만 다른 세 줄을 같은 시간축에 놓고 직접 잰 시간 그대로 재생했다. 파란 눈금 간격(Decode)은 세 줄이 거의 같고 주황 덩어리(Prefill)만 0.07초 → 9.88초로 늘어나, "첫 글자만 늦다"가 길이로 보였다
+- **두 막대 경주로 roofline 대신하기** (prefill-decode-kv-cache) — 로그축 roofline 대신 "가중치 나르는 시간"과 "계산 시간" 막대 둘을 두고 한 번에 처리할 토큰 수를 늘리게 했다. 나르기 막대는 그대로, 계산 막대만 자라 역전되는 지점이 계산 강도의 기준선이 된다
+- **사양 숫자로 하한을 계산하고 실측과 맞춰 두기** (prefill-decode-kv-cache) — M4 대역폭 120GB/s ÷ 3.1GB = 26ms 하한과 실측 43ms 를 나란히 적어 "Decode 속도는 대역폭이 정한다"를 산수로 확인시켰다
+- **비트 칸 색을 끝까지 같은 뜻으로** (gpu-vram-fp16-int4-quantization) — 부호·지수·가수·정수 칸 색을 히어로 비트 띠, 비트 탐색기, 범위 띠, 눈금 자까지 같은 뜻으로 썼다. 히어로에서 형식 하나를 바꾸면 숫자 하나의 칸과 GPU 다섯 장 막대가 같이 바뀌어 "칸 크기 × 76억 = 메모리"가 곱셈 없이 보인다
+- **실험판 아래에 한 값만 따라가는 작은 그림** (gpu-vram-fp16-int4-quantization) — 점 40개가 눈금으로 끌려가는 실험판 다음에 0.29 하나가 ÷scale → 반올림 → ×scale 로 0.24가 되는 세 단계를 따로 그렸다. 전체 모습과 한 값의 계산을 나눠 보여 준다
 
 ## 페이지 레이아웃
 
@@ -108,16 +122,17 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
-| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads |
+| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
 | 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
+| 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
 벤토 격자·잡지형·장 표지의 실제 예시는 아직 열어 보지 못했다. 다음 조사 때 브라우저로 직접 본다.
 

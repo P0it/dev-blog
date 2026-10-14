@@ -1,0 +1,927 @@
+---
+title: LLM 답변은 왜 첫 글자만 늦게 나올까요?
+slug: prefill-decode-kv-cache
+excerpt: 같은 모델에 질문만 넣으면 첫 글자가 0.07초 만에 나오지만 8천 토큰짜리 글을 붙이면 9.9초가 걸립니다. 그런데 그다음 글자들은 둘 다 0.05초 간격으로 나옵니다. 프롬프트를 한꺼번에 읽는 Prefill과 한 개씩 쓰는 Decode, 그 사이의 KV Cache를 직접 잰 시간과 GPU 사양 숫자로 그렸습니다.
+tags: [LLM, KV Cache, Prefill, Decode, GQA, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 3
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/prefill-decode-kv-cache-mv8c50sf.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목 + 두 단 리드 + 세 줄 시간 띠 전폭 띠, 범례는 축 바로 아래) → 글|그림(끝말잇기 그림을 h2 높이에, 비유 문단은 그림 아래) + 그림 고정 스크롤리텔링(토큰×층 격자) → 글|그림(계단) + 글|그림(실측 막대) → 글|그림 세 줄(주방 그림 · 나르기/계산 경주 · TTFT 실측 그래프, 글은 늘 왼쪽 열) → 제목|글 + 실험판 전폭 띠(끌어 늘리는 메모리 막대 + MHA 비교 스위치) + 글|논문 그림 → 글|그림(배치, 막대를 눌러 고름) + 글|가져온 그래프 + 정리 문장 → 제목|글(참고 자료). 2026-10-15 Critic 시선 흐름 지적으로 Decode 절 두 단 글 벽을 그림 옆 한 열로 고쳤다 | 글의 성격: "첫 글자만 늦다"는 시간 차이에서 출발해 그 시간이 어디서 나오는지(계산·메모리)와 메모리가 얼마나 드는지를 차례로 재는 이야기. 숫자는 직접 잰 값과 공식 사양만 | 버린 후보: 옆 조작판(모든 그림을 움직일 변수 하나가 없다 — 그림마다 축이 다르다), 가로 스크롤 띠(단계가 아니라 비용 비교라 맞지 않는다), 지그재그·그림|글 반전(글 시작 위치가 좌우로 튄다) -->
+<style>
+.post-page .kv {
+  --pf: rgb(226, 112, 24); --dc: rgb(37, 105, 220); --kc: rgb(135, 80, 210); --bad: rgb(214, 60, 50); --ok: rgb(22, 150, 80);
+  --wt: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .kv {
+  --pf: rgb(255, 156, 72); --dc: rgb(110, 160, 255); --kc: rgb(185, 140, 255); --bad: rgb(255, 110, 95); --ok: rgb(70, 205, 130);
+}
+.post-page .kv * { box-sizing: border-box; }
+.post-page .kv-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .kv h1, .post-page .kv h2, .post-page .kv h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .kv h1 { font-size: clamp(32px, 4.8vw, 54px); line-height: 1.2; max-width: 16em; }
+.post-page .kv h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .kv h3 { font-size: 18px; line-height: 1.4; margin-bottom: 12px; }
+.post-page .kv p, .post-page .kv li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .kv p { margin: 0 0 1.5em; }
+.post-page .kv b { color: var(--fg-strong); }
+.post-page .kv code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .kv a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .kv .kv-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 18px 0 0; }
+.post-page .kv details { margin: 0 0 1.4em; }
+.post-page .kv summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .kv details p { margin-top: 10px; font-size: 16px; }
+.post-page .kv .pf { color: var(--pf); font-weight: 700; }
+.post-page .kv .dc { color: var(--dc); font-weight: 700; }
+.post-page .kv .kc { color: var(--kc); font-weight: 700; }
+.post-page .kv .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 배치 */
+.post-page .kv-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .kv-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .kv-two.top { align-items: start; }
+.post-page .kv-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .kv-head.r56 { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); }
+.post-page .kv-pair { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 64px); align-items: center; margin-top: clamp(48px, 7vw, 80px); }
+.post-page .kv-band { background: var(--bg-subtle); padding: clamp(40px, 6vw, 64px) 0; margin: clamp(40px, 6vw, 64px) 0; }
+.post-page .kv-fig { margin: 0; }
+
+/* 토글·버튼 */
+.post-page .kv-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 22px; }
+.post-page .kv-seg { display: inline-flex; flex-wrap: wrap; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .kv-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1.2 var(--font-sans); padding: 9px 15px; border-radius: 999px; cursor: pointer; }
+.post-page .kv-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.12)); }
+.post-page .kv-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; }
+.post-page .kv-act:disabled { opacity: .45; cursor: default; }
+.post-page .kv-range { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+.post-page .kv-range input { width: 100%; min-width: 0; accent-color: var(--fg-strong); }
+.post-page .kv-range output { font: 700 16px/1 var(--font-mono); min-width: 5.5ch; text-align: right; }
+
+/* ---------- 히어로 ---------- */
+.post-page .kv-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .kv-lede { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); margin-top: clamp(28px, 4vw, 40px); }
+.post-page .kv-lede p { font-size: 18px; margin: 0; }
+.post-page .kv-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); }
+.post-page .kv-formula { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 0 0 1.6em; }
+.post-page .kv-formula > span { display: grid; justify-items: center; align-content: center; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--kc) 10%, var(--bg-base)); border: 1.5px solid color-mix(in srgb, var(--kc) 45%, transparent); }
+.post-page .kv-formula > span b { font: 700 22px/1 var(--font-mono); color: var(--kc); }
+.post-page .kv-formula > span small { font-size: 12.5px; color: var(--fg-neutral); font-weight: 600; white-space: nowrap; }
+.post-page .kv-formula > i { font-style: normal; align-self: center; font: 700 18px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .kv-formula > span.eq { background: var(--bg-base); border-color: var(--fg-strong); }
+.post-page .kv-formula > span.eq b { color: var(--fg-strong); }
+.post-page .kv-hero .kv-band { margin-bottom: 0; margin-top: clamp(36px, 5vw, 48px); }
+.post-page .kv-lanes { display: grid; gap: 18px; position: relative; }
+.post-page .kv-lane { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: center; cursor: pointer; border: 0; background: transparent; padding: 6px 8px; margin: 0 -8px; border-radius: 10px; text-align: left; font: inherit; color: inherit; width: calc(100% + 16px); }
+.post-page .kv-lane:hover { background: color-mix(in srgb, var(--bg-base) 70%, transparent); }
+.post-page .kv-lane[aria-pressed="true"] { background: var(--bg-base); box-shadow: 0 0 0 1.5px var(--line-strong); }
+.post-page .kv-lane-name { font-size: 15px; font-weight: 700; color: var(--fg-strong); line-height: 1.3; }
+.post-page .kv-lane-name small { display: block; font: 600 13px/1.4 var(--font-mono); color: var(--fg-neutral); }
+.post-page .kv-track { position: relative; height: 34px; }
+.post-page .kv-track .bar-pf { position: absolute; left: 0; top: 4px; height: 26px; border-radius: 6px; background: var(--pf); transform-origin: left; }
+.post-page .kv-track .ticks { position: absolute; top: 4px; height: 26px; display: block; }
+.post-page .kv-track .ticks i { position: absolute; top: 0; width: 3px; height: 26px; border-radius: 2px; background: var(--dc); }
+.post-page .kv-track .lab { position: absolute; top: 9px; font: 700 13px/1 var(--font-mono); color: var(--fg-strong); white-space: nowrap; }
+.post-page .kv-axis { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; margin-top: 4px; }
+.post-page .kv-axis-in { position: relative; height: 22px; border-top: 1.5px solid var(--line-strong); }
+.post-page .kv-axis-in span { position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .kv-axis-in span::before { content: ""; position: absolute; left: 50%; top: -9px; height: 6px; border-left: 1.5px solid var(--line-strong); }
+.post-page .kv-head-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; font-size: 13px; color: var(--fg-neutral); font-weight: 600; margin-bottom: 4px; }
+.post-page .kv-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.post-page .kv-legend i { display: inline-block; width: 16px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.post-page .kv-playhead { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--fg-strong); opacity: 0; pointer-events: none; }
+.post-page .kv-stage { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: clamp(24px, 4vw, 48px); margin-top: 30px; align-items: start; }
+.post-page .kv-chat { background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 16px; padding: 18px 20px; display: grid; gap: 14px; min-height: 172px; }
+.post-page .kv-msg { display: grid; gap: 6px; }
+.post-page .kv-msg small { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); letter-spacing: .03em; }
+.post-page .kv-user { justify-self: end; max-width: 92%; background: var(--bg-muted); border-radius: 14px 14px 4px 14px; padding: 10px 14px; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .kv-doc { display: inline-block; font: 600 12.5px/1.4 var(--font-mono); color: var(--pf); border: 1.5px solid color-mix(in srgb, var(--pf) 60%, transparent); border-radius: 6px; padding: 2px 7px; margin-right: 6px; }
+.post-page .kv-bot { font-size: 16px; line-height: 1.7; color: var(--fg-strong); min-height: 3.4em; }
+.post-page .kv-bot span { transition: opacity .25s; }
+.post-page .kv-bot .wait { color: var(--fg-neutral); font-size: 14.5px; }
+.post-page .kv-bot .wait i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--fg-neutral); margin-right: 4px; animation: kv-blink 1s infinite; }
+.post-page .kv-bot .wait i:nth-child(2) { animation-delay: .2s; } .post-page .kv-bot .wait i:nth-child(3) { animation-delay: .4s; }
+@keyframes kv-blink { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+.post-page .kv-reads { display: flex; flex-wrap: wrap; gap: 8px 36px; margin-left: auto; }
+.post-page .kv-read { display: grid; gap: 2px; }
+.post-page .kv-read small { font-size: 12.5px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .kv-read b { font: 700 20px/1.2 var(--font-mono); }
+.post-page .kv-read em { font-style: normal; font-size: 13.5px; color: var(--fg-neutral); }
+
+/* ---------- 1. 끝말잇기 비유 + 스크롤리텔링 ---------- */
+.post-page .kv-relay { display: grid; gap: 22px; }
+.post-page .kv-relay-row { display: grid; gap: 10px; }
+.post-page .kv-relay-row > small { font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .kv-words { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 6px; }
+.post-page .kv-word { display: grid; justify-items: center; gap: 4px; }
+.post-page .kv-word span { font-size: 16px; font-weight: 700; color: var(--fg-strong); padding: 7px 11px; border-radius: 8px; border: 1.5px solid var(--line-strong); background: var(--bg-base); }
+.post-page .kv-word i { font-style: normal; font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .kv-word.p span { border-color: var(--pf); background: color-mix(in srgb, var(--pf) 12%, var(--bg-base)); }
+.post-page .kv-word.p i { color: var(--pf); }
+.post-page .kv-word.d span { border-color: var(--dc); background: color-mix(in srgb, var(--dc) 12%, var(--bg-base)); }
+.post-page .kv-word.d i { color: var(--dc); }
+.post-page .kv-word.q span { border-style: dashed; color: var(--fg-neutral); }
+.post-page .kv-arr { color: var(--fg-neutral); font-size: 15px; padding-bottom: 26px; }
+.post-page .kv-wg { display: inline-flex; align-items: flex-end; gap: 6px; white-space: nowrap; }
+.post-page .kv-relay { padding-top: 8px; }
+
+.post-page .kv-scrolly { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(56px, 7vw, 88px); }
+.post-page .kv-steps { padding: 18vh 0 30vh; }
+.post-page .kv-step { min-height: 62vh; display: flex; flex-direction: column; justify-content: center; opacity: .28; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-step.on { opacity: 1; }
+.post-page .kv-step:first-child { min-height: 46vh; }
+.post-page .kv-step .no { font: 700 13px/1 var(--font-mono); color: var(--fg-neutral); margin-bottom: 10px; letter-spacing: .04em; }
+.post-page .kv-sticky { position: sticky; top: 120px; align-self: start; }
+.post-page .kv-grid-svg { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
+.post-page .kv-grid-svg text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .kv-grid-svg .dim { fill: var(--fg-neutral); }
+.post-page .kv-grid-svg .mono { font-family: var(--font-mono); }
+.post-page .kv-grid-svg .cell { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.2; transition: fill .55s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-grid-svg .cell.p { fill: var(--pf); }
+.post-page .kv-grid-svg .cell.d { fill: var(--dc); }
+.post-page .kv-grid-svg .col-off { opacity: 0; transition: opacity .55s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-grid-svg .col-on { opacity: 1; }
+.post-page .kv-grid-svg .chip { fill: color-mix(in srgb, var(--kc) 22%, var(--bg-base)); stroke: var(--kc); stroke-width: 1.5; }
+.post-page .kv-grid-svg .chiptx { fill: var(--kc); font-weight: 700; font-family: var(--font-mono); }
+.post-page .kv-grid-svg .shelf { fill: none; stroke: var(--kc); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.post-page .kv-grid-svg .read { stroke: var(--kc); stroke-width: 1.6; fill: none; stroke-dasharray: 3 3; }
+.post-page .kv-grid-svg .tok { fill: var(--bg-base); stroke: var(--line-strong); }
+.post-page .kv-grid-svg .tok.a { stroke: var(--dc); stroke-width: 1.8; }
+.post-page .kv-grid-svg .fade { transition: opacity .55s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-grid-svg .ttft { stroke: var(--pf); stroke-width: 2; stroke-dasharray: 5 4; }
+.post-page .kv-gridnote { text-align: center; font-size: 15px; font-weight: 600; color: var(--fg-strong); min-height: 3.2em; margin-top: 12px; line-height: 1.6; }
+
+/* ---------- 2. 계단 ---------- */
+.post-page .kv-tri { display: grid; gap: 3px; }
+.post-page .kv-tri-row { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: center; }
+.post-page .kv-tri-row > b { font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); text-align: right; }
+.post-page .kv-tri-cells { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 3px; }
+.post-page .kv-tri-cells i { height: 18px; border-radius: 3px; background: transparent; transition: background .35s; }
+.post-page .kv-tri-cells i.p { background: var(--pf); }
+.post-page .kv-tri-cells i.d { background: var(--dc); }
+.post-page .kv-tri-cells i.r { background: color-mix(in srgb, var(--kc) 22%, var(--bg-base)); box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--kc) 60%, transparent); }
+.post-page .kv-tri-cells i.x { background: color-mix(in srgb, var(--bad) 75%, var(--bg-base)); }
+.post-page .kv-tri-cells i.x0 { background: color-mix(in srgb, var(--pf) 75%, var(--bg-base)); }
+.post-page .kv-count { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+.post-page .kv-count div { display: grid; gap: 2px; }
+.post-page .kv-count small { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .kv-count b { font: 700 26px/1.1 var(--font-mono); }
+.post-page .kv-meas { display: grid; gap: 20px; }
+.post-page .kv-meas-row { display: grid; gap: 8px; }
+.post-page .kv-meas-row > div:first-child { display: flex; justify-content: space-between; gap: 10px; font-size: 14.5px; font-weight: 700; color: var(--fg-strong); }
+.post-page .kv-meas-row > div:first-child span { font-family: var(--font-mono); }
+.post-page .kv-spark { display: flex; align-items: flex-end; gap: 2px; height: 90px; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .kv-spark i { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
+.post-page .kv-spark.no i { background: var(--bad); }
+.post-page .kv-spark.yes i { background: var(--dc); }
+
+/* ---------- 3. 창고·통로·요리사 + 경주 ---------- */
+.post-page .kv-kitchen { width: 100%; max-width: 640px; display: block; margin: 0 auto; }
+.post-page .kv-kitchen text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .kv-kitchen .dim { fill: var(--fg-neutral); }
+.post-page .kv-kitchen .box { fill: var(--wt); }
+.post-page .kv-kitchen .wall { fill: none; stroke: var(--line-strong); stroke-width: 2; }
+.post-page .kv-kitchen .pipe { fill: color-mix(in srgb, var(--fg-neutral) 12%, var(--bg-base)); stroke: var(--line-strong); stroke-width: 1.5; }
+.post-page .kv-kitchen .cook { fill: color-mix(in srgb, var(--ok) 16%, var(--bg-base)); stroke: var(--ok); stroke-width: 2; }
+.post-page .kv-kitchen .flow { stroke: var(--fg-neutral); stroke-width: 2; fill: none; }
+.post-page .kv-kitchen .ok { fill: var(--ok); }
+.post-page .kv-race { display: grid; gap: 22px; }
+.post-page .kv-rrow { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: center; }
+.post-page .kv-rrow > div:first-child { font-size: 15px; font-weight: 700; color: var(--fg-strong); line-height: 1.35; }
+.post-page .kv-rrow > div:first-child small { display: block; font-weight: 500; font-size: 13px; color: var(--fg-neutral); }
+.post-page .kv-rbar { position: relative; height: 30px; }
+.post-page .kv-rbar i { position: absolute; left: 0; top: 0; height: 30px; border-radius: 6px; transition: width .5s cubic-bezier(.2,.7,.2,1); min-width: 3px; }
+.post-page .kv-rbar span { position: absolute; top: 7px; font: 700 14px/1 var(--font-mono); color: var(--fg-strong); white-space: nowrap; transition: left .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-rbar.mv i { background: var(--wt); }
+.post-page .kv-rbar.cp i { background: var(--ok); }
+.post-page .kv-verdict { font-size: 17px; font-weight: 700; color: var(--fg-strong); line-height: 1.6; padding-top: 6px; min-height: 3.2em; }
+.post-page .kv-verdict em { font-style: normal; padding: 1px 6px; border-radius: 5px; }
+.post-page .kv-verdict em.m { background: color-mix(in srgb, var(--fg-neutral) 22%, transparent); }
+.post-page .kv-verdict em.c { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+.post-page .kv-gpu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 26px; font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .kv-gpu div { line-height: 1.55; }
+.post-page .kv-gpu b { display: block; font-size: 14px; }
+.post-page .kv-wideplay { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 64px); align-items: center; margin-top: clamp(48px, 6vw, 64px); }
+
+/* ---------- 4. 메모리 계산기 ---------- */
+.post-page .kv-calc-ctl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 40px; margin-bottom: 30px; }
+.post-page .kv-mem { position: relative; padding-top: 30px; }
+.post-page .kv-mem-bar { position: relative; overflow: visible !important; height: 64px; border-radius: 8px; background: var(--bg-base); box-shadow: inset 0 0 0 1.5px var(--line-strong); display: flex; overflow: hidden; }
+.post-page .kv-mem-bar i { height: 100%; flex: none; transition: width .45s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-mem-bar .w { background: var(--wt); }
+.post-page .kv-mem-bar .u { background: var(--kc); box-shadow: inset -1.5px 0 0 var(--bg-subtle); }
+.post-page .kv-mem-bar .u.over { background: repeating-linear-gradient(135deg, var(--bad) 0 6px, color-mix(in srgb, var(--bad) 50%, var(--bg-base)) 6px 12px); }
+.post-page .kv-mem-cap { position: absolute; top: 0; height: calc(100% + 8px); border-left: 2.5px solid var(--fg-strong); }
+.post-page .kv-mem-cap span { position: absolute; top: 0; left: 8px; font: 700 13px/1 var(--font-mono); color: var(--fg-strong); white-space: nowrap; }
+.post-page .kv-mem-axis { display: flex; justify-content: space-between; font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); margin-top: 8px; }
+.post-page .kv-mem-read { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+.post-page .kv-mem-read div { display: grid; gap: 4px; align-content: start; }
+.post-page .kv-mem-read small { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .kv-mem-read b { font: 700 22px/1.2 var(--font-mono); color: var(--fg-strong); }
+.post-page .kv-mem-read em { font-style: normal; font-size: 13px; color: var(--fg-neutral); line-height: 1.5; font-family: var(--font-mono); }
+.post-page .kv-mem-read .bad b { color: var(--bad); }
+.post-page .kv-paper img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; padding: 12px; }
+[data-theme="dark"] .post-page .kv-paper img { filter: brightness(.8); border-color: var(--line-strong); }
+.post-page .kv-paper figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.65; margin-top: 12px; }
+
+.post-page .kv-calc-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 40px; align-items: center; margin-bottom: 18px; }
+.post-page .kv-switch { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--fg-strong); cursor: pointer; }
+.post-page .kv-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.post-page .kv-sw { width: 42px; height: 24px; border-radius: 12px; background: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); box-shadow: inset 0 0 0 1.5px var(--fg-neutral); position: relative; flex: none; transition: background .3s; }
+.post-page .kv-sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .3s; }
+.post-page .kv-switch input:checked + .kv-sw { background: var(--bad); }
+.post-page .kv-switch input:checked + .kv-sw::after { transform: translateX(18px); }
+.post-page .kv-switch input:focus-visible + .kv-sw { outline: 2px solid var(--fg-strong); outline-offset: 2px; }
+.post-page .kv-drag-hint { font-size: 14px !important; color: var(--fg-neutral); margin: 0 0 6px !important; }
+.post-page .kv-mem-bar { cursor: ew-resize; touch-action: pan-y; }
+.post-page .kv-mem-bar:focus-visible { outline: 2px solid var(--fg-strong); outline-offset: 3px; }
+.post-page .kv-mem-bar .h { position: absolute; top: 50%; width: 14px; height: 44px; margin: -22px 0 0 -7px; border-radius: 7px; background: var(--bg-base); box-shadow: 0 0 0 2px var(--fg-strong), 0 2px 6px rgba(0,0,0,.25); pointer-events: none; transition: left .45s cubic-bezier(.2,.7,.2,1); }
+.post-page .kv-mem-bar.drag .h, .post-page .kv-mem-bar.drag i { transition: none; }
+.post-page .kv-mem-line { font-size: 17px !important; font-weight: 600; color: var(--fg-strong); line-height: 1.7; margin: 22px 0 0 !important; }
+.post-page .kv-mem-line b { font-family: var(--font-mono); }
+.post-page .kv-mem-line .bad { color: var(--bad); }
+.post-page .kv-figt { display: block; font-size: 14px; font-weight: 700; color: var(--fg-strong); margin-bottom: 8px; }
+.post-page .kv-ttft-svg { width: 100%; max-width: 470px; display: block; }
+.post-page .kv-ttft-svg text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .kv-ttft-svg .dim { fill: var(--fg-neutral); }
+.post-page .kv-lb { display: grid; gap: 8px; margin-top: 18px; max-width: 560px; }
+.post-page .kv-lb div { display: grid; grid-template-columns: 150px minmax(0, 1fr) 52px; gap: 10px; align-items: center; font-size: 13.5px; color: var(--fg-neutral); font-weight: 600; }
+.post-page .kv-lb i { height: 16px; border-radius: 4px; background: var(--dc); }
+.post-page .kv-lb div:first-child i { background: transparent; box-shadow: inset 0 0 0 2px var(--dc); }
+.post-page .kv-lb b { font: 700 14px/1 var(--font-mono); color: var(--fg-strong); text-align: right; }
+
+/* ---------- 5. 배치 ---------- */
+.post-page .kv-batch { display: grid; gap: 26px; }
+.post-page .kv-bchart { display: grid; gap: 8px; }
+.post-page .kv-bchart > small { font-size: 13.5px; font-weight: 700; color: var(--fg-strong); }
+.post-page .kv-bcols { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; height: 120px; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .kv-bcols button { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; }
+.post-page .kv-bcols i { width: 100%; border-radius: 4px 4px 0 0; opacity: .35; transition: opacity .3s; }
+.post-page .kv-bcols span { font: 700 12px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .kv-bcols button.on i { opacity: 1; }
+.post-page .kv-bcols button.on span { color: var(--fg-strong); }
+.post-page .kv-bcols.per i { background: var(--dc); }
+.post-page .kv-bcols.tot i { background: var(--ok); }
+.post-page .kv-bx { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; font: 600 12.5px/1 var(--font-mono); color: var(--fg-neutral); text-align: center; }
+.post-page .kv-db img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; padding: 8px; }
+[data-theme="dark"] .post-page .kv-db img { filter: brightness(.8); border-color: var(--line-strong); }
+.post-page .kv-db a { display: block; overflow-x: auto; }
+.post-page .kv-db figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.65; margin-top: 12px; }
+
+/* 정리 */
+.post-page .kv-sum { font-family: var(--font-display); font-size: clamp(21px, 2.8vw, 30px) !important; line-height: 1.6 !important; color: var(--fg-strong); margin: 0 !important; letter-spacing: -0.01em; }
+.post-page .kv-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .kv-refs li { font-size: 15px; margin-bottom: .5em; }
+
+@media (max-width: 900px) {
+  .post-page .kv-wrap { padding: 0 20px; }
+  .post-page .kv-lede, .post-page .kv-cols, .post-page .kv-two, .post-page .kv-head, .post-page .kv-pair, .post-page .kv-stage, .post-page .kv-wideplay, .post-page .kv-calc-ctl { grid-template-columns: minmax(0, 1fr); }
+  .post-page .kv-lane, .post-page .kv-axis, .post-page .kv-head-row { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+  .post-page .kv-lane-name { font-size: 13.5px; }
+  .post-page .kv-lane-name small { font-size: 12px; }
+  .post-page .kv-reads { margin-left: 0; gap: 8px 24px; }
+  .post-page .kv-head.r56 { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .post-page .kv-scrolly { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .kv-sticky { top: 64px; z-index: 2; background: var(--bg-base); padding: 8px 0 4px; order: -1; }
+  .post-page .kv-steps { padding: 4vh 0 20vh; }
+  .post-page .kv-step { min-height: 56vh; justify-content: flex-start; padding-top: 4vh; }
+  .post-page .kv-step:first-child { min-height: 40vh; }
+  .post-page .kv-gridnote { min-height: 0; font-size: 13.5px; margin-top: 4px; }
+  .post-page .kv-grid-svg { margin: 0 -8px; width: calc(100% + 16px); max-width: none; }
+  .post-page .kv-mem-read { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .kv-rrow { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .post-page .kv-gpu { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .post-page .kv-range { grid-template-columns: minmax(0, 1fr) auto; }
+  .post-page .kv-range input { grid-column: 1 / -1; grid-row: 2; }
+  .post-page .kv-tri-row { grid-template-columns: 22px minmax(0, 1fr); gap: 6px; }
+  .post-page .kv-tri-cells { gap: 2px; }
+  .post-page .kv-tri-cells i { height: 13px; }
+  .post-page .kv-bcols, .post-page .kv-bx { gap: 5px; }
+  .post-page .kv-track .lab { font-size: 12px; }
+  .post-page .kv-word span { font-size: 14px; padding: 6px 7px; }
+  .post-page .kv-words, .post-page .kv-wg { gap: 6px 3px; }
+  .post-page .kv-arr { font-size: 13px; }
+  .post-page .kv-db img { width: 640px; max-width: none; }
+  .post-page .kv-paper img { padding: 4px; }
+  .post-page .kv-paper { order: -1; }
+  .post-page .kv-calc-top { grid-template-columns: minmax(0, 1fr); }
+  .post-page .kv-lb div { grid-template-columns: 120px minmax(0, 1fr) 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .kv *, .post-page .kv *::before { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="kv" data-kv>
+
+  <header class="kv-hero">
+    <div class="kv-wrap">
+      <h1>LLM 답변은 왜 첫 글자만 늦게 나올까요?</h1>
+      <div class="kv-lede">
+        <p>챗봇에 긴 글을 붙여 넣고 요약을 부탁해 보면, 첫 글자가 나오기까지 한참 걸리다가 일단 나오기 시작하면 술술 이어집니다. 저는 처음에 이게 인터넷이 느려서인 줄 알았습니다. 그런데 노트북에서 인터넷 없이 모델을 돌려도 똑같이 그렇습니다.</p>
+        <p>LLM(Large Language Model)이 답을 만드는 일이 두 단계로 나뉘기 때문입니다. 붙여 넣은 글 전체를 먼저 한꺼번에 읽은 다음 답을 글 조각 하나씩 씁니다. 이 조각이 <b>토큰</b>(token)입니다. 아래 세 줄은 붙인 글의 길이만 바꿔 가며 직접 잰 시간입니다. 줄을 고르고 ▶를 누르면 실제 걸린 시간 그대로 재생합니다.</p>
+      </div>
+    </div>
+    <div class="kv-band">
+      <div class="kv-wrap">
+        <div class="kv-ctl kv-heroctl">
+          <button type="button" class="kv-act" data-kv-play>▶ 고른 줄 실제 시간으로 재생</button>
+          <div class="kv-reads">
+            <div class="kv-read"><small>첫 토큰까지 걸린 시간</small><b class="pf" data-kv-ttft>9.88초</b></div>
+            <div class="kv-read"><small>그다음 토큰 사이 간격</small><b class="dc" data-kv-tpot>0.058초</b></div>
+          </div>
+        </div>
+        <div class="kv-lanes" data-kv-lanes data-figure data-thumb>
+          <div class="kv-head-row"><span>붙인 글</span><span>질문을 보낸 뒤 흐른 시간 →</span></div>
+          <button type="button" class="kv-lane" data-kv-lane="0" aria-pressed="false"><span class="kv-lane-name">질문만<small>16토큰</small></span><span class="kv-track" data-kv-track></span></button>
+          <button type="button" class="kv-lane" data-kv-lane="1" aria-pressed="false"><span class="kv-lane-name">기사 한 편<small>1,024토큰</small></span><span class="kv-track" data-kv-track></span></button>
+          <button type="button" class="kv-lane" data-kv-lane="2" aria-pressed="true"><span class="kv-lane-name">논문 한 편<small>8,192토큰</small></span><span class="kv-track" data-kv-track></span></button>
+          <div class="kv-axis"><span></span><div class="kv-axis-in" data-kv-axis></div></div>
+          <div class="kv-axis"><span></span><div class="kv-legend" style="font-size:14px;color:var(--fg-strong);margin-top:10px">
+            <span><i style="background:var(--pf)"></i>주황 = 붙인 글 전체를 읽는 시간</span>
+            <span><i style="background:var(--dc);width:4px"></i>파랑 눈금 = 답 토큰이 하나 나온 순간</span>
+          </div></div>
+        </div>
+        <div class="kv-chat" aria-live="polite" style="margin-top:30px">
+          <div class="kv-user"><span class="kv-doc" data-kv-doc>붙인 글 8,192토큰</span>하늘은 왜 파란색으로 보이나요?</div>
+          <div class="kv-msg"><small>모델의 답</small><div class="kv-bot" data-kv-bot>햇빛 속 파란빛이 공기 분자에 부딪혀 사방으로 더 많이 흩어지기 때문입니다.</div></div>
+        </div>
+        <p class="kv-cap">시간은 M4 맥북의 GPU(Graphics Processing Unit), 곧 곱셈을 한꺼번에 많이 하는 칩에서 Qwen2.5-1.5B 모델로 직접 잰 값입니다. 첫 토큰을 낼 때까지, 그리고 그 뒤 토큰 하나를 낼 때마다 걸린 시간입니다. 답은 30토큰짜리 설명용 예시 문장이고 실제 출력이 아닙니다. 데이터센터 GPU에서는 전부 훨씬 빠르지만 모양은 같습니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="kv-sec">
+    <div class="kv-wrap kv-two top">
+      <div>
+        <h2>프롬프트는 한꺼번에 읽고 답은 한 개씩 씁니다</h2>
+        <p>모델에 보내는 질문과 붙인 글을 합쳐 프롬프트(prompt)라고 합니다. 프롬프트는 모델이 받는 순간 모든 토큰이 이미 정해져 있습니다. 그래서 모델은 이 토큰들을 한 묶음으로 계산합니다. 이 단계를 <b class="pf">Prefill</b>이라고 부릅니다.</p>
+        <p>답은 사정이 다릅니다. 두 번째 토큰이 무엇일지는 첫 토큰이 나와야 정해집니다. 그래서 하나를 만들어 붙이고 또 하나를 만듭니다. 이 단계가 <b class="dc">Decode</b>입니다. 자기가 낸 토큰을 다음 입력으로 되먹이는 이 방식을 자기회귀(autoregressive) 생성이라고 합니다.</p>
+        <p>끝말잇기 기록지 그림과 비슷합니다. 이미 적힌 단어가 제대로 이어졌는지는 친구 다섯 명이 한 칸씩 맡아 동시에 검사할 수 있습니다. 하지만 새 단어는 마지막 단어가 정해져야 떠올릴 수 있으니 한 번에 하나씩 붙습니다.</p>
+        <p>비유와 다른 점도 있습니다. 모델의 Prefill은 칸을 따로따로 보지 않습니다. 토큰마다 앞에 나온 토큰들을 함께 살펴보며 계산합니다. 그래도 입력이 전부 정해져 있으니 이 계산을 한꺼번에 돌릴 수 있습니다.</p>
+      </div>
+      <div>
+        <figure class="kv-fig kv-relay" data-figure>
+        <div class="kv-relay-row">
+          <small>이미 적힌 단어 → 다섯 명이 <span class="pf">동시에</span> 검사</small>
+          <div class="kv-words">
+            <div class="kv-word p"><span>사과</span><i>검사 ✓</i></div><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word p"><span>과자</span><i>검사 ✓</i></div></span><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word p"><span>자석</span><i>검사 ✓</i></div></span><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word p"><span>석유</span><i>검사 ✓</i></div></span><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word p"><span>유리</span><i>검사 ✓</i></div></span>
+          </div>
+        </div>
+        <div class="kv-relay-row">
+          <small>새 단어 → 앞 단어가 나와야 하니 <span class="dc">하나씩</span></small>
+          <div class="kv-words">
+            <div class="kv-word"><span>유리</span><i>&nbsp;</i></div><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word d"><span>리본</span><i>1번째</i></div></span><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word d"><span>본드</span><i>2번째</i></div></span><span class="kv-wg"><span class="kv-arr">→</span><div class="kv-word q"><span>드…?</span><i>3번째</i></div></span>
+          </div>
+        </div>
+        <p class="kv-cap">주황은 한꺼번에 처리할 수 있는 일, 파랑은 한 번에 하나씩만 할 수 있는 일입니다. 아래 그림과 글 끝까지 같은 색으로 씁니다.</p>
+      </figure>
+      </div>
+    </div>
+
+    <div class="kv-wrap kv-scrolly" data-kv-scrolly>
+      <div class="kv-steps">
+        <div class="kv-step" data-kv-step="0">
+          <div class="no">① 프롬프트 도착</div>
+          <p>"하늘은 왜 파란색?"이 토큰 여섯 개로 들어왔습니다. 맨 위 줄이 토큰이고 그 아래 칸들은 모델의 층(layer)입니다. 층은 같은 모양의 계산 묶음입니다. 토큰은 1층부터 28층까지 차례로 지나며 다듬어집니다. 그림에서는 28층을 네 줄로 줄였습니다.</p>
+        </div>
+        <div class="kv-step" data-kv-step="1">
+          <div class="no">② Prefill — 여섯 토큰을 한 번에</div>
+          <p>여섯 토큰이 1층을 함께 지나고 함께 2층을 지납니다. 한 토큰씩 여섯 번 돌리는 대신 여섯 개를 한 묶음으로 계산합니다.</p>
+          <p>층을 지날 때마다 토큰별로 <b class="kc">Key</b>와 <b class="kc">Value</b>라는 숫자 묶음이 생깁니다. Key는 "나는 이런 토큰이다"를 알리는 이름표, Value는 뒤 토큰에게 건네줄 내용입니다. 이 둘을 아래 보라색 선반에 넣어 둡니다.</p>
+          <p>이 계산을 Attention이라고 합니다. 토큰이 앞 토큰들을 살펴보며 필요한 정보를 모으는 계산입니다. 이때 지금 토큰이 무엇을 찾는지 나타내는 값이 Query인데, 그 토큰을 계산할 때만 쓰므로 선반에 넣지 않습니다.</p>
+        </div>
+        <div class="kv-step" data-kv-step="2">
+          <div class="no">③ 첫 토큰이 나오는 순간</div>
+          <p>마지막 토큰이 28층까지 다 지나야 첫 답 토큰 "햇빛"이 나옵니다. 질문을 보낸 뒤 여기까지 걸린 시간이 <b>TTFT</b>(Time To First Token)입니다. 붙인 글이 길면 Prefill에서 계산할 칸이 늘어나니 TTFT도 길어집니다.</p>
+        </div>
+        <div class="kv-step" data-kv-step="3">
+          <div class="no">④ Decode — 새 토큰 하나만</div>
+          <p>"햇빛"을 입력 끝에 붙여 모델을 다시 돌립니다. 이번에 새로 계산하는 건 "햇빛" 한 줄뿐입니다. 앞 여섯 토큰은 다시 계산하지 않고 선반에 넣어 둔 Key와 Value만 읽어 와 함께 씁니다. 이 선반이 <b class="kc">KV Cache</b>입니다.</p>
+        </div>
+        <div class="kv-step" data-kv-step="4">
+          <div class="no">⑤ 하나씩 만들고 선반은 길어진다</div>
+          <p>토큰 하나가 나올 때마다 같은 일을 되풀이하고 선반은 한 칸씩 길어집니다. 한 번에 계산하는 양은 작습니다. 대신 매번 모델의 숫자 전부와 선반 전체를 읽어야 합니다. Decode의 속도는 이 읽는 시간이 정합니다.</p>
+        </div>
+      </div>
+      <div class="kv-sticky" data-kv-sticky>
+        <svg class="kv-grid-svg" data-kv-grid viewBox="0 0 628 388" role="img" aria-label="토큰 열 열 개와 층 네 줄로 된 격자. 프롬프트 여섯 열은 한 번에 주황으로 칠해지고 답 토큰 열은 한 열씩 파랑으로 칠해진다. 아래 보라 선반에 토큰마다 Key와 Value 칩이 쌓인다" data-figure></svg>
+        <div class="kv-gridnote" data-kv-note aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="kv-sec">
+    <div class="kv-wrap kv-two top">
+      <div>
+        <h2>KV Cache는 다시 할 계산을 저장해 둡니다</h2>
+        <p>KV Cache가 없으면 모델은 토큰 하나를 만들 때마다 지금까지의 문장 전체를 처음부터 다시 계산합니다. 계단 그림에서 한 줄이 모델을 한 번 돌린 것이고 칸 하나가 그때 Key·Value를 계산한 토큰 하나입니다. 답이 길어질수록 다시 하는 계산이 계단처럼 쌓입니다.</p>
+        <p>수학 문제를 풀 때 앞에서 구한 중간값을 연습장 여백에 적어 두는 것과 비슷합니다. 같은 값이 또 필요하면 다시 계산하지 않고 적어 둔 걸 봅니다. 토글을 "캐시 쓰기"로 바꾸면 줄마다 새 칸 하나만 계산하고 나머지는 보라색으로 읽어 옵니다.</p>
+        <p>연습장 여백과 다른 점은 공짜가 아니라는 겁니다. KV Cache는 GPU 메모리에 저장되고 토큰마다 커집니다. 그리고 토큰을 하나 만들 때마다 저장한 값 전부를 다시 읽어야 합니다. 계산을 아끼는 대신 메모리 공간과 읽는 시간을 씁니다.</p>
+        <details>
+          <summary>Query는 왜 저장하지 않나요?</summary>
+          <p>Attention에서 Query는 "지금 이 토큰이 무엇을 찾는가"를 나타내는 값입니다. 그래서 지금 계산하는 토큰의 Query만 씁니다. 앞 토큰의 Query는 그 토큰 차례에 한 번 쓰고 끝납니다. Key와 Value는 뒤에 오는 모든 토큰이 계속 참고하니 저장해 둘 가치가 있습니다. Attention 계산 자체는 <a href="/posts/self-attention-qkv">Self-Attention 글</a>에서 그림으로 다룹니다.</p>
+        </details>
+      </div>
+      <figure class="kv-fig" data-figure>
+        <div class="kv-ctl">
+          <div class="kv-seg" role="group" aria-label="캐시 사용">
+            <button type="button" data-kv-cache="0" aria-pressed="true">캐시 없이</button>
+            <button type="button" data-kv-cache="1" aria-pressed="false">캐시 쓰기</button>
+          </div>
+        </div>
+        <label class="kv-range" style="margin-bottom:22px">답 길이<input type="range" min="1" max="12" value="10" data-kv-n aria-label="만들 답 토큰 수"><output data-kv-nout>10토큰</output></label>
+        <div class="kv-tri" data-kv-tri></div>
+        <div class="kv-count">
+          <div><small>Key·Value를 계산한 칸</small><b data-kv-c1>105칸</b></div>
+          <div><small>캐시를 쓸 때와 비교</small><b data-kv-c2>× 7.0</b></div>
+        </div>
+        <p class="kv-cap">왼쪽 숫자는 모델을 몇 번째로 돌렸는지입니다. <span class="pf">주황</span>은 프롬프트 6토큰의 Prefill, <span class="dc">파랑</span>은 새 토큰, <span style="color:var(--bad);font-weight:700">빨강</span>은 이미 했던 계산을 다시 한 칸, <span class="kc">보라 테두리</span>는 선반에서 읽어 온 칸입니다. 칸 수는 실제 계산 순서대로 센 값입니다.</p>
+      </figure>
+    </div>
+    <div class="kv-wrap kv-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <p>실제로 얼마나 차이가 날까요? 같은 노트북에서 512토큰짜리 프롬프트 뒤에 답 64토큰을 만들어 봤습니다. 캐시를 끄면 토큰 하나에 대부분 0.57~0.64초가 걸리고 갈수록 조금씩 늘어납니다. 매번 500토큰 넘는 문장을 다시 Prefill 하는 셈이기 때문입니다.</p>
+        <p>캐시를 켜면 토큰마다 0.04초 안팎으로 일정합니다. 다 합치면 39.4초와 2.8초, 14배 차이입니다. 그래서 실제 서비스에서 KV Cache를 끄는 경우는 없습니다. 남는 문제는 이 캐시가 차지하는 메모리인데, 크기는 조금 뒤에서 계산합니다.</p>
+        <p>맨 위 8,192토큰 줄의 간격이 0.058초로 이보다 긴 이유도 여기 있습니다. 대화가 길면 Decode 때마다 읽어야 할 KV Cache가 늘어납니다.</p>
+      </div>
+      <figure class="kv-fig kv-meas" data-figure data-kv-meas>
+        <div class="kv-meas-row"><div><span style="font-family:var(--font-sans)">캐시 없이</span><span data-kv-sum0>합계 39.4초</span></div><div class="kv-spark no" data-kv-spark="0"></div></div>
+        <div class="kv-meas-row"><div><span style="font-family:var(--font-sans)">캐시 쓰기</span><span data-kv-sum1>합계 2.8초</span></div><div class="kv-spark yes" data-kv-spark="1"></div></div>
+        <p class="kv-cap" style="margin-top:0">막대 하나가 답 토큰 하나를 만드는 데 걸린 시간입니다(왼쪽부터 1번째~64번째, 두 그래프 같은 눈금, 높이 끝 = 0.75초). Qwen2.5-1.5B, M4 맥북에서 직접 쟀습니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="kv-sec">
+    <div class="kv-wrap kv-two top">
+      <div>
+        <h2>Decode는 계산보다 나르는 시간이 더 깁니다</h2>
+        <p>Decode는 새 토큰 하나만 계산하는데 왜 토큰마다 0.04초씩이나 걸릴까요? GPU 안에는 숫자를 저장하는 메모리와 곱셈·덧셈을 하는 계산 장치가 따로 있습니다. 계산하려면 숫자를 메모리에서 계산 장치까지 옮겨야 합니다.</p>
+        <p>주방에 빗대 보면 창고(GPU 메모리)의 재료를 통로로 날라야 요리사(계산 장치)가 요리를 할 수 있습니다. 통로의 폭, 곧 1초에 옮길 수 있는 바이트 수가 <b>메모리 대역폭</b>(memory bandwidth)입니다. 요리사의 손 빠르기는 1초에 하는 계산 횟수인 FLOPS(Floating-point Operations Per Second)로 잽니다. GPU 메모리는 VRAM(Video Random Access Memory)이라고도 부릅니다.</p>
+        <p>둘 중 더 느린 쪽이 전체 속도를 붙잡습니다. 이렇게 전체를 늦추는 한 곳을 <b>병목</b>(bottleneck)이라고 합니다.</p>
+      </div>
+      <figure class="kv-fig" data-figure>
+        <svg class="kv-kitchen" viewBox="0 0 560 330" role="img" aria-label="왼쪽 창고에 가중치 상자가 쌓여 있고 가운데 좁은 통로를 지나 오른쪽 요리사에게 간다. 요리사는 한 번에 접시 하나만 요리하고 대부분 기다린다">
+          <rect class="wall" x="10" y="40" width="180" height="220" rx="12"/>
+          <text x="100" y="28" text-anchor="middle" style="font-size:20px;font-weight:700">창고 = GPU 메모리</text>
+          <g data-kv-boxes></g>
+          <text x="100" y="246" text-anchor="middle" class="dim" style="font-size:20px">가중치 15.2GB</text>
+          <rect class="pipe" x="190" y="128" width="170" height="44"/>
+          <path class="flow" d="M214 150 H 330" marker-end="url(#kvArr)"/>
+          <text x="275" y="112" text-anchor="middle" style="font-size:20px;font-weight:700">통로 = 대역폭</text>
+          <text x="275" y="204" text-anchor="middle" class="dim" style="font-size:20px" data-kv-kbw>초당 3.35TB</text>
+          <rect class="cook" x="360" y="40" width="190" height="220" rx="12"/>
+          <text x="455" y="28" text-anchor="middle" style="font-size:20px;font-weight:700">요리사 = 계산 장치</text>
+          <circle cx="455" cy="118" r="30" class="ok" opacity=".85"/>
+          <text x="455" y="126" text-anchor="middle" style="font-size:22px;fill:#fff;font-weight:700">조리</text>
+          <text x="455" y="186" text-anchor="middle" class="dim" style="font-size:20px" data-kv-kfl>초당 약 989조 번</text>
+          <text x="455" y="216" text-anchor="middle" class="dim" style="font-size:20px">재료가 올 때까지</text>
+          <text x="455" y="242" text-anchor="middle" class="dim" style="font-size:20px">대부분 기다림</text>
+          <text x="280" y="306" text-anchor="middle" style="font-size:21px;font-weight:600">토큰 1개 = 재료 전부를 나르고 한 번씩만 씀</text>
+          <defs><marker id="kvArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L10 5 L0 10 z" style="fill:var(--fg-neutral)"/></marker></defs>
+        </svg>
+      </figure>
+    </div>
+    <div class="kv-wrap kv-two top" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <p>재료는 모델의 <b>가중치</b>(weight)입니다. 학습으로 정해진 숫자인 파라미터(parameter)를 계산식 안에서 부르는 이름입니다. Qwen2.5-7B는 이 숫자가 76억 개, 모두 15.2GB입니다(<a href="/posts/llm-parameters-7b-explained">7B가 무엇을 센 숫자인지</a>).</p>
+        <p>토큰 하나를 계산하려면 이 숫자를 전부 한 번씩 씁니다. H100에서는 15.2GB를 나르는 데 4.5ms, 계산에는 0.015ms가 걸립니다. 이렇게 나르는 쪽이 시간을 정하는 상태를 memory-bound(메모리가 병목), 계산이 시간을 정하는 상태를 compute-bound(계산이 병목)라고 합니다.</p>
+        <p>슬라이더로 한 번에 처리할 토큰 수를 늘리면 나르기는 그대로이고 계산만 길어집니다. 한 번 나른 숫자를 여러 토큰에 같이 쓰기 때문입니다. 바이트 하나를 나를 때 계산을 몇 번 하는지를 <b>계산 강도</b>(arithmetic intensity)라고 합니다.</p>
+      </div>
+      <figure class="kv-fig" data-figure>
+        <div class="kv-ctl">
+          <div class="kv-seg" role="group" aria-label="GPU">
+            <button type="button" data-kv-gpu="0" aria-pressed="false">RTX 4090</button>
+            <button type="button" data-kv-gpu="1" aria-pressed="false">A100</button>
+            <button type="button" data-kv-gpu="2" aria-pressed="true">H100</button>
+          </div>
+        </div>
+        <label class="kv-range" style="margin-bottom:26px">한 번에 처리할 토큰<input type="range" min="0" max="12" value="0" data-kv-tok aria-label="한 번에 처리할 토큰 수"><output data-kv-tokout>1개</output></label>
+        <div class="kv-race">
+          <div class="kv-rrow"><div>나르기<small>가중치 15.2GB를 한 번 읽기</small></div><div class="kv-rbar mv"><i data-kv-mv></i><span data-kv-mvt></span></div></div>
+          <div class="kv-rrow"><div>계산<small>토큰마다 2 × 76억 번</small></div><div class="kv-rbar cp"><i data-kv-cp></i><span data-kv-cpt></span></div></div>
+        </div>
+        <p class="kv-verdict" data-kv-verdict aria-live="polite"></p>
+        <p class="kv-cap" style="margin-top:6px">Qwen2.5-7B를 BF16(bfloat16, 숫자 하나를 2바이트로 저장하는 형식) 그대로 쓴 기준입니다. 막대는 더 긴 쪽을 끝까지 채운 상대 길이입니다. 실제 GPU는 나르기와 계산을 겹쳐 하므로 둘 중 긴 쪽이 걸리는 시간을 정합니다. 효율 손실과 KV Cache 읽기는 빼고 사양 숫자만으로 계산했습니다.</p>
+      </figure>
+    </div>
+    <div class="kv-wrap kv-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <p>Prefill은 수백~수천 토큰을 한 번에 처리해 계산 강도가 높으니 compute-bound입니다. 그래서 붙인 글이 두 배가 되면 첫 토큰까지 걸리는 시간도 거의 두 배가 됩니다. Decode는 한 번에 토큰 하나라 memory-bound입니다.</p>
+        <p>노트북 실측은 7B보다 작은 Qwen2.5-1.5B로 했습니다. 계산기와 KV Cache 크기는 7B 기준입니다. M4 칩의 대역폭은 초당 120GB이고 1.5B 가중치는 3.1GB라 토큰 하나에 적어도 26ms가 걸립니다. 실제로 잰 값은 43ms였습니다. 사양 숫자만으로 토큰 하나에 걸리는 시간의 하한을 미리 알 수 있습니다.</p>
+        <p>주방과 다른 점도 있습니다. 진짜 GPU는 재료를 나르는 동안 이미 도착한 재료로 계산을 합니다. 그래서 두 시간을 더하지 않고 더 긴 쪽이 전체를 정합니다.</p>
+      </div>
+      <figure class="kv-fig kv-ttft" data-figure>
+        <small class="kv-figt">붙인 글 길이별 첫 토큰까지 걸린 시간 (M4, 1.5B 실측)</small>
+        <svg class="kv-ttft-svg" viewBox="0 0 520 322" role="img" aria-label="붙인 글 길이에 따라 첫 토큰까지 걸린 시간. 16토큰 0.07초에서 8,192토큰 9.88초까지 점들이 거의 곧은 선 위에 놓인다">
+          <line x1="70" y1="250.0" x2="490" y2="250.0" style="stroke:var(--line-subtle);stroke-width:1"/><text x="60" y="256.0" text-anchor="end" class="dim" style="font-size:22px">0초</text><line x1="70" y1="140.0" x2="490" y2="140.0" style="stroke:var(--line-subtle);stroke-width:1"/><text x="60" y="146.0" text-anchor="end" class="dim" style="font-size:22px">5초</text><line x1="70" y1="30.0" x2="490" y2="30.0" style="stroke:var(--line-subtle);stroke-width:1"/><text x="60" y="36.0" text-anchor="end" class="dim" style="font-size:22px">10초</text><line x1="70.0" y1="250" x2="70.0" y2="256" style="stroke:var(--line-strong);stroke-width:1.5"/><text x="70.0" y="280" text-anchor="middle" class="dim" style="font-size:22px">0</text><line x1="175.0" y1="250" x2="175.0" y2="256" style="stroke:var(--line-strong);stroke-width:1.5"/><text x="175.0" y="280" text-anchor="middle" class="dim" style="font-size:22px">2K</text><line x1="280.0" y1="250" x2="280.0" y2="256" style="stroke:var(--line-strong);stroke-width:1.5"/><text x="280.0" y="280" text-anchor="middle" class="dim" style="font-size:22px">4K</text><line x1="385.0" y1="250" x2="385.0" y2="256" style="stroke:var(--line-strong);stroke-width:1.5"/><text x="385.0" y="280" text-anchor="middle" class="dim" style="font-size:22px">6K</text><line x1="490.0" y1="250" x2="490.0" y2="256" style="stroke:var(--line-strong);stroke-width:1.5"/><text x="490.0" y="280" text-anchor="middle" class="dim" style="font-size:22px">8K</text>
+          <polyline points="70.8,248.5 73.3,247.8 83.1,243.5 96.2,238.0 122.5,226.3 175.0,201.9 280.0,150.8 490.0,32.6" style="fill:none;stroke:var(--pf);stroke-width:2.5"/><circle cx="70.8" cy="248.5" r="5.5" style="fill:var(--pf)"/><circle cx="73.3" cy="247.8" r="5.5" style="fill:var(--pf)"/><circle cx="83.1" cy="243.5" r="5.5" style="fill:var(--pf)"/><circle cx="96.2" cy="238.0" r="5.5" style="fill:var(--pf)"/><circle cx="122.5" cy="226.3" r="5.5" style="fill:var(--pf)"/><circle cx="175.0" cy="201.9" r="5.5" style="fill:var(--pf)"/><circle cx="280.0" cy="150.8" r="5.5" style="fill:var(--pf)"/><circle cx="490.0" cy="32.6" r="5.5" style="fill:var(--pf)"/>
+          <text x="480.0" y="18.6" text-anchor="end" style="font-size:22px;font-weight:700;fill:var(--pf)">8,192토큰 9.88초</text>
+          <text x="110" y="196" text-anchor="end" style="font-size:22px;font-weight:700;fill:var(--pf)">1,024토큰</text><text x="110" y="220" text-anchor="end" style="font-size:22px;font-weight:700;fill:var(--pf)">1.08초</text>
+          <text x="490" y="316" text-anchor="end" class="dim" style="font-size:20px">붙인 글 길이(토큰)</text>
+        </svg>
+        <div class="kv-lb">
+          <div><span>사양으로 계산한 하한</span><i style="width:60.5%"></i><b>26ms</b></div>
+          <div><span>실제로 잰 토큰 간격</span><i style="width:100%"></i><b>43ms</b></div>
+        </div>
+        <p class="kv-cap">점은 직접 잰 8개 길이입니다. 거의 곧은 선 위에 놓이니 Prefill 시간은 붙인 글 길이에 비례합니다. 아래 막대는 Decode 한 번의 하한(3.1GB ÷ 초당 120GB)과 실측입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="kv-sec">
+    <div class="kv-wrap kv-head r56">
+      <h2>토큰 하나에 57KB, 긴 대화는 GB 단위로 쌓입니다</h2>
+      <div>
+        <p>KV Cache는 토큰마다, 층마다 Key와 Value를 저장합니다. 크기를 계산하려면 <b>헤드</b>(head)를 알아야 합니다. 헤드는 Attention 계산을 여러 갈래로 나눈 것입니다. 갈래마다 Query·Key·Value를 따로 만들어 토큰 사이의 서로 다른 관계를 봅니다.</p>
+        <p>Qwen2.5-7B는 Query 헤드 28개가 Key·Value 헤드 4개를 나눠 씁니다. 헤드 하나에 숫자가 128개이고 BF16이라 숫자 하나가 2바이트입니다. 모두 곱하면 토큰 하나에 57,344바이트, 약 57KB입니다.</p>
+        <div class="kv-formula" data-figure><span><b>2</b><small>Key와 Value</small></span><i>×</i><span><b>28</b><small>층</small></span><i>×</i><span><b>4</b><small>KV 헤드</small></span><i>×</i><span><b>128</b><small>헤드당 숫자</small></span><i>×</i><span><b>2</b><small>바이트(BF16)</small></span><i>=</i><span class="eq"><b>57,344</b><small>바이트</small></span></div>
+        <p>57KB는 작아 보이지만 토큰 수만큼, 다시 동시에 쓰는 사람 수만큼 곱해집니다. 아래 막대는 H100 한 장(80GB)에 가중치를 올리고 남은 공간을 사용자들의 KV Cache로 채운 모습입니다.</p>
+      </div>
+    </div>
+    <div class="kv-band">
+      <div class="kv-wrap">
+        <div class="kv-calc-top">
+          <label class="kv-range">대화 길이<input type="range" min="0" max="7" value="5" data-kv-ctx aria-label="대화 길이(토큰)"><output data-kv-ctxout>32K</output></label>
+          <label class="kv-switch"><input type="checkbox" data-kv-mha><span class="kv-sw" aria-hidden="true"></span>MHA였다면 (KV 헤드 28개로 비교)</label>
+        </div>
+        <p class="kv-drag-hint">막대 끝 손잡이를 끌면 동시 사용자가 늘어납니다 (키보드는 ← →)</p>
+        <div class="kv-mem" data-figure>
+          <div class="kv-mem-bar" data-kv-membar role="slider" tabindex="0" aria-label="동시 사용자 수" aria-valuemin="1" aria-valuemax="64" aria-valuenow="8"></div>
+          <div class="kv-mem-cap" data-kv-cap><span>H100 80GB</span></div>
+          <div class="kv-mem-axis" data-kv-axis2></div>
+        </div>
+        <p class="kv-mem-line" data-kv-memline aria-live="polite"></p>
+        <p class="kv-cap"><span style="color:var(--fg-neutral);font-weight:700">회색</span>은 가중치 15.2GB, <span class="kc">보라</span> 한 칸이 사용자 한 명의 KV Cache, <span style="color:var(--bad);font-weight:700">빗금</span>은 80GB를 넘친 부분입니다. 실제 서버는 계산 중간값과 프로그램이 쓸 공간도 남겨야 해서 이보다 적게 들어갑니다. 1K는 1,024토큰입니다.</p>
+      </div>
+    </div>
+    <div class="kv-wrap kv-two">
+      <div>
+        <p>57KB가 이만큼 작은 건 GQA(Grouped-Query Attention) 덕분입니다. 처음 나온 Transformer는 Attention 계산을 층층이 쌓은 모델 구조로, 지금 LLM 대부분의 바탕입니다. 이 구조는 Query 헤드마다 Key·Value 헤드를 하나씩 따로 뒀습니다. 이걸 MHA(Multi-Head Attention)라고 합니다. GQA는 Query 헤드 여러 개가 Key·Value 헤드 하나를 같이 씁니다. Qwen2.5-7B는 Query 헤드 7개가 한 묶음입니다.</p>
+        <p>모둠 7명이 사전 한 권을 같이 보는 것과 비슷합니다. 사전이 28권에서 4권으로 줄면 책장 공간이 7분의 1이 됩니다. 찾는 단어(Query)는 여전히 사람마다 다릅니다. 위 막대에서 "MHA였다면"을 켜 보면 같은 80GB에 들어가는 사람 수가 그만큼 줄어듭니다.</p>
+        <details>
+          <summary>Key·Value를 나눠 쓰면 잃는 것은 없나요?</summary>
+          <p>대가도 있습니다. 사전을 같이 쓰면 각자 다른 메모를 적을 수 없듯이 헤드마다 따로 담던 정보 일부를 포기합니다. GQA를 제안한 2023년 논문은 이렇게 묶은 모델의 품질이 MHA에 가깝고 속도는 Key·Value 헤드를 하나만 남긴 MQA(Multi-Query Attention)에 가깝다고 보고했습니다. 논문의 실험은 Key·Value 헤드 8개로 묶었습니다.</p>
+        </details>
+      </div>
+      <figure class="kv-fig kv-paper" data-figure>
+        <a href="https://arxiv.org/abs/2305.13245"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/e0d1fb5a.webp" alt="세 가지 Attention 구조 비교. 왼쪽 Multi-head는 Query 8개마다 Key와 Value가 하나씩, 가운데 Grouped-query는 Query 두 개가 Key·Value 하나를 함께, 오른쪽 Multi-query는 Query 8개가 Key·Value 하나를 함께 쓴다" loading="lazy" width="1600" height="526"></a>
+        <figcaption>왼쪽부터 MHA, GQA, MQA입니다. 파랑(Queries)은 Query 헤드, 빨강(Keys)·노랑(Values)이 KV Cache에 저장되는 헤드입니다. 가운데처럼 묶으면 저장할 빨강·노랑 칸이 줄어듭니다. — Ainslie 외, <a href="https://arxiv.org/abs/2305.13245">GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints</a> (2023), Figure 2</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="kv-sec">
+    <div class="kv-wrap kv-two">
+      <div>
+        <h2>TTFT, TPOT, 그리고 서버 전체의 처리량</h2>
+        <p>지금까지 본 두 시간에는 이름이 있습니다. 첫 토큰까지가 TTFT, 그 뒤 토큰 하나당 걸리는 시간이 <b>TPOT</b>(Time Per Output Token)입니다. 답 전체를 받는 시간은 대략 TTFT + TPOT × 나머지 토큰 수입니다. 맨 위 논문 줄이라면 9.88초 + 0.058초 × 29 = 약 11.6초입니다.</p>
+        <p>서비스를 운영하는 쪽은 숫자를 하나 더 봅니다. 서버가 모든 사용자에게 1초에 내보내는 토큰 수, 곧 <b>처리량</b>(throughput)입니다. 여러 사람의 요청을 묶어 한 번에 계산하는 걸 <b>배치</b>(batch)라고 합니다. 가중치를 한 번 나르고 여러 사람 몫을 같이 계산하니, Decode에서 놀던 계산 장치를 쓸 수 있습니다.</p>
+        <p>막대 그래프는 노트북에서 동시 사용자 수만 바꿔 잰 결과입니다. 8명까지는 한 사람이 받는 속도가 거의 그대로인데 전체 처리량은 7배 넘게 늘어납니다. 그 뒤로는 계산과 KV Cache 읽기가 늘어나 한 사람의 속도가 떨어집니다.</p>
+      </div>
+      <figure class="kv-fig kv-batch" data-figure>
+        <p class="kv-verdict" data-kv-bread aria-live="polite" style="min-height:0;padding:0;margin:0"></p>
+        <div class="kv-bchart"><small><span class="dc">한 사람이 받는 속도</span> (토큰/초)</small><div class="kv-bcols per" data-kv-bper></div></div>
+        <div class="kv-bchart"><small><span style="color:var(--ok)">서버 전체 처리량</span> (토큰/초)</small><div class="kv-bcols tot" data-kv-btot></div><div class="kv-bx" data-kv-bx></div></div>
+        <p class="kv-cap" style="margin-top:0">가로축은 동시 사용자 수(명)이고 막대를 누르면 그 경우의 숫자를 위에 보여 줍니다. Qwen2.5-1.5B, M4 맥북, 대화 길이 128토큰에서 Decode 한 번에 걸린 시간을 재서 계산했습니다.</p>
+      </figure>
+    </div>
+    <div class="kv-wrap kv-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <p>데이터센터 GPU에서도 모양은 같습니다. Databricks가 MPT-7B 모델로 잰 그래프에서 곡선 하나가 GPU 구성 하나이고 곡선을 따라 갈수록 배치가 큽니다. 처리량(세로)은 오르다가 눕고 요청 하나가 끝나는 시간, 곧 <b>지연</b>(latency, 가로)은 계속 길어집니다.</p>
+        <p>같은 글에서 A100 한 장으로 배치를 64까지 키우자 지연은 약 4배, 처리량은 약 14배가 됐다고 합니다.</p>
+        <p>그래서 서빙 프로그램은 TTFT와 TPOT 목표를 지키는 선에서 배치를 최대한 키웁니다. 문제가 하나 더 있습니다. GPU 하나가 여러 사람의 계산을 차례로 처리하는데, 누군가 긴 글을 붙여 Prefill이 시작되면 그 긴 계산이 끝날 때까지 다른 사람의 다음 토큰이 기다립니다.</p>
+        <p>그래서 요즘은 Prefill과 Decode를 아예 다른 GPU에 나눠 맡기기도 합니다. DistServe는 이 방식을 제안한 2024년 논문입니다. llm-d는 LLM 서버 여러 대를 묶어 운영하는 오픈소스 도구로, 같은 방식을 기능으로 넣었습니다.</p>
+      </div>
+      <figure class="kv-fig kv-db" data-figure>
+        <a href="https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/5ff32ec2.webp" alt="MPT-7B의 처리량 대 지연 그래프. A10과 A100 GPU 구성별 곡선이 배치를 키울수록 오른쪽 위로 오르다 평평해진다" loading="lazy" width="1200" height="722"></a>
+        <figcaption>좁은 화면에서는 그림을 옆으로 밀어 볼 수 있습니다. 세로축은 초당 처리한 토큰 수(입력+출력), 가로축은 요청 하나의 지연(ms)입니다. 입력 512토큰, 출력 64토큰. — Databricks, <a href="https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices">LLM Inference Performance Engineering: Best Practices</a> (2023)</figcaption>
+      </figure>
+    </div>
+    <div class="kv-wrap" style="margin-top:clamp(72px,9vw,110px)">
+      <p class="kv-sum">답의 첫 글자를 기다리는 시간은 붙인 글 전체를 <span class="pf">한꺼번에 계산하는 Prefill</span>의 시간입니다. 그 뒤 글자 사이 간격은 토큰마다 가중치와 <span class="kc">KV Cache</span>를 <span class="dc">메모리에서 다시 읽는 Decode</span>의 시간입니다.</p>
+      <p style="margin-top:28px">다음 글에서는 가중치와 KV Cache가 함께 올라가는 GPU 메모리, 그리고 숫자를 더 작은 형식으로 바꿔 메모리를 아끼는 양자화를 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="kv-sec kv-refs" style="padding-bottom:40px">
+    <div class="kv-wrap kv-head">
+      <h2>참고 자료</h2>
+      <ul>
+        <li><a href="https://huggingface.co/Qwen/Qwen2.5-7B/blob/main/config.json">Qwen/Qwen2.5-7B config.json</a> — 28층, hidden 3584, Query 헤드 28, KV 헤드 4, BF16, 최대 131,072토큰(2026-10-15 확인)</li>
+        <li><a href="https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/">NVIDIA Technical Blog, Mastering LLM Techniques: Inference Optimization</a> — Prefill·Decode, KV Cache 크기 공식, MQA·GQA</li>
+        <li><a href="https://arxiv.org/abs/2305.13245">Ainslie 외, GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints (2023)</a> — Figure 2</li>
+        <li><a href="https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices">Databricks, LLM Inference Performance Engineering: Best Practices (2023)</a> — TTFT·TPOT·처리량 정의, 배치 실험, Figure 7</li>
+        <li><a href="https://arxiv.org/abs/2401.09670">Zhong 외, DistServe: Disaggregating Prefill and Decoding for Goodput-optimized LLM Serving (2024)</a> · <a href="https://github.com/llm-d/llm-d">llm-d</a></li>
+        <li><a href="https://www.nvidia.com/en-us/data-center/h100/">NVIDIA H100</a> — 3.35TB/s, BF16 1,979 TFLOPS(sparsity 기준, 일반 계산은 절반) · <a href="https://www.nvidia.com/en-us/data-center/a100/">NVIDIA A100</a> — 80GB SXM 2,039GB/s, BF16 312 TFLOPS · <a href="https://images.nvidia.com/aem-dam/Solutions/geforce/ada/nvidia-ada-gpu-architecture.pdf">NVIDIA Ada 아키텍처 백서</a> — RTX 4090 1,008GB/s, BF16 Tensor 165.2 TFLOPS</li>
+        <li><a href="https://www.apple.com/newsroom/2024/10/apple-introduces-m4-pro-and-m4-max/">Apple Newsroom, M4 Pro·M4 Max 발표</a> — M4 메모리 대역폭 120GB/s</li>
+        <li>측정: M4 맥북, PyTorch 2.14(MPS), transformers 5.19, <a href="https://huggingface.co/Qwen/Qwen2.5-1.5B">Qwen/Qwen2.5-1.5B</a> FP16. 같은 조건을 3번 재서 가운데 값을 썼습니다(2026-10-15)</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-kv]');
+  if (!box) return;
+  const on = (el, ev, fn, o) => el && el.addEventListener(ev, fn, Object.assign({}, o || {}, signal ? { signal } : {}));
+  const $ = (s, el = box) => el.querySelector(s);
+  const $$ = (s, el = box) => [...el.querySelectorAll(s)];
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n, d = 0) => n.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  /* ---------- 히어로: 세 줄 시간 띠 (M4 실측) ---------- */
+  const ANS = ["햇","빛",""," 속"," 파","란","빛","이"," 공","기"," 분","자","에"," 부","딪","혀"," 사","방","으로"," 더"," 많이","",""," 흩","어","지","기"," 때문","입니다","."];
+  const LANES = [
+    { L: 16, ttft: 0.0679, tpot: 0.0428, doc: '' },
+    { L: 1024, ttft: 1.0793, tpot: 0.0444, doc: '붙인 글 1,024토큰' },
+    { L: 8192, ttft: 9.8809, tpot: 0.0578, doc: '붙인 글 8,192토큰' },
+  ];
+  const TMAX = 12;
+  const laneBtns = $$('[data-kv-lane]');
+  const tracks = laneBtns.map((b) => $('[data-kv-track]', b));
+  const axis = $('[data-kv-axis]');
+  axis.innerHTML = Array.from({ length: TMAX / 2 + 1 }, (_, i) => `<span style="left:${(i * 2 / TMAX) * 100}%">${i * 2}초</span>`).join('');
+  const endOf = (o) => o.ttft + o.tpot * (ANS.length - 1);
+  tracks.forEach((tr, k) => {
+    const o = LANES[k];
+    const ticks = ANS.map((_, i) => `<i style="left:${((o.ttft + i * o.tpot) / TMAX) * 100}%"></i>`).join('');
+    const endPct = (endOf(o) / TMAX) * 100;
+    const lab = endPct < 62
+      ? `<span class="lab" style="left:calc(${endPct}% + 10px)">첫 토큰 ${o.ttft.toFixed(2)}초 · 끝 ${endOf(o).toFixed(1)}초</span>`
+      : `<span class="lab" style="left:10px;color:#1b1b1f">첫 토큰 ${o.ttft.toFixed(2)}초</span>`;
+    tr.innerHTML = `<i class="bar-pf" style="width:${Math.max(0.35, (o.ttft / TMAX) * 100)}%"></i><span class="ticks" style="left:0;right:0">${ticks}</span>${lab}<i class="kv-playhead"></i>`;
+  });
+  let sel = 2, raf = 0, playing = false;
+  const bot = $('[data-kv-bot]'), docEl = $('[data-kv-doc]'), ttftEl = $('[data-kv-ttft]'), tpotEl = $('[data-kv-tpot]');
+  const fullAns = ANS.join('');
+  const showLane = (k) => {
+    sel = k;
+    laneBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i === k)));
+    const o = LANES[k];
+    docEl.textContent = o.doc; docEl.style.display = o.doc ? '' : 'none';
+    ttftEl.textContent = o.ttft.toFixed(2) + '초';
+    tpotEl.textContent = o.tpot.toFixed(3) + '초';
+    bot.textContent = fullAns;
+  };
+  const stop = () => { cancelAnimationFrame(raf); playing = false; tracks.forEach((tr) => { tr.querySelector('.kv-playhead').style.opacity = 0; const b = tr.querySelector('.bar-pf'); b.style.transform = ''; tr.querySelectorAll('.ticks i').forEach((t) => (t.style.opacity = '')); }); };
+  const play = () => {
+    stop(); const o = LANES[sel]; const tr = tracks[sel];
+    if (reduce) { showLane(sel); return; }
+    playing = true;
+    const ph = tr.querySelector('.kv-playhead'), bar = tr.querySelector('.bar-pf'), ticks = [...tr.querySelectorAll('.ticks i')];
+    ticks.forEach((t) => (t.style.opacity = 0));
+    bar.style.transform = 'scaleX(0)';
+    ph.style.opacity = 1;
+    bot.innerHTML = '<span class="wait"><i></i><i></i><i></i> 붙인 글을 읽는 중…</span>';
+    ttftEl.textContent = '0.00초';
+    const t0 = performance.now();
+    const tick = (now) => {
+      const t = (now - t0) / 1000;
+      ph.style.left = Math.min(100, (t / TMAX) * 100) + '%';
+      bar.style.transform = `scaleX(${Math.min(1, t / o.ttft)})`;
+      if (t < o.ttft) ttftEl.textContent = t.toFixed(2) + '초';
+      else ttftEl.textContent = o.ttft.toFixed(2) + '초';
+      const n = t < o.ttft ? 0 : Math.min(ANS.length, Math.floor((t - o.ttft) / o.tpot) + 1);
+      ticks.forEach((x, i) => (x.style.opacity = i < n ? 1 : 0));
+      if (n > 0) bot.textContent = ANS.slice(0, n).join('');
+      if (t < endOf(o) + 0.3) raf = requestAnimationFrame(tick);
+      else { playing = false; ph.style.opacity = 0; }
+    };
+    raf = requestAnimationFrame(tick);
+  };
+  laneBtns.forEach((b, i) => on(b, 'click', () => { stop(); showLane(i); }));
+  on($('[data-kv-play]'), 'click', play);
+  showLane(2);
+
+  /* ---------- 1. 토큰 × 층 격자 (스크롤) ---------- */
+  const svg = $('[data-kv-grid]');
+  const TOK = ['하늘', '은', '왜', '파란', '색', '?', '햇빛', '속', '파란', '빛'];
+  const X0 = 64, PW = 56, CW = 50;
+  const cx = (c) => X0 + c * PW;
+  const ROWS = [{ y: 54, l: '1층' }, { y: 96, l: '2층' }, { y: 136, l: '⋮', dots: true }, { y: 158, l: '28층' }];
+  let s = '';
+  ROWS.forEach((r) => { s += `<text x="${X0 - 8}" y="${r.dots ? r.y + 16 : r.y + 25}" text-anchor="end" class="dim" style="font-size:22px">${r.l}</text>`; });
+  for (let c = 0; c < 10; c++) {
+    const a = c >= 6;
+    s += `<g class="fade" data-g-lab="${c}"><rect class="tok${a ? ' a' : ''}" x="${cx(c)}" y="6" width="${CW}" height="36" rx="7"/><text x="${cx(c) + CW / 2}" y="31" text-anchor="middle" style="font-size:22px;font-weight:700">${TOK[c]}</text></g>`;
+    ROWS.forEach((r, ri) => {
+      if (r.dots) s += `<text x="${cx(c) + CW / 2}" y="${r.y + 14}" text-anchor="middle" class="dim fade" data-g-dot="${c}" style="font-size:22px">⋮</text>`;
+      else s += `<rect class="cell fade" data-cell="${c}" data-row="${ri}" x="${cx(c)}" y="${r.y}" width="${CW}" height="36" rx="5"/>`;
+    });
+    s += `<g class="fade" data-g-chip="${c}"><rect class="chip" x="${cx(c)}" y="264" width="${CW}" height="34" rx="6"/><text class="chiptx" x="${cx(c) + CW / 2}" y="288" text-anchor="middle" style="font-size:22px">K</text><rect class="chip" x="${cx(c)}" y="304" width="${CW}" height="34" rx="6"/><text class="chiptx" x="${cx(c) + CW / 2}" y="328" text-anchor="middle" style="font-size:22px">V</text></g>`;
+  }
+  // 나온 토큰 표시 (c 열이 낸 토큰)
+  const OUT = { 5: '햇빛', 6: '속', 7: '파란', 8: '빛' };
+  Object.entries(OUT).forEach(([c, t]) => {
+    c = +c; const x = cx(c) + CW / 2; const col = c === 5 ? 'var(--pf)' : 'var(--dc)';
+    s += `<g class="fade" data-g-out="${c}"><path d="M${x} 200 V 214" style="stroke:${col};stroke-width:2.5"/><path d="M${x - 6} 208 L${x} 216 L${x + 6} 208" style="stroke:${col};stroke-width:2.5;fill:none"/><text x="${x}" y="242" text-anchor="middle" style="font-size:22px;font-weight:700;fill:${col}">${t}</text></g>`;
+  });
+  s += `<rect class="shelf" x="${X0 - 4}" y="256" width="${10 * PW + 2}" height="90" rx="10"/>`;
+  s += `<text x="${X0 - 8}" y="292" text-anchor="end" style="font-size:22px;font-weight:700;fill:var(--kc)">KV</text><text x="${X0 - 8}" y="320" text-anchor="end" style="font-size:21px;fill:var(--kc)">선반</text>`;
+  s += `<rect data-g-read x="${X0 - 2}" y="259" width="0" height="84" rx="8" style="fill:color-mix(in srgb, var(--kc) 16%, transparent);stroke:var(--kc);stroke-width:2" class="fade"/>`;
+  s += `<path data-g-rarr class="fade" d="" style="stroke:var(--kc);stroke-width:2.5;fill:none" marker-end="url(#kvArr2)"/>`;
+  const lx = cx(6) - 3;
+  s += `<g class="fade" data-g-ttft><line class="ttft" x1="${lx}" y1="0" x2="${lx}" y2="352"/><text x="${lx - 8}" y="378" text-anchor="end" style="font-size:22px;font-weight:700;fill:var(--pf)">← Prefill</text></g>`;
+  s += `<g class="fade" data-g-dec><text x="${lx + 8}" y="378" style="font-size:22px;font-weight:700;fill:var(--dc)">Decode →</text></g>`;
+  s += `<defs><marker id="kvArr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L10 5 L0 10 z" style="fill:var(--kc)"/></marker></defs>`;
+  svg.innerHTML = s;
+  const note = $('[data-kv-note]');
+  const NOTES = [
+    '프롬프트 6토큰 도착, 아직 계산 전',
+    '<span class="pf">Prefill</span>: 6토큰을 한 번에 계산 → 선반에 K·V 6쌍',
+    '첫 토큰 "햇빛" 출력 — 여기까지가 TTFT',
+    '<span class="dc">Decode</span>: 새로 계산 1토큰, 선반에서 읽은 K·V 6쌍',
+    '<span class="dc">Decode</span> 세 번째: 새로 계산 1토큰, 읽은 K·V 8쌍',
+  ];
+  const vis = (sel, v) => $$(sel, svg).forEach((e) => (e.style.opacity = v ? 1 : 0));
+  const setStep = (st) => {
+    for (let c = 0; c < 10; c++) {
+      const filled = c < 6 ? st >= 1 : (c === 6 ? st >= 3 : (c <= 8 ? st >= 4 : false));
+      $$(`[data-cell="${c}"]`, svg).forEach((e, ri) => {
+        e.classList.toggle('p', c < 6 && filled); e.classList.toggle('d', c >= 6 && filled);
+        e.style.transitionDelay = (!reduce && c < 6 && st === 1) ? `${ri * 90}ms` : '0ms';
+      });
+      const labOn = c < 6 || (c === 6 && st >= 2) || (c === 7 && st >= 3) || (c >= 8 && st >= 4);
+      vis(`[data-g-lab="${c}"]`, labOn);
+      vis(`[data-cell="${c}"]`, labOn); vis(`[data-g-dot="${c}"]`, labOn);
+      vis(`[data-g-chip="${c}"]`, filled);
+    }
+    vis('[data-g-out="5"]', st === 2); vis('[data-g-out="6"]', st === 3); vis('[data-g-out="7"]', false); vis('[data-g-out="8"]', st >= 4);
+    vis('[data-g-ttft]', st >= 2); vis('[data-g-dec]', st >= 3);
+    const rd = $('[data-g-read]', svg), ra = $('[data-g-rarr]', svg);
+    if (st >= 3) {
+      const upto = st === 3 ? 6 : 8; // 읽는 칸 수
+      rd.setAttribute('width', upto * PW - 2); rd.style.opacity = 1;
+      const xs = X0 + upto * PW - 8, xe = cx(upto) + CW / 2;
+      ra.style.opacity = 0;
+    } else { rd.style.opacity = 0; ra.style.opacity = 0; }
+    note.innerHTML = NOTES[st];
+  };
+  const steps = $$('[data-kv-step]');
+  const sticky = $('[data-kv-sticky]');
+  let cur = -1;
+  const pick = () => {
+    const mob = window.innerWidth <= 900;
+    if (!mob) sticky.style.top = Math.max(80, (window.innerHeight - sticky.offsetHeight) / 2) + 'px';
+    else sticky.style.top = '';
+    const line = window.innerHeight * (mob ? 0.72 : 0.5);
+    let best = 0, bd = Infinity;
+    steps.forEach((el, i) => { const r = el.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bd) { bd = d; best = i; } });
+    if (best !== cur) { cur = best; steps.forEach((el, i) => el.classList.toggle('on', i === best)); setStep(best); }
+  };
+  let tk = 0;
+  on(window, 'scroll', () => { if (!tk) tk = requestAnimationFrame(() => { tk = 0; pick(); }); }, { passive: true });
+  on(window, 'resize', pick, { passive: true });
+  pick();
+
+  /* ---------- 2. 계단 삼각형 ---------- */
+  const tri = $('[data-kv-tri]'), nIn = $('[data-kv-n]'), nOut = $('[data-kv-nout]');
+  const c1 = $('[data-kv-c1]'), c2 = $('[data-kv-c2]');
+  let useCache = false;
+  const drawTri = () => {
+    const n = +nIn.value; nOut.textContent = n + '토큰';
+    let h = '';
+    for (let r = 0; r < n; r++) {
+      let cells = '';
+      for (let c = 0; c < 18; c++) {
+        let k = '';
+        if (c <= 5 + r) {
+          if (r === 0) k = 'p';
+          else if (c === 5 + r) k = 'd';
+          else k = useCache ? 'r' : 'x';
+        }
+        cells += `<i class="${k}"></i>`;
+      }
+      h += `<div class="kv-tri-row"><b>${r + 1}</b><div class="kv-tri-cells">${cells}</div></div>`;
+    }
+    tri.innerHTML = h;
+    const noC = 6 * n + (n * (n - 1)) / 2, yesC = 6 + (n - 1);
+    c1.textContent = fmt(useCache ? yesC : noC) + '칸';
+    c2.textContent = useCache ? '기준' : '× ' + (noC / yesC).toFixed(1);
+  };
+  $$('[data-kv-cache]').forEach((b) => on(b, 'click', () => {
+    useCache = b.dataset.kvCache === '1';
+    $$('[data-kv-cache]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawTri();
+  }));
+  on(nIn, 'input', drawTri);
+  drawTri();
+
+  /* ---------- 2b. 실측 막대 ---------- */
+  const NO = [0.595,0.749,0.567,0.575,0.57,0.582,0.577,0.572,0.581,0.577,0.581,0.574,0.578,0.572,0.575,0.581,0.618,0.741,0.594,0.603,0.6,0.59,0.585,0.597,0.59,0.592,0.595,0.596,0.597,0.603,0.599,0.597,0.607,0.754,0.613,0.62,0.615,0.61,0.608,0.614,0.611,0.619,0.619,0.627,0.623,0.621,0.612,0.615,0.728,0.733,0.624,0.619,0.627,0.626,0.627,0.633,0.631,0.637,0.626,0.637,0.626,0.63,0.638,0.643];
+  const YES = [0.0414,0.0517,0.0425,0.0478,0.0425,0.0438,0.0482,0.0459,0.043,0.0438,0.0448,0.0418,0.0401,0.0433,0.0415,0.0438,0.0433,0.0426,0.0438,0.0434,0.0437,0.0482,0.0453,0.0457,0.0459,0.0456,0.0495,0.0414,0.0428,0.0402,0.042,0.0423,0.043,0.0425,0.0456,0.0445,0.0447,0.0414,0.041,0.0423,0.0448,0.0454,0.0418,0.0444,0.0452,0.0463,0.0407,0.0475,0.0418,0.0427,0.041,0.0419,0.0457,0.0432,0.0464,0.0421,0.0416,0.0427,0.0399,0.0405,0.0406,0.0418,0.0443,0.0428];
+  [[NO, '0'], [YES, '1']].forEach(([arr, k]) => {
+    $(`[data-kv-spark="${k}"]`).innerHTML = arr.map((v) => `<i style="height:${(v / 0.75) * 100}%"></i>`).join('');
+  });
+  $('[data-kv-sum0]').textContent = '합계 ' + NO.reduce((a, b) => a + b, 0).toFixed(1) + '초';
+  $('[data-kv-sum1]').textContent = '합계 ' + YES.reduce((a, b) => a + b, 0).toFixed(1) + '초';
+
+  /* ---------- 3. 나르기 vs 계산 ---------- */
+  const W_BYTES = 7615616512 * 2, FLOP_TOK = 2 * 7615616512;
+  const GPUS = [
+    { n: 'RTX 4090', bw: 1008e9, fl: 165.2e12, mem: 24 },
+    { n: 'A100', bw: 2039e9, fl: 312e12, mem: 80 },
+    { n: 'H100', bw: 3350e9, fl: 989e12, mem: 80 },
+  ];
+  let g = 2;
+  const tokIn = $('[data-kv-tok]');
+  const ms = (x) => x >= 100 ? fmt(x, 0) + 'ms' : x >= 1 ? x.toFixed(1) + 'ms' : x >= 0.1 ? x.toFixed(2) + 'ms' : x.toFixed(3) + 'ms';
+  const drawRace = () => {
+    const G = GPUS[g], N = 2 ** +tokIn.value;
+    $('[data-kv-tokout]').textContent = fmt(N) + '개';
+    const mv = (W_BYTES / G.bw) * 1000, cp = (FLOP_TOK * N / G.fl) * 1000, mx = Math.max(mv, cp);
+    const setBar = (sel, tsel, v) => {
+      const p = (v / mx) * 100; $(sel).style.width = p + '%';
+      const t = $(tsel); t.textContent = ms(v);
+      t.style.left = p > 70 ? `calc(${p}% - ${t.textContent.length * 9 + 12}px)` : `calc(${p}% + 10px)`;
+      t.style.color = p > 70 ? '#1b1b1f' : '';
+    };
+    setBar('[data-kv-mv]', '[data-kv-mvt]', mv);
+    setBar('[data-kv-cp]', '[data-kv-cpt]', cp);
+    const ridge = Math.round(G.fl / G.bw);
+    $('[data-kv-kbw]').textContent = `초당 ${G.bw >= 2e12 ? (G.bw / 1e12).toFixed(2) + 'TB' : fmt(G.bw / 1e9) + 'GB'}`;
+    $('[data-kv-kfl]').textContent = `초당 약 ${fmt(G.fl / 1e12, 0)}조 번`;
+    const per = mx / N;
+    $('[data-kv-verdict]').innerHTML = mv >= cp
+      ? `<em class="m">메모리가 병목</em> 나르기가 계산보다 ${fmt(mv / cp, mv / cp < 10 ? 1 : 0)}배 깁니다. 토큰 하나당 ${ms(per)}. ${G.n}는 한 번에 약 ${ridge}개를 넘겨야 계산이 병목이 됩니다.`
+      : `<em class="c">계산이 병목</em> 계산이 나르기보다 ${fmt(cp / mv, 1)}배 깁니다. 토큰 하나당 ${ms(per)}. 이제 토큰 수를 늘린 만큼 시간이 늘어납니다.`;
+  };
+  $$('[data-kv-gpu]').forEach((b) => on(b, 'click', () => {
+    g = +b.dataset.kvGpu; $$('[data-kv-gpu]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); drawRace();
+  }));
+  on(tokIn, 'input', drawRace);
+  drawRace();
+  // 창고 상자
+  let bx = '';
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) bx += `<rect class="box" x="${32 + c * 36}" y="${84 + r * 32}" width="30" height="26" rx="4"/>`;
+  $('[data-kv-boxes]').innerHTML = bx;
+
+  /* ---------- 4. 메모리 막대 (끌어서 사용자 수) ---------- */
+  const CTX = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072];
+  const ctxIn = $('[data-kv-ctx]'), mha = $('[data-kv-mha]'), memBar = $('[data-kv-membar]');
+  let U = 8;
+  const CAP = 80e9, WGB = W_BYTES, SCALE = 160e9; // 막대 전체 = 160GB
+  const gb = (b) => b >= 100e9 ? fmt(b / 1e9, 0) + 'GB' : b >= 1e9 ? (b / 1e9).toFixed(1) + 'GB' : fmt(b / 1e6, 0) + 'MB';
+  $('[data-kv-cap]').style.left = (CAP / SCALE) * 100 + '%';
+  $('[data-kv-axis2]').innerHTML = [0, 40, '', 120, 160].map((v) => `<span>${v === '' ? '&nbsp;' : v + 'GB'}</span>`).join('');
+  const per = () => 2 * 28 * (mha.checked ? 28 : 4) * 128 * 2 * CTX[+ctxIn.value];
+  const drawMem = () => {
+    const ctx = CTX[+ctxIn.value], heads = mha.checked ? 28 : 4;
+    $('[data-kv-ctxout]').textContent = (ctx / 1024) + 'K';
+    const perTok = 2 * 28 * heads * 128 * 2, perUser = perTok * ctx, total = WGB + perUser * U;
+    let h = `<i class="w" style="width:${(WGB / SCALE) * 100}%"></i>`;
+    for (let i = 0; i < U; i++) {
+      const start = WGB + perUser * i, end = start + perUser;
+      if (start >= SCALE) break;
+      h += `<i class="u${end > CAP ? ' over' : ''}" style="width:${((Math.min(end, SCALE) - start) / SCALE) * 100}%"></i>`;
+    }
+    h += `<span class="h" style="left:${(Math.min(total, SCALE) / SCALE) * 100}%"></span>`;
+    memBar.innerHTML = h;
+    memBar.setAttribute('aria-valuenow', U);
+    const maxU = Math.floor((CAP - WGB) / perUser);
+    $('[data-kv-memline]').innerHTML = `토큰 하나 <b>${fmt(perTok)}바이트</b> · 한 사람 몫(${fmt(ctx)}토큰) <b>${gb(perUser)}</b> · <b>${U}명</b>이면 가중치 포함 <b class="${total > CAP ? 'bad' : ''}">${gb(total)}</b>${total > CAP ? '<span class="bad"> (80GB 넘침)</span>' : ''} · 80GB에 최대 <b>${fmt(maxU)}명</b>`;
+  };
+  const setFromX = (x) => {
+    const r = memBar.getBoundingClientRect();
+    const g = Math.max(0, Math.min(1, (x - r.left) / r.width)) * SCALE;
+    U = Math.max(1, Math.min(64, Math.round((g - WGB) / per())));
+    drawMem();
+  };
+  let dragging = false;
+  on(memBar, 'pointerdown', (e) => { dragging = true; memBar.classList.add('drag'); memBar.setPointerCapture?.(e.pointerId); setFromX(e.clientX); });
+  on(memBar, 'pointermove', (e) => { if (dragging) setFromX(e.clientX); });
+  const end = () => { dragging = false; memBar.classList.remove('drag'); };
+  on(memBar, 'pointerup', end); on(memBar, 'pointercancel', end);
+  on(memBar, 'keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { U = Math.min(64, U + 1); drawMem(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { U = Math.max(1, U - 1); drawMem(); e.preventDefault(); }
+  });
+  on(ctxIn, 'input', drawMem); on(mha, 'change', drawMem);
+  drawMem();
+
+  /* ---------- 5. 배치 (M4 실측) ---------- */
+  const BT = { 1: 0.0428, 2: 0.0434, 4: 0.0439, 8: 0.0459, 16: 0.0742, 32: 0.0835, 64: 0.1082 };
+  const BK = Object.keys(BT).map(Number);
+  const maxPer = 1 / 0.0428, maxTot = 64 / 0.1082;
+  const col = (b, v, mx) => `<button type="button" data-b="${b}" aria-label="${b}명"><span>${v}</span><i style="height:${mx * 78}%"></i></button>`;
+  $('[data-kv-bper]').innerHTML = BK.map((b) => col(b, (1 / BT[b]).toFixed(1), 1 / BT[b] / maxPer)).join('');
+  $('[data-kv-btot]').innerHTML = BK.map((b) => col(b, fmt(b / BT[b]), b / BT[b] / maxTot)).join('');
+  $('[data-kv-bx]').innerHTML = BK.map((b) => `<span>${b}</span>`).join('');
+  const drawB = (b) => {
+    $$('[data-b]').forEach((x) => { x.classList.toggle('on', +x.dataset.b === b); x.setAttribute('aria-pressed', String(+x.dataset.b === b)); });
+    $('[data-kv-bread]').innerHTML = `${b}명이 동시에 쓰면 한 사람은 초당 <span class="dc">${(1 / BT[b]).toFixed(1)}토큰</span>, 서버 전체는 초당 <span style="color:var(--ok)">${fmt(b / BT[b])}토큰</span>`;
+  };
+  $$('[data-b]').forEach((x) => on(x, 'click', () => drawB(+x.dataset.b)));
+  drawB(8);
+})();
+</script>
