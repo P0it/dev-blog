@@ -6,7 +6,7 @@ tags: [AI Agent, LLM, 챗봇, 워크플로, OpenAI API, Python]
 category: ai
 series: ai-agent
 series_order: 1
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-vs-chatbot-mv7gtub9.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-vs-chatbot-mv7j9o6p.jpg
 ---
 <!-- page -->
 <!-- layout: 비교 나란히(세 갈래 레인) 히어로 + 가운데 글 열, 넓은 그림은 860px | 글의 성격: 같은 입력을 세 방식이 다르게 처리하는 비교가 핵심, 뒤 섹션은 짧은 개념 여러 개 | 버린 후보: 그림 고정 스크롤리텔링(한 그림이 단계별로 변하는 계산 글이 아님), 옆 조작판(모든 그림을 움직일 변수 하나가 없음) -->
@@ -217,6 +217,32 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .ag-head > h2 { margin-bottom: 4px; }
   .post-page .ag-pull { text-align: left; }
 }
+/* 단계 흐름은 스크롤로 — 그림을 고정해 두고 스크롤한 만큼 단계가 진행된다. 클릭은 체험용 조작에만 */
+.post-page .ag-stick { position: sticky; top: 76px; z-index: 2; }
+.post-page .ag-scroll-space { height: calc(var(--n) * 36vh); }
+.post-page .ag-stepcap { display: block; text-align: center; font-size: 14px; font-weight: 600; color: var(--fg-strong); margin: 20px 0 0 !important; }
+.post-page .ag-ctrl .ag-stepcap { display: inline-block; margin: 0 !important; min-width: 7em; text-align: left; }
+.post-page .ag-hero .ag-stick { background: var(--bg-base); padding-bottom: 8px; }
+.post-page .ag-band .ag-stick { background: var(--bg-subtle); }
+.post-page .ag-loopscroll { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(40px, 6vw, 64px); }
+.post-page .ag-loop-steps { list-style: none; margin: 0; padding: 18vh 0 24vh; counter-reset: lp; }
+.post-page .ag-loop-steps li { counter-increment: lp; min-height: 44vh; display: flex; gap: 12px; align-items: center; font-size: 17px; line-height: 1.75; color: var(--fg-neutral); opacity: .35; transition: opacity .3s, color .3s; word-break: keep-all; }
+.post-page .ag-loop-steps li::before { content: counter(lp); flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--bg-base); background: var(--fg-alternative); }
+.post-page .ag-loop-steps li.on { opacity: 1; color: var(--fg-strong); }
+.post-page .ag-loop-steps li.on::before { background: var(--ag-model); }
+.post-page .ag-loop-stick { position: sticky; top: 96px; align-self: start; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .9fr); gap: 24px; align-items: center; background: var(--bg-base); z-index: 2; }
+@media (max-width: 900px) {
+  .post-page .ag-loopscroll { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .ag-loop-stick { order: -1; top: 64px; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px 0 12px; }
+  .post-page .ag-loop-stick .ag-loop { max-width: 340px; }
+  .post-page .ag-loop-stick .ag-state ol { max-height: 92px; overflow: hidden; justify-content: flex-end; }
+  .post-page .ag-loop-stick .ag-state .ag-msg { padding: 3px 8px; }
+  .post-page .ag-loop-stick .ag-state { font-size: 12.5px; }
+  .post-page .ag-loop-stick .ag-state h4 { display: none; }
+  .post-page .ag-loop-steps { padding: 4vh 0 30vh; }
+  .post-page .ag-loop-steps li { min-height: 52vh; align-items: flex-start; padding-top: 6vh; }
+  .post-page .ag-stick { top: 60px; }
+}
 @media (max-width: 900px) {
   .post-page .ag-lanes { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 82%; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; overscroll-behavior-x: contain; }
   .post-page .ag-lane { scroll-snap-align: start; }
@@ -256,16 +282,17 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <span class="ag-who h">직원</span>
         <div class="ag-req-bubble">노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
       </div>
-      <div class="ag-wide" style="max-width:1120px" data-figure data-thumb data-thumb-act="el.querySelector('[data-ag-all]').click(); el.querySelector('.ag-ctrl').style.display='none'; el.querySelector('.ag-cap').style.display='none'">
+      <div class="ag-scroll" data-ag-scroll="hero">
+      <div class="ag-stick">
+      <div class="ag-wide" style="max-width:1120px" data-figure data-thumb data-thumb-act="el.querySelector('[data-ag-lanes]').dispatchEvent(new Event('ag-all')); el.querySelector('.ag-ctrl').style.display='none'; el.querySelector('.ag-stepcap').style.display='none'; el.querySelector('.ag-cap').style.display='none'">
         <div class="ag-ctrl" style="margin-top:36px;justify-content:center">
           <span>상황</span>
           <div class="ag-seg" role="group" aria-label="상황 고르기">
             <button type="button" data-ag-case="dup" aria-pressed="true">지난주에 같은 티켓을 열어 둠</button>
             <button type="button" data-ag-case="new" aria-pressed="false">열린 티켓 없음</button>
           </div>
-          <button type="button" class="ag-act" data-ag-next>한 단계씩 보기</button>
-          <button type="button" class="ag-act plain" data-ag-all>전부 보기</button>
         </div>
+        <p class="ag-stepcap" data-ag-hcap aria-live="polite">스크롤을 내리면 세 칸이 한 단계씩 진행됩니다</p>
         <p class="ag-swipe">옆으로 밀면 세 칸을 차례로 볼 수 있습니다 →</p>
         <div class="ag-lanes" data-ag-lanes aria-live="polite">
           <div class="ag-lane" data-lane="chat">
@@ -289,6 +316,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <span class="ag-who h">사람</span><span class="ag-who c">미리 짠 코드</span><span class="ag-who m">모델(LLM)</span>
         </div>
         <p class="ag-cap">설명을 위해 만든 예시 시나리오입니다. 실제 모델이 늘 이렇게 판단하지는 않습니다. 상황을 바꿔 보세요. 챗봇과 워크플로는 같은 길로 가고 Agent만 길을 바꿉니다.</p>
+      </div>
+      </div>
+      <div class="ag-scroll-space" style="--n:3"></div>
       </div>
     </div>
   </header>
@@ -423,17 +453,21 @@ print(response.usage.total_tokens)</code></pre>
     </div>
     <div class="ag-band">
       <div class="ag-wrap">
+      <div class="ag-scroll" data-ag-scroll="calls">
+      <div class="ag-stick">
       <div class="ag-fig ag-fig-band" data-figure>
         <div class="ag-ctrl">
-          <button type="button" class="ag-act" data-ag-turn>다음 질문 보내기</button>
+          <span class="ag-stepcap" data-ag-ccap aria-live="polite">1번째 호출</span>
           <div class="ag-seg" role="group" aria-label="보내는 방식">
             <button type="button" data-ag-mem="on" aria-pressed="true">대화 전체 보내기</button>
             <button type="button" data-ag-mem="off" aria-pressed="false">이번 질문만 보내기</button>
           </div>
-          <button type="button" class="ag-act plain" data-ag-turn-reset>처음부터</button>
         </div>
         <div class="ag-calls" data-ag-calls></div>
-        <p class="ag-cap">묶음 하나가 API 호출 한 번이며 위쪽 칸들은 실어 보낸 메시지, 굵은 테두리 칸은 이번에 새로 더한 메시지입니다. 맨 아래 "답" 말풍선은 돌아온 답이라 보낸 메시지 수에 세지 않습니다. 막대는 보낸 토큰 수이며 숫자는 설명을 위한 예시 값입니다.</p>
+        <p class="ag-cap">묶음 하나가 API 호출 한 번이며 위쪽 칸들은 실어 보낸 메시지, 굵은 테두리 칸은 이번에 새로 더한 메시지입니다. 맨 아래 "답" 말풍선은 돌아온 답이라 보낸 메시지 수에 세지 않습니다. 막대는 보낸 토큰 수이며 숫자는 설명을 위한 예시 값입니다. 스크롤을 내리면 호출이 하나씩 늘어납니다.</p>
+      </div>
+      </div>
+      <div class="ag-scroll-space" style="--n:3"></div>
       </div>
       </div>
     </div>
@@ -544,11 +578,21 @@ while True:
         <h2>Agent는 도구를 부르는 반복 하나로 움직입니다</h2>
         <div>
         <p>Agent를 이루는 부품은 네 가지입니다. 판단하는 <b>모델</b>, 개발자가 주는 <b>지시</b>(system 메시지), 모델이 부를 수 있는 <b>도구</b>, 지금까지 일어난 일을 담은 <b>상태</b>(메시지 목록)입니다. 이 넷을 엮는 것이 <b>루프</b>입니다. 같은 순서를 되풀이하는 반복문을 말합니다.</p>
-        <p>개발자 Simon Willison은 2025년 9월 이것을 한 문장으로 정리했습니다. "LLM Agent는 목표를 이루려고 루프 안에서 도구를 실행한다." 아래에서 히어로의 Agent가 한 일을 한 바퀴씩 넘겨 보세요.</p>
+        <p>개발자 Simon Willison은 2025년 9월 이것을 한 문장으로 정리했습니다. "LLM Agent는 목표를 이루려고 루프 안에서 도구를 실행한다." 아래로 스크롤하면 히어로의 Agent가 한 일이 한 단계씩 진행됩니다.</p>
         </div>
       </div>
-      <div class="ag-wide ag-fig ag-loop-wrap" data-figure>
-        <div>
+      <div class="ag-loopscroll">
+        <ol class="ag-loop-steps">
+          <li data-ag-li="0">시작: 직원의 메시지가 목록에 들어왔습니다. 모델을 부릅니다.</li>
+          <li data-ag-li="1">모델이 답 대신 도구 요청서를 썼습니다. 아직 아무것도 실행되지 않았습니다.</li>
+          <li data-ag-li="2">내 코드가 요청서를 읽고 티켓 시스템을 실제로 조회해, 결과를 목록에 더했습니다.</li>
+          <li data-ag-li="3">목록 전체를 들고 모델을 다시 부릅니다. 한 바퀴를 돌았습니다.</li>
+          <li data-ag-li="4">모델이 결과를 보고 새 티켓 대신 기존 티켓에 덧붙이기로 했습니다.</li>
+          <li data-ag-li="5">코드가 메모를 실제로 추가하고 결과를 목록에 더했습니다.</li>
+          <li data-ag-li="6">다시 모델을 부릅니다. 두 바퀴째입니다.</li>
+          <li data-ag-li="7">이번에는 요청서 대신 직원에게 줄 답을 썼습니다. 루프가 끝납니다.</li>
+        </ol>
+        <div class="ag-loop-stick" data-figure>
           <svg class="ag-loop" viewBox="0 0 480 440" role="img" aria-label="모델이 도구 요청서를 쓰면 코드가 도구를 실행하고 결과를 메시지 목록에 더한 뒤 다시 모델을 부르는 루프. 모델이 요청서 대신 답을 쓰면 루프를 빠져나간다">
             <defs><marker id="ag-arr2" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
             <path class="arc" data-arc="0" d="M165 92 C 96 104 72 168 88 222" marker-end="url(#ag-arr2)"/>
@@ -571,15 +615,10 @@ while True:
             <text x="240" y="412" text-anchor="middle" class="t-dim" font-size="16">요청서를 받으면 코드가 실행 →</text>
             <text x="478" y="56" text-anchor="end" class="t-dim" font-size="16">답을 쓰면 끝</text>
           </svg>
-          <div class="ag-ctrl" style="justify-content:center">
-            <button type="button" class="ag-act" data-ag-loop>한 단계 넘기기</button>
-            <button type="button" class="ag-act plain" data-ag-loop-reset>처음부터</button>
+          <div class="ag-state">
+            <h4>상태: 메시지 목록</h4>
+            <ol data-ag-state></ol>
           </div>
-          <p class="ag-loop-note" data-ag-loop-note aria-live="polite">시작: 직원의 메시지가 목록에 들어왔습니다. 모델을 부릅니다.</p>
-        </div>
-        <div class="ag-state">
-          <h4>상태: 메시지 목록</h4>
-          <ol data-ag-state></ol>
         </div>
       </div>
       <div class="ag-zig ag-zig-b">
@@ -701,6 +740,24 @@ while True:
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
   const who = { h: "사람", c: "미리 짠 코드", m: "모델" };
 
+  // 스크롤로 단계 진행 — 고정된 그림(첫 자식)이 바깥 틀을 지나가는 정도를 0~1 로 재서 단계 번호로 바꾼다
+  function scrollSteps(box, n, draw) {
+    let last = -1, raf = 0;
+    const stick = box.firstElementChild;
+    const tick = () => {
+      raf = 0;
+      const r = box.getBoundingClientRect(), h = stick.getBoundingClientRect().height;
+      const top = parseFloat(getComputedStyle(stick).top) || 0;
+      const p = Math.min(1, Math.max(0, (top - r.top) / Math.max(1, r.height - h)));
+      const k = Math.min(n - 1, Math.floor(p * n));
+      if (k !== last) { last = k; draw(k); }
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal });
+    addEventListener("resize", on, { signal });
+    tick();
+  }
+
   /* 히어로: 세 갈래 */
   const LANES = {
     dup: {
@@ -725,17 +782,16 @@ while True:
         `<li class="ag-step${i >= hStep ? " hide" : ""}" data-w="${w}"><span class="ag-who ${w}">${who[w]}</span><div class="ag-step-t">${esc(t)}${r ? `<span class="ag-step-r">${esc(r)}</span>` : ""}</div></li>`
       ).join("") + `<li class="ag-end ${d.end[0]}${hStep <= d.steps.length - 1 ? " hide" : ""}">${esc(d.end[1])}</li>`;
     }
-    const nxt = $("[data-ag-next]");
-    nxt.textContent = hStep >= 3 ? "한 단계씩 보기" : `다음 단계 (${hStep}/3)`;
+    const cap = $("[data-ag-hcap]");
+    if (cap) cap.textContent = hStep >= 3 ? "세 칸 모두 끝까지 진행했습니다" : `${hStep}단계 / 3 · 스크롤을 내리면 다음 단계가 나옵니다`;
   }
   $$("[data-ag-case]").forEach((b) => b.addEventListener("click", () => {
     hCase = b.dataset.agCase;
     $$("[data-ag-case]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    hStep = 99; drawLanes();
+    drawLanes();
   }, { signal }));
-  $("[data-ag-next]").addEventListener("click", () => { hStep = hStep >= 3 ? 1 : hStep + 1; drawLanes(); }, { signal });
-  $("[data-ag-all]").addEventListener("click", () => { hStep = 99; drawLanes(); }, { signal });
-  drawLanes();
+  lanesEl.addEventListener("ag-all", () => { hStep = 99; drawLanes(); }, { signal });
+  scrollSteps($('[data-ag-scroll="hero"]'), 3, (k) => { hStep = k + 1; drawLanes(); });
 
   /* 1. 글만 쓰는 LLM */
   const OUT = ["네", ",", " 티켓", " #", "1043", "을", " 열", "었습니다", ".", " 곧", " 담당자가", " 연락", "드릴", " 거예요", "."];
@@ -782,18 +838,14 @@ while True:
         <div class="ag-bar-t">보낸 토큰 약 ${tokens}개</div></div>`;
     }
     callsEl.innerHTML = html;
-    const b = $("[data-ag-turn]");
-    b.disabled = turn >= 3;
-    b.textContent = `다음 질문 보내기 (${turn}/3)`;
+    $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3`;
   }
-  $("[data-ag-turn]").addEventListener("click", () => { if (turn < 3) { turn++; drawCalls(); } }, { signal });
-  $("[data-ag-turn-reset]").addEventListener("click", () => { turn = 1; drawCalls(); }, { signal });
   $$("[data-ag-mem]").forEach((b) => b.addEventListener("click", () => {
     mem = b.dataset.agMem;
     $$("[data-ag-mem]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
     drawCalls();
   }, { signal }));
-  turn = 3; drawCalls();
+  scrollSteps($('[data-ag-scroll="calls"]'), 3, (k) => { turn = k + 1; drawCalls(); });
 
   /* 코드 아래 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
   const RUNS = {
@@ -839,13 +891,12 @@ while True:
     const rows = [["sys", "system", "너는 IT 헬프데스크 Agent다"], ["usr", "user", "와이파이가 안 잡혀요. 티켓 열어 주세요"]];
     for (let k = 1; k <= li; k++) if (LOOP[k].add) rows.push(LOOP[k].add);
     stateEl.innerHTML = rows.map(([c, r, t]) => `<li><span class="ag-msg ${c}"><b>${r}</b> ${esc(t)}</span></li>`).join("");
-    $("[data-ag-loop-note]").textContent = LOOP[li].note;
-    const b = $("[data-ag-loop]");
-    b.disabled = li >= LOOP.length - 1;
-    b.textContent = li >= LOOP.length - 1 ? "루프가 끝났습니다" : `한 단계 넘기기 (${li}/${LOOP.length - 1})`;
+    $$("[data-ag-li]").forEach((x) => x.classList.toggle("on", Number(x.dataset.agLi) === li));
   }
-  $("[data-ag-loop]").addEventListener("click", () => { if (li < LOOP.length - 1) { li++; drawLoop(); } }, { signal });
-  $("[data-ag-loop-reset]").addEventListener("click", () => { li = 0; drawLoop(); }, { signal });
+  // 화면 가운데 띠에 들어온 단계 글이 그림의 단계를 정한다
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { li = Number(e.target.dataset.agLi); drawLoop(); } }), { rootMargin: "-62% 0px -28% 0px" });
+  $$("[data-ag-li]").forEach((x) => io.observe(x));
+  signal.addEventListener("abort", () => io.disconnect());
   drawLoop();
 })();
 </script>
