@@ -1,0 +1,1091 @@
+---
+title: LoRA는 7B 모델에서 무엇을 학습할까요?
+slug: fine-tuning-lora-qlora-peft
+excerpt: Qwen2.5-7B를 통째로 다시 학습하면 GPU 메모리가 122GB 넘게 듭니다. LoRA는 원본 숫자를 하나도 고치지 않고 곁에 붙인 얇은 표 두 장만 학습해서, 학습할 숫자를 0.13%로 줄이고 결과물을 40MB 파일 하나로 만듭니다. 표의 두께 rank, 어댑터 크기 계산, 원본을 4비트로 얼려 두는 QLoRA, 직접 돌려 본 말투 학습까지 그림으로 담았습니다.
+tags: [Fine-tuning, LoRA, QLoRA, PEFT, 파인튜닝, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 7
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/fine-tuning-lora-qlora-peft-mv8govgy.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(왼쪽 제목·리드, 아래 축척 그림(W 판·B·A 띠·10배 확대 칸) | 오른쪽 r 손잡이와 영수증형 판독) → 글|그림(두 단계 길 + 실제 출력) → 글|그림(16칸 띠) + 글|그림(쓰기만 할 때 vs 전체 학습 막대) → 글|그림(구구단 격자 + 6×6 근사 세 장) + 글|논문 그림 → 글|그림(자기 r 손잡이가 있는 ΔW 곡선) → 제목·글 + 넓은 그림(묶음 버튼·r 손잡이·층 지도·계산을 한 그림 안에) + 글|잘라 온 Thinking Machines 그림 → 해설|코드·▶터미널 → 글|그림(합치기 버튼 그림 + 저장 막대) → 제목·글 + 실험판 전폭 띠(7B/72B 전환, GPU 카드 상자 안에 쌓은 메모리 탑) + 글|NF4 16칸 그림 + 글|QLoRA 논문 그림 → 글|그림(냥·사실 점수 + 학습 전후 대조표) + 글|그림(2축 지도) → 정리 상자 → 참고 자료. 본문 시작 위치는 왼쪽 열 하나(x 고정), 그림|글 반전 없음 | 원칙: 조작은 결과 그림 바로 위에 둔다(r 은 손잡이 셋이 값을 공유). 회색 판 = 얼린 원본, 주황 띠 = 학습하는 숫자 | 버린 후보: 그림 고정 스크롤리텔링(1·3편), 순환 노선도(2편), 시간 띠(3편), 벤토 히어로(4편), 좌석표 실험 띠 히어로(5편), GPU 평면도(6편), 회색 띠 위 GB 막대 + 초록 GPU 점선(4편 VRAM 계산기와 같은 장치라 버림) -->
+<style>
+.post-page .ft {
+  --frz: rgb(128, 136, 150); --frz-soft: rgb(226, 229, 235);
+  --trn: rgb(232, 110, 28); --trn-soft: rgb(253, 232, 214);
+  --opt: rgb(178, 74, 30); --grd: rgb(240, 160, 80);
+  --neg: rgb(52, 112, 200); --gpu: rgb(30, 140, 90); --bad: rgb(214, 60, 50);
+  --hatch: repeating-linear-gradient(135deg, color-mix(in srgb, var(--fg-neutral) 40%, transparent) 0 2px, transparent 2px 6px);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .ft {
+  --frz: rgb(150, 158, 174); --frz-soft: rgb(58, 62, 72);
+  --trn: rgb(255, 146, 70); --trn-soft: rgb(84, 50, 26);
+  --opt: rgb(240, 120, 80); --grd: rgb(255, 196, 120);
+  --neg: rgb(110, 165, 245); --gpu: rgb(80, 205, 140); --bad: rgb(255, 110, 95);
+}
+.post-page .ft * { box-sizing: border-box; }
+.post-page .ft-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .ft h1, .post-page .ft h2, .post-page .ft h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ft h1 { font-size: clamp(32px, 4.8vw, 54px); line-height: 1.2; max-width: 14em; margin-bottom: 32px; }
+.post-page .ft h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .ft h3 { font-size: 20px; line-height: 1.45; margin-bottom: 20px; }
+.post-page .ft p, .post-page .ft li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .ft p { margin: 0 0 1.5em; }
+.post-page .ft b { color: var(--fg-strong); }
+.post-page .ft code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .ft a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .ft .ft-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .ft details { margin: 0 0 1.4em; }
+.post-page .ft summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .ft details p { margin-top: 10px; font-size: 16px; }
+.post-page .ft .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.post-page .ft ul.ft-list { margin: 0 0 1.5em; padding-left: 1.1em; }
+.post-page .ft ul.ft-list li { margin-bottom: .55em; }
+
+/* 배치 */
+.post-page .ft-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .ft-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .ft-two.code { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 56px); }
+.post-page .ft-two + .ft-two, .post-page .ft-wide + .ft-two { margin-top: clamp(56px, 7vw, 96px); }
+.post-page .ft-col { max-width: 40em; }
+.post-page .ft-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .ft-sec > .ft-wrap + .ft-wrap { margin-top: clamp(56px, 7vw, 96px); }
+.post-page .ft-band { background: var(--bg-subtle); padding: clamp(64px, 7vw, 84px) 0 clamp(44px, 6vw, 68px); margin: clamp(40px, 6vw, 64px) 0; }
+.post-page .ft-fig { margin: 0; }
+
+/* 조작 부품 */
+.post-page .ft-seg { display: inline-flex; flex-wrap: wrap; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .ft-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1.25 var(--font-sans); padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .ft-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.post-page .ft-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .ft-act:disabled { opacity: .45; cursor: default; }
+.post-page .ft-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; }
+.post-page .ft-range label { grid-column: 1 / -1; font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .ft-range input { width: 100%; accent-color: var(--trn); }
+.post-page .ft-range output { font: 700 20px/1 var(--font-mono); color: var(--trn); min-width: 3.2em; text-align: right; }
+.post-page .ft-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--fg-strong); margin-top: 14px; }
+.post-page .ft-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+
+/* ---------- 히어로 ---------- */
+.post-page .ft-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .ft-lede p { font-size: 17.5px; }
+.post-page .ft-lede p:last-child { margin-bottom: 0; }
+.post-page .ft-herofig { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: clamp(28px, 4vw, 56px); align-items: start; margin-top: clamp(36px, 5vw, 48px); }
+.post-page .ft-slab { width: 100%; max-width: 660px; display: block; }
+.post-page .ft-slab text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ft-slab .dim { fill: var(--fg-neutral); }
+.post-page .ft-slab .mv { transition: transform .8s cubic-bezier(.2,.7,.2,1), opacity .6s; }
+.post-page .ft-panel { display: grid; gap: 22px; padding-top: 6px; }
+.post-page .ft-mergenote { font-size: 14.5px; color: var(--fg-strong); line-height: 1.6; min-height: 3.2em; margin: 0; }
+
+/* ---------- 1. 두 단계 길 ---------- */
+.post-page .ft-road { display: grid; gap: 0; }
+.post-page .ft-stage { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: start; }
+.post-page .ft-stage .ft-node { display: grid; place-items: center; text-align: center; height: 76px; border-radius: 14px; font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--fg-strong); background: var(--frz-soft); }
+.post-page .ft-stage .ft-node .em { font-family: "Tossface", sans-serif; font-size: 24px; display: block; font-weight: 400; }
+.post-page .ft-bubble { font-size: 14.5px; line-height: 1.65; padding: 12px 14px; border-radius: 12px; background: var(--bg-base); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-strong); }
+.post-page .ft-bubble small { display: block; font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 4px; }
+.post-page .ft-bubble .q { color: var(--fg-neutral); }
+.post-page .ft-pipe { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; padding: 10px 0; }
+.post-page .ft-pipe i { justify-self: center; display: block; border-radius: 4px; }
+.post-page .ft-pipe i.big { width: 30px; height: 64px; background: var(--frz); }
+.post-page .ft-pipe i.thin { width: 6px; height: 64px; background: var(--trn); }
+.post-page .ft-pipe span { font-size: 14px; color: var(--fg-neutral); line-height: 1.6; }
+.post-page .ft-pipe span b { font-family: var(--font-mono); }
+.post-page .ft-change { margin-top: 26px; }
+.post-page .ft-change small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 8px; }
+.post-page .ft-change .bar { height: 22px; border-radius: 5px; background: var(--frz-soft); position: relative; overflow: hidden; }
+.post-page .ft-change .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 1.03%; min-width: 3px; background: var(--trn); }
+.post-page .ft-change .lab { display: flex; justify-content: space-between; font: 600 13px/1.5 var(--font-mono); color: var(--fg-neutral); margin-top: 6px; }
+
+/* ---------- 2. 숫자 하나 16바이트 ---------- */
+.post-page .ft-bytes { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; max-width: 900px; }
+.post-page .ft-bytes i { height: 46px; border-radius: 6px; background: var(--c); }
+.post-page .ft-bytes i.frz { background: var(--frz); }
+.post-page .ft-bgroups { display: grid; grid-template-columns: 2fr 2fr 4fr 4fr 4fr; gap: 4px; max-width: 900px; margin-top: 10px; }
+.post-page .ft-bgroups div { border-top: 2px solid var(--c); padding-top: 8px; font-size: 13.5px; line-height: 1.45; color: var(--fg-strong); font-weight: 700; }
+.post-page .ft-bgroups div span { display: block; font-weight: 600; color: var(--fg-neutral); font-size: 13px; }
+.post-page .ft-gbar { padding-top: 40px; }
+.post-page .ft-gbar > small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 34px; }
+.post-page .ft-gbar small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 34px; }
+.post-page .ft-gaxis { position: relative; height: 40px; margin-top: 4px; font: 600 12.5px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .ft-gaxis span { position: absolute; top: 34px; transform: translateX(-50%); }
+
+/* ---------- 3. 구구단 격자 ---------- */
+.post-page .ft-mul { display: grid; grid-template-columns: 34px repeat(9, minmax(0, 1fr)); gap: 3px; max-width: 470px; }
+.post-page .ft-mul button, .post-page .ft-mul span, .post-page .ft-mul i { aspect-ratio: 1; border-radius: 5px; display: grid; place-items: center; font: 700 12.5px/1 var(--font-mono); font-style: normal; }
+.post-page .ft-mul button { border: 0; cursor: pointer; background: var(--trn); color: #fff; font-size: 14px; }
+[data-theme="dark"] .post-page .ft-mul button { color: #1b1206; }
+.post-page .ft-mul span { color: var(--fg-neutral); }
+.post-page .ft-mul i { color: var(--fg-strong); transition: background .35s; }
+.post-page .ft-mulread { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; font-size: 14.5px; color: var(--fg-strong); }
+.post-page .ft-mulread b { font-family: var(--font-mono); color: var(--trn); }
+.post-page .ft-paper img, .post-page .ft-ext img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; padding: 12px; }
+[data-theme="dark"] .post-page .ft-paper img, [data-theme="dark"] .post-page .ft-ext img, [data-theme="dark"] .post-page .ft-crop img { filter: brightness(.75); }
+[data-theme="dark"] .post-page .ft-paper img, [data-theme="dark"] .post-page .ft-ext img, [data-theme="dark"] .post-page .ft-crop { border: 1.5px solid var(--line-strong); }
+.post-page .ft-paper a { display: block; max-width: 400px; }
+.post-page .ft-ext a { display: block; }
+.post-page .ft-paper figcaption, .post-page .ft-ext figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.65; margin-top: 12px; }
+
+/* ---------- 4. ΔW 곡선 ---------- */
+.post-page .ft-curve { width: 100%; max-width: 600px; display: block; }
+.post-page .ft-curve text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ft-curve .dim { fill: var(--fg-neutral); }
+
+/* ---------- 5. 층 지도 ---------- */
+.post-page .ft-layer { width: 100%; max-width: 1000px; display: block; }
+.post-page .ft-layer text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ft-layer .dim { fill: var(--fg-neutral); }
+.post-page .ft-layer [data-mat] { cursor: pointer; }
+.post-page .ft-formula { font: 600 14px/1.8 var(--font-mono); color: var(--fg-neutral); overflow-wrap: anywhere; }
+.post-page .ft-formula b { color: var(--fg-strong); }
+.post-page .ft-total { padding-bottom: 16px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .ft-total small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .ft-total b { font: 700 24px/1.3 var(--font-mono); color: var(--trn); display: block; }
+.post-page .ft-total span { font: 600 14px/1.5 var(--font-mono); color: var(--fg-strong); }
+
+/* 코드 */
+.post-page .ft ol.pg-code-notes { margin: 0 0 1.5em; }
+.post-page .ft-term { margin-top: 14px; border-radius: 12px; overflow: hidden; background: var(--code-bg); border: 1px solid var(--code-border); }
+.post-page .ft-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 14px; background: var(--code-head-bg); color: var(--code-head-fg); font-size: 13px; }
+.post-page .ft-term-bar button { border: 1px solid color-mix(in srgb, var(--code-head-fg) 55%, transparent); background: transparent; color: #e6e9ef; font: 600 13px/1 var(--font-sans); padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+.post-page .ft-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--code-fg); min-height: 4.5em; }
+.post-page .ft-term-out .cmd { color: #e5c07b; }
+.post-page .ft-term-out .hl { color: #98c379; }
+
+/* ---------- 6. 저장 막대 ---------- */
+.post-page .ft-store { display: grid; gap: 30px; }
+.post-page .ft-store > div > small { display: block; font-size: 14px; font-weight: 700; color: var(--fg-strong); margin-bottom: 10px; }
+.post-page .ft-stack { display: flex; gap: 4px; align-items: stretch; height: 44px; }
+.post-page .ft-stack i { border-radius: 5px; display: grid; place-items: center; font: 700 12.5px/1 var(--font-sans); font-style: normal; color: #fff; overflow: hidden; white-space: nowrap; }
+.post-page .ft-stack i.frz { background: var(--frz); }
+.post-page .ft-stack i.cart { background: var(--trn); width: 8px; flex: none; }
+[data-theme="dark"] .post-page .ft-stack i { color: #15171c; }
+.post-page .ft-store .tot { font: 600 13.5px/1.5 var(--font-mono); color: var(--fg-neutral); margin-top: 8px; }
+.post-page .ft-store .tot b { color: var(--fg-strong); }
+.post-page .ft-carts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.post-page .ft-carts span { font-size: 13px; font-weight: 700; color: var(--trn); padding: 4px 10px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--trn); }
+
+/* ---------- 7. 메모리 막대 ---------- */
+
+/* ---------- 8. 말투 실측 ---------- */
+.post-page .ft-tone { display: block; }
+.post-page .ft-map { width: 100%; max-width: 560px; display: block; }
+.post-page .ft-map text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ft-map .dim { fill: var(--fg-neutral); }
+.post-page .ft-sumbox { max-width: 40em; border-top: 2px solid var(--fg-strong); padding-top: 18px; }
+.post-page .ft-kicker { font-size: 14px !important; font-weight: 800; letter-spacing: .04em; color: var(--trn); margin: 0 0 10px !important; }
+.post-page .ft-sum { font-size: clamp(18px, 2vw, 21px) !important; line-height: 1.75 !important; color: var(--fg-strong); font-weight: 600; margin: 0 !important; }
+.post-page .ft-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .ft-refs li { font-size: 15px; margin-bottom: .5em; }
+
+
+/* 2차 수정: 그림마다 자기 조작, 영수증형 판독, 카드 상자, NF4, 대조표 */
+.post-page .ft-ctl { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; margin-bottom: 20px; }
+.post-page .ft-ctl .ft-range { flex: 1 1 240px; max-width: 360px; }
+.post-page .ft-mergenote { font-size: 14.5px; color: var(--fg-strong); line-height: 1.55; flex: 1 1 200px; }
+.post-page .ft-stackfig { display: grid; gap: 48px; }
+.post-page .ft-bill { margin: 0; border: 1px solid var(--line-normal); border-radius: 14px; padding: 4px 18px; background: var(--bg-base); }
+.post-page .ft-bill > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 14px 0; border-bottom: 1px dashed var(--line-normal); align-items: baseline; }
+.post-page .ft-bill > div:last-child { border-bottom: 0; }
+.post-page .ft-bill dt { font-size: 14px; color: var(--fg-strong); font-weight: 600; line-height: 1.45; }
+.post-page .ft-bill dd { margin: 0; font: 700 16px/1.4 var(--font-mono); color: var(--fg-strong); text-align: right; white-space: nowrap; }
+.post-page .ft-bill dd.o { color: var(--trn); }
+.post-page .ft-bill small { grid-column: 1 / -1; font-size: 13px; color: var(--fg-neutral); line-height: 1.55; }
+.post-page .ft-gbars { position: relative; display: grid; gap: 20px; margin-top: 30px; }
+.post-page .ft-gbars .row small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-strong); margin: 0 0 8px; }
+.post-page .ft-gbars .trk { position: relative; height: 32px; }
+.post-page .ft-gbars .trk i { position: absolute; top: 0; bottom: 0; }
+.post-page .ft-gbars .gl { position: absolute; top: 0; bottom: -6px; width: 0; border-left: 2px dashed var(--gpu); }
+.post-page .ft-gbars .gl span { position: absolute; top: -22px; left: 6px; font: 700 13px/1 var(--font-sans); color: var(--gpu); white-space: nowrap; }
+.post-page .ft-gbar > small { margin-bottom: 0; }
+.post-page .ft-gbar details { margin-top: 18px; }
+.post-page .ft-approxhead { font-size: 15px !important; font-weight: 700; color: var(--fg-strong); margin: 32px 0 12px !important; }
+.post-page .ft-approx { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; max-width: 470px; }
+.post-page .ft-approx .g { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; }
+.post-page .ft-approx .g i { aspect-ratio: 1; border-radius: 3px; }
+.post-page .ft-approx small { display: block; font-size: 13px; font-weight: 700; color: var(--fg-strong); margin-top: 8px; line-height: 1.4; }
+.post-page .ft-approx small span { color: var(--trn); font-family: var(--font-mono); }
+.post-page .ft-calc { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 40px; align-items: start; margin: 0 0 22px; padding: 14px 18px; border-radius: 12px; background: var(--bg-subtle); max-width: 1000px; }
+.post-page .ft-total small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .ft-total b { font: 700 22px/1.3 var(--font-mono); color: var(--trn); display: block; }
+.post-page .ft-total span { font: 600 14px/1.5 var(--font-mono); color: var(--fg-strong); }
+.post-page .ft-crop { display: block; overflow: hidden; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; }
+.post-page .ft-crop img { display: block; width: 200%; max-width: none; height: auto; }
+.post-page .ft-lines { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .ft-lines i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: 4px; margin-right: 4px; }
+.post-page .ft-tm figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.65; margin-top: 10px; }
+.post-page .ft-cards { width: 100%; display: block; max-width: 1000px; }
+.post-page .ft-cards text, .post-page .ft-nf4 text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .ft-cards .dim, .post-page .ft-nf4 .dim { fill: var(--fg-neutral); }
+.post-page .ft-cardnote { font-size: 15px; font-weight: 600; color: var(--fg-strong); flex: 1 1 260px; line-height: 1.55; }
+.post-page .ft-nf4 { width: 100%; max-width: 560px; display: block; }
+.post-page .ft-slab .mv { transition: transform .8s cubic-bezier(.2,.7,.2,1), opacity .6s, fill .6s; }
+.post-page .ft-term-out .ph { color: color-mix(in srgb, var(--code-fg) 55%, transparent); }
+.post-page .ft-score { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; margin-bottom: 22px; }
+.post-page .ft-score small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-strong); margin-bottom: 6px; }
+.post-page .ft-score p { display: flex; align-items: center; gap: 5px; margin: 0 0 4px !important; font-size: 13px !important; line-height: 1.5 !important; color: var(--fg-neutral); }
+.post-page .ft-score p span { width: 4.2em; }
+.post-page .ft-score p i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.post-page .ft-score p i.y { background: var(--trn); box-shadow: none; }
+.post-page .ft-score p b { font-family: var(--font-mono); margin-left: 6px; color: var(--fg-strong); }
+.post-page .ft-tgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--line-normal); border-radius: 12px; overflow: hidden; }
+.post-page .ft-tgrid > div { display: contents; }
+.post-page .ft-tgrid .hd span { padding: 9px 12px; font-size: 12.5px; font-weight: 800; color: var(--fg-neutral); background: var(--bg-subtle); }
+.post-page .ft-tgrid .hd span:last-child { color: var(--trn); }
+.post-page .ft-tgrid .q b, .post-page .ft-tgrid .q small { grid-column: 1 / -1; padding: 0 12px; }
+.post-page .ft-tgrid .q b { padding-top: 12px; font-size: 14.5px; border-top: 1px solid var(--line-subtle); }
+.post-page .ft-tgrid .q small { font-size: 12.5px; color: var(--gpu); font-weight: 600; padding-bottom: 4px; }
+.post-page .ft-tgrid .rw p { margin: 0 !important; padding: 6px 12px 12px; font-size: 13.5px !important; line-height: 1.6 !important; color: var(--fg-normal); }
+.post-page .ft-tgrid .rw p.aft { background: color-mix(in srgb, var(--trn) 6%, transparent); }
+.post-page .ft-tgrid mark { background: var(--trn-soft); color: var(--fg-strong); font-weight: 800; padding: 0 2px; border-radius: 3px; }
+.post-page .ft-tgrid s { text-decoration: underline wavy var(--bad); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+
+@media (max-width: 900px) {
+  .post-page .ft-mobB, .post-page .ft-mobL { row-gap: 0; }
+  .post-page .ft-mobB > *, .post-page .ft-mobL > div:first-child { display: contents; }
+  .post-page .ft-mobB > * > *, .post-page .ft-mobL > * { margin-bottom: 26px !important; }
+  .post-page .ft-mobB h2, .post-page .ft-mobL h2 { order: 0; }
+  .post-page .ft-calc { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ft-wrap { padding: 0 20px; }
+  .post-page .ft-two, .post-page .ft-two.code, .post-page .ft-herofig { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .post-page .ft-score { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ft-approx { gap: 10px; }
+  .post-page .ft-bytes { gap: 2px; }
+  .post-page .ft-bytes i { height: 34px; border-radius: 4px; }
+  .post-page .ft-bgroups { grid-template-columns: 1fr 1fr 1fr; gap: 10px 6px; }
+  .post-page .ft-bgroups div:nth-child(1), .post-page .ft-bgroups div:nth-child(2) { grid-column: span 1; }
+  .post-page .ft-mul { grid-template-columns: 28px repeat(9, minmax(0, 1fr)); gap: 2px; }
+  .post-page .ft-mul i { font-size: 12px; }
+  .post-page .ft-stage, .post-page .ft-pipe { grid-template-columns: 74px minmax(0, 1fr); gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ft *, .post-page .ft *::before, .post-page .ft *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="ft" data-ft>
+
+  <header class="ft-hero">
+    <div class="ft-wrap">
+      <div class="ft-col">
+        <h1>LoRA는 7B 모델에서 무엇을 학습할까요?</h1>
+        <div class="ft-lede">
+          <p>다 배운 AI 모델에게 "고양이 말투로 대답해"를 가르치고 싶다고 해 봅시다. 이미 학습을 마친 모델을 우리 목적에 맞게 조금 더 학습시키는 일을 파인튜닝(fine-tuning)이라고 합니다. 그럼 Qwen2.5-7B 안의 숫자 76억 개, 곧 파라미터(parameter)를 전부 다시 고쳐야 할까요?</p>
+          <p>LoRA는 원본 숫자를 하나도 고치지 않습니다. 원본 표는 얼려 두고 그 곁에 아주 얇은 표 두 장을 새로 붙여 그것만 학습합니다. 아래 그림은 이 모델 안의 표 한 장과 얇은 표 두 장을 실제 비율로 그린 것입니다. 손잡이로 두께를 바꿔 보세요.</p>
+        </div>
+      </div>
+      <div class="ft-herofig ft-mobB">
+        <figure class="ft-fig" data-figure data-thumb>
+          <div class="ft-ctl" style="order:1">
+              <div class="ft-range">
+              <label for="ft-r">얇은 표의 두께 r</label>
+              <input id="ft-r" type="range" min="0" max="8" step="1" value="4" data-ft-r>
+              <output data-ft-rout>16</output>
+            </div>
+          </div>
+          <svg style="order:3" class="ft-slab" data-ft-slab viewBox="0 0 760 400" role="img" aria-label="연회색 정사각형 판 W(3584×3584, 자물쇠로 얼림) 옆에 주황색 얇은 띠 B(3584×r)와 A(r×3584)가 있고, 아래 칸에 B 띠를 10배로 키운 그림이 있다"></svg>
+          <div class="ft-legend" style="order:4">
+            <span><i style="background:var(--frz-soft);box-shadow:inset 0 0 0 1.5px var(--frz)"></i>얼려 둔 원본 표 W — 학습하지 않음</span>
+            <span><i style="background:var(--trn)"></i>새로 붙인 표 B·A — 이것만 학습</span>
+          </div>
+          <p class="ft-cap" style="order:5">Qwen2.5-7B의 한 층에 있는 <code>q_proj</code> 표입니다. 가로세로 3584칸, 숫자 12,845,056개가 들어 있습니다. r(rank)은 얇은 표의 두께, 곧 B와 A가 줄을 몇 개씩 갖는지입니다. r이 작으면 띠가 1~2px라서 6px로 굵혀 그렸습니다. 실제 비율은 아래 칸에 10배로 키워 보였습니다.</p>
+        </figure>
+        <div class="ft-panel">
+          <dl class="ft-bill" aria-live="polite" style="order:2">
+            <div><dt>이 표에 붙인 B + A</dt><dd class="o" data-ft-one>114,688개</dd><small data-ft-ratio>W 숫자의 1/112</small></div>
+            <div><dt>모델 전체<br>28층 × q·k·v·o 네 장</dt><dd data-ft-all>10,092,544개</dd><small data-ft-pct>76억 개의 0.13%</small></div>
+            <div><dt>학습 결과 파일</dt><dd data-ft-mb>40.4MB</dd><small data-ft-mbnote>PEFT는 학습한 B·A를 기본으로 숫자 하나에 4바이트(FP32)씩 저장합니다. 모델처럼 2바이트(BF16)로 저장하면 절반인 20.2MB입니다.</small></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two ft-mobL">
+      <div>
+        <h2>파인튜닝은 다 배운 모델에 짧은 과외를 더 하는 일입니다</h2>
+        <p style="order:1">모델은 두 번에 나눠 배웁니다. 먼저 인터넷 규모의 글을 읽으며 다음 토큰(token)을 맞히는 연습을 합니다. 토큰은 모델이 글을 읽는 단위로 단어보다 조금 작은 조각입니다. 이 단계를 사전학습(pre-training)이라고 하고 Qwen2.5는 18조 개 토큰으로 했습니다.</p>
+        <p style="order:2">사전학습만 마친 모델을 Base 모델이라고 부릅니다. 글을 이어 쓰는 데는 능숙하지만 질문에 대답하는 법은 모릅니다. 그래서 질문과 좋은 답을 짝지은 예시로 한 번 더 학습합니다. Qwen2.5는 이 단계에 100만 개 넘는 예시를 썼습니다. 그렇게 나온 것이 이름 끝에 <code>-Instruct</code>가 붙은 모델입니다.</p>
+        <p style="order:4">학교를 다 마친 학생이 면접 전에 짧은 과외를 받는 것과 비슷합니다. 아는 것은 그대로이고 말하는 방식이 바뀝니다. 과외와 달리 머릿속에 새 공간이 생기지는 않습니다. 파인튜닝은 있던 숫자 76억 개를 조금씩 옮길 뿐 숫자를 늘리지 않습니다.</p>
+        <p style="order:5">얼마나 옮길까요? Qwen2.5-1.5B의 Base와 Instruct 파일을 받아 숫자를 하나하나 빼 봤습니다. 바뀐 크기는 원래 숫자 크기의 1% 남짓이었습니다. 계산 방법은 그대로이고 숫자만 살짝 움직였는데 하는 일이 달라집니다.</p>
+      </div>
+      <figure class="ft-fig ft-road" data-figure style="order:3">
+        <div class="ft-stage">
+          <div class="ft-node"><span><span class="em" aria-hidden="true">🎲</span>무작위 숫자</span></div>
+          <div></div>
+        </div>
+        <div class="ft-pipe"><i class="big"></i><span>사전학습 · 토큰 <b>18조</b> 개<br>다음 토큰 맞히기</span></div>
+        <div class="ft-stage">
+          <div class="ft-node"><span><span class="em" aria-hidden="true">📚</span>Base</span></div>
+          <div class="ft-bubble"><small>"하늘은 왜 파란가요?"를 그대로 넣으면</small><span class="q">하늘은 왜 파란가요?</span> - 뉴스와이어<br>하늘은 왜 파란가요?<br>2017년 10월 12일 (수) 10:00<br>[서울=뉴시스] 사진…</div>
+        </div>
+        <div class="ft-pipe"><i class="thin"></i><span>파인튜닝 · 예시 <b>100만+</b> 개<br>질문에 대답하기</span></div>
+        <div class="ft-stage">
+          <div class="ft-node" style="background:var(--trn-soft)"><span><span class="em" aria-hidden="true">💬</span>Instruct</span></div>
+          <div class="ft-bubble"><small>같은 질문을 채팅 형식으로 넣으면</small>하늘이 파란색일 수 있는 이유는 여러 가지입니다:<br>1. 빛의 분광: …</div>
+        </div>
+        <div class="ft-change">
+          <small>Instruct가 Base의 숫자를 바꾼 크기 (원래 크기 = 막대 전체)</small>
+          <div class="bar"><i></i></div>
+          <div class="lab"><span>1.03%</span><span>100%</span></div>
+        </div>
+        <p class="ft-cap">Qwen2.5-1.5B와 Qwen2.5-1.5B-Instruct를 M4 맥북에서 돌린 실제 출력입니다(매번 확률 1등 토큰만 고르는 greedy decoding, 앞부분만). Base는 질문을 기사 제목으로 보고 뉴스 기사처럼 이어 씁니다. 날짜와 매체 이름은 모델이 지어낸 것입니다. 바뀐 크기는 숫자마다 생긴 차이를 한데 모은 크기(제곱합의 제곱근)를 원래 숫자들에서 같은 방식으로 잰 크기와 견준 값입니다. 길의 굵기는 데이터 양의 느낌만 나타냅니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two ft-mobB">
+      <div>
+        <h2>전체를 다시 학습하면 숫자 하나에 16바이트가 듭니다</h2>
+        <p style="order:1">파인튜닝도 학습이라서 사전학습과 같은 방법으로 숫자를 고칩니다. 답이 틀린 만큼, 곧 오차를 재고 숫자마다 "아주 살짝 바꾸면 오차가 얼마나 변하는지"를 계산합니다. 이 값이 기울기(gradient)입니다. 기울기를 보고 숫자를 고치는 규칙이 옵티마이저(optimizer)입니다(<a href="/posts/llm-parameters-7b-explained">학습이 숫자를 고치는 과정</a>).</p>
+        <p style="order:2">그런데 고치는 동안에는 숫자 하나에 딸린 짐이 많습니다. 모델을 쓰기만 할 때는 숫자 하나를 2바이트 형식(BF16)으로 적으면 되지만 학습할 때는 16바이트가 듭니다. 가장 많이 쓰는 옵티마이저 Adam과 혼합 정밀도(mixed precision) 학습을 함께 쓸 때의 계산입니다. 그림의 한 칸이 1바이트입니다.</p>
+        <p style="order:4">시험 공부에 빗대면 교과서 한 권(가중치(weight)) 옆에 오답 노트(기울기)와 깨끗한 사본 교과서, 공부 기록장 두 권을 같이 펴 두는 것과 비슷합니다. 기록장은 Adam이 쓰는 모멘트(moment)로, 지금까지 기울기가 어느 쪽을 향했는지와 얼마나 출렁였는지를 숫자마다 기억합니다. 이 기록 덕분에 한 번의 엉뚱한 기울기에 휘둘리지 않습니다.</p>
+        <p style="order:5">여기에 활성값(activation)이 더해집니다. 기울기를 계산하려고 층마다 남겨 두는 중간 결과입니다. 교과서 비유와 달리 이건 한 번에 넣는 글의 양에 비례합니다. ZeRO 논문의 예에서 GPT-2 1.5B를 길이 1,024토큰 예시 32개로 학습할 때 약 60GB였습니다.</p>
+        <p style="order:6">결국 Qwen2.5-7B를 통째로 학습하려면 활성값을 빼고도 122GB가 필요합니다. H100 80GB 한 장으로는 시작도 못 합니다. 결과물도 용도마다 15.2GB짜리 모델 파일이 하나씩 생깁니다.</p>
+      </div>
+      <div class="ft-stackfig">
+        <figure class="ft-fig" data-figure style="order:3">
+          <div class="ft-bytes" aria-label="숫자 하나에 드는 16바이트를 칸 16개로 그렸다">
+            <i class="frz"></i><i class="frz"></i>
+            <i style="--c:var(--grd)"></i><i style="--c:var(--grd)"></i>
+            <i style="--c:var(--opt)"></i><i style="--c:var(--opt)"></i><i style="--c:var(--opt)"></i><i style="--c:var(--opt)"></i>
+            <i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i>
+            <i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i><i style="--c:var(--trn)"></i>
+          </div>
+          <div class="ft-bgroups">
+            <div style="--c:var(--frz)">가중치<span>2바이트</span></div>
+            <div style="--c:var(--grd)">기울기<span>2바이트</span></div>
+            <div style="--c:var(--opt)">가중치 사본<span>4바이트 · FP32</span></div>
+            <div style="--c:var(--trn)">1차 모멘트<span>4바이트 · 평균</span></div>
+            <div style="--c:var(--trn)">2차 모멘트<span>4바이트 · 제곱 평균</span></div>
+          </div>
+          <p class="ft-cap">숫자 하나를 고치는 동안 GPU 메모리에 함께 들고 있어야 하는 것들입니다. BF16은 숫자 하나를 2바이트에, FP32는 4바이트에 적는 형식입니다. 바이트 배분은 ZeRO 논문(Rajbhandari 외, 2019)의 계산을 따랐습니다.</p>
+        </figure>
+        <figure class="ft-fig ft-gbar" data-figure style="order:7">
+          <small>Qwen2.5-7B 숫자 7,615,616,512개를 GPU에 올리면</small>
+          <div class="ft-gbars" data-ft-gbars></div>
+          <div class="ft-gaxis" data-ft-gaxis></div>
+          <p class="ft-cap">칸 색은 위 16칸 그림과 같습니다. 오른쪽 끝 빗금은 활성값인데 글 길이와 예시 수에 따라 달라져서 길이는 예시로 그렸습니다. 초록 점선은 H100 한 장의 메모리입니다.</p>
+          <details>
+            <summary>왜 가중치 사본을 4바이트로 따로 두나요?</summary>
+            <p>BF16은 숫자를 2바이트로 줄여 적는 형식이라 아주 작은 변화를 더하면 반올림에 묻혀 사라집니다. 학습은 0.0001 같은 작은 변화를 수없이 더하는 일이라, 고치는 계산은 4바이트(FP32) 사본에 하고 그 결과를 2바이트로 다시 적습니다. 이렇게 두 형식을 섞어 쓰는 방식을 혼합 정밀도라고 합니다.</p>
+          </details>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two ft-mobB">
+      <div>
+        <h2>LoRA는 큰 표 대신 얇은 줄 두 개를 곱해 더합니다</h2>
+        <p style="order:1">원본은 얼리고 일부만 학습하는 방법들을 묶어 PEFT(Parameter-Efficient Fine-Tuning)라고 부릅니다. 원본 곁에 붙이는 작은 학습 부품은 어댑터(adapter)라고 합니다. PEFT 가운데 가장 널리 쓰는 것이 2021년 Microsoft 연구진이 내놓은 LoRA(Low-Rank Adaptation)입니다.</p>
+        <p style="order:2">구구단 표를 떠올려 보세요. 81칸이 있지만 칸마다 따로 외울 필요가 없습니다. 왼쪽 줄 숫자 9개와 위쪽 줄 숫자 9개만 알면 칸은 둘을 곱해서 나옵니다. 숫자 18개가 81칸을 정합니다. 주황 숫자를 눌러 바꿔 보세요. 그 줄 전체가 함께 바뀝니다.</p>
+        <p style="order:7">LoRA가 붙이는 표가 이런 모양입니다. 숫자 표, 곧 행렬(matrix) W를 직접 고치는 대신 고칠 양을 세로줄 B와 가로줄 A의 곱으로 만듭니다. 줄을 몇 쌍 쓰는지가 rank r입니다. 3584칸짜리 표라면 rank 16일 때 숫자 3584 × 16을 두 번, 11만 4,688개만 학습합니다.</p>
+        <p style="order:8">구구단과 다른 점이 있습니다. 구구단 표는 정확히 한 쌍으로 만들어지지만 실제로 고쳐야 할 양은 그렇게 딱 떨어지지 않습니다. 줄 몇 쌍으로는 비슷하게만 따라 할 수 있습니다. 그림 아래쪽 작은 표 세 장이 그 예입니다. 들쭉날쭉한 6×6 표를 줄 한 쌍으로 따라 하면 89%, 두 쌍이면 98%가 담깁니다. 얼마나 비슷해야 하는지가 r을 정하는 기준입니다.</p>
+      </div>
+      <figure class="ft-fig" data-figure>
+        <div class="ft-seg" role="group" aria-label="줄 쌍의 수" style="margin-bottom:22px;order:3">
+          <button type="button" data-ft-rank="1" aria-pressed="true">줄 한 쌍 (rank 1)</button>
+          <button type="button" data-ft-rank="2" aria-pressed="false">줄 두 쌍 (rank 2)</button>
+        </div>
+        <div style="order:4" class="ft-mul" data-ft-mul role="img" aria-label="왼쪽 줄 숫자 9개와 위쪽 줄 숫자 9개를 곱해 9×9 칸을 채운 표. 값이 클수록 진한 주황, 음수는 파랑"></div>
+        <div class="ft-mulread" aria-live="polite" style="order:5"><span>칸 <b>81</b>개</span><span>정하는 숫자 <b data-ft-mulk>18</b>개</span><span data-ft-mulnote>지금은 구구단 그대로입니다</span></div>
+        <p class="ft-cap" style="order:6">주황 칸이 학습하는 숫자(B·A)이고 가운데 칸은 곱해서 나오는 값입니다. 두 쌍일 때는 두 번째 쌍(1, −1이 번갈아 나오는 줄)의 곱을 첫 쌍의 곱에 더합니다. 칸 색은 값의 크기를 나타내고 파랑은 음수입니다.</p>
+        <p class="ft-approxhead" style="order:9">실제로 고칠 양은 비슷하게만 따라 합니다</p>
+        <div style="order:10" class="ft-approx" data-ft-approx role="img" aria-label="6×6 색 표 세 장. 왼쪽은 들쭉날쭉한 실제 변화, 가운데는 줄 한 쌍으로 따라 한 표(89% 담김), 오른쪽은 줄 두 쌍으로 따라 한 표(98% 담김)"></div>
+      </figure>
+    </div>
+    <div class="ft-wrap ft-two">
+      <div>
+        <p>LoRA 논문은 이 구조를 그림 한 장으로 그렸습니다. 입력 x가 두 길로 갈라져 하나는 얼린 W를, 하나는 A와 B를 지나고 두 결과를 더해 출력 h가 됩니다. 식으로 쓰면 h = Wx + BAx입니다.</p>
+        <p>그림 속 <code>B = 0</code>이 중요합니다. 학습을 시작할 때 B를 전부 0으로 두기 때문에 처음엔 BA도 0이고 모델은 원본과 똑같이 답합니다. 학습하면서 B가 조금씩 0에서 벗어납니다. Hugging Face의 PEFT 라이브러리도 기본 설정이 이렇습니다.</p>
+        <p>B와 A의 곱에는 한 번 더 곱하는 수가 붙습니다. <code>lora_alpha</code>를 r로 나눈 값입니다. alpha는 새로 배운 쪽을 얼마나 세게 더할지 정하는 손잡이입니다. r을 바꿔도 세기가 크게 흔들리지 않게 r로 나눕니다. 보통 alpha를 r의 1~2배로 둡니다.</p>
+      </div>
+      <figure class="ft-fig ft-paper" data-figure>
+        <a href="https://arxiv.org/abs/2106.09685"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/50e0f3bc.svg" alt="파란 정사각형 Pretrained Weights W(d×d) 오른쪽에 주황 사다리꼴 A와 B가 위아래로 놓여 있다. 입력 x가 두 길로 들어가 두 결과가 더해져 h가 된다. A는 정규분포로, B는 0으로 시작하고 가운데 폭이 r이다" loading="lazy" width="480" height="418"></a>
+        <figcaption>파란 판(Pretrained Weights)이 얼린 W, 주황 두 칸이 학습하는 A와 B, 가운데 폭 r이 rank입니다. A는 무작위 작은 수(정규분포 N(0, σ²))로, B는 0으로 시작합니다. 논문 캡션은 "A와 B만 학습한다"입니다. — Hu 외, <a href="https://arxiv.org/abs/2106.09685">LoRA: Low-Rank Adaptation of Large Language Models</a> (2021), Figure 1</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two">
+      <div>
+        <h2>얇은 표로 충분할 때와 모자랄 때</h2>
+        <p>얇은 표는 목표가 좁을 때 통합니다. LoRA 논문은 GPT-3 175B에서 3584칸의 3배가 넘는 12,288칸짜리 표를 고칠 때도 rank 1~2면 충분했다고 보고했습니다. 말투나 답의 형식처럼 바꿀 것이 몇 가지 방향뿐이면 줄 몇 쌍으로 담을 수 있습니다.</p>
+        <p>그런데 전체 학습은 숫자를 훨씬 여러 방향으로 바꿉니다. 이 곡선은 Qwen2.5-1.5B에서 Base → Instruct로 바뀐 양을 직접 재고 그 변화를 줄 r쌍으로 따라 하면 얼마나 담기는지 그린 것입니다. 16쌍이면 22%, 256쌍이어도 77%입니다. 그림 위 손잡이로 r을 옮겨 보세요.</p>
+        <p>그래서 데이터가 크고 넓을수록 LoRA가 뒤처집니다. 2024년 Biderman 외의 실험에서는 코드와 수학을 많이 배우게 하자 LoRA가 전체 학습보다 확실히 낮았습니다. 대신 원래 알던 것을 덜 잊었습니다. 2025년 Thinking Machines는 작거나 중간 크기 데이터에서는 둘이 같은 성능을 낸다고 정리했습니다.</p>
+      </div>
+      <figure class="ft-fig" data-figure>
+        <div class="ft-ctl">
+          <div class="ft-range">
+            <label for="ft-r2">줄 쌍의 수 r</label>
+            <input id="ft-r2" type="range" min="0" max="8" step="1" value="4" data-ft-r>
+            <output data-ft-rout>16</output>
+          </div>
+        </div>
+        <svg class="ft-curve" data-ft-curve viewBox="0 0 600 380" role="img" aria-label="가로축 줄 쌍의 수 r(1부터 1536까지 로그 눈금), 세로축 담기는 변화 비율. 곡선은 r=16에서 22%, 64에서 46%, 256에서 77%, 1536에서 100%"></svg>
+        <p class="ft-cap">LoRA 논문이 다룬 과제들은 줄 1~2쌍이면 충분했지만, Base에서 Instruct로 넓게 바뀐 차이는 16쌍으로 22%만 담깁니다. Qwen2.5-1.5B 14번째 층의 <code>q_proj</code>(1536 × 1536)에서 Instruct − Base 차이를 잰 값입니다. 차이 표를 영향이 큰 방향부터 차례로 쪼개는 계산(SVD, Singular Value Decomposition)을 해서 가장 큰 방향 r개가 변화 전체에서 차지하는 몫을 그렸습니다. 4번째·24번째 층도 16쌍에서 22% 안팎으로 거의 같았습니다. 설명에 쓰는 7B가 아니라 직접 받아 계산할 수 있었던 1.5B로 쟀습니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap">
+      <h2>어디에 붙이느냐에 따라 어댑터 크기가 달라집니다</h2>
+      <div class="ft-col">
+        <p>Qwen2.5-7B의 층 하나에는 표가 일곱 장 있습니다. 앞 토큰 가운데 무엇을 참고할지 고르는 Attention 쪽에 <code>q_proj</code> <code>k_proj</code> <code>v_proj</code> <code>o_proj</code> 네 장(<a href="/posts/transformer-attention-how-llm-reads">Attention이 글을 읽는 방법</a>), 토큰마다 읽은 내용을 가공하는 MLP(Multi-Layer Perceptron) 쪽에 <code>gate_proj</code> <code>up_proj</code> <code>down_proj</code> 세 장입니다. 이런 층이 28개 쌓여 있고 표마다 LoRA를 붙일지 따로 고릅니다.</p>
+        <p>얇은 표 두 장의 숫자 개수는 r × (들어오는 칸 + 나가는 칸)입니다. 아래 지도는 일곱 장을 실제 비율로 그린 것입니다. 표를 누르거나 묶음 버튼을 골라 붙이고 떼 보세요.</p>
+      </div>
+      <figure class="ft-fig ft-wide" data-figure>
+        <div class="ft-ctl">
+          <div class="ft-seg" role="group" aria-label="LoRA를 붙일 표 묶음">
+            <button type="button" data-ft-preset="qv" aria-pressed="false">q·v (LoRA 논문)</button>
+            <button type="button" data-ft-preset="attn" aria-pressed="true">q·k·v·o</button>
+            <button type="button" data-ft-preset="all" aria-pressed="false">일곱 장 전부</button>
+          </div>
+          <div class="ft-range">
+            <label for="ft-r3">얇은 표의 두께 r</label>
+            <input id="ft-r3" type="range" min="0" max="8" step="1" value="4" data-ft-r>
+            <output data-ft-rout>16</output>
+          </div>
+        </div>
+        <div class="ft-calc" aria-live="polite">
+          <div class="ft-total"><small>모델 전체 학습 숫자 · 결과 파일(4바이트)</small><b data-ft-ltot>10,092,544개</b><span data-ft-lmb>40.4MB · 0.13%</span></div>
+          <div class="ft-formula" data-ft-formula></div>
+        </div>
+        <svg class="ft-layer" data-ft-layer viewBox="0 0 1000 420" role="img" aria-label="한 층의 표 일곱 장을 실제 비율로 그린 지도. q와 o는 3584×3584 정사각형, k와 v는 512×3584 납작한 띠, gate와 up은 18944×3584 세로로 긴 판, down은 3584×18944 가로로 긴 판. 고른 표 옆에 주황 띠가 붙는다"></svg>
+        <p class="ft-cap">표의 가로가 들어오는 칸 수, 세로가 나가는 칸 수입니다. 주황 띠 두께는 보이게 실제보다 굵게 그렸고 r에 비례합니다. Key·Value는 Attention이 앞 토큰에서 꺼내 참고하는 값입니다. Qwen2.5는 질문 쪽 머리 28개가 Key·Value 머리 4개를 나눠 쓰게 해서(<a href="/posts/prefill-decode-kv-cache">GQA, Grouped-Query Attention</a>) <code>k_proj</code>·<code>v_proj</code>의 나가는 칸이 512로 납작합니다. 숫자 개수는 같은 설정으로 PEFT를 돌려 나온 값과 맞습니다.</p>
+      </figure>
+    </div>
+    <div class="ft-wrap ft-two ft-mobL">
+      <div>
+        <p style="order:1">Hugging Face에 올라온 실제 어댑터로 계산을 확인해 봤습니다. Qwen2.5-7B-Instruct로 만든 의료 상담 어댑터 <a href="https://huggingface.co/zjudai/flowertune-medical-lora-qwen2.5-7b-instruct">zjudai/flowertune-medical-lora-qwen2.5-7b-instruct</a>의 설정 파일에는 <code>r: 32</code>, 붙인 표 <code>q_proj</code>·<code>v_proj</code>가 적혀 있습니다.</p>
+        <p style="order:2">지도에서 q·v를 고르고 r을 32로 맞추면 10,092,544개, 40.4MB가 나옵니다. 저장소의 <code>adapter_model.safetensors</code>는 40,385,208바이트로, 계산값에 파일 머리말 15KB를 더한 크기입니다.</p>
+        <p style="order:4">어디에 붙일지는 연구마다 결론이 조금씩 다릅니다. LoRA 논문은 q·v만 고쳤고 PEFT도 기본값이 그렇습니다. 하지만 QLoRA 논문은 전체 학습만큼 성능을 내려면 일곱 장 전부에 붙여야 했다고 썼습니다. Thinking Machines의 실험에서도 Attention에만 붙인 LoRA가 뒤처졌습니다. 요즘은 <code>target_modules="all-linear"</code>로 전부 붙이는 쪽이 흔합니다.</p>
+      </div>
+      <figure class="ft-fig ft-tm" data-figure style="order:3">
+        <a href="https://thinkingmachines.ai/blog/lora/" class="ft-crop"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/75e23765.svg" alt="Llama-3.1-8B를 Tulu3 데이터로 학습할 때 학습 단계(가로, 로그 눈금)에 따른 시험 오차(세로) 곡선. 빨간 선(Attention에만 붙인 LoRA)만 다른 선들보다 위에 떠 있다" loading="lazy" width="960" height="480"></a>
+        <div class="ft-lines">
+          <span><i style="background:#111"></i>전체 학습</span>
+          <span><i style="background:#e8261d"></i>Attention에만 붙인 LoRA (rank 256)</span>
+          <span><i style="background:#2a8a2a"></i><i style="background:#c8c020"></i>MLP에만 붙인 LoRA (rank 256·128)</span>
+          <span><i style="background:#2440e0"></i>일곱 장 전부 (rank 256)</span>
+        </div>
+        <figcaption>원 그림의 왼쪽 판(Llama-3.1-8B)만 잘라 왔습니다. 가로축은 학습 단계, 세로축 Test NLL은 처음 보는 글에서 틀린 정도로 낮을수록 좋습니다. 빨강만 위에 떠 있고 나머지는 전체 학습(검정)과 겹칩니다. — Thinking Machines, <a href="https://thinkingmachines.ai/blog/lora/">LoRA Without Regret</a> (2025), Figure 4</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two code">
+      <div>
+        <h2>코드로는 설정 한 묶음입니다</h2>
+        <p>Hugging Face의 <code>peft</code> 라이브러리로 LoRA를 붙이는 부분입니다(peft 0.21.2, transformers 5.19 기준). 학습 반복문은 보통의 학습 코드와 같아서 줄였습니다.</p>
+        <ol class="pg-code-notes">
+          <li><b>얇은 표의 두께입니다.</b> 크게 잡을수록 담을 수 있는 변화가 늘고 파일도 커집니다. 8~64 사이를 많이 씁니다.</li>
+          <li><b>새로 배운 쪽을 더하는 세기입니다.</b> 실제로 곱하는 수는 <code>lora_alpha / r</code>, 여기서는 2입니다.</li>
+          <li><b>붙일 표의 이름입니다.</b> 모델 안 표 이름 그대로 적습니다. <code>"all-linear"</code>라고 쓰면 마지막 출력층을 빼고 선형층 전부에 붙습니다.</li>
+          <li><b>원본 숫자를 전부 얼리고 A·B를 붙입니다.</b> 이 줄 뒤로는 A·B에만 기울기를 계산합니다. 그래서 기울기와 Adam 기록도 그만큼만 생깁니다.</li>
+          <li><b>어댑터만 저장합니다.</b> 폴더에는 설정 파일 <code>adapter_config.json</code>과 숫자 파일 <code>adapter_model.safetensors</code> 둘만 들어 있습니다. 원본 모델은 들어 있지 않고 이름만 적어 둡니다.</li>
+        </ol>
+      </div>
+      <div>
+<pre data-title="lora_setup.py" data-hl="8,10,12,17,21" data-start="1"><code class="language-python">from transformers import AutoModelForCausalLM
+from peft import LoraConfig, get_peft_model
+
+model = AutoModelForCausalLM.from_pretrained(
+    "Qwen/Qwen2.5-7B-Instruct", dtype="auto")
+config = LoraConfig(
+    # ① 얇은 표의 두께
+    r=16,
+    # ② 더하는 세기 (alpha / r = 2)
+    lora_alpha=32,
+    # ③ 붙일 표
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    task_type="CAUSAL_LM",
+)
+# ④ 원본은 얼리고 A·B만 학습 대상으로
+model = get_peft_model(model, config)
+model.print_trainable_parameters()
+# ... 학습 반복문 ...
+# ⑤ 어댑터만 저장
+model.save_pretrained("my-adapter")</code></pre>
+        <div class="ft-term" data-ft-term>
+          <div class="ft-term-bar"><span>터미널</span><button type="button" data-ft-run hidden>▶ 실행</button></div>
+<pre class="ft-term-out" data-ft-out aria-live="polite"><span class="cmd">$ python lora_setup.py</span>
+<span class="hl">trainable params: 10,092,544</span> || all params: 7,625,709,056 || trainable%: 0.1323</pre>
+        </div>
+        <p class="ft-cap">출력은 같은 설정으로 PEFT 0.21.2를 실제로 돌려 나온 줄입니다. all params는 원본 76억 개에 새로 붙인 A·B를 더한 수입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two">
+      <div>
+        <h2>학습이 끝나면 합치거나 갈아 끼웁니다</h2>
+        <p>다 배운 어댑터는 두 가지로 씁니다. 하나는 합치기입니다. B와 A를 곱해 W에 더하면 표가 다시 한 장이 되어 쓸 때 계산량이 원본과 똑같아집니다. PEFT에서는 <code>merge_and_unload()</code> 한 줄입니다. 그림의 합치기 버튼을 눌러 보세요.</p>
+        <p>다른 하나는 갈아 끼우기입니다. 원본 하나를 GPU에 올려 두고 요청마다 다른 어댑터를 얹습니다. 게임기 한 대에 카트리지를 바꿔 꽂는 것과 비슷합니다. 모델 서빙 엔진 vLLM(<a href="/posts/pytorch-to-vllm-serving">vLLM으로 서빙하기</a>)은 <code>--enable-lora</code>로 서버를 띄우면 요청의 모델 이름으로 어댑터를 고를 수 있습니다.</p>
+        <p>카트리지와 달리 어댑터를 갈아 끼울 때는 원본이 같아야 합니다. 어댑터는 특정 원본의 표 모양과 숫자에 맞춰 배운 차이라서 다른 모델에 꽂으면 소용이 없습니다. 그래서 어댑터 설정 파일에는 원본 이름(<code>base_model_name_or_path</code>)이 꼭 적혀 있습니다.</p>
+      </div>
+      <div class="ft-stackfig">
+        <figure class="ft-fig" data-figure>
+          <div class="ft-ctl">
+            <button type="button" class="ft-act" data-ft-merge>합치기</button>
+            <span class="ft-mergenote" data-ft-mnote aria-live="polite">B와 A가 아직 W 곁에 따로 있습니다.</span>
+          </div>
+          <svg class="ft-slab" data-ft-mslab viewBox="0 0 760 400" role="img" aria-label="연회색 판 W 옆에 주황 띠 B와 A. 합치기를 누르면 두 띠가 W 위로 미끄러져 들어가 W가 주황빛으로 물든다"></svg>
+        </figure>
+        <figure class="ft-fig ft-store" data-figure>
+          <div>
+            <small>용도별 모델 세 개를 따로 저장하면</small>
+            <div class="ft-stack"><i class="frz" style="flex:1">상담 15.2GB</i><i class="frz" style="flex:1">요약 15.2GB</i><i class="frz" style="flex:1">코드 15.2GB</i></div>
+            <div class="tot">합계 <b>45.7GB</b></div>
+          </div>
+          <div>
+            <small>원본 하나 + 어댑터 세 개</small>
+            <div class="ft-stack"><i class="frz" style="flex:0 0 33.2%">원본 15.2GB</i><i class="cart"></i><i class="cart"></i><i class="cart"></i></div>
+            <div class="ft-carts"><span>상담 40MB</span><span>요약 40MB</span><span>코드 40MB</span></div>
+            <div class="tot">합계 <b>15.3GB</b></div>
+          </div>
+          <p class="ft-cap">막대 길이는 같은 축척입니다. 어댑터 40MB는 실제로는 막대 폭의 0.1%도 안 돼서 보이게 굵게 그렸습니다. 모델 크기는 Qwen2.5-7B의 BF16 파일, 어댑터는 r 16·q·k·v·o 기준입니다.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap">
+      <h2>QLoRA는 얼린 원본을 4비트로 줄여 둡니다</h2>
+      <div class="ft-col"><p>LoRA로 학습할 숫자는 줄었지만 얼린 원본은 여전히 GPU에 통째로 올라가 있어야 합니다. 7B라면 15.2GB라서 24GB 카드 한 장에 들어가지만 72B 모델이면 원본만 145GB입니다.</p><p>원본은 고치지 않으니 정밀하게 적어 둘 이유가 적습니다. 그래서 숫자 하나를 2바이트 대신 4비트로 줄여 적는 양자화(quantization)를 원본에만 씁니다(<a href="/posts/gpu-vram-fp16-int4-quantization">양자화가 숫자를 줄이는 방법</a>). 2023년 5월 University of Washington의 Tim Dettmers 등이 낸 QLoRA입니다. 아래 그림에서 모델 크기를 바꿔 보세요.</p></div>
+    </div>
+    <div class="ft-band">
+      <div class="ft-wrap">
+        <figure class="ft-fig" data-figure>
+          <div class="ft-ctl">
+            <div class="ft-seg" role="group" aria-label="모델 크기">
+              <button type="button" data-ft-model="72b" aria-pressed="true">Qwen2.5-72B</button>
+              <button type="button" data-ft-model="7b" aria-pressed="false">Qwen2.5-7B와 비교</button>
+            </div>
+            <span class="ft-cardnote" data-ft-cardnote aria-live="polite"></span>
+          </div>
+          <svg class="ft-cards" data-ft-cards viewBox="0 0 1000 470" role="img" aria-label="학습 방식 세 가지의 GPU 메모리 탑과, 그 탑이 들어가는 가장 작은 GPU 카드 상자. 7B는 전체 학습 121.9GB가 80GB 카드를 넘치고 LoRA 15.4GB와 QLoRA 5.7GB는 24GB 카드에 들어간다. 72B는 전체 학습 1,163GB와 LoRA 146.5GB가 80GB 카드를 넘치고 QLoRA 42.3GB만 48GB 카드에 들어간다"></svg>
+          <div class="ft-legend">
+            <span><i style="background:var(--frz)"></i>모델 가중치 (LoRA·QLoRA는 얼림)</span>
+            <span><i style="background:var(--grd)"></i>기울기</span>
+            <span><i style="background:var(--opt)"></i>가중치 사본</span>
+            <span><i style="background:var(--trn)"></i>Adam 기록(모멘트 둘) · LoRA는 B·A 자체 포함</span>
+            <span><i style="background:color-mix(in srgb, var(--gpu) 12%, transparent);box-shadow:inset 0 0 0 2px var(--gpu)"></i>들어가는 GPU 카드</span>
+          </div>
+          <p class="ft-cap" style="max-width:56em">계산값입니다. LoRA는 r 16·q·k·v·o 기준(학습 숫자 7B 1,009만 개, 72B 6,554만 개, 한 개에 16바이트)입니다. QLoRA 원본은 층 안의 선형층을 4.127비트(숫자 하나에 4비트, 64개마다 두는 기준값 몫 0.127비트), 단어표와 출력층을 BF16으로 쳤습니다. 실제로는 여기에 활성값과 작업 메모리 몇 GB가 더 붙습니다. 카드는 24GB(RTX 4090), 48GB(RTX 6000 Ada), 80GB(H100)이고 160GB를 넘는 탑은 잘라 그렸습니다. LoRA 쪽 학습 몫은 너무 얇아 최소 두께를 줬습니다.</p>
+        </figure>
+      </div>
+    </div>
+    <div class="ft-wrap ft-two">
+      <div>
+        <p>논문은 세 가지를 새로 넣었습니다. 첫째 NF4(4-bit NormalFloat)입니다. 가중치는 대부분 0 근처에 몰려 있어서 4비트로 고를 수 있는 16개 값을 0 근처에 촘촘히 놓았습니다. 숫자 64개마다 크기를 맞추는 기준값을 하나씩 따로 둡니다.</p>
+        <p>둘째 double quantization입니다. 그 기준값도 숫자라서 메모리를 차지합니다. 이 기준값을 한 번 더 8비트로 줄여 숫자 하나당 0.5비트였던 몫을 0.127비트로 낮췄습니다. 65B 모델이면 약 3GB를 아낍니다.</p>
+      </div>
+      <figure class="ft-fig" data-figure>
+        <svg class="ft-nf4" data-ft-nf4 viewBox="0 0 560 300" role="img" aria-label="가운데가 높은 종 모양 곡선(가중치 분포) 아래에 NF4의 16개 값이 주황 눈금으로 0 근처에 촘촘히, 아래 줄에는 고르게 나눈 4비트 16개 값이 회색 눈금으로 같은 간격으로 놓여 있다"></svg>
+        <p class="ft-cap">숫자 64개를 한 묶음으로 보고 묶음 안 가장 큰 값으로 나눠 −1~1에 맞춘 뒤 가장 가까운 칸에 붙입니다. 곡선은 가중치가 몰려 있는 모양이고 주황 눈금이 NF4의 16칸입니다. 많이 쓰는 0 근처에 칸이 촘촘해서 같은 4비트로 오차가 줄어듭니다. 양자화 자체는 <a href="/posts/gpu-vram-fp16-int4-quantization">이전 글</a>에서 다뤘습니다.</p>
+      </figure>
+    </div>
+    <div class="ft-wrap ft-two">
+      <div>
+        <p>셋째 paged optimizer입니다. 학습 중 긴 예시가 들어오면 메모리가 순간적으로 치솟습니다. 이때 GPU 메모리가 모자라면 Adam 기록을 CPU 쪽 메모리로 잠시 옮겼다가 필요할 때 다시 가져옵니다. 책상이 꽉 차면 사물함에 넣어 두는 것과 비슷하지만 사물함(CPU 메모리)까지 오가는 길이 멀어서 자주 쓰면 학습이 느려집니다.</p>
+        <p>그 결과 전체 학습에 780GB 넘게 들던 65B 모델을 48GB GPU 한 장에서 학습했습니다. 얼린 원본은 4비트로 거칠어졌지만 학습하는 A·B는 16비트로 정밀하게 두어 그 오차까지 함께 맞춥니다. 논문이 QLoRA로 학습한 챗봇 Guanaco는 GPU 한 장으로 24시간 학습했습니다. 그리고 챗봇 답변을 GPT-4가 채점하는 Vicuna 평가에서 ChatGPT 점수의 99.3%를 받았습니다.</p>
+      </div>
+      <figure class="ft-fig ft-ext" data-figure>
+        <a href="https://arxiv.org/abs/2305.14314"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/89143c6d.webp" alt="세 칸 비교 그림. 전체 학습은 큰 옵티마이저 상자가 16비트 트랜스포머 전체를 고친다. LoRA는 작은 옵티마이저 상자 셋이 작은 어댑터만 고친다. QLoRA는 4비트 트랜스포머 위 어댑터를 고치고 옵티마이저 상자가 CPU로 옮겨 갈 수 있다" loading="lazy" width="960" height="420"></a>
+        <figcaption>왼쪽부터 전체 학습(Full Finetuning), LoRA, QLoRA입니다. 맨 위 줄 Optimizer State는 Adam 기록(32비트), 가운데 Adapters는 A·B(16비트), 아래 Base Model은 원본입니다. 파란 화살표는 숫자 고치기, 초록은 기울기 흐름, 분홍은 CPU로 옮기기(Paging Flow)입니다. QLoRA의 원본은 4-bit Transformer로 작아졌습니다. — Dettmers 외, <a href="https://arxiv.org/abs/2305.14314">QLoRA: Efficient Finetuning of Quantized LLMs</a> (2023), Figure 1</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ft-sec">
+    <div class="ft-wrap ft-two">
+      <div>
+        <h2>말투는 파인튜닝으로, 새 지식은 문서로 넣습니다</h2>
+        <p>직접 해 봤습니다. Qwen2.5-1.5B-Instruct에 LoRA(r 16, q·k·v·o)를 붙이고 질문 16개에 "~다냥"으로 끝나는 답을 짝지어 48번 학습시켰습니다. M4 맥북에서 12초 걸렸고 학습한 숫자는 435만 개(0.28%), 저장한 어댑터는 17.5MB였습니다.</p>
+        <p>학습에 없던 질문에도 말끝에 "냥"이 붙었습니다. 그런데 틀린 설명은 그대로 틀렸습니다. 얼음이 뜨는 건 같은 부피의 물보다 가벼워서인데, 학습 전에도 후에도 엉뚱한 이유를 댑니다. 예시 16개는 말하는 방식만 가르쳤고 모르는 사실을 알려 주지는 못했습니다.</p>
+        <p>그래서 회사 문서를 바탕으로 답하게 하고 싶다면 보통 RAG(Retrieval-Augmented Generation)가 먼저입니다. 질문과 관련된 문서를 찾아 프롬프트(prompt), 곧 모델에 넣는 입력 글에 함께 넣어 주는 방식이라 문서를 바꾸면 바로 반영되고 어느 문서에서 왔는지도 보여 줄 수 있습니다(<a href="/posts/rag-retrieval-pipeline">RAG 흐름</a>).</p>
+      </div>
+      <figure class="ft-fig ft-tone" data-figure>
+        <div class="ft-score">
+          <div><small>말끝에 "냥"이 붙은 답</small><p><span>학습 전</span><i></i><i></i><i></i><b>0 / 3</b></p><p class="on"><span>학습 후</span><i class="y"></i><i class="y"></i><i class="y"></i><b>3 / 3</b></p></div>
+          <div><small>사실에 맞는 설명</small><p><span>학습 전</span><i></i><i></i><i></i><b>0 / 3</b></p><p><span>학습 후</span><i></i><i></i><i></i><b>0 / 3</b></p></div>
+        </div>
+        <div class="ft-tgrid" role="table" aria-label="학습에 없던 질문 세 개의 학습 전·후 답">
+          <div class="hd" role="row"><span role="columnheader">학습 전</span><span role="columnheader">LoRA 학습 후</span></div>
+          <div class="q" role="row"><b role="rowheader">별은 왜 반짝이나요?</b><small>실제: 지구 대기가 흔들리며 별빛을 이리저리 꺾기 때문</small></div>
+          <div class="rw" role="row"><p role="cell"><s>별은 빛을 내는 물질이 있기 때문에 반짝이는 현상을 보입니다.</s> 이 물질은 별의 성분 중 하나인 탄소나 황산…</p><p role="cell" class="aft"><s>별이 빛을 내면 그 빛이 눈에 닿아 반짝임</s><mark>냥.</mark></p></div>
+          <div class="q" role="row"><b role="rowheader">얼음은 왜 물에 뜨나요?</b><small>실제: 물이 얼면 부피가 커져 같은 부피의 물보다 가볍기 때문</small></div>
+          <div class="rw" role="row"><p role="cell"><s>물이 얼음을 떠올리는 이유는 물과 얼음의 차원이 다르기 때문입니다.</s> 물은 물질로써…</p><p role="cell" class="aft">얼음이 물에 떠 있는 이유는 <s>얼음의 표면이 빛을 흡수하고, 그 빛을 물 속으로 보낸다</s><mark>냥</mark></p></div>
+          <div class="q" role="row"><b role="rowheader">번개는 왜 치나요?</b><small>실제: 구름 속에 쌓인 전기가 한꺼번에 흐르기 때문</small></div>
+          <div class="rw" role="row"><p role="cell"><s>"번개"라는 용어는 한국에서 주로 사용되는 말이지만, 이는 영어 문화에서도 많이 쓰입니다…</s></p><p role="cell" class="aft"><s>번개는 땅에서 물에 부딪혀서 열기가 들어가서 온다</s><mark>냥.</mark></p></div>
+        </div>
+        <p class="ft-cap">세 질문 모두 학습 예시에 없던 질문입니다. 주황 바탕은 새로 생긴 말투, 빨간 물결 밑줄은 사실과 다르거나 질문에 맞지 않는 설명입니다. greedy decoding으로 뽑았고 학습 전 답은 40토큰에서 잘렸습니다.</p>
+      </figure>
+    </div>
+    <div class="ft-wrap ft-two">
+      <div>
+        <p>파인튜닝이 먼저인 경우도 분명히 있습니다. 답의 형식(JSON처럼 정해진 모양), 말투, 분야 용어를 쓰는 습관처럼 매번 같은 방식으로 답해야 하는데 프롬프트로 설명해도 자꾸 흐트러질 때입니다. 프롬프트에 예시를 길게 넣던 것을 모델 안으로 옮기면 요청마다 토큰도 줄어듭니다.</p>
+        <p>순서는 대개 이렇습니다. 프롬프트부터 고쳐 보고(<a href="/posts/prompt-engineering-roles-few-shot">역할과 예시 넣기</a>) 모르는 사실이 문제면 RAG를, 말하는 방식이 문제면 파인튜닝을 더합니다. 둘 다 필요하면 같이 씁니다. 의료 어댑터로 용어와 말투를 잡고 RAG로 최신 지침을 넣는 식입니다.</p>
+      </div>
+      <figure class="ft-fig" data-figure>
+        <svg class="ft-map" data-ft-map viewBox="0 0 560 420" role="img" aria-label="두 축 지도. 가로축은 모델이 모르는 사실이 필요한 정도, 세로축은 답하는 방식을 바꿔야 하는 정도. 왼쪽 아래 프롬프트 먼저, 오른쪽 아래 RAG, 왼쪽 위 파인튜닝, 오른쪽 위 둘 다"></svg>
+        <p class="ft-cap">OpenAI의 정확도 개선 가이드가 쓰는 두 축 구분을 이 글의 말로 다시 그렸습니다. 칸 경계는 딱 떨어지지 않고 대개 왼쪽 아래에서 시작해 필요한 쪽으로 옮겨 갑니다.</p>
+      </figure>
+    </div>
+    <div class="ft-wrap" style="margin-top:clamp(80px,10vw,120px)">
+      <div class="ft-sumbox">
+        <p class="ft-kicker">정리</p>
+        <p class="ft-sum">LoRA는 76억 개 원본 숫자를 그대로 얼려 두고 고칠 양을 얇은 표 두 장의 곱으로 만들어 그것만 학습합니다. 학습할 숫자는 0.13%, 결과물은 40MB 파일 하나가 됩니다. 원본까지 4비트로 줄이면(QLoRA) GPU 한 장으로도 학습할 수 있습니다.</p>
+      </div>
+      <div class="ft-col"><p style="margin-top:28px">파인튜닝 대신 문서를 찾아 넣으려면 수많은 문서 가운데 질문과 비슷한 것을 빨리 찾아야 합니다. 다음 글에서는 벡터 DB가 비슷한 문서를 순식간에 찾는 방법을 알아보겠습니다.</p></div>
+    </div>
+  </section>
+
+  <section class="ft-sec ft-refs" style="padding-bottom:40px">
+    <div class="ft-wrap">
+      <h2>참고 자료</h2>
+      <div class="ft-col"><ul>
+        <li><a href="https://arxiv.org/abs/2106.09685">Hu 외, LoRA: Low-Rank Adaptation of Large Language Models (2021)</a> — Figure 1, GPT-3 175B 학습 숫자 1만 배·메모리 3배 감소(1.2TB → 350GB), 체크포인트 350GB → 35MB, B=0 시작, α/r, 합치면 추가 지연 없음, rank 1~2로 충분</li>
+        <li><a href="https://arxiv.org/abs/2305.14314">Dettmers 외, QLoRA: Efficient Finetuning of Quantized LLMs (2023)</a> — Figure 1, 65B 780GB 초과 → 48GB 미만, NF4, double quantization(0.373비트, 65B 약 3GB), paged optimizer, 모든 선형층 필요, Guanaco 99.3%·24시간</li>
+        <li><a href="https://arxiv.org/abs/1910.02054">Rajbhandari 외, ZeRO: Memory Optimizations Toward Training Trillion Parameter Models (2019)</a> 3.1절 — 혼합 정밀도 Adam 2Ψ + 2Ψ + 12Ψ = 16Ψ바이트, GPT-2 1.5B 활성값 약 60GB</li>
+        <li><a href="https://huggingface.co/docs/peft/main/en/developer_guides/lora">Hugging Face PEFT 문서, LoRA</a> — all-linear, merge_and_unload, B=0 기본 초기화, lora_alpha/r · <a href="https://pypi.org/project/peft/">peft 0.21.2</a>(2026-10-01)</li>
+        <li><a href="https://thinkingmachines.ai/blog/lora/">Thinking Machines, LoRA Without Regret (2025-09-29)</a> — 작은~중간 데이터에서 전체 학습과 같은 성능, Attention만 붙이면 뒤처짐, 학습률 약 10배</li>
+        <li><a href="https://arxiv.org/abs/2405.09673">Biderman 외, LoRA Learns Less and Forgets Less (2024)</a></li>
+        <li><a href="https://arxiv.org/abs/2412.15115">Qwen2.5 Technical Report</a> — 사전학습 18조 토큰, SFT 100만 개 이상 · <a href="https://huggingface.co/Qwen/Qwen2.5-7B/blob/main/config.json">Qwen2.5-7B config.json</a>(hidden 3584, intermediate 18944, 28층, KV 헤드 4) · <a href="https://huggingface.co/Qwen/Qwen2.5-72B/blob/main/config.json">Qwen2.5-72B config.json</a>(hidden 8192, intermediate 29568, 80층, KV 헤드 8)</li>
+        <li><a href="https://huggingface.co/zjudai/flowertune-medical-lora-qwen2.5-7b-instruct">zjudai/flowertune-medical-lora-qwen2.5-7b-instruct</a> — r 32, q·v, adapter_model.safetensors 40,385,208바이트(2026-10-15 확인)</li>
+        <li><a href="https://docs.vllm.ai/en/latest/features/lora/">vLLM 문서, LoRA Adapters</a> — --enable-lora, --lora-modules</li>
+        <li><a href="https://developers.openai.com/api/docs/guides/optimizing-llm-accuracy">OpenAI, Optimizing LLM Accuracy</a> — 지식(컨텍스트) 축과 행동(모델) 축</li>
+        <li><a href="https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms">Sebastian Raschka, Practical Tips for Finetuning LLMs Using LoRA (2023)</a></li>
+        <li>직접 실행(2026-10-15, M4 맥북, torch 2.14·transformers 5.19·peft 0.21.2): Qwen2.5-7B 설정으로 print_trainable_parameters, Qwen2.5-1.5B Base·Instruct 출력과 가중치 차이·특이값 분해, Qwen2.5-1.5B-Instruct 말투 LoRA 학습</li>
+      </ul>
+    </div></div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-ft]');
+  if (!box) return;
+  const on = (el, ev, fn, o) => el && el.addEventListener(ev, fn, Object.assign({}, o || {}, signal ? { signal } : {}));
+  const $ = (s, el = box) => el.querySelector(s);
+  const $$ = (s, el = box) => [...el.querySelectorAll(s)];
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const timers = [];
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
+  signal && signal.addEventListener('abort', () => timers.forEach(clearTimeout));
+  const RS = [1, 2, 4, 8, 16, 32, 64, 128, 256];
+  const TOTAL = 7615616512, D = 3584, LAYERS = 28;
+  const MATS = [
+    { k: 'q', name: 'q_proj', i: 3584, o: 3584 },
+    { k: 'k', name: 'k_proj', i: 3584, o: 512 },
+    { k: 'v', name: 'v_proj', i: 3584, o: 512 },
+    { k: 'o', name: 'o_proj', i: 3584, o: 3584 },
+    { k: 'gate', name: 'gate_proj', i: 3584, o: 18944 },
+    { k: 'up', name: 'up_proj', i: 3584, o: 18944 },
+    { k: 'down', name: 'down_proj', i: 18944, o: 3584 },
+  ];
+  const PRESETS = { qv: ['q', 'v'], attn: ['q', 'k', 'v', 'o'], all: ['q', 'k', 'v', 'o', 'gate', 'up', 'down'] };
+  let r = 16, merged = false, sel = new Set(PRESETS.attn), model = '72b';
+  const mb = (n, by = 4) => { const v = n * by / 1e6; return v >= 1000 ? (v / 1000).toFixed(2) + 'GB' : v >= 100 ? fmt(v) + 'MB' : v.toFixed(1) + 'MB'; };
+  const pct = (n) => { const p = n / TOTAL * 100; return (p < 0.1 ? p.toFixed(3) : p.toFixed(2)) + '%'; };
+  // 화면에 그려진 폭에 맞춰 SVG 글자 크기를 정한다(실제 글자 base px 이상)
+  const fsFor = (svg, vbw, base = 14, max = 26) => { const w = svg.getBoundingClientRect().width || vbw; return Math.min(max, Math.max(base, base * vbw / w)); };
+
+  /* ---------- 판과 띠 (히어로·합치기 공용) ---------- */
+  const lock = (cx, cy) => `<g transform="translate(${cx - 14},${cy - 22})"><path d="M6 16 V10 a8 8 0 0 1 16 0 V16" style="fill:none;stroke:var(--frz);stroke-width:4"/><rect x="0" y="16" width="28" height="22" rx="4" style="fill:var(--frz)"/><circle cx="14" cy="27" r="3" style="fill:var(--frz-soft)"/></g>`;
+  const drawSlabInto = (svg, inset, mg) => {
+    const w = svg.getBoundingClientRect().width || 600;
+    const mob = w < 520;
+    let s = '';
+    const wFill = mg ? 'color-mix(in srgb, var(--trn) 34%, var(--frz-soft))' : 'var(--frz-soft)';
+    const op = mg ? 0 : 1;
+    if (!mob) {
+      const VB = 760, S = 300, X0 = 20, Y0 = 60;
+      const FS = fsFor(svg, VB, 14, 22);
+      const tv = Math.max(6, S * r / D);
+      const BX = X0 + S + 60, AX = BX + tv + 40;
+      const AY = inset ? Y0 + 40 : Y0 + S / 2 - tv / 2;
+      const H = Y0 + S + 46;
+      svg.setAttribute('viewBox', `0 0 ${VB} ${H}`);
+      s += `<rect class="mv" x="${X0}" y="${Y0}" width="${S}" height="${S}" rx="4" style="fill:${wFill};stroke:var(--frz);stroke-width:1.5"/>`;
+      if (!mg) s += lock(X0 + S / 2, Y0 + S / 2);
+      s += `<text x="${X0}" y="${Y0 - 16}" style="font-size:${FS + 2}px;font-weight:700">${mg ? 'W + BA (합친 표)' : 'W · 3584 × 3584'}</text>`;
+      s += `<text x="${X0}" y="${Y0 + S + 28}" class="dim" style="font-size:${FS}px">숫자 12,845,056개${mg ? '' : ' · 얼림'}</text>`;
+      s += `<text x="${X0 + S + 22}" y="${Y0 + S / 2 + 8}" style="font-size:${FS + 10}px;font-weight:700;opacity:${op}" class="dim mv">+</text>`;
+      s += `<g class="mv" style="transform:translate(${mg ? X0 - BX : 0}px,0);opacity:${op}">`;
+      s += `<rect x="${BX}" y="${Y0}" width="${tv}" height="${S}" rx="2" style="fill:var(--trn)"/>`;
+      s += `<text x="${BX}" y="${Y0 - 16}" style="font-size:${FS + 4}px;font-weight:800;fill:var(--trn)">B</text>`;
+      s += `<text x="${BX + 22}" y="${Y0 - 16}" class="dim" style="font-size:${FS}px">3584×${r}</text></g>`;
+      s += `<g class="mv" style="transform:translate(${mg ? X0 - AX : 0}px,${mg ? Y0 - AY : 0}px);opacity:${op}">`;
+      s += `<text x="${AX - 26}" y="${AY + tv / 2 + 7}" style="font-size:${FS + 6}px;font-weight:700" class="dim">×</text>`;
+      s += `<rect x="${AX}" y="${AY}" width="${S}" height="${tv}" rx="2" style="fill:var(--trn)"/>`;
+      s += `<text x="${AX}" y="${AY - 12}" style="font-size:${FS + 4}px;font-weight:800;fill:var(--trn)">A</text>`;
+      s += `<text x="${AX + 22}" y="${AY - 12}" class="dim" style="font-size:${FS}px">${r}×3584</text></g>`;
+      if (inset) s += zoomBox(AX, Y0 + 110, S, S - 110, S, FS);
+    } else {
+      const VB = 400, S = 220, X0 = 8, Y0 = 40;
+      const FS = fsFor(svg, VB, 13, 20);
+      const tv = Math.max(6, S * r / D);
+      const BX = X0 + S + 16, AY = Y0 + S + 16;
+      const zy = AY + tv + 46;
+      const H = inset ? zy + 140 : AY + tv + 50;
+      svg.setAttribute('viewBox', `0 0 ${VB} ${H}`);
+      s += `<rect class="mv" x="${X0}" y="${Y0}" width="${S}" height="${S}" rx="4" style="fill:${wFill};stroke:var(--frz);stroke-width:1.5"/>`;
+      if (!mg) s += lock(X0 + S / 2, Y0 + S / 2);
+      s += `<text x="${X0}" y="${Y0 - 12}" style="font-size:${FS + 1}px;font-weight:700">${mg ? 'W + BA (합친 표)' : 'W · 3584 × 3584 · 얼림'}</text>`;
+      s += `<g class="mv" style="transform:translate(${mg ? X0 - BX : 0}px,0);opacity:${op}">`;
+      s += `<rect x="${BX}" y="${Y0}" width="${tv}" height="${S}" rx="2" style="fill:var(--trn)"/>`;
+      s += `<text x="${BX + tv + 10}" y="${Y0 + 22}" style="font-size:${FS + 4}px;font-weight:800;fill:var(--trn)">B</text>`;
+      s += `<text x="${BX + tv + 10}" y="${Y0 + 46}" class="dim" style="font-size:${FS}px">3584</text><text x="${BX + tv + 10}" y="${Y0 + 68}" class="dim" style="font-size:${FS}px">×${r}</text></g>`;
+      s += `<g class="mv" style="transform:translate(0,${mg ? Y0 - AY : 0}px);opacity:${op}">`;
+      s += `<rect x="${X0}" y="${AY}" width="${S}" height="${tv}" rx="2" style="fill:var(--trn)"/>`;
+      s += `<text x="${X0}" y="${AY + tv + 28}" style="font-size:${FS + 4}px;font-weight:800;fill:var(--trn)">A</text>`;
+      s += `<text x="${X0 + 24}" y="${AY + tv + 28}" class="dim" style="font-size:${FS}px">${r}×3584</text></g>`;
+      if (inset) s += zoomBox(X0, zy, VB - 16, 130, S, FS);
+    }
+    svg.innerHTML = s;
+  };
+  // B 띠를 실제 비율의 10배로 키운 칸
+  const zoomBox = (x, y, w, h, S, FS) => {
+    const real = S * r / D, z = Math.min(w - 40, Math.max(1, real * 10));
+    let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" style="fill:var(--bg-subtle);stroke:var(--line-normal)"/>`;
+    s += `<text x="${x + 14}" y="${y + 26}" style="font-size:${FS}px;font-weight:700">🔍 B 띠를 실제 비율의 10배로</text>`;
+    s += `<rect x="${x + 16}" y="${y + 42}" width="${z}" height="${h - 84}" rx="1" style="fill:var(--trn)"/>`;
+    s += `<text x="${x + 14}" y="${y + h - 16}" class="dim" style="font-size:${FS - 1}px">r ${r}: W 한 변의 1/${fmt(D / r)} 두께</text>`;
+    return s;
+  };
+  const hero = $('[data-ft-slab]'), mslab = $('[data-ft-mslab]');
+  const drawSlab = () => { drawSlabInto(hero, true, false); drawSlabInto(mslab, false, merged); };
+  const drawReads = () => {
+    const one = 2 * D * r;
+    const all = MATS.filter((m) => PRESETS.attn.includes(m.k)).reduce((a, m) => a + r * (m.i + m.o), 0) * LAYERS;
+    $$('[data-ft-rout]').forEach((o) => { o.textContent = r; });
+    $$('[data-ft-r]').forEach((i) => { i.value = RS.indexOf(r); });
+    $('[data-ft-one]').textContent = fmt(one) + '개';
+    $('[data-ft-ratio]').textContent = 'W 숫자의 1/' + fmt(D * D / one);
+    $('[data-ft-all]').textContent = fmt(all) + '개';
+    $('[data-ft-pct]').textContent = '76억 개의 ' + pct(all);
+    $('[data-ft-mb]').textContent = mb(all);
+    $('[data-ft-mbnote]').textContent = `PEFT는 학습한 B·A를 기본으로 숫자 하나에 4바이트(FP32)씩 저장합니다. 모델처럼 2바이트(BF16)로 저장하면 절반인 ${mb(all, 2)}입니다.`;
+  };
+  const setR = (v) => { r = v; drawReads(); drawSlab(); drawCurve(); drawLayer(); };
+  $$('[data-ft-r]').forEach((i) => on(i, 'input', (e) => setR(RS[+e.target.value])));
+  on($('[data-ft-merge]'), 'click', () => {
+    merged = !merged;
+    $('[data-ft-merge]').textContent = merged ? '다시 떼어 놓기' : '합치기';
+    $('[data-ft-mnote]').textContent = merged
+      ? 'BA를 W에 더해 표가 다시 한 장이 됐습니다. 답을 만들 때 계산량이 원본과 같습니다.'
+      : 'B와 A가 아직 W 곁에 따로 있습니다.';
+    drawSlabInto(mslab, false, merged);
+  });
+
+  /* ---------- 2. 쓰기만 할 때 vs 전체 학습 ---------- */
+  const drawGbar = () => {
+    const el = $('[data-ft-gbars]'), ax = $('[data-ft-gaxis]');
+    const MAX = 160, P = (g) => (g / MAX * 100) + '%';
+    const B = TOTAL / 1e9;
+    const rows = [
+      ['답만 만들 때 · 가중치만 15.2GB', [[2 * B, 'var(--frz)']], false],
+      ['전체 학습 · 121.9GB + 활성값', [[2 * B, 'var(--frz)'], [2 * B, 'var(--grd)'], [4 * B, 'var(--opt)'], [8 * B, 'var(--trn)']], true],
+    ];
+    let h = '';
+    rows.forEach(([lab, segs, act]) => {
+      let x = 0, t = '';
+      segs.forEach(([g, c]) => { t += `<i style="left:${P(x)};width:calc(${P(g)} - 2px);background:${c}"></i>`; x += g; });
+      if (act) t += `<i style="left:${P(x)};width:${P(20)};background:var(--hatch);border-radius:0 6px 6px 0;box-shadow:inset 0 0 0 1px var(--line-strong)"></i>`;
+      h += `<div class="row"><small>${lab}</small><div class="trk">${t}</div></div>`;
+    });
+    h += `<div class="gl" style="left:${P(80)}"><span>H100 한 장 80GB</span></div>`;
+    el.innerHTML = h;
+    ax.innerHTML = [0, 40, 80, 120, 160].map((g) => `<span style="left:${P(g)};transform:translateX(${g === 0 ? '0' : g === 160 ? '-100%' : '-50%'})">${g}GB</span>`).join('');
+  };
+
+  /* ---------- 3. 구구단 격자 ---------- */
+  let rank = 1;
+  const rowV = [1, 2, 3, 4, 5, 6, 7, 8, 9], colV = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const alt = [1, -1, 1, -1, 1, -1, 1, -1, 1];
+  const mulEl = $('[data-ft-mul]');
+  const heat = (x, maxA) => `color-mix(in srgb, ${x >= 0 ? 'var(--trn)' : 'var(--neg)'} ${Math.round(Math.abs(x) / maxA * 78 + 6)}%, var(--bg-base))`;
+  const drawMul = () => {
+    let h = '<span></span>';
+    colV.forEach((v, j) => { h += `<button type="button" data-c="${j}" aria-label="위쪽 줄 ${j + 1}번째 숫자 ${v}">${v}</button>`; });
+    let maxA = 1;
+    const val = (i, j) => rowV[i] * colV[j] + (rank === 2 ? alt[i] * alt[j] * 6 : 0);
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) maxA = Math.max(maxA, Math.abs(val(i, j)));
+    rowV.forEach((v, i) => {
+      h += `<button type="button" data-rw="${i}" aria-label="왼쪽 줄 ${i + 1}번째 숫자 ${v}">${v}</button>`;
+      colV.forEach((_, j) => { const x = val(i, j); h += `<i style="background:${heat(x, maxA)}">${x}</i>`; });
+    });
+    mulEl.innerHTML = h;
+    $('[data-ft-mulk]').textContent = rank === 1 ? 18 : 36;
+    const plain = rowV.every((v, i) => v === i + 1) && colV.every((v, j) => v === j + 1);
+    $('[data-ft-mulnote]').textContent = rank === 2 ? '체크무늬가 섞여 한 쌍으로는 못 만드는 표가 됩니다' : plain ? '지금은 구구단 그대로입니다' : '숫자 하나를 바꾸면 줄 전체가 바뀝니다';
+  };
+  on(mulEl, 'click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.c !== undefined) { const j = +b.dataset.c; colV[j] = colV[j] >= 9 ? -3 : colV[j] + 1; }
+    else { const i = +b.dataset.rw; rowV[i] = rowV[i] >= 9 ? -3 : rowV[i] + 1; }
+    drawMul();
+  });
+  $$('[data-ft-rank]').forEach((b) => on(b, 'click', () => {
+    rank = +b.dataset.ftRank;
+    $$('[data-ft-rank]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawMul();
+  }));
+  // 들쭉날쭉한 6×6 표와 줄 1쌍·2쌍 근사(특이값 분해로 미리 계산)
+  const APX = [
+    ['실제로 고칠 양', '', [[3.5, 5.0, 8.0, 8.5, 5.9, -0.6], [1.4, 4.2, 8.8, 3.9, 4.4, 3.3], [1.9, 2.1, 0.3, 4.3, 2.6, -0.5], [-2.0, 2.0, 1.7, -2.1, 0.1, 1.1], [0.3, -2.3, -2.8, -1.4, -1.8, -2.0], [-1.8, -4.2, -5.0, -5.4, -5.3, -0.7]]],
+    ['줄 1쌍으로', '89%', [[2.8, 5.5, 8.4, 7.4, 6.2, 1.3], [2.2, 4.3, 6.7, 5.9, 5.0, 1.0], [0.9, 1.8, 2.7, 2.4, 2.0, 0.4], [0.1, 0.2, 0.2, 0.2, 0.2, 0.0], [-0.8, -1.6, -2.5, -2.2, -1.8, -0.4], [-1.9, -3.9, -5.9, -5.2, -4.4, -0.9]]],
+    ['줄 2쌍으로', '98%', [[3.6, 5.1, 7.3, 8.6, 6.4, 0.2], [0.8, 4.9, 8.5, 3.8, 4.6, 2.9], [2.1, 1.3, 1.1, 4.2, 2.3, -1.2], [-1.3, 0.7, 2.1, -1.8, -0.1, 1.9], [-0.1, -1.9, -3.4, -1.1, -1.7, -1.4], [-2.2, -3.8, -5.6, -5.6, -4.5, -0.6]]],
+  ];
+  $('[data-ft-approx]').innerHTML = APX.map(([t, p, M]) => `<div><div class="g">${M.flat().map((x) => `<i style="background:${heat(x, 8.8)}"></i>`).join('')}</div><small>${t}${p ? ` · <span>${p}</span> 담김` : ''}</small></div>`).join('');
+
+  /* ---------- 4. ΔW 곡선 (실측) ---------- */
+  const CURVE = [[1, .031], [2, .054], [4, .091], [8, .148], [16, .224], [32, .327], [64, .455], [128, .607], [256, .770], [512, .916], [1536, 1]];
+  const curve = $('[data-ft-curve]');
+  const drawCurve = () => {
+    const FS = fsFor(curve, 600, 13, 24);
+    const L = 30 + FS * 2.6, R = 580, T = 34, Bt = 330 - FS;
+    curve.setAttribute('viewBox', `0 0 600 ${Bt + FS * 3.6}`);
+    const xs = (n) => L + (Math.log2(n) / Math.log2(1536)) * (R - L);
+    const ys = (v) => Bt - v * (Bt - T);
+    let s = '';
+    [0, .25, .5, .75, 1].forEach((v) => { s += `<line x1="${L}" x2="${R}" y1="${ys(v)}" y2="${ys(v)}" style="stroke:var(--line-subtle)"/><text x="${L - 8}" y="${ys(v) + 5}" text-anchor="end" class="dim" style="font-size:${FS}px">${v * 100}%</text>`; });
+    (FS > 17 ? [1, 16, 256, 1536] : [1, 4, 16, 64, 256, 1536]).forEach((n) => { s += `<text x="${xs(n)}" y="${Bt + FS * 1.5}" text-anchor="middle" class="dim" style="font-size:${FS}px">${n}</text>`; });
+    s += `<text x="${(L + R) / 2}" y="${Bt + FS * 3}" text-anchor="middle" class="dim" style="font-size:${FS}px">줄 쌍의 수 r</text>`;
+    const pts = CURVE.map(([n, v]) => `${xs(n)},${ys(v)}`).join(' ');
+    s += `<polygon points="${xs(1)},${Bt} ${pts} ${xs(1536)},${Bt}" style="fill:var(--trn);opacity:.12"/>`;
+    s += `<polyline points="${pts}" style="fill:none;stroke:var(--trn);stroke-width:3"/>`;
+    const near = CURVE.find(([n]) => n === r) || CURVE[4];
+    const x = xs(near[0]), y = ys(near[1]);
+    s += `<line x1="${x}" x2="${x}" y1="${Bt}" y2="${y}" style="stroke:var(--fg-strong);stroke-width:1.5;stroke-dasharray:4 3"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="7" style="fill:var(--trn);stroke:var(--bg-base);stroke-width:2"/>`;
+    const right = x > 400;
+    s += `<text x="${right ? x - 12 : x + 12}" y="${y - 12}" text-anchor="${right ? 'end' : 'start'}" style="font-size:${FS + 3}px;font-weight:800">r ${near[0]} → ${Math.round(near[1] * 100)}%</text>`;
+    s += `<text x="${L}" y="${T - 14}" class="dim" style="font-size:${FS}px">Base → Instruct 변화 중 담기는 몫</text>`;
+    curve.innerHTML = s;
+  };
+
+  /* ---------- 5. 층 지도 ---------- */
+  const layer = $('[data-ft-layer]');
+  const drawLayer = () => {
+    const w = layer.getBoundingClientRect().width || 900;
+    const mob = w < 640;
+    const W = mob ? 620 : 1000;
+    const K = mob ? 0.0158 : 0.0152; // 칸 → px
+    const FS = mob ? 26 : 15;
+    const tw = Math.max(6, r * K * 3.2);
+    let s = '';
+    let x = 12, y = 44, rowH = 0;
+    const place = [];
+    MATS.forEach((m) => {
+      const lay = mob && m.o > m.i; // 모바일에서는 세로로 긴 판을 눕혀 그린다
+      const mw = (lay ? m.o : m.i) * K, mh = (lay ? m.i : m.o) * K;
+      const dimTxt = `${m.o}×${m.i}${lay ? ' · 눕혀 그림' : ''}`;
+      const lw = Math.max(mw + tw + 8, dimTxt.length * (FS - 2) * 0.62, m.name.length * FS * 0.42);
+      if (x + lw > W - 8) { x = 12; y += rowH + (mob ? 120 : 100); rowH = 0; }
+      place.push({ m, x, y, mw, mh, dimTxt });
+      x += lw + (mob ? 22 : 26); rowH = Math.max(rowH, mh + tw);
+    });
+    const H = y + rowH + (mob ? 50 : 40);
+    layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    place.forEach(({ m, x, y, mw, mh, dimTxt }) => {
+      const on = sel.has(m.k);
+      s += `<g data-mat="${m.k}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${m.name} ${dimTxt}">`;
+      s += `<rect x="${x - 6}" y="${y - 34}" width="${mw + tw + 20}" height="${mh + tw + 70}" style="fill:transparent"/>`;
+      s += `<rect x="${x}" y="${y}" width="${mw}" height="${mh}" rx="3" style="fill:var(--frz-soft);stroke:var(--frz);stroke-width:${on ? 1.5 : 1};opacity:${on ? 1 : .6}"/>`;
+      if (on) {
+        s += `<rect x="${x + mw + 5}" y="${y}" width="${tw}" height="${mh}" rx="1.5" style="fill:var(--trn)"/>`;
+        s += `<rect x="${x}" y="${y + mh + 5}" width="${mw}" height="${tw}" rx="1.5" style="fill:var(--trn)"/>`;
+      }
+      s += `<text x="${x}" y="${y - 12}" style="font-size:${FS}px;font-weight:700;${on ? 'fill:var(--trn)' : ''}">${m.name.replace('_proj', '')}</text>`;
+      s += `<text x="${x}" y="${y + mh + tw + (mob ? 34 : 26)}" class="dim" style="font-size:${FS - 2}px">${dimTxt}</text>`;
+      s += `</g>`;
+    });
+    layer.innerHTML = s;
+    const picked = MATS.filter((m) => sel.has(m.k));
+    const per = picked.reduce((a, m) => a + r * (m.i + m.o), 0);
+    const tot = per * LAYERS;
+    $('[data-ft-formula]').innerHTML = picked.length
+      ? picked.map((m) => `${m.name.replace('_proj', '')} ${r}×(${fmt(m.i)}+${fmt(m.o)})`).join(' + ') + ` = <b>${fmt(per)}</b>개 / 층<br>× ${LAYERS}층 = <b>${fmt(tot)}</b>개`
+      : '고른 표가 없습니다. 표를 눌러 보세요.';
+    $('[data-ft-ltot]').textContent = fmt(tot) + '개';
+    $('[data-ft-lmb]').textContent = mb(tot) + ' · ' + pct(tot);
+    const key = Object.keys(PRESETS).find((k) => PRESETS[k].length === sel.size && PRESETS[k].every((x) => sel.has(x)));
+    $$('[data-ft-preset]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ftPreset === key)));
+  };
+  const toggleMat = (k) => { sel.has(k) ? sel.delete(k) : sel.add(k); drawLayer(); };
+  on(layer, 'click', (e) => { const g = e.target.closest('[data-mat]'); if (g) toggleMat(g.dataset.mat); });
+  on(layer, 'keydown', (e) => { const g = e.target.closest('[data-mat]'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleMat(g.dataset.mat); } });
+  $$('[data-ft-preset]').forEach((b) => on(b, 'click', () => { sel = new Set(PRESETS[b.dataset.ftPreset]); drawLayer(); }));
+
+  /* ---------- 7. GPU 카드 상자에 쌓은 메모리 탑 ---------- */
+  const MODELS = {
+    // lin: 층 안 선형층 숫자, emb: 단어표+출력층, lora: r16 q·k·v·o 학습 숫자
+    '7b': { name: 'Qwen2.5-7B', lin: 6525288448, emb: TOTAL - 6525288448, lora: 10092544 },
+    '72b': { name: 'Qwen2.5-72B', lin: 70212648960, emb: 2491416576, lora: 65536000 },
+  };
+  const CARDS = [[24, '24GB 카드'], [48, '48GB 카드'], [80, '80GB 카드']];
+  const cards = $('[data-ft-cards]');
+  const drawCards = () => {
+    const M = MODELS[model], P = (M.lin + M.emb) / 1e9, L = M.lora / 1e9;
+    const q4 = M.lin * 4.127 / 8 / 1e9 + M.emb * 2 / 1e9;
+    const cols = [
+      ['전체 학습', [[2 * P, 'frz'], [2 * P, 'grd'], [4 * P, 'opt'], [8 * P, 'trn']]],
+      ['LoRA', [[2 * P, 'frz'], [2 * L, 'grd'], [4 * L, 'opt'], [10 * L, 'trn']]],
+      ['QLoRA', [[q4, 'frz'], [2 * L, 'grd'], [4 * L, 'opt'], [10 * L, 'trn']]],
+    ];
+    const w = cards.getBoundingClientRect().width || 900;
+    const mob = w < 640;
+    const VB = mob ? 420 : 1000;
+    const FS = fsFor(cards, VB, 13, 22);
+    const MAXG = 170, top = 40 + FS * 2, Hs = mob ? 270 : 230, yb = top + Hs;
+    const hy = (g) => Math.min(g, MAXG) / MAXG * Hs;
+    const left = mob ? 8 : 70, colW = (VB - left - 8) / 3;
+    const tw = Math.min(110, colW * 0.42);
+    let s = '';
+    if (!mob) [0, 40, 80, 120, 160].forEach((g) => { s += `<line x1="${left - 10}" x2="${left - 2}" y1="${yb - hy(g)}" y2="${yb - hy(g)}" style="stroke:var(--fg-neutral)"/><text x="${left - 14}" y="${yb - hy(g) + 5}" text-anchor="end" class="dim" style="font-size:${FS - 1}px">${g}GB</text>`; });
+    s += `<line x1="${left - 2}" x2="${VB - 8}" y1="${yb}" y2="${yb}" style="stroke:var(--line-strong);stroke-width:1.5"/>`;
+    const CV = { frz: 'var(--frz)', grd: 'var(--grd)', opt: 'var(--opt)', trn: 'var(--trn)' };
+    const notes = [];
+    cols.forEach(([name, segs], ci) => {
+      const cx = left + colW * ci + colW / 2;
+      const total = segs.reduce((a, [g]) => a + g, 0);
+      const fit = CARDS.find(([g]) => g >= total);
+      const card = fit || CARDS[2];
+      const pad = 16, ch = hy(card[0]);
+      const ok = !!fit;
+      // 카드 상자
+      s += `<rect x="${cx - tw / 2 - pad}" y="${yb - ch - pad / 2}" width="${tw + pad * 2}" height="${ch + pad / 2}" rx="8" style="fill:color-mix(in srgb, ${ok ? 'var(--gpu)' : 'var(--bad)'} 10%, transparent);stroke:${ok ? 'var(--gpu)' : 'var(--bad)'};stroke-width:2;${ok ? '' : 'stroke-dasharray:7 5'}"/>`;
+      // 탑
+      let y = yb;
+      segs.forEach(([g, c], i) => {
+        let hh = hy(g);
+        if (i > 0) hh = Math.max(hh, 3);
+        const room = y - (yb - Hs);
+        hh = Math.min(hh, Math.max(0, room));
+        if (hh <= 0) return;
+        s += `<rect x="${cx - tw / 2}" y="${y - hh}" width="${tw}" height="${hh}" style="fill:${CV[c]}"/>`;
+        y -= hh;
+      });
+      const clipped = total > MAXG;
+      if (clipped) {
+        const zy = yb - Hs;
+        s += `<path d="M${cx - tw / 2 - 2} ${zy + 10} l${tw / 6} -8 l${tw / 6} 8 l${tw / 6} -8 l${tw / 6} 8 l${tw / 6} -8 l${tw / 6} 8 l2 0 V${zy - 4} H${cx - tw / 2 - 2}Z" style="fill:var(--bg-subtle)"/>`;
+      }
+      const ty = clipped ? yb - Hs - 14 : Math.min(y, yb - ch - pad / 2) - 12;
+      s += `<text x="${cx}" y="${ty}" text-anchor="middle" style="font-size:${FS + 4}px;font-weight:800;font-family:var(--font-mono)">${total >= 100 ? fmt(total) : total.toFixed(1)}GB${clipped ? ' ↑' : ''}</text>`;
+      // 아래 이름과 판정
+      s += `<text x="${cx}" y="${yb + FS + 14}" text-anchor="middle" style="font-size:${FS + 2}px;font-weight:800">${name}</text>`;
+      const vc = ok ? 'var(--gpu)' : 'var(--bad)';
+      const v1 = ok ? `${card[1]} 한 장에 들어감` : '80GB 카드 한 장에 안 들어감';
+      if (mob) {
+        s += `<text x="${cx}" y="${yb + FS * 2 + 22}" text-anchor="middle" style="font-size:${FS - 1}px;font-weight:700;fill:${vc}">${ok ? card[1] : '80GB 카드'}</text>`;
+        s += `<text x="${cx}" y="${yb + FS * 3 + 26}" text-anchor="middle" style="font-size:${FS - 1}px;font-weight:700;fill:${vc}">${ok ? '한 장에 들어감' : '한 장 넘침'}</text>`;
+      } else s += `<text x="${cx}" y="${yb + FS * 2 + 22}" text-anchor="middle" style="font-size:${FS - 1}px;font-weight:700;fill:${vc}">${v1}</text>`;
+      notes.push([name, ok, card[1]]);
+    });
+    cards.setAttribute('viewBox', `0 0 ${VB} ${yb + FS * (mob ? 3 : 2) + 44}`);
+    cards.innerHTML = s;
+    $('[data-ft-cardnote]').textContent = model === '7b'
+      ? '7B는 LoRA만으로도 24GB 카드 한 장에 들어갑니다.'
+      : '72B는 LoRA로도 80GB 카드를 넘칩니다. 원본을 4비트로 줄인 QLoRA만 48GB 카드 한 장에 들어갑니다.';
+  };
+  $$('[data-ft-model]').forEach((b) => on(b, 'click', () => {
+    model = b.dataset.ftModel;
+    $$('[data-ft-model]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawCards();
+  }));
+
+  /* ---------- 7b. NF4 16칸 ---------- */
+  const NF4 = [-1, -0.6962, -0.5251, -0.3949, -0.2844, -0.1848, -0.0911, 0, 0.0796, 0.1609, 0.2461, 0.3379, 0.4407, 0.5626, 0.7230, 1];
+  const nf4 = $('[data-ft-nf4]');
+  const drawNF4 = () => {
+    const FS = fsFor(nf4, 560, 13, 24);
+    const L = 30, R = 530, base = 150 + FS, sig = 0.42;
+    const xs = (v) => L + (v + 1) / 2 * (R - L);
+    const pdf = (v) => Math.exp(-v * v / (2 * sig * sig));
+    let s = '';
+    let d = `M${xs(-1)} ${base}`;
+    for (let v = -1; v <= 1.0001; v += 0.02) d += ` L${xs(v).toFixed(1)} ${(base - pdf(v) * 110).toFixed(1)}`;
+    d += ` L${xs(1)} ${base} Z`;
+    s += `<path d="${d}" style="fill:var(--frz-soft);stroke:var(--frz);stroke-width:1.5"/>`;
+    s += `<text x="${L}" y="${FS + 4}" style="font-size:${FS}px;font-weight:700">가중치가 몰린 모양</text>`;
+    NF4.forEach((v) => { s += `<line x1="${xs(v)}" x2="${xs(v)}" y1="${base - pdf(v) * 110}" y2="${base + 16}" style="stroke:var(--trn);stroke-width:2.5"/>`; });
+    s += `<text x="${L}" y="${base + 16 + FS + 8}" style="font-size:${FS}px;font-weight:700;fill:var(--trn)">NF4 · 0 근처에 촘촘한 16칸</text>`;
+    const y2 = base + 16 + FS * 2 + 26;
+    for (let k = 0; k < 16; k++) { const v = -1 + k * 2 / 15; s += `<line x1="${xs(v)}" x2="${xs(v)}" y1="${y2}" y2="${y2 + 22}" style="stroke:var(--frz);stroke-width:2.5"/>`; }
+    s += `<text x="${L}" y="${y2 + 22 + FS + 8}" class="dim" style="font-size:${FS}px;font-weight:700">고르게 나눈 4비트 · 같은 간격 16칸</text>`;
+    [[-1, '−1'], [0, '0'], [1, '1']].forEach(([v, t]) => { s += `<text x="${xs(v)}" y="${base - 4}" text-anchor="${v < 0 ? 'start' : v > 0 ? 'end' : 'middle'}" class="dim" style="font-size:${FS - 1}px">${v === 0 ? '' : t}</text>`; });
+    nf4.setAttribute('viewBox', `0 0 560 ${y2 + 22 + FS + 18}`);
+    nf4.innerHTML = s;
+  };
+
+  /* ---------- 8. 두 축 지도 ---------- */
+  const map = $('[data-ft-map]');
+  const drawMap = () => {
+    const w = map.getBoundingClientRect().width || 520;
+    const mob = w < 460;
+    const FS = mob ? 21 : 15;
+    const L = mob ? 48 : 50, T = 20, R = 548, Bt = mob ? 360 : 370;
+    const mx = (L + R) / 2, my = (T + Bt) / 2;
+    let s = '';
+    const cell = (x, y, ww, hh, fill, t1, t2, em) => {
+      s += `<rect x="${x + 4}" y="${y + 4}" width="${ww - 8}" height="${hh - 8}" rx="12" style="fill:${fill}"/>`;
+      s += `<text x="${x + ww / 2}" y="${y + hh / 2 - (mob ? 14 : 8)}" text-anchor="middle" style="font-family:Tossface,sans-serif;font-size:${mob ? 32 : 28}px">${em}</text>`;
+      s += `<text x="${x + ww / 2}" y="${y + hh / 2 + (mob ? 28 : 24)}" text-anchor="middle" style="font-size:${FS + 1}px;font-weight:700">${t1}</text>`;
+      s += `<text x="${x + ww / 2}" y="${y + hh / 2 + (mob ? 54 : 46)}" text-anchor="middle" class="dim" style="font-size:${FS - 1}px">${t2}</text>`;
+    };
+    cell(L, my, mx - L, Bt - my, 'var(--bg-muted)', '프롬프트 먼저', '지시·예시 다듬기', '✍️');
+    cell(mx, my, R - mx, Bt - my, 'color-mix(in srgb, var(--neg) 22%, var(--bg-base))', 'RAG', '문서를 찾아 넣기', '🔍');
+    cell(L, T, mx - L, my - T, 'var(--trn-soft)', '파인튜닝', '말투·형식 학습', '🎯');
+    cell(mx, T, R - mx, my - T, 'color-mix(in srgb, var(--trn) 12%, color-mix(in srgb, var(--neg) 14%, var(--bg-base)))', '둘 다', 'RAG + 파인튜닝', '🧩');
+    s += `<line x1="${L}" y1="${Bt + 10}" x2="${R}" y2="${Bt + 10}" style="stroke:var(--fg-strong);stroke-width:1.5"/>`;
+    s += `<text x="${R}" y="${Bt + 38}" text-anchor="end" style="font-size:${FS}px;font-weight:700">모델이 모르는 사실이 필요할수록 →</text>`;
+    s += `<line x1="${L - 14}" y1="${T}" x2="${L - 14}" y2="${Bt}" style="stroke:var(--fg-strong);stroke-width:1.5"/>`;
+    s += `<text transform="translate(${L - 26},${(T + Bt) / 2}) rotate(-90)" text-anchor="middle" style="font-size:${FS}px;font-weight:700">답하는 방식을 바꿔야 할수록 →</text>`;
+    map.setAttribute('viewBox', `0 0 560 ${Bt + 50}`);
+    map.innerHTML = s;
+  };
+
+  /* ---------- 터미널: 처음엔 비워 두고 ▶ 로 찍는다 ---------- */
+  $$('[data-ft-term]').forEach((t) => {
+    const out = $('[data-ft-out]', t), btn = $('[data-ft-run]', t);
+    const full = out.innerHTML, lines = full.split('\n');
+    const idle = '<span class="ph">▶ 실행을 누르면 출력이 찍힙니다</span>';
+    out.innerHTML = idle; btn.hidden = false;
+    on(btn, 'click', () => {
+      if (reduce) { out.innerHTML = full; btn.textContent = '▶ 다시 실행'; return; }
+      btn.disabled = true; out.innerHTML = lines[0];
+      let i = 1;
+      const step = () => { if (i < lines.length) { out.innerHTML = lines.slice(0, ++i).join('\n'); later(step, 700); } else { btn.disabled = false; btn.textContent = '▶ 다시 실행'; } };
+      later(step, 1000);
+    });
+  });
+
+  const all = () => { drawReads(); drawSlab(); drawGbar(); drawMul(); drawCurve(); drawLayer(); drawCards(); drawNF4(); drawMap(); };
+  all();
+  let rz = 0;
+  on(window, 'resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { drawSlab(); drawCurve(); drawLayer(); drawCards(); drawNF4(); drawMap(); }); }, { passive: true });
+})();
+</script>

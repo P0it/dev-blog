@@ -60,6 +60,13 @@
 | [vLLM Blog, PagedAttention 공개 글](https://vllm.ai/blog/2023-06-20-vllm) | 블록 테이블을 논리 블록 → 물리 블록 연결 애니메이션으로, 토큰이 하나 늘 때마다 블록이 차고 새 블록을 받는 장면을 따라간다 | 동적 할당·주소 변환을 단계로 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
 | [Anyscale, Continuous batching](https://www.anyscale.com/blog/continuous-batching-llm-inference) | 같은 자리 네 줄 × 시간 칸 격자에서 정적 배치는 먼저 끝난 칸이 빈 채로, Continuous는 빈 칸에 새 시퀀스가 바로 들어가는 두 그림을 나란히 | 스케줄링 방식 비교를 칸 채움으로 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
 | [OSTEP 18장 Paging](https://pages.cs.wisc.edu/~remzi/OSTEP/vm-paging.pdf) | (다른 분야·운영체제) 64바이트 주소 공간, 16바이트 페이지 4개처럼 손으로 셀 수 있는 아주 작은 예로 페이징을 먼저 보이고 실제 크기는 나중에 | 큰 시스템의 원리를 장난감 크기로 줄여 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
+| [Hu 외, LoRA 논문](https://arxiv.org/abs/2106.09685) | 얼린 W 판 옆에 r 폭으로 좁아지는 A·B 사다리꼴 두 개를 두고 두 길의 출력을 더하는 그림 한 장(Figure 1). B=0 으로 시작한다는 것까지 그림에 적는다 | 저랭크 곁가지 구조를 처음 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [Dettmers 외, QLoRA 논문](https://arxiv.org/abs/2305.14314) | 전체 학습·LoRA·QLoRA 를 옵티마이저 상태 / 어댑터 / 원본 세 층 상자로 나란히 그리고 화살표 색으로 고치기·기울기·CPU 로 옮기기를 가른다(Figure 1) | 학습 방식별로 무엇이 메모리에 남는지 구조로 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [Rajbhandari 외, ZeRO 논문](https://arxiv.org/abs/1910.02054) 3.1절 | 혼합 정밀도 Adam 의 메모리를 2Ψ + 2Ψ + 12Ψ = 16Ψ 바이트로 쪼개고 GPT-2 1.5B 로 24GB 를 계산한다 | "학습은 추론보다 몇 배 메모리를 먹나"를 숫자 하나로 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [Thinking Machines, LoRA Without Regret](https://thinkingmachines.ai/blog/lora/) | 데이터가 담은 정보량과 어댑터 용량을 견주고, 붙인 층(Attention만 / MLP / 전부)별 학습 곡선을 같은 축에 겹친다(Figure 4) | "어디에 붙이나"를 실제 곡선으로 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [Sebastian Raschka, Practical Tips for Finetuning LLMs](https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms) | 10,000×20,000 ΔW 를 rank 8 두 장으로 쪼개면 2억 → 24만 개라는 실제 셈으로 저랭크를 실감시킨다 | 숫자 개수 감소를 처음 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [Tim Baumann, SVD 이미지 압축 데모](https://timbaumann.info/svd-image-compression-demo/) | (다른 분야·이미지 압축) 사진을 성분 k 개로만 다시 그리는 슬라이더와 저장량 k(1+m+n), 내림차순 특이값 그래프. 페이지 글만 확인 | rank 가 작아도 대부분이 담긴다는 직관을 줄 때 | 2026-10-15 | |
+| [OpenAI, Optimizing LLM Accuracy](https://developers.openai.com/api/docs/guides/optimizing-llm-accuracy) | 지식이 모자라면 컨텍스트 축(RAG), 행동이 들쭉날쭉하면 모델 축(파인튜닝)으로 가는 2축 지도 | 프롬프트·RAG·파인튜닝 중 무엇부터인지 정리할 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
 
 ## 미확인
 
@@ -101,6 +108,10 @@
 - **좌석표 하나에 할당 방식 토글** (pytorch-to-vllm-serving) — 같은 요청 열 개를 같은 메모리 칸 96개에 태우고 "최대 길이만큼 미리 잡기 ↔ 블록씩 필요할 때"만 바꾸게 했다. 같은 스텝(8)에서 비교하도록 토글이 스텝을 유지하니, 점선(잡았지만 빈 칸)·빗금(끼인 틈) 면적과 "지금 답하는 요청 3명 ↔ 6명"이 한 번에 바뀐다. 같은 칸·색·점선·빗금 언어를 극장 한 줄, 블록 테이블, prefix 블록 줄까지 이어 썼다
 - **버스 두 대 시간 격자** (pytorch-to-vllm-serving) — 정적 배치와 Continuous Batching을 같은 자리 4줄 × 스텝 17칸 격자 두 개로 겹쳐 같이 재생했다. 빗금 빈자리 비율과 끝나는 스텝(17 vs 12)이 같은 눈금 위에서 보인다
 
+- **얼린 판과 얇은 띠를 실제 축척으로** (fine-tuning-lora-qlora-peft) — Qwen2.5-7B q_proj 3584×3584 를 회색 정사각형, B·A 를 r 두께 주황 띠로 같은 축척에 그려 r 손잡이로 띠 두께와 학습 숫자·어댑터 MB 를 함께 바꿨다. 손잡이 하나가 실측 ΔW 곡선의 표시선과 층 지도 계산까지 움직이고, 회색 = 얼림·주황 = 학습이라는 두 색이 16바이트 칸·메모리 막대·저장 막대까지 이어진다
+- **구구단 표로 저랭크** (fine-tuning-lora-qlora-peft) — 9×9 칸이 줄 두 개(숫자 18개)의 곱이라는 걸 중학생이 아는 표로 보이고, 줄 숫자를 눌러 바꾸면 줄 전체가 같이 바뀌게 했다. 두 쌍 토글로 체크무늬가 더해지는 모습이 rank 2
+- **직접 돌린 학습 전·후 대조** (fine-tuning-lora-qlora-peft) — 1.5B 에 말투 LoRA 를 12초 학습시켜 말끝 "냥"(주황 바탕)은 붙고 틀린 설명(빨간 물결 밑줄)은 그대로인 세 질문을 나란히 놓으니 "파인튜닝은 말투, 지식은 RAG"가 주장이 아니라 결과가 됐다
+
 ## 페이지 레이아웃
 
 그림 하나가 아니라 **페이지 구조**를 고를 때 본다. `/study` 3단계 스토리보드에서 글마다 하나를 고르고,
@@ -127,7 +138,7 @@
 
 | 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 |
 |---|---|---|---|
-| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot |
+| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
 | 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
@@ -135,9 +146,9 @@
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving |
-| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
+| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
