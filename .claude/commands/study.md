@@ -25,7 +25,7 @@ description: 학습 주제·시리즈 목차·수업 자료를 받아 개념이 
 ## 0. 준비
 
 - 규약을 읽는다: `POSTING.md` 의 2-0 제목, 2 말투, **2-4 퇴고 점검표**, **5 HTML 페이지 글**(특히 **5-0 눈높이**),
-  그리고 2 말투 안의 **AI·LLM 업계 용어** 조항(청크·리랭킹처럼 업계가 부르는 대로).
+  그리고 2 말투 안의 **AI·LLM 업계 용어** 조항(청크·리랭킹처럼 업계가 부르는 대로, 한글로 쓴 개념 용어는 첫 등장에 `파라미터(parameter)`처럼 영어 원어 병기).
 - `docs/visual-references.md` 를 읽는다. 앞서 확인한 레퍼런스와 그때 쓴 설명 기법이 있다.
 - 시리즈면 목차 전체를 먼저 보고 편마다 **겹치지 않는 핵심 질문** 하나씩을 정해 사용자에게
   한 번 확인받는다. 시리즈 행(`series` 테이블)이 없으면 `/admin/series` 에서 만들어 달라고 한다.
@@ -120,7 +120,7 @@ general-purpose 에이전트에게 **글의 의도를 알려 주지 않고 캡�
 1. `npm run humanize:page -- extract auto-drafts/posts/<slug>.html <작업폴더>`
 2. `humanize-monolith` 에이전트(`.claude/agents/`)에게 `<작업폴더>/<slug>.md` 를 주고
    `<slug>.final.md` 로 받는다. `quick_rules_path` 로 `<레포 절대경로>/.claude/skills/humanize-korean/references/quick-rules.md` 를 넘긴다. 프롬프트에 반드시 넣는다: `[[id]]` 블록 수·순서 유지, 태그·`${…}`·숫자 보존,
-   장르 블로그, -습니다 체, `~죠` 금지, **AI·LLM 업계 용어는 영어·음차 유지**(이 글의 용어 목록을 적는다),
+   장르 블로그, -습니다 체, `~죠` 금지, **AI·LLM 업계 용어는 영어·음차 유지**(이 글의 용어 목록을 적는다), **개념 용어 첫 등장의 `한글(English)` 괄호는 지우지 말 것**,
    사실·수치 변경 금지, **용어 풀이 문장을 지우거나 줄이지 말 것**(중학생 눈높이, `POSTING.md` 5-0).
 3. 에이전트가 사실 오류를 짚으면 출처로 확인해서 고친다.
 4. `npm run humanize:page -- apply auto-drafts/posts/<slug>.html <작업폴더>`
