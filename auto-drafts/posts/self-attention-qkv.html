@@ -7,15 +7,15 @@ category: ai
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/self-attention-qkv-mv7bo1s1.jpg
 ---
 <!-- page -->
-<!-- layout: 그림 고정 스크롤리텔링 | 글의 성격: it 하나가 Key→Query→점수→softmax→섞기로 같은 그림 위에서 단계적으로 바뀐다 | 버린 후보: 옆 조작판(조작할 변수보다 단계가 핵심), 지그재그(단계가 끊겨 보임) -->
+<!-- layout: 분할 히어로 → 글|그림 → 제목|글 → 실험판 띠 → 그림|글 → 제목|글+지그재그 → 그림 고정 스크롤리텔링 → 실험판 띠 → 표|해설 → 지그재그 → 제목|글 → 2×2 격자 → 큰 글씨 정리 | 글의 성격: it 하나가 Key→Query→점수→softmax→섞기로 같은 그림 위에서 단계적으로 바뀐다 | 버린 후보: 옆 조작판(조작할 변수보다 단계가 핵심), 지그재그(단계가 끊겨 보임) -->
 <style>
 .post-page .sa { --sa-q: rgb(255, 122, 69); --sa-k: rgb(80, 140, 255); color: var(--fg-normal); font-family: var(--font-sans); }
 .post-page .sa * { box-sizing: border-box; }
 .post-page .sa-wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
-/* 글 단락은 가운데 720px, 히어로·놀이터·행렬 같은 넓은 블록은 1120px — 축은 모두 화면 가운데 (POSTING 5-2) */
+/* 가운데 한 열(720px)은 일부 섹션만 — 나머지는 2단·머리·띠·지그재그로 섹션마다 다르게 (POSTING 5-2) */
 .post-page .sa .sa-narrow > * { max-width: 720px; margin-left: auto; margin-right: auto; }
 .post-page .sa h1, .post-page .sa h2 { word-break: keep-all; font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
-.post-page .sa p { font-size: 17px; line-height: 1.8; margin: 0 0 1em; }
+.post-page .sa p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
 .post-page .sa b { color: var(--fg-strong); }
 .post-page .sa code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
 .post-page .sa .q { color: var(--sa-q); font-weight: 700; }
@@ -46,9 +46,42 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-cap { font-size: 13px !important; color: var(--fg-alternative); margin-top: 12px !important; }
 
 /* 섹션 공통 */
-.post-page .sa-sec { padding: clamp(56px, 8vw, 96px) 0; }
+.post-page .sa-sec { padding: clamp(60px, 8vw, 76px) 0; }
 .post-page .sa-sec + .sa-sec { border-top: 1px solid var(--line-normal); }
-.post-page .sa-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 22px; }
+.post-page .sa-sec h2 { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.3; margin-bottom: 28px; }
+
+/* 섹션 배치 — 섹션마다 다르게 (POSTING 5-2, 2026-10-14) */
+/* 글 | 그림 2단. rev 는 그림이 왼쪽 */
+.post-page .sa-duo { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .sa-duo.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .sa-duo.rev > :first-child { order: 2; }
+.post-page .sa-duo .sa-fig, .post-page .sa-zz .sa-fig { margin: 0; }
+/* 제목 | 글 머리 */
+.post-page .sa-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .sa .sa-head h2 { margin: 0; }
+/* 화면 끝까지 닿는 실험판 띠 */
+.post-page .sa-band { background: var(--bg-subtle); padding: clamp(44px, 6vw, 72px) 0; margin: clamp(48px, 6vw, 64px) 0; }
+.post-page .sa-band .sa-fig { margin: 0 auto; max-width: 820px; }
+.post-page .sa-band .sa-scale-card { background: var(--bg-base); }
+/* 지그재그 — 줄마다 글과 그림이 좌우를 바꾼다 */
+.post-page .sa-zz { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 72px); align-items: center; margin-top: clamp(40px, 5vw, 64px); }
+.post-page .sa-zz.sa-zz-first { margin-top: 0; }
+.post-page .sa-zz + .sa-narrow { margin-top: clamp(48px, 6vw, 64px); }
+.post-page .sa-band .sa-ctrl:first-child { margin-top: 0; }
+.post-page .sa-zz.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .sa-zz.rev > :first-child { order: 2; }
+/* 큰 글씨 정리 문장 */
+.post-page .sa .sa-pull { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 26px); line-height: 1.65; color: var(--fg-strong); max-width: 880px; margin: 0 auto 1.5em; text-align: center; }
+/* 오해 네 가지 — 2×2 격자 */
+.post-page .sa-myth { display: grid; grid-template-columns: 1fr 1fr; gap: 8px clamp(32px, 5vw, 64px); align-items: start; }
+.post-page .sa .sa-mid { max-width: 880px; margin-left: auto; margin-right: auto; }
+.post-page .sa-refs-head { margin-top: clamp(64px, 8vw, 96px); }
+@media (max-width: 900px) {
+  .post-page .sa-duo, .post-page .sa-duo.rev, .post-page .sa-head, .post-page .sa-zz, .post-page .sa-zz.rev, .post-page .sa-myth { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sa-duo.rev > :first-child, .post-page .sa-zz.rev > :first-child { order: 0; }
+  .post-page .sa .sa-head h2 { margin-bottom: 4px; }
+  .post-page .sa .sa-pull { text-align: left; }
+}
 .post-page .sa-kicker { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); margin-bottom: 10px; display: block; }
 
 /* Q K V 세 가지 소지품 */
@@ -58,7 +91,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-person h3 { font-family: var(--font-mono); font-size: 30px; margin: 0 0 4px; }
 .post-page .sa-person em { font-style: normal; font-weight: 700; color: var(--fg-strong); display: block; margin-bottom: 8px; }
 .post-page .sa-person p { font-size: 15px; line-height: 1.7; }
-.post-page .sa-formula { font-family: var(--font-mono); font-size: clamp(15px, 2.4vw, 22px); text-align: center; padding: 22px 12px; margin: 28px 0; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--fg-strong); overflow-x: auto; }
+.post-page .sa-formula { font-family: var(--font-mono); font-size: clamp(15px, 2.4vw, 22px); text-align: center; padding: 28px 16px; margin: 32px auto 0; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--fg-strong); overflow-x: auto; }
 .post-page .sa-formula small { display: block; font-size: 12px; color: var(--fg-alternative); margin-top: 8px; font-family: var(--font-sans); }
 
 /* 벡터 놀이터 */
@@ -101,18 +134,19 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-matrix .hc { color: var(--fg-alternative); writing-mode: vertical-rl; transform: rotate(180deg); display: flex; align-items: center; padding-top: 6px; height: 64px; white-space: nowrap; }
 .post-page .sa-matrix .c.masked { background: repeating-linear-gradient(45deg, var(--bg-muted) 0 3px, transparent 3px 6px) !important; }
 .post-page .sa-matrix .row-on { outline: 2px solid var(--sa-q); outline-offset: -1px; }
-.post-page .sa-heads { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.post-page .sa-heads button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line-strong); background: transparent; color: var(--fg-normal); cursor: pointer; }
-.post-page .sa-heads button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); border-color: var(--fg-strong); }
+/* 헤드 고르기도 히어로와 같은 토글(옅은 트랙 + 고른 칸 채움) */
+.post-page .sa-heads { display: inline-flex; flex-wrap: wrap; padding: 4px; border-radius: 99px; background: var(--bg-muted); margin-bottom: 18px; }
+.post-page .sa-heads button { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 99px; border: 0; background: transparent; color: var(--fg-neutral); cursor: pointer; }
+.post-page .sa-heads button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: var(--shadow-2); }
 .post-page .sa-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 14px; cursor: pointer; }
 
-.post-page .sa-myth { margin-top: 28px; }
-.post-page .sa-myth details { border-bottom: 1px solid var(--line-normal); padding: 16px 0; }
+.post-page .sa-myth { margin-top: 36px; }
+.post-page .sa-myth details { border-top: 1px solid var(--line-normal); padding: 20px 0; }
 .post-page .sa-myth summary { cursor: pointer; font-weight: 700; color: var(--fg-strong); font-size: 17px; list-style: none; display: flex; gap: 12px; }
 .post-page .sa-myth summary::before { content: "✕"; color: var(--fg-negative); font-family: var(--font-mono); }
 .post-page .sa-myth details[open] summary::before { content: "→"; color: var(--fg-primary-strong); }
 .post-page .sa-myth details p { margin: 12px 0 0 28px; font-size: 16px; }
-.post-page .sa-refs { padding-left: 1.2em; font-size: 15px; }
+.post-page .sa-refs { padding-left: 1.2em; font-size: 15px; margin: 0; }
 .post-page .sa-refs li { margin: 8px 0; line-height: 1.6; }
 .post-page .sa-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
 
@@ -123,8 +157,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-tbl { border-collapse: collapse; font-size: 14px; width: 100%; font-variant-numeric: tabular-nums; }
 .post-page .sa-tbl th, .post-page .sa-tbl td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line-normal); }
 .post-page .sa-tbl th { font-weight: 600; color: var(--fg-alternative); font-size: 13px; }
-.post-page .sa-note { margin: 24px 0 0; padding: 4px 0 4px 16px; border-left: 3px solid var(--line-strong); font-size: 15px; line-height: 1.75; color: var(--fg-neutral); }
-.post-page .sa-note b { display: block; font-size: 13px; color: var(--fg-alternative); margin-bottom: 4px; }
 .post-page .sa-soft { display: grid; gap: 10px; margin: 8px 0 0; }
 .post-page .sa-soft label { display: grid; grid-template-columns: 6.5em 1fr 2.5em; gap: 10px; align-items: center; font-size: 14px; }
 .post-page .sa-soft input[type=range] { min-width: 0; accent-color: var(--fg-strong); }
@@ -182,7 +214,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .sa-matrix .hc { height: 52px; }
 }
 /* 새 그림 공통 */
-.post-page .sa-fig { margin: 32px 0 28px; padding: 0; }
+.post-page .sa-fig { margin: 48px 0; padding: 0; }
 .post-page .sa-fig-t { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); margin-bottom: 14px; }
 .post-page .sa-fig figcaption { font-size: 14px; line-height: 1.7; color: var(--fg-neutral); margin-top: 14px; }
 .post-page .sa-strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; height: 24px; min-width: 0; }
@@ -228,9 +260,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-res { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 13px; }
 .post-page .sa-res .op { grid-column: 2; font-family: var(--font-mono); color: var(--fg-alternative); text-align: center; line-height: 1; }
 .post-page .sa-res .lb { color: var(--fg-strong); }
-.post-page .sa-more { margin: 18px 0 0; border-left: 3px solid var(--line-strong); padding: 2px 0 2px 16px; }
-.post-page .sa-more summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fg-alternative); }
-.post-page .sa-more p { font-size: 15px; line-height: 1.75; color: var(--fg-neutral); margin: 10px 0 0; }
+/* 접는 상자: 왼쪽 색 띠 없이 표시(▸)만 있는 제목 */
+.post-page .sa-more { margin: 24px 0 0; padding: 0; }
+.post-page .sa-more summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fg-alternative); list-style: none; display: flex; gap: 8px; align-items: baseline; }
+.post-page .sa-more summary::-webkit-details-marker { display: none; }
+.post-page .sa-more summary::before { content: "▸"; font-size: 12px; transition: transform 0.2s; }
+.post-page .sa-more[open] summary::before { transform: rotate(90deg); }
+.post-page .sa-more p { font-size: 15px; line-height: 1.8; color: var(--fg-neutral); margin: 12px 0 0 20px; }
 .post-page .sa-more .sa-tbl { margin-top: 10px; }
 @media (max-width: 640px) {
   .post-page .sa-emb, .post-page .sa-dot { grid-template-columns: 1fr; }
@@ -275,11 +311,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </header>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
+    <div class="sa-wrap sa-duo">
+     <div>
       <span class="sa-kicker">먼저 알아 둘 것 ①</span>
       <h2>모델은 단어를 숫자 목록으로 바꿔서 받습니다</h2>
       <p>컴퓨터는 글자를 그대로 계산하지 못합니다. 그래서 모델은 문장을 먼저 <b>토큰</b>으로 자릅니다. 토큰은 모델이 글을 읽는 단위로, 단어와 같거나 단어보다 조금 작은 조각입니다. 이 글에서는 이해하기 쉽게 단어 하나를 토큰 하나로 보겠습니다.</p>
       <p>그다음 토큰마다 숫자 목록을 하나씩 붙입니다. 순서가 있는 숫자 목록을 <b>벡터</b>, 단어를 벡터로 바꾼 결과를 <b>임베딩</b>이라고 부릅니다. 지도 앱이 학교 위치를 위도·경도 숫자 두 개로 저장하듯, 임베딩은 단어를 숫자 여러 개로 적어 두고 뜻이 비슷한 단어는 숫자도 비슷하게 만듭니다.</p>
+      <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>지도 좌표는 숫자 두 개이고 "북쪽·동쪽"처럼 축마다 뜻이 정해져 있습니다. 실제 임베딩은 숫자가 수백~수천 개이고(원 논문 Transformer는 512개), 각 숫자가 무엇을 뜻하는지 사람이 이름을 붙일 수 없습니다. 숫자 값은 모두 학습으로 정해집니다.</p></details>
+     </div>
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">단어 세 개의 임베딩 · 설명을 위한 예시 값 (8칸)</span>
         <div class="sa-emb">
@@ -288,23 +327,31 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </div>
         <figcaption>칸 색이 숫자입니다. 파랑은 양수, 빨강은 음수이고 진할수록 큰 값입니다. dog와 cat은 무늬가 거의 같고 street은 다릅니다. 앞 두 칸만 떼어 평면에 찍으면 dog와 cat의 화살표가 거의 겹칩니다. 이 글에서는 벡터를 이런 화살표로 그립니다.</figcaption>
       </figure>
-      <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>지도 좌표는 숫자 두 개이고 "북쪽·동쪽"처럼 축마다 뜻이 정해져 있습니다. 실제 임베딩은 숫자가 수백~수천 개이고(원 논문 Transformer는 512개), 각 숫자가 무엇을 뜻하는지 사람이 이름을 붙일 수 없습니다. 숫자 값은 모두 학습으로 정해집니다.</p></details>
     </div>
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
-      <span class="sa-kicker">왜 필요할까요</span>
-      <h2>처음 받은 단어 벡터에는 문맥이 없습니다</h2>
+    <div class="sa-wrap">
+     <div class="sa-head">
+      <div><span class="sa-kicker">왜 필요할까요</span>
+      <h2>처음 받은 단어 벡터에는 문맥이 없습니다</h2></div>
+      <div>
       <p>임베딩은 단어마다 미리 정해 둔 벡터라서, 문장이 달라도 같은 단어는 늘 같은 벡터로 시작합니다. 단톡방에서 친구가 "그거 가져왔어?"라고 물으면 앞 대화를 봐야 "그거"가 체육복인지 숙제인지 압니다. "그거"라는 말 자체에는 답이 없습니다.</p>
       <p>"it"도 마찬가지입니다. 동물 문장에서도, 길 문장에서도 it의 처음 벡터는 똑같습니다. 강둑을 뜻하는 bank와 은행을 뜻하는 bank도 출발점은 같은 벡터입니다.</p>
-      <figure class="sa-fig" data-figure>
+      </div>
+     </div>
+      <figure class="sa-fig sa-mid" data-figure>
         <span class="sa-fig-t">같은 bank, 두 문장 · 설명을 위한 예시 값</span>
         <div class="sa-bank" data-sa-bank></div>
         <figcaption>왼쪽 두 줄은 칸 색이 완전히 같습니다. Self-Attention을 거친 오른쪽에서야 river를 본 bank와 money를 본 bank의 무늬가 갈라집니다.</figcaption>
       </figure>
+     <div class="sa-head">
+      <div></div>
+      <div>
       <p>그래서 각 단어는 같은 문장 안의 다른 단어를 둘러보고 관련 있는 단어의 정보를 가져와 자기 벡터를 고쳐 씁니다. Self-Attention에서는 모든 단어가 이 일을 동시에 합니다. 같은 문장 안의 단어끼리 서로를 보기 때문에 이름에 Self가 붙습니다.</p>
       <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>사람은 앞 대화 말고도 상식과 기억을 함께 씁니다. Self-Attention 한 번이 보는 것은 지금 입력된 토큰들뿐입니다. 모델이 학습으로 익힌 일반 지식은 다른 층(MLP)의 가중치에 들어 있습니다.</p></details>
+      </div>
+     </div>
     </div>
   </section>
 
@@ -314,6 +361,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <h2>내적은 두 벡터가 얼마나 같은 쪽을 향하는지 잽니다</h2>
       <p>관련 있는 단어를 찾으려면 두 벡터가 얼마나 닮았는지 숫자 하나로 재야 합니다. 여기에 <b>내적</b>을 씁니다. 두 벡터에서 같은 자리 숫자끼리 곱한 뒤 모두 더하면 내적이 나오고, 이 값이 클수록 두 벡터가 같은 쪽을 향합니다.</p>
       <p>친구와 영화 취향을 맞춰 보는 장면으로 생각해 보겠습니다. 액션과 로맨스를 −2점(싫음)에서 +2점(좋음)으로 매기고 같은 장르 점수끼리 곱해서 더합니다. 둘 다 좋아하거나 둘 다 싫어하면 곱이 양수, 한쪽만 좋아하면 음수가 됩니다.</p>
+    </div>
+    <div class="sa-band">
+     <div class="sa-wrap">
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">나 = (액션 2, 로맨스 1) · 친구 화살표 끝을 끌어 보세요</span>
         <div class="sa-dot">
@@ -329,6 +379,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </div>
         <figcaption>굵은 선은 친구 화살표가 내 방향 위에 드리우는 그림자입니다. 같은 쪽이면 파랑, 직각이면 0, 반대쪽이면 빨강입니다.</figcaption>
       </figure>
+     </div>
+    </div>
+    <div class="sa-wrap sa-narrow">
       <details class="sa-more"><summary>표로 계산해 보기</summary>
         <table class="sa-tbl">
           <tr><th></th><th>액션</th><th>로맨스</th><th>나와의 내적</th></tr>
@@ -343,11 +396,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
+    <div class="sa-wrap sa-duo rev">
+     <div>
       <span class="sa-kicker">먼저 알아 둘 것 ③</span>
       <h2>softmax는 점수를 합이 100%인 비율로 바꿉니다</h2>
       <p>내적으로 단어마다 점수가 나오면 그 점수를 비율로 바꿔야 각 단어를 얼마나 참고할지 정할 수 있습니다. 점수는 음수도 나오고 합도 일정하지 않아서 바로 비율로 쓸 수 없습니다. 이때 쓰는 함수가 <b>softmax</b>입니다.</p>
       <p>모둠 발표 점수에 따라 상품권을 나누는 상황과 비슷합니다. 점수가 높은 모둠이 더 많이 받고 전체를 합하면 정확히 100%가 됩니다. 다만 softmax는 점수를 그대로 쓰지 않고 e(약 2.718)를 그 점수만큼 거듭제곱한 값으로 바꾼 뒤 비율을 냅니다.</p>
+      <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>상품권은 보통 점수에 정비례해서 나누지만 softmax는 거듭제곱 때문에 차이를 더 키웁니다. 점수가 음수여도 몫이 0이 되지 않고 아주 작은 비율이라도 반드시 받습니다.</p></details>
+     </div>
+     <div>
       <div class="sa-ex">
         <span class="sa-ex-t">점수 2, 1, 0을 softmax에 넣으면</span>
         <table class="sa-tbl">
@@ -364,20 +421,23 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <label>the 점수 <input type="range" min="-4" max="6" step="0.5" value="0" data-sa-s="2"><output>0</output></label>
         <div data-sa-softout></div>
       </div>
-      <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>상품권은 보통 점수에 정비례해서 나누지만 softmax는 거듭제곱 때문에 차이를 더 키웁니다. 점수가 음수여도 몫이 0이 되지 않고 아주 작은 비율이라도 반드시 받습니다.</p></details>
+     </div>
     </div>
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
-      <span class="sa-kicker">세 가지 소지품</span>
-      <h2>단어마다 질문, 이름표, 내용을 하나씩 들고 있습니다</h2>
+    <div class="sa-wrap">
+     <div class="sa-head">
+      <div><span class="sa-kicker">세 가지 소지품</span>
+      <h2>단어마다 질문, 이름표, 내용을 하나씩 들고 있습니다</h2></div>
       <p>Self-Attention에서 단어 하나는 Query, Key, Value 세 벡터를 들고 있습니다. 학교 도서관 검색을 떠올리면 쉽습니다. 검색어를 책마다 붙은 키워드와 비교해 잘 맞는 책을 찾고 우리는 그 책의 내용을 읽습니다. 단어 하나가 Query·Key·Value 세 역할을 모두 맡습니다.</p>
+     </div>
       <div class="sa-person">
         <div><h3 class="q">Q</h3><em>Query · 검색어</em><p>"나는 지금 어떤 정보가 필요하지?" it이라면 "내가 가리키는 명사가 뭐지?"쯤 되는 질문입니다.</p></div>
         <div><h3 class="k">K</h3><em>Key · 키워드</em><p>"나는 이런 정보를 가지고 있어." 다른 단어의 Query가 이 Key와 얼마나 맞는지 내적으로 비교합니다.</p></div>
         <div><h3 class="v">V</h3><em>Value · 책 내용</em><p>"선택되면 건네줄 실제 정보." Key와 Value를 따로 두기 때문에 찾는 기준과 건네는 정보가 달라도 됩니다.</p></div>
       </div>
+     <div class="sa-zz">
       <p>세 벡터는 단어 벡터 하나에 서로 다른 <b>가중치 행렬</b> 세 개를 곱해서 만듭니다. <b>가중치</b>는 모델이 학습하면서 스스로 정하는 숫자이고, <b>행렬</b>은 그 숫자를 가로세로 표로 늘어놓은 것입니다. 벡터에 행렬을 곱하면 "입력 숫자에 정해진 비율을 곱해 더하는 규칙"이 한꺼번에 적용됩니다.</p>
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">it = (2, 1) 하나에서 세 벡터 만들기 · 설명을 위한 예시 규칙</span>
@@ -388,9 +448,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </div>
         <figcaption>같은 단어에서 출발해도 규칙이 다르면 다른 벡터가 나옵니다. 이 규칙 세 벌을 숫자 표로 적어 둔 것이 W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub> 행렬입니다.</figcaption>
       </figure>
+     </div>
+     <div class="sa-narrow">
       <p>계산 순서는 이렇습니다. 내 Query를 모든 단어의 Key와 내적해 점수를 내고 점수를 √d<sub>k</sub>로 나눈 뒤(이유는 아래에서 봅니다), softmax로 비율을 만들어 그 비율대로 모든 단어의 Value를 섞습니다. 논문은 이 과정을 한 줄로 적습니다.</p>
       <div class="sa-formula">Attention(Q, K, V) = softmax( QK<sup>T</sup> / √d<sub>k</sub> ) · V<small>QK<sup>T</sup>는 모든 Query와 모든 Key의 내적을 한꺼번에 계산한 점수표, d<sub>k</sub>는 Key 벡터의 숫자 개수, 마지막 · V는 그 비율대로 Value를 섞는 계산입니다</small></div>
       <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>도서관 검색은 책 한 권을 골라 가져오지만 Self-Attention은 모든 책을 비율만큼 조금씩 섞어 읽습니다. 또 도서관에서는 검색하는 사람과 책이 따로 있지만 여기서는 모든 단어가 검색하는 쪽이면서 동시에 검색되는 책입니다.</p></details>
+     </div>
     </div>
   </section>
 
@@ -426,11 +489,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
-      <span class="sa-kicker">숨은 온도 조절</span>
-      <h2>√d로 나누지 않으면 한 단어만 보게 됩니다</h2>
+    <div class="sa-wrap sa-head">
+      <div><span class="sa-kicker">숨은 온도 조절</span>
+      <h2>√d로 나누지 않으면 한 단어만 보게 됩니다</h2></div>
+      <div>
       <p>벡터의 숫자 개수를 <b>차원</b>이라 하고 d로 적습니다. 내적은 같은 자리 숫자를 곱해서 모두 더하므로, d가 커지면 더하는 항이 많아지고 점수도 크게 벌어집니다.</p>
       <p>점수 차이가 처음부터 크면 softmax는 거의 한 단어에 모든 가중치를 몰아줍니다. 그러면 학습할 때 어느 쪽으로 얼마나 고칠지 알려 주는 신호(기울기)가 거의 0이 되어 학습이 잘 진행되지 않습니다. <a href="/posts/llm-temperature-sampling">Temperature 글</a>에서 본 "로짓을 T로 나누기"와 같은 원리입니다. 아래에서 d를 키워 보세요.</p>
+      </div>
+    </div>
+    <div class="sa-band">
+     <div class="sa-wrap"><div class="sa-fig">
       <div class="sa-ctrl">
         <label for="sa-d">차원 d</label>
         <input id="sa-d" type="range" min="1" max="10" step="1" value="7" data-sa-d>
@@ -442,6 +510,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="sa-scale-card"><h3>softmax(Q·K / √d)</h3><div data-sa-scaled></div></div>
       </div>
       <p class="sa-cap">무작위 Q와 K 6개의 내적으로 계산합니다. 왼쪽은 나누지 않은 경우, 오른쪽은 나눈 경우입니다.</p>
+     </div></div>
+    </div>
+    <div class="sa-wrap sa-narrow">
       <p>왜 하필 √d일까요? Q와 K의 각 숫자가 평균 0, 분산 1인 무작위 값이라고 가정하면 내적이 흔들리는 폭(표준편차)이 √d배로 커지기 때문입니다. 원 논문은 d<sub>k</sub> = 64를 썼으니 흔들림이 8배가 되어 8로 나눴습니다.</p>
       <details class="sa-more"><summary>시험 점수로 비유하면</summary><p>10문제짜리 시험과 100문제짜리 시험이 있다면, 100문제 시험은 문제가 많은 만큼 학생 사이 총점 차이도 크게 벌어집니다. 총점만 보면 실력 차이가 실제보다 커 보이니 문제 수에 맞춰 점수를 줄여서 비교해야 공정합니다.</p><p>다만 시험 점수는 보통 문제 수 d로 나눠 평균을 내지만 여기서는 √d로 나눕니다. 무작위 값을 여러 개 더하면 합의 흔들림은 항 개수의 제곱근만큼 커지기 때문입니다.</p></details>
     </div>
@@ -477,29 +548,40 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
+    <div class="sa-wrap">
+     <div class="sa-zz sa-zz-first">
+      <div>
       <span class="sa-kicker">여러 벌 돌리기</span>
       <h2>헤드를 여러 개 두면 여러 관계를 한 번에 봅니다</h2>
       <p>모델은 같은 계산을 여러 벌 돌려 한 문장 안에 겹쳐 있는 여러 관계를 따로따로 잡습니다. 이것을 <b>멀티 헤드</b>라고 하고 한 벌을 <b>헤드</b>라고 부릅니다. attention을 한 번만 계산하면 "it이 가리키는 것"과 "바로 앞 단어" 같은 관계가 비율 하나에 뒤섞입니다.</p>
+      </div>
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">같은 문장, 헤드 세 개 · 흔히 관찰되는 패턴을 흉내 낸 예시 값</span>
         <div class="sa-heads3" data-sa-heads3></div>
         <figcaption>같은 11단어 문장인데 무늬가 다릅니다. 직전 단어 헤드는 대각선 바로 아래, 자기 자신 헤드는 대각선, 지시어 헤드는 it 줄에서 animal 칸이 진합니다.</figcaption>
       </figure>
+     </div>
+     <div class="sa-zz rev">
+      <div>
       <p>글짓기 숙제를 국어 선생님은 문법 위주로, 사회 선생님은 사실관계 위주로 각자 읽고 의견을 낸 뒤 합치는 것과 비슷합니다. 헤드마다 W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub>를 따로 가지므로 같은 문장에서 서로 다른 관계를 잡을 수 있습니다.</p>
       <p>원 논문 Transformer는 512차원 벡터를 8개 헤드로 나눠 헤드마다 64차원으로 계산하고, 결과를 다시 이어 붙였습니다.</p>
+      </div>
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">512차원을 8개 헤드가 64차원씩 나눠 맡기 (한 칸 = 8차원)</span>
         <div class="sa-split" data-sa-split></div>
       </figure>
+     </div>
+     <div class="sa-narrow">
       <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>선생님들은 과목이 정해져 있지만 헤드에는 역할을 정해 주지 않습니다. 학습이 끝난 뒤 들여다보면 일부 헤드가 지시어나 직전 단어 같은 패턴을 보일 뿐이고, 무엇을 하는지 설명하기 어려운 헤드가 더 많습니다.</p></details>
+     </div>
     </div>
   </section>
 
   <section class="sa-sec">
-    <div class="sa-wrap sa-narrow">
-      <span class="sa-kicker">그다음</span>
-      <h2>고쳐 쓴 벡터는 원래 벡터에 더해져 다음 층으로 갑니다</h2>
+    <div class="sa-wrap sa-head">
+      <div><span class="sa-kicker">그다음</span>
+      <h2>고쳐 쓴 벡터는 원래 벡터에 더해져 다음 층으로 갑니다</h2></div>
+      <div>
       <p>Self-Attention으로 만든 새 정보는 원래 벡터를 통째로 대신하지 않고 원래 벡터에 더해집니다. 이것을 <b>residual connection</b>이라고 합니다. 공책 필기를 지우고 다시 쓰는 대신, 새로 알게 된 내용을 포스트잇으로 덧붙이는 것과 비슷합니다.</p>
       <figure class="sa-fig" data-figure>
         <span class="sa-fig-t">원래 it + attention이 보탠 정보 = 다음으로 가는 it · 설명을 위한 예시 값</span>
@@ -508,11 +590,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       </figure>
       <p>그 뒤에는 단어마다 따로 계산하는 MLP 층이 붙고, 이 묶음 전체가 한 층이 됩니다. 원 논문 Transformer는 이런 층을 6개 쌓았고 요즘 대형 언어 모델은 수십 개를 쌓습니다. 층을 지날 때마다 문맥 정보가 더해져서 위쪽 층의 it 벡터에는 "피곤한 동물"을 가리킨다는 정보까지 담길 수 있습니다.</p>
       <details class="sa-more"><summary>비유가 맞지 않는 부분</summary><p>포스트잇은 나중에 따로 떼어 볼 수 있지만 여기서는 숫자끼리 더해서 벡터 하나로 합칩니다. 더한 뒤에는 어디까지가 원래 정보이고 어디부터가 문맥 정보인지 나눠 볼 수 없습니다.</p></details>
+      </div>
     </div>
   </section>
 
   <section class="sa-sec" data-text-only>
-    <div class="sa-wrap sa-narrow">
+    <div class="sa-wrap">
       <span class="sa-kicker">자주 하는 오해</span>
       <h2>어텐션 그림을 볼 때 조심할 점</h2>
       <div class="sa-myth">
@@ -525,12 +608,17 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   </section>
 
   <section class="sa-sec" data-text-only>
-    <div class="sa-wrap sa-narrow">
+    <div class="sa-wrap">
+     <div class="sa-narrow">
       <span class="sa-kicker">정리</span>
       <h2>한 문장으로 줄이면</h2>
-      <p>Self-Attention에서는 모든 단어가 <span class="q">질문(Query)</span>을 들고 다른 단어들의 <span class="k">이름표(Key)</span>와 내적으로 맞춰 본 뒤, softmax로 비율을 정해 그 단어들의 <span class="v">내용(Value)</span>을 섞어 자기 벡터를 고쳐 씁니다. √d로 나누는 건 softmax가 한 단어에 쏠리지 않도록 온도를 조절하는 일입니다.</p>
+     </div>
+      <p class="sa-pull">Self-Attention에서는 모든 단어가 <span class="q">질문(Query)</span>을 들고 다른 단어들의 <span class="k">이름표(Key)</span>와 내적으로 맞춰 본 뒤, softmax로 비율을 정해 그 단어들의 <span class="v">내용(Value)</span>을 섞어 자기 벡터를 고쳐 씁니다. √d로 나누는 건 softmax가 한 단어에 쏠리지 않도록 온도를 조절하는 일입니다.</p>
+     <div class="sa-narrow">
       <p>이 계산이 여러 헤드로 나뉘어 동시에 돌고 층마다 반복되면서 it 벡터에 자기가 가리키는 대상의 정보가 담깁니다. GPT 같은 생성 모델이 긴 문장에서도 앞뒤를 맞춰 말할 수 있는 것도 이 계산 덕분입니다. 반대로 단어 수의 제곱만큼 늘어나는 계산량은 긴 문맥을 다룰 때 큰 부담으로 남습니다.</p>
-      <h2 style="margin-top:56px">참고 자료</h2>
+     </div>
+     <div class="sa-head sa-refs-head">
+      <h2>참고 자료</h2>
       <ul class="sa-refs">
         <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Vaswani et al., Attention Is All You Need (2017)</a>: d<sub>model</sub> = 512, 헤드 8개, d<sub>k</sub> = 64, 층 6개, residual connection, √d<sub>k</sub> 나누기와 마스킹</li>
         <li><a href="https://arxiv.org/abs/2104.09864" target="_blank" rel="noopener">Su et al., RoFormer: Enhanced Transformer with Rotary Position Embedding (RoPE)</a></li>
@@ -540,6 +628,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <li><a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer: GPT-2 어텐션을 직접 들여다보는 도구</a></li>
         <li><a href="https://github.com/jessevig/bertviz" target="_blank" rel="noopener">BertViz: 두 줄 연결도로 어텐션을 보여 주는 시각화 도구</a></li>
       </ul>
+     </div>
     </div>
   </section>
 </div>
@@ -618,7 +707,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     mk("line", { y1: g, y2: g, x1: -160, x2: 160, class: g === 0 ? "axis" : "grid" }, plane);
   }
   const defs = mk("defs", {}, plane);
-  const arrowHead = (id, color) => { const m = mk("marker", { id, viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" }, defs); mk("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, m); };
+  const arrowHead = (id, color) => { const m = mk("marker", { id, viewBox: "0 0 10 10", refX: 8, refY: 5, markerUnits: "userSpaceOnUse", markerWidth: 14, markerHeight: 14, orient: "auto-start-reverse" }, defs); mk("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, m); };
   const uid = Math.random().toString(36).slice(2, 7);
   arrowHead(`sa-k-${uid}`, "rgb(80,140,255)"); arrowHead(`sa-q-${uid}`, "rgb(255,122,69)");
   KEYS.forEach((k) => {
