@@ -171,19 +171,22 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-story-fig .sa-plane { width: min(100%, 52svh); max-width: 500px; margin: 0 auto; }
 .post-page .sa-stagelbl { font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); text-align: center; min-height: 1.4em; }
 .post-page .sa-story-panel { display: grid; gap: 10px; min-height: 120px; max-width: 520px; width: 100%; margin: 0 auto; }
-.post-page .sa-story-panel > div { display: none; }
+/* 단계 패널은 display 로 끄고 켜지 않는다 — 높이·투명도를 펼쳐 스르르 나타나게(POSTING 5-3) */
+.post-page .sa-story-panel > div { max-height: 0; overflow: hidden; opacity: 0; transform: translateY(10px);
+  transition: max-height .6s cubic-bezier(.2,.7,.2,1), opacity .5s, transform .6s cubic-bezier(.2,.7,.2,1); }
 .post-page .sa-story-fig[data-stage="3"] [data-p="dots"],
 .post-page .sa-story-fig[data-stage="4"] [data-p="w"],
 .post-page .sa-story-fig[data-stage="5"] [data-p="mix"],
 .post-page .sa-story-fig[data-stage="6"] [data-p="w"],
-.post-page .sa-story-fig[data-stage="6"] [data-p="mix"] { display: block; }
-.post-page .sa-story-fig .sa-q, .post-page .sa-story-fig .sa-score { transition: opacity 0.3s; }
+.post-page .sa-story-fig[data-stage="6"] [data-p="mix"] { max-height: 420px; opacity: 1; transform: none; }
+.post-page .sa-story-fig .sa-q, .post-page .sa-story-fig .sa-score { transition: opacity 0.5s; }
+.post-page .sa-story-steps .sa-step { transition: opacity .5s; }
 .post-page .sa-story-fig[data-stage="1"] .sa-q,
 .post-page .sa-story-fig[data-stage="1"] .sa-score,
 .post-page .sa-story-fig[data-stage="2"] .sa-score { opacity: 0; }
 .post-page .sa-story-steps { padding: 6svh 0 22svh; }
 .post-page .sa-step { min-height: 64svh; display: flex; flex-direction: column; justify-content: center; }
-.post-page .sa-js .sa-step { opacity: 0.32; transition: opacity 0.3s; }
+.post-page .sa-js .sa-step { opacity: 0.32; transition: opacity 0.5s; }
 .post-page .sa-js .sa-step.is-on { opacity: 1; }
 .post-page .sa-step .n { font-family: var(--font-mono); font-size: 12px; color: var(--sa-q); font-weight: 700; margin-bottom: 8px; }
 .post-page .sa .sa-step p { margin: 0 0 0.7em; }
