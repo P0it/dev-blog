@@ -12,7 +12,7 @@ test("highlightPageCode — pre/code 를 에디터형 블록으로, 파일 탭·
   assert.match(out, /data-ln="10"/);
   assert.match(out, /data-ln="11" data-hl=""|data-hl="" data-ln="11"/);
   assert.match(out, /<span class="pg-code-mark" aria-label="①">1<\/span>/);
-  assert.match(out, /--shiki-dark:/);
+  assert.match(out, /one-dark-pro/); // 사이트 테마와 무관한 단일 에디터 테마
   assert.match(out, /^<p>앞<\/p>/);
   assert.match(out, /<p>뒤<\/p>$/);
 });

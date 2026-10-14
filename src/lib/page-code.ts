@@ -5,49 +5,47 @@
 //   data-title  파일 이름 탭(없으면 언어 이름만)
 //   data-hl     강조할 줄(1부터, 쉼표·범위)
 //   data-start  첫 줄 번호(발췌한 코드라 10번째 줄부터 보여 줄 때)
-// 라이트·다크 두 테마를 함께 칠해 두고, 사이트 테마에 따라 CSS 변수로 고른다(아래 STYLE).
+// 테마는 One Dark Pro 하나로, 사이트 라이트·다크와 무관하게 늘 어두운 에디터 창이다(2026-10-14 사용자 선택).
 // 코드 안의 ①~⑳ 은 해설 목록과 짝을 맞추는 표지라 둥근 배지로 바꾼다.
 import { codeToHtml } from "shiki";
 
-// 코드 블록 모양 — 코드가 있는 글에만 한 번 넣는다. 사이트 라이트/다크를 따라간다.
+// 코드 블록 모양 — 코드가 있는 글에만 한 번 넣는다. 색은 globals.css 의 --code-* 토큰.
 const STYLE = `<style data-pg-code>
 .post-page .pg-code {
-  --pgc-bg: #fbfbfc; --pgc-head: #f2f3f5; --pgc-line: var(--line-normal); --pgc-no: #a3a8b1;
-  --pgc-hl: rgba(105, 197, 170, 0.14); --pgc-hl-bar: var(--mint-500);
-  margin: 28px 0; border: 1px solid var(--pgc-line); border-radius: 12px; overflow: hidden;
-  background: var(--pgc-bg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-[data-theme="dark"] .post-page .pg-code {
-  --pgc-bg: #22272e; --pgc-head: #1c2128; --pgc-line: rgba(255, 255, 255, 0.08); --pgc-no: #636e7b;
-  --pgc-hl: rgba(105, 197, 170, 0.12);
+  margin: 28px 0; border: 1px solid var(--code-border); border-radius: 12px; overflow: hidden;
+  background: var(--code-bg); box-shadow: var(--code-shadow); color: var(--code-fg);
 }
 .post-page .pg-code-head {
-  display: flex; align-items: stretch; gap: 0; background: var(--pgc-head);
-  border-bottom: 1px solid var(--pgc-line); font-family: var(--font-mono); font-size: 12px; min-height: 36px;
+  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 8px 0 84px;
+  background: var(--code-dots), var(--code-head-bg); background-repeat: no-repeat;
+  border-bottom: 1px solid var(--code-border); font-family: var(--font-mono); font-size: 12px;
 }
 .post-page .pg-code-file {
-  display: flex; align-items: center; padding: 0 16px; background: var(--pgc-bg); color: var(--fg-strong);
-  border-right: 1px solid var(--pgc-line); box-shadow: inset 0 2px 0 var(--pgc-hl-bar); margin-bottom: -1px;
+  display: flex; align-items: center; height: 26px; padding: 0 12px; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07); color: var(--code-head-fg); white-space: nowrap;
 }
-.post-page .pg-code-lang { display: flex; align-items: center; padding: 0 12px; color: var(--fg-alternative); }
+.post-page .pg-code-lang { color: var(--code-line-no); }
 .post-page .pg-code-copy {
-  margin-left: auto; font: inherit; font-size: 12px; color: var(--fg-alternative); background: none; border: 0;
-  padding: 0 14px; cursor: pointer;
+  margin-left: auto; font: inherit; font-size: 12px; color: var(--code-head-fg); background: none; border: 0;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
 }
-.post-page .pg-code-copy:hover { color: var(--fg-strong); }
+.post-page .pg-code-copy:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
 .post-page .pg-code pre {
-  margin: 0; padding: 14px 0; overflow-x: auto; background: transparent !important;
-  font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; tab-size: 4; font-variant-ligatures: none;
+  margin: 0; padding: 16px 0; overflow-x: auto; background: transparent !important;
+  font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; tab-size: 4;
 }
-.post-page .pg-code pre code { font-family: inherit; font-size: inherit; background: none; padding: 0; }
+.post-page .pg-code pre code { font-family: inherit; font-size: inherit; background: none; padding: 0; color: inherit; }
+/* One Dark Pro 는 주석·매개변수를 기울이는데, 한글은 기울임 글꼴이 없어 찌그러져 보인다 */
+.post-page .pg-code pre span { font-style: normal !important; }
 .post-page .pg-code .line { display: inline-block; min-width: 100%; padding-right: 20px; box-sizing: border-box; }
 .post-page .pg-code .line::before {
   content: attr(data-ln); display: inline-block; width: 3ch; margin: 0 16px 0 12px; text-align: right;
-  color: var(--pgc-no); user-select: none;
+  color: var(--code-line-no); user-select: none;
 }
-.post-page .pg-code .line[data-hl] { background: var(--pgc-hl); box-shadow: inset 3px 0 0 var(--pgc-hl-bar); }
-.post-page .pg-code pre, .post-page .pg-code pre span { color: var(--shiki-light); }
-[data-theme="dark"] .post-page .pg-code pre, [data-theme="dark"] .post-page .pg-code pre span { color: var(--shiki-dark); }
+.post-page .pg-code .line[data-hl] { background: var(--code-hl); box-shadow: inset 3px 0 0 var(--code-hl-bar); }
+@media (max-width: 640px) {
+  .post-page .pg-code pre { font-size: 12.5px; }
+}
 /* 해설 표지 ①② — 코드 안 배지와 해설 목록(ol.pg-code-notes)이 같은 모양 */
 .post-page .pg-code .pg-code-mark, .post-page ol.pg-code-notes > li::before {
   display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; border-radius: 50%;
@@ -85,8 +83,8 @@ async function renderBlock(preAttrs: string, codeAttrs: string, raw: string): Pr
   try {
     html = await codeToHtml(code, {
       lang,
-      themes: { light: "github-light", dark: "github-dark-dimmed" },
-      defaultColor: false,
+      // 사이트 테마와 무관하게 늘 One Dark Pro(마크다운 글 코드 블록과 같은 모양, src/app/globals.css 의 --code-* 토큰)
+      theme: "one-dark-pro",
       transformers: [{
         line(node, n) {
           node.properties["data-ln"] = String(start + n - 1);

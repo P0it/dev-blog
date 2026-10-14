@@ -113,8 +113,8 @@ export async function renderMarkdown(md: string) {
     .use(rehypeExtractBlocks)
     .use(rehypeWrapTables)
     .use(rehypePrettyCode, {
-      // Night Owl 단일 테마 (Sarah Drasner). 사이트 라이트/다크와 무관하게 코드블록은 항상 다크.
-      theme: "night-owl",
+      // One Dark Pro 단일 테마. 사이트 라이트/다크와 무관하게 코드블록은 항상 다크(학습 페이지 글과 같은 모양).
+      theme: "one-dark-pro",
       keepBackground: false,
       defaultLang: { block: "plaintext", inline: "plaintext" },
     })

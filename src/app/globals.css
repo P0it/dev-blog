@@ -151,12 +151,22 @@
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Menlo", "Tossface", monospace;
 
   --nav-bg: var(--bg-base);
-  /* 코드블록은 사이트 테마와 무관하게 항상 Night Owl 톤 (#011627 base) */
-  --code-bg: #011627;
-  --code-border: rgba(214, 222, 235, 0.08);
-  --code-head-bg: #0b2942;
-  --code-head-fg: #d6deeb;
-  --code-line-no: #4b6479;
+  /* 코드 블록은 사이트 테마와 무관하게 항상 One Dark Pro 에디터 창(2026-10-14 사용자 선택).
+     마크다운 글(rehype-pretty-code)과 학습 페이지 글(src/lib/page-code.ts)이 같은 토큰을 쓴다. */
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-border: rgba(0, 0, 0, 0.35);
+  --code-head-bg: #21252b;
+  --code-head-fg: #9da5b4;
+  --code-tab-bg: #282c34;
+  --code-line-no: #495162;
+  --code-hl: rgba(255, 255, 255, 0.06);
+  --code-hl-bar: #61afef;
+  --code-shadow: 0 10px 28px rgba(15, 18, 24, 0.22), 0 1px 3px rgba(15, 18, 24, 0.18);
+  /* 창 제목줄의 신호등 점 세 개 */
+  --code-dots: radial-gradient(circle at 20px 50%, #ff5f57 5.5px, transparent 6px),
+               radial-gradient(circle at 40px 50%, #febc2e 5.5px, transparent 6px),
+               radial-gradient(circle at 60px 50%, #28c840 5.5px, transparent 6px);
 
   /* Diagram (mermaid) — 클래스별 soft fill / strong border 페어.
      light: *-50 톤 (이미 부드러움) / dark: 같은 hue 18% alpha. */
@@ -1177,33 +1187,51 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    container query(@container)로 640 폭에 맞춰 자동 재배치된다. */
 
 /* ============================================================
-   Code block — Shiki (rehype-pretty-code) dual theme
+   Code block — Shiki (rehype-pretty-code), One Dark Pro 에디터 창
+   제목줄(신호등 점 + 파일 이름 탭)은 figure::before 로 그린다. 학습 페이지 글의
+   코드 블록(src/lib/page-code.ts)과 같은 모양·같은 토큰.
    ============================================================ */
 
 .prose figure[data-rehype-pretty-code-figure] {
-  margin: 24px 0;
+  position: relative;
+  margin: 28px 0;
   background: var(--code-bg);
   border: 1px solid var(--code-border);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: var(--code-shadow);
+}
+.prose figure[data-rehype-pretty-code-figure]::before {
+  content: "";
+  display: block;
+  height: 38px;
+  background: var(--code-dots), var(--code-head-bg);
+  background-repeat: no-repeat;
+  border-bottom: 1px solid var(--code-border);
 }
 .prose figure[data-rehype-pretty-code-figure] figcaption[data-rehype-pretty-code-title] {
-  padding: 10px 16px;
+  position: absolute;
+  top: 6px;
+  left: 84px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--code-head-fg);
-  background: var(--code-head-bg);
-  border-bottom: 1px solid var(--code-border);
+  background: rgba(255, 255, 255, 0.07);
 }
 .prose figure[data-rehype-pretty-code-figure] pre {
   margin: 0;
-  padding: 16px 18px;
+  padding: 16px 20px;
   overflow-x: auto;
   background: transparent;
   font-family: var(--font-mono);
   font-size: 13.5px;
-  line-height: 1.7;
-  tab-size: 2;
+  line-height: 1.75;
+  tab-size: 4;
 }
 .prose figure[data-rehype-pretty-code-figure] pre code {
   display: grid;
@@ -1211,11 +1239,18 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 0;
   font-family: inherit;
   font-size: inherit;
+  color: var(--code-fg);
   counter-reset: line;
 }
+/* One Dark Pro 는 주석·매개변수를 기울이는데, 한글은 기울임 글꼴이 없어 찌그러져 보인다 */
+.prose figure[data-rehype-pretty-code-figure] pre code span { font-style: normal !important; }
 .prose figure[data-rehype-pretty-code-figure] pre code [data-line] {
   padding: 0 4px;
   border-left: 2px solid transparent;
+}
+.prose figure[data-rehype-pretty-code-figure] pre code [data-highlighted-line] {
+  background: var(--code-hl);
+  border-left-color: var(--code-hl-bar);
 }
 .prose figure[data-rehype-pretty-code-figure] pre code[data-line-numbers] {
   counter-reset: line;
@@ -1228,12 +1263,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   margin-right: 1rem;
   text-align: right;
   color: var(--code-line-no);
-}
-
-/* 단일 night-owl 테마 — 토큰 색은 Shiki가 인라인 style로 직접 박는다.
-   일부 토큰(연산자·괄호·기본 텍스트)은 color 지정이 없을 수 있어 fallback fg 지정. */
-.prose figure[data-rehype-pretty-code-figure] pre code {
-  color: #d6deeb;
 }
 
 /* ============================================================
