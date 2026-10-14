@@ -53,9 +53,13 @@
 | [DistServe](https://arxiv.org/abs/2401.09670) | Prefill 과 Decode 를 TTFT·TPOT 두 지표에 하나씩 대응시키고 서로 간섭한다는 이유로 GPU 를 나눈다 | 두 단계 분리 서빙을 한 줄로 소개할 때 | 2026-10-15 | prefill-decode-kv-cache |
 | [Float Exposed (Bartosz Ciechanowski)](https://float.exposed/) | 비트 패턴과 값을 양방향으로 바꾸고 "다음에 적을 수 있는 값까지의 간격"을 함께 보인다. half·bfloat·float·double 을 바꿔 끼운다 | 부동소수점 칸 배분과 정밀도를 직접 만져 보게 할 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
 | [Maarten Grootendorst, A Visual Guide to Quantization](https://www.maartengrootendorst.com/blog/quantization/) | absmax 로 3.08·3.02 가 같은 정수 36이 되는 예, zero-point, 이상치가 눈금을 몰아 버리는 장면과 클리핑, GGUF 블록 구조를 차례로 그린다. 이미지 8색 줄이기 비유 | 양자화를 대칭 → 비대칭 → 이상치 → 묶음 순서로 쌓을 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
-| [Hugging Face Hub 문서, GGUF](https://huggingface.co/docs/hub/gguf) | GGUF 파일을 바이트 띠 하나로 그리고 헤더·메타데이터·표 정보·본문에 점선 상자로 풀이를 단다(gguf-spec.png). 형식별 bits-per-weight 표 | 파일 형식 구조를 실제 문서 그림으로 보일 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [Hugging Face Hub 문서, GGUF](https://huggingface.co/docs/hub/gguf) | GGUF 파일을 바이트 띠 하나로 그리고 헤더·메타데이터·표 정보·본문에 점선 상자로 풀이를 단다(gguf-spec.png). 형식별 bits-per-weight 표 | 파일 형식 구조를 보일 때. 원 그림은 글자가 6~7px이라 그대로 싣지 말고 한국어 띠 그림으로 다시 그린다 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
 | [llama.cpp PR #1684, k-quants](https://github.com/ggml-org/llama.cpp/pull/1684) · [quantize README](https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md) | 같은 모델을 형식만 바꿔 perplexity·파일 크기·생성 속도를 한 표에 둔다(LLaMA-7B, Llama-3.1-8B) | "비트를 줄이면 얼마나 잃나"를 실측 막대로 그릴 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
 | [Qwen 문서, Performance of Quantized Models](https://qwen.readthedocs.io/en/stable/getting_started/quantization_benchmark.html) | 0.5B~72B 크기마다 BF16·GPTQ-Int8·Int4·AWQ 점수를 같은 표에 둬 "작은 모델이 더 잃는다"가 보인다 | 모델 크기와 양자화 손실의 관계를 보일 때 | 2026-10-15 | gpu-vram-fp16-int4-quantization |
+| [Kwon 외, PagedAttention 논문](https://arxiv.org/abs/2309.06180) | 기존 서버의 메모리 한 줄을 띠로 그리고 칸마다 낭비 종류(reserved·internal·external) 이름을 단다(Figure 3). 실측은 방식별 누적 막대 하나로(Figure 2: 토큰이 든 칸 20.4~38.2% vs 96.3%). 운영체제 대응을 "블록=페이지, 토큰=바이트, 요청=프로세스" 한 줄로 | 메모리 낭비를 종류별로 가르고 실제 값으로 확인시킬 때 | 2026-10-15 | pytorch-to-vllm-serving |
+| [vLLM Blog, PagedAttention 공개 글](https://vllm.ai/blog/2023-06-20-vllm) | 블록 테이블을 논리 블록 → 물리 블록 연결 애니메이션으로, 토큰이 하나 늘 때마다 블록이 차고 새 블록을 받는 장면을 따라간다 | 동적 할당·주소 변환을 단계로 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
+| [Anyscale, Continuous batching](https://www.anyscale.com/blog/continuous-batching-llm-inference) | 같은 자리 네 줄 × 시간 칸 격자에서 정적 배치는 먼저 끝난 칸이 빈 채로, Continuous는 빈 칸에 새 시퀀스가 바로 들어가는 두 그림을 나란히 | 스케줄링 방식 비교를 칸 채움으로 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
+| [OSTEP 18장 Paging](https://pages.cs.wisc.edu/~remzi/OSTEP/vm-paging.pdf) | (다른 분야·운영체제) 64바이트 주소 공간, 16바이트 페이지 4개처럼 손으로 셀 수 있는 아주 작은 예로 페이징을 먼저 보이고 실제 크기는 나중에 | 큰 시스템의 원리를 장난감 크기로 줄여 보일 때 | 2026-10-15 | pytorch-to-vllm-serving |
 
 ## 미확인
 
@@ -92,7 +96,10 @@
 - **두 막대 경주로 roofline 대신하기** (prefill-decode-kv-cache) — 로그축 roofline 대신 "가중치 나르는 시간"과 "계산 시간" 막대 둘을 두고 한 번에 처리할 토큰 수를 늘리게 했다. 나르기 막대는 그대로, 계산 막대만 자라 역전되는 지점이 계산 강도의 기준선이 된다
 - **사양 숫자로 하한을 계산하고 실측과 맞춰 두기** (prefill-decode-kv-cache) — M4 대역폭 120GB/s ÷ 3.1GB = 26ms 하한과 실측 43ms 를 나란히 적어 "Decode 속도는 대역폭이 정한다"를 산수로 확인시켰다
 - **비트 칸 색을 끝까지 같은 뜻으로** (gpu-vram-fp16-int4-quantization) — 부호·지수·가수·정수 칸 색을 히어로 비트 띠, 비트 탐색기, 범위 띠, 눈금 자까지 같은 뜻으로 썼다. 히어로에서 형식 하나를 바꾸면 숫자 하나의 칸과 GPU 다섯 장 막대가 같이 바뀌어 "칸 크기 × 76억 = 메모리"가 곱셈 없이 보인다
+- **사진 색 단계로 양자화 먼저 겪기** (gpu-vram-fp16-int4-quantization, 2판) — 히어로에서 노을 사진 절반의 색 단계를 비트 수만큼 줄이고 같은 비트의 실제 GGUF 파일 크기를 옆에 적었다. 첫 판의 형식 탭 + GPU 막대가 1편 바이트 탭과 겹친다는 Critic 지적으로 바꿨다
 - **실험판 아래에 한 값만 따라가는 작은 그림** (gpu-vram-fp16-int4-quantization) — 점 40개가 눈금으로 끌려가는 실험판 다음에 0.29 하나가 ÷scale → 반올림 → ×scale 로 0.24가 되는 세 단계를 따로 그렸다. 전체 모습과 한 값의 계산을 나눠 보여 준다
+- **좌석표 하나에 할당 방식 토글** (pytorch-to-vllm-serving) — 같은 요청 열 개를 같은 메모리 칸 96개에 태우고 "최대 길이만큼 미리 잡기 ↔ 블록씩 필요할 때"만 바꾸게 했다. 같은 스텝(8)에서 비교하도록 토글이 스텝을 유지하니, 점선(잡았지만 빈 칸)·빗금(끼인 틈) 면적과 "지금 답하는 요청 3명 ↔ 6명"이 한 번에 바뀐다. 같은 칸·색·점선·빗금 언어를 극장 한 줄, 블록 테이블, prefix 블록 줄까지 이어 썼다
+- **버스 두 대 시간 격자** (pytorch-to-vllm-serving) — 정적 배치와 Continuous Batching을 같은 자리 4줄 × 스텝 17칸 격자 두 개로 겹쳐 같이 재생했다. 빗금 빈자리 비율과 끝나는 스텝(17 vs 12)이 같은 눈금 위에서 보인다
 
 ## 페이지 레이아웃
 
@@ -128,9 +135,9 @@
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving |
+| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
