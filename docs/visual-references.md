@@ -6,7 +6,7 @@
 
 | 레퍼런스 | 설명 기법 | 쓸 때 | 확인일 | 쓴 글 |
 |---|---|---|---|---|
-| [Transformer Explainer](https://poloclub.github.io/transformer-explainer/) | 실제 GPT-2 위에서 temperature 슬라이더·top-k/top-p 토글로 다음 토큰 확률을 바로 다시 그린다. 토큰에 마우스를 올리면 attention 가중치 강조 | 실제 모델 값으로 보여 주고 싶을 때 | 2026-10-12 | llm-temperature-sampling, self-attention-qkv |
+| [Transformer Explainer](https://poloclub.github.io/transformer-explainer/) | 실제 GPT-2 위에서 temperature 슬라이더·top-k/top-p 토글로 다음 토큰 확률을 바로 다시 그린다. 토큰에 마우스를 올리면 attention 가중치 강조 | 실제 모델 값으로 보여 주고 싶을 때 | 2026-10-12 | llm-temperature-sampling, self-attention-qkv, transformer-attention-how-llm-reads |
 | [HF, How to generate text](https://huggingface.co/blog/how-to-generate) | 분포가 평평한 문맥과 뾰족한 문맥을 나란히 놓아, 같은 k가 한쪽에서는 너무 많고 한쪽에서는 너무 적음을 보인다 | 고정값 방식의 약점을 보일 때 | 2026-10-12 | llm-temperature-sampling |
 | [Boltzmann distribution](https://en.wikipedia.org/wiki/Boltzmann_distribution) | (다른 분야) softmax 와 같은 꼴. 에너지 층 사이를 오가는 입자로 온도를 보여 준다 | 이름의 유래·물리 비유가 이해를 돕는 개념 | 2026-10-12 | llm-temperature-sampling |
 | [3Blue1Brown, Attention](https://www.3blue1brown.com/lessons/attention) | Query×Key 격자에서 점 크기로 점수 → 행마다 softmax → 마스크 칸을 −∞ 로. 형용사가 명사 벡터를 고치는 예시 | 행렬 계산을 단계별로 쌓을 때 | 2026-10-12 | self-attention-qkv |
@@ -39,6 +39,14 @@
 | [Jay Alammar, How GPT3 Works](https://jalammar.github.io/how-gpt3-works-visualizations-animations/) | 프롬프트와 출력을 색으로 나누고, 가중치를 바꾸는 학습과 그대로 두는 추론을 따로 그린다 | "퓨샷은 학습이 아니다"를 보일 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
 | [Zhao 외, Calibrate Before Use](https://arxiv.org/abs/2102.09690) | 같은 예시를 순서·개수만 바꿔 정확도가 54.3%~93.4%로 흔들리는 것을 표로 보인다(표 1은 모델 크기 × 예시 수) | 예시 수·순서 효과를 실제 숫자로 그릴 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
 | [Min 외, Rethinking the Role of Demonstrations](https://arxiv.org/abs/2202.12837) | 예시의 정답·입력·답 후보·형식을 하나씩 망가뜨려 무엇이 성능을 떠받치는지 가른다 | "예시가 실제로 가르치는 것"을 보일 때 | 2026-10-14 | prompt-engineering-roles-few-shot |
+| [Jay Alammar, Illustrated GPT-2](https://jalammar.github.io/illustrated-gpt2/) | 임베딩 행렬을 "한 행이 한 단어"인 표로 그리고, 위치 벡터를 더하는 장면을 따로 뗀다. 출력을 입력 끝에 붙이는 되먹임 GIF | 토큰 id → 임베딩 → 위치 구간을 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [3Blue1Brown, GPT 레슨](https://www.3blue1brown.com/lessons/gpt) | "예측 → 하나 고르기 → 붙이기 → 다시"를 고리 하나로 묶는다 | 자기회귀를 한 그림으로 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [HF LLM Course 6장, BPE](https://huggingface.co/learn/llm-course/chapter6/5) | 단어 다섯 개 장난감 말뭉치에서 쌍을 세고 가장 흔한 쌍부터 합친다(ug 20 → un 16 → hug 15) | BPE 를 손으로 해 보게 할 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [nostalgebraist, the logit lens](https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens) | 중간 층 상태에 마지막 출력 투영을 씌워 층마다 "지금 멈추면 무엇을 고를지"를 보인다 | "블록을 거치며 답이 다듬어진다"를 실제 값으로 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [EleutherAI, Rotary Embeddings](https://blog.eleuther.ai/rotary-embeddings/) | (다른 분야·광학) 1/4 파장판처럼 크기는 두고 각도만 돌린다. 두 위치를 같이 옮겨도 사이 각이 같음 | 상대 위치를 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [Anthropic, A Mathematical Framework](https://transformer-circuits.pub/2021/framework/index.html) | 잔차 흐름을 각 층이 읽고 결과를 더해 쓰는 통로로 설명 | 잔차 연결을 "덮어쓰기 아님"으로 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [Petrov 외, Tokenizers Introduce Unfairness](https://arxiv.org/abs/2305.15425) | 같은 문장을 언어별로 넣어 토큰 수 배율을 비교(cl100k: 이탈리아어 1.6배 ~ 샨어 15배) | 언어별 토큰 비용을 보일 때 | 2026-10-15 | transformer-attention-how-llm-reads |
+| [Karpathy, minbpe](https://github.com/karpathy/minbpe) | `aaabdaaabac` 를 세 번 합쳐 `XdXac`, 새 id 를 256·257·258 로 붙인다 | 바이트에서 시작하는 BPE 를 보일 때 | 2026-10-15 | |
 
 ## 미확인
 
@@ -69,6 +77,8 @@
 - **같은 입력을 세 갈래로 흘리고 상황 토글 하나만 바꾸기** (ai-agent-vs-chatbot) — 같은 요청을 챗봇·워크플로·Agent 세 칸에 나란히 두고 "이미 같은 티켓이 있음" 상황만 켜고 끄게 했다. 두 칸은 같은 길로 가고 Agent 칸만 길이 바뀌어, 정의 문장 없이 차이가 보였다. 단계마다 "그 단계를 정한 쪽"을 색 칩(사람·코드·모델)으로 달아 글 전체의 시각 언어로 썼다. Critic 4점
 - **모든 메시지를 한 줄 띠로 이어 붙이기** (prompt-engineering-roles-few-shot) — 메시지 목록이 역할 표시를 끼운 글 한 줄로 이어지고 끝에 assistant 표시가 열린 채 놓이는 그림 하나로, 역할·예시·대화 기록이 모두 "이어 쓸 글의 앞부분"이라는 것을 한 번에 보였다. 같은 띠를 히어로·퓨샷 두 방법 비교에서 다시 써 글 전체의 시각 언어가 됐다. 히어로에 "바뀐 가중치 0개"를 함께 두니 "퓨샷은 학습이 아니다"가 문장 없이 전해졌다. Critic 4점
 - **먼저 예상을 고르게 하고 결과 공개** (prompt-engineering-roles-few-shot) — 첫 판은 흐린 미리보기에 숫자 라벨이 비쳐 답이 새어 나갔다는 지적을 받았다. 대기 상태에서는 막대 길이와 라벨을 모두 숨긴다
+- **실제 모델을 돌린 값으로 노선도 한 바퀴** (transformer-attention-how-llm-reads) — 파이프라인 여섯 단계를 순환선 정거장으로 놓고, 정거장마다 Qwen2.5-1.5B 를 직접 돌린 판독값(토큰·id·벡터 색 칸·확률 상위 5)을 달았다. ▶ 한 번이 토큰 하나라서 "한 바퀴 = 한 토큰"이 조작 자체에 들어간다. 정거장 색이 섹션 표지 색으로 글 끝까지 이어진다
+- **logit lens 두 기둥** (transformer-attention-how-llm-reads) — 같은 질문을 한국어·영어로 넣고 층마다 1등 후보를 나란히 세우니, 한국어 쪽이 24층 '哪个' → 25층 ' Seoul' → 마지막 ' 서울'로 가는 길이 글 없이 보였다
 
 ## 페이지 레이아웃
 
@@ -102,11 +112,11 @@
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
-| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained |
-| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot |
+| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
+| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads |
 | 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 
 벤토 격자·잡지형·장 표지의 실제 예시는 아직 열어 보지 못했다. 다음 조사 때 브라우저로 직접 본다.

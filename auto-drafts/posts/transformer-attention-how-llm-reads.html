@@ -1,0 +1,1000 @@
+---
+title: LLM이 다음 토큰 하나를 고르기까지 거치는 여섯 단계
+slug: transformer-attention-how-llm-reads
+excerpt: "대한민국의 수도는"을 넣으면 Qwen2.5는 ' 서울'을 25.6% 확률로 1등에 올립니다. 문장을 토큰으로 자르는 데서 시작해 번호를 벡터로 바꾸고 같은 블록을 28번 지나 확률표를 만든 뒤 고른 토큰을 되먹이는 한 바퀴를 실제 모델 값으로 그림에 담았습니다.
+tags: [LLM, Transformer, Token, Tokenizer, Embedding, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 2
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/transformer-attention-how-llm-reads-mv8b58yu.jpg
+---
+<!-- page -->
+<!-- layout: 제목|글 머리 히어로 + 순환선 노선도 전폭 띠 → 글|그림(토크나이저 넷) → 글|그림(BPE 슬라이더) → 제목|글 + 넓은 막대(한국어 토큰 수) → 글|그림(단어표 한 줄) → 제목|글(주머니 그림은 제목 아래) + 실험판 전폭 띠(RoPE 화살표) → 글|그림(블록 한 층) + 소제목 + 논문 그림|풀이 → 제목|글 + 비교 나란히(logit lens 두 기둥) → 글|그림(확률표 꼬리) → 제목|글 + 위아래 선 계단(자기회귀) → 큰 정리 문장 → 제목|글(참고 자료) | 글의 성격: 여섯 정거장을 차례로 지나 다시 처음으로 돌아오는 고리, 정거장마다 다른 개념. 글 시작 위치는 왼쪽(글|그림·제목) 하나와 제목|글의 오른쪽 열 하나로만 둔다(Critic 시선 흐름 지적, 2026-10-15) | 버린 후보: 그림 고정 스크롤리텔링(시리즈 첫 글이 줌아웃에 썼고 정거장마다 그림이 달라 하나로 고정 불가), 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 글|그림 좌우 뒤집기(글 시작 위치가 섹션마다 튐) -->
+<style>
+.post-page .tr {
+  --c1: rgb(22, 150, 80); --c2: rgb(37, 105, 220); --c3: rgb(135, 80, 210); --c4: rgb(214, 72, 58); --c5: rgb(0, 138, 160); --c6: rgb(196, 128, 0);
+  --pos: rgb(37, 110, 230); --neg: rgb(222, 78, 58);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .tr {
+  --c1: rgb(70, 205, 130); --c2: rgb(110, 160, 255); --c3: rgb(185, 140, 255); --c4: rgb(255, 120, 105); --c5: rgb(60, 200, 220); --c6: rgb(245, 185, 60);
+  --pos: rgb(105, 160, 255); --neg: rgb(255, 115, 95);
+}
+.post-page .tr * { box-sizing: border-box; }
+.post-page .tr-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .tr h1, .post-page .tr h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .tr h1 { font-size: clamp(30px, 4.4vw, 48px); line-height: 1.22; }
+.post-page .tr h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .tr p, .post-page .tr li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .tr p { margin: 0 0 1.5em; }
+.post-page .tr b { color: var(--fg-strong); }
+.post-page .tr code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .tr a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .tr .tr-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 18px 0 0; }
+.post-page .tr details { margin: 0 0 1.4em; }
+.post-page .tr summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .tr details p { margin-top: 10px; font-size: 16px; }
+
+/* 정거장 표지 — 노선도의 색이 섹션 표지로 이어진다 */
+.post-page .tr-stn { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--c); margin-bottom: 16px; letter-spacing: 0.02em; }
+.post-page .tr-stn i { width: 22px; height: 22px; border-radius: 50%; border: 5px solid var(--c); background: var(--bg-base); display: inline-block; }
+
+/* 배치 */
+.post-page .tr-sec { padding: clamp(88px, 10vw, 128px) 0 0; }
+.post-page .tr-sec > .tr-wrap > :last-child, .post-page .tr-sec > .tr-wrap > :last-child > :last-child { margin-bottom: 0; }
+.post-page .tr-sec details:last-child { margin-bottom: 0; }
+.post-page .tr-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .tr-two > figure { margin-top: 38px; }
+.post-page .tr-after, .post-page .tr-head.tr-after { margin-top: clamp(36px, 5vw, 56px); display: block; }
+.post-page .tr-after > div:first-child { display: none; }
+.post-page .tr-after > div { max-width: 760px; }
+.post-page .tr-h3 { font-family: var(--font-display); font-size: clamp(19px, 2.2vw, 22px); color: var(--fg-strong); margin: clamp(64px, 8vw, 96px) 0 24px; font-weight: 700; letter-spacing: -0.01em; }
+.post-page .tr-thumbbox { background: var(--bg-subtle); padding: 6px 0 22px; }
+.post-page .tr-byte small { font-size: 11px; color: var(--fg-neutral); margin-left: 3px; }
+.post-page .tr-dlegend { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; max-width: 600px; }
+.post-page .tr-dlegend li { display: flex; align-items: center; gap: 8px; font-size: 14px !important; line-height: 1.5 !important; color: var(--fg-strong); }
+.post-page .tr-dlegend i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.post-page .tr-dlegend b { font-family: var(--font-mono); color: var(--fg-neutral); font-weight: 600; margin-left: auto; }
+.post-page .tr-stairbox { border-top: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle); padding: 28px 0 24px; }
+.post-page .tr-olds { display: contents; }
+.post-page .tr-olds .dots { display: none; color: var(--fg-neutral); }
+.post-page .tr-two.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .tr-two.rev > :first-child { order: 2; }
+.post-page .tr-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .tr-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 64px); align-items: start; margin-top: clamp(40px, 6vw, 64px); }
+.post-page .tr-band { background: var(--bg-subtle); padding: clamp(44px, 6vw, 72px) 0; margin: clamp(44px, 6vw, 72px) 0; }
+.post-page .tr-fig { margin: 0; }
+.post-page .tr-wide { margin: clamp(40px, 6vw, 64px) 0; }
+
+/* 토글 */
+.post-page .tr-seg { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .tr-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1 var(--font-sans); padding: 9px 16px; border-radius: 999px; cursor: pointer; }
+.post-page .tr-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.12)); }
+.post-page .tr-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; }
+.post-page .tr-act:disabled { opacity: .45; cursor: default; }
+.post-page .tr-act.plain { border-color: var(--line-strong); font-weight: 600; color: var(--fg-neutral); }
+
+/* 토큰 칩 */
+.post-page .tr-chip { display: inline-flex; align-items: center; font: 500 14px/1 var(--font-mono); padding: 6px 7px; border-radius: 6px; background: color-mix(in srgb, var(--c1) 14%, var(--bg-base)); border: 1px solid color-mix(in srgb, var(--c1) 45%, transparent); color: var(--fg-strong); white-space: pre; }
+.post-page .tr-chip.byte { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--c4) 70%, transparent); color: var(--c4); font-size: 12px; }
+.post-page .tr-chip.new { background: color-mix(in srgb, var(--c6) 20%, var(--bg-base)); border-color: var(--c6); }
+.post-page .tr-chip .sp { color: var(--fg-neutral); opacity: .75; font-size: 0.85em; }
+.post-page .tr-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* 히어로 */
+.post-page .tr-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .tr-hero-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .tr-lede { font-size: 18px !important; }
+.post-page .tr-hero-band { background: var(--bg-subtle); margin-top: clamp(32px, 5vw, 48px); padding: clamp(32px, 5vw, 52px) 0 clamp(28px, 4vw, 44px); }
+.post-page .tr-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 22px; }
+.post-page .tr-sent { font-size: clamp(19px, 2.4vw, 24px); font-weight: 700; color: var(--fg-strong); line-height: 1.5; margin-bottom: 30px; min-height: 1.5em; word-break: keep-all; }
+.post-page .tr-sent small { display: block; font-size: 13px; font-weight: 600; color: var(--fg-neutral); letter-spacing: .04em; margin-bottom: 4px; }
+.post-page .tr-sent .new { color: var(--c6); background: color-mix(in srgb, var(--c6) 14%, transparent); border-radius: 4px; padding: 0 2px; }
+.post-page .tr-metro { position: relative; }
+.post-page .tr-stops { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; position: relative; }
+.post-page .tr-stops::before { content: ""; position: absolute; left: calc(100% / 12); right: calc(100% / 12); top: 13px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c4), var(--c5), var(--c6)); opacity: .9; }
+.post-page .tr-stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.post-page .tr-dot { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-base); border: 6px solid var(--c); position: relative; z-index: 1; transition: transform .45s cubic-bezier(.2,.7,.2,1), box-shadow .45s; }
+.post-page .tr-stop.is-now .tr-dot { transform: scale(1.25); box-shadow: 0 0 0 8px color-mix(in srgb, var(--c) 25%, transparent); }
+.post-page .tr-stop-name { font-size: 15px; font-weight: 700; color: var(--fg-strong); margin: 12px 0 10px; text-align: center; word-break: keep-all; line-height: 1.35; }
+.post-page .tr-stop-name small { display: block; font-size: 12.5px; font-weight: 600; color: var(--c); }
+.post-page .tr-read { width: 100%; min-height: 150px; background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 12px; padding: 12px 10px; transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .tr-metro.is-run .tr-stop:not(.is-done) .tr-read { opacity: .25; transform: translateY(8px); }
+.post-page .tr-ids { font: 500 13px/1.7 var(--font-mono); color: var(--fg-strong); word-break: break-all; }
+.post-page .tr-ids { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.post-page .tr-ids span { color: var(--c2); white-space: nowrap; }
+.post-page .tr-vecs { display: grid; gap: 3px; }
+.post-page .tr-vrow { display: grid; grid-template-columns: 18px repeat(16, minmax(0, 1fr)); gap: 1px; align-items: center; }
+.post-page .tr-vrow b { font: 600 11px/1 var(--font-mono); color: var(--c3); text-align: right; padding-right: 3px; }
+.post-page .tr-vrow i { height: 9px; border-radius: 1px; }
+.post-page .tr-blocks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.post-page .tr-blocks i { height: 14px; border-radius: 3px; background: color-mix(in srgb, var(--c4) 18%, var(--bg-base)); border: 1px solid color-mix(in srgb, var(--c4) 35%, transparent); transition: background .25s; }
+.post-page .tr-blocks i.on { background: var(--c4); }
+.post-page .tr-read p.mini { font-size: 13px !important; line-height: 1.55; color: var(--fg-neutral); margin: 10px 0 0; }
+.post-page .tr-probs { display: grid; gap: 6px; }
+.post-page .tr-prow { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 4px 6px; align-items: center; font-size: 12.5px; }
+.post-page .tr-prow .lab { font: 600 13px/1.2 var(--font-mono); color: var(--fg-strong); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.post-page .tr-prow .num { font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); text-align: right; }
+.post-page .tr-prow .bar { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--c5); transform-origin: left; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .tr-prow:first-child .lab { color: var(--c5); }
+.post-page .tr-pick { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 10px; }
+.post-page .tr-pick .tr-chip { font-size: 20px; padding: 10px 12px; background: color-mix(in srgb, var(--c6) 18%, var(--bg-base)); border-color: var(--c6); }
+.post-page .tr-loop { position: relative; margin: 18px calc(100% / 12 - 0px) 0; height: 46px; border: 6px solid color-mix(in srgb, var(--c6) 70%, var(--c1)); border-top: 0; border-radius: 0 0 28px 28px; }
+.post-page .tr-loop::before { content: ""; position: absolute; left: -14px; top: -16px; border: 11px solid transparent; border-bottom: 14px solid color-mix(in srgb, var(--c6) 70%, var(--c1)); border-top: 0; }
+.post-page .tr-loop span { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); background: var(--bg-subtle); padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; }
+
+/* 1. 토크나이저 넷 */
+.post-page .tr-tk { display: grid; gap: 18px; }
+.post-page .tr-tk-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: start; }
+.post-page .tr-tk-name { font-size: 14px; font-weight: 700; color: var(--fg-strong); line-height: 1.3; }
+.post-page .tr-tk-name small { display: block; font-weight: 500; color: var(--fg-neutral); font-size: 12.5px; }
+.post-page .tr-tk-name em { font-style: normal; display: block; font: 700 20px/1.2 var(--font-mono); color: var(--c1); margin-top: 4px; }
+
+/* 2. BPE */
+.post-page .tr-bpe { display: grid; gap: 22px; }
+.post-page .tr-bpe-words { display: grid; gap: 8px; }
+.post-page .tr-bw { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+.post-page .tr-bw .tr-chips { gap: 3px; }
+.post-page .tr-bw .tr-chip { transition: background .4s; }
+.post-page .tr-bw .tr-chip.fresh { background: color-mix(in srgb, var(--c6) 30%, var(--bg-base)); border-color: var(--c6); }
+.post-page .tr-bw small { font: 600 13px/1 var(--font-mono); color: var(--fg-neutral); text-align: right; }
+.post-page .tr-pairs { display: grid; gap: 5px; }
+.post-page .tr-pr { display: grid; grid-template-columns: 88px minmax(0, 1fr) 28px; gap: 8px; align-items: center; font: 600 13.5px/1 var(--font-mono); color: var(--fg-strong); }
+.post-page .tr-pr i { height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--fg-neutral) 30%, transparent); }
+.post-page .tr-pr.top i { background: var(--c6); }
+.post-page .tr-pr.top { color: var(--c6); }
+.post-page .tr-pr span:last-child { color: var(--fg-neutral); text-align: right; }
+.post-page .tr-bpe-ctl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+.post-page .tr-bpe-ctl input { flex: 1; min-width: 160px; accent-color: var(--c6); }
+.post-page .tr-bpe-ctl output { font: 700 18px/1 var(--font-mono); color: var(--c6); min-width: 2ch; }
+.post-page .tr-sub { font-size: 13px; font-weight: 700; color: var(--fg-neutral); letter-spacing: .04em; margin-bottom: 10px; }
+.post-page .tr-merges { font: 600 13.5px/1.9 var(--font-mono); color: var(--fg-neutral); min-height: 1.9em; }
+.post-page .tr-merges b { color: var(--c6); }
+
+/* 3. 한국어 막대 */
+.post-page .tr-kor { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .tr-kbars { display: grid; gap: 20px; max-width: 680px; }
+.post-page .tr-kb { display: grid; grid-template-columns: 130px minmax(0, 1fr) 52px; gap: 6px 14px; align-items: center; }
+.post-page .tr-kb > b { font-size: 15px; grid-row: span 2; }
+.post-page .tr-kb .r { grid-row: span 2; font: 700 16px/1 var(--font-mono); color: var(--c1); text-align: right; }
+.post-page .tr-kb .ln { display: flex; align-items: center; gap: 8px; font: 600 13px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .tr-kb .ln i { height: 22px; border-radius: 4px; background: var(--c1); }
+.post-page .tr-kb .ln.en i { height: 14px; background: color-mix(in srgb, var(--fg-neutral) 45%, transparent); }
+.post-page .tr-kb .ln:not(.en) { color: var(--fg-strong); font-size: 14px; }
+.post-page .tr-bytes { display: grid; gap: 14px; }
+.post-page .tr-byterow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.post-page .tr-byterow .lbl { width: 100%; font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tr-byte { font: 600 12.5px/1 var(--font-mono); padding: 6px 7px; border-radius: 6px; border: 1.5px solid var(--line-strong); color: var(--fg-strong); }
+.post-page .tr-bgrp { display: inline-flex; gap: 3px; padding: 4px; border: 1.5px dashed var(--c4); border-radius: 9px; }
+.post-page .tr-arrow { color: var(--fg-neutral); font-size: 18px; }
+
+/* 4. 임베딩 */
+.post-page .tr-embfig { max-width: 560px; margin: 0 auto; }
+.post-page .tr-emb-svg { width: 100%; display: block; }
+.post-page .tr-emb-svg text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .tr-emb-svg .mono { font-family: var(--font-mono); }
+.post-page .tr-emb-svg .dim { fill: var(--fg-neutral); }
+.post-page .tr-emb-svg .tbl { fill: color-mix(in srgb, var(--c3) 7%, var(--bg-base)); stroke: color-mix(in srgb, var(--c3) 45%, transparent); }
+.post-page .tr-emb-svg .rowl { stroke: color-mix(in srgb, var(--c3) 16%, transparent); }
+.post-page .tr-emb-svg .hit { fill: color-mix(in srgb, var(--c3) 30%, var(--bg-base)); stroke: var(--c3); stroke-width: 2; }
+.post-page .tr-emb-svg .wire { stroke: var(--c3); stroke-width: 2.5; fill: none; }
+.post-page .tr-cells { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
+.post-page .tr-cells i { height: 22px; border-radius: 2px; }
+.post-page .tr-nn { display: grid; gap: 6px; margin-top: 18px; }
+.post-page .tr-nn > div:not(.tr-sub) { display: grid; grid-template-columns: 110px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font: 600 14px/1 var(--font-mono); color: var(--fg-strong); }
+.post-page .tr-nn i { height: 10px; border-radius: 5px; background: var(--c3); transform-origin: left; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .tr-nn span:last-child { color: var(--fg-neutral); text-align: right; font-size: 13px; }
+.post-page .tr-emb-pick { display: flex; justify-content: center; margin-bottom: 18px; }
+
+/* 5. RoPE 시계 */
+.post-page .tr-rope { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+.post-page .tr-bag { width: 100%; max-width: 340px; display: block; margin: 28px 0 0; }
+.post-page .tr-bag text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .tr-bag .dim { fill: var(--fg-neutral); }
+.post-page .tr-bag rect.w { fill: var(--bg-base); stroke: var(--line-strong); }
+.post-page .tr-bag path.sack { fill: color-mix(in srgb, var(--c3) 10%, var(--bg-base)); stroke: var(--c3); stroke-width: 2; }
+.post-page .tr-clocks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 860px; margin: 0 auto; }
+.post-page .tr-clock { text-align: center; }
+.post-page .tr-clock svg { width: 100%; max-width: 150px; display: block; margin: 0 auto; }
+.post-page .tr-clock .orbit { fill: none; stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.post-page .tr-clock .ax { stroke: var(--line-subtle); stroke-width: 1; }
+.post-page .tr-clock .ha { stroke: var(--c2); stroke-width: 4; }
+.post-page .tr-clock .hb { stroke: var(--c4); stroke-width: 4; }
+.post-page .tr-clock .arc { fill: color-mix(in srgb, var(--c6) 30%, transparent); stroke: var(--c6); stroke-width: 1.5; }
+.post-page .tr-clock b { display: block; font-size: 14px; color: var(--fg-strong); margin-top: 6px; }
+.post-page .tr-clock small { display: block; font: 600 13px/1.5 var(--font-mono); color: var(--fg-neutral); }
+.post-page .tr-clock small em { font-style: normal; color: var(--c6); }
+.post-page .tr-rope-ctl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; margin: 0 auto 26px; max-width: 760px; }
+.post-page .tr-rope-ctl label { display: grid; gap: 8px; font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+.post-page .tr-rope-ctl input { width: 100%; accent-color: var(--c3); }
+.post-page .tr-rope-ctl output { font-family: var(--font-mono); color: var(--c3); }
+.post-page .tr-rope-note { text-align: center; font-size: 16px !important; font-weight: 600; color: var(--fg-strong); margin: 0 auto 20px !important; max-width: 760px; }
+.post-page .tr-rope-note em { font-style: normal; font-family: var(--font-mono); color: var(--c6); }
+.post-page .tr-legend { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-size: 14px; color: var(--fg-strong); margin-bottom: 16px; }
+.post-page .tr-legend i { display: inline-block; width: 18px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+
+/* 6. 블록 한 층 */
+.post-page .tr-blk { width: 100%; max-width: 600px; display: block; margin: 0 auto; }
+.post-page .tr-blk text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .tr-blk .mono { font-family: var(--font-mono); }
+.post-page .tr-blk .dim { fill: var(--fg-neutral); }
+.post-page .tr-blk .stream { stroke: color-mix(in srgb, var(--c3) 60%, transparent); stroke-width: 5; }
+.post-page .tr-blk .attn { fill: color-mix(in srgb, var(--c4) 12%, var(--bg-base)); stroke: var(--c4); stroke-width: 2; }
+.post-page .tr-blk .mlp { fill: color-mix(in srgb, var(--c2) 12%, var(--bg-base)); stroke: var(--c2); stroke-width: 2; }
+.post-page .tr-blk .look { stroke: var(--c4); stroke-width: 2; fill: none; }
+.post-page .tr-blk .plus { fill: var(--bg-base); stroke: var(--c6); stroke-width: 2.5; }
+.post-page .tr-blk .plusl { stroke: var(--c6); stroke-width: 2.5; }
+.post-page .tr-blk .side { stroke: var(--line-strong); stroke-width: 2; fill: none; stroke-dasharray: 5 4; }
+.post-page .tr-blk .tok { fill: color-mix(in srgb, var(--c1) 14%, var(--bg-base)); stroke: color-mix(in srgb, var(--c1) 55%, transparent); }
+.post-page .tr-paper { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .tr-paper img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; padding: 10px; }
+[data-theme="dark"] .post-page .tr-paper img { filter: brightness(.78) contrast(.92); border-color: var(--line-strong); background: #e8e8e8; }
+.post-page .tr-paper figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.6; margin-top: 10px; }
+.post-page .tr-map { display: grid; gap: 10px; margin: 0 0 1.4em; padding: 0; list-style: none; }
+.post-page .tr-map li { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; font-size: 16px; line-height: 1.6; }
+.post-page .tr-map li code { justify-self: start; }
+
+/* 7. logit lens */
+.post-page .tr-lens-tabs { display: none; margin-bottom: 18px; }
+.post-page .tr-lens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(24px, 4vw, 56px); }
+.post-page .tr-lcol h3 { font-size: 16px; color: var(--fg-strong); margin: 0 0 12px; font-weight: 700; }
+.post-page .tr-lcol h3 small { font: 600 13px/1 var(--font-mono); color: var(--fg-neutral); margin-left: 6px; }
+.post-page .tr-lrow { display: grid; grid-template-columns: 54px 150px minmax(0, 1fr) 50px; gap: 10px; align-items: center; height: 24px; font-size: 13px; }
+.post-page .tr-lrow .L { font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); text-align: right; }
+.post-page .tr-lrow .t { font: 600 13.5px/1 var(--font-mono); color: var(--fg-strong); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.post-page .tr-lrow .b { height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--c4) 40%, transparent); }
+.post-page .tr-lrow .p { font: 600 12px/1 var(--font-mono); color: var(--fg-neutral); text-align: right; }
+.post-page .tr-lrow.hit .t { color: var(--c5); }
+.post-page .tr-lrow.hit .b { background: var(--c5); }
+.post-page .tr-lrow.first { border-bottom: 1px dashed var(--line-strong); margin-bottom: 4px; }
+.post-page .tr-lrow.last { border-top: 2px solid var(--fg-strong); margin-top: 4px; height: 30px; }
+.post-page .tr-lrow.last .L { color: var(--fg-strong); }
+
+/* 8. 확률표 */
+.post-page .tr-dist { width: 100%; max-width: 600px; display: block; margin: 0 auto; }
+.post-page .tr-dist text { fill: var(--fg-strong); font-family: var(--font-sans); }
+.post-page .tr-dist .mono { font-family: var(--font-mono); }
+.post-page .tr-dist .dim { fill: var(--fg-neutral); }
+.post-page .tr-dist .bar { fill: color-mix(in srgb, var(--c5) 55%, transparent); }
+.post-page .tr-dist .bar.top { fill: var(--c5); }
+.post-page .tr-dist .axis { stroke: var(--line-strong); stroke-width: 1.5; }
+.post-page .tr-dist .cum { stroke: var(--c6); stroke-width: 2.5; fill: none; }
+.post-page .tr-dist .mark { stroke: var(--c6); stroke-width: 1.5; stroke-dasharray: 4 4; }
+
+/* 9. 계단 */
+.post-page .tr-stairs { display: grid; gap: 8px; }
+.post-page .tr-sr { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; align-items: center; cursor: pointer; border-radius: 10px; padding: 6px 8px; border: 1px solid transparent; background: transparent; text-align: left; font: inherit; color: inherit; width: 100%; }
+.post-page .tr-sr:hover, .post-page .tr-sr[aria-expanded="true"] { border-color: var(--line-strong); background: var(--bg-base); }
+.post-page .tr-sr > b { font: 700 13px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .tr-sr .tr-chips { gap: 3px; }
+.post-page .tr-sr .tr-chip { font-size: 13.5px; padding: 5px 6px; }
+.post-page .tr-sr .tr-chip.old { background: transparent; border-color: var(--line-subtle); color: var(--fg-neutral); }
+.post-page .tr-sr .tr-chip.out { background: color-mix(in srgb, var(--c6) 20%, var(--bg-base)); border: 1.5px solid var(--c6); }
+.post-page .tr-sr .pct { font: 700 13px/1 var(--font-mono); color: var(--c6); margin-left: 6px; align-self: center; }
+.post-page .tr-alt { grid-column: 2; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .tr-sr[aria-expanded="true"] .tr-alt { grid-template-rows: 1fr; }
+.post-page .tr-alt > div { overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px 14px; font: 600 13px/1.6 var(--font-mono); color: var(--fg-neutral); }
+.post-page .tr-alt > div span:first-child { color: var(--fg-strong); }
+
+/* 정리 */
+.post-page .tr-sum { font-family: var(--font-display); font-size: clamp(22px, 3vw, 32px) !important; line-height: 1.55 !important; color: var(--fg-strong); max-width: 920px; margin: 0 auto !important; text-align: left; letter-spacing: -0.01em; }
+.post-page .tr-sum span { color: var(--c5); }
+.post-page .tr-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .tr-refs li { font-size: 15px; margin-bottom: .5em; }
+
+@media (max-width: 900px) {
+  .post-page .tr-wrap { padding: 0 20px; }
+  .post-page .tr-hero-head, .post-page .tr-two, .post-page .tr-two.rev, .post-page .tr-head, .post-page .tr-pair, .post-page .tr-kor, .post-page .tr-rope, .post-page .tr-paper { grid-template-columns: minmax(0, 1fr); }
+  .post-page .tr-two.rev > :first-child { order: 0; }
+  .post-page .tr-stops { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .tr-stops::before { left: 15px; right: auto; top: 16px; bottom: 16px; width: 6px; height: auto; background: linear-gradient(180deg, var(--c1), var(--c2), var(--c3), var(--c4), var(--c5), var(--c6)); }
+  .post-page .tr-stop { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 14px; align-items: start; padding-bottom: 18px; }
+  .post-page .tr-stop-name { grid-column: 2; grid-row: 1; text-align: left; margin: 4px 0 8px; }
+  .post-page .tr-dot { grid-column: 1; grid-row: 1; }
+  .post-page .tr-read { grid-column: 2; grid-row: 2; min-height: 0; }
+  .post-page .tr-loop { margin: 0 0 0 15px; height: 34px; border-radius: 0 0 0 20px; border-right: 0; }
+  .post-page .tr-loop::before { display: none; }
+  .post-page .tr-loop span { left: 30px; transform: none; white-space: normal; bottom: -12px; }
+  .post-page .tr-lens { grid-template-columns: minmax(0, 1fr); }
+  .post-page .tr-lens-tabs { display: flex; }
+  .post-page .tr-lens .tr-lcol.is-off { display: none; }
+  .post-page .tr-map li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .post-page .tr-after > div:first-child { display: none; }
+  .post-page .tr-two > figure { margin-top: 0; }
+}
+@media (max-width: 560px) {
+  .post-page .tr-kb { grid-template-columns: 76px minmax(0, 1fr) 44px; gap: 4px 8px; }
+  .post-page .tr-kb > b { font-size: 13px; }
+  .post-page .tr-clocks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .tr-rope-ctl { grid-template-columns: minmax(0, 1fr); gap: 8px; position: sticky; top: 60px; z-index: 2; background: var(--bg-subtle); padding: 10px 0; margin-bottom: 10px; }
+  .post-page .tr-rope-ctl label { gap: 2px; font-size: 14px; }
+  .post-page .tr-clocks { gap: 8px; }
+  .post-page .tr-clock svg { max-width: 112px; }
+  .post-page .tr-rope-note { font-size: 15px !important; }
+  .post-page .tr-hero .tr-ctl { flex-wrap: nowrap; gap: 6px; }
+  .post-page .tr-hero .tr-seg button { padding: 8px 10px; font-size: 13.5px; }
+  .post-page .tr-hero .tr-act { padding: 9px 11px; font-size: 13.5px; white-space: nowrap; }
+  .post-page .tr-tk-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .post-page .tr-tk-name em { display: inline; margin-left: 8px; font-size: 16px; }
+  .post-page .tr-lrow { grid-template-columns: 40px 118px minmax(0, 1fr) 44px; gap: 6px; }
+  .post-page .tr-nn > div:not(.tr-sub) { grid-template-columns: 96px minmax(0, 1fr) 44px; }
+  .post-page .tr-sr { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 6px 4px; }
+  .post-page .tr-olds .tr-chip:not(:nth-last-child(-n+3)) { display: none; }
+  .post-page .tr-olds .dots { display: inline; align-self: center; }
+  .post-page .tr-dlegend { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .tr *, .post-page .tr *::before { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="tr" data-tr>
+
+  <header class="tr-hero">
+    <div class="tr-wrap tr-hero-head">
+      <h1>LLM이 다음 토큰 하나를 고르기까지 거치는 여섯 단계</h1>
+      <div>
+        <p class="tr-lede">ChatGPT나 Claude에 질문하면 답이 한 번에 뜨지 않고 몇 글자씩 흘러나옵니다. LLM(Large Language Model)이 실제로 한 번에 글 조각 하나씩만 만들기 때문입니다. 이 조각을 <b>토큰</b>(token)이라고 부릅니다.</p>
+        <p class="tr-lede" style="margin-bottom:0">아래 노선도는 "대한민국의 수도는"을 넣었을 때 토큰 하나가 나오기까지 지나는 여섯 정거장입니다. 칸마다 적힌 값은 실제 모델을 돌려 얻은 결과입니다. ▶를 누르면 한 바퀴를 돌고 문장 끝에 토큰 하나가 붙습니다.</p>
+      </div>
+    </div>
+    <div class="tr-hero-band">
+      <div class="tr-wrap">
+        <div class="tr-ctl">
+          <div class="tr-seg" role="group" aria-label="입력 문장">
+            <button type="button" data-tr-lang="ko" aria-pressed="true">한국어</button>
+            <button type="button" data-tr-lang="en" aria-pressed="false">영어</button>
+          </div>
+          <button type="button" class="tr-act" data-tr-run>▶ 한 바퀴 돌리기</button>
+          <button type="button" class="tr-act plain" data-tr-reset>처음으로</button>
+        </div>
+        <div class="tr-thumbbox" data-thumb data-thumb-act="el.querySelector('[data-tr-metro]').dispatchEvent(new CustomEvent('tr-thumb'))">
+          <div class="tr-sent" aria-live="polite"><small>지금까지의 문장</small><span data-tr-sent>대한민국의 수도는</span></div>
+          <div class="tr-metro" data-tr-metro data-figure>
+            <div class="tr-stops">
+              <div class="tr-stop is-done" style="--c:var(--c1)"><i class="tr-dot"></i><div class="tr-stop-name"><small>①</small>토큰 자르기</div><div class="tr-read" data-tr-r="1"></div></div>
+              <div class="tr-stop is-done" style="--c:var(--c2)"><i class="tr-dot"></i><div class="tr-stop-name"><small>②</small>번호 찾기</div><div class="tr-read" data-tr-r="2"></div></div>
+              <div class="tr-stop is-done" style="--c:var(--c3)"><i class="tr-dot"></i><div class="tr-stop-name"><small>③</small>벡터 꺼내기 + 자리 표시</div><div class="tr-read" data-tr-r="3"></div></div>
+              <div class="tr-stop is-done" style="--c:var(--c4)"><i class="tr-dot"></i><div class="tr-stop-name"><small>④</small>블록 28개 지나기</div><div class="tr-read" data-tr-r="4"><div class="tr-blocks" data-tr-blocks></div><p class="mini">층마다 Attention과 MLP를 한 번씩</p></div></div>
+              <div class="tr-stop is-done" style="--c:var(--c5)"><i class="tr-dot"></i><div class="tr-stop-name"><small>⑤</small>확률표 만들기</div><div class="tr-read" data-tr-r="5"></div></div>
+              <div class="tr-stop is-done" style="--c:var(--c6)"><i class="tr-dot"></i><div class="tr-stop-name"><small>⑥</small>하나 고르기</div><div class="tr-read" data-tr-r="6"></div></div>
+            </div>
+            <div class="tr-loop"><span>고른 토큰을 문장 끝에 붙이고 ①로 돌아갑니다</span></div>
+          </div>
+        </div>
+        <p class="tr-cap" style="margin-top:28px">계산은 Qwen2.5-7B와 토큰 자르는 규칙이 같고 층(layer) 수도 28개로 같은 작은 모델 Qwen2.5-1.5B로 직접 했습니다. ③의 색 칸은 1.5B 단어표(embedding table)에서 꺼낸 한 줄(숫자 1,536개) 가운데 앞 16개이고(파랑 +, 빨강 −) 왼쪽 숫자는 자리 번호입니다. ⑤의 마지막 줄은 6등 아래 후보를 모두 더한 확률입니다. 매 바퀴 1등을 고릅니다. 칩 앞의 ␣는 띄어쓰기입니다. ④의 블록(block)은 같은 모양으로 28번 쌓은 계산 묶음입니다. 그 안의 MLP는 Multi-Layer Perceptron의 줄임말입니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="tr-sec">
+    <div class="tr-wrap tr-two">
+      <div>
+        <span class="tr-stn" style="--c:var(--c1)"><i></i>① 토큰 자르기</span>
+        <h2>모델은 글자가 아니라 토큰 번호를 읽습니다</h2>
+        <p>컴퓨터는 글자도 결국 숫자로 다룹니다. 그래서 LLM 앞에는 문장을 조각내고 조각마다 번호를 붙이는 프로그램이 있습니다. 이 프로그램이 <b>토크나이저</b>(tokenizer)입니다. 잘린 조각인 토큰은 단어 하나일 때도 있고 글자 하나, 심지어 글자의 일부일 때도 있습니다.</p>
+        <p>그림은 같은 문장을 토크나이저 네 개로 잘라 본 실제 결과입니다. 칩 하나가 토큰 하나입니다. 영어 문장은 넷 다 단어와 거의 같게 잘리지만 한국어 문장은 토크나이저마다 개수가 크게 다릅니다.</p>
+        <p>빨간 점선 칩은 글자가 아니라 <b>바이트</b>(byte) 조각입니다. 컴퓨터는 글자를 0~255 사이 숫자 몇 개로 저장하는데, 이 숫자 하나가 바이트입니다. 한글 한 글자는 바이트 3개입니다(<a href="/posts/utf8-encoding-mojibake">UTF-8 글</a>). 토크나이저의 <b>사전</b>(vocabulary)에 그 글자가 통째로 없으면 바이트 단위로 쪼개서라도 받아 냅니다. 그래서 처음 보는 글자도 버리지 않습니다.</p>
+      </div>
+      <figure class="tr-fig" data-figure>
+        <div class="tr-ctl"><div class="tr-seg" role="group" aria-label="문장 언어">
+          <button type="button" data-tr-tklang="ko" aria-pressed="true">나는 학교에 가서 …</button>
+          <button type="button" data-tr-tklang="en" aria-pressed="false">I went to school …</button>
+        </div></div>
+        <div class="tr-tk" data-tr-tk></div>
+        <p class="tr-cap">GPT-2(2019), GPT-4의 cl100k, GPT-4o의 o200k는 OpenAI tiktoken 라이브러리로, Qwen2.5는 모델과 함께 배포되는 tokenizer.json으로 잘랐습니다. 점선 칩 속 글자는 바이트를 16진수로 적은 것이고 20은 띄어쓰기 바이트입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap tr-two">
+      <div>
+        <h2>토큰 사전은 자주 붙어 다니는 글자를 합쳐 만듭니다</h2>
+        <p>토크나이저의 사전은 사람이 단어를 골라 적은 목록이 아닙니다. 글을 아주 많이 모은 뒤 가장 자주 나란히 나오는 두 조각을 찾아 하나로 합치기를 되풀이해서 만듭니다. 이 방법을 <b>BPE</b>(Byte Pair Encoding)라고 합니다.</p>
+        <p>자주 쓰는 말을 도장으로 새겨 두는 것과 비슷합니다. "학교"를 하루에도 여러 번 쓴다면 '학'과 '교'를 따로 찍기보다 "학교" 도장 하나를 새기는 편이 빠릅니다. 그림 맨 위 슬라이더로 합치기 횟수를 늘려 보세요. 맨 아래 새 문장도 그때까지 새긴 도장으로 다시 잘립니다.</p>
+        <p>도장 비유가 맞지 않는 곳도 있습니다. 사람은 뜻을 보고 도장을 고르지만 BPE는 횟수만 셉니다. 그래서 "들과", "었다"처럼 뜻의 경계와 상관없는 조각도 토큰이 됩니다.</p>
+        <details>
+          <summary>실제 토크나이저는 어디서 시작하나요?</summary>
+          <p>글자 대신 바이트 256개에서 시작합니다(byte-level BPE). Qwen2.5 토크나이저는 바이트 256개에 합치기 151,387번을 더해 151,643개 조각을 만들었습니다. 여기에 대화 표시 같은 특수 토큰 22개를 붙여 모두 151,665개를 씁니다.</p>
+        </details>
+      </div>
+      <figure class="tr-fig tr-bpe" data-figure>
+        <div class="tr-bpe-ctl"><span>합치기 횟수</span><input type="range" min="0" max="7" step="1" value="0" data-tr-bpe aria-label="합치기 횟수"><output data-tr-bpe-n>0</output></div>
+        <div>
+          <div class="tr-sub">장난감 말뭉치 · ×는 나온 횟수</div>
+          <div class="tr-bpe-words" data-tr-bpe-words></div>
+        </div>
+        <div>
+          <div class="tr-sub">나란히 나온 두 조각 · 다음에 합칠 쌍은 노랑</div>
+          <div class="tr-pairs" data-tr-bpe-pairs></div>
+        </div>
+        <div>
+          <div class="tr-sub">새긴 도장</div>
+          <div class="tr-merges" data-tr-bpe-merges></div>
+        </div>
+        <div>
+          <div class="tr-sub">새 문장을 지금 사전으로 자르면</div>
+          <div class="tr-chips" data-tr-bpe-test></div>
+        </div>
+        <p class="tr-cap" style="margin-top:0">말뭉치는 설명을 위해 만든 예시입니다. 합치기는 이 페이지가 BPE 규칙대로 직접 계산하고 보기 쉽게 글자에서 시작합니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap">
+      <div class="tr-head">
+        <h2>같은 뜻인데 한국어는 토큰을 더 씁니다</h2>
+        <div>
+          <p>세계인권선언 1조를 한국어와 영어로 넣어 토큰을 세 보면 차이가 크게 납니다. 영어는 네 토크나이저 모두 33개입니다. 한국어는 GPT-2에서 6배 가까이 많습니다. 최근 토크나이저에서도 1.5배를 넘습니다.</p>
+          <p>사전이 원인입니다. BPE는 많이 본 글자 쌍부터 합칩니다. 사전을 만들 때 쓴 글이 영어 위주면 영어 단어는 통째로 토큰이 되고 한국어는 낱글자나 바이트로 남습니다. 한국어가 어려운 언어여서 생기는 차이가 아닙니다.</p>
+        </div>
+      </div>
+      <div class="tr-kor tr-wide">
+        <div>
+          <p>토큰 수가 늘면 비용도 늘어납니다. 프로그램에서 모델을 빌려 쓰는 창구인 API(Application Programming Interface)는 대개 토큰 수만큼 요금을 받습니다. 한 번에 읽을 수 있는 길이인 context window도 빨리 차고 토큰마다 한 바퀴를 돌아야 하니 답도 느려집니다.</p>
+        </div>
+        <div>
+          <figure class="tr-fig" data-figure>
+          <div class="tr-kbars" data-tr-kbars role="img" aria-label="세계인권선언 1조의 토큰 수. GPT-2 한국어 197 영어 33, cl100k 85 대 33, o200k 51 대 33, Qwen2.5 55 대 33"></div>
+          <p class="tr-cap">초록이 한국어, 회색이 영어 토큰 수입니다. ×가 붙은 숫자는 한국어가 영어의 몇 배인지입니다. 글자 수는 한국어 87자, 영어 170자로 한국어가 더 짧습니다.</p>
+        </figure>
+          <div class="tr-bytes" data-figure style="margin-top:32px">
+            <div class="tr-byterow"><span class="lbl">한글 '학'은 바이트 3개입니다</span><span class="tr-chip" style="font-size:16px;padding:6px 8px">학</span><span class="tr-arrow">→</span><span class="tr-byte">ED</span><span class="tr-byte">95</span><span class="tr-byte">99</span></div>
+            <div class="tr-byterow"><span class="lbl">띄어쓰기도 바이트 하나(20)입니다. Qwen2.5 사전에는 "띄어쓰기+학" 네 바이트를 한 번에 묶은 조각이 없어서 둘로 나뉩니다</span><span class="tr-bgrp"><span class="tr-byte">20<small>␣</small></span><span class="tr-byte">ED</span><span class="tr-byte">95</span></span><span class="tr-bgrp"><span class="tr-byte">99</span></span></div>
+            <div class="tr-byterow"><span class="lbl">사전 속 토큰 가운데 한글 글자가 하나라도 들어 있는 것의 개수</span><span style="font-size:15px;line-height:1.9;color:var(--fg-strong)">GPT-2 <b>0</b> · cl100k <b>281</b> · o200k <b>2,352</b> · Qwen2.5 <b>3,473</b>개</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap tr-two">
+      <div>
+        <span class="tr-stn" style="--c:var(--c3)"><i></i>②·③ 번호 찾기, 벡터 꺼내기</span>
+        <h2>토큰 번호로 단어표에서 숫자 한 줄을 꺼냅니다</h2>
+        <p>토큰 번호는 이름표라서 번호끼리 더하거나 비교해도 뜻이 없습니다. 그래서 모델은 번호로 커다란 표의 한 줄을 찾아 꺼냅니다. 꺼낸 줄은 순서 있는 숫자 목록이고 이것을 <b>벡터</b>(vector)라고 부릅니다. 번호를 벡터로 바꾸는 이 단계를 <b>임베딩</b>(embedding)이라고 하고 그 표를 <b>단어표</b>라고 부르겠습니다.</p>
+        <p>출석번호로 생활기록부에서 그 학생의 줄을 찾는 것과 비슷합니다. Qwen2.5-7B의 단어표는 152,064줄이고 한 줄에 숫자가 3,584개 있습니다. 노선도에서 쓴 1.5B는 151,936줄 × 1,536개입니다. 이 섹션의 그림은 7B의 실제 값입니다.</p>
+        <p>쓰임이 비슷한 토큰은 줄도 비슷해집니다. 그림 아래 목록은 단어표 전체에서 고른 토큰과 가장 닮은 줄을 찾은 결과입니다. ' 서울' 옆에 Seoul, 北京, Москва, Berlin이 모입니다. 언어는 달라도 "도시 이름" 무리입니다.</p>
+        <p>다만 기록부는 칸마다 "국어 점수" 같은 이름이 있지만 단어표 칸에는 이름이 없습니다. ' 수도'를 골라 보면 이웃이 '수', '기도'처럼 글자 모양이 닮은 조각입니다. 첫 벡터는 뜻과 철자를 섞어 담고 있습니다. 이 문장에서의 뜻은 뒤의 블록이 채웁니다.</p>
+      </div>
+      <figure class="tr-fig tr-embfig" data-figure>
+        <div class="tr-emb-pick"><div class="tr-seg" role="group" aria-label="토큰 고르기">
+          <button type="button" data-tr-emb=" 서울" aria-pressed="true">␣서울</button>
+          <button type="button" data-tr-emb=" Seoul" aria-pressed="false">␣Seoul</button>
+          <button type="button" data-tr-emb=" cat" aria-pressed="false">␣cat</button>
+          <button type="button" data-tr-emb=" 수도" aria-pressed="false">␣수도</button>
+        </div></div>
+        <svg class="tr-emb-svg" viewBox="0 0 460 236" data-tr-embsvg role="img" aria-label="152,064줄짜리 단어표에서 토큰 번호에 해당하는 줄 하나를 꺼내는 그림"></svg>
+        <div class="tr-sub" style="margin-top:6px">꺼낸 줄의 앞 숫자 32개 (전체 3,584개)</div>
+        <div class="tr-cells" data-tr-cells></div>
+        <div class="tr-nn" data-tr-nn></div>
+        <p class="tr-cap">Qwen2.5-7B 단어표의 실제 값입니다. 칸 색은 숫자의 부호와 크기(파랑 +, 빨강 −)입니다. 막대는 <b>코사인 유사도</b>(cosine similarity)로, 두 줄을 화살표로 보았을 때 얼마나 같은 쪽을 향하는지 잰 값입니다. 1이면 방향이 완전히 같고 0이면 직각입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap">
+      <div class="tr-head">
+        <div>
+          <span class="tr-stn" style="--c:var(--c3)"><i></i>③ 자리 표시</span>
+          <h2>순서는 벡터를 돌려서 알려 줍니다</h2>
+          <svg class="tr-bag" viewBox="0 0 360 250" role="img" aria-label="dog bites man과 man bites dog가 순서를 잃으면 같은 토큰 세 개가 든 주머니가 되는 그림">
+            <rect class="w" x="10" y="20" width="64" height="32" rx="6"/><text x="42" y="41" font-size="15" text-anchor="middle">dog</text>
+            <rect class="w" x="80" y="20" width="74" height="32" rx="6"/><text x="117" y="41" font-size="15" text-anchor="middle">bites</text>
+            <rect class="w" x="160" y="20" width="64" height="32" rx="6"/><text x="192" y="41" font-size="15" text-anchor="middle">man</text>
+            <rect class="w" x="10" y="64" width="64" height="32" rx="6"/><text x="42" y="85" font-size="15" text-anchor="middle">man</text>
+            <rect class="w" x="80" y="64" width="74" height="32" rx="6"/><text x="117" y="85" font-size="15" text-anchor="middle">bites</text>
+            <rect class="w" x="160" y="64" width="64" height="32" rx="6"/><text x="192" y="85" font-size="15" text-anchor="middle">dog</text>
+            <path d="M236 58 C 262 58 262 120 280 140" stroke="var(--line-strong)" stroke-width="2" fill="none"/>
+            <path class="sack" d="M210 160 Q 205 145 230 142 L 330 142 Q 355 145 350 160 L 340 230 Q 338 242 322 242 L 238 242 Q 222 242 220 230 Z"/>
+            <text x="280" y="176" font-size="15" text-anchor="middle">dog</text>
+            <text x="280" y="200" font-size="15" text-anchor="middle">bites</text>
+            <text x="280" y="224" font-size="15" text-anchor="middle">man</text>
+            <text x="10" y="160" font-size="14" class="dim">순서를 모르면</text>
+            <text x="10" y="180" font-size="14" class="dim">두 문장이</text>
+            <text x="10" y="200" font-size="14" class="dim">같은 주머니가</text>
+            <text x="10" y="220" font-size="14" class="dim">됩니다</text>
+          </svg>
+        </div>
+        <div>
+          <p>"dog bites man"과 "man bites dog"는 토큰이 똑같고 순서만 다릅니다. 뒤에서 볼 Attention은 토큰들을 한꺼번에 비교할 뿐 어느 쪽이 앞인지 따로 보지 않습니다. 순서를 알려 주지 않으면 두 문장은 같은 토큰 주머니가 됩니다.</p>
+          <p>2017년 원 논문은 자리마다 정해진 물결무늬 숫자를 벡터에 더했습니다. 이것을 <b>위치 인코딩</b>(positional encoding)이라고 합니다. Qwen2.5와 Llama는 그 대신 RoPE(Rotary Position Embedding)를 씁니다. 벡터의 숫자를 두 개씩 짝지어 평면 위 화살표로 보고 자리 번호만큼 화살표를 돌리는 방법입니다.</p>
+          <p>짝마다 도는 속도가 달라서 시계의 초침·분침·시침과 비슷합니다. 아래에서 A 앞에 토큰을 더 붙여 보세요. 화살표는 모두 돌지만 A와 B 사이 각은 그대로입니다. 그래서 모델은 두 토큰이 문장 어디에 있든 몇 칸 떨어져 있는지를 알 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="tr-band">
+      <div class="tr-wrap" data-figure>
+        <div class="tr-rope-ctl">
+          <label>A 앞에 붙은 토큰 수 <output data-tr-shift-v>0</output><input type="range" min="0" max="40" step="1" value="0" data-tr-shift></label>
+          <label>A와 B 사이 거리 <output data-tr-gap-v>3칸</output><input type="range" min="1" max="12" step="1" value="3" data-tr-gap></label>
+        </div>
+        <p class="tr-rope-note" data-tr-rope-note aria-live="polite"></p>
+        <div class="tr-legend"><span><i style="background:var(--c2)"></i>토큰 A의 화살표</span><span><i style="background:var(--c4)"></i>토큰 B의 화살표</span><span><i style="background:var(--c6)"></i>둘 사이 각</span></div>
+        <div class="tr-clocks" data-tr-clocks></div>
+        <p class="tr-cap" style="text-align:center">숫자 짝 64개 가운데 넷만 그렸습니다. 속도는 Qwen2.5-7B 설정값(rope_theta 1,000,000, 짝 64개)으로 계산했습니다.</p>
+      </div>
+    </div>
+    <div class="tr-wrap tr-head tr-after">
+      <div></div>
+      <div>
+        <p>빠른 화살표는 가까운 거리를, 느린 화살표는 먼 거리를 구분합니다. 빠른 쪽은 몇 칸만 가도 한 바퀴를 돌아 버리고 느린 쪽은 수천 칸을 가야 눈에 띄게 돕니다. 시계에는 바늘이 셋뿐이지만 실제로는 짝 64개가 모두 다른 속도로 돕니다.</p>
+        <p>Qwen2.5-7B는 Attention을 28갈래로 나눠 동시에 계산합니다. 이 한 갈래를 <b>헤드</b>(head)라고 하고 헤드 하나가 쓰는 숫자 128개가 64쌍이 됩니다. 돌린 벡터는 Attention에서 토큰끼리 비교할 때만 씁니다. 블록 사이를 흐르는 벡터 자체에는 위치 숫자를 더하지 않습니다.</p>
+        <details>
+          <summary>원 논문의 위치 인코딩은 어떻게 생겼나요?</summary>
+          <p>자리 pos, 짝 번호 i, 벡터 길이 d일 때 i번째 짝의 앞 칸(2i번째 칸)에는 sin(pos / 10000<sup>2i/d</sup>), 뒤 칸(2i+1번째 칸)에는 cos(같은 값)를 넣어 임베딩에 더했습니다. 칸마다 물결의 빠르기가 달라서 이것도 "속도가 다른 바늘"의 다른 모양입니다.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap tr-two">
+      <div>
+        <span class="tr-stn" style="--c:var(--c4)"><i></i>④ 블록 지나기</span>
+        <h2>블록 하나는 둘러보기와 혼자 정리하기를 합니다</h2>
+        <p>벡터가 준비되면 Transformer <b>블록</b>을 지납니다. 블록 하나는 두 단계로 되어 있습니다. 먼저 <b>Attention</b> 단계에서 토큰마다 앞쪽 토큰들을 둘러보고 필요한 정보를 가져옵니다. 다음 MLP 단계에서는 토큰마다 따로, 가져온 정보를 큰 숫자 표 세 장에 통과시켜 가공합니다.</p>
+        <p>모둠 수업과 비슷합니다. 토론 시간에 친구들 말을 듣고(Attention) 정리 시간에 각자 공책을 정리합니다(MLP). 다만 토큰은 자기보다 앞에 있는 토큰만 볼 수 있습니다. 뒷말을 미리 보면 다음 토큰 맞히기가 커닝이 되기 때문입니다. Attention이 무엇을 얼마나 볼지 정하는 계산은 <a href="/posts/self-attention-qkv">Self-Attention 글</a>에서 그림으로 설명합니다.</p>
+        <p>두 단계의 결과는 원래 벡터를 지우고 새로 쓰지 않습니다. 원래 벡터에 <b>더해</b> 씁니다. 이것을 <b>잔차 연결</b>(residual connection)이라고 합니다. 공책 내용을 지우지 않고 아래에 덧붙여 적는 것과 비슷합니다. 덕분에 처음 정보가 28층 끝까지 남고 층이 깊어도 학습이 잘 됩니다.</p>
+        <details>
+          <summary>공책과 블록은 무엇이 다른가요?</summary>
+          <p>사람은 공책을 지우고 고쳐 쓰기도 하지만 블록은 더하기만 합니다. 더하는 값이 음수면 숫자가 줄어드니 지우는 효과를 낼 수는 있습니다. 또 친구들 말은 한 번 듣고 끝나지만 Attention은 28층마다 다시 일어나서 층마다 다른 관계를 봅니다.</p>
+        </details>
+      </div>
+      <figure class="tr-fig" data-figure>
+        <svg class="tr-blk" viewBox="0 0 600 470" role="img" aria-label="토큰 네 개의 벡터가 세로 줄을 따라 위로 흐르는 그림. Attention 상자에서는 앞 토큰에서 뒤 토큰으로 화살표가 이어지고 MLP 상자는 토큰마다 따로 있다. 각 단계 결과는 더하기 표시로 원래 줄에 더해진다">
+          <defs><marker id="tr-ah" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--c4)"/></marker>
+          <marker id="tr-ag" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--line-strong)"/></marker></defs>
+          <g data-tr-blk></g>
+        </svg>
+        <p class="tr-cap">세로 보라 줄이 토큰마다 위로 흐르는 벡터입니다. 노란 ⊕에서 각 단계의 결과가 그 줄에 더해집니다. 빨간 화살표는 앞 토큰만 향합니다. 이 한 층을 28번 쌓은 것이 Qwen2.5-7B입니다.</p>
+      </figure>
+    </div>
+    <div class="tr-wrap">
+      <h3 class="tr-h3">원 논문은 같은 구조를 이렇게 그렸습니다</h3>
+      <div class="tr-paper">
+        <figure class="tr-fig" data-figure>
+          <a href="https://arxiv.org/abs/1706.03762"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/276e2fd6.webp" alt="Transformer 원 논문의 구조도. 왼쪽 인코더와 오른쪽 디코더 묶음이 각각 Nx번 반복되고 맨 위에 Linear와 Softmax가 있다" loading="lazy" width="1520" height="2239"></a>
+          <figcaption>Transformer 구조도, Figure 1 — Vaswani 외, "Attention Is All You Need"(2017)</figcaption>
+        </figure>
+        <div>
+          <p>2017년 6월 Google 연구진이 낸 원 논문은 번역 모델이었습니다. 왼쪽 묶음은 번역할 문장을 읽는 <b>인코더</b>(encoder), 오른쪽 묶음은 번역문을 한 토큰씩 만드는 <b>디코더</b>(decoder)입니다. GPT·Qwen·Llama 같은 요즘 LLM은 오른쪽 디코더에서 가운데 칸(왼쪽 묶음을 보는 Attention)을 뺀 블록만 쌓습니다.</p>
+          <ul class="tr-map">
+            <li><code>Masked Multi-Head Attention</code><span>뒤쪽 토큰을 가리고(Masked) 앞만 보는 Attention을 헤드 여러 개로 나눠(Multi-Head) 동시에 계산</span></li>
+            <li><code>Feed Forward</code><span>MLP</span></li>
+            <li><code>Add &amp; Norm</code><span>잔차 더하기, 그리고 숫자 크기 고르게 맞추기</span></li>
+            <li><code>Nx</code><span>블록을 N번 반복. 원 논문은 6번, Qwen2.5-7B는 28번</span></li>
+            <li><code>Linear → Softmax</code><span>⑤ 확률표 만들기</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap">
+      <div class="tr-head">
+        <h2>28층을 지나며 다음 토큰 후보가 바뀝니다</h2>
+        <div>
+          <p>층마다 표의 모양은 같고 그 안의 숫자 값만 다릅니다. 그럼 중간 층에서 벡터는 어떤 상태일까요? 중간 층 벡터에 마지막 확률표 계산을 미리 대 보면 "지금 멈추면 무엇을 고를지" 엿볼 수 있습니다. 확률로 바꾸기 전의 점수를 logit이라고 부르는데, 이 점수로 중간 층을 들여다본다고 해서 이 방법을 logit lens라고 부릅니다.</p>
+          <p>아래는 Qwen2.5-1.5B로 직접 엿본 결과입니다. 한국어 문장에서 24층은 중국어 '哪个'(어느 것)를, 25층은 영어 ' Seoul'을 1등으로 꼽다가 마지막에야 ' 서울'로 바뀝니다. 블록은 답을 한 번에 정하지 않고 층마다 벡터에 조금씩 더해 다음 토큰 쪽으로 다듬습니다.</p>
+        </div>
+      </div>
+      <div class="tr-wide">
+        <div class="tr-lens-tabs tr-seg" role="group" aria-label="문장 고르기">
+          <button type="button" data-tr-lenst="ko" aria-pressed="true">대한민국의 수도는</button>
+          <button type="button" data-tr-lenst="en" aria-pressed="false">The capital of …</button>
+        </div>
+        <div class="tr-lens" data-figure>
+          <div class="tr-lcol" data-tr-lens="ko"></div>
+          <div class="tr-lcol" data-tr-lens="en"></div>
+        </div>
+        <p class="tr-cap">줄마다 그 층 벡터로 만든 확률표의 1등과 확률입니다. 굵은 선 아래 28층이 실제로 내놓는 답입니다. 청록은 그 답과 같은 뜻의 후보(서울·Seoul)입니다. 맨 위 "블록 전"은 아직 아무 블록도 지나지 않은 벡터라서 입력 토큰 자신을 고릅니다.</p>
+      </div>
+      <div class="tr-head tr-after">
+        <div></div>
+        <div>
+          <p>한국어로 물었는데 중간에 영어 ' Seoul'이 먼저 떠오르는 모습이 흥미롭습니다. 왜 그런지는 이 그림만으로 알 수 없습니다. 이 그림 한 장을 보고 "모델이 영어로 생각한다"고 말할 수도 없습니다. 같은 뜻의 영어 토큰을 거쳐 한국어 토큰에 도착했다는 것까지만 확인할 수 있습니다.</p>
+          <p>logit lens는 마지막 층용 계산을 중간 층에 억지로 댄 것입니다. 그래서 앞쪽 층의 엉뚱한 답('angen', ' certain')은 모델이 틀렸다기보다 아직 확률표로 읽을 수 없는 상태라고 보는 편이 맞습니다. 그래도 답이 층을 지나며 점점 만들어진다는 흐름은 분명히 드러납니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap tr-two">
+      <div>
+        <span class="tr-stn" style="--c:var(--c5)"><i></i>⑤ 확률표 만들기</span>
+        <h2>마지막 벡터는 모든 토큰 후보에 점수를 매깁니다</h2>
+        <p>28층을 지나면 마지막 토큰 자리의 벡터만 꺼냅니다. 이 벡터를 단어표와 크기가 같은 출력용 표(7B는 152,064줄, 그림의 1.5B는 151,936줄)의 줄마다 비교해 점수, 곧 logit을 하나씩 매깁니다. 이 점수들을 softmax라는 계산으로 모두 더해 100%가 되는 확률로 바꾸면 확률표가 됩니다.</p>
+        <p>객관식 문제의 보기 15만 개 옆에 "이게 답일 가능성"을 하나하나 적는 것과 비슷합니다. "대한민국의 수도는" 다음으로 ' 서울'이 1등이지만 25.6%뿐입니다. 2등 '?'는 이 문장을 퀴즈 문제로 본 결과입니다. ' __'는 빈칸 채우기 문제지에서 자주 보던 모양입니다.</p>
+        <p>객관식과 달리 다음 토큰의 정답은 하나가 아닙니다. "서울", "서울특별시"처럼 맞는 이어 쓰기가 여러 개라서 확률이 나뉩니다. 이 표에서 1등만 고를지 확률대로 뽑을지는 <a href="/posts/llm-temperature-sampling">온도(temperature)와 샘플링 글</a>에서 다룹니다.</p>
+        <details>
+          <summary>줄 수와 토큰 수가 왜 다른가요?</summary>
+          <p>토크나이저가 실제로 쓰는 토큰은 151,665개입니다. 모델의 표는 계산하기 좋은 크기로 맞추느라 줄을 더 만들어 두었습니다. 남는 줄은 학습 중에 한 번도 정답으로 나오지 않아 확률이 거의 0입니다.</p>
+        </details>
+      </div>
+      <figure class="tr-fig" data-figure>
+        <svg class="tr-dist" viewBox="0 0 600 300" data-tr-dist role="img" aria-label="대한민국의 수도는 다음 토큰의 확률을 큰 순서로 60개까지 그린 막대와 등수 묶음 띠. 1등 서울 25.6%, 1%를 넘는 후보는 15개" style="height:auto"></svg>
+        <ul class="tr-dlegend" data-tr-dlegend></ul>
+        <p class="tr-cap">Qwen2.5-1.5B의 실제 확률입니다. 1%를 넘는 후보는 15개뿐입니다. 상위 10개를 더하면 절반입니다. 90%를 채우려면 141개가 필요합니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap">
+      <div class="tr-head">
+        <div>
+          <span class="tr-stn" style="--c:var(--c6)"><i></i>⑥ 고르고 되먹이기</span>
+          <h2>고른 토큰을 붙여 처음부터 다시 돌립니다</h2>
+        </div>
+        <div>
+          <p>확률표에서 토큰 하나를 고르면 한 바퀴가 끝납니다. 그 토큰을 문장 끝에 붙이고 길어진 문장을 다시 ①부터 넣습니다. 자기가 낸 출력을 다음 입력으로 되먹이는 이 방식을 <b>자기회귀</b>(autoregressive) 생성이라고 합니다. 그래서 답이 한 토큰씩 흘러나옵니다.</p>
+          <p>모둠 친구들이 한 문장씩 이어 쓰는 릴레이 이야기와 비슷합니다. 아래 계단은 매번 1등만 골라 8바퀴를 돈 실제 결과입니다. 줄을 누르면 그 바퀴에서 밀려난 후보를 볼 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="tr-stairbox tr-wide">
+        <div class="tr-ctl"><div class="tr-seg" role="group" aria-label="계단 문장">
+          <button type="button" data-tr-stl="ko" aria-pressed="true">한국어</button>
+          <button type="button" data-tr-stl="en" aria-pressed="false">영어</button>
+        </div></div>
+        <div class="tr-stairs" data-figure data-tr-stairs></div>
+        <p class="tr-cap">회색은 앞 바퀴까지 쌓인 문장, 노란 칩은 그 바퀴에 새로 고른 토큰과 확률입니다. Qwen2.5-1.5B 실측입니다.</p>
+      </div>
+      <div class="tr-head tr-after">
+        <div></div>
+        <div>
+          <p>"␣대한" 다음 '민'은 98.99%, '국'은 99.98%입니다. 한 단어가 토큰 여러 개로 나뉘어도 첫 조각이 정해지면 나머지는 거의 확실해집니다. 영어 쪽은 "Seoul." 뒤에 일본 수도 문제를 스스로 만들어 냅니다. 이 모델은 대화용으로 다듬기 전의 기본 모델이라 질문에 답하기보다 그럴듯한 다음 글을 이어 쓰기 때문입니다.</p>
+          <p>릴레이와 달리 모델은 바퀴마다 문장 전체를 처음부터 다시 읽고 한 번 붙인 토큰은 되돌아가 고치지 않습니다. 그래서 토큰 하나를 만들 때마다 28층을 전부 지나야 하고 문장이 길어질수록 다시 읽을 토큰도 늘어납니다. Attention이 쓰는 앞 토큰의 중간 계산(Key와 Value)을 저장해 두고 다시 쓰는 장치가 KV Cache(Key-Value Cache)입니다.</p>
+          <p>다음 글에서는 답의 첫 토큰이 유독 늦게 나오는 이유와 KV Cache를 다룹니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tr-sec">
+    <div class="tr-wrap">
+      <h2 style="text-align:center;margin-bottom:40px">한 문장으로 줄이면</h2>
+      <p class="tr-sum">LLM은 문장을 <span>토큰 번호</span>로 바꾸고 번호마다 <span>벡터</span>를 꺼내 자리를 표시한 뒤, <span>같은 블록 28개</span>를 지나며 벡터에 정보를 더하고 마지막 벡터로 <span>모든 후보의 확률</span>을 매겨 하나를 고릅니다. 고른 토큰을 붙여 이 한 바퀴를 다시 돕니다.</p>
+    </div>
+  </section>
+
+  <section class="tr-sec tr-refs" style="padding-bottom:40px">
+    <div class="tr-wrap tr-head">
+      <h2>참고 자료</h2>
+      <ul>
+        <li><a href="https://arxiv.org/abs/1706.03762">Vaswani 외, Attention Is All You Need (2017)</a> — Figure 1 구조도, 사인파 위치 인코딩</li>
+        <li><a href="https://arxiv.org/abs/2104.09864">Su 외, RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)</a></li>
+        <li><a href="https://huggingface.co/Qwen/Qwen2.5-7B/blob/main/config.json">Qwen/Qwen2.5-7B config.json</a> · <a href="https://huggingface.co/Qwen/Qwen2.5-1.5B">Qwen/Qwen2.5-1.5B</a> — 층 수·hidden size·vocab_size·rope_theta, 단어표 실제 값(2026-10-15 확인)</li>
+        <li><a href="https://qwen.readthedocs.io/en/latest/getting_started/concepts.html">Qwen 문서, Key Concepts</a> — byte-level BPE 토크나이저</li>
+        <li><a href="https://github.com/openai/tiktoken">OpenAI tiktoken</a> — gpt2·cl100k_base·o200k_base 토큰 수 측정</li>
+        <li><a href="https://huggingface.co/learn/llm-course/chapter6/5">Hugging Face LLM Course, Byte-Pair Encoding tokenization</a></li>
+        <li><a href="https://arxiv.org/abs/2305.15425">Petrov 외, Language Model Tokenizers Introduce Unfairness Between Languages (2023)</a></li>
+        <li><a href="https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens">nostalgebraist, interpreting GPT: the logit lens (2020)</a></li>
+        <li><a href="https://blog.eleuther.ai/rotary-embeddings/">EleutherAI, Rotary Embeddings: A Relative Revolution (2021)</a></li>
+        <li><a href="https://transformer-circuits.pub/2021/framework/index.html">Anthropic, A Mathematical Framework for Transformer Circuits (2021)</a> — 잔차 흐름</li>
+        <li><a href="https://jalammar.github.io/illustrated-gpt2/">Jay Alammar, The Illustrated GPT-2</a> · <a href="https://poloclub.github.io/transformer-explainer/">Transformer Explainer</a></li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-tr]');
+  if (!box) return;
+  const on = (el, ev, fn) => el && el.addEventListener(ev, fn, signal ? { signal } : undefined);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const D = {"ko":{"steps":[{"ctx":[66845,23573,125496,124785,20401,134013,16560],"top":[[" 서울",25.61],["?",6.26],[" __",3.15],[" 어디",2.79],["(__",2.39]],"rest":49.94},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905],"top":[["이다",25.43],["이며",22.94],["입니다",16.51],["이고",8.1],["특별",7.23]],"rest":7.11},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489],"top":[[".",80.1],[".\n",9.46],[".\n\n",4.65],["\n",0.83],[".(",0.55]],"rest":2.78},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489,13],"top":[[" 서울",25.93],[" ",4.54],[" 대한",4.15],[" 한국",2.86],[" 그러나",2.34]],"rest":51.14},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489,13,136905],"top":[["은",48.82],["특별",10.44],["의",10.11],["을",4.84],["시",3.77]],"rest":11.67},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489,13,136905,33704],"top":[[" 대한",12.45],[" ",10.73],[" 한국",3.73],[" 서울",3.37],[" 세계",3.07]],"rest":56.71},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489,13,136905,33704,128605],"top":[["민",98.99],["제",0.21],["#20 EB AF",0.04],["중",0.03],["변",0.03]],"rest":0.6},{"ctx":[66845,23573,125496,124785,20401,134013,16560,136905,125489,13,136905,33704,128605,125496],"top":[["국",99.98],["주",0.01],[" 국",0.0],["国",0.0],["중",0.0]],"rest":0.01}],"lens":[[["는",100.0],["は",0.0],["是",0.0]],[["angen",4.2],["TestMethod",1.3],["ab",1.3]],[[" secret",21.8],["rd",4.2],[" likely",3.2]],[[" certain",42.1],[" hier",6.5],["стан",3.8]],[[" certain",11.6],["ズ",7.1],["стан",6.7]],[["стан",4.9],[" hier",4.1],[" Path",3.7]],[[" Federal",5.5],[" hier",3.6],["�",3.1]],[[" hier",2.4],["�",2.4],["お互",1.6]],[["�",9.3],["お互",6.5],[" hier",1.0]],[["随时随地",1.5],["お互",1.4],["Locations",1.1]],[["Locations",4.4],["Middle",3.3],[" Located",3.0]],[[" Location",16.3],["Locations",9.6],["Located",7.6]],[["Locations",17.0],[" Location",7.8],[" Located",3.5]],[[" Location",16.0],["Locations",10.7],[" Located",3.6]],[["rd",4.4],["当之无愧",3.0],["Locations",2.2]],[["�",9.2],[" ______",4.1],["当之无愧",3.5]],[["当之无愧",4.9],[" Location",4.8],["地理位置",4.4]],[["当之无愧",10.6],[" Location",8.2],[" currently",5.9]],[[" currently",10.7],["当之无愧",8.6],[" Location",3.7]],[["当之无愧",3.4],[" Location",3.4],["中华人民",3.2]],[["____",51.5],[" ____",13.0],[" ______",9.8]],[["____",44.9],[" ____",12.3],[" ______",10.6]],[["哪些",23.2],["哪",8.2],[" ______",7.1]],[["哪些",23.8],[" __",18.6],[" ______",10.9]],[["哪个",85.7],["哪一个",5.3],["哪",1.7]],[[" Seoul",75.2],["哪个",15.4],["何处",2.0]],[[" Seoul",56.2],["哪个",25.2],[" 서울",3.0]],[[" Seoul",29.3],["哪个",19.7],[" 서울",4.5]],[[" 서울",25.6],["?",6.3],[" __",3.1]]]},"en":{"steps":[{"ctx":[785,6722,315,4882,11862,374],"top":[[" Seoul",11.99],[" __",11.17],[" ____",10.86],[" located",7.1],["____",3.31]],"rest":42.09},{"ctx":[785,6722,315,4882,11862,374,50189],"top":[[".",40.16],[",",31.65],[" and",8.29],[".\n",4.12],["．",3.21]],"rest":6.95},{"ctx":[785,6722,315,4882,11862,374,50189,13],"top":[[" The",17.65],[" It",13.66],[" Which",6.66],[" South",3.47],[" A",3.22]],"rest":42.6},{"ctx":[785,6722,315,4882,11862,374,50189,13,576],"top":[[" capital",22.7],[" population",7.16],[" country",5.04],[" city",3.21],[" name",2.39]],"rest":50.14},{"ctx":[785,6722,315,4882,11862,374,50189,13,576,6722],"top":[[" of",81.21],[" is",5.72],[" city",5.34],[" was",2.21],[" has",1.17]],"rest":2.44},{"ctx":[785,6722,315,4882,11862,374,50189,13,576,6722,315],"top":[[" Japan",24.54],[" North",13.45],[" China",10.51],[" the",9.26],[" South",6.85]],"rest":23.63},{"ctx":[785,6722,315,4882,11862,374,50189,13,576,6722,315,6323],"top":[[" is",98.84],[",",0.33],[" and",0.09],["?",0.08],[" (",0.06]],"rest":0.43},{"ctx":[785,6722,315,4882,11862,374,50189,13,576,6722,315,6323,374],"top":[[" Tokyo",55.54],[" ____",5.37],[" __",3.66],[" which",2.67],[" (",2.43]],"rest":21.61}],"lens":[[[" is",100.0],[" ",0.0],[",",0.0]],[["nt",50.8],["/is",15.6],["otope",11.1]],[["nt",16.0],[" indeed",11.3],[" a",5.6]],[["'",12.1],["nt",9.5],[" ",8.5]],[["s",35.8],[",",11.2],["n",4.5]],[[" Pre",3.9],[" Tr",3.9],[":",3.7]],[[" Ex",9.8],["y",3.1],[" Tr",3.1]],[[" Tr",4.8],[" ",3.7],["欢迎您",3.4]],[[" ",10.2],["欢迎您",6.1],[" known",4.6]],[["欢迎您",6.1],[" located",4.8],[" currently",3.6]],[[" located",12.2],["s",8.3],[",",5.2]],[[" located",28.7],[" location",6.7],[" cities",6.0]],[[" located",69.8],[" Located",2.0],[" location",1.6]],[[" located",49.4],[" cities",10.0],[" location",4.3]],[[" located",49.1],[" cities",3.4],[" also",2.8]],[[" ______",16.1],[" located",14.0],["____",12.4]],[[" located",32.8],[" ______",4.5],["____",4.5]],[["____",21.6],[" ______",17.4],[" __",15.5]],[[" located",42.0],["____",13.1],[" __",11.0]],[["____",37.6],[" ____",24.8],[" __",14.7]],[["____",71.8],[" ____",16.7],[" __",5.7]],[["____",44.1],[" ____",30.2],[" __",13.1]],[["____",39.8],[" ____",30.3],[" __",14.2]],[[" __",66.2],[" ____",24.0],["____",6.1]],[[" Seoul",75.9],[" __",19.5],[" ____",2.3]],[[" Seoul",99.8],[" Korea",0.1],[" __",0.0]],[[" Seoul",68.3],[" __",17.1],[" ____",7.6]],[[" __",46.4],[" ____",14.7],[" located",8.3]],[[" Seoul",12.0],[" __",11.2],[" ____",10.9]]]},"piece":{"13":".","50189":" Seoul","785":"The","4882":" South","23573":"한","66845":"대","33704":"은","16560":"는","20401":"의","125489":"이다","6323":" Japan","125496":"민","315":" of","576":" The","6722":" capital","136905":" 서울","11862":" Korea","128605":" 대한","124785":"국","374":" is","134013":" 수도"},"emb":{"13":[-0.04,-0.028,-0.007,-0.009,-0.017,-0.03,-0.018,-0.021,-0.044,-0.033,-0.01,0.023,-0.01,0.005,0.028,0.011],"50189":[-0.019,0.058,0.014,-0.017,-0.009,-0.014,0.013,0.01,0.0,0.006,-0.017,-0.007,-0.028,0.042,0.005,-0.044],"785":[0.038,-0.036,0.019,0.017,0.007,-0.013,0.004,-0.004,-0.013,0.025,0.028,-0.015,-0.012,-0.017,-0.019,-0.007],"4882":[-0.023,0.008,0.041,0.009,-0.027,-0.022,-0.042,0.017,0.012,-0.004,0.014,0.033,-0.039,-0.035,-0.008,-0.002],"23573":[0.039,-0.001,0.037,0.027,-0.039,-0.023,-0.023,-0.015,0.006,-0.013,0.007,-0.008,-0.018,0.001,-0.017,0.05],"66845":[-0.016,-0.005,-0.007,0.004,-0.014,-0.011,-0.005,-0.058,0.038,-0.015,0.006,0.008,-0.046,0.021,-0.022,0.001],"33704":[0.013,0.023,-0.045,0.0,0.008,0.009,0.013,-0.014,0.009,0.024,0.004,-0.011,-0.005,0.0,0.044,-0.032],"16560":[0.029,-0.001,-0.04,0.0,-0.006,0.012,0.007,-0.025,0.021,0.001,-0.017,-0.026,0.005,0.03,0.006,-0.004],"20401":[0.022,-0.004,-0.002,0.008,0.004,-0.024,-0.002,0.011,0.006,-0.018,0.019,-0.027,-0.015,0.018,0.007,0.011],"125489":[-0.0,0.027,-0.003,-0.022,0.005,0.003,-0.001,-0.02,0.018,0.027,-0.024,0.002,0.005,0.004,0.013,-0.008],"6323":[-0.015,0.019,-0.013,-0.042,-0.028,-0.017,-0.026,0.012,-0.021,0.042,0.03,0.004,0.064,0.061,-0.01,0.011],"125496":[-0.003,-0.001,-0.004,-0.026,-0.025,0.003,0.016,-0.008,0.031,-0.002,0.016,-0.011,-0.001,-0.041,-0.018,-0.028],"315":[0.005,-0.014,-0.017,0.042,-0.022,-0.022,-0.012,0.011,-0.018,0.034,-0.015,-0.027,0.023,-0.03,-0.007,0.026],"576":[0.012,-0.041,0.044,0.022,0.016,-0.01,0.021,-0.002,-0.005,0.017,0.017,0.0,-0.018,-0.023,0.006,-0.0],"6722":[0.016,0.02,0.002,-0.032,-0.014,-0.013,0.008,-0.01,0.043,0.038,0.009,-0.022,0.013,-0.002,0.008,-0.023],"136905":[0.008,0.031,0.015,0.011,-0.016,-0.006,0.001,-0.005,0.002,0.0,-0.026,0.001,-0.018,-0.007,-0.006,-0.028],"11862":[0.028,0.064,0.011,-0.028,-0.019,-0.051,-0.005,0.03,0.012,0.042,0.034,-0.034,0.037,0.038,-0.006,-0.036],"128605":[0.028,0.03,0.045,-0.015,-0.03,-0.032,-0.031,-0.046,-0.017,-0.039,-0.025,-0.012,0.036,0.051,-0.02,-0.035],"124785":[0.022,0.062,-0.024,-0.032,-0.015,-0.048,-0.016,-0.049,0.042,0.017,0.026,0.003,-0.004,-0.02,-0.008,0.023],"374":[-0.006,-0.005,-0.022,-0.011,0.014,0.031,-0.022,0.001,0.001,0.019,0.013,-0.008,0.002,0.002,0.014,-0.002],"134013":[0.014,0.003,0.015,0.035,-0.023,-0.038,0.052,-0.014,0.041,0.008,0.005,0.002,0.003,-0.04,0.005,-0.003]},"e7":{" 서울":{"id":136905,"v":[-0.0075,0.0159,0.0024,-0.0254,-0.0003,0.0004,0.0211,0.011,0.0079,-0.0183,0.0293,-0.0276,0.0034,-0.006,-0.0037,0.0143,0.0267,-0.008,-0.0014,-0.0186,-0.0002,0.0153,-0.0164,0.0272,0.003,0.0021,0.0053,-0.0162,0.0118,0.0231,-0.0016,-0.0135],"nn":[["울",0.312],[" Seoul",0.22],["济南",0.193],["北京市",0.193],[" Москва",0.192],["北京",0.186],[" Berlin",0.176],[" Nairobi",0.174]]}," Seoul":{"id":50189,"v":[-0.0056,-0.0223,0.0125,-0.0164,-0.0098,0.0067,0.0089,-0.0119,-0.006,-0.0181,0.0133,-0.0198,-0.0015,0.0044,0.0053,-0.0065,0.0281,0.0074,-0.003,0.0242,0.0245,-0.0073,0.017,-0.0128,0.0048,-0.0298,-0.0083,-0.0041,0.0004,-0.01,-0.0183,0.0249],"nn":[[" Tokyo",0.237],[" 서울",0.22],[" Beijing",0.219],[" Beirut",0.209],[" Bangkok",0.194],[" Laos",0.191],[" Bengal",0.191],[" Thailand",0.188]]}," cat":{"id":8251,"v":[0.0104,0.0034,-0.0288,-0.0115,-0.0065,0.0275,0.0101,0.0095,0.0146,-0.0175,0.0015,0.0019,0.0228,0.0071,-0.002,0.0064,0.0173,0.0132,-0.0069,-0.0021,-0.0088,-0.0095,-0.0183,0.0075,0.0049,0.0136,0.0098,0.0306,-0.0123,0.0156,0.0059,-0.0101],"nn":[[" Cat",0.425],["cat",0.41],["Cat",0.316],["\tcat",0.31],[" cats",0.304],[" dog",0.266],["(cat",0.247],[" pet",0.234]]}," 수도":{"id":134013,"v":[-0.0001,-0.0168,0.0059,-0.0144,-0.0032,0.0082,-0.0049,-0.0097,0.0082,0.0085,0.0039,-0.0076,0.0085,0.0011,0.0153,-0.0096,-0.0125,-0.0109,0.0118,-0.0065,0.0124,0.0192,-0.0094,0.0074,-0.0018,-0.0242,-0.0124,0.0003,0.0107,0.0002,-0.0001,0.0374],"nn":[[" 수",0.278],["들도",0.244],["こともある",0.222],["기도",0.207],["도",0.191],["수가",0.187],["수",0.185],[" Cũng",0.182]]}},"tok":{"gpt2":{"ko":[{"b":"EB"},{"b":"82"},{"b":"98"},{"b":"EB"},{"b":"8A"},{"b":"94"},{"t":" "},{"b":"ED 95"},{"b":"99"},{"b":"EA"},{"b":"B5"},{"b":"90"},{"b":"EC"},{"b":"97"},{"b":"90"},{"t":" "},{"b":"EA"},{"b":"B0"},{"b":"80"},{"b":"EC"},{"b":"84"},{"b":"9C"},{"b":"20 EC"},{"b":"B9"},{"b":"9C"},{"b":"EA"},{"b":"B5"},{"b":"AC"},{"b":"EB"},{"b":"93"},{"b":"A4"},{"b":"EA"},{"b":"B3"},{"b":"BC"},{"b":"20 EC"},{"b":"A0"},{"b":"90"},{"b":"EC"},{"b":"8B"},{"b":"AC"},{"b":"EC 9D"},{"b":"84"},{"b":"20 EB"},{"b":"A8"},{"b":"B9"},{"b":"EC"},{"b":"97"},{"b":"88"},{"b":"EB 8B"},{"b":"A4"},{"t":"."}],"en":[{"t":"I"},{"t":" went"},{"t":" to"},{"t":" school"},{"t":" and"},{"t":" had"},{"t":" lunch"},{"t":" with"},{"t":" my"},{"t":" friends"},{"t":"."}]},"cl100k":{"ko":[{"t":"나"},{"t":"는"},{"b":"20 ED 95"},{"b":"99"},{"b":"EA B5"},{"b":"90"},{"t":"에"},{"t":" 가"},{"t":"서"},{"b":"20 EC B9"},{"b":"9C"},{"t":"구"},{"t":"들"},{"t":"과"},{"b":"20 EC A0"},{"b":"90"},{"b":"EC 8B"},{"b":"AC"},{"t":"을"},{"b":"20 EB"},{"b":"A8"},{"b":"B9"},{"b":"EC 97"},{"b":"88 EB 8B A4"},{"t":"."}],"en":[{"t":"I"},{"t":" went"},{"t":" to"},{"t":" school"},{"t":" and"},{"t":" had"},{"t":" lunch"},{"t":" with"},{"t":" my"},{"t":" friends"},{"t":"."}]},"o200k":{"ko":[{"t":"나는"},{"t":" 학교"},{"t":"에"},{"t":" 가"},{"t":"서"},{"t":" 친구"},{"t":"들과"},{"t":" 점"},{"t":"심"},{"t":"을"},{"t":" 먹"},{"t":"었다"},{"t":"."}],"en":[{"t":"I"},{"t":" went"},{"t":" to"},{"t":" school"},{"t":" and"},{"t":" had"},{"t":" lunch"},{"t":" with"},{"t":" my"},{"t":" friends"},{"t":"."}]},"qwen":{"ko":[{"t":"나"},{"t":"는"},{"b":"20 ED 95"},{"b":"99"},{"t":"교"},{"t":"에"},{"t":" 가"},{"t":"서"},{"b":"20 EC B9"},{"b":"9C"},{"t":"구"},{"t":"들과"},{"b":"20 EC A0"},{"b":"90"},{"t":"심"},{"t":"을"},{"b":"20 EB A8"},{"b":"B9"},{"t":"었다"},{"t":"."}],"en":[{"t":"I"},{"t":" went"},{"t":" to"},{"t":" school"},{"t":" and"},{"t":" had"},{"t":" lunch"},{"t":" with"},{"t":" my"},{"t":" friends"},{"t":"."}]}},"sents":{"ko":"나는 학교에 가서 친구들과 점심을 먹었다.","en":"I went to school and had lunch with my friends."},"udhr":{"gpt2":{"ko":197,"en":33},"cl100k":{"ko":85,"en":33},"o200k":{"ko":51,"en":33},"qwen":{"ko":55,"en":33}},"dist":{"over1":15,"over01":106,"over001":396,"cum50":10,"cum90":141,"cum99":881,"min":3.248978730860981e-21,"top100":[25.613,6.257,3.147,2.79,2.389,2.379,2.093,2.049,1.681,1.664,1.659,1.584,1.517,1.143,1.039,0.952,0.903,0.849,0.759,0.742,0.709,0.703,0.699,0.688,0.677,0.656,0.654,0.631,0.573,0.557,0.554,0.543,0.495,0.488,0.477,0.461,0.448,0.437,0.421,0.415,0.414,0.41,0.402,0.389,0.378,0.367,0.349,0.341,0.336,0.334,0.323,0.321,0.312,0.305,0.305,0.301,0.299,0.296,0.293,0.288,0.277,0.269,0.26,0.255,0.252,0.239,0.238,0.23,0.205,0.201,0.197,0.192,0.186,0.182,0.182,0.18,0.179,0.178,0.178,0.172,0.171,0.17,0.159,0.159,0.156,0.153,0.152,0.149,0.147,0.146,0.142,0.137,0.133,0.132,0.128,0.127,0.121,0.121,0.12,0.117]}};
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // 토큰 조각을 칩으로: 앞 띄어쓰기는 ␣, 줄바꿈은 ↵, 바이트 조각은 점선 칩
+  const chipHTML = (p, cls = '') => {
+    if (p.startsWith('#')) return `<span class="tr-chip byte ${cls}">${esc(p.slice(1))}</span>`;
+    let s = esc(p).replace(/\n/g, '↵');
+    s = s.replace(/^ /, '<span class="sp">␣</span>');
+    return `<span class="tr-chip ${cls}">${s}</span>`;
+  };
+  const plain = (p) => p.startsWith('#') ? '�' : p;
+  const cellColor = (v, m) => {
+    const t = Math.min(1, Math.abs(v) / m);
+    return `color-mix(in srgb, ${v >= 0 ? 'var(--pos)' : 'var(--neg)'} ${Math.round(8 + t * 82)}%, var(--bg-base))`;
+  };
+  const fmtP = (p) => p >= 90 ? p.toFixed(2) + '%' : p >= 10 ? p.toFixed(1) + '%' : p >= 0.1 ? p.toFixed(2) + '%' : '<0.1%';
+
+  /* ---------- 히어로: 순환선 ---------- */
+  const metro = box.querySelector('[data-tr-metro]');
+  const R = (n) => metro.querySelector(`[data-tr-r="${n}"]`);
+  const stops = [...metro.querySelectorAll('.tr-stop')];
+  const blocksEl = metro.querySelector('[data-tr-blocks]');
+  blocksEl.innerHTML = Array.from({ length: 28 }, () => '<i class="on"></i>').join('');
+  const blocks = [...blocksEl.children];
+  const sentEl = box.querySelector('[data-tr-sent]');
+  const runBtn = box.querySelector('[data-tr-run]');
+  let lang = 'ko', k = 0, busy = false, timers = [];
+  const H = () => D[lang];
+  const render = (n) => {
+    const st = H().steps[k];
+    const ctx = st.ctx, P = D.piece;
+    const promptLen = H().steps[0].ctx.length;
+    if (n === 1) R(1).innerHTML = `<div class="tr-chips">${ctx.map((i, j) => chipHTML(P[i], j >= promptLen ? 'new' : '')).join('')}</div><p class="mini">토큰 ${ctx.length}개</p>`;
+    if (n === 2) R(2).innerHTML = `<div class="tr-ids">${ctx.map((i) => `<span>${i}</span>`).join(' ')}</div>`;
+    if (n === 3) R(3).innerHTML = `<div class="tr-vecs">${ctx.map((i, j) => `<div class="tr-vrow"><b>${j}</b>${D.emb[i].map((v) => `<i style="background:${cellColor(v, 0.06)}"></i>`).join('')}</div>`).join('')}</div>`;
+    if (n === 5) R(5).innerHTML = `<div class="tr-probs">${st.top.map((t, j) => `<div class="tr-prow"><span class="lab">${esc(plain(t[0])).replace(/^ /, '␣').replace(/\n/g, '↵')}</span><span class="num">${fmtP(t[1])}</span><i class="bar" style="transform:scaleX(${Math.max(0.02, t[1] / 100)});${j ? 'opacity:.55' : ''}"></i></div>`).join('')}</div><p class="mini">6등 아래 후보 전부의 합 ${st.rest.toFixed(1)}%</p>`;
+    if (n === 6) R(6).innerHTML = `<div class="tr-pick">${chipHTML(st.top[0][0])}<p class="mini" style="margin:0;text-align:center">${fmtP(st.top[0][1])}로 1등</p></div>`;
+  };
+  const sentence = () => {
+    const st = H().steps[k], P = D.piece, n0 = H().steps[0].ctx.length;
+    sentEl.innerHTML = st.ctx.map((i, j) => j >= n0 ? `<span class="new">${esc(plain(P[i]))}</span>` : esc(plain(P[i]))).join('');
+  };
+  const renderAll = () => { [1, 2, 3, 5, 6].forEach(render); sentence(); blocks.forEach((b) => b.classList.add('on')); };
+  const clear = () => { timers.forEach(clearTimeout); timers = []; busy = false; metro.classList.remove('is-run'); stops.forEach((s) => { s.classList.add('is-done'); s.classList.remove('is-now'); }); };
+  const updBtn = () => { runBtn.textContent = k >= H().steps.length - 1 ? '↺ 처음부터' : '▶ 한 바퀴 돌리기'; };
+  const later = (ms, fn) => timers.push(setTimeout(fn, reduce ? 0 : ms));
+  const run = () => {
+    if (busy) return;
+    if (k >= H().steps.length - 1) { k = 0; clear(); renderAll(); updBtn(); return; }
+    k += 1; busy = true; sentence();
+    metro.classList.add('is-run');
+    stops.forEach((s) => s.classList.remove('is-done', 'is-now'));
+    blocks.forEach((b) => b.classList.remove('on'));
+    const dt = 520;
+    stops.forEach((s, j) => {
+      later(j * dt + (j > 3 ? 900 : 0), () => {
+        stops.forEach((x) => x.classList.remove('is-now'));
+        s.classList.add('is-done', 'is-now');
+        if (j === 3) blocks.forEach((b, bi) => later(bi * 30, () => b.classList.add('on')));
+        else render(j + 1);
+        if (j === 5) later(500, () => { s.classList.remove('is-now'); metro.classList.remove('is-run'); busy = false; updBtn(); });
+      });
+    });
+  };
+  on(runBtn, 'click', run);
+  on(box.querySelector('[data-tr-reset]'), 'click', () => { k = 0; clear(); renderAll(); updBtn(); });
+  box.querySelectorAll('[data-tr-lang]').forEach((b) => on(b, 'click', () => {
+    lang = b.dataset.trLang; k = 0; clear();
+    box.querySelectorAll('[data-tr-lang]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderAll(); updBtn();
+  }));
+  on(metro, 'tr-thumb', () => { clear(); lang = 'ko'; k = 1; renderAll(); updBtn(); });
+  renderAll();
+
+  /* ---------- 1. 토크나이저 넷 ---------- */
+  const tkEl = box.querySelector('[data-tr-tk]');
+  const TKN = [['gpt2', 'GPT-2', '2019'], ['cl100k', 'cl100k', 'GPT-4'], ['o200k', 'o200k', 'GPT-4o'], ['qwen', 'Qwen2.5', '7B·1.5B 공통']];
+  const drawTk = (l) => {
+    tkEl.innerHTML = TKN.map(([key, name, sub]) => {
+      const ps = D.tok[key][l];
+      return `<div class="tr-tk-row"><div class="tr-tk-name">${name}<small>${sub}</small><em>${ps.length}개</em></div><div class="tr-chips">${ps.map((p) => p.t !== undefined ? chipHTML(p.t) : chipHTML('#' + p.b)).join('')}</div></div>`;
+    }).join('');
+  };
+  box.querySelectorAll('[data-tr-tklang]').forEach((b) => on(b, 'click', () => {
+    box.querySelectorAll('[data-tr-tklang]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawTk(b.dataset.trTklang);
+  }));
+  drawTk('ko');
+
+  /* ---------- 2. BPE ---------- */
+  const corpus = [['학교', 6], ['학교에', 4], ['학생', 5], ['학생들', 3], ['친구', 5], ['친구들', 4], ['교실', 3]];
+  const testSent = ['학생들이', '학교에서', '친구를', '만났다'];
+  const bpe = (n) => {
+    let words = corpus.map(([w, c]) => ({ seg: [...w], c, fresh: -1 }));
+    const merges = [];
+    let pairs = [];
+    for (let s = 0; s <= n; s++) {
+      const cnt = new Map();
+      words.forEach((w) => { for (let i = 0; i < w.seg.length - 1; i++) { const key = w.seg[i] + '\u0001' + w.seg[i + 1]; cnt.set(key, (cnt.get(key) || 0) + w.c); } });
+      pairs = [...cnt.entries()].sort((a, b) => b[1] - a[1]);
+      if (s === n || !pairs.length) break;
+      const [a, b] = pairs[0][0].split('\u0001');
+      merges.push([a, b]);
+      words.forEach((w) => {
+        const out = []; w.fresh = -1;
+        for (let i = 0; i < w.seg.length; i++) {
+          if (i < w.seg.length - 1 && w.seg[i] === a && w.seg[i + 1] === b) { out.push(a + b); w.fresh = out.length - 1; i++; } else out.push(w.seg[i]);
+        }
+        w.seg = out;
+      });
+    }
+    return { words, merges, pairs };
+  };
+  const applyMerges = (word, merges) => {
+    let seg = [...word];
+    merges.forEach(([a, b]) => {
+      const out = [];
+      for (let i = 0; i < seg.length; i++) { if (i < seg.length - 1 && seg[i] === a && seg[i + 1] === b) { out.push(a + b); i++; } else out.push(seg[i]); }
+      seg = out;
+    });
+    return seg;
+  };
+  const bIn = box.querySelector('[data-tr-bpe]');
+  const drawBpe = () => {
+    const n = +bIn.value, r = bpe(n);
+    box.querySelector('[data-tr-bpe-n]').textContent = n;
+    box.querySelector('[data-tr-bpe-words]').innerHTML = r.words.map((w) => `<div class="tr-bw"><div class="tr-chips">${w.seg.map((s, i) => chipHTML(s, n && i === w.fresh ? 'fresh' : '')).join('')}</div><small>×${w.c}</small></div>`).join('');
+    const mx = r.pairs.length ? r.pairs[0][1] : 1;
+    box.querySelector('[data-tr-bpe-pairs]').innerHTML = r.pairs.slice(0, 5).map(([key, c], i) => `<div class="tr-pr ${i === 0 ? 'top' : ''}"><span>${key.replace('\u0001', ' + ')}</span><i style="width:${(c / mx) * 100}%"></i><span>${c}</span></div>`).join('') || '<div class="tr-pr"><span>더 합칠 쌍 없음</span></div>';
+    box.querySelector('[data-tr-bpe-merges]').innerHTML = r.merges.length ? r.merges.map(([a, b], i) => `${i + 1}. <b>${a}${b}</b>`).join('&nbsp;&nbsp; ') : '아직 없음 — 모든 글자가 따로 찍힙니다';
+    const test = testSent.map((w) => applyMerges(w, r.merges));
+    box.querySelector('[data-tr-bpe-test]').innerHTML = test.map((seg, wi) => seg.map((s, i) => chipHTML((wi && i === 0 ? ' ' : '') + s)).join('')).join('') + `<span class="tr-chip" style="background:transparent;border:0;color:var(--fg-neutral)">→ 토큰 ${test.flat().length}개</span>`;
+  };
+  on(bIn, 'input', drawBpe);
+  drawBpe();
+
+  /* ---------- 3. 한국어 막대 ---------- */
+  const kb = box.querySelector('[data-tr-kbars]');
+  const U = D.udhr, KN = [['gpt2', 'GPT-2'], ['cl100k', 'cl100k (GPT-4)'], ['o200k', 'o200k (GPT-4o)'], ['qwen', 'Qwen2.5']];
+    kb.innerHTML = KN.map(([key, name]) => {
+    const ko = U[key].ko, en = U[key].en;
+    return `<div class="tr-kb"><b>${name}</b><span class="ln"><i style="width:${(ko / 200) * 100}%"></i>${ko}</span><span class="r">×${(ko / en).toFixed(1)}</span><span class="ln en"><i style="width:${(en / 200) * 100}%"></i>${en}</span></div>`;
+  }).join('');
+
+  /* ---------- 4. 임베딩 ---------- */
+  const eSvg = box.querySelector('[data-tr-embsvg]');
+  const drawEmb = (w) => {
+    const e = D.e7[w];
+    const rows = Array.from({ length: 13 }, (_, i) => `<line class="rowl" x1="150" x2="450" y1="${44 + i * 12}" y2="${44 + i * 12}"/>`).join('');
+    const label = w.replace(/^ /, '␣');
+    eSvg.innerHTML = `
+      <text x="0" y="56" font-size="14" class="dim">토큰</text>
+      <text x="0" y="82" font-size="20" font-weight="700">${esc(label)}</text>
+      <text x="0" y="118" font-size="14" class="dim">번호</text>
+      <text x="0" y="142" font-size="18" class="mono" font-weight="700" fill="var(--c2)">${e.id}</text>
+      <rect class="tbl" x="150" y="32" width="300" height="172" rx="8"/>${rows}
+      <rect class="hit" x="146" y="128" width="308" height="16" rx="3"/>
+      <path class="wire" d="M${e.id > 99999 ? 82 : 72} 136 H140"/>
+      <text x="300" y="20" font-size="13" text-anchor="middle" class="dim">단어표 · 152,064줄 × 3,584칸</text>
+      <text x="300" y="226" font-size="13" text-anchor="middle" fill="var(--c3)">${e.id}번 줄을 통째로 꺼내면 아래 색 칸</text>`;
+    box.querySelector('[data-tr-cells]').innerHTML = e.v.map((v) => `<i style="background:${cellColor(v, 0.03)}" title="${v}"></i>`).join('');
+    const mx = e.nn[0][1];
+    box.querySelector('[data-tr-nn]').innerHTML = `<div class="tr-sub" style="margin:0">이 줄과 가장 닮은 줄 6개</div>` + e.nn.slice(0, 6).map(([t, s]) => `<div><span>${esc(t).replace(/^ /, '␣')}</span><i style="transform:scaleX(${s / 0.45})"></i><span>${s.toFixed(2)}</span></div>`).join('');
+  };
+  box.querySelectorAll('[data-tr-emb]').forEach((b) => on(b, 'click', () => {
+    box.querySelectorAll('[data-tr-emb]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawEmb(b.dataset.trEmb);
+  }));
+  drawEmb(' 서울');
+
+  /* ---------- 5. RoPE 시계 ---------- */
+  const clocksEl = box.querySelector('[data-tr-clocks]');
+  const PAIRS = [0, 8, 16, 32].map((i) => ({ i, th: Math.pow(1e6, -i / 64) }));
+  const names = ['1번째 짝 · 가장 빠름', '9번째 짝', '17번째 짝', '33번째 짝 · 아주 느림'];
+  clocksEl.innerHTML = PAIRS.map((p, j) => `<div class="tr-clock"><svg viewBox="-60 -60 120 120" role="img" aria-label="${p.i + 1}번째 숫자 짝을 화살표로 그린 평면"><defs><marker id="tr-ma${j}" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--c2)"/></marker><marker id="tr-mb${j}" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--c4)"/></marker></defs><line class="ax" x1="-56" x2="56" y1="0" y2="0"/><line class="ax" y1="-56" y2="56" x1="0" x2="0"/><circle class="orbit" r="44"/><path class="arc" data-arc d=""/><line class="ha" data-ha x1="0" y1="0" x2="0" y2="-42" marker-end="url(#tr-ma${j})"/><line class="hb" data-hb x1="0" y1="0" x2="0" y2="-32" marker-end="url(#tr-mb${j})"/><circle r="3" fill="var(--fg-neutral)"/></svg><b>${names[j]}</b><small>한 칸에 ${(p.th * 180 / Math.PI).toFixed(p.th > 0.01 ? 1 : 3)}°</small><small>둘 사이 <em data-ang>0°</em></small></div>`).join('');
+  const sIn = box.querySelector('[data-tr-shift]'), gIn = box.querySelector('[data-tr-gap]');
+  const hand = (el, a, r) => { el.setAttribute('x2', (Math.sin(a) * r).toFixed(2)); el.setAttribute('y2', (-Math.cos(a) * r).toFixed(2)); };
+  const drawRope = () => {
+    const m = +sIn.value, g = +gIn.value;
+    box.querySelector('[data-tr-shift-v]').textContent = m;
+    box.querySelector('[data-tr-gap-v]').textContent = g + '칸';
+    const d0 = ((g * PAIRS[0].th) % (2 * Math.PI)) * 180 / Math.PI;
+    box.querySelector('[data-tr-rope-note]').innerHTML = `앞에 붙은 토큰이 ${m}개일 때 가장 빠른 짝의 둘 사이 각은 <em>${d0.toFixed(1)}°</em>입니다. 첫 번째 슬라이더를 움직여도 이 각은 바뀌지 않습니다.`;
+    [...clocksEl.children].forEach((c, j) => {
+      const th = PAIRS[j].th, a = m * th, b = (m + g) * th;
+      hand(c.querySelector('[data-ha]'), a, 44); hand(c.querySelector('[data-hb]'), b, 32);
+      let d = ((g * th) % (2 * Math.PI));
+      const big = d > Math.PI ? 1 : 0, r = 30;
+      const p1 = [Math.sin(a) * r, -Math.cos(a) * r], p2 = [Math.sin(b) * r, -Math.cos(b) * r];
+      c.querySelector('[data-arc]').setAttribute('d', d < 0.002 ? '' : `M0 0 L${p1[0].toFixed(2)} ${p1[1].toFixed(2)} A${r} ${r} 0 ${big} 1 ${p2[0].toFixed(2)} ${p2[1].toFixed(2)} Z`);
+      const deg = d * 180 / Math.PI;
+      c.querySelector('[data-ang]').textContent = (deg >= 1 ? deg.toFixed(1) : deg.toFixed(3)) + '°';
+    });
+  };
+  on(sIn, 'input', drawRope); on(gIn, 'input', drawRope);
+  drawRope();
+
+  /* ---------- 6. 블록 한 층 ---------- */
+  const blkG = box.querySelector('[data-tr-blk]');
+  const toks = ['국', '의', '␣수도', '는'];
+  const cx = (i) => 150 + i * 112;
+  const plus = (x, y) => `<circle class="plus" cx="${x}" cy="${y}" r="11"/><line class="plusl" x1="${x - 6}" x2="${x + 6}" y1="${y}" y2="${y}"/><line class="plusl" x1="${x}" x2="${x}" y1="${y - 6}" y2="${y + 6}"/>`;
+  let g = `<rect class="attn" x="112" y="300" width="446" height="54" rx="12"/><text x="102" y="332" font-size="18" text-anchor="end" fill="var(--c4)" font-weight="700">Attention</text>`;
+  toks.forEach((t, i) => { g += `<line class="stream" x1="${cx(i)}" y1="416" x2="${cx(i)}" y2="44"/>`; });
+  [[0, 3], [1, 3], [2, 3], [0, 2], [1, 2], [0, 1]].forEach(([a, b], j) => {
+    const y = 316 + (j < 3 ? 0 : j < 5 ? 12 : 22);
+    g += `<path class="look" d="M${cx(a) + 8} ${y + 12} C ${cx(a) + 40} ${y - 6} ${cx(b) - 40} ${y - 6} ${cx(b) - 10} ${y + 10}" marker-end="url(#tr-ah)" opacity="${j < 3 ? 1 : 0.55}"/>`;
+  });
+  toks.forEach((t, i) => {
+    const x = cx(i);
+    g += `<path class="side" d="M${x + 36} 300 C ${x + 36} 280 ${x + 26} 266 ${x + 13} 266"/>` + plus(x, 266);
+    g += `<path class="side" d="M${x} 236 H${x + 54} V218" marker-end="url(#tr-ag)"/>`;
+    g += `<rect class="mlp" x="${x + 18}" y="166" width="72" height="46" rx="10"/><text x="${x + 54}" y="195" font-size="17" text-anchor="middle" fill="var(--c2)" font-weight="700">MLP</text>`;
+    g += `<path class="side" d="M${x + 54} 166 V128 H${x + 13}"/>` + plus(x, 128);
+    g += `<rect class="tok" x="${x - 40}" y="418" width="80" height="34" rx="8"/><text x="${x}" y="441" font-size="18" text-anchor="middle" class="mono">${t}</text>`;
+  });
+  g += `<text x="318" y="26" font-size="17" text-anchor="middle" class="dim">다음 층으로 · 이 한 층을 28번 쌓습니다</text>`;
+  g += `<text x="${cx(0) - 14}" y="388" font-size="17" text-anchor="end" class="dim">③에서</text><text x="${cx(0) - 14}" y="408" font-size="17" text-anchor="end" class="dim">꺼낸 벡터</text>`;
+  blkG.innerHTML = g;
+
+  /* ---------- 7. logit lens ---------- */
+  const lensHit = { ko: /서울|Seoul/, en: /Seoul|서울/ };
+  const titles = { ko: '대한민국의 수도는', en: 'The capital of South Korea is' };
+  box.querySelectorAll('[data-tr-lens]').forEach((col) => {
+    const l = col.dataset.trLens, rows = D[l].lens;
+    col.innerHTML = `<h3>${titles[l]}<small>→ ?</small></h3>` + rows.map((r, L) => {
+      const [t, p] = r[0];
+      const nm = L === 0 ? '블록 전' : L + '층';
+      const cls = (lensHit[l].test(t) ? 'hit ' : '') + (L === 0 ? 'first' : L === rows.length - 1 ? 'last' : '');
+      const tt = /\ufffd/.test(t) ? '(바이트 조각)' : t === '\u00a0' ? '(특수 공백)' : t;
+      return `<div class="tr-lrow ${cls}"><span class="L">${nm}</span><span class="t">${esc(tt.replace(/^ /, '␣')).replace(/\n/g, '↵')}</span><i class="b" style="width:${Math.max(2, p)}%"></i><span class="p">${p.toFixed(1)}%</span></div>`;
+    }).join('');
+  });
+  const lensCols = [...box.querySelectorAll('[data-tr-lens]')];
+  box.querySelectorAll('[data-tr-lenst]').forEach((b) => on(b, 'click', () => {
+    box.querySelectorAll('[data-tr-lenst]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    lensCols.forEach((c) => c.classList.toggle('is-off', c.dataset.trLens !== b.dataset.trLenst));
+  }));
+  lensCols[1].classList.add('is-off');
+
+  /* ---------- 8. 확률표 꼬리 ---------- */
+  const dist = box.querySelector('[data-tr-dist]');
+  const top = D.dist.top100.slice(0, 60), top5 = D.ko.steps[0].top;
+  const drawDist = () => {
+  const WW = Math.max(300, Math.min(600, dist.parentElement.clientWidth || 600));
+  dist.setAttribute('viewBox', `0 0 ${WW} 300`);
+  const X0 = 46, Y0 = 210, BW = (WW - X0 - 14) / 60, HH = 180, MX = 30;
+  let s = `<line class="axis" x1="${X0}" y1="${Y0}" x2="${X0 + 60 * BW + 8}" y2="${Y0}"/><line class="axis" x1="${X0}" y1="${Y0}" x2="${X0}" y2="${Y0 - HH}"/>`;
+  [0, 10, 20, 30].forEach((v) => { s += `<text x="${X0 - 8}" y="${Y0 - v / MX * HH + 4}" font-size="12" text-anchor="end" class="dim mono">${v}%</text>`; });
+  top.forEach((p, i) => {
+    const h = p / MX * HH;
+    s += `<rect class="bar ${i === 0 ? 'top' : ''}" x="${X0 + 4 + i * BW}" y="${Y0 - h}" width="${BW - 2}" height="${Math.max(h, 0.8)}"><title>${i + 1}등 ${p}%</title></rect>`;
+  });
+  top5.slice(0, 4).forEach(([t, p], i) => {
+    const x = X0 + 4 + i * BW + BW / 2 - 1, y = Y0 - p / MX * HH;
+    const tx = X0 + Math.min(120, WW * 0.3), ty = 52 + i * 26;
+    s += `<line x1="${x + 3}" y1="${y}" x2="${tx - 6}" y2="${ty - 5}" stroke="var(--line-strong)" stroke-width="1"/><text x="${tx}" y="${ty}" font-size="14" class="mono">${esc(t.replace(/^ /, '␣'))} <tspan class="dim">${p.toFixed(1)}%</tspan></text>`;
+  });
+  s += `<text x="${X0 + 60 * BW + 8}" y="${Y0 + 22}" font-size="13" text-anchor="end" class="dim">1등부터 60등까지, 확률이 큰 순서</text>`;
+  // 아래: 100% 띠를 등수 묶음으로 나눔
+  const c10 = D.dist.top100.slice(0, 10).reduce((a, b) => a + b, 0);
+  const segs = [[top[0], '1등', 'var(--c5)'], [c10 - top[0], '2~10등', 'color-mix(in srgb, var(--c5) 60%, var(--bg-base))'], [90 - c10, '11~141등', 'color-mix(in srgb, var(--c5) 32%, var(--bg-base))'], [10, '142등 아래 151,795개', 'color-mix(in srgb, var(--fg-neutral) 22%, var(--bg-base))']];
+  const BX = X0, BWW = 60 * BW + 8, BY = 266;
+  s += `<text x="${BX}" y="${BY - 12}" font-size="14" font-weight="700">확률 전체(100%)를 등수 묶음으로 나누면</text>`;
+  let acc = 0;
+  segs.forEach(([v, lab, col]) => {
+    const x = BX + acc / 100 * BWW, w = v / 100 * BWW; acc += v;
+    s += `<rect x="${x}" y="${BY}" width="${w - 2}" height="28" rx="4" fill="${col}"/>`;
+  });
+  box.querySelector('[data-tr-dlegend]').innerHTML = segs.map(([v, lab, col]) => `<li><i style="background:${col}"></i>${lab}<b>${v >= 10 ? '약 ' : ''}${v.toFixed(0)}%</b></li>`).join('');
+  dist.innerHTML = s;
+  };
+  drawDist();
+  on(window, 'resize', drawDist);
+
+  /* ---------- 9. 계단 ---------- */
+  const stairs = box.querySelector('[data-tr-stairs]');
+  const drawStairs = (l) => {
+    const st = D[l].steps, P = D.piece;
+    stairs.innerHTML = st.map((x, j) => {
+      const ctx = x.ctx;
+      return `<button type="button" class="tr-sr" aria-expanded="false"><b>${j + 1}바퀴</b><span class="tr-chips"><span class="tr-olds"><span class="dots">…</span>${ctx.map((i) => chipHTML(P[i], 'old')).join('')}</span>${chipHTML(x.top[0][0], 'out')}<span class="pct">${fmtP(x.top[0][1])}</span></span><span class="tr-alt"><div><span>밀려난 후보</span>${x.top.slice(1, 4).map((t) => `<span>${esc(plain(t[0])).replace(/^ /, '␣').replace(/\n/g, '↵')} ${fmtP(t[1])}</span>`).join('')}</div></span></button>`;
+    }).join('');
+    stairs.querySelectorAll('.tr-sr').forEach((b) => on(b, 'click', () => b.setAttribute('aria-expanded', String(b.getAttribute('aria-expanded') !== 'true'))));
+  };
+  box.querySelectorAll('[data-tr-stl]').forEach((b) => on(b, 'click', () => {
+    box.querySelectorAll('[data-tr-stl]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    drawStairs(b.dataset.trStl);
+  }));
+  drawStairs('ko');
+
+  /* SVG 글자가 좁은 화면에서도 12px 아래로 줄지 않게 */
+  const fitText = () => box.querySelectorAll('.tr-blk, .tr-emb-svg, .tr-bag').forEach((svg) => {
+    const vb = svg.viewBox.baseVal, w = svg.getBoundingClientRect().width;
+    if (!vb || !w) return;
+    const k = w / vb.width;
+    svg.querySelectorAll('text').forEach((t) => {
+      if (!t.dataset.fs) t.dataset.fs = t.getAttribute('font-size') || '14';
+      t.setAttribute('font-size', Math.max(+t.dataset.fs, 12.5 / k).toFixed(1));
+    });
+  });
+  fitText();
+  on(window, 'resize', fitText);
+  box.querySelectorAll('[data-tr-emb]').forEach((b) => on(b, 'click', fitText));
+})();
+</script>
