@@ -71,6 +71,11 @@
 | [Sigstore 블로그, model-transparency v1.0](https://blog.sigstore.dev/model-transparency-v1.0) | 모델 서명 흐름을 상자 다섯 개와 번호 붙은 화살표 일곱 개(신원 토큰 → 인증서 → 투명성 로그 → 허브 → 사용자)로 그린 손그림 | 서명·검증 주체가 여럿인 흐름을 한 장에 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
 | [pip, Secure installs](https://pip.pypa.io/en/stable/topics/secure-installs/) | `--require-hashes` 하나로 "목록에 없는 의존성·해시가 다른 파일은 설치 거부"를 규칙으로 세운다. 직접 1비트를 뒤집으면 Expected/Got 두 줄 오류가 나온다 | 해시 대조를 실제 도구 출력으로 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
 | [OWASP LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) | 직접·간접 인젝션을 가르고 시나리오를 번호로 든다(#4 RAG 문서 저장소 오염) | 망이 끊겨도 남는 위협을 구체 장면으로 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
+| [XGBoost Docs, Introduction to Boosted Trees](https://xgboost.readthedocs.io/en/stable/tutorials/model.html) | 트리 두 그루가 각자 점수를 내고 한 사람의 점수는 그 합(2 + 0.9 = 2.9)인 그림 한 장. 한 번에 트리 하나씩 더하고, 제곱 오차면 맞힐 값이 곧 잔차 | 부스팅을 "더하기"로 처음 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
+| [Grinsztajn 외, NeurIPS 2022](https://arxiv.org/abs/2207.08815) | 45개 데이터셋에서 설정 탐색 횟수(로그축)에 따른 정규화 정확도 곡선. 트리 세 선이 위, 딥러닝 네 선이 아래에 끝까지 갈라져 있다(Figure 1) | "표에서는 트리가 강하다"를 한 번의 실측이 아닌 벤치마크로 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
+| [Google Research, TimesFM 블로그](https://research.google/blog/a-decoder-only-foundation-model-for-time-series-forecasting/) · [GitHub](https://github.com/google-research/timesfm) | 시계열을 input_patch_len 32 칸으로 잘라 토큰처럼 쓰고 output_patch_len 128 칸을 한 번에 내는 구조도 한 장 | LLM 구조를 다른 데이터에 옮긴 모델을 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
+| [Covington 외, YouTube DNN (RecSys 2016)](https://research.google/pubs/deep-neural-networks-for-youtube-recommendations/) | millions → hundreds → dozens 깔때기 그림(Figure 2)과 "수십 밀리초 안에" 서빙 조건 | 두 단계 추천을 개수와 계산량으로 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
+| [Google Cloud, Two-Tower 검색](https://cloud.google.com/blog/products/ai-machine-learning/scaling-deep-retrieval-tensorflow-two-towers-architecture) | 행렬 분해 방식과 두 탑 신경망을 나란히 놓고 둘 다 위에서 내적(⊗) 하나로 만나게 그린다. 후보 임베딩은 미리 계산 | 두 탑 구조와 "미리 계산"을 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
 
 ## 미확인
 
@@ -117,6 +122,9 @@
 - **직접 돌린 학습 전·후 대조** (fine-tuning-lora-qlora-peft) — 1.5B 에 말투 LoRA 를 12초 학습시켜 말끝 "냥"(주황 바탕)은 붙고 틀린 설명(빨간 물결 밑줄)은 그대로인 세 질문을 나란히 놓으니 "파인튜닝은 말투, 지식은 RAG"가 주장이 아니라 결과가 됐다
 - **짐을 옮기면 사슬이 첫 빈칸에서 멈추기** (air-gapped-rag-on-premise-llm) — 바깥 | 빗금 갭 | 안 세 칸 지도에 실제 크기를 단 짐 일곱 개를 두고, 옆 "질문 하나가 답이 되기까지" 사슬이 처음 빠진 짐에서 빨강으로 멈추게 했다. 기본값은 가중치만 들인 실패 상태. 직접 재현한 오류는 원문으로, 에러 없이 지나가는 누락(토크나이저 → 빈 토큰)은 노랑으로 갈라 "조용한 실패"를 색 하나로 보였다
 - **1년 치 실제 보안 권고 위에 반입 주기 겹치기** (air-gapped-rag-on-premise-llm) — vLLM 권고 66건을 날짜 점으로 찍고 반입일 세로선까지 기다리는 막대를 그렸다. 주기 토글 하나로 평균 대기(3.2 ↔ 69.6일)와 반입 횟수(53 ↔ 3번)가 맞바뀌는 게 보인다
+- **브라우저에서 진짜 부스팅을 한 그루씩** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 예시 학생 60명 판에서 "+ 트리 하나"를 누르면 XGBoost 와 같은 식(로지스틱 손실, 잎 값 −Σg/(Σh+λ))으로 깊이 2 트리를 실제로 학습해 더한다. 칸 색 경계가 계단으로 다듬어지고 빨간 고리(틀린 학생)가 22 → 2명으로 준다. 트리 띠에 방금 만든 트리의 실제 질문이 쌓인다
+- **같은 문제를 LLM 에게도 주고 같은 그림에 올리기** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 표 300명 점 격자 세 장(실제 / LLM / XGBoost)과 승객 수 그래프의 LLM 선을 같은 축에 두니 "LLM 이 정답인가"가 주장이 아니라 실측이 됐다
+- **내적은 등고선으로** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 사용자 화살표에 수직인 "점수가 같은 선"을 옅게 깔아, 화살표를 끌면 선이 돌면서 순위가 바뀌는 이유가 보인다
 
 ## 페이지 레이아웃
 
@@ -146,15 +154,15 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장) |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower |
 | 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
