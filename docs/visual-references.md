@@ -67,6 +67,10 @@
 | [Sebastian Raschka, Practical Tips for Finetuning LLMs](https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms) | 10,000×20,000 ΔW 를 rank 8 두 장으로 쪼개면 2억 → 24만 개라는 실제 셈으로 저랭크를 실감시킨다 | 숫자 개수 감소를 처음 보일 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
 | [Tim Baumann, SVD 이미지 압축 데모](https://timbaumann.info/svd-image-compression-demo/) | (다른 분야·이미지 압축) 사진을 성분 k 개로만 다시 그리는 슬라이더와 저장량 k(1+m+n), 내림차순 특이값 그래프. 페이지 글만 확인 | rank 가 작아도 대부분이 담긴다는 직관을 줄 때 | 2026-10-15 | |
 | [OpenAI, Optimizing LLM Accuracy](https://developers.openai.com/api/docs/guides/optimizing-llm-accuracy) | 지식이 모자라면 컨텍스트 축(RAG), 행동이 들쭉날쭉하면 모델 축(파인튜닝)으로 가는 2축 지도 | 프롬프트·RAG·파인튜닝 중 무엇부터인지 정리할 때 | 2026-10-15 | fine-tuning-lora-qlora-peft |
+| [NVIDIA NIM, Air-Gap Deployment](https://docs.nvidia.com/nim/large-language-models/latest/deployment/air-gap-deployment.html) | 반입을 "인터넷이 되는 단계 / 격리된 단계" 두 칸으로 가르고, 격리 단계에서 하지 말 것(키 넣기)을 경고 상자 하나로 못 박는다 | 오프라인 배포 절차를 단계로 세울 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
+| [Sigstore 블로그, model-transparency v1.0](https://blog.sigstore.dev/model-transparency-v1.0) | 모델 서명 흐름을 상자 다섯 개와 번호 붙은 화살표 일곱 개(신원 토큰 → 인증서 → 투명성 로그 → 허브 → 사용자)로 그린 손그림 | 서명·검증 주체가 여럿인 흐름을 한 장에 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
+| [pip, Secure installs](https://pip.pypa.io/en/stable/topics/secure-installs/) | `--require-hashes` 하나로 "목록에 없는 의존성·해시가 다른 파일은 설치 거부"를 규칙으로 세운다. 직접 1비트를 뒤집으면 Expected/Got 두 줄 오류가 나온다 | 해시 대조를 실제 도구 출력으로 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
+| [OWASP LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) | 직접·간접 인젝션을 가르고 시나리오를 번호로 든다(#4 RAG 문서 저장소 오염) | 망이 끊겨도 남는 위협을 구체 장면으로 보일 때 | 2026-10-15 | air-gapped-rag-on-premise-llm |
 
 ## 미확인
 
@@ -111,6 +115,8 @@
 - **얼린 판과 얇은 띠를 실제 축척으로** (fine-tuning-lora-qlora-peft) — Qwen2.5-7B q_proj 3584×3584 를 회색 정사각형, B·A 를 r 두께 주황 띠로 같은 축척에 그려 r 손잡이로 띠 두께와 학습 숫자·어댑터 MB 를 함께 바꿨다. 손잡이 하나가 실측 ΔW 곡선의 표시선과 층 지도 계산까지 움직이고, 회색 = 얼림·주황 = 학습이라는 두 색이 16바이트 칸·메모리 막대·저장 막대까지 이어진다
 - **구구단 표로 저랭크** (fine-tuning-lora-qlora-peft) — 9×9 칸이 줄 두 개(숫자 18개)의 곱이라는 걸 중학생이 아는 표로 보이고, 줄 숫자를 눌러 바꾸면 줄 전체가 같이 바뀌게 했다. 두 쌍 토글로 체크무늬가 더해지는 모습이 rank 2
 - **직접 돌린 학습 전·후 대조** (fine-tuning-lora-qlora-peft) — 1.5B 에 말투 LoRA 를 12초 학습시켜 말끝 "냥"(주황 바탕)은 붙고 틀린 설명(빨간 물결 밑줄)은 그대로인 세 질문을 나란히 놓으니 "파인튜닝은 말투, 지식은 RAG"가 주장이 아니라 결과가 됐다
+- **짐을 옮기면 사슬이 첫 빈칸에서 멈추기** (air-gapped-rag-on-premise-llm) — 바깥 | 빗금 갭 | 안 세 칸 지도에 실제 크기를 단 짐 일곱 개를 두고, 옆 "질문 하나가 답이 되기까지" 사슬이 처음 빠진 짐에서 빨강으로 멈추게 했다. 기본값은 가중치만 들인 실패 상태. 직접 재현한 오류는 원문으로, 에러 없이 지나가는 누락(토크나이저 → 빈 토큰)은 노랑으로 갈라 "조용한 실패"를 색 하나로 보였다
+- **1년 치 실제 보안 권고 위에 반입 주기 겹치기** (air-gapped-rag-on-premise-llm) — vLLM 권고 66건을 날짜 점으로 찍고 반입일 세로선까지 기다리는 막대를 그렸다. 주기 토글 하나로 평균 대기(3.2 ↔ 69.6일)와 반입 횟수(53 ↔ 3번)가 맞바뀌는 게 보인다
 
 ## 페이지 레이아웃
 
@@ -140,15 +146,15 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
-| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
+| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
