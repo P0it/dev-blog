@@ -1,0 +1,1353 @@
+---
+title: 서버는 멀쩡한데 AI 모델 정확도가 떨어지는 이유
+slug: ai-in-production-drift-precision-recall-tco-sbom
+excerpt: 예시 스팸 필터를 1년 돌려 보니 서버 오류는 한 번도 없었는데 정확도는 96.1%에서 75.0%로 내려갔습니다. 들어오는 문자의 모양이 바뀌는 Data Drift와 정답 규칙이 바뀌는 Concept Drift, 그걸 재는 PSI·KS, 문턱값을 옮기면 맞바뀌는 precision과 recall, LLM 서비스의 평가 세트와 모델 은퇴, 배포 뒤에 쌓이는 TCO, 서버 안 부품 목록 SBOM과 실행 전 코드 검사 SAST까지 그림으로 담고 시리즈 열두 편을 한 장의 지도로 묶었습니다.
+tags: [MLOps, Data Drift, Precision, Recall, SBOM, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 12
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-in-production-drift-precision-recall-tco-sbom-mv8rpvcu.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열 → 전폭 운영 모니터: 문자 길이 히스토그램 | 같은 시간축 세 줄(서버 오류·PSI·정확도), 아래 개월 띠) → 글|가져온 Google Cloud 그림 → 제목·글 + 실험판 전폭 띠(문자 점 띠, 3상태 토글) → 글|그림(PSI 꺾은선 점 고르기 + 칸별 막대 + 누적 계단) + h3 글|Evidently 화면 → 글|그림(1000칸 와플 2×2) → 실험판 전폭 띠(위아래로 나눈 점수 분포 + 끄는 문턱선 + PR 곡선) → 글 + 넓은 그림(평가 세트 격자) + h3 글|그림(실제 사례 막대·모델 은퇴 띠) → 글|그림(TCO 12개월 막대, 숨은 비용 토글) → 글|그림(SBOM 목록 + 공지 고르기) + 해설|코드 → 글 + 코드·해설 + ▶터미널 + 넓은 그림(CI 레인) → 글 + 넓은 그림(열두 편 세로 노선) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 제목|글 머리는 참고 자료 한 번만 | 글의 성격: 배포한 스팸 필터 하나를 1년 동안 지켜보며 "에러 없이 틀려 간다"에서 출발해 재는 법(drift·precision·recall), LLM 의 경우, 돈(TCO), 부품(SBOM·SAST)으로 운영의 범위를 넓혀 가고 시리즈 전체 지도로 닫는다. 기준 = 회색 점선, 지금 = 청록, 스팸 = 주황, 정상 = 남색, 틀림 = 빨간 고리, 신호등 초록·노랑·빨강이 끝까지 같은 뜻 | 버린 후보: 그림 고정 스크롤리텔링(1·3·9·10·11편), 벤토 히어로(4편), 순환 노선도(2편), 좌석표 실험 띠 히어로(5편), 상태 램프 세로 사슬(9편 히어로와 같은 모양), 카드 격자 시리즈 지도(템플릿 냄새) -->
+<style>
+.post-page .op {
+  --ref: rgb(124, 131, 145); --ref-soft: rgb(236, 238, 242);
+  --now: rgb(10, 140, 142); --now-soft: rgba(10, 140, 142, .16);
+  --spam: rgb(230, 112, 10); --spam-soft: rgb(253, 232, 210);
+  --ham: rgb(58, 78, 168); --ham-soft: rgb(224, 229, 247);
+  --bad: rgb(214, 46, 46); --bad-soft: rgb(252, 228, 228);
+  --warn: rgb(194, 138, 0); --warn-soft: rgb(252, 242, 210);
+  --ok: rgb(26, 144, 84); --ok-soft: rgb(220, 243, 230);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .op {
+  --ref: rgb(150, 158, 174); --ref-soft: rgb(42, 45, 53);
+  --now: rgb(64, 202, 200); --now-soft: rgba(64, 202, 200, .2);
+  --spam: rgb(255, 160, 72); --spam-soft: rgb(76, 48, 22);
+  --ham: rgb(134, 154, 245); --ham-soft: rgb(38, 44, 74);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(78, 32, 32);
+  --warn: rgb(240, 196, 70); --warn-soft: rgb(70, 58, 20);
+  --ok: rgb(92, 210, 142); --ok-soft: rgb(24, 58, 40);
+}
+.post-page .op * { box-sizing: border-box; }
+.post-page .op-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .op h1, .post-page .op h2, .post-page .op h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .op h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.22; max-width: 15em; margin-bottom: 32px; }
+.post-page .op h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .op h3 { font-family: var(--font-sans); font-size: 18px; font-weight: 700; line-height: 1.5; margin-bottom: 16px; letter-spacing: -0.01em; }
+.post-page .op p, .post-page .op li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .op p { margin: 0 0 1.5em; }
+.post-page .op b { color: var(--fg-strong); }
+.post-page .op code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .op a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .op .op-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 14px 0 0; }
+.post-page .op details { margin: 0 0 1.4em; }
+.post-page .op summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .op details p { margin-top: 10px; font-size: 16px; }
+.post-page .op .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.post-page .op svg { display: block; width: 100%; overflow: visible; }
+.post-page .op svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .op svg text.dim { fill: var(--fg-neutral); }
+.post-page .op svg text.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.post-page .op svg .axis { stroke: var(--line-strong); stroke-width: 1.2; }
+.post-page .op svg .grid { stroke: var(--line-subtle); stroke-width: 1; }
+
+/* 배치 */
+.post-page .op-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .op-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .op-two.wide { grid-template-columns: minmax(0, 4.4fr) minmax(0, 6.6fr); }
+.post-page .op-col { max-width: 40em; }
+.post-page .op-sec > .op-wrap + .op-wrap { margin-top: clamp(56px, 7vw, 96px); }
+.post-page .op-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .op-band { background: var(--bg-subtle); padding: clamp(60px, 7vw, 84px) 0 clamp(48px, 6vw, 68px); margin-top: clamp(40px, 6vw, 64px); }
+.post-page .op-fig { margin: 0; }
+
+/* 조작 부품 */
+.post-page .op-seg { display: inline-flex; flex-wrap: wrap; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .op-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1.25 var(--font-sans); padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .op-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.post-page .op-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .op-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--fg-strong); margin-top: 10px; line-height: 1.5; }
+.post-page .op-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.post-page .op-legend i.dash { border: 2px dashed var(--ref); background: transparent; }
+.post-page .op-legend i.ring { border: 2.5px solid var(--bad); background: transparent; border-radius: 50%; }
+.post-page .op p.op-read { font-size: 15px; color: var(--fg-strong); line-height: 1.65; margin: 12px 0 0; min-height: 1.65em; }
+.post-page .op-read b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.post-page .op-read .r { color: var(--bad); } .post-page .op-read .y { color: var(--warn); } .post-page .op-read .g { color: var(--ok); }
+
+/* ---------- 히어로 ---------- */
+.post-page .op-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .op-lede p { font-size: 17.5px; }
+.post-page .op-mon { margin-top: clamp(36px, 4.4vw, 48px); }
+.post-page .op-mon-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .op-mon h3, .post-page .op-fighead { font: 700 15px/1.4 var(--font-sans); color: var(--fg-strong); margin: 0 0 8px; letter-spacing: 0; }
+.post-page .op-mon h3 small, .post-page .op-fighead small { font-weight: 600; color: var(--fg-neutral); font-size: 13.5px; margin-left: 6px; }
+.post-page .op-hist rect.bar { fill: var(--now); opacity: .82; transform-box: fill-box; transform-origin: 50% 100%; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .op-hist path.ref { fill: none; stroke: var(--ref); stroke-width: 2.2; stroke-dasharray: 6 4; }
+.post-page .op-lines .band-g { fill: var(--ok-soft); } .post-page .op-lines .band-y { fill: var(--warn-soft); } .post-page .op-lines .band-r { fill: var(--bad-soft); }
+.post-page .op-lines path.l-err { stroke: var(--ok); stroke-width: 3; fill: none; }
+.post-page .op-lines path.l-psi { stroke: var(--now); stroke-width: 3; fill: none; }
+.post-page .op-lines path.l-acc { stroke: var(--fg-strong); stroke-width: 3; fill: none; }
+.post-page .op-lines .wait { fill: url(#op-hatch); }
+.post-page .op-lines line.play { stroke: var(--fg-strong); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.post-page .op-scrub { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; margin-top: 22px; }
+.post-page .op-range { width: 100%; }
+.post-page .op-range input { width: 100%; accent-color: var(--now); height: 28px; margin: 0; cursor: pointer; }
+.post-page .op-ticks { display: flex; justify-content: space-between; font: 600 13px/1.2 var(--font-sans); color: var(--fg-neutral); margin-top: 2px; }
+.post-page .op-ticks span { width: 0; display: flex; justify-content: center; white-space: nowrap; }
+.post-page .op-ticks span:first-child { justify-content: flex-start; }
+.post-page .op-ticks span:last-child { justify-content: flex-end; }
+
+/* ---------- 점 띠(drift 종류) ---------- */
+.post-page .op-kinds { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); grid-template-rows: auto auto 1fr; grid-template-areas: "seg fig" "lead fig" "txt fig"; column-gap: clamp(32px, 4vw, 64px); align-items: start; }
+.post-page .op-kinds .k-seg { grid-area: seg; } .post-page .op-kinds .k-fig { grid-area: fig; } .post-page .op-kinds .k-txt { grid-area: txt; } .post-page .op-kinds .k-lead { grid-area: lead; }
+.post-page .op-psigrid { grid-template-rows: auto 1fr; grid-template-areas: "head fig" "rest fig"; row-gap: 0; }
+.post-page .op-psigrid .ps-head { grid-area: head; } .post-page .op-psigrid .ps-fig { grid-area: fig; } .post-page .op-psigrid .ps-rest { grid-area: rest; }
+.post-page .op-kinds .op-seg { margin-bottom: 18px; }
+.post-page .op-strip circle.d { transition: cx .6s cubic-bezier(.2,.7,.2,1), cy .6s cubic-bezier(.2,.7,.2,1), fill .5s; }
+.post-page .op-strip circle.d.spam { fill: var(--spam); } .post-page .op-strip circle.d.ham { fill: var(--ham); }
+.post-page .op-strip circle.miss { fill: none; stroke: var(--bad); stroke-width: 2.4; transition: cx .6s cubic-bezier(.2,.7,.2,1), cy .6s cubic-bezier(.2,.7,.2,1), opacity .4s; }
+.post-page .op-strip line.edge { stroke: var(--fg-strong); stroke-width: 2; stroke-dasharray: 6 5; }
+.post-page .op-strip path.ref { fill: none; stroke: var(--ref); stroke-width: 2; stroke-dasharray: 5 4; }
+.post-page .op-strip path.now { fill: var(--now-soft); stroke: var(--now); stroke-width: 2; transition: d .6s; }
+.post-page .op-analog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 22px 0 0; }
+.post-page .op-analog div { font-size: 15px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .op-analog div span { font-size: 26px; display: block; line-height: 1.2; margin-bottom: 4px; }
+.post-page .op-analog div small { display: block; color: var(--fg-neutral); font-size: 14px; }
+
+/* ---------- PSI ---------- */
+.post-page .op-psi .pick { cursor: pointer; }
+.post-page .op-psi .pick circle { fill: var(--bg-base); stroke: var(--now); stroke-width: 2.2; transition: r .2s; }
+.post-page .op-psi .pick.on circle { fill: var(--now); }
+.post-page .op-psi rect.rb { fill: none; stroke: var(--ref); stroke-width: 1.8; stroke-dasharray: 5 3; }
+.post-page .op-psi rect.cb { fill: var(--now); opacity: .82; }
+.post-page .op-psi rect.pc { fill: var(--spam); }
+.post-page .op-psi path.cref { fill: none; stroke: var(--ref); stroke-width: 2.2; stroke-dasharray: 6 4; }
+.post-page .op-psi path.cnow { fill: none; stroke: var(--now); stroke-width: 2.6; }
+.post-page .op-psi line.gap { stroke: var(--bad); stroke-width: 2.4; }
+.post-page .op-ext img { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--line-subtle); background: #fff; }
+[data-theme="dark"] .post-page .op-ext img { filter: brightness(.75); border: 1.5px solid var(--line-strong); }
+.post-page .op-ext figcaption { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin-top: 12px; }
+
+/* ---------- 와플 ---------- */
+.post-page .op-waf rect.c { transition: transform .7s cubic-bezier(.2,.7,.2,1), fill .4s; }
+.post-page .op-waf rect.c.p-s { fill: var(--spam); } .post-page .op-waf rect.c.p-h { fill: var(--ham); opacity: .45; }
+.post-page .op-waf rect.c.wrong { stroke: var(--bad); stroke-width: 1.6; }
+.post-page .op-waf rect.c.p-h.wrong { opacity: 1; fill: var(--bg-base); }
+.post-page .op-waf rect.blk { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+
+/* ---------- 문턱 실험판 ---------- */
+.post-page .op-lab { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 64px); align-items: start; }
+.post-page .op-thr rect.hs { fill: var(--spam); } .post-page .op-thr rect.hh { fill: var(--ham); }
+.post-page .op-thr rect.off { opacity: .32; }
+.post-page .op-thr rect.zone { fill: var(--spam-soft); opacity: .7; }
+.post-page .op-thr g.knob { cursor: ew-resize; outline: none; }
+.post-page .op-thr g.knob line { stroke: var(--fg-strong); stroke-width: 2.5; }
+.post-page .op-thr g.knob rect.hit { fill: transparent; }
+.post-page .op-thr g.knob rect.tab { fill: var(--fg-strong); }
+.post-page .op-thr g.knob text { fill: var(--bg-base); font-weight: 700; }
+.post-page .op-thr g.knob:focus-visible rect.tab { stroke: var(--now); stroke-width: 3; }
+.post-page .op-thr-out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 28px; margin-top: 18px; align-items: start; }
+.post-page .op-cm { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 4px; font-size: 14px; }
+.post-page .op-cm > div { padding: 8px 10px; border-radius: 8px; line-height: 1.35; }
+.post-page .op-cm .h { font-weight: 700; color: var(--fg-neutral); font-size: 13px; padding: 4px 6px; display: flex; align-items: end; }
+.post-page .op-cm .v { background: var(--bg-base); color: var(--fg-strong); }
+.post-page .op-cm .v b { font: 700 18px/1.2 var(--font-mono); display: block; }
+.post-page .op-cm .v.tp b { color: var(--spam); } .post-page .op-cm .v.fp b, .post-page .op-cm .v.fn b { color: var(--bad); } .post-page .op-cm .v.tn b { color: var(--ham); }
+.post-page .op-meters .m { margin-bottom: 14px; }
+.post-page .op-meters .m .t { display: flex; justify-content: space-between; font-size: 14.5px; color: var(--fg-strong); font-weight: 700; }
+.post-page .op-meters .m .t b { font-family: var(--font-mono); }
+.post-page .op-meters .m .t small { font-weight: 600; color: var(--fg-neutral); font-size: 13px; display: block; }
+.post-page .op-meters .track { height: 12px; background: var(--bg-muted); border-radius: 6px; overflow: hidden; margin-top: 6px; }
+.post-page .op-meters .track i { display: block; height: 100%; background: var(--now); border-radius: 6px; transition: width .3s; }
+.post-page .op-pr { max-width: 560px; margin-top: 22px; }
+.post-page .op-pr path.curve { fill: none; stroke: var(--ref); stroke-width: 2.4; }
+.post-page .op-pr circle.cur { fill: var(--now); stroke: var(--bg-base); stroke-width: 2; }
+
+/* ---------- 평가 세트 ---------- */
+.post-page .op-eval { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 10px 22px; align-items: start; }
+.post-page .op-eval .cat { font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); height: 26px; display: flex; align-items: center; white-space: nowrap; }
+.post-page .op-eval .colh { font-size: 14.5px; font-weight: 700; color: var(--fg-strong); line-height: 1.35; min-height: 40px; }
+.post-page .op-eval .colh small { display: block; font-weight: 600; color: var(--fg-neutral); font-size: 13px; }
+.post-page .op-eval .cat .sh { display: none; }
+.post-page .op-eval .row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 26px; }
+.post-page .op-eval .row i { border-radius: 4px; background: var(--ok); }
+.post-page .op-eval .row i.f { background: var(--bad); }
+.post-page .op-eval .row i.chg { box-shadow: 0 0 0 2.5px var(--fg-strong) inset; }
+.post-page .op-eval .sum { font: 700 15px/1.4 var(--font-mono); color: var(--fg-strong); }
+.post-page .op-eval .sum small { display: block; font: 600 13px/1.4 var(--font-sans); color: var(--fg-neutral); }
+.post-page .op-gantt rect.dep { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.2; }
+.post-page .op-gantt circle.ret { fill: var(--bad); }
+.post-page .op-gantt line.today { stroke: var(--now); stroke-width: 2; stroke-dasharray: 4 3; }
+.post-page .op-chen rect.a { fill: var(--ref); } .post-page .op-chen rect.b { fill: var(--bad); }
+
+/* ---------- TCO ---------- */
+.post-page .op-tco rect.s { transition: transform .6s cubic-bezier(.2,.7,.2,1), opacity .5s; transform-box: fill-box; transform-origin: 50% 100%; }
+.post-page .op-tco rect.k-tok { fill: var(--now); } .post-page .op-tco rect.k-ppl { fill: var(--ham); } .post-page .op-tco rect.k-mon { fill: var(--ref); } .post-page .op-tco rect.k-eval { fill: var(--spam); }
+.post-page .op-tco .hid rect.s:not(.k-tok) { transform: scaleY(0); opacity: 0; }
+.post-page .op-legend span { transition: opacity .4s; }
+.post-page .op-legend span.off { opacity: .35; }
+.post-page .op-legend .op-tnote { flex-basis: 100%; font-size: 13.5px; color: var(--fg-neutral); }
+
+/* ---------- SBOM ---------- */
+.post-page .op-sbom { font-size: 14.5px; }
+.post-page .op-notes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.post-page .op-notes button { text-align: left; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-strong); border-radius: 10px; padding: 8px 12px; font: 600 13.5px/1.4 var(--font-sans); cursor: pointer; }
+.post-page .op-notes button small { display: block; font: 600 12.5px/1.4 var(--font-mono); color: var(--fg-neutral); }
+.post-page .op-notes button[aria-pressed="true"] { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) inset; }
+.post-page .op-bom { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-subtle); }
+.post-page .op-bom li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 2.6em; gap: 12px; align-items: center; padding: 7px 8px; border-bottom: 1px solid var(--line-subtle); font-size: 14.5px; line-height: 1.4; transition: background .35s; border-radius: 6px; }
+.post-page .op-bom li .n { font-family: var(--font-mono); color: var(--fg-strong); font-weight: 600; overflow-wrap: anywhere; }
+.post-page .op-bom li .n small { color: var(--fg-neutral); font-weight: 500; }
+.post-page .op-bom li .bar { height: 12px; background: var(--bg-muted); border-radius: 6px; overflow: hidden; }
+.post-page .op-bom li .bar i { display: block; height: 100%; background: var(--warn); border-radius: 6px; }
+.post-page .op-bom li .c { font: 700 14px/1 var(--font-mono); text-align: right; color: var(--fg-strong); }
+.post-page .op-bom li.hit { background: var(--bad-soft); }
+.post-page .op-bom li.model .n { color: var(--now); }
+.post-page .op p.op-verdict { margin-top: 14px; font-size: 15px; line-height: 1.65; color: var(--fg-strong); min-height: 6.6em; }
+
+/* ---------- 줄 ↔ 경고 ---------- */
+.post-page .op-link .cb { fill: var(--code-bg); stroke: var(--code-border); stroke-width: 1; }
+.post-page .op-link .cb.miss { stroke: var(--bad); stroke-width: 2; stroke-dasharray: 5 4; }
+.post-page .op-link text.code { font-family: var(--font-mono); fill: var(--code-fg); }
+.post-page .op-link text.ln { font-family: var(--font-mono); fill: #7f848e; }
+.post-page .op-link .wb { fill: var(--bg-base); stroke-width: 1.8; }
+.post-page .op-link .step { transition: opacity .45s; }
+.post-page .op-link .step.wait { opacity: 0; }
+.post-page .op-link-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.post-page .op details.op-termbox { margin-top: 18px; }
+
+/* ---------- 터미널 ---------- */
+.post-page .op-term { border-radius: 12px; overflow: hidden; background: var(--code-bg); border: 1px solid var(--code-border); box-shadow: var(--code-shadow); margin-top: 18px; }
+.post-page .op-term-bar { padding: 9px 14px; background: var(--code-head-bg); color: var(--code-head-fg); font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.post-page .op-term-bar button { border: 1px solid var(--code-head-fg); background: transparent; color: var(--code-head-fg); border-radius: 999px; padding: 4px 12px; font: 600 12.5px/1.3 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.post-page .op-term pre { margin: 0; padding: 14px 16px; font: 500 13px/1.7 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--code-fg); min-height: 6em; }
+.post-page .op-term .cmd { color: #e5c07b; } .post-page .op-term .hi { color: #e06c75; } .post-page .op-term .md { color: #d19a66; } .post-page .op-term .lo { color: #98c379; } .post-page .op-term .mu { color: #7f848e; }
+
+/* ---------- CI 레인 ---------- */
+.post-page .op-lane rect.stg { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.5; }
+.post-page .op-lane rect.chk { stroke-width: 1.8; }
+.post-page .op-lane rect.chk.a { fill: var(--spam-soft); stroke: var(--spam); }
+.post-page .op-lane rect.chk.b { fill: var(--warn-soft); stroke: var(--warn); }
+.post-page .op-lane rect.chk.c { fill: var(--now-soft); stroke: var(--now); }
+.post-page .op-lane path.flow { fill: none; stroke: var(--fg-neutral); stroke-width: 2; }
+.post-page .op-lane path.back { fill: none; stroke: var(--now); stroke-width: 2; stroke-dasharray: 6 5; }
+
+/* ---------- 시리즈 지도 ---------- */
+.post-page .op-map { position: relative; margin: 0; padding: 0; list-style: none; }
+.post-page .op-map::before { content: ""; position: absolute; left: 17px; top: 18px; bottom: 18px; width: 3px; background: var(--line-strong); border-radius: 2px; }
+.post-page .op-map li.grp { padding: 22px 0 8px 52px; font: 700 13.5px/1.4 var(--font-sans); color: var(--fg-neutral); letter-spacing: .02em; }
+.post-page .op-map li.grp:first-child { padding-top: 0; }
+.post-page .op-map li.ep { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 11em; gap: 4px 20px; padding: 9px 0 9px 52px; align-items: baseline; }
+.post-page .op-map li.ep .no { position: absolute; left: 0; top: 7px; width: 37px; height: 37px; border-radius: 50%; background: var(--bg-base); border: 2.5px solid var(--fg-strong); display: grid; place-items: center; font: 800 15px/1 var(--font-mono); color: var(--fg-strong); }
+.post-page .op-map li.ep.me .no { background: var(--now); border-color: var(--now); color: #fff; }
+[data-theme="dark"] .post-page .op-map li.ep.me .no { color: #0f1a1a; }
+.post-page .op-map li.ep a { font-weight: 700; font-size: 16.5px; text-decoration-thickness: 1px; }
+.post-page .op-map li.ep span.one { display: block; font-size: 15px; color: var(--fg-neutral); line-height: 1.6; margin-top: 2px; }
+.post-page .op-map li.ep em { font-style: normal; font: 600 13px/1.4 var(--font-sans); color: var(--fg-neutral); text-align: right; }
+.post-page .op-map li.ep em { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.post-page .op-map li.ep em svg { width: 84px; height: auto; }
+.post-page .op-map em svg rect { fill: var(--bg-muted); stroke: var(--line-strong); stroke-width: 6; }
+.post-page .op-map em svg rect.on { fill: var(--now); stroke: var(--now); }
+.post-page .op-mapgrid { grid-template-rows: auto 1fr; grid-template-areas: "l fig" "s fig"; row-gap: 0; }
+.post-page .op-mapgrid .op-map-l { grid-area: l; } .post-page .op-mapgrid > figure { grid-area: fig; } .post-page .op-mapgrid .op-map-s { grid-area: s; align-self: end; }
+.post-page .op-map-s .op-sum { margin: 0; }
+
+.post-page .op-sum { font-family: var(--font-display); font-size: 18px !important; line-height: 1.6 !important; color: var(--fg-strong); letter-spacing: -0.01em; }
+.post-page .op-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .op-refs li { font-size: 15px; margin-bottom: .5em; }
+.post-page .op-refgrid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 40px; }
+
+@media (max-width: 900px) {
+  .post-page .op-wrap { padding: 0 20px; }
+  .post-page .op-two, .post-page .op-two.wide, .post-page .op-mon-grid, .post-page .op-kinds, .post-page .op-lab, .post-page .op-refgrid { grid-template-columns: minmax(0, 1fr); }
+  .post-page .op-kinds { grid-template-rows: none; grid-template-areas: "lead" "seg" "fig" "txt"; row-gap: 20px; }
+  .post-page .op-kinds .k-lead p { margin: 0; }
+  .post-page .op-psigrid { grid-template-rows: none; grid-template-areas: "head" "fig" "rest"; row-gap: 36px; }
+  .post-page .op-map li.ep em { align-items: flex-start; flex-direction: row; align-items: center; gap: 8px; }
+  .post-page .op-mapgrid { grid-template-rows: none; grid-template-areas: "l" "fig" "s"; row-gap: 40px; }
+  .post-page .op-thr-out { grid-template-columns: minmax(0, 1fr); }
+  .post-page .op-eval { grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 8px 10px; }
+  .post-page .op-eval .row { gap: 2px; height: 20px; }
+  .post-page .op-eval .cat { height: 20px; font-size: 12px; }
+  .post-page .op-eval .colh { font-size: 13px; min-height: 52px; }
+  .post-page .op-eval .sum { font-size: 13px; }
+  .post-page .op-map li.ep { grid-template-columns: minmax(0, 1fr); }
+  .post-page .op-map li.ep em { text-align: left; }
+  .post-page .op-bom li { grid-template-columns: 8.4em minmax(0, 1fr) 2.2em; gap: 8px; font-size: 13.5px; }
+}
+@media (max-width: 560px) {
+  .post-page .op-analog { grid-template-columns: minmax(0, 1fr); }
+  .post-page .op-scrub { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .post-page .op-scrub .op-act { justify-self: start; }
+  .post-page .op-eval .cat .ln { display: none; }
+  .post-page .op-eval .cat .sh { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .op *, .post-page .op *::before, .post-page .op *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="op" data-op>
+
+  <header class="op-hero">
+    <div class="op-wrap">
+      <div class="op-col">
+        <h1>서버는 멀쩡한데 AI 모델 정확도가 떨어지는 이유</h1>
+        <div class="op-lede">
+          <p>문자 앱에 스팸 필터를 배포했다고 해 보겠습니다. 배포 직전 시험에서 정확도는 96.1%였습니다. 그 뒤 1년 동안 코드는 한 줄도 바뀌지 않았고 서버는 오류를 한 번도 내지 않았습니다. 그런데 사용자 신고를 모아 다시 채점해 보니 열한 달째 정확도는 75.0%였습니다.</p>
+          <p>어디가 고장 난 걸까요? 고장 난 곳은 없습니다. 필터는 배포 전에 본 문자를 기준으로 판단하는데 그사이 스팸을 보내는 쪽이 짧은 문자에 링크 하나를 붙이는 수법으로 바꿨습니다. 아래 띠를 끌어 보면 서버 오류 줄은 바닥에 붙어 있고 문자 모양과 정확도만 움직입니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="op-wrap">
+      <div class="op-mon op-fig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new CustomEvent('op-month',{detail:12}))" data-op-mon>
+        <div class="op-mon-grid">
+          <div>
+            <h3>같은 기간의 세 가지 기록 <small>가로축은 배포 후 개월</small></h3>
+            <svg class="op-lines" data-op-lines role="img" aria-label="세 줄 시간 그래프. 서버 오류는 1년 내내 0, 입력 분포 변화 PSI 는 7개월째 노랑, 9개월째 빨강 구간으로 올라가고, 확인된 정확도는 96.1%에서 11개월째 75.0%로 내려간다"></svg>
+            <div class="op-legend"><span><i style="background:var(--ok-soft);border:1px solid var(--ok)"></i>PSI 0.1 아래</span><span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>0.1~0.25</span><span><i style="background:var(--bad-soft);border:1px solid var(--bad)"></i>0.25 위</span><span><i style="background:repeating-linear-gradient(135deg,var(--line-strong) 0 3px,transparent 3px 6px)"></i>정답 확인 대기</span></div>
+          </div>
+          <div>
+            <h3>들어오는 문자의 길이 <small data-op-histmonth>배포 때</small></h3>
+            <svg class="op-hist" data-op-hist role="img" aria-label="글자 수 0부터 200자까지 열 칸의 막대그래프. 회색 점선은 배포 때 문자 길이 분포, 청록 막대는 고른 달의 분포"></svg>
+            <div class="op-legend"><span><i class="dash"></i>배포 때(기준)</span><span><i style="background:var(--now)"></i>고른 달</span></div>
+          </div>
+        </div>
+        <div class="op-scrub">
+          <button type="button" class="op-act" data-op-play>▶ 1년 재생</button>
+          <div class="op-range">
+            <input type="range" min="0" max="12" step="1" value="12" aria-label="배포 후 개월" data-op-range>
+            <div class="op-ticks" aria-hidden="true"><span>배포</span><span>3개월</span><span>6개월</span><span>9개월</span><span>12개월</span></div>
+          </div>
+        </div>
+        <p class="op-read" data-op-read aria-live="polite"></p>
+        <p class="op-cap">설명을 위한 예시 데이터로 직접 계산한 값입니다. 달마다 문자 3,000개를 만들었고 필터는 배포 때 문자로 학습한 간단한 모델(문자 길이와 링크 유무 두 가지로 점수를 매김)입니다. PSI 는 들어오는 문자 모양이 배포 때와 얼마나 다른지 재는 숫자이고 아래에서 직접 계산해 봅니다. 스팸이었는지는 사용자 신고가 모여야 알 수 있어서 정확도는 지난달까지만 그립니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two">
+      <div>
+        <h2>모델 코드는 전체 시스템의 작은 상자입니다</h2>
+        <p>2015년 Google 엔지니어들이 NeurIPS 학회에 낸 논문 「Hidden Technical Debt in Machine Learning Systems」에는 상자 그림이 한 장 있습니다. 모델을 학습하고 예측하는 코드는 가운데 작은 상자 하나뿐이고 나머지는 그 둘레에서 모델을 돌리는 장치라는 그림입니다.</p>
+        <p>그림 속 둘레 상자는 설정(Configuration), 데이터 수집(Data collection), 자원 관리(Resource management), 서빙 인프라(Serving infrastructure), 모니터링(Monitoring) 같은 장치입니다.</p>
+        <p>식당에 빗대면 모델 코드는 레시피입니다. 재료를 사서 검수하고 주방을 돌리고 손님 반응을 살피는 일이 식당 운영의 대부분입니다. 다만 레시피는 그대로 두면 맛도 그대로지만 모델은 코드가 그대로여도 들어오는 재료가 바뀌면 답이 달라집니다.</p>
+        <p>이 바깥 상자들을 자동으로 반복해 돌리는 일을 MLOps(Machine Learning Operations)라고 부릅니다. 논문은 바깥 세상이 거의 가만히 있지 않는다는 점을 운영 비용이 계속 드는 원인으로 꼽습니다. 그 변화는 크게 두 가지 모양으로 옵니다.</p>
+      </div>
+      <figure class="op-fig op-ext" data-figure>
+        <img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/5b1e9b1a.webp" alt="가운데 작은 회색 상자 ML code 를 Configuration, Data collection, Data verification, Feature engineering, Testing and debugging, Resource management, Model analysis, Process management, Metadata management, Serving infrastructure, Monitoring, Automation 상자가 둘러싼 그림" loading="lazy" width="1318" height="546">
+        <figcaption>가운데 진한 상자가 ML 코드이고 둘레는 모델을 돌리는 운영 장치입니다. Sculley 외(2015) Figure 1을 Google Cloud가 다시 그린 그림 — <a href="https://docs.cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning">Google Cloud, MLOps: Continuous delivery and automation pipelines in machine learning</a></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap">
+      <h2>입력이 바뀌는 Data Drift, 정답 규칙이 바뀌는 Concept Drift</h2>
+      <div class="op-col">
+        <p>들어오는 입력의 모양이 학습 때와 달라지는 것을 Data Drift, 같은 입력인데 정답이 달라지는 것을 Concept Drift라고 부릅니다. drift는 배가 물살에 밀려 조금씩 떠내려가는 모습을 가리키는 말입니다. 둘은 감시하는 방법이 다릅니다.</p>
+      </div>
+    </div>
+    <div class="op-band">
+      <div class="op-wrap op-kinds">
+        <div class="k-seg">
+          <div class="op-seg" role="group" aria-label="상황 고르기" data-op-kind>
+            <button type="button" aria-pressed="true" data-k="base">배포 때</button>
+            <button type="button" aria-pressed="false" data-k="data">Data Drift</button>
+            <button type="button" aria-pressed="false" data-k="concept">Concept Drift</button>
+          </div>
+        </div>
+        <div class="k-lead">
+          <p>점 하나가 문자 하나입니다. 가로 위치는 글자 수, 색은 진짜 정답(주황 스팸, 남색 정상)입니다. 필터는 90자를 넘으면 스팸으로 막는 단순한 규칙이라고 하겠습니다. 빨간 고리는 필터가 틀린 문자입니다.</p>
+        </div>
+        <div class="k-txt">
+          <p>Data Drift를 누르면 단체 공지처럼 긴 정상 문자가 늘어납니다. 회색 점선(배포 때 모양)과 청록 윤곽(지금 모양)이 어긋나서 입력만 지켜봐도 알아챕니다.</p>
+          <p>Concept Drift를 누르면 점은 그대로 있고 짧은 문자 몇 개의 색만 바뀝니다. 링크 붙은 짧은 사기 문자가 늘어 짧은 문자도 스팸이 된 경우입니다. 입력 모양은 그대로라 입력 감시에는 아무것도 걸리지 않습니다.</p>
+        </div>
+        <figure class="op-fig k-fig">
+          <svg class="op-strip" data-op-strip role="img" aria-label="글자 수 축 위의 점 40개. 90자에 필터 경계 점선. 상황에 따라 점 위치나 색이 바뀌고 틀린 점에 빨간 고리"></svg>
+          <div class="op-legend"><span><i style="background:var(--spam);border-radius:50%"></i>스팸</span><span><i style="background:var(--ham);border-radius:50%"></i>정상</span><span><i class="ring"></i>필터가 틀림</span><span><i class="dash"></i>배포 때 모양</span><span><i style="background:var(--now-soft);border:2px solid var(--now)"></i>지금 모양</span></div>
+          <p class="op-read" data-op-kindread aria-live="polite"></p>
+          <div class="op-analog">
+            <div><span>📝</span>Data Drift는 시험 범위가 바뀐 것과 비슷합니다<small>공부한 범위 밖의 문제가 나옵니다</small></div>
+            <div><span>🔄</span>Concept Drift는 채점 기준이 바뀐 것과 비슷합니다<small>같은 답이 이제는 틀린 답입니다</small></div>
+          </div>
+        </figure>
+      </div>
+    </div>
+    <div class="op-wrap" style="margin-top:clamp(48px,6vw,72px)">
+      <div class="op-col">
+        <p>비유와 다른 점도 있습니다. 시험은 범위가 바뀌면 미리 알려 주지만 세상은 알리지 않고 바뀝니다. 그리고 실제로는 두 가지가 함께 옵니다. 맨 위 필터가 그랬습니다. 사기 문자가 늘자 짧은 문자의 비율이 늘었고(Data Drift) 짧은 문자가 스팸일 가능성도 올라갔습니다(Concept Drift).</p>
+        <details><summary>정답이 늦게 오는 동안 지켜보는 것</summary><p>Concept Drift는 정답이 모여야 보입니다. 스팸이었는지는 사용자가 신고해야 알고, 대출 심사 모델이라면 돈을 갚았는지 몇 달 뒤에야 압니다. 그래서 정답을 기다리는 동안에는 입력 분포와 모델이 낸 예측의 분포를 대신 지켜봅니다. 예측 분포가 달라지는 것은 prediction drift라고 따로 부릅니다.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two op-psigrid">
+      <div class="ps-head">
+        <h2>기준 분포와 칸마다 견주는 PSI, 가장 크게 벌어진 곳을 재는 KS</h2>
+        <p>입력이 달라졌는지 재려면 견줄 기준이 있어야 합니다. 보통 학습에 쓴 데이터나 배포 직후 한 달을 기준 분포(reference distribution)로 정해 두고 지금 들어오는 데이터와 비교합니다. 분포(distribution)는 값이 어느 범위에 몇 개씩 몰려 있는지를 뜻합니다.</p>
+      </div>
+      <div class="ps-rest">
+        <p>PSI(Population Stability Index)는 글자 수를 20자 간격 열 칸으로 나누고 칸마다 기준 비율과 지금 비율이 얼마나 다른지 재서 모두 더합니다. 칸 하나의 몫은 두 비율의 차이에 '몇 배로 달라졌나'를 로그로 줄인 값을 곱해 구합니다. 그래서 드물던 칸이 갑자기 늘면 PSI가 크게 오릅니다. 주황 막대가 칸마다 보탠 몫입니다.</p>
+        <p>문턱은 관행입니다. 금융권에서 오래 써 온 신호등 기준은 0.1 아래 초록, 0.25 위 빨강입니다. Yurdakul과 Naranjo(2020)는 이 두 숫자에 학술 근거가 없고 표본 수와 칸 수를 따져야 한다고 지적했습니다. 오픈소스 감시 도구 Evidently는 PSI를 쓸 때 기본 문턱을 0.1로 둡니다.</p>
+        <p>KS(Kolmogorov–Smirnov) 검정은 칸을 나누지 않습니다. 짧은 문자부터 차례로 세어 올린 누적 비율 곡선 두 개를 겹쳐 놓고 세로로 가장 크게 벌어진 거리 하나를 봅니다. 계단 그림의 빨간 선이 그 거리입니다.</p>
+        <p>9개월째 KS 값 0.182는 43자 이하 문자의 비율 차이입니다. 기준 19.6%에서 지금 37.8%로 18.2%p 벌어졌습니다.</p>
+        <details><summary>PSI 계산식과 KS 가 예민해지는 경우</summary><p>PSI = Σ (지금 비율 − 기준 비율) × ln(지금 비율 ÷ 기준 비율). ln 은 자연로그이고 비율이 0인 칸은 나눌 수 없어서 0.0001 로 바꿔 계산했습니다. 두 비율 차이와 로그 값의 부호가 늘 같아서 칸마다 보태는 몫은 0 이상입니다.</p><p>KS 는 표본이 많을수록 작은 차이도 "달라졌다"고 판정합니다. 3,000개씩 견주면 간격이 약 0.035 만 넘어도 유의수준 5%에서 달라졌다고 봅니다. 이 예시에서는 3개월째(0.036)에 벌써 넘습니다. Evidently 는 숫자 열의 행이 1,000개 이하이면 KS 를, 그보다 많으면 Wasserstein 거리(문턱 0.1)를 기본으로 씁니다.</p></details>
+      </div>
+      <figure class="op-fig op-psi ps-fig" data-figure>
+        <div class="op-fighead">달마다 잰 PSI <small>점을 눌러 달을 고릅니다</small></div>
+        <svg data-op-psipick role="img" aria-label="배포 후 0개월부터 12개월까지 PSI 꺾은선과 고를 수 있는 점 13개"></svg>
+        <div class="op-fighead" style="margin-top:22px">칸마다 견주기 <small data-op-psimonth>9개월</small></div>
+        <svg data-op-psibins role="img" aria-label="열 칸마다 기준 비율 점선 막대와 고른 달 청록 막대, 그 아래 칸별 PSI 몫 주황 막대"></svg>
+        <div class="op-fighead" style="margin-top:22px">누적 비율 곡선 두 개 <small>KS 는 가장 큰 세로 간격</small></div>
+        <svg data-op-psicdf role="img" aria-label="기준과 고른 달의 누적 비율 계단 곡선, 가장 크게 벌어진 곳에 빨간 선"></svg>
+        <div class="op-legend"><span><i class="dash"></i>배포 때(기준)</span><span><i style="background:var(--now)"></i>고른 달</span><span><i style="background:var(--spam)"></i>칸별 PSI 몫</span><span><i style="background:var(--bad)"></i>KS 거리</span></div>
+      </figure>
+    </div>
+    <div class="op-wrap op-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <h3>실제 감시 도구는 열마다 이 판정을 냅니다</h3>
+        <p>실제 데이터에는 열(column)이 여럿입니다. Evidently 리포트는 열마다 기준 분포와 지금 분포를 작은 막대그래프로 나란히 놓고 검정 방법, 점수, 판정을 적습니다. 기본 설정에서는 절반 이상의 열이 달라졌을 때 데이터 전체가 달라졌다고 봅니다.</p>
+        <p>이 판정이 곧 모델이 틀렸다는 뜻은 아닙니다. 모델이 거의 보지 않는 열이 바뀌었을 수도 있습니다. 그래서 drift 알림은 "정답을 모아 확인해 보라"는 신호로 쓰고 확인이 끝나면 다시 학습할지 정합니다.</p>
+      </div>
+      <figure class="op-fig op-ext" data-figure>
+        <img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9929e496.webp" alt="Evidently Data Drift Summary 화면. Drift is detected for 40.0% of columns (6 out of 15). 열마다 Reference Distribution 과 Current Distribution 빨간 막대그래프, Data Drift 판정, Stat Test, Drift Score" loading="lazy" width="1600" height="1075">
+        <figcaption>Evidently Data Drift 리포트. 열마다 Reference Distribution(기준 분포)과 Current Distribution(지금 분포)을 나란히 놓고 Stat Test(검정 방법)와 Drift Score(점수)로 Detected(감지)를 판정합니다. 맨 위 줄은 15개 열 중 6개에서 감지했다는 요약입니다 — <a href="https://docs.evidentlyai.com/metrics/preset_data_drift">Evidently 문서, Data Drift preset</a></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two">
+      <div>
+        <h2>정확도 하나로는 틀린 종류가 보이지 않습니다</h2>
+        <p>정확도(accuracy)는 전체 중 맞힌 비율입니다. 배포 첫 달 문자 3,000개 가운데 스팸은 626개였습니다. 그런데 모든 문자를 정상이라고 하는 '필터'도 정확도가 79.1%나 나옵니다. 스팸을 하나도 막지 않았는데도 그렇습니다.</p>
+        <p>그래서 결과를 네 칸으로 나눠 셉니다. 진짜 스팸을 막은 TP(True Positive), 정상 문자를 막은 오탐 FP(False Positive), 스팸을 놓친 미탐 FN(False Negative), 정상 문자를 통과시킨 TN(True Negative)입니다. 이 2×2 표를 confusion matrix라고 부릅니다.</p>
+        <p>화재경보기에 빗대면 오탐은 토스트를 굽다 울린 경보이고 미탐은 불이 났는데 울리지 않은 경보입니다. 다만 경보기는 어느 실수가 더 큰일인지 정해져 있지만 모델은 쓰는 곳마다 다릅니다. 그 선택을 다음 그림에서 직접 해 봅니다.</p>
+      </div>
+      <figure class="op-fig">
+        <div class="op-seg" role="group" aria-label="모델 고르기" data-op-wafseg style="margin-bottom:16px">
+          <button type="button" aria-pressed="true" data-w="filter">스팸 필터</button>
+          <button type="button" aria-pressed="false" data-w="allham">전부 '정상'이라고 하는 모델</button>
+        </div>
+        <svg class="op-waf" data-op-waf role="img" aria-label="문자 3,000개를 칸 하나씩 2×2 네 구역에 나눠 담은 그림. 행은 실제 스팸·실제 정상, 열은 막음·통과"></svg>
+        <div class="op-legend"><span><i style="background:var(--spam)"></i>스팸으로 막음</span><span><i style="background:var(--ham);opacity:.45"></i>통과시킴</span><span><i style="border:2px solid var(--bad);background:transparent"></i>틀림</span><span class="op-tnote">칸 하나 = 문자 하나라 구역 높이가 실제 개수 비율입니다</span></div>
+        <p class="op-read" data-op-wafread aria-live="polite"></p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap">
+      <h2>문턱값을 옮기면 precision과 recall이 맞바뀝니다</h2>
+      <div class="op-col">
+        <p>필터는 문자마다 0~100 사이 스팸 점수를 매기고 점수가 문턱값(threshold) 이상이면 막습니다. 스팸과 정상 문자의 점수가 겹치는 구간이 있어서 어디에 선을 그어도 실수가 남습니다. 어느 실수를 줄일지는 선의 위치로 고릅니다.</p>
+      </div>
+    </div>
+    <div class="op-band">
+      <div class="op-wrap op-lab">
+        <div>
+          <p>위쪽 주황 막대는 진짜 스팸들이 받은 점수, 아래쪽 남색 막대는 정상 문자들이 받은 점수입니다. 문턱선 오른쪽에 있는 문자가 막힙니다.</p>
+          <p><b>precision</b>은 스팸이라고 막은 것 중 진짜 스팸의 비율(TP ÷ (TP + FP))이고 <b>recall</b>은 진짜 스팸 중 막아 낸 비율(TP ÷ (TP + FN))입니다.</p>
+          <p>문턱선을 왼쪽으로 끌면 더 많이 막아서 recall이 오르고 함께 막히는 정상 문자도 늘어 precision이 내려갑니다. 오른쪽으로 끌면 반대가 됩니다.</p>
+        </div>
+        <figure class="op-fig op-thr" data-figure>
+          <div class="op-fighead">스팸 점수 분포와 문턱선 <small>문턱선을 끌거나, 눌러서 고른 뒤 ←→ 키로 5점씩 옮깁니다</small></div>
+          <svg data-op-thr role="img" aria-label="점수 0부터 100까지 스팸 점수 분포는 축 위, 정상 점수 분포는 축 아래. 끌 수 있는 세로 문턱선"></svg>
+          <div class="op-thr-out">
+            <div class="op-cm" data-op-cm aria-live="polite"></div>
+            <div>
+              <div class="op-meters" data-op-meters></div>
+            </div>
+          </div>
+          <svg class="op-pr" data-op-pr role="img" aria-label="가로 recall, 세로 precision 곡선 위에 지금 문턱의 점. 세로축은 50%부터 시작"></svg>
+          <p class="op-cap">배포 첫 달 문자 3,000개(예시)의 점수입니다. 막대 높이는 각 무리 안에서의 비율이라 정상 문자 2,374개와 스팸 626개가 비슷한 높이로 보입니다.</p>
+        </figure>
+      </div>
+    </div>
+    <div class="op-wrap" style="margin-top:clamp(48px,6vw,72px)">
+      <div class="op-col">
+        <p>어느 쪽을 지킬지는 쓰임새가 정합니다. 스팸 필터는 중요한 문자를 막아 버리는 오탐이 더 아파서 precision을 높게 잡습니다. 암 검진처럼 놓치면 안 되는 일은 recall을 지키고 늘어난 오탐은 정밀 검사로 다시 거릅니다.</p>
+        <details><summary>문턱값도 시간이 지나면 낡습니다</summary><p>문턱값도 시간이 지나면 낡습니다. Sculley 외(2015)는 스팸 표시처럼 문턱으로 판정하는 시스템에서 사람이 손으로 정한 문턱이 모델이나 세상이 바뀌면 맞지 않게 된다고 적었습니다. 해법으로는 따로 떼어 둔 검증 데이터로 문턱을 다시 정하는 방법을 듭니다. scikit-learn의 <code>precision_recall_curve</code>가 이 곡선을 계산해 주는 함수입니다.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two wide">
+      <div>
+        <h2>LLM 서비스는 평가 세트를 버전마다 다시 돌립니다</h2>
+        <p>API로 LLM(Large Language Model)을 쓰는 서비스는 모델을 직접 학습하지 않으니 drift와 상관없어 보입니다. 실제로는 사용자의 질문이 계속 바뀌고 모델도 업체가 새 버전으로 바꾸거나 은퇴시킵니다. 게다가 답이 문장이라 스팸처럼 맞고 틀림이 한 칸으로 갈리지 않습니다.</p>
+        <p>그래서 평가 세트(evaluation set)를 만들어 둡니다. 실제 질문에서 고른 수십~수백 개 문항에 기대하는 답과 채점 기준을 붙인 묶음입니다. 모델이나 프롬프트를 바꿀 때마다 같은 세트를 다시 돌려 문항마다 통과했는지 봅니다. 채점은 사람이 하거나 다른 LLM에게 채점 기준을 주고 맡깁니다(LLM-as-judge).</p>
+      </div>
+      <figure class="op-fig" data-figure>
+        <div class="op-eval" data-op-eval></div>
+        <p class="op-cap">설명을 위한 예시 결과입니다. 칸 하나가 문항 하나이고 초록은 통과, 빨강은 실패입니다. 굵은 테두리는 바로 앞 열과 결과가 달라진 문항입니다.</p>
+      </figure>
+    </div>
+    <div class="op-wrap" style="margin-top:clamp(40px,5vw,56px)">
+      <div class="op-col">
+        <p>총점만 보면 34점에서 35점으로 올랐는데 그사이 통과하던 문항 다섯 개가 깨졌습니다. 이 예시에서는 새 모델이 JSON 답 앞에 설명 문장을 붙이는 바람에 형식 문항이 실패했고 프롬프트에 출력 형식을 분명히 적자 다시 통과했습니다. 문항별로 보지 않으면 이런 변화를 놓칩니다.</p>
+        <details><summary>평가 세트 말고 날마다 보는 신호</summary><p>운영 중에는 평가 세트 말고도 사용자의 👍·👎 비율, 답을 다시 요청한 비율, 토큰 수와 응답 시간을 날마다 기록합니다. 정답표가 없는 대신 여러 신호를 겹쳐서 봅니다.</p></details>
+      </div>
+    </div>
+    <div class="op-wrap op-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <h3>같은 이름의 모델도 바뀌고 오래된 모델은 은퇴합니다</h3>
+        <p>Chen, Zaharia, Zou(2023)는 GPT-4의 2023년 3월판과 6월판에 같은 질문을 넣어 봤습니다. 어떤 수가 소수인지 맞히는 문제에서 정확도가 84%에서 51%로 떨어졌습니다. 서비스 이름은 같은 GPT-4였지만 석 달 사이에 행동이 달라진 것입니다.</p>
+        <p>업체는 오래된 모델을 은퇴시키기도 합니다. Anthropic 문서는 공개 모델의 은퇴를 최소 60일 전에 알리고 은퇴한 모델로 보낸 요청은 실패한다고 적어 둡니다. Claude Sonnet 4.5는 2026년 9월 30일에 은퇴 예고가 나왔고 11월 30일에 은퇴합니다. 그 전에 새 모델로 평가 세트를 돌려 봐야 합니다.</p>
+      </div>
+      <figure class="op-fig" data-figure>
+        <div class="op-fighead">GPT-4 소수 판별 정확도 <small>Chen 외 2023</small></div>
+        <svg class="op-chen" data-op-chen role="img" aria-label="GPT-4 2023년 3월판 84%, 6월판 51% 막대"></svg>
+        <div class="op-fighead" style="margin-top:26px">Claude 모델 은퇴 예고와 은퇴일 <small>2025~2026</small></div>
+        <svg class="op-gantt" data-op-gantt role="img" aria-label="Claude 모델 여덟 묶음의 은퇴 예고일부터 은퇴일까지 노란 막대와 은퇴일 빨간 점, 2026-10-15 청록 점선"></svg>
+        <p class="op-cap">노란 막대는 은퇴 예고부터 은퇴까지, 빨간 점이 은퇴일입니다. 청록 점선은 이 글을 쓴 2026-10-15 — <a href="https://platform.claude.com/docs/en/about-claude/model-deprecations">Anthropic 문서, Model deprecations</a></p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two">
+      <div>
+        <h2>운영 비용은 배포한 다음 달부터 쌓입니다</h2>
+        <p>TCO(Total Cost of Ownership)는 무언가를 들여서 쓰고 치울 때까지 드는 돈을 모두 더한 값입니다. 자전거를 살 때 값만 보지 않고 바퀴 바람·체인 교체·수리비까지 더해 보는 것과 비슷합니다. 다만 자전거는 타야 닳지만 모델은 세상이 바뀌면 그대로 둬도 낡습니다.</p>
+        <p>예시 서비스는 하루 질문 1만 건을 받습니다. Claude Sonnet 4.5 단가로 계산하면 한 달 토큰 비용은 3,600달러입니다. 막대를 '전부'로 바꾸면 청구서에 안 찍히는 사람·감시·평가 비용이 그 위에 쌓입니다.</p>
+        <p>8개월째 더 싼 Claude Sonnet 5.5로 바꿨는데도 토큰 비용은 13%만 줄었습니다. Claude 4.7 이후 모델은 새 토크나이저 때문에 같은 글에 토큰을 약 30% 더 쓰기 때문입니다.</p>
+        <details><summary>토큰 비용 계산</summary><p>질문당 입력 2,000·출력 400 토큰, 한 달 30일로 잡았습니다. Claude Sonnet 4.5는 100만 토큰당 입력 3달러, 출력 15달러라 입력 1,800달러와 출력 1,800달러를 더해 한 달 3,600달러입니다.</p><p>Claude Sonnet 5.5는 입력 2달러, 출력 10달러입니다. 가격 문서대로 토큰 수를 1.3배로 늘려 계산하면 입력 1,560달러와 출력 1,560달러로 한 달 3,120달러입니다.</p></details>
+        <p>모델을 직접 띄우면 토큰 대신 GPU를 켜 둔 시간이 비용이 됩니다. 요청이 없어도 켜 둔 만큼 나갑니다. 그래서 <a href="/posts/gpu-vram-fp16-int4-quantization">양자화로 GPU 수를 줄이고</a> <a href="/posts/enterprise-llm-serving-kubernetes-llm-d-mig">여러 팀이 GPU를 나눠 쓰게</a> 합니다. AWS는 머신러닝 인프라 지출의 최대 90%가 추론에서 나온다고 적어 둡니다.</p>
+      </div>
+      <figure class="op-fig" data-figure>
+        <div class="op-seg" role="group" aria-label="보일 비용 고르기" data-op-tcoseg style="margin-bottom:16px">
+          <button type="button" aria-pressed="true" data-t="bill">청구서에 보이는 것</button>
+          <button type="button" aria-pressed="false" data-t="all">전부</button>
+        </div>
+        <div class="op-fighead">달마다 드는 돈 <small>가로축은 배포 후 개월, 1은 만들고 시범 운영한 달</small></div>
+        <svg class="op-tco" data-op-tco role="img" aria-label="1월부터 12월까지 달마다 쌓은 비용 막대. 토큰, 사람, 감시·로그, 평가·수정"></svg>
+        <div class="op-legend"><span><i style="background:var(--now)"></i>토큰</span><span data-tk><i style="background:var(--ham)"></i>사람(만들기·운영·검수)</span><span data-tk><i style="background:var(--ref)"></i>감시·로그 저장</span><span data-tk><i style="background:var(--spam)"></i>평가·수정</span><span class="op-tnote" data-op-tconote>흐린 세 항목은 '전부'를 누르면 막대에 나타납니다</span></div>
+        <p class="op-read" data-op-tcoread aria-live="polite"></p>
+        <p class="op-cap">토큰 비용은 실제 단가에 예시 사용량을 곱한 값이고 사람·감시·평가 비용은 설명을 위한 예시 값입니다. 6개월째는 drift 대응, 8개월째는 모델 교체 평가가 들어간 달입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two">
+      <div>
+        <h2>SBOM은 서버 안에 든 부품 목록입니다</h2>
+        <p>챗봇 서버 하나에는 내가 쓴 코드보다 남이 만든 코드가 훨씬 많이 들어 있습니다. vLLM, PyTorch, transformers 같은 패키지와 그 패키지가 다시 불러 쓰는 패키지들입니다. 남이 만든 부품이 내 서비스로 들어오는 이 길을 소프트웨어 공급망(supply chain)이라고 부릅니다.</p>
+        <p>SBOM(Software Bill of Materials)은 그 부품의 목록입니다. 과자 봉지 뒷면 원재료 표처럼 무엇이 어떤 버전으로 들어 있는지 적습니다. 원재료 표와 다른 점은 사람이 읽기보다 프로그램이 검색하려고 만든다는 것입니다. 미국 NTIA가 2021년에 정한 최소 항목은 공급자, 부품 이름, 버전, 고유 식별자, 의존 관계, 목록 작성자, 작성 시각 일곱 가지입니다.</p>
+        <p>쓸모는 보안 공지가 떴을 때 드러납니다. 공개된 취약점에 붙는 CVE(Common Vulnerabilities and Exposures) 번호는 <a href="/posts/air-gapped-rag-on-premise-llm">폐쇄망 반입 글</a>에서 다뤘습니다. 공지를 눌러 보면 목록에서 그 부품이 켜집니다.</p>
+      </div>
+      <figure class="op-fig op-sbom" data-figure>
+        <div class="op-fighead">sbom.json 의 부품 <small>막대는 알려진 취약점 수</small></div>
+        <ul class="op-bom" data-op-bom></ul>
+        <div class="op-fighead" style="margin-top:24px">보안 공지 <small>공지를 눌러 보세요</small></div>
+        <div class="op-notes" role="group" aria-label="보안 공지 고르기" data-op-notes>
+          <button type="button" aria-pressed="true" data-n="jinja2">Jinja2 템플릿 샌드박스 탈출<small>CVE-2025-27516</small></button>
+          <button type="button" aria-pressed="false" data-n="requests">requests 비밀번호 유출<small>CVE-2024-47081</small></button>
+          <button type="button" aria-pressed="false" data-n="vllm">vLLM 여러 서버 구성 원격 실행<small>CVE-2025-30165</small></button>
+        </div>
+        <p class="op-verdict" data-op-verdict aria-live="polite"></p>
+        <p class="op-cap">2025년 봄 버전으로 고정한 예시 <code>requirements.txt</code>의 패키지 8개를 2026-10-15에 pip-audit 2.10.1로 대조했습니다. 같은 취약점에 붙은 다른 번호는 하나로 셌습니다. 직접 적은 패키지만 셌고 그 아래 의존성은 세지 않았습니다.</p>
+      </figure>
+    </div>
+    <div class="op-wrap op-two" style="margin-top:clamp(56px,7vw,88px)">
+      <div>
+        <p>SBOM은 손으로 쓰지 않고 도구로 만듭니다. 파이썬 패키지 목록이면 <code>cyclonedx-py requirements requirements.txt</code> 한 줄로 CycloneDX 형식 JSON이 나오고 컨테이너 이미지는 Syft·Trivy 같은 도구가 훑어서 만듭니다. 그 목록을 <code>pip-audit</code>나 Trivy가 공개 취약점 데이터베이스와 대조합니다.</p>
+        <ol class="pg-code-notes">
+          <li>형식 이름과 판입니다. 이 도구는 1.6판으로 썼고 최신판은 2025-10-21에 나온 1.7입니다.</li>
+          <li>requirements.txt 한 줄이 부품 하나가 됩니다. purl(package URL)은 "어느 저장소의 어떤 패키지 몇 버전"을 한 줄로 적은 식별자라 취약점 데이터베이스를 찾는 열쇠로 씁니다.</li>
+          <li>모델도 부품으로 적습니다. CycloneDX는 1.5판(2023년 6월)부터 <code>machine-learning-model</code> 형식을 두고 이를 ML-BOM이라 부릅니다. 해시는 가중치 첫 파일의 SHA-256으로, <a href="/posts/air-gapped-rag-on-premise-llm">폐쇄망 반입 때 적는 해시 목록</a>과 같은 값입니다.</li>
+        </ol>
+        <details><summary>두 형식의 표준 번호</summary><p>CycloneDX는 Ecma 국제 표준 ECMA-424이고 또 하나의 표준 형식 SPDX는 ISO/IEC 5962:2021입니다.</p></details>
+      </div>
+<pre data-title="sbom.json" data-hl="3-4,9-11,18-23" data-start="1"><code class="language-jsonc">{
+  // ① 어떤 형식으로 적었나
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "components": [
+    {
+      "type": "library",
+      // ② 패키지 하나 = 부품 하나
+      "name": "jinja2",
+      "version": "3.1.5",
+      "purl": "pkg:pypi/jinja2@3.1.5"
+    },
+    // … fastapi, requests, torch,
+    //   transformers, urllib3,
+    //   vllm, pyyaml
+    {
+      // ③ 모델 파일도 부품으로
+      "type": "machine-learning-model",
+      "name": "Qwen2.5-7B-Instruct",
+      "hashes": [{
+        "alg": "SHA-256",
+        "content": "a1333e62…ba1966aba7"
+      }]
+    }
+  ]
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two">
+      <div>
+        <h2>SAST는 코드를 실행하기 전에 읽어서 위험한 줄을 찾습니다</h2>
+        <p>SBOM이 남이 만든 부품을 본다면 SAST(Static Application Security Testing)는 우리가 쓴 코드를 봅니다. 프로그램을 실행하지 않고 소스 코드만 읽어 위험한 모양의 줄을 찾습니다. 글을 내기 전에 맞춤법 검사기가 틀린 곳에 밑줄을 긋는 것과 비슷합니다.</p>
+        <p>LLM 서비스에서는 특히 두 가지를 봅니다. 하나는 파일을 여는 순간 그 안의 코드가 실행될 수 있는 pickle 계열 불러오기입니다. pickle은 파이썬 객체를 파일로 저장했다가 그대로 되살리는 형식입니다.</p>
+        <p>다른 하나는 모델이 만든 글을 그대로 실행하는 코드입니다. 모델의 답은 프롬프트 인젝션(prompt injection)으로 조작될 수 있어서 남이 보낸 입력과 똑같이 다뤄야 합니다.</p>
+      </div>
+      <figure class="op-fig op-link" data-figure>
+        <div class="op-link-top">
+          <div class="op-fighead" style="margin:0">chatbot.py 의 줄과 Bandit 경고 <small>bandit 1.9.4</small></div>
+          <button type="button" class="op-act" data-op-run>▶ 검사 실행</button>
+        </div>
+        <svg data-op-link role="img" aria-label="왼쪽에 chatbot.py 의 1, 2, 7, 12, 17, 22, 23번 줄, 오른쪽에 Bandit 경고. 1번 줄 B403 Low, 2번 줄 B404 Low, 12번 줄 B614 Medium, 17번 줄 B301 Medium, 22번 줄 B307 Medium, 23번 줄 B602 High. 7번 줄 API_KEY 에는 경고가 없음"></svg>
+        <p class="op-cap">실제 검사 결과를 줄마다 이었습니다. 7번 줄 <code>API_KEY</code>에는 경고가 하나도 붙지 않았고 맨 위 <code>import</code> 두 줄은 Low 경고를 받았지만 지금은 위험하지 않은 줄입니다.</p>
+      </figure>
+    </div>
+    <div class="op-wrap op-two wide" style="margin-top:clamp(56px,7vw,88px)">
+      <ol class="pg-code-notes">
+        <li>API 키를 코드에 적어 두면 저장소를 볼 수 있는 사람 모두가 키를 갖게 됩니다. 그런데 Bandit은 이 줄을 잡지 못했습니다. 비밀번호를 코드에 직접 적은 것(하드코딩)을 찾는 규칙(B105)은 password·token·secret 같은 이름의 변수만 보는데 <code>API_KEY</code>는 거기에 들지 않습니다.</li>
+        <li><code>torch.load</code>와 <code>pickle.load</code>는 믿을 수 없는 파일을 풀다가 코드가 실행될 수 있다는 경고(CWE-502)를 받습니다. CWE는 결함 종류 번호이고 502번은 '믿을 수 없는 데이터 되살리기'입니다. 가중치는 숫자 배열만 담고 코드는 못 담는 safetensors 형식으로 받으면 이 걱정이 줄어듭니다.</li>
+        <li><code>eval</code>은 글자로 된 식을 파이썬 코드로 실행하는 함수이고 <code>shell=True</code>는 명령 문자열을 셸(명령어를 받아 실행하는 프로그램)에 통째로 넘기는 옵션입니다. 모델 답에 명령이 섞여 들어오면 서버에서 그대로 실행됩니다. 계산이 필요하면 정해진 함수만 부르게 바꿉니다.</li>
+      </ol>
+      <div>
+<pre data-title="chatbot.py" data-hl="7,12,17,22-24" data-start="1"><code class="language-python">import pickle
+import subprocess
+
+import torch
+
+# ① 키를 코드에 적어 둠
+API_KEY = "sk-live-1234abcd"
+
+
+def load_model(path):
+    # ② 열기만 해도 코드가 돌 수 있음
+    return torch.load(path)
+
+
+def load_cache(path):
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def run_tool(answer):
+    # ③ 모델이 낸 글을 그대로 실행
+    result = eval(answer)
+    subprocess.run(f"echo {result}",
+                   shell=True)
+    return result</code></pre>
+        <details class="op-termbox"><summary>bandit 실제 출력 보기</summary>
+        <div class="op-term">
+          <div class="op-term-bar"><span>터미널 — bandit 1.9.4</span></div>
+<pre data-op-termout><span class="cmd">$ bandit -q chatbot.py</span>
+<span class="lo">[B403:blacklist]</span> Severity: Low     Location: ./chatbot.py:1:0
+<span class="lo">[B404:blacklist]</span> Severity: Low     Location: ./chatbot.py:2:0
+<span class="md">[B614:pytorch_load]</span> Severity: Medium  Location: ./chatbot.py:12:11
+<span class="md">[B301:blacklist]</span> Severity: Medium  Location: ./chatbot.py:17:15
+<span class="md">[B307:blacklist]</span> Severity: Medium  Location: ./chatbot.py:22:13
+<span class="hi">[B602:subprocess_popen_with_shell_equals_true]</span> Severity: High  Location: ./chatbot.py:23:4
+<span class="mu">Total issues (by severity): Low: 2  Medium: 3  High: 1</span></pre>
+        </div>
+        <p class="op-cap">실제 출력에서 이슈마다 규칙 번호·심각도·위치 줄만 남기고 설명 문장과 신뢰도는 뺐습니다.</p>
+        </details>
+      </div>
+    </div>
+    <div class="op-wrap" style="margin-top:clamp(56px,7vw,88px)">
+      <div class="op-col">
+        <p>SAST가 모든 결함을 잡지는 못합니다. OWASP(Open Worldwide Application Security Project)는 이런 도구가 오탐이 많고 보안 결함 중 비교적 적은 부분만 자동으로 찾는다고 적어 둡니다. 키 줄을 놓친 것도 그 예입니다. 키는 비밀 정보 탐지 도구와 저장소 설정으로 따로 막고 SAST는 커밋마다 빠르게 돌려 아는 위험을 걸러 내는 데 씁니다.</p>
+        <p>지금까지 본 검사를 한 줄에 놓으면 아래와 같습니다.</p>
+        <details><summary>미국 정부 지침 SSDF</summary><p>미국 NIST는 이런 검사를 개발 과정 전체에 넣으라는 지침 SSDF(Secure Software Development Framework, SP 800-218)를 냈고 2024년 7월 생성형 AI 모델용 보충판 SP 800-218A를 더했습니다.</p></details>
+      </div>
+      <figure class="op-fig op-wide" data-figure>
+        <svg class="op-lane" data-op-lane role="img" aria-label="코드 커밋, 이미지 만들기, 배포, 운영 네 단계 아래에 SAST, SBOM 만들기와 취약점 대조, 운영 감시가 붙고 운영에서 코드로 돌아가는 점선 화살표"></svg>
+      </figure>
+    </div>
+  </section>
+
+  <section class="op-sec">
+    <div class="op-wrap op-two op-mapgrid">
+      <div class="op-map-l">
+        <h2>열두 편을 한 장의 지도로</h2>
+        <p>이 시리즈는 모델 파일 안의 숫자 76억 개에서 출발했습니다. 그 숫자가 토큰을 읽고, GPU 메모리에 올라가 서버가 되고, 여러 팀이 나눠 쓰는 플랫폼이 되고, 회사 문서를 찾아 답하고, 이 글에서 1년 동안 운영됐습니다.</p>
+        <p>편마다 붙은 작은 그림은 맨 앞 상자 그림을 줄인 것이고 청록으로 칠한 칸이 그 편이 다룬 상자입니다. 모델 코드라는 작은 상자에서 시작해 바깥 상자로 한 칸씩 넓혀 왔습니다.</p>
+        
+      </div>
+      <figure class="op-fig" data-figure>
+        <ol class="op-map">
+          <li class="grp">모델 안을 들여다보기</li>
+          <li class="ep"><span class="no">1</span><div><a href="/posts/llm-parameters-7b-explained">7B가 센 것</a><span class="one">모델 이름 뒤 7B는 파일 안 숫자(파라미터) 76억 개입니다</span></div><em data-box="mlcode">ML 코드</em></li>
+          <li class="ep"><span class="no">2</span><div><a href="/posts/transformer-attention-how-llm-reads">다음 토큰 하나를 고르는 여섯 단계</a><span class="one">토큰 → 벡터 → 블록 28층 → 확률표 → 되먹임</span></div><em data-box="mlcode">ML 코드</em></li>
+          <li class="grp">GPU 한 장에서 돌리기</li>
+          <li class="ep"><span class="no">3</span><div><a href="/posts/prefill-decode-kv-cache">첫 글자만 늦은 이유</a><span class="one">한꺼번에 읽는 Prefill, 한 개씩 쓰는 Decode, KV Cache</span></div><em data-box="serving">서빙 인프라</em></li>
+          <li class="ep"><span class="no">4</span><div><a href="/posts/gpu-vram-fp16-int4-quantization">GPU 메모리 14GB의 계산</a><span class="one">숫자 하나의 비트 수와 양자화가 메모리를 정합니다</span></div><em data-box="resource">자원 관리</em></li>
+          <li class="ep"><span class="no">5</span><div><a href="/posts/pytorch-to-vllm-serving">vLLM이 요청을 더 받는 방법</a><span class="one">PagedAttention과 Continuous Batching</span></div><em data-box="serving">서빙 인프라</em></li>
+          <li class="grp">회사에서 함께 쓰기</li>
+          <li class="ep"><span class="no">6</span><div><a href="/posts/enterprise-llm-serving-kubernetes-llm-d-mig">GPU를 묶고 쪼개기</a><span class="one">Tensor Parallel, Kubernetes, MIG, llm-d 라우터</span></div><em data-box="resource">자원 관리</em></li>
+          <li class="ep"><span class="no">7</span><div><a href="/posts/fine-tuning-lora-qlora-peft">원본을 얼리고 얇은 표만 학습</a><span class="one">LoRA와 QLoRA로 말투 고치기</span></div><em data-box="mlcode">ML 코드</em></li>
+          <li class="ep"><span class="no">8</span><div><a href="/posts/rag-embedding-vector-db">다 재지 않고 찾는 벡터 DB</a><span class="one">임베딩, 코사인 유사도, HNSW, 하이브리드 검색</span></div><em data-box="feature">특징 만들기</em></li>
+          <li class="ep"><span class="no">9</span><div><a href="/posts/air-gapped-rag-on-premise-llm">폐쇄망에 들일 짐 일곱 개</a><span class="one">반입 절차, 해시와 서명, 갱신</span></div><em data-box="config process">설정·프로세스 관리</em></li>
+          <li class="grp">데이터와 운영</li>
+          <li class="ep"><span class="no">10</span><div><a href="/posts/ai-data-platform-lake-iceberg-spark-starrocks">AI 데이터가 쌓이는 곳</a><span class="one">Parquet, Iceberg 스냅샷, Spark, StarRocks</span></div><em data-box="datacol">데이터 수집</em></li>
+          <li class="ep"><span class="no">11</span><div><a href="/posts/beyond-llm-xgboost-timesfm-two-tower">LLM이 정답이 아닌 문제</a><span class="one">표에는 XGBoost, 시계열에는 TimesFM, 추천에는 Two-Tower</span></div><em data-box="analysis">모델 분석</em></li>
+          <li class="ep me"><span class="no">12</span><div><b>배포한 뒤에 하는 일</b><span class="one">drift 감시, precision·recall, 평가 세트, TCO, SBOM·SAST</span></div><em data-box="monitor">모니터링</em></li>
+        </ol>
+      </figure>
+      <div class="op-map-s">
+        <p class="op-sum">새 모델이나 새 도구가 나오면 "이건 어느 상자의 이야기인가"부터 물어보면 됩니다. 그 질문에 답할 수 있으면 처음 보는 용어도 제자리를 찾습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="op-sec op-refs" style="padding-bottom:40px">
+    <div class="op-wrap op-refgrid">
+      <h2>참고 자료</h2>
+      <div><ul>
+        <li><a href="https://proceedings.neurips.cc/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html">D. Sculley 외, Hidden Technical Debt in Machine Learning Systems</a>(NeurIPS 2015) — Figure 1, Fixed Thresholds in Dynamic Systems, Monitoring and Testing</li>
+        <li><a href="https://docs.cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning">Google Cloud, MLOps: Continuous delivery and automation pipelines in machine learning</a>(2024-08-28 갱신) — Figure 1 개작 그림, MLOps 정의, 재학습 계기</li>
+        <li><a href="https://docs.evidentlyai.com/metrics/preset_data_drift">Evidently, Data Drift preset</a> · <a href="https://docs.evidentlyai.com/metrics/customize_data_drift">Customize Data Drift</a> — 기본 검정 방법과 문턱, drift_share 0.5 · <a href="https://www.evidentlyai.com/ml-in-production/concept-drift">What is concept drift</a></li>
+        <li><a href="https://www.risk.net/journal-of-risk-model-validation/7725371/statistical-properties-of-the-population-stability-index">Yurdakul, Naranjo, Statistical properties of the population stability index</a>(Journal of Risk Model Validation 14(4), 2020)</li>
+        <li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html">SciPy, scipy.stats.ks_2samp</a></li>
+        <li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_curve.html">scikit-learn 1.9, precision_recall_curve</a> · <a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html">confusion_matrix</a></li>
+        <li><a href="https://developers.google.com/machine-learning/crash-course/classification/thresholding">Google Machine Learning Crash Course, Thresholds and the confusion matrix</a></li>
+        <li><a href="https://arxiv.org/abs/2307.09009">L. Chen, M. Zaharia, J. Zou, How is ChatGPT's behavior changing over time?</a>(arXiv 2307.09009)</li>
+        <li><a href="https://platform.claude.com/docs/en/about-claude/model-deprecations">Anthropic, Model deprecations</a> · <a href="https://platform.claude.com/docs/en/about-claude/pricing">Pricing</a>(2026-10-15 확인)</li>
+        <li><a href="https://aws.amazon.com/ec2/instance-types/inf1/">AWS, Amazon EC2 Inf1 Instances</a> — 인프라 지출 최대 90%가 추론이라는 문구</li>
+        <li><a href="https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom">NTIA, The Minimum Elements For a Software Bill of Materials</a>(2021-07-12)</li>
+        <li><a href="https://cyclonedx.org/specification/overview/">CycloneDX Specification Overview</a> · <a href="https://cyclonedx.org/capabilities/mlbom/">CycloneDX ML-BOM</a> · <a href="https://owasp.org/blog/2023/06/23/CycloneDX-v1.5.html">OWASP, CycloneDX v1.5</a> · <a href="https://spdx.dev/use/specifications/">SPDX Specifications</a></li>
+        <li><a href="https://community.owasp.org/Source_Code_Analysis_Tools">OWASP, Source Code Analysis Tools</a> · <a href="https://csrc.nist.gov/pubs/sp/800/218/a/final">NIST SP 800-218A</a>(2024-07)</li>
+        <li>직접 실행(2026-10-15): pip-audit 2.10.1·cyclonedx-py 7.5.0 으로 예시 requirements.txt 대조, bandit 1.9.4 로 chatbot.py 검사, Hugging Face API 로 Qwen2.5-7B-Instruct 가중치 SHA-256 확인, 스팸 필터 예시 데이터 생성·계산</li>
+      </ul></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-op]');
+  if (!box) return;
+  const on = (el, ev, fn, o) => el && el.addEventListener(ev, fn, Object.assign({}, o || {}, signal ? { signal } : {}));
+  const $ = (s, el = box) => el.querySelector(s);
+  const $$ = (s, el = box) => [...el.querySelectorAll(s)];
+  const NS = 'http://www.w3.org/2000/svg';
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const timers = [];
+  signal && signal.addEventListener('abort', () => { while (timers.length) clearTimeout(timers.pop()); });
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
+  const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const tx = (t, attrs, parent) => { const e = mk('text', attrs, parent); e.textContent = t; return e; };
+  const size = (svg, h) => { const w = Math.max(260, Math.round(svg.getBoundingClientRect().width || svg.parentElement.getBoundingClientRect().width || 600)); svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.setAttribute('height', h); svg.replaceChildren(); return w; };
+  const fmt = (n) => n.toLocaleString('en-US');
+  const seg = (wrap, attr, fn) => { const btns = $$('button', wrap); btns.forEach((b) => on(b, 'click', () => { btns.forEach((x) => x.setAttribute('aria-pressed', String(x === b))); fn(b.getAttribute(attr)); })); };
+  const band = (v) => (v >= 0.25 ? 'r' : v >= 0.1 ? 'y' : 'g');
+  const bandName = { g: '초록', y: '노랑', r: '빨강' };
+  const D = {"ref":[0.0237,0.125,0.283,0.2553,0.1133,0.056,0.0623,0.0527,0.0223,0.0063],"m":[{"bins":[0.0237,0.125,0.283,0.2553,0.1133,0.056,0.0623,0.0527,0.0223,0.0063],"psi":0,"acc":96.1,"prec":94,"rec":86.9},{"bins":[0.0243,0.1333,0.2817,0.252,0.1103,0.0537,0.0603,0.052,0.025,0.0073],"psi":0.001,"acc":95.9,"prec":93.8,"rec":86.3},{"bins":[0.025,0.135,0.2867,0.2653,0.107,0.0493,0.0547,0.0453,0.0257,0.006],"psi":0.005,"acc":95.1,"prec":93,"rec":81.6},{"bins":[0.0287,0.153,0.2737,0.255,0.1087,0.0483,0.0583,0.049,0.0207,0.0047],"psi":0.009,"acc":93.4,"prec":92.5,"rec":75.6},{"bins":[0.0287,0.1477,0.2767,0.245,0.1183,0.05,0.0543,0.049,0.0237,0.0067],"psi":0.008,"acc":92.7,"prec":93.7,"rec":73},{"bins":[0.038,0.1707,0.279,0.2477,0.1133,0.0423,0.0433,0.041,0.0207,0.004],"psi":0.036,"acc":90.4,"prec":91.6,"rec":62.3},{"bins":[0.0393,0.2123,0.2707,0.2573,0.0893,0.0337,0.041,0.0323,0.0187,0.0053],"psi":0.092,"acc":86.5,"prec":92,"rec":50.5},{"bins":[0.046,0.2307,0.2487,0.25,0.1063,0.0367,0.035,0.0337,0.01,0.003],"psi":0.129,"acc":83.8,"prec":87.5,"rec":39.9},{"bins":[0.0477,0.2547,0.2653,0.245,0.102,0.0303,0.027,0.016,0.01,0.002],"psi":0.216,"acc":80.3,"prec":82.8,"rec":28.5},{"bins":[0.0483,0.281,0.264,0.2293,0.0943,0.026,0.0253,0.018,0.0117,0.002],"psi":0.257,"acc":77.3,"prec":89.8,"rec":23.6},{"bins":[0.0587,0.2917,0.2557,0.2377,0.091,0.021,0.017,0.0137,0.0083,0.0053],"psi":0.342,"acc":75.4,"prec":84.7,"rec":19},{"bins":[0.055,0.3033,0.258,0.2213,0.0967,0.0227,0.0163,0.0153,0.0087,0.0027],"psi":0.348,"acc":75,"prec":82.5,"rec":17.9},{"bins":[0.055,0.323,0.2447,0.233,0.083,0.024,0.0147,0.0127,0.008,0.002],"psi":0.404,"acc":72.9,"prec":83.4,"rec":15.2}],"ks":[[0,0,0,0],[0.015,46,0.23,0.2447],[0.031,85,0.7303,0.7613],[0.036,36,0.1153,0.151],[0.037,46,0.23,0.2667],[0.064,36,0.1153,0.1797],[0.105,47,0.2427,0.348],[0.128,39,0.1487,0.2767],[0.154,38,0.1383,0.2923],[0.182,43,0.1963,0.378],[0.205,40,0.1613,0.366],[0.211,43,0.1963,0.4077],[0.231,46,0.23,0.4607]],"cdfRef":[0,0,0,0,0.002,0.003,0.004,0.005,0.005,0.006,0.007,0.009,0.01,0.012,0.013,0.014,0.016,0.019,0.022,0.024,0.025,0.029,0.033,0.036,0.04,0.044,0.05,0.056,0.063,0.068,0.073,0.079,0.087,0.093,0.101,0.107,0.115,0.126,0.138,0.149,0.161,0.173,0.184,0.196,0.21,0.22,0.23,0.243,0.258,0.274,0.29,0.306,0.323,0.338,0.355,0.372,0.388,0.403,0.417,0.432,0.451,0.468,0.483,0.497,0.509,0.526,0.542,0.555,0.571,0.583,0.599,0.606,0.62,0.629,0.638,0.649,0.66,0.67,0.678,0.687,0.695,0.706,0.713,0.718,0.724,0.73,0.737,0.745,0.751,0.757,0.761,0.765,0.771,0.776,0.781,0.786,0.788,0.792,0.795,0.8,0.804,0.807,0.811,0.816,0.818,0.821,0.823,0.826,0.828,0.83,0.833,0.835,0.838,0.842,0.844,0.846,0.847,0.85,0.852,0.856,0.859,0.861,0.863,0.867,0.87,0.874,0.878,0.881,0.885,0.888,0.891,0.894,0.897,0.901,0.905,0.907,0.91,0.913,0.916,0.919,0.923,0.926,0.929,0.931,0.934,0.936,0.94,0.945,0.948,0.95,0.952,0.955,0.958,0.959,0.963,0.964,0.966,0.968,0.969,0.971,0.974,0.975,0.977,0.978,0.98,0.981,0.982,0.983,0.985,0.986,0.987,0.987,0.988,0.988,0.989,0.991,0.991,0.992,0.992,0.994,0.994,0.994,0.994,0.995,0.995,0.996,0.996,0.997,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,1,1],"cdf":[[0,0,0,0,0.002,0.003,0.004,0.005,0.005,0.006,0.007,0.009,0.01,0.012,0.013,0.014,0.016,0.019,0.022,0.024,0.025,0.029,0.033,0.036,0.04,0.044,0.05,0.056,0.063,0.068,0.073,0.079,0.087,0.093,0.101,0.107,0.115,0.126,0.138,0.149,0.161,0.173,0.184,0.196,0.21,0.22,0.23,0.243,0.258,0.274,0.29,0.306,0.323,0.338,0.355,0.372,0.388,0.403,0.417,0.432,0.451,0.468,0.483,0.497,0.509,0.526,0.542,0.555,0.571,0.583,0.599,0.606,0.62,0.629,0.638,0.649,0.66,0.67,0.678,0.687,0.695,0.706,0.713,0.718,0.724,0.73,0.737,0.745,0.751,0.757,0.761,0.765,0.771,0.776,0.781,0.786,0.788,0.792,0.795,0.8,0.804,0.807,0.811,0.816,0.818,0.821,0.823,0.826,0.828,0.83,0.833,0.835,0.838,0.842,0.844,0.846,0.847,0.85,0.852,0.856,0.859,0.861,0.863,0.867,0.87,0.874,0.878,0.881,0.885,0.888,0.891,0.894,0.897,0.901,0.905,0.907,0.91,0.913,0.916,0.919,0.923,0.926,0.929,0.931,0.934,0.936,0.94,0.945,0.948,0.95,0.952,0.955,0.958,0.959,0.963,0.964,0.966,0.968,0.969,0.971,0.974,0.975,0.977,0.978,0.98,0.981,0.982,0.983,0.985,0.986,0.987,0.987,0.988,0.988,0.989,0.991,0.991,0.992,0.992,0.994,0.994,0.994,0.994,0.995,0.995,0.996,0.996,0.997,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,1,1],[0,0,0,0,0.001,0.002,0.003,0.004,0.004,0.006,0.007,0.009,0.011,0.013,0.014,0.014,0.015,0.018,0.02,0.024,0.027,0.031,0.034,0.038,0.043,0.047,0.052,0.058,0.064,0.069,0.079,0.084,0.09,0.101,0.109,0.119,0.129,0.137,0.148,0.158,0.169,0.178,0.192,0.199,0.216,0.232,0.245,0.255,0.267,0.281,0.294,0.312,0.324,0.34,0.36,0.373,0.387,0.407,0.42,0.439,0.456,0.469,0.483,0.497,0.514,0.531,0.546,0.56,0.572,0.585,0.598,0.607,0.619,0.632,0.647,0.656,0.668,0.676,0.685,0.691,0.701,0.709,0.717,0.725,0.733,0.739,0.745,0.748,0.755,0.76,0.764,0.767,0.773,0.779,0.782,0.787,0.792,0.797,0.8,0.802,0.805,0.808,0.812,0.816,0.821,0.823,0.826,0.828,0.83,0.833,0.834,0.835,0.838,0.841,0.843,0.845,0.849,0.852,0.854,0.855,0.859,0.861,0.864,0.867,0.87,0.873,0.875,0.877,0.88,0.882,0.886,0.89,0.893,0.896,0.899,0.903,0.906,0.91,0.914,0.916,0.918,0.919,0.925,0.928,0.931,0.934,0.937,0.939,0.942,0.945,0.949,0.951,0.953,0.955,0.957,0.96,0.962,0.963,0.966,0.968,0.969,0.97,0.972,0.974,0.976,0.977,0.979,0.98,0.982,0.982,0.985,0.987,0.987,0.988,0.989,0.99,0.991,0.992,0.992,0.993,0.994,0.994,0.994,0.994,0.994,0.995,0.995,0.996,0.996,0.996,0.996,0.996,0.996,0.997,0.997,0.998,0.998,0.999,0.999,1,1],[0,0,0,0,0.003,0.004,0.005,0.005,0.005,0.007,0.007,0.007,0.009,0.011,0.013,0.016,0.018,0.019,0.022,0.025,0.029,0.032,0.037,0.043,0.048,0.053,0.06,0.065,0.072,0.079,0.087,0.092,0.102,0.111,0.118,0.125,0.132,0.139,0.148,0.16,0.168,0.175,0.186,0.202,0.21,0.223,0.237,0.251,0.266,0.282,0.297,0.311,0.326,0.35,0.365,0.381,0.395,0.409,0.428,0.447,0.467,0.484,0.5,0.518,0.536,0.552,0.564,0.575,0.589,0.603,0.616,0.628,0.642,0.652,0.661,0.675,0.689,0.698,0.706,0.712,0.72,0.729,0.739,0.746,0.754,0.761,0.766,0.774,0.779,0.784,0.79,0.792,0.795,0.798,0.802,0.806,0.809,0.813,0.816,0.819,0.822,0.826,0.827,0.829,0.832,0.834,0.837,0.839,0.842,0.844,0.846,0.849,0.85,0.853,0.856,0.857,0.859,0.861,0.865,0.868,0.87,0.873,0.876,0.877,0.879,0.881,0.884,0.887,0.888,0.893,0.896,0.898,0.9,0.904,0.908,0.91,0.913,0.917,0.921,0.923,0.927,0.927,0.93,0.933,0.936,0.938,0.943,0.945,0.946,0.949,0.952,0.955,0.957,0.959,0.961,0.963,0.964,0.965,0.967,0.968,0.97,0.971,0.974,0.976,0.978,0.979,0.98,0.981,0.984,0.984,0.985,0.986,0.988,0.989,0.989,0.99,0.991,0.992,0.993,0.994,0.994,0.995,0.995,0.996,0.996,0.997,0.997,0.997,0.997,0.997,0.997,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,1,1],[0,0,0,0,0.004,0.004,0.005,0.006,0.007,0.008,0.009,0.011,0.013,0.014,0.014,0.017,0.019,0.021,0.025,0.029,0.034,0.039,0.043,0.049,0.056,0.06,0.065,0.072,0.079,0.085,0.093,0.099,0.107,0.116,0.126,0.136,0.151,0.159,0.17,0.182,0.188,0.196,0.209,0.22,0.231,0.243,0.253,0.266,0.284,0.297,0.31,0.324,0.338,0.354,0.368,0.385,0.401,0.418,0.437,0.455,0.468,0.483,0.5,0.515,0.531,0.547,0.56,0.569,0.585,0.6,0.612,0.623,0.633,0.646,0.66,0.672,0.68,0.69,0.7,0.71,0.719,0.729,0.735,0.745,0.753,0.759,0.764,0.769,0.774,0.781,0.785,0.788,0.79,0.797,0.803,0.809,0.813,0.816,0.817,0.819,0.822,0.824,0.826,0.828,0.832,0.835,0.837,0.839,0.843,0.845,0.846,0.849,0.85,0.854,0.856,0.86,0.861,0.864,0.866,0.867,0.869,0.871,0.873,0.874,0.877,0.88,0.884,0.888,0.891,0.894,0.897,0.902,0.906,0.908,0.909,0.912,0.915,0.919,0.922,0.926,0.928,0.93,0.93,0.934,0.937,0.941,0.944,0.946,0.948,0.95,0.953,0.956,0.958,0.963,0.964,0.966,0.968,0.97,0.973,0.975,0.977,0.979,0.98,0.982,0.986,0.987,0.988,0.988,0.989,0.99,0.99,0.99,0.99,0.993,0.993,0.993,0.995,0.995,0.995,0.995,0.995,0.995,0.996,0.996,0.997,0.997,0.997,0.997,0.997,0.997,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.999,0.999,1,1],[0,0,0,0,0.003,0.004,0.004,0.005,0.005,0.006,0.006,0.009,0.01,0.01,0.013,0.016,0.018,0.021,0.024,0.029,0.034,0.039,0.044,0.051,0.057,0.062,0.068,0.075,0.082,0.088,0.094,0.101,0.11,0.117,0.124,0.132,0.142,0.151,0.163,0.176,0.191,0.202,0.211,0.226,0.239,0.253,0.267,0.278,0.294,0.308,0.325,0.337,0.353,0.369,0.383,0.395,0.413,0.428,0.439,0.453,0.468,0.486,0.499,0.51,0.527,0.546,0.56,0.573,0.587,0.597,0.608,0.624,0.635,0.642,0.652,0.663,0.674,0.679,0.687,0.698,0.709,0.72,0.731,0.738,0.744,0.751,0.759,0.764,0.77,0.776,0.782,0.787,0.792,0.797,0.801,0.805,0.81,0.811,0.814,0.816,0.819,0.822,0.824,0.828,0.83,0.832,0.835,0.837,0.84,0.842,0.843,0.844,0.847,0.849,0.854,0.856,0.858,0.86,0.864,0.866,0.869,0.873,0.875,0.878,0.879,0.88,0.883,0.885,0.888,0.89,0.893,0.896,0.9,0.903,0.907,0.91,0.913,0.917,0.919,0.921,0.924,0.927,0.93,0.931,0.936,0.938,0.939,0.941,0.944,0.948,0.95,0.952,0.954,0.957,0.961,0.963,0.964,0.968,0.969,0.97,0.972,0.975,0.976,0.977,0.979,0.981,0.984,0.985,0.986,0.986,0.986,0.986,0.987,0.988,0.989,0.991,0.992,0.992,0.992,0.993,0.994,0.995,0.995,0.995,0.996,0.996,0.996,0.996,0.996,0.996,0.996,0.997,0.997,0.997,0.997,0.998,0.998,0.999,0.999,1,1],[0,0,0,0,0.003,0.004,0.004,0.005,0.007,0.008,0.009,0.011,0.013,0.015,0.017,0.019,0.023,0.027,0.033,0.038,0.04,0.045,0.049,0.058,0.069,0.078,0.088,0.097,0.105,0.113,0.122,0.132,0.14,0.149,0.157,0.169,0.18,0.19,0.199,0.209,0.22,0.23,0.24,0.25,0.264,0.277,0.29,0.305,0.318,0.333,0.346,0.364,0.376,0.39,0.407,0.424,0.441,0.453,0.472,0.488,0.503,0.517,0.534,0.55,0.563,0.578,0.587,0.603,0.614,0.627,0.637,0.652,0.664,0.675,0.685,0.697,0.705,0.717,0.726,0.735,0.743,0.749,0.758,0.766,0.772,0.777,0.786,0.79,0.794,0.802,0.808,0.815,0.819,0.824,0.83,0.833,0.835,0.837,0.843,0.849,0.852,0.856,0.858,0.859,0.862,0.865,0.866,0.87,0.871,0.872,0.874,0.878,0.88,0.881,0.883,0.884,0.887,0.888,0.889,0.891,0.893,0.896,0.898,0.899,0.901,0.904,0.907,0.907,0.908,0.911,0.914,0.916,0.919,0.921,0.923,0.923,0.926,0.928,0.932,0.934,0.937,0.939,0.941,0.943,0.947,0.95,0.953,0.955,0.958,0.959,0.961,0.962,0.963,0.964,0.966,0.969,0.97,0.971,0.973,0.975,0.978,0.979,0.981,0.982,0.984,0.985,0.985,0.986,0.987,0.988,0.989,0.99,0.991,0.992,0.993,0.994,0.994,0.995,0.996,0.996,0.997,0.997,0.997,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1],[0,0,0,0,0.003,0.003,0.003,0.003,0.005,0.005,0.006,0.008,0.009,0.011,0.015,0.017,0.021,0.026,0.032,0.039,0.046,0.053,0.061,0.071,0.079,0.088,0.097,0.11,0.124,0.137,0.147,0.157,0.173,0.186,0.198,0.205,0.216,0.228,0.24,0.252,0.26,0.271,0.281,0.294,0.306,0.319,0.334,0.348,0.362,0.379,0.388,0.399,0.416,0.43,0.443,0.46,0.477,0.495,0.508,0.522,0.535,0.548,0.569,0.583,0.595,0.607,0.62,0.638,0.655,0.669,0.682,0.691,0.707,0.72,0.733,0.742,0.753,0.765,0.771,0.78,0.787,0.793,0.8,0.806,0.811,0.819,0.826,0.83,0.835,0.839,0.843,0.845,0.85,0.854,0.857,0.86,0.863,0.866,0.869,0.869,0.87,0.872,0.875,0.876,0.878,0.881,0.882,0.883,0.884,0.886,0.887,0.889,0.892,0.894,0.896,0.897,0.898,0.9,0.902,0.903,0.905,0.907,0.909,0.91,0.913,0.914,0.917,0.919,0.921,0.923,0.925,0.926,0.929,0.931,0.934,0.936,0.939,0.941,0.942,0.944,0.946,0.946,0.948,0.95,0.951,0.953,0.956,0.958,0.96,0.96,0.962,0.963,0.964,0.965,0.968,0.969,0.969,0.972,0.973,0.976,0.978,0.979,0.981,0.983,0.985,0.985,0.985,0.986,0.987,0.987,0.988,0.988,0.989,0.99,0.991,0.991,0.992,0.993,0.995,0.995,0.995,0.995,0.996,0.996,0.997,0.997,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1],[0,0,0,0,0.003,0.003,0.004,0.005,0.005,0.006,0.008,0.009,0.013,0.015,0.017,0.021,0.025,0.031,0.038,0.046,0.053,0.066,0.08,0.091,0.1,0.116,0.127,0.141,0.153,0.162,0.174,0.185,0.196,0.209,0.218,0.229,0.241,0.253,0.263,0.277,0.286,0.296,0.304,0.316,0.329,0.341,0.356,0.369,0.376,0.394,0.408,0.42,0.43,0.446,0.455,0.469,0.482,0.497,0.513,0.525,0.541,0.559,0.573,0.591,0.603,0.614,0.625,0.639,0.655,0.665,0.679,0.692,0.704,0.713,0.725,0.733,0.749,0.756,0.767,0.775,0.786,0.792,0.799,0.806,0.817,0.822,0.828,0.837,0.842,0.845,0.851,0.856,0.861,0.864,0.869,0.874,0.876,0.878,0.88,0.882,0.884,0.887,0.889,0.891,0.894,0.897,0.898,0.901,0.901,0.903,0.905,0.907,0.909,0.91,0.911,0.913,0.914,0.914,0.916,0.918,0.92,0.921,0.923,0.925,0.926,0.927,0.931,0.932,0.934,0.936,0.937,0.937,0.94,0.941,0.942,0.944,0.946,0.948,0.951,0.953,0.955,0.957,0.958,0.96,0.962,0.964,0.966,0.967,0.97,0.972,0.973,0.976,0.979,0.98,0.981,0.982,0.984,0.985,0.986,0.987,0.988,0.988,0.989,0.99,0.99,0.991,0.992,0.992,0.992,0.992,0.993,0.993,0.994,0.994,0.995,0.995,0.996,0.996,0.997,0.997,0.997,0.997,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1],[0,0,0,0,0.002,0.002,0.003,0.004,0.005,0.007,0.008,0.009,0.012,0.017,0.018,0.022,0.028,0.033,0.041,0.048,0.055,0.067,0.078,0.092,0.104,0.115,0.125,0.144,0.156,0.17,0.186,0.199,0.215,0.226,0.242,0.254,0.264,0.279,0.292,0.302,0.313,0.324,0.334,0.345,0.356,0.367,0.38,0.388,0.404,0.414,0.425,0.44,0.454,0.47,0.488,0.506,0.519,0.537,0.552,0.568,0.581,0.595,0.612,0.627,0.644,0.658,0.672,0.687,0.696,0.707,0.719,0.73,0.742,0.755,0.767,0.775,0.785,0.792,0.802,0.813,0.82,0.828,0.838,0.846,0.853,0.859,0.864,0.869,0.877,0.882,0.888,0.893,0.896,0.901,0.903,0.906,0.907,0.91,0.912,0.915,0.917,0.918,0.92,0.922,0.923,0.924,0.926,0.927,0.928,0.93,0.931,0.932,0.933,0.935,0.936,0.937,0.939,0.941,0.943,0.945,0.947,0.949,0.95,0.951,0.953,0.955,0.956,0.957,0.958,0.958,0.959,0.96,0.961,0.964,0.965,0.967,0.968,0.969,0.97,0.972,0.973,0.974,0.974,0.975,0.976,0.977,0.978,0.978,0.979,0.981,0.982,0.982,0.983,0.983,0.983,0.984,0.984,0.985,0.987,0.988,0.989,0.989,0.99,0.991,0.992,0.992,0.993,0.993,0.993,0.994,0.994,0.995,0.995,0.995,0.996,0.996,0.997,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1,1,1,1,1,1,1,1,1],[0,0,0,0,0.002,0.002,0.002,0.002,0.003,0.004,0.006,0.009,0.012,0.015,0.02,0.024,0.028,0.033,0.041,0.048,0.056,0.068,0.081,0.095,0.11,0.123,0.141,0.159,0.175,0.19,0.211,0.223,0.237,0.253,0.265,0.279,0.29,0.306,0.318,0.329,0.337,0.349,0.363,0.378,0.387,0.399,0.41,0.424,0.44,0.452,0.463,0.478,0.493,0.506,0.518,0.528,0.545,0.558,0.572,0.593,0.605,0.617,0.632,0.644,0.66,0.671,0.687,0.698,0.708,0.723,0.734,0.743,0.756,0.765,0.777,0.785,0.794,0.807,0.814,0.823,0.828,0.838,0.846,0.851,0.856,0.864,0.869,0.875,0.882,0.888,0.895,0.897,0.899,0.903,0.905,0.907,0.91,0.913,0.915,0.917,0.919,0.922,0.923,0.924,0.926,0.928,0.93,0.931,0.932,0.933,0.933,0.935,0.936,0.937,0.938,0.939,0.94,0.941,0.943,0.943,0.944,0.945,0.946,0.947,0.948,0.949,0.951,0.951,0.953,0.954,0.955,0.957,0.958,0.959,0.961,0.962,0.964,0.965,0.966,0.968,0.97,0.97,0.971,0.973,0.975,0.976,0.977,0.978,0.979,0.98,0.98,0.981,0.982,0.982,0.983,0.984,0.984,0.985,0.985,0.986,0.987,0.988,0.989,0.989,0.99,0.991,0.993,0.993,0.994,0.995,0.995,0.996,0.996,0.996,0.997,0.997,0.998,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[0,0,0,0,0.002,0.003,0.004,0.005,0.006,0.007,0.009,0.012,0.014,0.017,0.023,0.03,0.034,0.042,0.049,0.059,0.067,0.075,0.088,0.101,0.116,0.139,0.159,0.177,0.197,0.215,0.23,0.243,0.261,0.276,0.29,0.3,0.313,0.327,0.341,0.35,0.366,0.376,0.386,0.396,0.412,0.423,0.434,0.446,0.461,0.473,0.484,0.496,0.506,0.517,0.533,0.546,0.559,0.575,0.589,0.606,0.617,0.633,0.647,0.667,0.677,0.691,0.703,0.718,0.727,0.739,0.751,0.763,0.775,0.783,0.792,0.806,0.814,0.824,0.835,0.844,0.851,0.858,0.864,0.87,0.876,0.883,0.891,0.894,0.899,0.904,0.908,0.912,0.915,0.919,0.922,0.924,0.927,0.93,0.933,0.935,0.936,0.939,0.94,0.941,0.943,0.944,0.945,0.947,0.947,0.948,0.948,0.949,0.95,0.951,0.952,0.953,0.953,0.955,0.955,0.956,0.956,0.956,0.957,0.958,0.959,0.96,0.962,0.963,0.964,0.966,0.967,0.968,0.968,0.969,0.97,0.97,0.971,0.971,0.972,0.973,0.973,0.975,0.976,0.976,0.976,0.977,0.978,0.978,0.979,0.979,0.98,0.98,0.982,0.983,0.984,0.984,0.984,0.985,0.986,0.986,0.987,0.988,0.988,0.989,0.989,0.99,0.991,0.991,0.991,0.992,0.993,0.993,0.993,0.993,0.994,0.994,0.994,0.994,0.995,0.995,0.995,0.996,0.997,0.997,0.997,0.997,0.997,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,1,1,1,1,1,1],[0,0,0,0,0.002,0.003,0.004,0.006,0.006,0.007,0.008,0.011,0.015,0.018,0.021,0.024,0.028,0.035,0.043,0.055,0.066,0.08,0.093,0.108,0.123,0.139,0.16,0.179,0.196,0.211,0.232,0.25,0.265,0.278,0.293,0.308,0.319,0.331,0.346,0.358,0.367,0.379,0.393,0.408,0.418,0.43,0.439,0.451,0.464,0.478,0.488,0.501,0.512,0.528,0.543,0.558,0.573,0.587,0.6,0.616,0.63,0.644,0.657,0.67,0.684,0.699,0.71,0.72,0.731,0.739,0.749,0.76,0.769,0.78,0.792,0.802,0.811,0.821,0.829,0.838,0.847,0.856,0.862,0.869,0.874,0.88,0.887,0.894,0.902,0.905,0.909,0.911,0.914,0.917,0.919,0.923,0.926,0.93,0.932,0.934,0.936,0.937,0.941,0.943,0.945,0.945,0.946,0.948,0.949,0.95,0.951,0.951,0.952,0.952,0.953,0.955,0.956,0.956,0.957,0.957,0.958,0.959,0.961,0.961,0.963,0.964,0.965,0.966,0.966,0.968,0.969,0.969,0.97,0.971,0.971,0.972,0.972,0.972,0.973,0.973,0.975,0.975,0.977,0.977,0.977,0.978,0.978,0.979,0.98,0.981,0.981,0.982,0.983,0.984,0.986,0.987,0.988,0.988,0.988,0.989,0.989,0.99,0.991,0.992,0.992,0.992,0.993,0.994,0.994,0.995,0.995,0.995,0.995,0.995,0.995,0.996,0.996,0.997,0.997,0.997,0.997,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1,1,1,1],[0,0,0,0,0.003,0.003,0.004,0.005,0.007,0.008,0.008,0.01,0.012,0.016,0.018,0.025,0.032,0.039,0.047,0.055,0.067,0.083,0.101,0.119,0.141,0.159,0.177,0.194,0.215,0.234,0.254,0.271,0.284,0.299,0.314,0.325,0.337,0.351,0.361,0.378,0.388,0.399,0.41,0.421,0.433,0.449,0.461,0.471,0.481,0.496,0.509,0.523,0.537,0.547,0.563,0.575,0.585,0.6,0.611,0.623,0.637,0.649,0.665,0.675,0.688,0.699,0.711,0.728,0.74,0.754,0.765,0.776,0.788,0.8,0.81,0.82,0.828,0.838,0.847,0.856,0.863,0.87,0.878,0.883,0.889,0.895,0.902,0.905,0.909,0.912,0.915,0.919,0.922,0.926,0.928,0.931,0.935,0.936,0.938,0.939,0.942,0.943,0.945,0.947,0.947,0.948,0.949,0.951,0.953,0.953,0.954,0.955,0.955,0.956,0.958,0.959,0.961,0.961,0.962,0.963,0.963,0.964,0.965,0.966,0.967,0.967,0.969,0.969,0.969,0.97,0.971,0.972,0.973,0.973,0.974,0.974,0.976,0.976,0.976,0.977,0.978,0.978,0.978,0.979,0.979,0.98,0.98,0.981,0.982,0.982,0.983,0.983,0.984,0.985,0.986,0.987,0.988,0.989,0.99,0.99,0.99,0.991,0.992,0.992,0.993,0.994,0.995,0.995,0.995,0.995,0.996,0.996,0.997,0.997,0.997,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.998,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,0.999,1,1,1,1,1,1,1]],"score":{"spam":[1,1,0,7,12,7,5,8,20,21,36,36,39,59,54,78,55,71,48,68],"ham":[234,284,342,403,364,285,185,126,79,37,16,13,5,1,0,0,0,0,0,0]}};
+  const redraws = [];
+
+  /* ---------- 1. 히어로: 운영 모니터 ---------- */
+  const mon = $('[data-op-mon]');
+  const histSvg = $('[data-op-hist]'), lineSvg = $('[data-op-lines]'), range = $('[data-op-range]'), read = $('[data-op-read]'), playBtn = $('[data-op-play]');
+  let month = 12, H = {}, L = {};
+  const YMAX = 0.36;
+  const drawHist = () => {
+    const h = 250, w = size(histSvg, h);
+    const l = 38, r = 6, t = 10, b = 30, pw = w - l - r, ph = h - t - b, bw = pw / 10;
+    H = { l, t, ph, bw, bars: [] };
+    [0, 0.1, 0.2, 0.3].forEach((v) => {
+      const y = t + ph - v / YMAX * ph;
+      mk('line', { x1: l, x2: w - r, y1: y, y2: y, class: 'grid' }, histSvg);
+      tx(`${v * 100}%`, { x: l - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 12, class: 'dim num' }, histSvg);
+    });
+    for (let i = 0; i < 10; i++) {
+      H.bars.push(mk('rect', { class: 'bar', x: l + i * bw + 3, y: t, width: bw - 6, height: ph }, histSvg));
+    }
+    let d = `M${l},${t + ph}`;
+    D.ref.forEach((v, i) => { const y = t + ph - v / YMAX * ph; d += `L${l + i * bw},${y}L${l + (i + 1) * bw},${y}`; });
+    d += `L${l + 10 * bw},${t + ph}`;
+    mk('path', { d, class: 'ref' }, histSvg);
+    mk('line', { x1: l, x2: w - r, y1: t + ph, y2: t + ph, class: 'axis' }, histSvg);
+    [0, 50, 100, 150, 200].forEach((v) => tx(v === 200 ? '200자' : String(v), { x: l + v / 20 * bw, y: h - 8, 'text-anchor': v === 200 ? 'end' : 'middle', 'font-size': 12.5, class: 'dim num' }, histSvg));
+    updHist();
+  };
+  const updHist = () => {
+    D.m[month].bins.forEach((v, i) => { H.bars[i].style.transform = `scaleY(${Math.max(0.002, v / YMAX)})`; });
+    $('[data-op-histmonth]').textContent = month ? `배포 후 ${month}개월` : '배포 때';
+  };
+  const drawLines = () => {
+    const titleH = 20, rowH = 54, gap = 18, top = 4;
+    const h = top + 3 * (titleH + rowH) + 2 * gap + 30;
+    const w = size(lineSvg, h);
+    const l = 40, r = 78, pw = w - l - r;
+    const X = (m) => l + m / 12 * pw;
+    const defs = mk('defs', {}, lineSvg);
+    const pat = mk('pattern', { id: 'op-hatch', width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+    mk('rect', { width: 2.5, height: 6, fill: 'var(--line-strong)' }, pat);
+    const rows = [];
+    const titles = ['서버 오류', '입력 분포 변화 (PSI)', '정확도 (정답 확인된 달까지)'];
+    for (let k = 0; k < 3; k++) {
+      const y0 = top + k * (titleH + rowH + gap);
+      tx(titles[k], { x: 0, y: y0 + 14, 'font-size': 13.5, 'font-weight': 700 }, lineSvg);
+      rows.push({ y: y0 + titleH, h: rowH });
+    }
+    // 서버 오류
+    const r0 = rows[0];
+    mk('line', { x1: l, x2: l + pw, y1: r0.y + r0.h, y2: r0.y + r0.h, class: 'axis' }, lineSvg);
+    tx('1%', { x: l - 6, y: r0.y + 6, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, lineSvg); tx('0', { x: l - 6, y: r0.y + r0.h + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, lineSvg);
+    mk('line', { x1: l, x2: l + pw, y1: r0.y + 2, y2: r0.y + 2, class: 'grid' }, lineSvg);
+    // PSI 띠
+    const r1 = rows[1], PM = 0.45, PY = (v) => r1.y + r1.h - Math.min(v, PM) / PM * r1.h;
+    mk('rect', { x: l, y: PY(0.1), width: pw, height: PY(0) - PY(0.1), class: 'band-g' }, lineSvg);
+    mk('rect', { x: l, y: PY(0.25), width: pw, height: PY(0.1) - PY(0.25), class: 'band-y' }, lineSvg);
+    mk('rect', { x: l, y: PY(PM), width: pw, height: PY(0.25) - PY(PM), class: 'band-r' }, lineSvg);
+    tx('0.25', { x: l - 6, y: PY(0.25) + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, lineSvg);
+    tx('0.1', { x: l - 6, y: PY(0.1) + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, lineSvg);
+    // 정확도
+    const r2 = rows[2], AY = (v) => r2.y + r2.h - (v - 60) / 40 * r2.h;
+    [70, 80, 90].forEach((v) => { mk('line', { x1: l, x2: l + pw, y1: AY(v), y2: AY(v), class: 'grid' }, lineSvg); tx(`${v}%`, { x: l - 6, y: AY(v) + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, lineSvg); });
+    mk('line', { x1: l, x2: l + pw, y1: r2.y + r2.h, y2: r2.y + r2.h, class: 'axis' }, lineSvg);
+    // 아래 눈금
+    const by = r2.y + r2.h + 20;
+    [0, 3, 6, 9, 12].forEach((m) => tx(m ? `${m}개월` : '배포', { x: X(m), y: by, 'text-anchor': m === 0 ? 'start' : m === 12 ? 'end' : 'middle', 'font-size': 12.5, class: 'dim' }, lineSvg));
+    L = {
+      X, rows, PY, AY,
+      wait: mk('rect', { class: 'wait', y: r2.y, height: r2.h, width: 0, x: 0 }, lineSvg),
+      err: mk('path', { class: 'l-err' }, lineSvg),
+      psi: mk('path', { class: 'l-psi' }, lineSvg),
+      acc: mk('path', { class: 'l-acc' }, lineSvg),
+      psiDot: mk('circle', { r: 5, fill: 'var(--now)' }, lineSvg),
+      accDot: mk('circle', { r: 5, fill: 'var(--fg-strong)' }, lineSvg),
+      play: rows.map((rw) => mk('line', { class: 'play', y1: rw.y - 2, y2: rw.y + rw.h + 2 }, lineSvg)),
+      vErr: tx('', { x: l + pw + 10, y: r0.y + r0.h - 4, 'font-size': 14, 'font-weight': 700, class: 'num' }, lineSvg),
+      vPsi: tx('', { x: l + pw + 10, y: 0, 'font-size': 14, 'font-weight': 700, class: 'num' }, lineSvg),
+      vAcc: tx('', { x: l + pw + 10, y: 0, 'font-size': 14, 'font-weight': 700, class: 'num' }, lineSvg),
+      vAccSub: tx('', { x: l + pw + 10, y: 0, 'font-size': 11.5, class: 'dim' }, lineSvg),
+    };
+    lineSvg.style.touchAction = 'pan-y';
+    updLines();
+  };
+  const updLines = () => {
+    const { X, rows, PY, AY } = L, m = month;
+    const r0 = rows[0];
+    L.err.setAttribute('d', `M${X(0)},${r0.y + r0.h}L${X(m) + 0.01},${r0.y + r0.h}`);
+    let dp = '';
+    for (let i = 0; i <= m; i++) dp += `${i ? 'L' : 'M'}${X(i)},${PY(D.m[i].psi)}`;
+    L.psi.setAttribute('d', dp);
+    L.psiDot.setAttribute('cx', X(m)); L.psiDot.setAttribute('cy', PY(D.m[m].psi));
+    const known = Math.max(0, m - 1);
+    let da = '';
+    for (let i = 0; i <= known; i++) da += `${i ? 'L' : 'M'}${X(i)},${AY(D.m[i].acc)}`;
+    L.acc.setAttribute('d', da);
+    L.accDot.setAttribute('cx', X(known)); L.accDot.setAttribute('cy', AY(D.m[known].acc));
+    L.wait.setAttribute('x', X(known)); L.wait.setAttribute('width', m ? X(m) - X(known) : 0);
+    L.play.forEach((p) => { p.setAttribute('x1', X(m)); p.setAttribute('x2', X(m)); });
+    L.vErr.textContent = '0건';
+    L.vErr.setAttribute('fill', 'var(--ok)');
+    const p = D.m[m].psi, bd = band(p);
+    L.vPsi.textContent = p.toFixed(3); L.vPsi.setAttribute('y', Math.max(rows[1].y + 12, PY(p) + 5));
+    L.vPsi.style.fill = bd === 'r' ? 'var(--bad)' : bd === 'y' ? 'var(--warn)' : 'var(--ok)';
+    L.vAcc.textContent = `${D.m[known].acc.toFixed(1)}%`; L.vAcc.setAttribute('y', AY(D.m[known].acc) + 5);
+    L.vAccSub.textContent = m ? `${known ? known + '개월' : '배포'} 기준` : '배포 전 시험';
+    L.vAccSub.setAttribute('y', AY(D.m[known].acc) + 21);
+  };
+  const setMonth = (m) => {
+    month = Math.max(0, Math.min(12, m));
+    range.value = month;
+    updHist(); updLines();
+    const p = D.m[month].psi, bd = band(p), known = Math.max(0, month - 1);
+    const acc = month ? `확인된 정확도 <b>${D.m[known].acc.toFixed(1)}%</b>(${known ? known + '개월' : '배포'} 기준)` : `배포 전 시험 정확도 <b>${D.m[0].acc.toFixed(1)}%</b>`;
+    read.innerHTML = `${month ? `배포 후 ${month}개월` : '배포 때'} · 서버 오류 <b>0건</b> · 입력 변화 PSI <b class="${bd}">${p.toFixed(3)}</b>(${bandName[bd]}) · ${acc}${month ? ` · 이번 달 값(${D.m[month].acc.toFixed(1)}%)은 신고가 모이는 다음 달에 나옵니다` : ''}`;
+  };
+  on(range, 'input', () => { stopPlay(); setMonth(+range.value); });
+  const pickFromX = (e) => { const r = lineSvg.getBoundingClientRect(); const vb = lineSvg.viewBox.baseVal; const x = (e.clientX - r.left) / r.width * vb.width; const m = Math.round((x - 40) / (vb.width - 118) * 12); setMonth(m); };
+  let dragging = false;
+  on(lineSvg, 'pointerdown', (e) => { stopPlay(); dragging = true; lineSvg.setPointerCapture?.(e.pointerId); pickFromX(e); });
+  on(lineSvg, 'pointermove', (e) => { if (dragging) pickFromX(e); });
+  on(lineSvg, 'pointerup', () => { dragging = false; });
+  let playing = false;
+  const stopPlay = () => { playing = false; playBtn.textContent = '▶ 1년 재생'; while (timers.length) clearTimeout(timers.pop()); };
+  const step = () => { if (!playing) return; if (month >= 12) { stopPlay(); return; } setMonth(month + 1); later(step, 650); };
+  on(playBtn, 'click', () => {
+    if (playing) { stopPlay(); return; }
+    if (reduce) { setMonth(12); return; }
+    playing = true; playBtn.textContent = '■ 멈춤';
+    if (month >= 12) setMonth(0);
+    later(step, 450);
+  });
+  on(mon, 'op-month', (e) => { stopPlay(); setMonth(e.detail); });
+  redraws.push(() => { drawHist(); drawLines(); setMonth(month); });
+
+  /* ---------- 2. Data Drift / Concept Drift 점 띠 ---------- */
+  const strip = $('[data-op-strip]'), kindRead = $('[data-op-kindread]');
+  const HAM = [18, 22, 25, 28, 31, 33, 35, 38, 40, 42, 44, 46, 48, 50, 52, 55, 57, 60, 62, 65, 68, 70, 73, 77, 82, 96];
+  const SPAM = [72, 100, 108, 115, 121, 128, 134, 140, 147, 153, 160, 168, 176, 185];
+  const MOVED = [98, 104, 112, 118, 126, 135];
+  const STATES = {
+    base: [...HAM.map((len) => ({ len, s: 0 })), ...SPAM.map((len) => ({ len, s: 1 }))],
+  };
+  STATES.data = STATES.base.map((d, i) => (i < 6 ? { len: MOVED[i], s: 0 } : d));
+  STATES.concept = STATES.base.map((d, i) => (i < 6 ? { len: d.len, s: 1 } : d));
+  let kind = 'base', S = {};
+  const histOf = (arr) => { const b = new Array(10).fill(0); arr.forEach((d) => b[Math.min(9, Math.floor(d.len / 20))]++); return b; };
+  const drawStrip = () => {
+    const mob = (strip.getBoundingClientRect().width || 600) < 520;
+    const rr = mob ? 6.5 : 9;
+    const h = mob ? 210 : 230, w = size(strip, h);
+    const l = 8, r = 8, pw = w - l - r, X = (len) => l + len / 200 * pw;
+    const axisY = h - 96;
+    S = { X, rr, axisY, dots: [], rings: [], l, pw };
+    mk('line', { x1: l, x2: l + pw, y1: axisY, y2: axisY, class: 'axis' }, strip);
+    [0, 50, 100, 150, 200].forEach((v) => tx(v === 200 ? '200자' : String(v), { x: X(v), y: axisY + 18, 'text-anchor': v === 0 ? 'start' : v === 200 ? 'end' : 'middle', 'font-size': 12.5, class: 'dim num' }, strip));
+    mk('line', { x1: X(90), x2: X(90), y1: 26, y2: axisY + 4, class: 'edge' }, strip);
+    tx('필터 경계 90자', { x: X(90) + 8, y: 18, 'font-size': 13, 'font-weight': 700 }, strip);
+    tx('← 통과', { x: X(90) - 8, y: 38, 'text-anchor': 'end', 'font-size': 12.5, class: 'dim' }, strip);
+    tx('막음 →', { x: X(90) + 8, y: 38, 'font-size': 12.5, class: 'dim' }, strip);
+    // 입력 감시 띠
+    const sy = axisY + 34, sh = 44;
+    tx('입력 감시가 보는 모양', { x: l + pw, y: sy + 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': 700 }, strip);
+    S.sy = sy + 10; S.sh = sh - 10;
+    S.refPath = mk('path', { class: 'ref' }, strip);
+    S.nowPath = mk('path', { class: 'now' }, strip);
+    STATES.base.forEach(() => { S.rings.push(mk('circle', { class: 'miss', r: rr + 3.5 }, strip)); });
+    STATES.base.forEach(() => { S.dots.push(mk('circle', { class: 'd', r: rr }, strip)); });
+    const hp = (b) => { const bw = pw / 10, mx = 14; let d = `M${l},${S.sy + S.sh}`; b.forEach((c, i) => { const y = S.sy + S.sh - c / mx * S.sh; d += `L${l + i * bw},${y}L${l + (i + 1) * bw},${y}`; }); return d + `L${l + pw},${S.sy + S.sh}Z`; };
+    S.hp = hp;
+    S.refPath.setAttribute('d', hp(histOf(STATES.base)).replace(/Z$/, ''));
+    updStrip(false);
+  };
+  const updStrip = () => {
+    const arr = STATES[kind];
+    const step = (S.rr * 2 + 2) / S.pw * 200;
+    const stack = {};
+    let fp = 0, fn = 0;
+    arr.forEach((d, i) => {
+      const bk = Math.round(d.len / step);
+      const n = stack[bk] = (stack[bk] || 0) + 1;
+      const cx = S.X(bk * step), cy = S.axisY - S.rr - 3 - (n - 1) * (S.rr * 2 + 2);
+      const dot = S.dots[i], ring = S.rings[i];
+      dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+      dot.setAttribute('class', `d ${d.s ? 'spam' : 'ham'}`);
+      const pred = d.len > 90 ? 1 : 0, wrong = pred !== d.s;
+      if (wrong) { if (pred) fp++; else fn++; }
+      ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.style.opacity = wrong ? 1 : 0;
+    });
+    S.nowPath.setAttribute('d', S.hp(histOf(arr)));
+    const same = kind !== 'data';
+    const tot = fp + fn;
+    kindRead.innerHTML = `틀린 문자 <b>${tot}개</b>(오탐 ${fp} · 미탐 ${fn}) · 입력 모양 <b class="${same ? 'g' : 'r'}">${same ? '그대로' : '달라짐'}</b>${kind === 'base' ? '' : same ? ' → 입력 감시로는 알 수 없음' : ' → 입력 감시가 알아챔'}`;
+  };
+  seg($('[data-op-kind]'), 'data-k', (k) => { kind = k; updStrip(); });
+  redraws.push(drawStrip);
+
+  /* ---------- 3. PSI · KS ---------- */
+  const pickSvg = $('[data-op-psipick]'), binSvg = $('[data-op-psibins]'), cdfSvg = $('[data-op-psicdf]');
+  let pm = 9;
+  const CMAX = Math.max(...D.m.map((mm) => Math.max(...mm.bins.map((c, i) => { const a = Math.max(D.ref[i], 1e-4), b = Math.max(c, 1e-4); return (b - a) * Math.log(b / a); }))));
+  const drawPick = () => {
+    const h = 112, w = size(pickSvg, h);
+    const l = 34, r = 12, t = 8, b = 24, pw = w - l - r, ph = h - t - b, PM = 0.45;
+    const X = (m) => l + m / 12 * pw, Y = (v) => t + ph - Math.min(v, PM) / PM * ph;
+    mk('rect', { x: l, y: Y(0.1), width: pw, height: Y(0) - Y(0.1), fill: 'var(--ok-soft)' }, pickSvg);
+    mk('rect', { x: l, y: Y(0.25), width: pw, height: Y(0.1) - Y(0.25), fill: 'var(--warn-soft)' }, pickSvg);
+    mk('rect', { x: l, y: Y(PM), width: pw, height: Y(0.25) - Y(PM), fill: 'var(--bad-soft)' }, pickSvg);
+    [0.1, 0.25].forEach((v) => tx(String(v), { x: l - 6, y: Y(v) + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, pickSvg));
+    let d = ''; D.m.forEach((mm, i) => { d += `${i ? 'L' : 'M'}${X(i)},${Y(mm.psi)}`; });
+    mk('path', { d, fill: 'none', stroke: 'var(--now)', 'stroke-width': 2.4 }, pickSvg);
+    [0, 3, 6, 9, 12].forEach((m) => tx(m ? `${m}개월` : '배포', { x: X(m), y: h - 6, 'text-anchor': m === 0 ? 'start' : m === 12 ? 'end' : 'middle', 'font-size': 12, class: 'dim' }, pickSvg));
+    D.m.forEach((mm, i) => {
+      const g = mk('g', { class: `pick${i === pm ? ' on' : ''}`, tabindex: 0, role: 'button', 'aria-label': `${i}개월 PSI ${mm.psi}` }, pickSvg);
+      mk('rect', { x: X(i) - 12, y: t, width: 24, height: ph, fill: 'transparent' }, g);
+      mk('circle', { cx: X(i), cy: Y(mm.psi), r: i === pm ? 7 : 5.5 }, g);
+      const go = () => { pm = i; drawPick(); drawBins(); drawCdf(); };
+      on(g, 'click', go); on(g, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+  };
+  const drawBins = () => {
+    const mob = (binSvg.getBoundingClientRect().width || 600) < 520;
+    const h = 250, w = size(binSvg, h);
+    const l = 34, r = 6, t = 22, mid = 158, pw = w - l - r, bw = pw / 10, ph = mid - t, YM = 0.36;
+    const cur = D.m[pm].bins;
+    $('[data-op-psimonth]').textContent = pm ? `배포 후 ${pm}개월` : '배포 때';
+    [0.1, 0.2, 0.3].forEach((v) => { const y = mid - v / YM * ph; mk('line', { x1: l, x2: w - r, y1: y, y2: y, class: 'grid' }, binSvg); tx(`${v * 100}%`, { x: l - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, binSvg); });
+    let tot = 0;
+    cur.forEach((c, i) => {
+      const x0 = l + i * bw, half = (bw - 6) / 2;
+      const rh = D.ref[i] / YM * ph, ch = c / YM * ph;
+      mk('rect', { class: 'rb', x: x0 + 3, y: mid - rh, width: half, height: Math.max(rh, 0.5) }, binSvg);
+      mk('rect', { class: 'cb', x: x0 + 3 + half, y: mid - ch, width: half, height: Math.max(ch, 0.5) }, binSvg);
+      const a = Math.max(D.ref[i], 1e-4), b = Math.max(c, 1e-4), k = (b - a) * Math.log(b / a); tot += k;
+      const kh = k / CMAX * 56;
+      mk('rect', { class: 'pc', x: x0 + 5, y: mid + 4, width: bw - 10, height: Math.max(kh, 0.8) }, binSvg);
+      if (k >= 0.02 && !mob) tx(k.toFixed(2), { x: x0 + bw / 2, y: mid + 4 + kh + 13, 'text-anchor': 'middle', 'font-size': 11.5, class: 'num' }, binSvg);
+    });
+    mk('line', { x1: l, x2: w - r, y1: mid, y2: mid, class: 'axis' }, binSvg);
+    [0, 50, 100, 150, 200].forEach((v) => tx(v === 200 ? '200자' : String(v), { x: l + v / 20 * bw, y: h - 4, 'text-anchor': v === 200 ? 'end' : v === 0 ? 'start' : 'middle', 'font-size': 12, class: 'dim num' }, binSvg));
+    const bd = band(D.m[pm].psi);
+    tx(`칸별 몫을 더하면 PSI ${D.m[pm].psi.toFixed(3)} · ${bandName[bd]}`, { x: l, y: 12, 'font-size': 13.5, 'font-weight': 700, fill: bd === 'r' ? 'var(--bad)' : bd === 'y' ? 'var(--warn)' : 'var(--ok)', style: `fill:${bd === 'r' ? 'var(--bad)' : bd === 'y' ? 'var(--warn)' : 'var(--ok)'}` }, binSvg);
+  };
+  const drawCdf = () => {
+    const h = 190, w = size(cdfSvg, h);
+    const l = 34, r = 8, t = 10, b = 24, pw = w - l - r, ph = h - t - b;
+    const X = (v) => l + v / 200 * pw, Y = (v) => t + ph - v * ph;
+    [0.5, 1].forEach((v) => { mk('line', { x1: l, x2: w - r, y1: Y(v), y2: Y(v), class: 'grid' }, cdfSvg); tx(`${v * 100}%`, { x: l - 6, y: Y(v) + 4, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim num' }, cdfSvg); });
+    const path = (arr) => { let d = `M${X(0)},${Y(arr[0])}`; for (let i = 1; i <= 200; i++) d += `H${X(i)}V${Y(arr[i])}`; return d; };
+    mk('path', { d: path(D.cdfRef), class: 'cref' }, cdfSvg);
+    mk('path', { d: path(D.cdf[pm]), class: 'cnow' }, cdfSvg);
+    mk('line', { x1: l, x2: w - r, y1: Y(0), y2: Y(0), class: 'axis' }, cdfSvg);
+    const [ks, at, a, c] = D.ks[pm];
+    if (ks > 0) {
+      mk('line', { class: 'gap', x1: X(at), x2: X(at), y1: Y(a), y2: Y(c) }, cdfSvg);
+      tx(`KS ${ks.toFixed(3)} (${at}자 지점)`, { x: X(at) + 10, y: (Y(a) + Y(c)) / 2 + 5, 'font-size': 13, 'font-weight': 700, style: 'fill:var(--bad)' }, cdfSvg);
+    }
+    [0, 50, 100, 150, 200].forEach((v) => tx(v === 200 ? '200자' : String(v), { x: X(v), y: h - 4, 'text-anchor': v === 200 ? 'end' : v === 0 ? 'start' : 'middle', 'font-size': 12, class: 'dim num' }, cdfSvg));
+  };
+  redraws.push(() => { drawPick(); drawBins(); drawCdf(); });
+
+  /* ---------- 4. 와플 ---------- */
+  const waf = $('[data-op-waf]'), wafRead = $('[data-op-wafread]');
+  const NSP = 626, NALL = 3000;
+  const MODELS = { filter: { tp: 544, fn: 82, fp: 35, tn: 2339 }, allham: { tp: 0, fn: 626, fp: 0, tn: 2374 } };
+  let wm = 'filter', Wf = {};
+  const PER = 50;
+  const drawWaf = () => {
+    const mob = (waf.getBoundingClientRect().width || 600) < 520;
+    const w0 = Math.round(waf.getBoundingClientRect().width || 560);
+    const lab = mob ? 50 : 66, gapX = mob ? 12 : 20;
+    const cs = Math.max(2.6, Math.min(6, (w0 - lab - gapX) / 2 / PER));
+    const bwid = cs * PER;
+    const head = 26, rowLab = 22;
+    const spamRows = Math.ceil(NSP / PER), hamRows = Math.ceil((NALL - NSP) / PER);
+    const y1 = head + rowLab, y2 = y1 + spamRows * cs + 18 + rowLab;
+    const h = Math.ceil(y2 + hamRows * cs + 6);
+    const w = size(waf, h);
+    const xA = lab, xB = lab + bwid + gapX;
+    Wf = { cs, xA, xB, y1, y2, mob, cells: [], labels: {} };
+    tx('스팸으로 막음', { x: xA, y: 16, 'font-size': 13, 'font-weight': 700 }, waf);
+    tx('통과시킴', { x: xB, y: 16, 'font-size': 13, 'font-weight': 700 }, waf);
+    tx('실제', { x: 0, y: y1 + 12, 'font-size': 12.5, class: 'dim' }, waf); tx('스팸', { x: 0, y: y1 + 28, 'font-size': 13, 'font-weight': 700 }, waf);
+    tx('실제', { x: 0, y: y2 + 12, 'font-size': 12.5, class: 'dim' }, waf); tx('정상', { x: 0, y: y2 + 28, 'font-size': 13, 'font-weight': 700 }, waf);
+    [[xA, y1, spamRows], [xB, y1, spamRows], [xA, y2, hamRows], [xB, y2, hamRows]].forEach(([x, y, rows]) => mk('rect', { class: 'blk', x: x - 2, y: y - 2, width: bwid + 4, height: rows * cs + 4, rx: 4 }, waf));
+    Wf.labels.tp = tx('', { x: xA, y: y1 - 7, 'font-size': 12.5 }, waf);
+    Wf.labels.fn = tx('', { x: xB, y: y1 - 7, 'font-size': 12.5 }, waf);
+    Wf.labels.fp = tx('', { x: xA, y: y2 - 7, 'font-size': 12.5 }, waf);
+    Wf.labels.tn = tx('', { x: xB, y: y2 - 7, 'font-size': 12.5 }, waf);
+    for (let i = 0; i < NALL; i++) Wf.cells.push(mk('rect', { class: 'c', x: 0, y: 0, width: cs - (cs > 4 ? 1 : 0.7), height: cs - (cs > 4 ? 1 : 0.7), rx: cs > 4 ? 1 : 0.5 }, waf));
+    updWaf();
+  };
+  const updWaf = () => {
+    const M = MODELS[wm], { cs, xA, xB, y1, y2, mob } = Wf;
+    const idx = { tp: 0, fn: 0, fp: 0, tn: 0 };
+    const place = (k) => { const n = idx[k]++; const x0 = k === 'tp' || k === 'fp' ? xA : xB, y0 = k === 'tp' || k === 'fn' ? y1 : y2; return [x0 + (n % PER) * cs, y0 + Math.floor(n / PER) * cs]; };
+    Wf.cells.forEach((c, i) => {
+      const spam = i < NSP, j = spam ? i : i - NSP;
+      const k = spam ? (j < M.tp ? 'tp' : 'fn') : (j < M.fp ? 'fp' : 'tn');
+      const [x, y] = place(k);
+      c.style.transform = `translate(${x}px, ${y}px)`;
+      c.setAttribute('class', `c ${k === 'tp' || k === 'fp' ? 'p-s' : 'p-h'}${k === 'fp' || k === 'fn' ? ' wrong' : ''}`);
+    });
+    const L2 = mob ? { tp: 'TP 막은 스팸', fn: 'FN 🔥 놓친 스팸', fp: 'FP 🍞 막힌 정상', tn: 'TN 통과' } : { tp: 'TP 진짜 스팸을 막음', fn: 'FN 미탐 🔥 놓친 스팸', fp: 'FP 오탐 🍞 막힌 정상 문자', tn: 'TN 통과한 정상 문자' };
+    for (const k in L2) { const t = Wf.labels[k]; t.replaceChildren(); t.appendChild(document.createTextNode(L2[k] + ' ')); const b = document.createElementNS(NS, 'tspan'); b.setAttribute('font-weight', 700); b.setAttribute('class', 'num'); b.textContent = fmt(M[k]); if ((k === 'fn' || k === 'fp') && M[k]) b.setAttribute('style', 'fill:var(--bad)'); t.appendChild(b); }
+    const acc = ((M.tp + M.tn) / NALL * 100).toFixed(1);
+    wafRead.innerHTML = `정확도 <b>${acc}%</b> · 놓친 스팸 <b class="${M.fn > 300 ? 'r' : ''}">${fmt(M.fn)}개</b> · 막힌 정상 문자 <b>${fmt(M.fp)}개</b>`;
+  };
+  seg($('[data-op-wafseg]'), 'data-w', (k) => { wm = k; updWaf(); });
+  redraws.push(drawWaf);
+
+  /* ---------- 5. 문턱 실험판 ---------- */
+  const thr = $('[data-op-thr]'), cmEl = $('[data-op-cm]'), meters = $('[data-op-meters]'), prSvg = $('[data-op-pr]');
+  const SP = D.score.spam, HM = D.score.ham, NS_ = SP.reduce((a, b) => a + b, 0), NH = HM.reduce((a, b) => a + b, 0);
+  let tv = 50, T = {};
+  const counts = (t) => { const k = t / 5; let tp = 0, fp = 0; for (let i = k; i < 20; i++) { tp += SP[i]; fp += HM[i]; } return { tp, fp, fn: NS_ - tp, tn: NH - fp }; };
+  const PRP = []; for (let t = 0; t <= 100; t += 5) { const c = counts(t); PRP.push({ t, p: c.tp + c.fp ? c.tp / (c.tp + c.fp) : 1, r: c.tp / NS_ }); }
+  meters.innerHTML = '<div class="m"><div class="t"><span>precision<small>막은 것 중 진짜 스팸</small></span><b data-v="p"></b></div><div class="track"><i data-b="p"></i></div></div><div class="m"><div class="t"><span>recall<small>진짜 스팸 중 막은 것</small></span><b data-v="r"></b></div><div class="track"><i data-b="r"></i></div></div>';
+  const drawThr = () => {
+    const h = 280, w = size(thr, h);
+    const l = 8, r = 8, pw = w - l - r, mid = 146, up = 104, dn = 104, bw = pw / 20;
+    const X = (s) => l + s / 100 * pw;
+    const MX = Math.max(...SP.map((v) => v / NS_), ...HM.map((v) => v / NH));
+    T = { X, l, pw, bars: [] };
+    T.zone = mk('rect', { class: 'zone', y: mid - up - 8, height: up + dn + 16 }, thr);
+    SP.forEach((v, i) => { const hh = v / NS_ / MX * up; T.bars.push({ i, s: 1, el: mk('rect', { class: 'hs', x: l + i * bw + 1.5, y: mid - hh, width: bw - 3, height: Math.max(hh, 0.6) }, thr) }); });
+    HM.forEach((v, i) => { const hh = v / NH / MX * dn; T.bars.push({ i, s: 0, el: mk('rect', { class: 'hh', x: l + i * bw + 1.5, y: mid + 1, width: bw - 3, height: Math.max(hh, 0.6) }, thr) }); });
+    mk('line', { x1: l, x2: l + pw, y1: mid, y2: mid, class: 'axis' }, thr);
+    tx(`진짜 스팸 ${fmt(NS_)}개`, { x: l, y: mid - up + 4, 'font-size': 13, 'font-weight': 700, style: 'fill:var(--spam)' }, thr);
+    tx(`정상 문자 ${fmt(NH)}개`, { x: l + pw, y: mid + dn - 2, 'text-anchor': 'end', 'font-size': 13, 'font-weight': 700, style: 'fill:var(--ham)' }, thr);
+    [0, 25, 50, 75, 100].forEach((v) => tx(String(v), { x: X(v), y: h - 4, 'text-anchor': v === 0 ? 'start' : v === 100 ? 'end' : 'middle', 'font-size': 12, class: 'dim num' }, thr));
+    tx('스팸 점수 →', { x: X(62), y: h - 4, 'text-anchor': 'middle', 'font-size': 12, class: 'dim' }, thr);
+    const kn = mk('g', { class: 'knob', tabindex: 0, role: 'slider', 'aria-label': '문턱값', 'aria-valuemin': 0, 'aria-valuemax': 100 }, thr);
+    mk('rect', { class: 'hit', x: -18, y: 0, width: 36, height: mid + dn + 8 }, kn);
+    mk('line', { x1: 0, x2: 0, y1: 22, y2: mid + dn + 6 }, kn);
+    mk('rect', { class: 'tab', x: -34, y: 0, width: 68, height: 24, rx: 12 }, kn);
+    T.kt = tx('', { x: 0, y: 16.5, 'text-anchor': 'middle', 'font-size': 13 }, kn);
+    T.kn = kn;
+    const fromE = (e) => { const rc = thr.getBoundingClientRect(); const x = (e.clientX - rc.left) / rc.width * w; setT(Math.round((x - l) / pw * 20) * 5); };
+    let drag = false;
+    thr.style.touchAction = 'pan-y';
+    on(kn, 'pointerdown', (e) => { drag = true; kn.setPointerCapture?.(e.pointerId); e.preventDefault(); });
+    on(kn, 'pointermove', (e) => { if (drag) fromE(e); });
+    on(kn, 'pointerup', () => { drag = false; });
+    on(thr, 'click', (e) => { if (!e.target.closest('.knob')) fromE(e); });
+    on(kn, 'keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); setT(tv - 5); } if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); setT(tv + 5); } });
+    drawPR();
+    setT(tv);
+  };
+  const drawPR = () => {
+    const h = 230, w = size(prSvg, h);
+    const l = 46, r = 12, t = 12, b = 34, pw = w - l - r, ph = h - t - b;
+    const X = (v) => l + v * pw, Y = (v) => t + ph - (v - 0.5) / 0.5 * ph;
+    [0.5, 0.75, 1].forEach((v) => { mk('line', { x1: l, x2: l + pw, y1: Y(v), y2: Y(v), class: 'grid' }, prSvg); tx(`${v * 100}%`, { x: l - 6, y: Y(v) + 4, 'text-anchor': 'end', 'font-size': 12.5, class: 'dim num' }, prSvg); });
+    [0, 0.5, 1].forEach((v) => tx(`${v * 100}%`, { x: X(v), y: h - 16, 'text-anchor': v === 0 ? 'start' : v === 1 ? 'end' : 'middle', 'font-size': 12.5, class: 'dim num' }, prSvg));
+    tx('recall →', { x: X(1), y: h - 1, 'text-anchor': 'end', 'font-size': 13, class: 'dim' }, prSvg);
+    tx('↑ precision', { x: l + 8, y: t + 14, 'font-size': 13, class: 'dim' }, prSvg);
+    tx('세로축은 50%부터 시작', { x: l + 8, y: t + ph - 8, 'font-size': 12.5, class: 'dim' }, prSvg);
+    mk('line', { x1: l, x2: l + pw, y1: t + ph, y2: t + ph, class: 'axis' }, prSvg);
+    mk('line', { x1: l, x2: l, y1: t, y2: t + ph, class: 'axis' }, prSvg);
+    let d = ''; PRP.forEach((q, i) => { d += `${i ? 'L' : 'M'}${X(q.r)},${Y(Math.max(0.5, q.p))}`; });
+    mk('path', { d, class: 'curve' }, prSvg);
+    T.dot = mk('circle', { class: 'cur', r: 6.5 }, prSvg);
+    T.PX = X; T.PY = Y;
+  };
+  const setT = (t) => {
+    tv = Math.max(0, Math.min(100, t));
+    const x = T.X(tv);
+    T.kn.setAttribute('transform', `translate(${x},0)`);
+    T.kn.setAttribute('aria-valuenow', tv);
+    T.kt.textContent = `문턱 ${tv}`;
+    T.zone.setAttribute('x', x); T.zone.setAttribute('width', Math.max(0, T.l + T.pw - x + 4));
+    T.bars.forEach((b) => { const blocked = b.i * 5 >= tv; b.el.classList.toggle('off', b.s ? !blocked : !blocked); });
+    const c = counts(tv);
+    const p = c.tp + c.fp ? c.tp / (c.tp + c.fp) : null, rcl = c.tp / NS_;
+    cmEl.innerHTML = `<div class="h"></div><div class="h">막음</div><div class="h">통과</div>
+      <div class="h">스팸</div><div class="v tp"><b>${fmt(c.tp)}</b>TP</div><div class="v fn"><b>${fmt(c.fn)}</b>FN 미탐</div>
+      <div class="h">정상</div><div class="v fp"><b>${fmt(c.fp)}</b>FP 오탐</div><div class="v tn"><b>${fmt(c.tn)}</b>TN</div>`;
+    $('[data-v="p"]', meters).textContent = p === null ? '—' : `${(p * 100).toFixed(1)}%`;
+    $('[data-v="r"]', meters).textContent = `${(rcl * 100).toFixed(1)}%`;
+    $('[data-b="p"]', meters).style.width = `${p === null ? 0 : p * 100}%`;
+    $('[data-b="r"]', meters).style.width = `${rcl * 100}%`;
+    if (T.dot) { const q = PRP[tv / 5]; T.dot.setAttribute('cx', T.PX(q.r)); T.dot.setAttribute('cy', T.PY(Math.max(0.5, q.p))); }
+  };
+  redraws.push(drawThr);
+
+  /* ---------- 6. 평가 세트 격자 ---------- */
+  const evalEl = $('[data-op-eval]');
+  const CATS = [['사내 규정 답하기', '규정'], ['문서 요약', '요약'], ['표 계산', '계산'], ['JSON 형식', 'JSON']];
+  const FAILS = [
+    { 0: [3, 7], 1: [5], 2: [1, 4, 8], 3: [] },
+    { 0: [], 1: [9], 2: [], 3: [0, 2, 5, 7] },
+    { 0: [], 1: [9], 2: [4], 3: [] },
+  ];
+  const HEADS = [['모델 A', '지금 쓰는 모델'], ['모델 B', '교체 후보'], ['모델 B + 프롬프트 수정', '출력 형식을 분명히 적음']];
+  const SUMS = [['34 / 40', '기준'], ['35 / 40', '깨짐 5 · 고침 6'], ['38 / 40', '깨짐 1 · 고침 4']];
+  (() => {
+    let html = '<div></div>' + HEADS.map(([a, b]) => `<div class="colh">${a}<small>${b}</small></div>`).join('');
+    CATS.forEach(([name, short], ci) => {
+      html += `<div class="cat"><span class="ln">${name}</span><span class="sh">${short}</span></div>`;
+      for (let col = 0; col < 3; col++) {
+        let cells = '';
+        for (let q = 0; q < 10; q++) {
+          const f = FAILS[col][ci].includes(q), pf = col ? FAILS[col - 1][ci].includes(q) : f;
+          cells += `<i class="${f ? 'f' : ''}${col && f !== pf ? ' chg' : ''}" title="${name} ${q + 1}번 ${f ? '실패' : '통과'}"></i>`;
+        }
+        html += `<div class="row">${cells}</div>`;
+      }
+    });
+    html += '<div></div>' + SUMS.map(([a, b]) => `<div class="sum">${a}<small>${b}</small></div>`).join('');
+    evalEl.innerHTML = html;
+  })();
+
+  /* ---------- 6-1. Chen 막대 · 은퇴 띠 ---------- */
+  const chen = $('[data-op-chen]'), gantt = $('[data-op-gantt]');
+  const drawChen = () => {
+    const h = 86, w = size(chen, h), l = 104, r = 52, pw = w - l - r;
+    [['2023년 3월판', 84, 'a'], ['2023년 6월판', 51, 'b']].forEach(([n, v, c], i) => {
+      const y = 6 + i * 40;
+      tx(n, { x: 0, y: y + 18, 'font-size': 13.5 }, chen);
+      mk('rect', { x: l, y, width: pw, height: 26, rx: 5, fill: 'var(--bg-muted)' }, chen);
+      mk('rect', { class: c, x: l, y, width: pw * v / 100, height: 26, rx: 5 }, chen);
+      tx(`${v}%`, { x: l + pw * v / 100 + 8, y: y + 18, 'font-size': 14, 'font-weight': 700, class: 'num' }, chen);
+    });
+  };
+  const RET = [['Opus 3', '2025-06-30', '2026-01-05'], ['Sonnet 3.5', '2025-08-13', '2025-10-28'], ['Sonnet 3.7', '2025-10-28', '2026-02-19'], ['Haiku 3.5', '2025-12-19', '2026-02-19'], ['Haiku 3', '2026-02-19', '2026-04-20'], ['Sonnet 4 · Opus 4', '2026-04-14', '2026-06-15'], ['Opus 4.1', '2026-06-05', '2026-08-05'], ['Sonnet 4.5', '2026-09-30', '2026-11-30']];
+  const drawGantt = () => {
+    const rowH = 26, top = 8, h = top + RET.length * rowH + 30, w = size(gantt, h);
+    const mob = w < 420, l = mob ? 104 : 124, r = 10, pw = w - l - r;
+    const t0 = Date.parse('2025-06-01'), t1 = Date.parse('2026-12-31');
+    const X = (d) => l + (Date.parse(d) - t0) / (t1 - t0) * pw;
+    ['2025-07-01', '2026-01-01', '2026-07-01'].forEach((d) => { mk('line', { x1: X(d), x2: X(d), y1: top, y2: h - 22, class: 'grid' }, gantt); tx(d.slice(0, 7).replace('-', '.'), { x: X(d), y: h - 6, 'text-anchor': 'middle', 'font-size': 12, class: 'dim num' }, gantt); });
+    RET.forEach(([n, a, b], i) => {
+      const y = top + i * rowH;
+      tx(n, { x: 0, y: y + 17, 'font-size': mob ? 12 : 13 }, gantt);
+      mk('rect', { class: 'dep', x: X(a), y: y + 6, width: X(b) - X(a), height: 14, rx: 4 }, gantt);
+      mk('circle', { class: 'ret', cx: X(b), cy: y + 13, r: 5 }, gantt);
+    });
+    mk('line', { class: 'today', x1: X('2026-10-15'), x2: X('2026-10-15'), y1: top - 4, y2: h - 22 }, gantt);
+  };
+  redraws.push(drawChen, drawGantt);
+
+  /* ---------- 7. TCO ---------- */
+  const tco = $('[data-op-tco]'), tcoRead = $('[data-op-tcoread]');
+  const TOK = [300, 3600, 3600, 3600, 3600, 3600, 3600, 3120, 3120, 3120, 3120, 3120];
+  const PPL = [24000, ...new Array(11).fill(6000)];
+  const MON = new Array(12).fill(400);
+  const EVA = [1000, 300, 300, 300, 300, 3000, 300, 2500, 300, 300, 300, 300];
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  let tmode = 'bill';
+  const drawTco = () => {
+    const h = 300, w = size(tco, h), l = 50, r = 6, t = 14, b = 28, pw = w - l - r, ph = h - t - b, YM = 26000, bw = pw / 12;
+    const Y = (v) => v / YM * ph;
+    [0, 10000, 20000].forEach((v) => { const y = t + ph - Y(v); mk('line', { x1: l, x2: w - r, y1: y, y2: y, class: 'grid' }, tco); tx(v ? `${v / 10000}만` : '0', { x: l - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 12, class: 'dim num' }, tco); });
+    tx('달러', { x: l - 6, y: t - 2, 'text-anchor': 'end', 'font-size': 11.5, class: 'dim' }, tco);
+    const g = mk('g', { class: tmode === 'bill' ? 'hid' : '' }, tco);
+    for (let i = 0; i < 12; i++) {
+      let y = t + ph;
+      [[TOK, 'k-tok'], [PPL, 'k-ppl'], [MON, 'k-mon'], [EVA, 'k-eval']].forEach(([arr, k]) => {
+        const hh = Y(arr[i]); y -= hh;
+        mk('rect', { class: `s ${k}`, x: l + i * bw + bw * 0.16, y, width: bw * 0.68, height: Math.max(hh, 0.5) }, g);
+      });
+      tx(String(i + 1), { x: l + i * bw + bw / 2, y: h - 8, 'text-anchor': 'middle', 'font-size': 12, class: 'dim num' }, tco);
+    }
+    mk('line', { x1: l, x2: w - r, y1: t + ph, y2: t + ph, class: 'axis' }, tco);
+    T.tcoG = g;
+    updTco();
+  };
+  const updTco = () => {
+    T.tcoG && T.tcoG.setAttribute('class', tmode === 'bill' ? 'hid' : '');
+    $$('[data-tk]').forEach((sp) => sp.classList.toggle('off', tmode === 'bill'));
+    $('[data-op-tconote]').style.visibility = tmode === 'bill' ? 'visible' : 'hidden';
+    const all = sum(TOK) + sum(PPL) + sum(MON) + sum(EVA);
+    tcoRead.innerHTML = tmode === 'bill'
+      ? `1년 토큰 비용 <b>${fmt(sum(TOK))}달러</b> · 청구서에서 보이는 건 이것뿐입니다`
+      : `1년 합계 <b>${fmt(all)}달러</b> · 토큰은 그중 <b>${(sum(TOK) / all * 100).toFixed(1)}%</b> · 첫 달(만들기)은 <b>${((TOK[0] + PPL[0] + MON[0] + EVA[0]) / all * 100).toFixed(1)}%</b>`;
+  };
+  seg($('[data-op-tcoseg]'), 'data-t', (k) => { tmode = k; updTco(); });
+  redraws.push(drawTco);
+
+  /* ---------- 8. SBOM ---------- */
+  const bom = $('[data-op-bom]'), verdict = $('[data-op-verdict]');
+  const PKGS = [['vllm', '0.8.5', 61], ['torch', '2.6.0', 22], ['transformers', '4.51.3', 19], ['urllib3', '2.3.0', 8], ['requests', '2.32.3', 2], ['jinja2', '3.1.5', 1], ['fastapi', '0.115.12', 0], ['pyyaml', '6.0.2', 0]];
+  bom.innerHTML = PKGS.map(([n, v, c]) => `<li data-p="${n}"><span class="n">${n} <small>${v}</small></span><span class="bar"><i style="width:${c / 61 * 100}%"></i></span><span class="c">${c}</span></li>`).join('')
+    + '<li class="model"><span class="n">Qwen2.5-7B-Instruct <small>모델</small></span><span class="dim" style="font-size:13.5px;color:var(--fg-neutral)">machine-learning-model · SHA-256 4개</span><span class="c">—</span></li>';
+  const VERD = {
+    jinja2: '<b>있음</b> — 목록에 jinja2 3.1.5가 있습니다. 3.1.6 미만이 해당하니 올려야 합니다. 샌드박스(sandbox)는 템플릿이 할 수 있는 일을 가둬 두는 울타리입니다. 템플릿 내용을 공격자가 쓸 수 있으면 그 밖에서 파이썬 코드가 실행되는 결함입니다.',
+    requests: '<b>있음</b> — requests 2.32.3. 2.32.4 미만은 특정 URL로 요청할 때 .netrc 파일에 적힌 비밀번호가 제3자에게 새어 나갈 수 있습니다. 올리기 전에는 <code>trust_env=False</code>로 .netrc를 끄는 우회법이 있습니다.',
+    vllm: '<b>있음, 해당 여부는 따져 봐야 함</b> — vllm 0.8.5. V0 엔진으로 여러 서버에 Tensor Parallel을 나눠 띄울 때만 생기는 결함이고 V0 엔진은 0.8.0부터 기본으로 꺼져 있습니다. vLLM은 고치지 않기로 했습니다. 목록은 "있다"까지 알려 주고 위험한지는 구성을 보고 판단합니다.',
+  };
+  const pickNote = (n) => { $$('li', bom).forEach((li) => li.classList.toggle('hit', li.dataset.p === n)); verdict.innerHTML = VERD[n]; };
+  seg($('[data-op-notes]'), 'data-n', pickNote);
+  pickNote('jinja2');
+
+  /* ---------- 9. 줄 ↔ Bandit 경고 ---------- */
+  const linkSvg = $('[data-op-link]'), runBtn = $('[data-op-run]');
+  const SEV = { High: 'var(--bad)', Medium: 'var(--warn)', Low: 'var(--ref)' };
+  const CODE = [[1, 'import pickle', 'B403', 'Low', 'pickle 모듈'], [2, 'import subprocess', 'B404', 'Low', '외부 명령 모듈'], [7, 'API_KEY = "sk-live…"', null], [12, 'torch.load(path)', 'B614', 'Medium', 'torch.load 풀기'], [17, 'pickle.load(f)', 'B301', 'Medium', 'pickle 풀기'], [22, 'eval(answer)', 'B307', 'Medium', 'eval 실행'], [23, 'shell=True', 'B602', 'High', '셸에 통째로 넘김']];
+  let linkSteps = [];
+  const drawLink = () => {
+    const w0 = Math.round(linkSvg.getBoundingClientRect().width || 600), mob = w0 < 480;
+    const rowH = 46, top = 22, h = top + CODE.length * rowH, w = size(linkSvg, h);
+    const cw = mob ? Math.round(w * 0.53) : 236, rw = mob ? Math.round(w * 0.36) : 190, rx = w - rw, fs = mob ? 12 : 13;
+    tx('코드 줄', { x: 0, y: 12, 'font-size': 12.5, class: 'dim' }, linkSvg);
+    tx('Bandit 경고', { x: rx, y: 12, 'font-size': 12.5, class: 'dim' }, linkSvg);
+    linkSteps = [];
+    CODE.forEach(([ln, code, id, sev, desc], i) => {
+      const y = top + i * rowH, cy = y + 18;
+      mk('rect', { class: `cb${id ? '' : ' miss'}`, x: 0, y, width: cw, height: 36, rx: 6 }, linkSvg);
+      tx(String(ln), { x: 10, y: cy + 4.5, 'font-size': fs, class: 'ln' }, linkSvg);
+      tx(code, { x: mob ? 30 : 34, y: cy + 4.5, 'font-size': fs, class: 'code' }, linkSvg);
+      const g = mk('g', { class: 'step' }, linkSvg);
+      if (id) {
+        mk('path', { d: `M${cw + 6},${cy}H${rx - 6}`, stroke: SEV[sev], 'stroke-width': 2.4, fill: 'none' }, g);
+        mk('circle', { cx: rx - 6, cy, r: 3.5, fill: SEV[sev] }, g);
+        mk('rect', { class: 'wb', x: rx, y, width: rw, height: 36, rx: 6, stroke: SEV[sev] }, g);
+        const t = tx(`${id} `, { x: rx + 10, y: y + 15, 'font-size': fs, 'font-weight': 700, class: 'num' }, g);
+        const sp = document.createElementNS(NS, 'tspan'); sp.textContent = sev; sp.setAttribute('style', `fill:${SEV[sev]}`); t.appendChild(sp);
+        tx(desc, { x: rx + 10, y: y + 30, 'font-size': 12, class: 'dim' }, g);
+      } else {
+        mk('rect', { x: rx, y, width: rw, height: 36, rx: 6, fill: 'var(--bad-soft)', stroke: 'var(--bad)', 'stroke-width': 1.8, 'stroke-dasharray': '5 4' }, g);
+        tx('✕ 아무도 안 잡음', { x: rx + 10, y: cy + 5, 'font-size': fs + 0.5, 'font-weight': 700, style: 'fill:var(--bad)' }, g);
+      }
+      linkSteps.push(g);
+    });
+  };
+  on(runBtn, 'click', () => {
+    while (timers.length) clearTimeout(timers.pop());
+    if (reduce) return;
+    linkSteps.forEach((g) => g.classList.add('wait'));
+    const order = [0, 1, 3, 4, 5, 6, 2];
+    order.forEach((k, i) => later(() => linkSteps[k] && linkSteps[k].classList.remove('wait'), 350 + i * (k === 2 ? 600 : 380)));
+  });
+  redraws.push(drawLink);
+
+  /* ---------- 9-1. 시리즈 지도 상자 그림 ---------- */
+  const BOX = { config: [9, 42, 100, 117], datacol: [114, 9, 110, 85], dataver: [122, 99, 89, 47], feature: [114, 151, 142, 65], mlcode: [230, 97, 47, 44], testing: [229, 24, 81, 55], resource: [320, 14, 100, 75], analysis: [286, 97, 139, 27], process: [292, 131, 123, 46], metadata: [262, 184, 172, 27], serving: [431, 66, 99, 90], monitor: [440, 161, 80, 45], automation: [15, 169, 88, 28] };
+  $$('[data-box]').forEach((em) => {
+    const hit = em.dataset.box.split(' ');
+    const sv = mk('svg', { viewBox: '0 0 538 222', 'aria-hidden': 'true' });
+    for (const k in BOX) { const [x, y, ww, hh] = BOX[k]; mk('rect', { x, y, width: ww, height: hh, rx: 8, class: hit.includes(k) ? 'on' : '' }, sv); }
+    em.prepend(sv);
+  });
+
+  /* ---------- 10. CI 레인 ---------- */
+  const lane = $('[data-op-lane]');
+  const drawLane = () => {
+    const w0 = Math.round(lane.getBoundingClientRect().width || 900);
+    const STG = ['코드 커밋', '패키지 설치·이미지 만들기', '배포', '운영'];
+    const CHK = [[['SAST', 'Bandit·Semgrep', 'a']], [['SBOM 만들기', 'cyclonedx-py·Syft', 'b'], ['취약점 대조', 'pip-audit·Trivy', 'b']], [], [['운영 감시', 'drift·평가 세트·비용', 'c']]];
+    const defs = () => { const d = mk('defs', {}, lane); const mkr = mk('marker', { id: 'op-arw', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: 'userSpaceOnUse', orient: 'auto' }, d); mk('path', { d: 'M0,0L10,5L0,10z', fill: 'var(--fg-neutral)' }, mkr); const m2 = mk('marker', { id: 'op-arw2', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: 'userSpaceOnUse', orient: 'auto' }, d); mk('path', { d: 'M0,0L10,5L0,10z', fill: 'var(--now)' }, m2); };
+    if (w0 >= 640) {
+      const h = 290, w = size(lane, h); defs();
+      const gap = 44, cw = (w - 3 * gap) / 4, sy = 70, sh = 52;
+      STG.forEach((s, i) => {
+        const x = i * (cw + gap);
+        mk('rect', { class: 'stg', x, y: sy, width: cw, height: sh, rx: 10 }, lane);
+        tx(s, { x: x + cw / 2, y: sy + 31, 'text-anchor': 'middle', 'font-size': 14.5, 'font-weight': 700 }, lane);
+        if (i < 3) mk('path', { class: 'flow', d: `M${x + cw + 7},${sy + sh / 2}H${x + cw + gap - 7}`, 'marker-end': 'url(#op-arw)' }, lane);
+        CHK[i].forEach(([a, b, c], j) => {
+          const y = sy + sh + 22 + j * 66;
+          if (!j) mk('path', { class: 'flow', d: `M${x + cw / 2},${y - 15}V${y - 7}`, 'stroke-dasharray': '3 3' }, lane);
+          mk('rect', { class: `chk ${c}`, x: x + 8, y, width: cw - 16, height: 54, rx: 9 }, lane);
+          tx(a, { x: x + cw / 2, y: y + 22, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700 }, lane);
+          tx(b, { x: x + cw / 2, y: y + 42, 'text-anchor': 'middle', 'font-size': 12.5, class: 'dim' }, lane);
+        });
+      });
+      const x3 = 3 * (cw + gap) + cw / 2, x0 = cw / 2;
+      mk('path', { class: 'back', d: `M${x3},${sy - 7}V30H${x0}V${sy - 9}`, 'marker-end': 'url(#op-arw2)' }, lane);
+      tx('재학습 · 모델 교체 · 패키지 갱신', { x: (x0 + x3) / 2, y: 22, 'text-anchor': 'middle', 'font-size': 13.5, 'font-weight': 700, style: 'fill:var(--now)' }, lane);
+    } else {
+      const rows = []; let y = 6;
+      STG.forEach((s, i) => { rows.push({ s, i, y }); y += 50 + CHK[i].length * 60 + (i < 3 ? 30 : 0); });
+      const h = y + 8, w = size(lane, h); defs();
+      const sx = 0, sw = w - 44;
+      rows.forEach(({ s, i, y: yy }) => {
+        mk('rect', { class: 'stg', x: sx, y: yy, width: sw, height: 42, rx: 9 }, lane);
+        tx(s, { x: sx + 14, y: yy + 26, 'font-size': 14, 'font-weight': 700 }, lane);
+        CHK[i].forEach(([a, b, c], j) => {
+          const cy = yy + 50 + j * 60;
+          mk('rect', { class: `chk ${c}`, x: sx + 22, y: cy, width: sw - 22, height: 50, rx: 8 }, lane);
+          tx(a, { x: sx + 36, y: cy + 21, 'font-size': 13.5, 'font-weight': 700 }, lane);
+          tx(b, { x: sx + 36, y: cy + 39, 'font-size': 12.5, class: 'dim' }, lane);
+        });
+        if (i < 3) { const ay = yy + 42 + CHK[i].length * 60 + 8; mk('path', { class: 'flow', d: `M${sx + 12},${ay}V${ay + 18}`, 'marker-end': 'url(#op-arw)' }, lane); }
+      });
+      const last = rows[3];
+      mk('path', { class: 'back', d: `M${sw + 6},${last.y + 21}H${w - 8}V${rows[0].y + 21}H${sw + 9}`, 'marker-end': 'url(#op-arw2)' }, lane);
+      tx('다시 처음으로', { x: w - 14, y: (rows[0].y + last.y) / 2, 'font-size': 12.5, 'font-weight': 700, 'text-anchor': 'middle', transform: `rotate(-90 ${w - 14} ${(rows[0].y + last.y) / 2})`, style: 'fill:var(--now)' }, lane);
+    }
+  };
+  redraws.push(drawLane);
+
+  /* ---------- 그리기 · 크기 변화 ---------- */
+  redraws.forEach((f) => f());
+  let lastW = window.innerWidth, rz = 0;
+  on(window, 'resize', () => { if (Math.abs(window.innerWidth - lastW) < 8) return; lastW = window.innerWidth; cancelAnimationFrame(rz); rz = requestAnimationFrame(() => redraws.forEach((f) => f())); }, { passive: true });
+})();
+</script>
