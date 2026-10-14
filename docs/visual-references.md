@@ -17,7 +17,7 @@
 | [Weaviate, Vector Search Explained](https://weaviate.io/blog/vector-search-explained) | 질의를 표적 공, 문서를 공으로 두는 비유. HNSW 위층은 긴 연결, 아래층은 짧은 연결 | 벡터 검색·ANN 을 그림으로 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
 | [Pinecone, Chunking Strategies](https://www.pinecone.io/learn/chunking-strategies/) | 청크가 너무 작을 때와 너무 클 때 무엇이 망가지는지 글로 정리(그림 없음) | 청킹 실험의 판정 문구를 쓸 때 | 2026-10-12 | rag-retrieval-pipeline |
 | [Jay Alammar, Illustrated Word2vec](https://jalammar.github.io/illustrated-word2vec/) | 임베딩을 색 칸 띠로 그려 비슷한 단어는 같은 열 색이 겹쳐 보이게 한다 | 임베딩 벡터의 "비슷함"을 보일 때 | 2026-10-12 | |
-| [Red Blob Games, Introduction to A*](https://www.redblobgames.com/pathfinding/a-star/introduction.html) | (다른 분야·지도 탐색) 시작점·목표를 끌어서 옮기고, 탐색 경계가 퍼지는 과정을 단계별로 본다 | 공간 위 탐색(최근접 이웃 등)을 조작하게 할 때 | 2026-10-12 | rag-retrieval-pipeline |
+| [Red Blob Games, Introduction to A*](https://www.redblobgames.com/pathfinding/a-star/introduction.html) | (다른 분야·지도 탐색) 시작점·목표를 끌어서 옮기고, 탐색 경계가 퍼지는 과정을 단계별로 본다. 루프를 한 번씩 넘기는 Step 버튼 옆에 그 루프의 상태를 같이 둔다 | 공간 위 탐색을 조작하게 할 때, 반복문을 한 바퀴씩 따라가게 할 때 | 2026-10-14 | rag-retrieval-pipeline, ai-agent-vs-chatbot |
 | [Lost in the Middle](https://arxiv.org/abs/2307.03172) | 정답 문서 위치에 따른 정확도 U자 곡선 | 긴 컨텍스트에서 위치 효과를 보일 때 | 2026-10-12 | rag-retrieval-pipeline |
 | [UTF-8 Playground (vishnuharidas)](https://github.com/vishnuharidas/utf8-playground) | 상태의 주체가 비트다. 독자가 비트를 눌러 뒤집으면 글자가 따라 바뀐다. 제어비트는 진한 색, 데이터비트는 연한 색으로 갈라 "앞 몇 비트는 길이 표지판"이 설명 없이 보인다. overlong 경고 배너로 "같은 글자를 가리키는 바이트열이 여럿"이라는 오해를 깬다 | 비트·플래그가 값의 일부인 형식을 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
 | [utf8splain (ThinkR-open)](https://github.com/ThinkR-open/utf8splain) | 한 글자를 행 단위 표로 분해한다. 칸은 byte(hex)·decimal·binary(8비트). 이모지 하나가 표에서 4행을 차지하는 모습으로 "글자 1개 = 바이트 1개" 오해를 깬다 | 글자와 바이트의 개수가 어긋나는 것을 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
@@ -32,6 +32,9 @@
 | [IPFS docs, Merkle DAG](https://raw.githubusercontent.com/ipfs/ipfs-docs/main/docs/concepts/merkle-dag.md) | `A=Hash(B)→B=Hash(C)` 한 줄로 "잎부터만 만들 수 있다·바꾸면 조상이 다 바뀐다·고리가 없다"를 한꺼번에 보인다 | 그림 다음에 규칙을 한 줄로 요약할 때 | 2026-10-14 | |
 | [merkle-db-sync](https://github.com/mohitmishra786/merkle-db-sync) | 원본·복제본 두 트리를 나란히 놓고 루트부터 비교해 다른 가지로만 내려가며 아낀 전송량을 숫자로 보인다 | "지문만 비교하면 된다"를 체감시킬 때 | 2026-10-14 | content-addressing-merkle-tree |
 | [gitlet (Mary Rose Cook)](https://github.com/maryrosecook/gitlet) | 명령보다 `.git` 안 객체를 먼저 보여 주는 "안에서 밖으로" 순서, 주석 단 1000줄 구현 | "진짜로는 어떻게 저장돼?"에 답할 때 | 2026-10-14 | |
+| [Anthropic, Building effective agents](https://www.anthropic.com/research/building-effective-agents) | 같은 부품(LLM·도구·메모리)을 두고 "경로를 코드가 미리 정했나, 모델이 정하나" 하나만 바꿔 워크플로와 Agent 를 가른다 | 비슷해 보이는 시스템을 결정 주체 하나로 가를 때 | 2026-10-14 | ai-agent-vs-chatbot |
+| [LangChain, What is an agent?](https://www.langchain.com/blog/what-is-an-agent) | 자율성 사다리(손 코드 → LLM 1회 → chain → router → state machine → 자율 agent)의 칸마다 "출력·다음 단계·쓸 수 있는 단계를 누가 정하나"를 사람/코드/LLM 으로 칠한다 | "누가 정하나" 축을 단계별로 보일 때 | 2026-10-14 | ai-agent-vs-chatbot |
+| [Claude 문서, Working with the Messages API](https://platform.claude.com/docs/en/build-with-claude/working-with-messages) | 요청 본문의 messages 배열이 왕복마다 길어지는 실제 예시와 입력 토큰 증가 | API 가 기억이 없다는 것을 증명할 때 | 2026-10-14 | ai-agent-vs-chatbot |
 
 ## 미확인
 
@@ -59,6 +62,7 @@
 - **실제 계산값을 그림에 쓰고 진짜 도구 결과와 맞춰 두기** (content-addressing-merkle-tree) — 히어로 나무의 지문을 브라우저에서 git 과 같은 방식(SHA-1, `blob <크기>\0`, tree 항목 형식)으로 계산하고, 같은 파일로 만든 저장소의 `git write-tree` 값과 맞춰 캡션에 적었다. "예시 값" 대신 "독자가 터미널에서 재현할 수 있는 값"이 됐다
 - **색은 상태 하나에만** (content-addressing-merkle-tree) — 첫 판은 지문에서 색을 뽑아 "같은 색 = 같은 지문"으로 썼는데, 서로 다른 지문이 비슷한 색을 받아 Critic 3점. 색을 "바뀜(주황)/그대로(회색)/건너뜀(점선)" 상태로만 쓰고, blob 구분은 그림 안에서 차례로 붙인 팔레트로 바꾸니 4점
 - **예시 프로젝트 하나로 글 전체 잇기** (content-addressing-merkle-tree) — 히어로의 6파일 프로젝트가 2층 목록, 3층 커밋의 tree(9349304)까지 그대로 이어져 "층을 쌓는다"가 끊기지 않았다. 섹션마다 다른 예시를 쓴 첫 판은 이야기가 세 갈래로 갈렸다는 지적을 받았다
+- **같은 입력을 세 갈래로 흘리고 상황 토글 하나만 바꾸기** (ai-agent-vs-chatbot) — 같은 요청을 챗봇·워크플로·Agent 세 칸에 나란히 두고 "이미 같은 티켓이 있음" 상황만 켜고 끄게 했다. 두 칸은 같은 길로 가고 Agent 칸만 길이 바뀌어, 정의 문장 없이 차이가 보였다. 단계마다 "그 단계를 정한 쪽"을 색 칩(사람·코드·모델)으로 달아 글 전체의 시각 언어로 썼다. Critic 4점
 
 ## 페이지 레이아웃
 
@@ -92,7 +96,7 @@
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
-| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래 | 방식 A vs B | utf8-encoding-mojibake |
+| 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot |
 
 벤토 격자·잡지형·장 표지의 실제 예시는 아직 열어 보지 못했다. 다음 조사 때 브라우저로 직접 본다.
 
