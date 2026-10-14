@@ -188,6 +188,8 @@ export async function getRecentPosts(
   };
 }
 
+// 글 목록(전체·카테고리·태그)은 마지막으로 수정한 글이 맨 위 — updated_at desc (2026-10-14 사용자 지시).
+// updated_at 은 posts 트리거가 저장할 때마다 갱신한다(db/schema.sql).
 export async function getAllPosts(): Promise<Post[]> {
   const sb = supabaseServer();
   const labels = await categoryLabelMap();
@@ -195,7 +197,7 @@ export async function getAllPosts(): Promise<Post[]> {
     .from("posts")
     .select("*")
     .eq("status", "published")
-    .order("published_at", { ascending: false });
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
@@ -392,7 +394,7 @@ export async function getPostsByTag(tag: string): Promise<Post[]> {
     .select("*")
     .eq("status", "published")
     .contains("tags", [tag])
-    .order("published_at", { ascending: false });
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
@@ -461,7 +463,7 @@ export async function getPostsByCategorySlug(slug: string): Promise<Post[]> {
     .select("*")
     .eq("status", "published")
     .in("category_slug", slugs)
-    .order("published_at", { ascending: false });
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
@@ -758,7 +760,7 @@ export type AdminPostRow = {
 };
 
 // 어드민 글 목록 — draft + published 전체, 공개 페이지와 동일하게 작성일(published_at) 기준 정렬.
-// published_at 이 없는 draft 는 맨 뒤로 가되 그 안에서는 updated_at desc.
+// 마지막으로 수정한 글이 맨 위 — 발행 여부와 상관없이 updated_at desc (2026-10-14 사용자 지시).
 // 각 글의 최신 ai_jobs 상태를 함께 매핑(테이블 없으면 null).
 export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
   const sb = supabaseServer();
@@ -766,7 +768,6 @@ export async function getAllPostsForAdmin(): Promise<AdminPostRow[]> {
   const { data, error } = await sb
     .from("posts")
     .select("slug,title,status,published_at,updated_at,category_slug,is_featured,thumb_kind,cover_image")
-    .order("published_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const rows = data ?? [];
