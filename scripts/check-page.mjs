@@ -11,9 +11,10 @@
 //   · 그림 없이 글만 이어지는 구간은 한글 LIMITS.run 자 이하. 그림이나 h2 를 만나면 끊는다
 //     (접힌 <details> 안은 세지 않는다)
 //   · SVG 그림 속 글자는 화면에서 10~28px(글자 상자 높이). 데스크톱에서 너무 크면 max-width, 모바일에서 너무 작으면 글자를 키운다
-//   · 글 열과 그림은 화면 가운데를 축으로(좌우 여백 차이 24px 이하). 폭은 자유, 2단 배치는 제외
+//   · 혼자 떨어진 좁은 글 열·그림이 한쪽으로 24px 넘게 쏠리지 않는다(옆에 다른 블록이 있는 2단은 제외)
+//   · 배치 다양성: 가운데 한 열 섹션(나란히 놓인 블록도, 화면 끝까지 닿는 색 띠도 없는 h2 섹션)이 절반을 넘지 않는다(POSTING 5-2)
 import { chromium } from "playwright";
-const LIMITS = { para: 220, run: 650, figShare: 0.5, svgTextMax: 28, svgTextMin: 10 };
+const LIMITS = { para: 220, run: 650, figShare: 0.5, singleMax: 0.5, svgTextMax: 28, svgTextMin: 10 };
 function rhythm(L) {
   const root = document.querySelector(".post-page");
   const ko = (t) => (t.match(/[가-힣]/g) || []).length;
@@ -34,9 +35,8 @@ function rhythm(L) {
   const second = secs[1];
   const early = all.some((e) => !second || second.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_PRECEDING);
   if (!early) problems.push("첫 화면(첫 섹션까지)에 그림이 없다");
-  // 축은 화면 가운데 — 글 열(h2 가 든 블록)과 그림이 페이지 가운데를 축으로 놓였는지 본다.
-  // 폭은 자유(글 700px, 그림·히어로는 넓게)지만 좁은 블록을 넓은 틀 한쪽에 붙이지 않는다.
-  // 옆에 다른 내용이 나란히 있는 2단 배치(그림 + 설명, 옆 조작판)는 치우친 게 아니다.
+  // 한쪽 쏠림 — 혼자 떨어진 좁은 글 열(h2 가 든 블록)이나 그림이 넓은 틀 한쪽에 붙어 반대편이 비면 잡는다.
+  // 옆에 다른 내용이 나란히 있는 2단 배치(글 | 그림, 제목 | 글, 코드 | 해설)는 쏠린 게 아니다.
   const axis = root.getBoundingClientRect();
   const besideSomething = (e, stop) => {
     for (let a = e; a && a !== stop; a = a.parentElement) {
@@ -66,6 +66,33 @@ function rhythm(L) {
       if (gg) problems.push(`그림이 한쪽으로 쏠림(왼쪽 ${gg[0]} · 오른쪽 ${gg[1]}px): "${name}" 섹션`);
     }
   }
+  // 배치 다양성 — 가운데 한 열 섹션이 절반을 넘으면 마크다운 글과 다를 게 없다(2026-10-14 사용자 지시)
+  const vw = window.innerWidth;
+  const INLINE = new Set(["SCRIPT", "STYLE", "SPAN", "B", "CODE", "I", "EM", "A", "BR", "SMALL", "STRONG", "LABEL", "BUTTON"]);
+  const sideBySide = (sec) => {
+    const els = [...sec.querySelectorAll("*")]
+      .filter((e) => !INLINE.has(e.tagName) && !e.closest("svg") && !hidden(e))
+      .map((e) => [e, e.getBoundingClientRect()])
+      .filter(([, r]) => r.width >= 180 && r.height >= 30);
+    for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+      const [a, ra] = els[i], [c, rc] = els[j];
+      if (a.contains(c) || c.contains(a)) continue;
+      const overlapY = Math.min(ra.bottom, rc.bottom) - Math.max(ra.top, rc.top);
+      if (overlapY >= 24 && (ra.right <= rc.left + 4 || rc.right <= ra.left + 4)) return true;
+    }
+    return false;
+  };
+  const band = (sec) => [...sec.querySelectorAll("*")].some((e) => {
+    if (e.closest("svg")) return false;
+    const r = e.getBoundingClientRect();
+    if (r.width < vw - 20 || r.height < 120) return false;
+    const bg = getComputedStyle(e).backgroundColor;
+    return bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent";
+  });
+  // 섹션 바깥에 붙어 다니는 조작판(옆 sticky 패널)도 나란히 놓인 것으로 본다
+  const single = secs.filter((s) => !sideBySide(s) && !band(s) && !besideSomething(s, root));
+  if (secs.length && single.length / secs.length > L.singleMax)
+    problems.push(`가운데 한 열 섹션이 ${single.length}/${secs.length} — 절반 이하여야 한다(글|그림·제목|글·코드|해설·전폭 띠 등으로 바꾼다): ${single.map((s) => '"' + s.querySelector("h2").textContent.trim().slice(0, 14) + '"').join(", ")}`);
   // SVG 그림 속 글자는 화면에서 본문과 비슷한 크기여야 한다. viewBox 그림이 넓은 칸에서 늘어나면 글자도 같이 커진다
   for (const svg of all.filter((e) => e.tagName === "svg")) {
     const sizes = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect().height).filter((h) => h > 0);
@@ -91,7 +118,7 @@ function rhythm(L) {
     if (run > maxRun) maxRun = run;
     if (run > L.run && run - c <= L.run) problems.push(`그림 없이 ${L.run}자를 넘는 글 구간: "${runStart}…" 부터`);
   }
-  return { sections: secs.length, withFig, figures: all.length, maxPara, maxRun, problems };
+  return { sections: secs.length, withFig, single: single.length, figures: all.length, maxPara, maxRun, problems };
 }
 const [slug, out] = process.argv.slice(2);
 const dark = process.argv.includes("--dark");
@@ -116,7 +143,7 @@ for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 8
   const ov = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (name === "desk" && !dark) {
     const r = await p.evaluate(rhythm, LIMITS);
-    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
+    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}, 가운데 한 열 ${r.single}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
     if (r.problems.length) { bad = true; r.problems.forEach((x) => console.log("  ✗ " + x)); }
   }
   if (name === "mob" && !dark) {
