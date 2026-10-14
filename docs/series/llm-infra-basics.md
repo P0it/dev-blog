@@ -18,7 +18,7 @@
 
 | # | 슬러그 | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 상태 |
 |---|---|---|---|---|---|
-| 1 | `llm-parameters-7b-explained` | 모델 이름 뒤 "7B"는 무엇을 70억 개 센 것인가? | AI·머신러닝·딥러닝·LLM 의 포함 관계 · 파라미터=가중치(손잡이 비유) · 학습=숫자 고치기, 추론=숫자 쓰기 · safetensors 파일 속 텐서 · 파라미터 수→파일 크기 · 파라미터 vs 벡터 DB | 모델, 파라미터, 가중치, 학습, 추론, 텐서 | 계획 |
+| 1 | `llm-parameters-7b-explained` | 모델 이름 뒤 "7B"는 무엇을 70억 개 센 것인가? | AI·머신러닝·딥러닝·LLM 의 포함 관계 · 파라미터=가중치(손잡이 비유) · 학습=숫자 고치기, 추론=숫자 쓰기 · safetensors 파일 속 텐서 · 파라미터 수→파일 크기 · 파라미터 vs 벡터 DB | 모델, 파라미터, 가중치, 학습, 추론, 텐서 | 발행 |
 | 2 | `transformer-attention-how-llm-reads` | LLM 은 문장을 받아 어떤 순서로 다음 단어 하나를 만들까? | 토큰화(BPE, 한국어가 토큰을 더 먹는 이유) · 토큰 id → 임베딩 · 위치 정보 · 같은 블록 수십 번(Attention+MLP, 잔차) · 마지막 확률표 · 한 글자씩 되먹이는 자기회귀. Attention 계산·온도는 기존 글 링크 | 토큰, 토크나이저, 임베딩, Transformer 블록, 자기회귀 | 계획 |
 | 3 | `prefill-decode-kv-cache` | 답의 첫 글자만 유독 늦게 나오는 이유는? | Prefill(한꺼번에) vs Decode(한 개씩) · KV Cache 가 아끼는 계산 · 계산이 막히나 메모리가 막히나 · KV Cache 크기 계산과 GQA · TTFT·TPOT·처리량 | Prefill, Decode, KV Cache, TTFT, TPOT, 메모리 대역폭 | 계획 |
 | 4 | `gpu-vram-fp16-int4-quantization` | 7B 모델을 돌리려면 왜 GPU 메모리가 14GB 나 필요할까? | GPU 가 필요한 이유(병렬 곱셈) · VRAM · 숫자 형식(FP32·BF16·FP8·INT4 비트 배분) · 양자화(눈금 줄이기, 오차) · VRAM 계산기(가중치+KV Cache+여유) · 너무 줄이면 생기는 일 | GPU, VRAM, 부동소수점, 양자화, GGUF | 계획 |
