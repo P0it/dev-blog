@@ -1,0 +1,1555 @@
+---
+title: Data Lake에 파일만 쌓아 두면 생기는 일
+slug: ai-data-platform-lake-iceberg-spark-starrocks
+excerpt: 질문 기록 100만 줄의 평균 나이를 구할 때 한 줄씩 적은 CSV는 117.7MB를 전부 읽어야 하지만 열 단위로 적은 Parquet은 0.76MB만 읽습니다. 그런데 S3에 Parquet 파일만 쌓아 두면 지금 어떤 파일이 표에 속하는지 아무도 모릅니다. 직접 만든 Iceberg 표의 스냅샷 네 개로 메타데이터 층과 time travel을 보고 일을 나눠 맡는 Spark와 바로 답하는 StarRocks까지 그림으로 정리했습니다.
+tags: [Data Lake, Apache Iceberg, Parquet, Spark, StarRocks, LLM 인프라 입문]
+category: ai
+series: llm-infra-basics
+series_order: 10
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-data-platform-lake-iceberg-spark-starrocks-mv8mkk23.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(왼쪽 열 h1·리드 → 조작 한 줄 → 바로 아래 판독 띠(읽은 칸·막대·답) → 넓은 그림: 표 | 세로 디스크 블록 띠, 칸 안에 값) → 글|그림(세 저장소, 비유는 캡션) → 글 + 넓은 그림(폴더 ↔ 평평한 키 토글) → 글|직접 그린 Parquet 띠(row group·column chunk·footer) + 넓은 실측 막대(질문 열 몫 직접 표시·범례) → 글|그림(사전 인코딩) + 실험판 전폭 띠(h3, row group 건너뛰기) → 글 + 넓은 그림(한 폴더의 하루 시간 띠) → 글|그림(앨범 비유) → 실험판 전폭 띠(실측 스냅샷 네 개 타임라인 | 그때의 표) → 첫 문단|그림 + 나머지 글(동시 쓰기, 모바일은 첫 문단 뒤 그림) → 글 + 넓은 그림(세 세대, 세대별 캡션) → 그림 고정 스크롤리텔링(Spark 셔플, executor·task 표시) → 글|가져온 StarRocks 그림 + h3 글|그림(벡터 실행, 기본 중간 상태) → 글 + 넓은 그림(AI 데이터 지도) + 큰 정리 문장 → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음. 가져온 Parquet·Iceberg 구조도는 모바일에서 7px 영어라 읽히지 않고 h2 위로 시선을 끌어 접었다(2026-10-15 Critic) | 글의 성격: 같은 질문 기록 표 하나가 디스크 띠 → Parquet 파일 → Iceberg 스냅샷 → Spark 조각 → AI 데이터 지도로 이어진다. 열마다 정한 색(id 회색·사용자 청록·나이 주황·나라 파랑·시각 보라·질문 초록)을 끝까지 같은 뜻으로 쓴다 | 버린 후보: 오른쪽 큰 숫자 판독 패널 히어로(앞 편과 같은 공식, 2026-10-15 Critic), 네 칸 문제 카드 격자(템플릿 냄새), 벤토 히어로(4편), 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 가로 스크롤 띠(rag-retrieval-pipeline), 분할 히어로 오른쪽 세로 자(6편) -->
+<style>
+.post-page .dl {
+  --c0: rgb(118, 126, 140); --c1: rgb(16, 146, 146); --c2: rgb(232, 116, 12);
+  --c3: rgb(44, 102, 204); --c4: rgb(126, 86, 214); --c5: rgb(30, 148, 82);
+  --hot: rgb(232, 116, 12); --hot-soft: rgb(253, 234, 212);
+  --ok: rgb(30, 148, 82); --bad: rgb(214, 52, 52);
+  --k1: rgb(220, 70, 110); --k2: rgb(16, 146, 146); --k3: rgb(214, 160, 20);
+  --tape-bg: rgb(244, 245, 248); --on: #fff;
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .dl {
+  --c0: rgb(150, 158, 174); --c1: rgb(64, 200, 196); --c2: rgb(255, 156, 64);
+  --c3: rgb(106, 160, 250); --c4: rgb(176, 144, 255); --c5: rgb(84, 204, 130);
+  --hot: rgb(255, 156, 64); --hot-soft: rgb(80, 50, 20);
+  --ok: rgb(84, 204, 130); --bad: rgb(255, 104, 96);
+  --k1: rgb(255, 116, 150); --k2: rgb(64, 200, 196); --k3: rgb(240, 196, 70);
+  --tape-bg: rgb(36, 39, 46); --on: rgb(16, 18, 24);
+}
+.post-page .dl * { box-sizing: border-box; }
+.post-page .dl-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .dl h1, .post-page .dl h2, .post-page .dl h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .dl h1 { font-size: clamp(32px, 4.8vw, 54px); line-height: 1.2; max-width: 12em; margin-bottom: 32px; }
+.post-page .dl h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .dl h3 { font-size: 21px; line-height: 1.45; margin-bottom: 20px; }
+.post-page .dl p, .post-page .dl li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .dl p { margin: 0 0 1.5em; }
+.post-page .dl b { color: var(--fg-strong); }
+.post-page .dl code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); overflow-wrap: anywhere; }
+.post-page .dl a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .dl .dl-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .dl details { margin: 0 0 1.4em; }
+.post-page .dl summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .dl details p { margin-top: 10px; font-size: 16px; }
+.post-page .dl svg text { font-family: var(--font-sans); }
+.post-page .dl svg text:not([fill]) { fill: var(--fg-strong); }
+.post-page .dl svg text.dim { fill: var(--fg-neutral); }
+.post-page .dl svg text.mono { font-family: var(--font-mono); }
+
+/* 배치 */
+.post-page .dl-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .dl-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dl-col { max-width: 40em; }
+/* */
+.post-page .dl-sec > .dl-wrap + .dl-wrap { margin-top: clamp(56px, 7vw, 96px); }
+.post-page .dl-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .dl-after { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .dl-band { background: var(--bg-subtle); padding: clamp(60px, 7vw, 84px) 0 clamp(48px, 6vw, 68px); margin-top: clamp(40px, 6vw, 64px); }
+.post-page .dl-fig { margin: 0; }
+.post-page .dl-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--fg-strong); margin-top: 14px; }
+.post-page .dl-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+
+/* 조작 부품: 토글 하나, 실행 버튼 하나 */
+.post-page .dl-seg { display: inline-flex; flex-wrap: wrap; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; }
+.post-page .dl-seg button { border: 0; background: transparent; color: var(--fg-neutral); font: 600 14px/1.25 var(--font-sans); padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .dl-seg button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.post-page .dl-act { border: 1.5px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); font: 700 15px/1 var(--font-sans); padding: 11px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .dl-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+.post-page .dl-ctl > span { font-size: 14px; font-weight: 700; color: var(--fg-strong); min-width: 4.5em; }
+
+/* ---------- 히어로 ---------- */
+.post-page .dl-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .dl-lede p { font-size: 17.5px; }
+.post-page .dl-lede p:last-child { margin-bottom: 0; }
+.post-page .dl-herofig { margin-top: clamp(36px, 4vw, 48px); }
+.post-page .dl-ctlrow { display: flex; flex-wrap: wrap; gap: 4px 36px; }
+.post-page .dl-readout { display: flex; align-items: center; gap: 12px 32px; margin-top: 14px; padding: 16px 0; border-top: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle); }
+.post-page .dl-ro-n { flex: none; }
+.post-page .dl-ro-m { flex: 1 1 auto; min-width: 0; }
+.post-page .dl-readout small { display: block; font-size: 14px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .dl-readout .big { font: 700 26px/1.25 var(--font-mono); color: var(--fg-strong); margin-top: 2px; white-space: nowrap; }
+.post-page .dl-readout .big span { color: var(--hot); }
+.post-page .dl-meter { height: 10px; border-radius: 5px; background: var(--bg-muted); overflow: hidden; }
+.post-page .dl-meter i { display: block; height: 100%; background: var(--hot); border-radius: 5px; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .dl-readout p { font-size: 15px; line-height: 1.6; margin: 10px 0 0; color: var(--fg-neutral); }
+.post-page .dl-readout p b { color: var(--fg-strong); }
+.post-page .dl p.dl-real { font-size: 15.5px; line-height: 1.75; margin: 22px 0 0; max-width: 46em; }
+.post-page .dl-real b { font-family: var(--font-mono); }
+.post-page .dl-herogrid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px clamp(32px, 4vw, 56px); align-items: start; margin-top: 26px; }
+.post-page .dl-gridhead { font-size: 14px; font-weight: 700; color: var(--fg-strong); margin-bottom: 12px; min-height: 1.5em; }
+.post-page .dl-gridhead span { color: var(--fg-neutral); font-weight: 600; margin-left: 6px; }
+.post-page .dl-tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14.5px; table-layout: fixed; }
+.post-page .dl-tbl th { text-align: left; font-size: 13px; font-weight: 700; color: var(--fg-strong); padding: 0 8px 8px; white-space: nowrap; }
+.post-page .dl-tbl th i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: 0; }
+.post-page .dl-tbl td { padding: 7px 8px; border-top: 1px solid var(--line-subtle); color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background-color .4s, color .4s; font-variant-numeric: tabular-nums; }
+.post-page .dl-tbl td.need { color: var(--fg-strong); font-weight: 700; }
+.post-page .dl-tbl col.w-id { width: 9%; } .post-page .dl-tbl col.w-u { width: 13%; } .post-page .dl-tbl col.w-a { width: 11%; }
+.post-page .dl-tbl col.w-n { width: 11%; } .post-page .dl-tbl col.w-t { width: 13%; } .post-page .dl-tbl col.w-q { width: 43%; }
+.post-page .dl-tape { position: relative; }
+.post-page .dl-blk { position: absolute; border-radius: 8px; background: var(--tape-bg); box-shadow: inset 0 0 0 1px var(--line-subtle); transition: background-color .4s, box-shadow .4s; }
+.post-page .dl-blk.read { background: var(--hot-soft); box-shadow: inset 0 0 0 2px var(--hot); }
+.post-page .dl-blk b { position: absolute; left: 0; right: 0; bottom: -22px; text-align: center; font: 600 12.5px/1 var(--font-mono); color: var(--fg-neutral); }
+.post-page .dl-blk.read b { color: var(--hot); }
+.post-page .dl-cell { position: absolute; border-radius: 3px; transition: left .7s cubic-bezier(.2,.7,.2,1), top .7s cubic-bezier(.2,.7,.2,1), opacity .4s; opacity: .22; }
+.post-page .dl-cell.side { opacity: .62; }
+.post-page .dl-cell { display: grid; place-items: center; overflow: hidden; font: 700 12px/1 var(--font-mono); color: var(--on); }
+.post-page .dl-cell.need { opacity: 1; box-shadow: 0 0 0 2px var(--fg-strong); }
+.post-page .dl-legend i.c-side { opacity: .62; background: var(--c0); }
+.post-page .dl-legend i.c-need { background: var(--c2); box-shadow: 0 0 0 2px var(--fg-strong); }
+.post-page .dl-legend i.c-off { background: var(--c0); opacity: .22; }
+.post-page .dl-legend i.c-blk { background: var(--hot-soft); box-shadow: inset 0 0 0 2px var(--hot); }
+
+/* ---------- 세 저장소 ---------- */
+.post-page .dl-stores { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
+
+/* ---------- S3 키 목록 ---------- */
+.post-page .dl-keys { max-width: 880px; margin: 0 auto; font-size: 15px; }
+.post-page .dl-keyrow { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.2,.7,.2,1), opacity .5s; }
+.post-page .dl-keyrow > div { overflow: hidden; min-height: 0; }
+.post-page .dl-keyin { display: grid; grid-template-columns: minmax(0, 1fr) 6em 11em; gap: 12px; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .dl-keyrow.fold { grid-template-rows: 0fr; opacity: 0; }
+.post-page .dl-keyname { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-strong); transition: padding-left .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .dl-keyname .pre { display: inline-block; max-width: 30em; overflow: hidden; vertical-align: bottom; color: var(--c3); transition: max-width .6s cubic-bezier(.2,.7,.2,1), opacity .5s; white-space: nowrap; }
+.post-page .dl-keys.tree .dl-keyname .pre { max-width: 0; opacity: 0; }
+.post-page .dl-keys .meta { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .5s; }
+.post-page .dl-keys.tree .meta { opacity: 0; }
+.post-page .dl-keyhead { display: grid; grid-template-columns: minmax(0, 1fr) 6em 11em; gap: 12px; padding: 0 4px 8px; font-size: 13px; font-weight: 700; color: var(--fg-neutral); border-bottom: 1.5px solid var(--line-strong); }
+.post-page .dl-keyhead .m { transition: opacity .5s; }
+.post-page .dl-keys.tree .dl-keyhead .m { opacity: 0; }
+.post-page .dl-keyrow.folder .dl-keyname { color: var(--fg-strong); font-weight: 700; }
+
+/* ---------- 가져온 그림 ---------- */
+.post-page .dl-ext img { width: 100%; max-width: 520px; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; padding: 12px; }
+[data-theme="dark"] .post-page .dl-ext img { filter: brightness(.7); }
+.post-page .dl-crop { display: block; }
+.post-page .dl-ext figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.65; margin-top: 12px; max-width: 520px; }
+
+/* ---------- 실측 막대 ---------- */
+.post-page .dl-sizes { width: 100%; max-width: 980px; display: block; margin: 0 auto; }
+.post-page .dl-sizes .seg { cursor: pointer; transition: opacity .25s; }
+.post-page .dl p.dl-sizeread { max-width: 980px; margin: 10px auto 0; font-size: 14.5px; color: var(--fg-strong); min-height: 1.7em; }
+.post-page .dl-sizeread b { font-family: var(--font-mono); }
+
+/* ---------- 사전 인코딩 ---------- */
+.post-page .dl-dict { width: 100%; max-width: 500px; display: block; margin: 0 auto; }
+
+/* ---------- row group 실험판 ---------- */
+.post-page .dl-lab { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dl-lab-a { grid-area: a; } .post-page .dl-lab-b { grid-area: b; } .post-page .dl-lab-f { grid-area: f; }
+.post-page .dl-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; margin: 8px 0 22px; }
+.post-page .dl-range label { grid-column: 1 / -1; font-size: 14px; font-weight: 700; color: var(--fg-strong); }
+.post-page .dl-range input { width: 100%; accent-color: var(--hot); }
+.post-page .dl-range output { font: 700 20px/1 var(--font-mono); color: var(--hot); min-width: 3.4em; text-align: right; }
+.post-page .dl-rg { width: 100%; max-width: 640px; display: block; margin: 0 auto; }
+.post-page .dl-rg .grp rect { transition: opacity .4s, fill .4s; }
+.post-page .dl-rg .grp { transition: transform .7s cubic-bezier(.2,.7,.2,1); }
+.post-page .dl-stat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 4px 0 24px; }
+.post-page .dl-stat div { padding-bottom: 12px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .dl-stat small { display: block; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); line-height: 1.45; }
+.post-page .dl-stat b { font: 700 22px/1.3 var(--font-mono); color: var(--fg-strong); }
+.post-page .dl-stat b.o { color: var(--hot); }
+
+/* ---------- 한 폴더 시간 띠 ---------- */
+.post-page .dl-comic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 28px; position: relative; }
+.post-page .dl-comic::before { content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 2px; background: var(--line-strong); }
+.post-page .dl-comic figure { margin: 0; position: relative; }
+.post-page .dl-comic .t { display: flex; width: max-content; padding-right: 10px; background: var(--bg-base); position: relative; align-items: center; gap: 10px; font: 700 14px/1 var(--font-mono); color: var(--fg-neutral); height: 24px; }
+.post-page .dl-comic .t::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-base); box-shadow: inset 0 0 0 2.5px var(--fg-neutral); flex: none; }
+.post-page .dl-comic svg { width: 100%; display: block; margin-top: 10px; }
+.post-page .dl-comic figcaption { font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); margin-top: 8px; }
+.post-page .dl-comic figcaption b { display: block; font-size: 15px; margin-bottom: 2px; }
+
+/* ---------- 스냅샷 타임라인 ---------- */
+.post-page .dl-two.snap { grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); }
+.post-page .dl-tree { width: 100%; max-width: 640px; display: block; }
+.post-page .dl-tree .n { transition: opacity .45s; }
+.post-page .dl-tree .e { transition: opacity .45s; fill: none; }
+.post-page .dl-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 18px; position: relative; }
+.post-page .dl-steps button { border: 0; background: transparent; text-align: left; padding: 30px 4px 0 0; font: 600 14px/1.45 var(--font-sans); color: var(--fg-neutral); cursor: pointer; position: relative; }
+.post-page .dl-steps button::before { content: ""; position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-base); box-shadow: inset 0 0 0 2px var(--fg-neutral); transition: background-color .3s, box-shadow .3s; }
+.post-page .dl-steps button::after { content: ""; position: absolute; left: 22px; right: 0; top: 13px; height: 2px; background: var(--line-strong); }
+.post-page .dl-steps button:last-child::after { display: none; }
+.post-page .dl-steps button[aria-pressed="true"] { color: var(--fg-strong); }
+.post-page .dl-steps button[aria-pressed="true"]::before { background: var(--hot); box-shadow: inset 0 0 0 2px var(--hot); }
+.post-page .dl-steps button b { display: block; font-family: var(--font-mono); color: inherit; }
+.post-page .dl-snapread { font-size: 15px; line-height: 1.7; color: var(--fg-strong); min-height: 5.2em; margin: 0 0 18px; }
+.post-page .dl-snaptbl { width: 100%; border-collapse: collapse; font-size: 15px; }
+.post-page .dl-snaptbl caption { text-align: left; font-size: 14px; font-weight: 700; color: var(--fg-neutral); padding-bottom: 8px; }
+.post-page .dl-snaptbl th, .post-page .dl-snaptbl td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .dl-snaptbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .dl-snaptbl td { color: var(--fg-strong); transition: opacity .4s; }
+.post-page .dl-snaptbl tr.gone td { opacity: .25; text-decoration: line-through; }
+.post-page .dl-snaptbl .lang { transition: opacity .4s; }
+.post-page .dl-snaptbl.nolang .lang { opacity: 0; }
+
+/* ---------- 동시 쓰기 ---------- */
+.post-page .dl-occ { width: 100%; max-width: 600px; display: block; margin: 0 auto; }
+
+
+/* ---------- Parquet 띠·앨범 ---------- */
+.post-page .dl-pq { width: 100%; max-width: 520px; display: block; margin: 0 auto; }
+.post-page .dl-album { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
+.post-page .dl-sizeleg { max-width: 980px; margin: 18px auto 0; }
+.post-page .dl-legend i.c-mix { background: repeating-linear-gradient(90deg, var(--c0) 0 3px, var(--c2) 3px 6px, var(--c5) 6px 9px); }
+
+/* ---------- 글 위 그림 아래 글 (모바일에서 그림이 첫 문단 뒤로) ---------- */
+.post-page .dl-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dl-sa { grid-area: a; } .post-page .dl-sb { grid-area: b; } .post-page .dl-sf { grid-area: f; }
+
+/* ---------- 한 폴더의 하루 ---------- */
+.post-page .dl-tlhead { font-size: 15px; color: var(--fg-neutral); margin-bottom: 18px; }
+.post-page .dl-tlhead b { color: var(--fg-strong); font-family: var(--font-mono); margin-right: 6px; }
+
+
+/* ---------- 키 색 띠·time travel ---------- */
+.post-page .dl-keyband { margin: 6px 0 0; }
+.post-page .dl-keyband .kb { display: grid; grid-template-columns: 24fr 14fr; font: 600 15px/1.2 var(--font-mono); }
+.post-page .dl-keyband .kb span { padding: 10px 8px; overflow-wrap: anywhere; }
+.post-page .dl-keyband .kb .p { background: color-mix(in srgb, var(--c3) 18%, var(--bg-base)); color: var(--fg-strong); border-radius: 8px 0 0 8px; box-shadow: inset 0 0 0 1.5px var(--c3); }
+.post-page .dl-keyband .kb .r { background: var(--bg-muted); color: var(--fg-strong); border-radius: 0 8px 8px 0; }
+.post-page .dl-keyband .kl { font: 600 13.5px/1.45 var(--font-sans); }
+.post-page .dl-keyband .kl span { background: none !important; box-shadow: none !important; padding: 6px 8px 0; color: var(--fg-neutral); }
+.post-page .dl-keyband .kl .p { color: var(--c3); }
+.post-page .dl-keyband .all { margin-top: 10px; padding-top: 8px; border-top: 2px solid var(--line-strong); font-size: 14px; font-weight: 700; color: var(--fg-strong); text-align: center; }
+.post-page .dl-tt { margin: 0; }
+.post-page .dl-ttsvg { width: 100%; max-width: 560px; display: block; }
+
+/* ---------- 세 세대 ---------- */
+.post-page .dl-eras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.post-page .dl-eras svg { width: 100%; max-width: 330px; display: block; margin: 0 auto; }
+.post-page .dl-eras .dl-cap { max-width: 330px; margin: 10px auto 0; }
+
+/* ---------- Spark 스크롤 ---------- */
+.post-page .dl-scrolly { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(48px, 6vw, 72px); }
+.post-page .dl-stepsx { padding: 2vh 0 26vh; }
+.post-page .dl-step[data-dl-step="1"] { min-height: 90vh; }
+.post-page .dl-step { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; opacity: .28; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .dl-step.on { opacity: 1; }
+.post-page .dl-step .no { font: 700 13px/1 var(--font-mono); color: var(--fg-neutral); margin-bottom: 10px; letter-spacing: .04em; }
+.post-page .dl-sticky { position: sticky; top: 120px; align-self: start; }
+.post-page .dl-spark { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
+.post-page .dl-spark .mv { transition: transform .8s cubic-bezier(.2,.7,.2,1), opacity .6s; }
+.post-page .dl-spark .fade { transition: opacity .6s; }
+.post-page .dl-sparknote { max-width: 560px; margin: 8px auto 0; font-size: 14.5px; color: var(--fg-strong); min-height: 3.2em; line-height: 1.6; }
+
+/* ---------- 벡터 실행 ---------- */
+.post-page .dl-race { display: grid; gap: 26px; }
+.post-page .dl-lane small { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; color: var(--fg-strong); margin-bottom: 8px; }
+.post-page .dl-lane small b { font-family: var(--font-mono); color: var(--hot); }
+.post-page .dl-cells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+.post-page .dl-cells .grp { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 8px; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .2s, background-color .2s; }
+.post-page .dl-cells .grp.b { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.post-page .dl-cells .grp.b.run { box-shadow: inset 0 0 0 3px var(--hot); background: var(--hot-soft); }
+.post-page .dl-cells .gn { grid-column: 1 / -1; font: 700 12.5px/1.2 var(--font-sans); color: var(--fg-neutral); padding: 2px 2px 0; }
+.post-page .dl-cells .grp.run .gn { color: var(--fg-strong); }
+.post-page .dl-cells i { aspect-ratio: 1.15; border-radius: 4px; background: color-mix(in srgb, var(--c2) 12%, var(--bg-base)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c2) 35%, transparent); display: grid; place-items: center; font: 600 12px/1 var(--font-mono); font-style: normal; color: var(--fg-strong); transition: background-color .2s, box-shadow .2s; }
+.post-page .dl-cells i.done { background: color-mix(in srgb, var(--c2) 42%, var(--bg-base)); box-shadow: none; }
+.post-page .dl-cells i.on { background: var(--c2); color: #1a1206; box-shadow: 0 0 0 2px var(--fg-strong); }
+
+/* ---------- AI 지도 ---------- */
+.post-page .dl-map { width: 100%; max-width: 1000px; display: block; margin: 0 auto; }
+.post-page .dl-map .route { fill: none; stroke-width: 3.2; stroke-linecap: round; transition: opacity .4s; }
+.post-page .dl-map .node rect { transition: stroke-width .3s, opacity .4s; }
+.post-page .dl-map .use { cursor: pointer; }
+
+.post-page .dl-sum { font-family: var(--font-display); font-weight: 500; font-size: clamp(19px, 2vw, 22px) !important; line-height: 1.6 !important; color: var(--fg-strong); margin: 0 0 1.2em !important; letter-spacing: -0.01em; }
+.post-page .dl-refs ul { margin: 0; padding-left: 1.1em; }
+.post-page .dl-refs li { font-size: 15px; margin-bottom: .5em; }
+.post-page .dl-refgrid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 40px; }
+
+@media (max-width: 900px) {
+  .post-page .dl-wrap { padding: 0 20px; }
+  .post-page .dl-two, .post-page .dl-two.lab, .post-page .dl-two.snap, .post-page .dl-refgrid, .post-page .dl-herogrid { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-comic { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-left: 28px; }
+  .post-page .dl-comic::before { left: 6px; right: auto; top: 0; bottom: 0; width: 2px; height: auto; }
+  .post-page .dl-comic .t { margin-left: -28px; }
+  .post-page .dl-comic svg { max-width: 300px; }
+  .post-page .dl-split { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "f" "b"; }
+  .post-page .dl-sf { margin: 8px 0 40px; }
+  .post-page .dl-lab { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "f" "b"; }
+  .post-page .dl-lab-f { margin-bottom: 32px; }
+  .post-page .dl-eras { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .post-page .dl-scrolly { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .dl-sticky { top: 64px; z-index: 2; background: var(--bg-base); padding: 8px 0 4px; order: -1; }
+  .post-page .dl-stepsx { padding: 6vh 0 20vh; }
+  .post-page .dl-step { min-height: 52vh; }
+  .post-page .dl-sparknote { display: none; }
+}
+@media (max-width: 560px) {
+  .post-page .dl-tbl { font-size: 13px; }
+  .post-page .dl-tbl th { font-size: 12px; padding: 0 4px 6px; }
+  .post-page .dl-tbl th i { display: none; }
+  .post-page .dl-tbl td { padding: 6px 4px; }
+  .post-page .dl-tbl col.w-id { width: 7%; } .post-page .dl-tbl col.w-u { width: 14%; } .post-page .dl-tbl col.w-a { width: 11%; }
+  .post-page .dl-tbl col.w-n { width: 11%; } .post-page .dl-tbl col.w-t { width: 16%; } .post-page .dl-tbl col.w-q { width: 41%; }
+  .post-page .dl-readout { flex-direction: column; align-items: stretch; }
+  .post-page .dl-readout .big { font-size: 24px; }
+  .post-page .dl-keyin, .post-page .dl-keyhead { grid-template-columns: minmax(0, 1fr) 4.6em; }
+  .post-page .dl-keys .meta.t, .post-page .dl-keyhead .m.t { display: none; }
+  .post-page .dl-keys { font-size: 13px; }
+  .post-page .dl-steps button { font-size: 12.5px; }
+  .post-page .dl-cells { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-keyband .kb { font-size: 13px; }
+  .post-page .dl-keyband .kl { font-size: 12.5px; }
+  .post-page .dl-crop { overflow: hidden; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; }
+  .post-page .dl-ext .dl-crop img { width: 190%; max-width: none; margin-left: -45%; border: 0; border-radius: 0; padding: 4px 0; }
+  .post-page .dl-stat b { font-size: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .dl *, .post-page .dl *::before, .post-page .dl *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="dl" data-dl>
+
+  <header class="dl-hero">
+    <div class="dl-wrap">
+      <div class="dl-col">
+        <h1>Data Lake에 파일만 쌓아 두면 생기는 일</h1>
+        <div class="dl-lede">
+          <p>학교 질문 챗봇이 학생들과 나눈 대화를 한 달 동안 모았다고 해 봅시다. 이 기록은 다음 모델을 가르칠 학습 데이터(training data)가 되고 자주 나온 질문은 RAG(Retrieval-Augmented Generation)에 넣을 문서를 고르는 근거가 됩니다. 기록이 100만 줄이면 어디에 어떤 모양으로 쌓아 둬야 할까요?</p>
+          <p>답의 절반은 디스크에 적는 순서에 있습니다. 같은 표라도 한 줄씩 적는 행 저장(row-oriented storage)이냐, 한 열씩 적는 열 저장(column-oriented storage)이냐에 따라 같은 질문에 읽어야 하는 양이 백 배 넘게 차이 납니다. 아래 표에서 저장 순서와 질문을 바꿔 보세요.</p>
+        </div>
+      </div>
+      <figure class="dl-fig dl-herofig" data-figure data-thumb data-thumb-act="el.querySelector('[data-dl-lay=&quot;col&quot;]').click()" data-dl-hero>
+        <div class="dl-ctlrow">
+          <div class="dl-ctl">
+            <span>저장 순서</span>
+            <div class="dl-seg" role="group" aria-label="저장 순서">
+              <button type="button" aria-pressed="true" data-dl-lay="row">한 줄씩 (행 저장)</button>
+              <button type="button" aria-pressed="false" data-dl-lay="col">한 열씩 (열 저장)</button>
+            </div>
+          </div>
+          <div class="dl-ctl">
+            <span>질문</span>
+            <div class="dl-seg" role="group" aria-label="질문 고르기">
+              <button type="button" aria-pressed="true" data-dl-q="0">평균 나이</button>
+              <button type="button" aria-pressed="false" data-dl-q="1">한국 평균 나이</button>
+              <button type="button" aria-pressed="false" data-dl-q="2">4번 줄 전부</button>
+            </div>
+          </div>
+        </div>
+        <div class="dl-readout" aria-live="polite">
+          <div class="dl-ro-n">
+            <small>디스크에서 읽은 칸</small>
+            <div class="big"><span data-dl-n>48</span> / 48칸</div>
+          </div>
+          <div class="dl-ro-m">
+            <div class="dl-meter"><i data-dl-meter style="width:100%"></i></div>
+            <p><span data-dl-blk>블록 6개를 모두 읽음 (블록 하나 = 칸 8개)</span> · <b data-dl-ans>답: 평균 27.5세</b></p>
+          </div>
+        </div>
+        <div class="dl-herogrid">
+          <div>
+            <div class="dl-gridhead">표에서 보이는 모습</div>
+            <table class="dl-tbl" data-dl-tbl aria-label="질문 기록 예시 표 8줄">
+              <colgroup><col class="w-id"><col class="w-u"><col class="w-a"><col class="w-n"><col class="w-t"><col class="w-q"></colgroup>
+              <thead><tr><th><i style="background:var(--c0)"></i>id</th><th><i style="background:var(--c1)"></i>사용자</th><th><i style="background:var(--c2)"></i>나이</th><th><i style="background:var(--c3)"></i>나라</th><th><i style="background:var(--c4)"></i>시각</th><th><i style="background:var(--c5)"></i>질문</th></tr></thead>
+              <tbody data-dl-tbody></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="dl-gridhead">디스크에 적힌 순서 <span data-dl-tapenote>한 줄의 여섯 칸이 이어서 놓임</span></div>
+            <div class="dl-tape" data-dl-tape role="img" aria-label="표의 48칸을 디스크에 적은 띠. 칸 8개가 블록 하나다. 행 저장이면 한 줄의 여섯 열이 이어서 놓이고 열 저장이면 같은 열 여덟 칸이 한 블록에 모인다"></div>
+          </div>
+        </div>
+        <div class="dl-legend" style="margin-top:34px">
+          <span><i class="c-need"></i>질문에 필요한 칸</span>
+          <span><i class="c-side"></i>같은 블록이라 함께 읽은 칸</span>
+          <span><i class="c-off"></i>읽지 않은 칸</span>
+          <span><i class="c-blk"></i>통째로 읽은 블록</span>
+        </div>
+        <p class="dl-real" data-dl-real>같은 모양의 표를 100만 줄로 만들어 재 보면, 한 줄씩 적은 CSV(Comma-Separated Values) 파일은 <b>117.7MB</b>를 전부 읽어야 하고 열 단위 파일 Parquet은 나이 열 <b>0.76MB</b>만 읽습니다.</p>
+        <p class="dl-cap">설명을 위해 만든 8줄짜리 예시 표입니다. 칸 색은 열을 뜻합니다. 디스크는 정해진 크기의 덩어리 단위로 읽기 때문에, 필요한 칸이 하나라도 든 블록은 통째로 읽습니다. MB 숫자는 같은 여섯 열짜리 표를 100만 줄로 만들어 M4 맥북에서 직접 잰 값입니다. Parquet 파일을 읽고 쓰는 Python 라이브러리 pyarrow 26.0.0을 썼습니다(2026-10-15).</p>
+      </figure>
+    </div>
+  </header>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-two">
+      <div>
+        <h2>AI가 쓰는 데이터는 서비스 DB와 따로 쌓아 둡니다</h2>
+        <p>챗봇 서비스가 돌아가려면 지금 이 순간의 상태를 적어 두는 데이터베이스(database), 줄여서 DB가 있어야 합니다. 누가 로그인했는지, 방금 들어온 질문이 무엇인지 한 건씩 빠르게 적고 읽습니다. PostgreSQL·MySQL 같은 DB가 이 일을 합니다.</p>
+        <p>그런데 같은 DB에 "지난 한 달 나라별 평균 나이"를 물으면 100만 줄을 훑느라 서비스가 느려집니다. 그래서 분석용 사본을 따로 둡니다. 정해진 표 모양으로 정리해 넣고 SQL로 집계하는 저장소가 데이터 웨어하우스(data warehouse)입니다. SQL은 표에 질문을 던지는 언어입니다.</p>
+        <p>AI에는 정리된 표보다 원본이 필요할 때가 많습니다. 대화 원문, 안내문 PDF, 급식 사진처럼 표에 담기 어려운 것도 있습니다. 이런 것까지 모양을 정하지 않고 일단 싸게 모아 두는 곳이 Data Lake입니다. 학습 데이터, RAG에 넣을 문서, 서비스 로그는 대개 여기에 먼저 쌓입니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <svg class="dl-stores" data-dl-stores viewBox="0 0 560 520" role="img" aria-label="챗봇 앱에서 나온 데이터가 세 곳으로 간다. 서비스 DB는 지금 상태를 한 건씩 읽고 쓴다. 그 사본 일부가 정리된 표로 데이터 웨어하우스에 가서 대시보드가 된다. 원본 전부는 Data Lake에 그대로 쌓여 학습 데이터와 RAG 문서가 된다"></svg>
+        <p class="dl-cap">편의점에 빗대면 DB는 계산대, 웨어하우스는 본사의 정리된 매출 장부, Data Lake는 영수증·사진·상자를 그대로 넣어 둔 창고와 비슷합니다. 다만 진짜 창고는 쌓을수록 꺼내기 어려워집니다. Data Lake는 이 글 뒤쪽에서 볼 메타데이터(metadata), 곧 데이터를 설명하는 데이터 덕분에 다시 표처럼 꺼내 쓸 수 있습니다. 웨어하우스를 따로 두는지, Data Lake 하나로 합치는지는 회사마다 다릅니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>Object Storage에는 폴더 없이 긴 이름표만 있습니다</h2>
+      <div class="dl-col">
+        <p>Data Lake의 바닥은 대개 Object Storage입니다. 파일을 객체(object)라는 단위로 넣고 꺼내는 저장소이고 AWS의 S3(Simple Storage Service)가 대표입니다. 회사 안 서버에서는 S3와 같은 방식으로 부를 수 있는 MinIO·Ceph 같은 소프트웨어를 씁니다.</p>
+        <p>객체 하나는 키(key), 값(value), 메타데이터로 이루어집니다. 키는 객체의 이름, 값은 내용 바이트, 메타데이터는 크기·형식·올린 시각 같은 꼬리표입니다. 객체를 담는 큰 그릇은 버킷(bucket)이라고 부릅니다.</p>
+      </div>
+      <figure class="dl-fig dl-wide" data-figure>
+        <div class="dl-ctl" style="justify-content:center">
+          <div class="dl-seg" role="group" aria-label="보는 방식">
+            <button type="button" aria-pressed="true" data-dl-view="tree">콘솔이 보여 주는 모습</button>
+            <button type="button" aria-pressed="false" data-dl-view="flat">실제로 저장된 모습</button>
+          </div>
+        </div>
+        <div class="dl-keys tree" data-dl-keys>
+          <div class="dl-keyhead"><span>이름</span><span class="m">크기</span><span class="m t">Content-Type</span></div>
+          <div data-dl-keylist></div>
+        </div>
+        <p class="dl-cap" style="max-width:880px;margin-left:auto;margin-right:auto">버킷 하나에 든 객체 여섯 개입니다. 콘솔(웹 관리 화면)은 키의 <code>/</code> 앞부분이 같은 객체를 폴더처럼 묶어 보여 줍니다. 실제로는 긴 키 여섯 개가 평평하게 놓여 있을 뿐입니다. 크기는 예시 값이고 마지막 두 객체 이름은 뒤에서 직접 만들어 볼 Iceberg 표의 실제 파일 이름을 줄인 것입니다.</p>
+      </figure>
+      <div class="dl-two dl-after">
+        <div>
+          <p>S3 문서는 버킷이 계층 없이 평평한(flat) 구조라고 적어 둡니다. <code>raw/app-logs/2026-10-14/part-0001.json</code> 전체가 키 하나입니다. 키 앞부분에 공통으로 붙은 <code>raw/app-logs/</code> 같은 글자를 접두사(prefix)라고 하고 콘솔은 이 접두사를 폴더 이름으로 보여 줍니다.</p>
+          <p>옷 보관소로 치면 키는 번호표입니다. 번호표만 내밀면 옷을 꺼내 주니 선반이 어떻게 생겼는지 몰라도 됩니다. 키는 번호표와 달리 길고 뜻이 있어서 같은 접두사로 시작하는 키를 한꺼번에 나열할 수 있습니다. S3는 한 버킷에 담을 수 있는 객체 수에 정해진 한도가 없습니다. 객체 하나는 최대 50TB, 키는 최대 1,024바이트입니다.</p>
+        </div>
+        <figure class="dl-keyband" data-figure role="img" aria-label="키 raw/app-logs/2026-10-14/part-0001.json 을 색 띠로 나눈 그림. 앞부분 raw/app-logs/2026-10-14/ 가 접두사이고 콘솔은 이 부분을 폴더로 보여 준다. 뒤 part-0001.json 은 나머지. 둘을 합친 전체가 키 하나다">
+          <div class="kb"><span class="p">raw/app-logs/2026-10-14/</span><span class="r">part-0001.json</span></div>
+          <div class="kb kl"><span class="p">접두사 · 콘솔이 폴더로 보여 주는 부분</span><span class="r">나머지</span></div>
+          <div class="all">이 전체가 키 하나 = 객체 이름 하나</div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-two">
+      <div>
+        <h2>Parquet은 같은 열끼리 모아 적습니다</h2>
+        <p>맨 위 그림의 "한 열씩 적기"를 실제 파일 형식으로 만든 것이 Apache Parquet입니다. Spark와 Iceberg가 기본으로 쓰는 표 파일 형식입니다. Parquet은 줄을 수십만 개씩 묶어 row group을 만들고 row group 안에서는 열마다 column chunk라는 덩어리를 따로 적습니다.</p>
+        <p>파일 끝에는 footer가 붙습니다. 열마다 column chunk가 파일 어디서 시작하는지, 값이 몇 개인지, 가장 작은 값과 큰 값이 무엇인지 적어 둔 목차입니다. 읽는 쪽은 footer부터 읽고 필요한 column chunk로 바로 건너뜁니다.</p>
+        <p>목차가 왜 맨 뒤에 있을까요? 공식 문서는 데이터를 앞에서부터 한 번에 쭉 쓰고 끝낼 수 있게 하려는 것이라고 설명합니다. 다 쓰고 나야 덩어리마다 위치를 알 수 있기 때문입니다. 문서가 권하는 row group 크기는 512MB~1GB입니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <svg class="dl-pq" data-dl-pq role="img" aria-label="Parquet 파일을 위에서 아래로 그린 띠. 맨 앞 PAR1 표시, row group 0과 row group 1 안에 id·사용자·나이·나라·시각·질문 column chunk 여섯 개가 나란히 있고, 파일 끝 footer가 각 row group의 column chunk 위치를 가리킨다. 맨 끝에 다시 PAR1 표시"></svg>
+        <p class="dl-cap">직접 그린 Parquet 파일 구조입니다. 색은 맨 위 표의 열 색과 같습니다. 실제로는 column chunk가 다시 페이지(page)라는 더 작은 읽기 단위로 나뉩니다. 공식 구조도는 <a href="https://parquet.apache.org/docs/file-format/">Apache Parquet, File Format</a>에 있습니다.</p>
+      </figure>
+    </div>
+    <div class="dl-wrap">
+      <figure class="dl-fig dl-wide" data-figure>
+        <svg class="dl-sizes" data-dl-sizes role="img" aria-label="100만 줄짜리 표의 파일 크기 막대. CSV 117.7MB, 압축하지 않은 Parquet 98.0MB, zstd로 압축한 Parquet 22.9MB. Parquet 막대는 열마다 색으로 나뉘고 질문 글 열이 가장 크며 나이 열은 0.76MB로 아주 얇다. 아래는 평균 나이를 구하는 데 걸린 시간: CSV 32ms, Parquet 나이 열만 1.5ms"></svg>
+        <div class="dl-legend dl-sizeleg">
+          <span><i style="background:var(--c0)"></i>id</span><span><i style="background:var(--c1)"></i>사용자</span><span><i style="background:var(--c2)"></i>나이</span><span><i style="background:var(--c3)"></i>나라</span><span><i style="background:var(--c4)"></i>시각</span><span><i style="background:var(--c5)"></i>질문</span><span><i class="c-mix"></i>CSV: 여섯 열이 줄마다 섞임</span>
+        </div>
+        <p class="dl-sizeread" data-dl-sizeread aria-live="polite">막대의 색 칸에 마우스를 올리거나 눌러 보면 열마다 크기가 나옵니다.</p>
+        <p class="dl-cap" style="max-width:980px;margin-left:auto;margin-right:auto">id·사용자·나이·나라·시각·질문 여섯 열에 질문 기록 100만 줄을 무작위로 채워 같은 표를 세 가지로 저장하고 잰 값입니다(M4 맥북, pyarrow 26.0.0, 2026-10-15). zstd(Zstandard)는 파일을 작게 줄이는 범용 압축 방식입니다. 시간은 다섯 번 재서 가장 빠른 값입니다. ms는 1,000분의 1초입니다. CSV는 읽기 전에 글자를 숫자로 바꾸는 시간도 들어 있습니다. 실측에 쓴 파일은 지웠습니다.</p>
+      </figure>
+      <div class="dl-col dl-after">
+        <p>압축한 Parquet은 CSV의 5분의 1 크기였습니다. 그중 71%를 질문 글 열 하나가 차지했고 숫자 열은 작았습니다. 평균 나이만 필요하면 나이 열 0.76MB만 읽으니 시간도 20분의 1로 줄었습니다. 반대로 질문 하나를 한 줄 통째로 꺼내야 하면 여섯 덩어리를 따로 찾아 읽어야 합니다. 그래서 한 건씩 읽고 쓰는 서비스 DB는 대개 행 단위로 저장합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-two">
+      <div>
+        <h2>같은 열끼리 모으면 잘 줄어들고 건너뛸 곳도 보입니다</h2>
+        <p>한 열에는 비슷한 값이 몰려 있습니다. 예시 표의 나라 열에는 KR·US·JP·DE·BR 다섯 가지 값만 100만 번 나옵니다. Parquet은 이런 열에 사전 인코딩(dictionary encoding)을 씁니다. 다섯 글자를 사전에 한 번씩만 적고 본문에는 0~4 번호만 적습니다.</p>
+        <p>같은 번호가 이어지면 "0이 세 번"처럼 줄여 적습니다. 이것이 RLE(Run-Length Encoding)입니다. 출석부에 "결석, 결석, 결석" 대신 "결석 3일"이라고 적는 것과 비슷합니다. 사람은 대충 줄여 써도 알아봅니다. 컴퓨터는 사전과 번호를 함께 보관해야 원래 값으로 정확히 되돌릴 수 있습니다.</p>
+        <p>실측 파일의 나라 열은 100만 칸이 0.30MB였습니다. 한 칸에 0.3바이트꼴입니다. 그 위에 zstd 같은 일반 압축을 한 번 더 씌웁니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <svg class="dl-dict" data-dl-dict viewBox="0 0 500 400" role="img" aria-label="나라 열 값 열 개(KR KR KR US KR JP KR KR DE KR)가 사전(0 KR, 1 US, 2 JP, 3 DE, 4 BR)과 번호 열(0 0 0 1 0 2 0 0 3 0)로 바뀌고 이어지는 같은 번호는 '0 × 3'처럼 줄여 적힌다"></svg>
+        <p class="dl-cap">설명을 위해 열 칸만 그린 예시입니다. 실제 파일에서는 pyarrow가 나라 열에 이 방식(RLE_DICTIONARY)을 골랐습니다.</p>
+      </figure>
+    </div>
+    <div class="dl-band">
+      <div class="dl-wrap dl-lab">
+        <div class="dl-lab-a">
+          <h3>최솟값·최댓값으로 묶음 건너뛰기</h3>
+          <p>footer에 적힌 최솟값·최댓값은 읽지 않아도 될 묶음을 알려 줍니다. 질문 기록 100만 줄을 시간 순서로 정렬해 10만 줄씩 row group 10개로 나눠 저장했습니다. "28일째부터 들어온 질문의 평균 나이"를 물으면, 최댓값이 28일보다 이른 묶음은 열어 볼 필요가 없습니다.</p>
+        </div>
+        <div class="dl-lab-b">
+          <div class="dl-range">
+            <label for="dl-day">며칠째부터 들어온 질문만 볼까요?</label>
+            <input type="range" id="dl-day" min="1" max="30" step="1" value="28" data-dl-day>
+            <output data-dl-dayout>28일째</output>
+          </div>
+          <div class="dl-ctl">
+            <div class="dl-seg" role="group" aria-label="저장할 때 줄 순서">
+              <button type="button" aria-pressed="true" data-dl-sort="1">시간순으로 정렬해 저장</button>
+              <button type="button" aria-pressed="false" data-dl-sort="0">섞인 순서로 저장</button>
+            </div>
+          </div>
+          <div class="dl-stat" aria-live="polite">
+            <div><small>열어 본 row group</small><b class="o" data-dl-rgn>1 / 10</b></div>
+            <div><small>읽은 나이 열</small><b data-dl-rgb>0.08MB</b></div>
+          </div>
+          <p>섞인 순서로 바꿔 보면 알 수 있듯이, 이 건너뛰기는 데이터가 그 열 기준으로 어느 정도 모여 있어야 통합니다. 그래서 자주 거르는 열(날짜 등)로 정렬하거나 나눠서 저장합니다.</p>
+        </div>
+        <figure class="dl-fig dl-lab-f" data-figure>
+          <svg class="dl-rg" data-dl-rg viewBox="0 0 640 420" role="img" aria-label="가로축은 1일부터 30일, 세로로 row group 열 개가 막대로 놓여 있다. 막대 길이는 그 묶음의 최솟값부터 최댓값까지다. 고른 날짜의 세로선보다 최댓값이 이른 묶음은 흐리게 '건너뜀'으로 표시된다"></svg>
+          <p class="dl-cap">시간순 저장의 묶음 범위는 실측 파일 footer의 값입니다(묶음마다 약 3일). 28일째 기준으로 실제 파일을 걸렀더니 묶음 1개만 읽고 9만 5,388줄의 평균 나이 41.0세를 냈습니다. 섞인 순서는 실측하지 않고 그린 예시입니다.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>파일만 쌓아 두면 어디까지가 표인지 아무도 모릅니다</h2>
+      <div class="dl-col">
+        <p>S3에 Parquet 파일을 폴더별로 쌓아 두는 것만으로도 처음엔 잘 돌아갑니다. "<code>chat_logs/</code> 밑의 파일 전부가 chat_logs 표"라고 약속하면 됩니다. 문제는 여러 작업이 같은 표를 동시에 쓰고 고치기 시작하면 생깁니다.</p>
+      </div>
+      <figure class="dl-fig dl-wide dl-tl" data-figure>
+        <div class="dl-tlhead"><b>📁 chat_logs/</b> 폴더 하나에 하루 동안 생기는 일</div>
+        <div class="dl-comic" data-dl-comic></div>
+      </figure>
+      <div class="dl-col dl-after">
+        <p>네 가지 모두 원인이 같습니다. "지금 이 표에 속한 파일이 정확히 무엇인가"를 적어 둔 곳이 없습니다. 폴더 목록을 읽는 순간의 상태가 곧 표가 되니, 언제 읽느냐에 따라 표가 달라집니다. 게다가 Parquet 파일은 한 번 쓰면 고치지 않고 통째로 새로 씁니다. 한 줄만 바꿔도 새 파일이 생기니 폴더에는 옛 파일과 새 파일이 섞여 쌓입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-two">
+      <div>
+        <h2>Iceberg는 표에 속한 파일 목록을 따로 적어 둡니다</h2>
+        <p>Apache Iceberg는 이 문제를 푸는 테이블 형식(table format)입니다. 데이터를 저장하는 프로그램이 아니라 어떤 파일이 표에 속하는지 적는 방법을 정한 약속(명세)입니다. 그래서 Spark·StarRocks처럼 서로 다른 엔진이 같은 표를 함께 읽고 씁니다. 명세는 버전 1·2·3이 채택됐고 4가 개발 중입니다(2026년 10월, 라이브러리 1.12.0).</p>
+        <p>층은 위에서 아래로 다섯 개입니다. catalog는 표 이름마다 "지금 최신 metadata file은 이것"이라는 주소 하나만 갖고 있습니다. metadata file에는 열 이름과 형식 목록인 스키마(schema), 그리고 스냅샷(snapshot) 목록이 들어 있습니다. 스냅샷은 어느 순간의 표 상태 하나입니다.</p>
+        <p>스냅샷마다 manifest list가 하나씩 있고 그 아래 manifest file이 실제 데이터 파일 목록과 열별 최솟값·최댓값을 적어 둡니다. 읽는 쪽은 이 통계로 열어 볼 manifest와 파일을 미리 거릅니다. Parquet footer에서 한 일을 파일 단위로 한 번 더 합니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <svg class="dl-album" data-dl-album role="img" aria-label="사진 앨범 비유 그림. 처음에는 표지 쪽지가 목차 종이 1을, 목차 종이 1이 사진 A를 가리킨다. 사진 B를 넣은 뒤에는 표지 쪽지가 새 목차 묶음을 가리키고, 새 목차 종이 2가 사진 B를, 그대로 둔 목차 종이 1이 사진 A를 가리킨다"></svg>
+        <p class="dl-cap">사진 앨범에 빗대면 데이터 파일은 사진, manifest는 목차 종이, 지금 어떤 목차를 볼지 가리키는 catalog는 표지에 붙인 쪽지입니다. 사진을 넣거나 뺄 때 사진은 그대로 두고 목차 종이만 새로 써서 끼웁니다. 앨범 목차는 매번 한 장을 새로 쓰지만 Iceberg는 바뀌지 않은 manifest를 다음 스냅샷에서도 그대로 가져다 씁니다. 실제로는 쪽지와 목차 종이 사이에 metadata file과 manifest list 두 층이 더 있습니다(아래 실측 그림).</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>쓰기 한 번마다 스냅샷이 하나씩 쌓입니다</h2>
+      <div class="dl-col">
+        <p>Iceberg 표를 Python에서 다루는 라이브러리 pyiceberg 0.12.0으로 작은 질문 표를 만들어 네 번 고쳐 봤습니다. 세 줄 추가, 두 줄 추가, id 3번 지우기, lang 열 추가 순서입니다. 아래 그림의 파일 이름과 크기는 그때 실제로 생긴 것입니다. 시점을 바꿔 보세요.</p>
+      </div>
+    </div>
+    <div class="dl-band">
+      <div class="dl-wrap dl-two snap">
+        <figure class="dl-fig" data-figure>
+          <div class="dl-steps" role="group" aria-label="시점 고르기" data-dl-steps>
+            <button type="button" aria-pressed="false" data-dl-v="1"><b>①</b>세 줄 추가</button>
+            <button type="button" aria-pressed="false" data-dl-v="2"><b>②</b>두 줄 추가</button>
+            <button type="button" aria-pressed="false" data-dl-v="3"><b>③</b>id 3 지우기</button>
+            <button type="button" aria-pressed="true" data-dl-v="4"><b>④</b>lang 열 추가</button>
+          </div>
+          <svg class="dl-tree" data-dl-tree role="img" aria-label="위에서부터 catalog, metadata file 네 개, manifest list 세 개, manifest 네 개, 데이터 파일 세 개. 고른 시점에 쓰이는 것만 진하게 이어지고 디스크에는 남았지만 그 시점의 표에 없는 파일은 점선으로 보인다"></svg>
+          <div class="dl-legend">
+            <span><i style="background:transparent;box-shadow:inset 0 0 0 2px var(--hot)"></i>이 시점의 표가 쓰는 것</span>
+            <span><i style="background:var(--hot-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--hot) 50%, transparent)"></i>이 시점에 새로 생긴 것 (칠한 칸)</span>
+            <span><i style="background:transparent;box-shadow:inset 0 0 0 2px var(--fg-neutral);"></i>디스크에 있지만 쓰지 않음</span>
+            <span><i style="background:var(--bad)"></i>"빠짐" 기록</span>
+          </div>
+        </figure>
+        <div>
+          <p class="dl-snapread" data-dl-snapread aria-live="polite"></p>
+          <table class="dl-snaptbl" data-dl-snaptbl>
+            <caption>이 시점에 읽으면 나오는 표</caption>
+            <thead><tr><th>id</th><th>question</th><th class="lang">lang</th></tr></thead>
+            <tbody data-dl-snapbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="dl-wrap">
+      <div class="dl-two dl-after">
+        <div>
+          <p>③에서 pyiceberg는 파일 A를 고치지 않았습니다. id 3을 뺀 새 파일 C를 쓰고 manifest에 "A는 빠짐, C는 들어옴"을 적었습니다. A는 디스크에 그대로 남아 있어서 ①·② 시점을 고르면 다시 보입니다. 이렇게 지난 스냅샷을 그대로 읽는 것을 time travel이라고 합니다.</p>
+        </div>
+        <figure class="dl-fig dl-tt" data-figure>
+          <svg class="dl-ttsvg" data-dl-tt role="img" aria-label="①부터 ④까지 시점이 이어진 선. 지금 표는 ④이고 time travel 화살표가 ④에서 ② 시점으로 되돌아가 그때의 표를 그대로 읽는다"></svg>
+        </figure>
+      </div>
+      <div class="dl-col" style="margin-top:8px">
+        <p>Spark SQL에서는 <code>SELECT * FROM chat_logs VERSION AS OF &lt;스냅샷 id&gt;</code>나 <code>TIMESTAMP AS OF '2026-10-14 09:00'</code>처럼 씁니다. 지난달 모델을 어떤 데이터로 학습했는지 다시 꺼내 볼 수 있어서 학습 데이터의 버전을 남길 때 씁니다. 게임의 세이브 파일과 비슷합니다. 세이브 파일은 매번 전체를 복사하지만 스냅샷은 바뀐 파일만 새로 쓰고 나머지는 그대로 가져다 씁니다.</p>
+        <p>④ 열 추가는 스냅샷을 만들지 않았습니다. metadata file만 새로 썼고 데이터 파일은 그대로입니다. Iceberg는 열을 이름이 아니라 번호(field id)로 찾기 때문에, 열을 더하거나 이름을 바꿔도 옛 파일을 다시 쓰지 않습니다. 이것을 스키마 변경(schema evolution)이라고 합니다. 옛 파일에 없는 lang 칸은 빈 값(null)으로 읽힙니다.</p>
+        <details>
+          <summary>지울 때마다 파일을 다시 쓰면 느리지 않을까요?</summary>
+          <p>그래서 명세 v2부터는 파일을 다시 쓰지 않고 "이 파일의 몇 번째 줄은 지움"만 따로 적는 delete file을 둡니다. v3에서는 이것을 줄 번호 비트맵인 deletion vector로 적습니다. 지울 때는 빠르고 읽을 때 지운 줄을 빼는 일을 조금 더 합니다. 실험에 쓴 pyiceberg는 ③처럼 파일을 다시 쓰는 쪽을 택했습니다.</p>
+          <p>스냅샷을 끝없이 남기면 옛 파일도 계속 남습니다. 그래서 일정 기간이 지난 스냅샷을 정리하는 작업(expire snapshots)을 돌려 더는 아무 스냅샷도 쓰지 않는 파일을 지웁니다. 정리한 시점보다 앞으로는 time travel할 수 없습니다.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-split">
+      <div class="dl-sa">
+        <h2>두 작업이 동시에 써도 표가 반쯤 바뀐 채로 보이지 않습니다</h2>
+        <p>표를 바꾸는 마지막 동작은 하나뿐입니다. catalog에 적힌 주소를 옛 metadata file에서 새 metadata file로 바꾸는 것입니다. 명세는 이것을 원자적 교체(atomic swap)라고 부릅니다. 바뀌었거나 안 바뀌었거나 둘 중 하나이고 반쯤 바뀐 상태는 없습니다.</p>
+      </div>
+      <figure class="dl-fig dl-sf" data-figure>
+        <svg class="dl-occ" data-dl-occ role="img" aria-label="시간이 왼쪽에서 오른쪽으로 흐르는 세 줄. 맨 위 catalog 주소가 v2에서 v3, v4로 바뀐다. 작업 A는 v2에서 출발해 먼저 주소를 v3으로 바꾸는 데 성공한다. 작업 B도 v2에서 출발했지만 주소가 이미 v3이라 실패하고 v3 위에서 다시 만들어 v4로 바꾼다. 읽는 쪽은 그동안 v2를 그대로 본다"></svg>
+        <p class="dl-cap">명세의 Optimistic Concurrency 절을 그린 그림입니다. 실제로 주소를 바꾸는 방법은 catalog 종류(데이터베이스, REST 서버 등)마다 다릅니다.</p>
+      </figure>
+      <div class="dl-sb">
+        <p>읽는 쪽은 표를 열 때 받은 metadata file만 봅니다. 그사이 누가 새 파일을 써도 주소가 바뀌기 전에는 보이지 않습니다. 읽으려고 표를 잠그지(lock) 않아도 됩니다.</p>
+        <p>두 작업이 같은 버전에서 출발하면 먼저 주소를 바꾼 쪽이 이깁니다. 늦은 쪽은 "내가 출발한 버전이 아직 최신인가"를 확인하다 실패하고 새 최신 버전 위에서 다시 시도합니다. 일단 해 보고 겹치면 다시 하는 이 방식을 낙관적 동시성(optimistic concurrency)이라고 합니다.</p>
+        <p>공유 문서에서 저장을 눌렀더니 "다른 사람이 먼저 고쳤습니다"가 뜨는 것과 비슷합니다. 사람은 내용을 읽고 합치지만 Iceberg는 "내가 바꾸려던 파일이 아직 표에 있는가" 같은 정해진 조건만 보고 다시 할지 포기할지 정합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>Lakehouse는 창고 하나에 여러 엔진을 붙입니다</h2>
+      <div class="dl-col">
+        <p>S3 같은 싼 저장소에 Parquet 파일을 두고 그 위에 Iceberg 같은 테이블 형식을 얹으면, Data Lake도 웨어하우스처럼 표와 트랜잭션(transaction)을 갖게 됩니다. 트랜잭션은 여러 변경을 다 되거나 다 안 되게 묶는 단위입니다. 이런 구조를 Lakehouse라고 부릅니다. Databricks 연구진이 2021년 CIDR 학회 논문에서 이 이름으로 정리했습니다.</p>
+      </div>
+      <figure class="dl-fig dl-eras dl-wide" data-figure data-dl-eras></figure>
+      <div class="dl-col dl-after">
+        <p>Lakehouse는 복사본을 하나로 줄입니다. 학습 코드가 같은 Parquet 파일을 바로 읽을 수 있어서 논문은 Lakehouse의 조건으로 머신러닝 지원을 따로 꼽았습니다. 이제 그 위에 붙는 엔진 둘을 차례로 봅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>Spark는 큰 일을 조각내 여러 컴퓨터에 나눠 맡깁니다</h2>
+      <div class="dl-col">
+        <p>100만 줄은 노트북 한 대로도 금방 처리합니다. 하지만 기록이 10억 줄이 되고 날마다 늘면 한 대로는 끝나지 않습니다. Apache Spark는 데이터를 조각내 여러 컴퓨터에서 동시에 처리하는 엔진입니다. 2026년 10월 최신 버전은 4.2.0이고 Python(PySpark)이나 SQL로 씁니다. "나라별 질문 수 세기"를 Spark가 어떻게 나누는지 스크롤하며 보세요.</p>
+      </div>
+    </div>
+    <div class="dl-wrap dl-scrolly" data-dl-scrolly>
+      <div class="dl-stepsx">
+        <div class="dl-step" data-dl-step="0">
+          <div class="no">① 조각 내기</div>
+          <p>Spark는 데이터를 파티션(partition)이라는 조각으로 나눕니다. 그림에서는 질문 기록을 12조각으로 나눴습니다. 점 하나가 질문 한 줄이고 색은 나라입니다. Spark 문서는 CPU 하나에 파티션 2~4개를 권합니다.</p>
+        </div>
+        <div class="dl-step" data-dl-step="1">
+          <div class="no">② 나눠 맡기</div>
+          <p>일을 하는 컴퓨터 세 대가 파티션을 네 개씩 맡습니다. Spark에서 이 일꾼 프로그램을 executor라고 부릅니다. 파티션 하나에는 작업 단위인 task가 하나씩 붙습니다.</p>
+        </div>
+        <div class="dl-step" data-dl-step="2">
+          <div class="no">③ 각자 미리 세기</div>
+          <p>컴퓨터마다 자기가 맡은 조각 안에서만 나라별 개수를 셉니다. 서로 말을 주고받을 필요가 없어서 컴퓨터를 늘린 만큼 거의 그대로 빨라집니다.</p>
+        </div>
+        <div class="dl-step" data-dl-step="3">
+          <div class="no">④ 셔플</div>
+          <p>이제 같은 나라 숫자끼리 한 컴퓨터에 모아야 합니다. KR은 1번으로, US는 2번으로, JP는 3번으로 보내는 식으로 데이터를 다시 나누는 일이 셔플(shuffle)입니다. 디스크에 쓰고 보낼 수 있는 모양으로 바꾸고 네트워크로 보내야 해서 Spark 문서도 비싼 작업이라고 적어 둡니다.</p>
+        </div>
+        <div class="dl-step" data-dl-step="4">
+          <div class="no">⑤ 합치기</div>
+          <p>모인 숫자를 더하면 끝입니다. 결과는 다시 Iceberg 표로 씁니다. 전교 설문을 반마다 먼저 세고 학년 대표에게 모아 더하는 것과 같습니다. 학교에서는 종이 한 장만 옮기면 되지만 Spark에서는 셔플로 옮길 데이터가 크면 그 시간이 전체 시간을 좌우합니다.</p>
+        </div>
+      </div>
+      <div class="dl-sticky" data-dl-sticky>
+        <svg class="dl-spark" data-dl-spark viewBox="0 0 560 500" role="img" aria-label="점 여섯 개씩 든 파티션 열두 개가 컴퓨터 세 대에 네 개씩 들어간다. 컴퓨터마다 나라별 개수 칩을 만들고 칩이 같은 나라끼리 한 컴퓨터로 선을 따라 옮겨 간 뒤 합계가 된다" data-figure></svg>
+        <div class="dl-sparknote" data-dl-sparknote aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="dl-wrap">
+      <div class="dl-col">
+        <p>그래서 Spark 작업을 빠르게 만드는 요령은 대개 셔플을 줄이는 것입니다. 그림의 ③처럼 보내기 전에 각자 미리 세어 두면 보낼 양이 줄어듭니다.</p>
+        <p>Data Lake에서 Spark가 맡는 일은 주로 ETL(Extract·Transform·Load)입니다. 원본을 읽고 고치고 합치고 표로 쓰는 일입니다. RAG에 넣을 문서 수백만 개를 청크(chunk), 곧 검색하기 좋은 길이의 조각으로 자르는 일처럼 한 번에 많이 처리하는 배치(batch) 작업에 맞습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-two">
+      <div>
+        <h2>StarRocks는 사람이 기다리는 질문에 바로 답합니다</h2>
+        <p>대시보드에서 버튼을 누를 때마다 "오늘 질문 수"를 다시 계산하려면, 큰 배치 작업과는 다른 엔진이 필요합니다. StarRocks는 이런 분석 질의를 빠르게 처리하는 SQL 엔진입니다. 여러 컴퓨터가 질의 하나를 나눠 동시에 계산하는 MPP(Massively Parallel Processing) 구조이고 2026년 10월 최신 버전은 4.1입니다.</p>
+        <p>shared-data 구조에서는 FE(Frontend)가 SQL을 받아 실행 계획을 세우고 CN(Compute Node) 여러 대가 나눠 실행합니다. 데이터는 S3 같은 Object Storage에 있고 CN의 디스크에는 따로 두지 않습니다. CN은 자주 읽는 부분만 캐시(cache)에 둡니다. 캐시는 자주 쓰는 것을 가까이 두는 임시 보관함입니다.</p>
+        <p>external catalog를 쓰면 Spark가 써 둔 Iceberg 표를 StarRocks로 옮기지 않고 그대로 질의합니다. 저장은 한 곳, 엔진은 여럿이라는 Lakehouse 그림 그대로입니다.</p>
+      </div>
+      <figure class="dl-fig dl-ext" data-figure>
+        <a class="dl-crop" href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/7c0bb399.webp"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/7c0bb399.webp" alt="StarRocks shared-data 구조도. 위에 FE 세 대(Catalog Manager, Coordinator), 가운데 CN 세 대(Execution Engine, Cache Data), 맨 아래 S3/HDFS 저장소" loading="lazy"></a>
+        <figcaption>StarRocks 문서의 shared-data 구조도입니다. FE 안에는 Catalog Manager(표 정보 관리)와 Coordinator(실행 조율), CN 안에는 Execution Engine(실행 엔진)과 Cache Data(캐시)가 있습니다. 맨 아래 S3/HDFS에 데이터가 있습니다. 그림을 누르면 전체 원본이 열립니다. HDFS(Hadoop Distributed File System)는 여러 서버의 디스크를 하나처럼 묶어 쓰는 분산 파일 시스템입니다 — <a href="https://docs.starrocks.io/docs/introduction/Architecture/">StarRocks Docs, Architecture</a></figcaption>
+      </figure>
+    </div>
+    <div class="dl-wrap dl-two" style="margin-top:clamp(64px,8vw,104px)">
+      <div>
+        <h3>열을 묶음째 계산하는 벡터 실행</h3>
+        <p>StarRocks가 빠른 이유 중 하나는 벡터 실행(vectorized execution)입니다. 값을 한 줄에 하나씩 꺼내 계산하는 대신 한 열의 값 여러 개를 묶음으로 꺼내 같은 계산을 한꺼번에 합니다. 열 단위로 저장된 데이터와 잘 맞습니다.</p>
+        <p>CPU에는 숫자 여러 개에 같은 덧셈을 한 번에 하는 SIMD(Single Instruction, Multiple Data) 명령이 있습니다. 시험지를 채점할 때 한 장씩 1번부터 끝까지 매기는 대신 모든 시험지의 1번만 먼저 쭉 매기는 것과 비슷합니다. 사람은 손이 하나뿐이지만 SIMD는 정말로 여러 값을 같은 순간에 계산합니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <div class="dl-ctl"><button type="button" class="dl-act" data-dl-race>▶ 나이 32칸 더하기</button></div>
+        <div class="dl-race" aria-live="polite">
+          <div class="dl-lane"><small>한 줄씩 하나씩 <b data-dl-ra>0번 계산</b></small><div class="dl-cells" data-dl-ca></div></div>
+          <div class="dl-lane"><small>8칸씩 묶어서 <b data-dl-rb>0번 계산</b></small><div class="dl-cells" data-dl-cb></div></div>
+        </div>
+        <p class="dl-cap">설명을 위한 예시입니다. 두 줄은 같은 빠르기로 한 번씩 계산합니다. 실제로는 한 묶음이 수천 줄이고 SIMD 한 번에 계산하는 값의 개수는 CPU와 숫자 형식에 따라 다릅니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <h2>학습 데이터도 RAG 문서도 이 길을 지나갑니다</h2>
+      <div class="dl-col">
+        <p>지금까지의 부품을 학교 챗봇의 데이터 길로 이으면 아래 그림이 됩니다. 원본은 S3에 쌓이고 Spark가 정리해 Iceberg 표로 씁니다. 그 표가 파인튜닝(fine-tuning), RAG, 대시보드 세 갈래로 나뉩니다. 파인튜닝은 이미 학습된 모델을 내 데이터로 조금 더 학습시키는 일입니다. 사용처 칸을 누르면 그 길이 켜집니다.</p>
+      </div>
+      <figure class="dl-fig dl-wide" data-figure>
+        <svg class="dl-map" data-dl-map role="img" aria-label="데이터 지도. 대화 로그, 안내문 PDF, 서비스 DB 사본이 S3 원본 칸으로 모이고 Spark를 거쳐 Iceberg 표 세 개(학습 데이터 표, 청크 표, 답변 로그 표)가 된다. 학습 데이터 표는 파인튜닝으로, 청크 표는 임베딩을 거쳐 벡터 DB로, 답변 로그 표는 StarRocks 대시보드로 간다"></svg>
+        <p class="dl-cap" data-dl-mapread aria-live="polite" style="max-width:1000px;margin-left:auto;margin-right:auto"></p>
+      </figure>
+      <div class="dl-col dl-after">
+        <p>파인튜닝 쪽에서는 학습에 쓴 표의 스냅샷 id를 모델과 함께 적어 둡니다. 그러면 나중에 모델 답이 이상할 때 그 모델이 본 데이터를 time travel로 그대로 다시 꺼낼 수 있습니다. 파인튜닝 자체는 <a href="/posts/fine-tuning-lora-qlora-peft">LoRA 학습 페이지</a>, 청크를 숫자 벡터로 바꾸는 임베딩(embedding)과 벡터 DB에서 찾는 과정은 <a href="/posts/rag-embedding-vector-db">벡터 DB 학습 페이지</a>에 따로 정리했습니다.</p>
+        <p class="dl-sum">데이터는 싼 저장소에 열 단위 파일로 쌓습니다. 표는 파일 목록을 적은 메타데이터로 만들고 계산은 그 위에 필요한 엔진을 붙입니다.</p>
+        <p>다음 글에서는 이렇게 쌓은 표 데이터로 LLM 말고 어떤 모델을 만드는지 알아보겠습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec dl-refs" style="padding-bottom:40px">
+    <div class="dl-wrap dl-refgrid">
+      <h2>참고 자료</h2>
+      <div><ul>
+        <li><a href="https://parquet.apache.org/docs/file-format/">Apache Parquet, File Format</a> · <a href="https://parquet.apache.org/docs/file-format/configurations/">Configurations</a> — PAR1, row group·column chunk·footer, row group 512MB~1GB·페이지 8KB 권장</li>
+        <li><a href="https://iceberg.apache.org/spec/">Apache Iceberg, Table Spec</a> — 형식 버전 1~3 채택·4 개발 중, 메타데이터 층, atomic swap·optimistic concurrency, field id 로 열 찾기, delete file·deletion vector</li>
+        <li><a href="https://iceberg.apache.org/docs/latest/spark-queries/">Apache Iceberg 1.12.0, Spark Queries</a> — <code>VERSION AS OF</code>·<code>TIMESTAMP AS OF</code></li>
+        <li><a href="https://py.iceberg.apache.org/">PyIceberg</a> 0.12.0 — 실험에 쓴 SqlCatalog(SQLite)·append·delete·update_schema</li>
+        <li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html">Amazon S3, Objects overview</a> · <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-folders.html">Organizing objects using folders</a> — 키·값·메타데이터, 최대 50TB, 평평한 구조와 접두사, 키 1,024바이트</li>
+        <li><a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html">Apache Spark 4.2.0, RDD Programming Guide</a> — 파티션마다 task 하나, CPU당 파티션 2~4개, 셔플(디스크 I/O·직렬화·네트워크 I/O)</li>
+        <li><a href="https://docs.starrocks.io/docs/introduction/Architecture/">StarRocks Docs, Architecture</a> · <a href="https://docs.starrocks.io/docs/introduction/Features/">Features</a> — shared-data, FE·CN, 캐시, MPP, 벡터 실행·SIMD, external catalog. shared-data 구조도 인용</li>
+        <li><a href="https://www.cidrdb.org/cidr2021/papers/cidr2021_paper17.pdf">Armbrust·Ghodsi·Xin·Zaharia, Lakehouse: A New Generation of Open Platforms that Unify Data Warehousing and Advanced Analytics (CIDR 2021)</a> — 1·2세대 분석 플랫폼과 Lakehouse</li>
+        <li><a href="https://arrow.apache.org/docs/python/parquet.html">Apache Arrow, Reading and Writing the Apache Parquet Format</a> — 실측에 쓴 pyarrow 26.0.0</li>
+      </ul></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const box = root.querySelector('[data-dl]');
+  if (!box) return;
+  const on = (el, ev, fn, o) => el && el.addEventListener(ev, fn, Object.assign({}, o || {}, signal ? { signal } : {}));
+  const $ = (s, el = box) => el.querySelector(s);
+  const $$ = (s, el = box) => [...el.querySelectorAll(s)];
+  const NS = 'http://www.w3.org/2000/svg';
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const timers = [];
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
+  signal && signal.addEventListener('abort', () => { while (timers.length) clearTimeout(timers.pop()); });
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const txt = (t, attrs, parent) => { const e = el('text', attrs, parent); e.textContent = t; return e; };
+  const isMob = () => window.innerWidth <= 560;
+  const COL = (c) => `var(--c${c})`;
+  const defs = (svg) => {
+    const d = el('defs', {}, svg);
+    const mk = (id, color) => { const m = el('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' }, d); el('path', { d: 'M0 0L10 5L0 10z', fill: color }, m); };
+    const u = Math.random().toString(36).slice(2, 7);
+    mk('ah' + u, 'var(--fg-neutral)'); mk('ahh' + u, 'var(--hot)'); mk('ahr' + u, 'var(--bad)');
+    return { a: `url(#ah${u})`, h: `url(#ahh${u})`, r: `url(#ahr${u})`, d };
+  };
+  const rbox = (svg, x, y, w, h, o = {}) => el('rect', Object.assign({ x, y, width: w, height: h, rx: o.rx ?? 10, fill: o.fill || 'var(--bg-base)', stroke: o.stroke || 'var(--line-strong)', 'stroke-width': o.sw || 1.5 }, o.dash ? { 'stroke-dasharray': o.dash } : {}), svg);
+  const redrawers = [];
+  let lastW = window.innerWidth, rt = 0;
+  on(window, 'resize', () => { clearTimeout(rt); rt = later(() => { if (Math.abs(window.innerWidth - lastW) < 2) return; lastW = window.innerWidth; redrawers.forEach((f) => f()); }, 150); }, { passive: true });
+
+  /* ---------- 1. 히어로: 표 → 디스크 띠 ---------- */
+  (() => {
+    const ROWS = [
+      [1, 'u07', 15, 'KR', '09:12', '책 반납 기한이 언제예요?'],
+      [2, 'u31', 42, 'KR', '09:15', '급식 메뉴 알려 주세요'],
+      [3, 'u18', 16, 'US', '09:20', '도서관은 몇 시에 닫아요?'],
+      [4, 'u12', 38, 'KR', '10:02', '체육복은 언제 입나요?'],
+      [5, 'u44', 14, 'JP', '10:30', '시험 범위가 어디까지예요?'],
+      [6, 'u09', 51, 'KR', '11:05', '방과후 신청은 어디서 해요?'],
+      [7, 'u20', 29, 'DE', '11:40', '와이파이 비밀번호가 뭐예요?'],
+      [8, 'u07', 15, 'KR', '12:01', '자습실은 몇 시까지 열어요?'],
+    ];
+    const SHORT = (r, c) => c === 5 ? ROWS[r][5].slice(0, 1) : c === 4 ? ROWS[r][4].slice(0, 2) : String(ROWS[r][c]);
+    const tbody = $('[data-dl-tbody]');
+    const tds = [];
+    ROWS.forEach((row, r) => { const tr = document.createElement('tr'); tds[r] = []; row.forEach((v, c) => { const td = document.createElement('td'); td.textContent = v; td.title = String(v); tr.appendChild(td); tds[r][c] = td; }); tbody.appendChild(tr); });
+    const tape = $('[data-dl-tape]');
+    const blks = [], cells = [];
+    for (let b = 0; b < 6; b++) { const d = document.createElement('div'); d.className = 'dl-blk'; d.innerHTML = `<b>블록 ${b + 1}</b>`; tape.appendChild(d); blks.push(d); }
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 6; c++) {
+      const d = document.createElement('div'); d.className = 'dl-cell'; d.style.background = COL(c); d.title = `${r + 1}번 줄 · ${['id', '사용자', '나이', '나라', '시각', '질문'][c]} = ${ROWS[r][c]}`;
+      const s = document.createElement('span'); s.textContent = SHORT(r, c); d.appendChild(s); tape.appendChild(d); cells.push({ d, r, c, s });
+    }
+    let lay = 'row', q = 0;
+    const NEED = [(r, c) => c === 2, (r, c) => c === 2 || c === 3, (r) => r === 3];
+    const ANS = ['답: 평균 27.5세', '답: 한국 사용자 5명, 평균 32.2세', '답: 4 · u12 · 38 · KR · 10:02 · 체육복은 언제 입나요?'];
+    const REAL = [
+      '같은 모양의 표를 100만 줄로 만들어 재 보면, 한 줄씩 적은 CSV(Comma-Separated Values) 파일은 <b>117.7MB</b>를 전부 읽어야 하고 열 단위 파일 Parquet은 나이 열 <b>0.76MB</b>만 읽습니다.',
+      '100만 줄로 재 보면 CSV는 여전히 <b>117.7MB</b> 전부, Parquet은 나라·나이 두 열 <b>1.06MB</b>입니다.',
+      '한 줄을 통째로 꺼낼 때는 행 저장이 유리합니다. 열 저장은 여섯 열이 서로 다른 곳에 있어서 여섯 군데를 따로 찾아 읽습니다.',
+    ];
+    const pos = (r, c) => lay === 'row' ? r * 6 + c : c * 8 + r;
+    const layout = () => {
+      const W = tape.clientWidth, pad = 6, cg = 3, bw = W, ch = 26, pitch = ch + 2 * pad + 30;
+      blks.forEach((b, i) => Object.assign(b.style, { left: '0px', top: i * pitch + 'px', width: bw + 'px', height: ch + 2 * pad + 'px' }));
+      tape.style.height = 5 * pitch + ch + 2 * pad + 24 + 'px';
+      const cw = (bw - 2 * pad - 7 * cg) / 8;
+      cells.forEach((o) => {
+        const p = pos(o.r, o.c), b = Math.floor(p / 8), k = p % 8;
+        Object.assign(o.d.style, { left: pad + k * (cw + cg) + 'px', top: b * pitch + pad + 'px', width: cw + 'px', height: ch + 'px' });
+        o.s.textContent = o.c === 4 ? (cw >= 44 ? ROWS[o.r][4] : ROWS[o.r][4].replace(/^0/, '')) : SHORT(o.r, o.c);
+        o.s.style.display = cw >= 26 ? '' : 'none';
+      });
+    };
+    const paint = () => {
+      const need = (r, c) => NEED[q](r, c);
+      const read = new Set();
+      cells.forEach((o) => { if (need(o.r, o.c)) read.add(Math.floor(pos(o.r, o.c) / 8)); });
+      cells.forEach((o, i) => {
+        const n = need(o.r, o.c), b = Math.floor(pos(o.r, o.c) / 8);
+        o.d.classList.toggle('need', n); o.d.classList.toggle('side', !n && read.has(b));
+        o.d.style.transitionDelay = reduce ? '0ms' : (lay === 'row' ? o.r * 50 : o.c * 60) + 'ms, ' + (lay === 'row' ? o.r * 50 : o.c * 60) + 'ms, 0ms';
+      });
+      blks.forEach((b, i) => b.classList.toggle('read', read.has(i)));
+      ROWS.forEach((row, r) => row.forEach((v, c) => { const td = tds[r][c]; const n = need(r, c); td.classList.toggle('need', n); td.style.backgroundColor = n ? `color-mix(in srgb, var(--c${c}) 22%, transparent)` : ''; }));
+      const n = read.size * 8;
+      $('[data-dl-n]').textContent = n;
+      $('[data-dl-meter]').style.width = (n / 48 * 100) + '%';
+      $('[data-dl-ans]').textContent = ANS[q];
+      $('[data-dl-real]').innerHTML = REAL[q];
+      $('[data-dl-tapenote]').textContent = lay === 'row' ? '한 줄의 여섯 칸이 이어서 놓임' : '같은 열 여덟 칸이 한 블록에 모임';
+      $('[data-dl-blk]').textContent = (read.size === 6 ? '블록 6개를 모두 읽음' : `블록 6개 중 ${read.size}개만 읽음`) + ' (블록 하나 = 칸 8개)';
+    };
+    $$('[data-dl-lay]').forEach((b) => on(b, 'click', () => { lay = b.dataset.dlLay; $$('[data-dl-lay]').forEach((x) => x.setAttribute('aria-pressed', x === b)); layout(); paint(); }));
+    $$('[data-dl-q]').forEach((b) => on(b, 'click', () => { q = +b.dataset.dlQ; $$('[data-dl-q]').forEach((x) => x.setAttribute('aria-pressed', x === b)); paint(); }));
+    layout(); paint();
+    redrawers.push(layout);
+  })();
+
+  /* ---------- 2. 세 저장소 ---------- */
+  (() => {
+    const svg = $('[data-dl-stores]');
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg);
+      if (!mob) {
+        svg.setAttribute('viewBox', '0 0 560 500');
+        rbox(svg, 6, 196, 110, 108, { rx: 14 });
+        txt('💬', { x: 61, y: 238, 'text-anchor': 'middle', 'font-size': 26 }, svg);
+        txt('챗봇 앱', { x: 61, y: 274, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700 }, svg);
+        const S = [
+          { y: 24, e: '🏪', t: '서비스 DB', a: '지금 상태를', b: '한 건씩 읽고 쓰기', o: ['앱 화면'] },
+          { y: 196, e: '📒', t: '데이터 웨어하우스', a: '정리된 표', b: 'SQL로 집계', o: ['대시보드'] },
+          { y: 368, e: '📦', t: 'Data Lake', a: '원본 그대로', b: '로그·PDF·사진', o: ['학습 데이터', 'RAG 문서'] },
+        ];
+        S.forEach((s, i) => {
+          rbox(svg, 170, s.y, 220, 108, { rx: 14, stroke: i === 2 ? 'var(--hot)' : 'var(--line-strong)', sw: i === 2 ? 2.2 : 1.5 });
+          txt(s.e + ' ' + s.t, { x: 186, y: s.y + 34, 'font-size': 17, 'font-weight': 700 }, svg);
+          txt(s.a, { x: 186, y: s.y + 64, 'font-size': 15, class: 'dim' }, svg);
+          txt(s.b, { x: 186, y: s.y + 88, 'font-size': 15, class: 'dim' }, svg);
+          el('line', { x1: 398, y1: s.y + 54, x2: 426, y2: s.y + 54, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+          s.o.forEach((o, j) => txt(o, { x: 434, y: s.y + 60 + (j - (s.o.length - 1) / 2) * 24, 'font-size': 15.5, 'font-weight': 700 }, svg));
+        });
+        el('path', { d: 'M122 236 C 146 236, 140 78, 162 78', fill: 'none', stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+        el('path', { d: 'M122 266 C 146 266, 140 422, 162 422', fill: 'none', stroke: 'var(--hot)', 'stroke-width': 2, 'marker-end': D.h }, svg);
+        txt('원본 전부', { x: 118, y: 344, 'font-size': 14, fill: 'var(--hot)', 'font-weight': 700, 'text-anchor': 'end' }, svg);
+        el('line', { x1: 280, y1: 138, x2: 280, y2: 190, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+        txt('정리해서 복사', { x: 290, y: 170, 'font-size': 14, class: 'dim' }, svg);
+      } else {
+        svg.setAttribute('viewBox', '0 0 360 520');
+        rbox(svg, 100, 6, 160, 46, { rx: 12 });
+        txt('💬 챗봇 앱', { x: 180, y: 36, 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 700 }, svg);
+        const S = [
+          { y: 96, t: '🏪 서비스 DB', a: '지금 상태를 한 건씩', o: '→ 앱 화면' },
+          { y: 236, t: '📒 데이터 웨어하우스', a: '정리된 표, SQL 집계', o: '→ 대시보드' },
+          { y: 376, t: '📦 Data Lake', a: '원본 그대로(로그·PDF)', o: '→ 학습 데이터·RAG 문서' },
+        ];
+        S.forEach((s, i) => {
+          rbox(svg, 24, s.y, 320, 108, { rx: 14, stroke: i === 2 ? 'var(--hot)' : 'var(--line-strong)', sw: i === 2 ? 2.2 : 1.5 });
+          txt(s.t, { x: 40, y: s.y + 32, 'font-size': 18, 'font-weight': 700 }, svg);
+          txt(s.a, { x: 40, y: s.y + 62, 'font-size': 16, class: 'dim' }, svg);
+          txt(s.o, { x: 40, y: s.y + 90, 'font-size': 16, 'font-weight': 700 }, svg);
+        });
+        el('line', { x1: 180, y1: 56, x2: 180, y2: 90, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+        el('line', { x1: 180, y1: 208, x2: 180, y2: 230, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+        txt('정리해서 복사', { x: 192, y: 226, 'font-size': 14, class: 'dim' }, svg);
+        el('path', { d: 'M100 29 H10 V430 H18', fill: 'none', stroke: 'var(--hot)', 'stroke-width': 2, 'marker-end': D.h }, svg);
+      }
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 3. S3 키 ---------- */
+  (() => {
+    const OBJ = [
+      ['raw/app-logs/2026-10-14/part-0001.json', '12.4MB', 'application/json'],
+      ['raw/app-logs/2026-10-14/part-0002.json', '11.9MB', 'application/json'],
+      ['raw/docs/school-guide.pdf', '2.1MB', 'application/pdf'],
+      ['raw/images/lunch-1014.jpg', '840KB', 'image/jpeg'],
+      ['lake/chat_logs/data/00000-0-6638eace.parquet', '1KB', 'application/octet-stream'],
+      ['lake/chat_logs/metadata/00001-0220f44a.metadata.json', '2KB', 'application/json'],
+    ];
+    const list = $('[data-dl-keylist]'), keys = $('[data-dl-keys]');
+    const seen = new Set();
+    const row = (cls, html, depth) => { const d = document.createElement('div'); d.className = 'dl-keyrow ' + cls; d.innerHTML = `<div><div class="dl-keyin">${html}</div></div>`; d.dataset.depth = depth; list.appendChild(d); return d; };
+    OBJ.forEach(([k, s, t]) => {
+      const parts = k.split('/');
+      for (let i = 0; i < parts.length - 1; i++) {
+        const pre = parts.slice(0, i + 1).join('/') + '/';
+        if (seen.has(pre)) continue; seen.add(pre);
+        row('folder', `<span class="dl-keyname" style="padding-left:${i * 1.4}em">📁 ${parts[i]}/</span><span class="meta"></span><span class="meta t"></span>`, i);
+      }
+      const pre = parts.slice(0, -1).join('/') + '/', nm = parts[parts.length - 1];
+      row('file', `<span class="dl-keyname" data-depth="${parts.length - 1}">📄 <span class="pre">${pre}</span>${nm}</span><span class="meta">${s}</span><span class="meta t">${t}</span>`, parts.length - 1);
+    });
+    const set = (mode) => {
+      keys.classList.toggle('tree', mode === 'tree');
+      $$('.dl-keyrow.folder', list).forEach((r) => r.classList.toggle('fold', mode !== 'tree'));
+      $$('.dl-keyrow.file .dl-keyname', list).forEach((n) => { n.style.paddingLeft = mode === 'tree' ? (+n.dataset.depth * 1.4) + 'em' : '0'; });
+    };
+    $$('[data-dl-view]').forEach((b) => on(b, 'click', () => { $$('[data-dl-view]').forEach((x) => x.setAttribute('aria-pressed', x === b)); set(b.dataset.dlView); }));
+    set('tree');
+  })();
+
+  /* ---------- 4. 실측 크기 막대 ---------- */
+  (() => {
+    const svg = $('[data-dl-sizes]'), read = $('[data-dl-sizeread]');
+    const NAMES = ['id', '사용자', '나이', '나라', '시각', '질문'];
+    const RAW = [8.27, 2.40, 0.755, 0.377, 8.12, 78.1], ZS = [1.28, 2.10, 0.76, 0.30, 2.10, 16.35];
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), VW = mob ? 420 : 980, fs = mob ? 16 : 14.5;
+      const lx = mob ? 0 : 200, bw = mob ? 340 : 690, sc = bw / 117.7, bh = mob ? 26 : 28;
+      const d = el('defs', {}, svg), pat = el('pattern', { id: 'dlstripe', width: 12, height: 10, patternUnits: 'userSpaceOnUse' }, d);
+      for (let c = 0; c < 6; c++) el('rect', { x: c * 2, y: 0, width: 2, height: 10, fill: COL(c) }, pat);
+      let y = 8;
+      txt('파일 크기 (100만 줄, 같은 표)', { x: 0, y: y + 14, 'font-size': fs, 'font-weight': 700 }, svg); y += 34;
+      const bar = (label, sub, parts, total, isCsv) => {
+        if (mob) { txt(label + ' ' + sub, { x: 0, y: y + 14, 'font-size': fs, 'font-weight': 600 }, svg); y += 22; }
+        else { txt(label, { x: lx - 14, y: y + 13, 'font-size': fs, 'font-weight': 600, 'text-anchor': 'end' }, svg); txt(sub, { x: lx - 14, y: y + 31, 'font-size': 13, class: 'dim', 'text-anchor': 'end' }, svg); }
+        if (isCsv) { el('rect', { x: lx, y, width: total * sc, height: bh, rx: 4, fill: 'url(#dlstripe)', opacity: .8, class: 'seg', 'data-i': 'csv' }, svg); }
+        else { let x = lx; parts.forEach((v, c) => { const r = el('rect', { x, y, width: Math.max(v * sc, 1.5), height: bh, fill: COL(c), class: 'seg', 'data-i': (label.includes('zstd') ? 'z' : 'r') + c }, svg); x += v * sc; }); }
+        const tt = txt(total.toFixed(1) + 'MB', { x: lx + total * sc + 8, y: y + bh / 2 + 5, 'font-size': fs, 'font-weight': 700, class: 'mono' }, svg);
+        if (!isCsv) {
+          const share = Math.round(parts[5] / total * 100);
+          if (mob) {
+            const t2 = txt(`질문 열 ${share}%`, { x: VW, y: y - 8, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'end' }, svg);
+            el('rect', { x: VW - t2.getComputedTextLength() - 18, y: y - 19, width: 12, height: 12, rx: 3, fill: COL(5) }, svg);
+          } else {
+            const tx = lx + total * sc + 8 + tt.getComputedTextLength() + 14;
+            el('rect', { x: tx, y: y + bh / 2 - 6, width: 12, height: 12, rx: 3, fill: COL(5) }, svg);
+            txt(`질문 열 ${share}%`, { x: tx + 18, y: y + bh / 2 + 5, 'font-size': fs, 'font-weight': 700 }, svg);
+          }
+        }
+        y += bh + (mob ? 18 : 22);
+      };
+      bar('CSV', '한 줄씩 적은 글자', null, 117.7, true);
+      bar('Parquet', '압축 없음', RAW, 98.0);
+      const yz = y;
+      bar('Parquet zstd', '열마다 압축', ZS, 22.9);
+      const ax = lx + (1.28 + 2.10 + 0.38) * sc;
+      el('line', { x1: ax, y1: yz + bh + 2, x2: ax, y2: yz + bh + (mob ? 16 : 14), stroke: 'var(--hot)', 'stroke-width': 2 }, svg);
+      txt('나이 열 0.76MB', { x: ax - 4, y: yz + bh + (mob ? 34 : 30), 'font-size': fs, 'font-weight': 700, fill: 'var(--hot)' }, svg);
+      y += 26;
+      txt('평균 나이 구하는 시간', { x: 0, y: y + 14, 'font-size': fs, 'font-weight': 700 }, svg); y += 32;
+      const tsc = bw / 32;
+      [['CSV 전부 읽기', 31.96, 'var(--c0)'], ['Parquet 나이 열만', 1.51, 'var(--c2)']].forEach(([l, v, c]) => {
+        if (mob) { txt(l, { x: 0, y: y + 14, 'font-size': fs, 'font-weight': 600 }, svg); y += 22; }
+        else txt(l, { x: lx - 14, y: y + 18, 'font-size': fs, 'font-weight': 600, 'text-anchor': 'end' }, svg);
+        el('rect', { x: lx, y, width: v * tsc, height: bh - 4, rx: 4, fill: c }, svg);
+        txt((v < 2 ? v.toFixed(1) : Math.round(v)) + 'ms', { x: lx + v * tsc + 8, y: y + bh / 2 + 3, 'font-size': fs, 'font-weight': 700, class: 'mono' }, svg);
+        y += bh + 14;
+      });
+      svg.setAttribute('viewBox', `0 0 ${VW} ${y + 4}`);
+      $$('.seg', svg).forEach((s) => {
+        const f = () => {
+          const i = s.dataset.i;
+          if (i === 'csv') read.innerHTML = 'CSV는 한 줄에 여섯 열을 쉼표로 이어 적어서 열이 줄마다 섞여 있습니다. 숫자도 글자로 적혀 있습니다.';
+          else { const c = +i.slice(1); read.innerHTML = `<b>${NAMES[c]}</b> 열: 압축 없이 <b>${RAW[c]}MB</b> → zstd 압축 <b>${ZS[c]}MB</b> (압축한 파일의 ${Math.round(ZS[c] / 22.9 * 100)}%)`; }
+          $$('.seg', svg).forEach((x) => x.style.opacity = x.dataset.i.slice(1) === s.dataset.i.slice(1) || s.dataset.i === 'csv' ? 1 : .35);
+        };
+        on(s, 'pointerenter', f); on(s, 'click', f);
+      });
+      on(svg, 'pointerleave', () => $$('.seg', svg).forEach((x) => x.style.opacity = ''));
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 5. 사전 인코딩 ---------- */
+  (() => {
+    const svg = $('[data-dl-dict]'), D = defs(svg);
+    const V = ['KR', 'KR', 'KR', 'US', 'KR', 'JP', 'KR', 'KR', 'DE', 'KR'];
+    const DICT = ['KR', 'US', 'JP', 'DE', 'BR'];
+    const fs = 17, y0 = 64, h = 32, g = 4;
+    svg.setAttribute('viewBox', '0 0 500 466');
+    txt('나라 열', { x: 44, y: 32, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle' }, svg);
+    txt('사전', { x: 196, y: 32, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle' }, svg);
+    txt('번호', { x: 318, y: 32, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle' }, svg);
+    txt('줄여 적기', { x: 432, y: 32, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle' }, svg);
+    V.forEach((v, i) => {
+      const y = y0 + i * (h + g);
+      el('rect', { x: 10, y, width: 68, height: h, rx: 5, fill: 'var(--c3)', opacity: .9 }, svg);
+      txt(v, { x: 44, y: y + 22, 'font-size': fs, 'text-anchor': 'middle', fill: 'var(--on)', 'font-weight': 700, class: 'mono' }, svg);
+      const n = DICT.indexOf(v);
+      el('rect', { x: 296, y, width: 44, height: h, rx: 5, fill: 'var(--bg-base)', stroke: 'var(--c3)', 'stroke-width': 1.5 }, svg);
+      txt(String(n), { x: 318, y: y + 22, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700, class: 'mono' }, svg);
+    });
+    DICT.forEach((v, i) => {
+      const y = y0 + i * (h + g);
+      el('rect', { x: 150, y, width: 92, height: h, rx: 5, fill: 'var(--bg-base)', stroke: 'var(--line-strong)', 'stroke-width': 1.5 }, svg);
+      txt(`${i}  ${v}`, { x: 196, y: y + 22, 'font-size': fs, 'text-anchor': 'middle', class: 'mono' }, svg);
+    });
+    txt('한 번씩만', { x: 196, y: y0 + 5 * (h + g) + 24, 'font-size': 17, class: 'dim', 'text-anchor': 'middle' }, svg);
+    el('line', { x1: 86, y1: 240, x2: 140, y2: 240, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+    el('line', { x1: 250, y1: 240, x2: 288, y2: 240, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+    const runs = []; let s = 0;
+    for (let i = 1; i <= V.length; i++) if (i === V.length || V[i] !== V[s]) { runs.push([s, i - s, DICT.indexOf(V[s])]); s = i; }
+    runs.forEach(([st, len, n]) => {
+      const y = y0 + st * (h + g), hh = len * (h + g) - g;
+      el('rect', { x: 384, y, width: 96, height: hh, rx: 6, fill: len > 1 ? 'var(--hot-soft)' : 'var(--bg-base)', stroke: len > 1 ? 'var(--hot)' : 'var(--line-strong)', 'stroke-width': 1.5 }, svg);
+      txt(len > 1 ? `${n} × ${len}` : String(n), { x: 432, y: y + hh / 2 + 6, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700, class: 'mono' }, svg);
+    });
+    txt('10칸 → 7칸', { x: 432, y: y0 + 10 * (h + g) + 26, 'font-size': 17, class: 'dim', 'text-anchor': 'middle' }, svg);
+  })();
+
+  /* ---------- 6. row group 건너뛰기 ---------- */
+  (() => {
+    const svg = $('[data-dl-rg]'), inp = $('[data-dl-day]');
+    let sorted = true;
+    const JIT = [0.3, 0.1, 0.6, 0.2, 0.4, 0.15, 0.5, 0.25, 0.05, 0.35];
+    const range = (i) => sorted ? [i * 3, i * 3 + 3] : [JIT[i], 30 - JIT[(i + 3) % 10]];
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), VW = mob ? 400 : 640, x0 = mob ? 70 : 96, x1 = mob ? 314 : 540, fs = mob ? 16 : 15, rh = mob ? 32 : 34, top = 52;
+      svg.setAttribute('viewBox', `0 0 ${VW} ${top + 10 * rh + 44}`);
+      const X = (t) => x0 + t / 30 * (x1 - x0);
+      const d = +inp.value;
+      for (let t = 0; t <= 30; t += 3) el('line', { x1: X(t), y1: top - 6, x2: X(t), y2: top + 10 * rh, stroke: 'var(--line-subtle)', 'stroke-width': 1 }, svg);
+      [1, 10, 20, 30].forEach((dd) => txt(dd + '일', { x: X(dd - 0.5), y: top + 10 * rh + 22, 'font-size': fs - 1, class: 'dim', 'text-anchor': 'middle' }, svg));
+      let k = 0;
+      for (let i = 0; i < 10; i++) {
+        const [a, b] = range(i), y = top + i * rh, keep = b > d - 1;
+        if (keep) k++;
+        txt('묶음 ' + (i + 1), { x: x0 - 10, y: y + rh / 2 + 5, 'font-size': fs, 'text-anchor': 'end', class: keep ? '' : 'dim' }, svg);
+        el('rect', { x: X(a), y: y + 5, width: X(b) - X(a), height: rh - 10, rx: 5, fill: 'var(--c4)', opacity: keep ? .95 : .18 }, svg);
+        txt(keep ? '읽음' : '건너뜀', { x: x1 + 10, y: y + rh / 2 + 5, 'font-size': fs, 'font-weight': keep ? 700 : 400, fill: keep ? 'var(--hot)' : 'var(--fg-neutral)' }, svg);
+      }
+      const lx = X(d - 1);
+      el('line', { x1: lx, y1: top - 14, x2: lx, y2: top + 10 * rh + 4, stroke: 'var(--hot)', 'stroke-width': 2.4 }, svg);
+      txt(d + '일째부터', { x: Math.min(lx, x1 - 20), y: top - 22, 'font-size': fs, 'font-weight': 700, fill: 'var(--hot)', 'text-anchor': 'middle' }, svg);
+      $('[data-dl-dayout]').textContent = d + '일째';
+      $('[data-dl-rgn]').textContent = `${k} / 10`;
+      $('[data-dl-rgb]').textContent = (k * 0.0757).toFixed(2) + 'MB';
+    };
+    on(inp, 'input', draw);
+    $$('[data-dl-sort]').forEach((b) => on(b, 'click', () => { sorted = b.dataset.dlSort === '1'; $$('[data-dl-sort]').forEach((x) => x.setAttribute('aria-pressed', x === b)); draw(); }));
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 7. 한 폴더의 하루 (시간 띠) ---------- */
+  (() => {
+    const wrap = $('[data-dl-comic]');
+    const CAP = [
+      ['① 반쯤 쓴 파일', '새 파일을 다 쓰기 전에 다른 작업이 폴더를 읽으면 절반만 들어간 표를 봅니다.'],
+      ['② 동시에 고치기', '두 작업이 같은 표를 동시에 고치면 한쪽이 다른 쪽 결과를 지우거나 덮어써도 알 수 없습니다.'],
+      ['③ 열 바꾸기', '새 파일에만 lang 열이 있습니다. 열 이름을 바꾸면 옛 파일에서는 그 열을 찾지 못합니다.'],
+      ['④ 한 줄 지우기', 'id 3 한 줄을 지우려 해도 그 줄이 든 파일을 통째로 다시 써야 합니다. 옛 파일은 언제 지워야 할까요?'],
+    ];
+    const TIME = ['09:00', '09:05', '10:00', '11:00'];
+    const SX = (k) => 26 + k * 40, R1 = 76, R2 = 132, FW = 32, FH = 44;
+    const file = (s, x, y, o = {}) => {
+      const g = el('g', { opacity: o.dim ? .42 : 1 }, s);
+      el('path', { d: `M${x} ${y}H${x + FW - 9}L${x + FW} ${y + 9}V${y + FH}H${x}Z`, fill: 'var(--bg-base)', stroke: o.stroke || 'var(--fg-neutral)', 'stroke-width': 1.6, 'stroke-dasharray': o.dash || '' }, g);
+      const n = o.n ?? 4, cols = o.cols;
+      for (let i = 0; i < n; i++) el('rect', { x: x + 5, y: y + 13 + i * 7, width: FW - 10, height: 4, rx: 2, fill: o.red === i ? 'var(--bad)' : cols ? COL(cols[i % cols.length]) : 'var(--c5)', opacity: .85 }, g);
+      if (o.cross) el('line', { x1: x - 2, y1: y + o.cross, x2: x + FW + 2, y2: y + o.cross, stroke: 'var(--bad)', 'stroke-width': 2 }, g);
+      return g;
+    };
+    const folder = (s) => el('path', { d: 'M14 52H84L96 64H226V190H14Z', fill: 'none', stroke: 'var(--line-strong)', 'stroke-width': 1.6 }, s);
+    CAP.forEach((cap, p) => {
+      const fig = document.createElement('figure');
+      const t = document.createElement('div'); t.className = 't'; t.textContent = TIME[p]; fig.appendChild(t);
+      const s = el('svg', { viewBox: '0 0 240 200', role: 'img', 'aria-label': `${TIME[p]} ${cap[0]}: ${cap[1]}` });
+      const D = defs(s);
+      folder(s);
+      const old = (k) => file(s, SX(k), R1, { dim: true });
+      if (p === 0) {
+        file(s, SX(0), R1); file(s, SX(1), R1);
+        file(s, SX(2), R1, { dash: '4 3', stroke: 'var(--hot)', n: 2 });
+        txt('쓰는 중', { x: SX(2) + 16, y: R1 + FH + 22, 'font-size': 15, 'text-anchor': 'middle', fill: 'var(--hot)', 'font-weight': 700 }, s);
+        txt('👀 읽는 쪽', { x: 150, y: 28, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+        el('path', { d: `M136 36 C 124 44, ${SX(2) + 18} 48, ${SX(2) + 18} ${R1 - 8}`, fill: 'none', stroke: 'var(--bad)', 'stroke-width': 1.8, 'marker-end': D.r }, s);
+      } else if (p === 1) {
+        [0, 1, 2].forEach(old);
+        file(s, SX(3), R1, { stroke: 'var(--bad)', n: 5 });
+        txt('작업 A', { x: 92, y: 26, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+        txt('작업 B', { x: 196, y: 26, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+        el('path', { d: `M100 34 C 120 44, ${SX(3) + 8} 50, ${SX(3) + 10} ${R1 - 8}`, fill: 'none', stroke: 'var(--fg-neutral)', 'stroke-width': 1.8, 'marker-end': D.a }, s);
+        el('path', { d: `M192 34 C 186 48, ${SX(3) + 26} 52, ${SX(3) + 22} ${R1 - 8}`, fill: 'none', stroke: 'var(--bad)', 'stroke-width': 1.8, 'marker-end': D.r }, s);
+        txt('덮어씀', { x: SX(3) + 16, y: R1 + FH + 22, 'font-size': 15, 'text-anchor': 'middle', fill: 'var(--bad)', 'font-weight': 700 }, s);
+      } else if (p === 2) {
+        [1, 2, 3].forEach(old);
+        file(s, SX(0), R1, { n: 2, cols: [0, 5] });
+        file(s, SX(4), R1, { n: 3, cols: [0, 5, 3], stroke: 'var(--c3)' });
+        txt('lang?', { x: SX(0) + 16, y: R1 + FH + 22, 'font-size': 15, 'text-anchor': 'middle', fill: 'var(--bad)', 'font-weight': 700 }, s);
+        txt('lang', { x: SX(4) + 16, y: R1 + FH + 22, 'font-size': 15, 'text-anchor': 'middle', fill: 'var(--c3)', 'font-weight': 700 }, s);
+        txt('새 열 추가', { x: 150, y: 28, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 700 }, s);
+      } else {
+        [1, 2, 3, 4].forEach(old);
+        file(s, SX(0), R1, { n: 4, red: 2, cross: 13 + 2 * 7 + 2 });
+        file(s, SX(0), R2, { n: 3, stroke: 'var(--hot)' });
+        el('line', { x1: SX(0) + 16, y1: R1 + FH + 4, x2: SX(0) + 16, y2: R2 - 6, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, s);
+        txt('통째로 새로 씀', { x: SX(1) + 2, y: R2 + 28, 'font-size': 15, fill: 'var(--hot)', 'font-weight': 700 }, s);
+        txt('id 3 지우기', { x: 120, y: 28, 'font-size': 15, 'text-anchor': 'middle', fill: 'var(--bad)', 'font-weight': 700 }, s);
+      }
+      fig.appendChild(s);
+      const fc = document.createElement('figcaption'); fc.innerHTML = `<b>${cap[0]}</b>${cap[1]}`; fig.appendChild(fc);
+      wrap.appendChild(fig);
+    });
+  })();
+
+  /* ---------- 7-1. Parquet 파일 띠 ---------- */
+  (() => {
+    const svg = $('[data-dl-pq]');
+    const NAMES = ['id', '사용자', '나이', '나라', '시각', '질문'];
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg), VW = mob ? 360 : 520, X0 = mob ? 6 : 10, BW = mob ? 300 : 410, fs = mob ? 15 : 15, cfs = mob ? 13 : 14;
+      let y = 6;
+      const par = (label) => { rbox(svg, X0, y, BW, 34, { rx: 8, fill: 'var(--bg-subtle)' }); txt(label, { x: X0 + 14, y: y + 23, 'font-size': fs }, svg).innerHTML = label; y += 34 + 14; };
+      par('<tspan font-weight="700" class="mono">PAR1</tspan><tspan class="dim"> 파일 시작 표시</tspan>');
+      const rgY = [];
+      ['row group 0 · 1~10만 번째 줄', 'row group 1 · 10만~20만 번째 줄'].forEach((t) => {
+        rbox(svg, X0, y, BW, 118, { rx: 12 });
+        txt(t, { x: X0 + 14, y: y + 27, 'font-size': fs, 'font-weight': 700 }, svg);
+        const g = 4, cw = (BW - 28 - 5 * g) / 6;
+        NAMES.forEach((n, c) => {
+          const x = X0 + 14 + c * (cw + g);
+          el('rect', { x, y: y + 44, width: cw, height: 58, rx: 6, fill: COL(c), opacity: .92 }, svg);
+          txt(n, { x: x + cw / 2, y: y + 78, 'font-size': cfs, 'text-anchor': 'middle', fill: 'var(--on)', 'font-weight': 700 }, svg);
+        });
+        rgY.push(y + 73); y += 118 + 14;
+      });
+      txt('⋮ row group이 더 이어짐', { x: X0 + 14, y: y + 10, 'font-size': fs, class: 'dim' }, svg); y += 30;
+      const fy = y;
+      rbox(svg, X0, y, BW, 96, { rx: 12, fill: 'var(--hot-soft)', stroke: 'var(--hot)', sw: 2 });
+      txt('footer (목차)', { x: X0 + 14, y: y + 28, 'font-size': fs, 'font-weight': 700 }, svg);
+      txt(mob ? 'column chunk마다 시작 위치,' : 'column chunk마다 시작 위치, 값 개수,', { x: X0 + 14, y: y + 54, 'font-size': fs - 1 }, svg);
+      txt(mob ? '값 개수, 최솟값·최댓값' : '최솟값·최댓값', { x: X0 + 14, y: y + 78, 'font-size': fs - 1 }, svg);
+      y += 96 + 14;
+      par('<tspan font-weight="700" class="mono">PAR1</tspan><tspan class="dim"> 끝 표시</tspan>');
+      // footer → row group 화살표 (오른쪽 바깥 길)
+      const lx = X0 + BW + (mob ? 26 : 40);
+      el('path', { d: `M${X0 + BW + 6} ${fy + 40} H${lx} V${rgY[0]} H${X0 + BW + 8}`, fill: 'none', stroke: 'var(--hot)', 'stroke-width': 2, 'marker-end': D.h }, svg);
+      el('path', { d: `M${lx} ${rgY[1]} H${X0 + BW + 8}`, fill: 'none', stroke: 'var(--hot)', 'stroke-width': 2, 'marker-end': D.h }, svg);
+      svg.setAttribute('viewBox', `0 0 ${VW} ${y + 4}`);
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 7-2. 앨범 비유 ---------- */
+  (() => {
+    const svg = $('[data-dl-album]');
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg);
+      const VW = mob ? 360 : 560, colW = mob ? 360 : 270, fs = 15, sub = 13;
+      const box = (x, y, w, h, l1, l2, o = {}) => {
+        rbox(svg, x, y, w, h, { rx: 9, stroke: o.hot ? 'var(--hot)' : 'var(--line-strong)', sw: o.hot ? 2.2 : 1.5, fill: o.fill || 'var(--bg-base)' });
+        txt(l1, { x: x + w / 2, y: y + 24, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700 }, svg);
+        if (l2) txt(l2, { x: x + w / 2, y: y + 44, 'font-size': sub, 'text-anchor': 'middle', class: /^[a-z]/.test(l2) ? 'dim mono' : 'dim' }, svg);
+      };
+      const arrow = (x1, y1, x2, y2) => el('path', { d: `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2 - 7}`, fill: 'none', stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, svg);
+      const photo = (x, y, letter, hot) => { rbox(svg, x, y, 70, 52, { rx: 8, fill: 'var(--c5)', stroke: hot ? 'var(--hot)' : 'var(--c5)', sw: hot ? 3 : 1 }); txt('🖼️ ' + letter, { x: x + 35, y: y + 32, 'font-size': fs, 'text-anchor': 'middle', fill: 'var(--on)', 'font-weight': 700 }, svg); };
+      const H = 340;
+      [0, 1].forEach((m) => {
+        const ox = mob ? 0 : m * (colW + 20), oy = mob ? m * (H + 24) : 0, cx = ox + colW / 2;
+        txt(m === 0 ? '처음: 사진 A만' : '사진 B를 넣은 뒤', Object.assign({ x: cx, y: oy + 20, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700 }, m ? { fill: 'var(--hot)' } : {}), svg);
+        box(cx - 100, oy + 38, 200, 54, m ? '📌 지금 목차: 2판' : '📌 지금 목차: 1판', 'catalog', { hot: m === 1 });
+        const mw = colW - 24;
+        rbox(svg, cx - mw / 2, oy + 106, mw, 42, { rx: 8, fill: 'transparent', stroke: 'var(--fg-neutral)', sw: 1.2, dash: '4 4' });
+        txt('실제로는 사이에', { x: cx, y: oy + 123, 'font-size': 12.5, 'text-anchor': 'middle', class: 'dim' }, svg);
+        txt('metadata file · manifest list', { x: cx, y: oy + 140, 'font-size': 12.5, 'text-anchor': 'middle', class: 'dim mono' }, svg);
+        el('line', { x1: cx, y1: oy + 94, x2: cx, y2: oy + 104, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6 }, svg);
+        const PY = 168, FY = 260;
+        if (m === 0) {
+          box(cx - 60, oy + PY, 120, 54, '목차 종이 ①', 'manifest');
+          arrow(cx, oy + 150, cx, oy + PY);
+          photo(cx - 35, oy + FY, 'A');
+          arrow(cx, oy + PY + 54, cx, oy + FY);
+        } else {
+          const l = cx - 126, r = cx + 6;
+          box(r, oy + PY, 120, 54, '목차 종이 ②', '새로 씀', { hot: true, fill: 'var(--hot-soft)' });
+          box(l, oy + PY, 120, 54, '목차 종이 ①', '그대로 씀');
+          arrow(cx - 30, oy + 150, l + 60, oy + PY); arrow(cx + 30, oy + 150, r + 60, oy + PY);
+          photo(l + 25, oy + FY, 'A'); photo(r + 25, oy + FY, 'B', true);
+          arrow(l + 60, oy + PY + 54, l + 60, oy + FY); arrow(r + 60, oy + PY + 54, r + 60, oy + FY);
+        }
+        txt('사진 = 데이터 파일', { x: cx, y: oy + 334, 'font-size': sub, 'text-anchor': 'middle', class: 'dim' }, svg);
+      });
+      if (!mob) el('line', { x1: colW + 10, y1: 30, x2: colW + 10, y2: 330, stroke: 'var(--line-subtle)', 'stroke-width': 1.5 }, svg);
+      svg.setAttribute('viewBox', `0 0 ${VW} ${mob ? 2 * H + 30 : H + 6}`);
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 8. 스냅샷 타임라인 (pyiceberg 실측) ---------- */
+  (() => {
+    const svg = $('[data-dl-tree]');
+    const META = [['00001', '1.9KB', 1], ['00002', '2.9KB', 2], ['00003', '4.0KB', 3], ['00004', '4.5KB', 3]];
+    const LISTS = [['snap-2200…', '1.9KB', ['m0']], ['snap-5420…', '2.0KB', ['m1', 'm0']], ['snap-1949…', '2.0KB', ['m2', 'm3', 'm1']]];
+    const MANI = { m0: ['6638…-m0', 1, [['A', 'add']]], m1: ['4582…-m0', 2, [['B', 'add']]], m2: ['fb96…-m0', 3, [['C', 'add']]], m3: ['fb96…-m1', 3, [['A', 'del']]] };
+    const FILES = { A: ['6638….parquet', '1,051B', 1, [1, 2, 3]], B: ['4582….parquet', '1,016B', 2, [4, 5]], C: ['fb96….parquet', '1,019B', 3, [1, 2]] };
+    const LIVE = { 1: ['A'], 2: ['A', 'B'], 3: ['B', 'C'] };
+    const Q = { 1: '책 반납 기한?', 2: '급식 메뉴?', 3: '와이파이 비번?', 4: '체육복 언제?', 5: '시험 범위?' };
+    const READ = [
+      '① 세 줄을 추가하자 데이터 파일 A(1,051바이트), manifest 하나, manifest list 하나, metadata file 00001이 생겼습니다. catalog는 00001을 가리킵니다.',
+      '② 두 줄을 더하자 파일 B와 이를 적은 manifest가 새로 생겼습니다. 새 manifest list는 A를 적은 옛 manifest를 다시 쓰지 않고 그대로 가리킵니다.',
+      '③ id 3을 지우자 1·2번만 담은 새 파일 C가 생기고 다른 manifest 하나에 "A 빠짐"이 적혔습니다. A는 디스크에 남아 있지만 이 시점의 표에는 없습니다.',
+      '④ lang 열을 더하자 metadata file 00004만 새로 생겼습니다. 스냅샷은 ③과 같고 데이터 파일도 그대로입니다. manifest list는 스냅샷마다 하나씩 생기므로 ④에서도 세 개 그대로입니다. 옛 파일에 없는 lang은 빈 값으로 읽힙니다.',
+    ];
+    const tb = $('[data-dl-snapbody]');
+    const trs = {};
+    [1, 2, 3, 4, 5].forEach((id) => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${id}</td><td>${Q[id]}</td><td class="lang">(빈 값)</td>`; tb.appendChild(tr); trs[id] = tr; });
+    let v = 4;
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg), VW = mob ? 360 : 620, fs = mob ? 15 : 14, sub = mob ? 13 : 12.5;
+      const s = META[v - 1][2];
+      const rowY = { cat: 8, meta: 96, list: 196, mani: 296, file: 396 };
+      const VH = 500; svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+      const xs = (n, w) => { const g = (VW - n * w) / (n + 1); return [...Array(n)].map((_, i) => g + i * (w + g)); };
+      const state = (born, used) => born > v ? 'yet' : used ? 'on' : 'off';
+      const node = (x, y, w, h, st, l1, l2, o = {}) => {
+        const g = el('g', { class: 'n', opacity: st === 'yet' ? .12 : st === 'off' ? .6 : 1 }, svg);
+        rbox(g, x, y, w, h, { rx: 8, stroke: st === 'on' ? (o.red ? 'var(--bad)' : 'var(--hot)') : 'var(--fg-neutral)', sw: st === 'on' ? (o.isNew ? 3 : 2) : 1.3, dash: st === 'off' ? '5 4' : '', fill: st === 'on' && o.isNew ? 'var(--hot-soft)' : 'var(--bg-base)' });
+        txt(l1, { x: x + w / 2, y: y + (l2 != null ? 21 : h / 2 + 5), 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700, class: 'mono' }, g);
+        if (l2) txt(l2, { x: x + w / 2, y: y + 39, 'font-size': sub, 'text-anchor': 'middle', class: 'dim' }, g);
+        return g;
+      };
+      const labels = [];
+      const label = (t, y) => labels.push([t, y]);
+      const NEW = { 1: 'A', 2: 'B', 3: 'C', 4: 'meta' };
+      const edge = (x1, y1, x2, y2, c = 'var(--hot)', mk = D.h, dash = '') => el('path', { class: 'e', d: `M${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2 - 6}`, stroke: c, 'stroke-width': 2, 'marker-end': mk, 'stroke-dasharray': dash }, svg);
+      // catalog
+      const cw = mob ? 250 : 300, cx = (VW - cw) / 2;
+      node(cx, rowY.cat, cw, 44, 'on', `catalog · chat_logs → ${META[v - 1][0]}`);
+      label('metadata file', rowY.meta);
+      const mw = mob ? 78 : 120, mx = xs(4, mw);
+      META.forEach((m, i) => node(mx[i], rowY.meta, mw, 50, state(i + 1, i + 1 === v), m[0], m[1], { isNew: NEW[v] === 'meta' && i + 1 === v }));
+      edge(VW / 2, rowY.cat + 44, mx[v - 1] + mw / 2, rowY.meta);
+      label('manifest list (스냅샷마다 하나)', rowY.list);
+      const lw = mob ? 104 : 150, lx = xs(3, lw);
+      LISTS.forEach((l, i) => node(lx[i], rowY.list, lw, 50, state(i + 1, i + 1 === s), l[0], v === 4 && i === 2 ? (mob ? '③ 그대로' : '③의 스냅샷 그대로') : l[1]));
+      edge(mx[v - 1] + mw / 2, rowY.meta + 50, lx[s - 1] + lw / 2, rowY.list);
+      label('manifest', rowY.mani);
+      const kw = mob ? 80 : 124, kx = xs(4, kw), KEYS = ['m0', 'm1', 'm2', 'm3'];
+      const used = LISTS[s - 1][2];
+      KEYS.forEach((k, i) => node(kx[i], rowY.mani, kw, 50, state(MANI[k][1], used.includes(k)), MANI[k][0], MANI[k][2][0][1] === 'del' ? `${MANI[k][2][0][0]} 빠짐` : `${MANI[k][2][0][0]} 들어옴`, { red: MANI[k][2][0][1] === 'del' }));
+      used.forEach((k) => edge(lx[s - 1] + lw / 2, rowY.list + 50, kx[KEYS.indexOf(k)] + kw / 2, rowY.mani));
+      label('데이터 파일 (Parquet)', rowY.file);
+      const fw = mob ? 104 : 150, fx = xs(3, fw), FK = ['A', 'B', 'C'];
+      FK.forEach((f, i) => {
+        const st = state(FILES[f][2], LIVE[s].includes(f));
+        const g = node(fx[i], rowY.file, fw, 88, st, `${f} · ${FILES[f][1]}`, mob ? '' : FILES[f][0], { isNew: NEW[v] === f });
+        FILES[f][3].forEach((id, j) => {
+          const n = FILES[f][3].length, cw2 = mob ? 24 : 28, x0 = fx[i] + fw / 2 - (n * cw2 + (n - 1) * 6) / 2 + j * (cw2 + 6);
+          el('rect', { x: x0, y: rowY.file + (mob ? 40 : 52), width: cw2, height: 24, rx: 5, fill: 'var(--c0)', opacity: .9 }, g);
+          txt(String(id), { x: x0 + cw2 / 2, y: rowY.file + (mob ? 57 : 69), 'font-size': fs, 'text-anchor': 'middle', fill: 'var(--on)', 'font-weight': 700, class: 'mono' }, g);
+        });
+      });
+      used.forEach((k) => MANI[k][2].forEach(([f, op]) => {
+        const i = FK.indexOf(f);
+        if (op === 'del') edge(kx[KEYS.indexOf(k)] + kw / 2, rowY.mani + 50, fx[i] + fw - 24, rowY.file, 'var(--bad)', D.r, '5 4');
+        else edge(kx[KEYS.indexOf(k)] + kw / 2, rowY.mani + 50, fx[i] + fw / 2, rowY.file);
+      }));
+      labels.forEach(([t, y]) => txt(t, { x: 4, y: y - 24, 'font-size': sub, class: 'dim', 'font-weight': 700, stroke: 'var(--bg-subtle)', 'stroke-width': 5, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }, svg));
+      $('[data-dl-snapread]').textContent = READ[v - 1];
+      const live = LIVE[s].flatMap((f) => FILES[f][3]);
+      [1, 2, 3, 4, 5].forEach((id) => {
+        const born = id <= 3 ? 1 : 2;
+        trs[id].style.display = born > s ? 'none' : '';
+        trs[id].classList.toggle('gone', !live.includes(id));
+      });
+      $('[data-dl-snaptbl]').classList.toggle('nolang', v < 4);
+      $$('[data-dl-v]').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.dlV === v));
+    };
+    $$('[data-dl-v]').forEach((b) => on(b, 'click', () => { v = +b.dataset.dlV; draw(); }));
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 8-1. time travel 띠 ---------- */
+  (() => {
+    const svg = $('[data-dl-tt]');
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg), VW = mob ? 360 : 560, x0 = 30, x1 = VW - 30, fs = mob ? 14 : 14;
+      svg.setAttribute('viewBox', `0 0 ${VW} 130`);
+      const X = (i) => x0 + i * (x1 - x0) / 3, y = 92;
+      el('line', { x1: x0, y1: y, x2: x1, y2: y, stroke: 'var(--line-strong)', 'stroke-width': 2 }, svg);
+      ['①', '②', '③', '④ 지금 표'].forEach((t, i) => {
+        el('circle', { cx: X(i), cy: y, r: 8, fill: i === 3 ? 'var(--fg-strong)' : i === 1 ? 'var(--hot)' : 'var(--bg-base)', stroke: i === 1 ? 'var(--hot)' : 'var(--fg-strong)', 'stroke-width': 2 }, svg);
+        txt(t, { x: X(i), y: y + 30, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': i === 1 || i === 3 ? 700 : 400, class: i === 1 || i === 3 ? '' : 'dim' }, svg);
+      });
+      el('path', { d: `M${X(3)} ${y - 14} C ${X(3)} ${y - 62}, ${X(1)} ${y - 62}, ${X(1)} ${y - 18}`, fill: 'none', stroke: 'var(--hot)', 'stroke-width': 2.2, 'stroke-dasharray': '6 4', 'marker-end': D.h }, svg);
+      txt('time travel: ② 시점의 표를 그대로 읽기', { x: (X(1) + X(3)) / 2, y: 24, 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700, fill: 'var(--hot)' }, svg);
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 9. 동시 쓰기 ---------- */
+  (() => {
+    const svg = $('[data-dl-occ]');
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg), VW = mob ? 380 : 600, fs = mob ? 15 : 14.5, L = mob ? 70 : 108;
+      svg.setAttribute('viewBox', `0 0 ${VW} 420`);
+      const X = (t) => L + t * (VW - L - 8);
+      const lane = (y, name) => txt(name, { x: 0, y: y + 5, 'font-size': fs, 'font-weight': 700 }, svg);
+      const seg = (t1, t2, y, c, label, o = {}) => {
+        el('rect', { x: X(t1), y: y - 13, width: X(t2) - X(t1), height: 26, rx: 6, fill: c, opacity: o.op ?? .9 }, svg);
+        if (label) txt(label, { x: (X(t1) + X(t2)) / 2, y: y + 5, 'font-size': fs - 1, 'text-anchor': 'middle', fill: o.tc || '#fff', 'font-weight': 700 }, svg);
+      };
+      lane(36, mob ? '주소' : 'catalog 주소');
+      seg(0, .5, 36, 'var(--c0)', 'v2'); seg(.5, .82, 36, 'var(--hot)', 'v3'); seg(.82, 1, 36, 'var(--ok)', 'v4');
+      lane(120, '작업 A');
+      el('circle', { cx: X(.02), cy: 120, r: 6, fill: 'var(--c0)' }, svg);
+      seg(.04, .46, 120, 'var(--bg-muted)', 'v2 위에서 쓰기', { op: 1, tc: 'var(--fg-strong)' });
+      txt('✓', { x: X(.5), y: 126, 'font-size': 20, 'text-anchor': 'middle', fill: 'var(--ok)', 'font-weight': 700 }, svg);
+      el('line', { x1: X(.5), y1: 104, x2: X(.5), y2: 56, stroke: 'var(--hot)', 'stroke-width': 2, 'marker-end': D.h }, svg);
+      txt('v2→v3 성공', { x: X(.5) + 8, y: 88, 'font-size': fs - 1, fill: 'var(--hot)', 'font-weight': 700 }, svg);
+      lane(220, '작업 B');
+      el('circle', { cx: X(.06), cy: 220, r: 6, fill: 'var(--c0)' }, svg);
+      seg(.08, .56, 220, 'var(--bg-muted)', 'v2 위에서 쓰기', { op: 1, tc: 'var(--fg-strong)' });
+      txt('✗', { x: X(.6), y: 227, 'font-size': 20, 'text-anchor': 'middle', fill: 'var(--bad)', 'font-weight': 700 }, svg);
+      txt(mob ? '이미 v3' : '실패: 이미 v3', { x: X(.56), y: 256, 'font-size': fs - 1, 'text-anchor': 'middle', fill: 'var(--bad)', 'font-weight': 700 }, svg);
+      seg(.64, .79, 220, 'var(--bg-muted)', '다시', { op: 1, tc: 'var(--fg-strong)' });
+      if (!mob) txt('v3 위에서', { x: X(.715), y: 256, 'font-size': fs - 1, 'text-anchor': 'middle', class: 'dim' }, svg);
+      txt('✓', { x: X(.82), y: 227, 'font-size': 20, 'text-anchor': 'middle', fill: 'var(--ok)', 'font-weight': 700 }, svg);
+      el('path', { d: `M${X(.82)} 204 C ${X(.82)} 160, ${X(.86)} 110, ${X(.88)} 58`, fill: 'none', stroke: 'var(--ok)', 'stroke-width': 2, 'marker-end': D.a }, svg);
+      lane(330, '읽는 쪽');
+      seg(.0, .7, 330, 'var(--c0)', 'v2를 그대로 봄', { op: .55 });
+      seg(.84, 1, 330, 'var(--ok)', 'v4');
+      txt('새로 열면', { x: X(.92), y: 364, 'font-size': fs - 1, 'text-anchor': 'middle', class: 'dim' }, svg);
+      el('line', { x1: X(0), y1: 404, x2: X(1), y2: 404, stroke: 'var(--fg-neutral)', 'stroke-width': 1.4, 'marker-end': D.a }, svg);
+      txt('시간 →', { x: X(0), y: 396, 'font-size': fs - 1, class: 'dim' }, svg);
+    };
+    draw(); redrawers.push(draw);
+  })();
+
+  /* ---------- 10. 세 세대 ---------- */
+  (() => {
+    const wrap = $('[data-dl-eras]');
+    const ERAS = [
+      { t: '1세대 웨어하우스', c: 1, x: 40, w: 220, nodes: [['서비스 DB', 54], ['웨어하우스 (저장+계산)', 150, 1], ['보고서·BI', 246]] },
+      { t: '2세대 Lake + 웨어하우스', c: 2, x: 14, w: 190, nodes: [['서비스 DB', 54], ['Data Lake (원본 파일)', 126], ['웨어하우스 (복사본)', 198, 1], ['보고서·BI', 270]], ml: true },
+      { t: 'Lakehouse', c: 1, x: 40, w: 220, nodes: [['서비스 DB', 54], ['S3 + Parquet', 140], ['Iceberg 메타데이터', 184, 'meta']], uses: ['SQL·BI', 'Spark', '머신러닝'] },
+    ];
+    const ECAP = [
+      '서비스 DB에서 정리한 데이터를 웨어하우스 한 곳에 모았습니다. 저장과 계산이 한 장비에 묶여 있어서 데이터가 늘면 비쌌고 영상·글 같은 데이터는 담지 못했습니다. BI(Business Intelligence)는 매출·사용량 같은 숫자를 표와 차트로 보는 분석 도구입니다.',
+      '원본을 Data Lake에 싸게 쌓고 그중 일부를 다시 웨어하우스로 복사했습니다. 복사본이 둘이니 서로 어긋나고 웨어하우스 쪽 데이터는 늦게 갱신됐습니다.',
+      '파일 형식이 열려 있어서 Spark로 정리한 표를 StarRocks는 SQL로 읽고 학습 코드는 같은 Parquet 파일을 Python으로 바로 읽습니다.',
+    ];
+    ERAS.forEach((E, ei) => {
+      const cell = document.createElement('div');
+      const s = el('svg', { viewBox: '0 0 300 370', role: 'img', 'aria-label': `${E.t}: 데이터 복사본 ${E.c}개` });
+      const D = defs(s);
+      txt(E.t, { x: 150, y: 22, 'font-size': 16, 'font-weight': 700, 'text-anchor': 'middle' }, s);
+      let prev = null; const cx = E.x + E.w / 2;
+      E.nodes.forEach(([n, yy, hl]) => {
+        if (hl === 'meta') { rbox(s, E.x, yy, E.w, 36, { rx: 8, fill: 'var(--hot-soft)', stroke: 'var(--hot)', sw: 2 }); txt(n, { x: cx, y: yy + 24, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 700 }, s); prev = yy + 36; return; }
+        rbox(s, E.x, yy, E.w, 44, { rx: 10, stroke: hl ? 'var(--c2)' : 'var(--line-strong)', sw: hl ? 2.2 : 1.5 });
+        txt(n, { x: cx, y: yy + 28, 'font-size': 15, 'text-anchor': 'middle', 'font-weight': 600 }, s);
+        if (prev !== null && yy - prev > 4) el('line', { x1: cx, y1: prev + 6, x2: cx, y2: yy - 6, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, s);
+        prev = yy + 44;
+      });
+      if (E.ml) {
+        rbox(s, 216, 198, 78, 44, { rx: 10 });
+        txt('머신러닝', { x: 255, y: 226, 'font-size': 14, 'text-anchor': 'middle', 'font-weight': 600 }, s);
+        el('path', { d: 'M206 148 C 240 148, 255 160, 255 190', fill: 'none', stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, s);
+      }
+      if (E.uses) {
+        const by = 270;
+        E.uses.forEach((u, i) => {
+          const x = 14 + i * 96;
+          rbox(s, x, by, 84, 44, { rx: 10 });
+          txt(u, { x: x + 42, y: by + 28, 'font-size': 14, 'text-anchor': 'middle', 'font-weight': 600 }, s);
+          el('line', { x1: 150, y1: prev + 6, x2: x + 42, y2: by - 6, stroke: 'var(--fg-neutral)', 'stroke-width': 1.6, 'marker-end': D.a }, s);
+        });
+      }
+      txt(`데이터 복사본 ${E.c}개`, { x: 150, y: 358, 'font-size': 15, 'font-weight': 700, 'text-anchor': 'middle', fill: E.c > 1 ? 'var(--bad)' : 'var(--ok)' }, s);
+      cell.appendChild(s);
+      const cp = document.createElement('p'); cp.className = 'dl-cap'; cp.textContent = ECAP[ei]; cell.appendChild(cp);
+      wrap.appendChild(cell);
+    });
+  })();
+
+  /* ---------- 11. Spark 셔플 스크롤 ---------- */
+  (() => {
+    const svg = $('[data-dl-spark]'), note = $('[data-dl-sparknote]');
+    const K = ['KR', 'US', 'JP'], KC = ['var(--k1)', 'var(--k2)', 'var(--k3)'];
+    let seed = 11; const R = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const P = [...Array(12)].map(() => [...Array(6)].map(() => { const r = R(); return r < .5 ? 0 : r < .8 ? 1 : 2; }));
+    const tally = [0, 1, 2].map((m) => [0, 1, 2].map((k) => P.slice(m * 4, m * 4 + 4).flat().filter((x) => x === k).length));
+    const MX = (m) => 8 + m * 186;
+    let parts = [], chips = [], lines = [], sums = [], machines = [], tasks = [], lbl, legend, cur = -1, fs = 15;
+    const build = () => {
+      svg.innerHTML = '';
+      const mob = isMob(); fs = mob ? 21 : 15;
+      const D = defs(svg);
+      machines = [0, 1, 2].map((m) => { const g = el('g', { class: 'fade' }, svg); rbox(g, MX(m), 156, 172, 336, { rx: 14 }); txt(`컴퓨터 ${m + 1}`, { x: MX(m) + 86, y: 180, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle' }, g); txt('executor', { x: MX(m) + 86, y: 200, 'font-size': mob ? 18 : 13, 'text-anchor': 'middle', class: 'dim mono' }, g); return g; });
+      tasks = [];
+      for (let m = 0; m < 3; m++) tasks.push(txt('task 4개', { x: MX(m) + 86, y: 386, 'font-size': mob ? 19 : 14, 'text-anchor': 'middle', class: 'fade', fill: 'var(--hot)', 'font-weight': 700, opacity: 0 }, svg));
+      lbl = txt('데이터 12조각 (파티션)', { x: 280, y: 22, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle', class: 'fade' }, svg);
+      lines = [];
+      for (let m = 0; m < 3; m++) for (let k = 0; k < 3; k++) {
+        const x1 = MX(m) + 30 + k * 56, x2 = MX(k) + 30 + m * 56;
+        lines.push(el('path', { class: 'fade', d: `M${x1} 392 C ${x1} 418, ${x2} 404, ${x2} 428`, fill: 'none', stroke: KC[k], 'stroke-width': 2, opacity: 0 }, svg));
+      }
+      parts = P.map((dots, i) => {
+        const g = el('g', { class: 'mv' }, svg);
+        rbox(g, 0, 0, 80, 32, { rx: 7 });
+        dots.forEach((d, j) => el('circle', { cx: 10 + j * 12, cy: 16, r: 4.8, fill: KC[d] }, g));
+        return g;
+      });
+      chips = [];
+      for (let m = 0; m < 3; m++) for (let k = 0; k < 3; k++) {
+        const g = el('g', { class: 'mv' }, svg);
+        el('circle', { cx: 0, cy: 0, r: 15, fill: KC[k] }, g);
+        txt(String(tally[m][k]), { x: 0, y: 6, 'font-size': fs, 'text-anchor': 'middle', fill: 'var(--on)', 'font-weight': 700, class: 'mono' }, g);
+        chips.push({ g, m, k });
+      }
+      sums = [0, 1, 2].map((k) => txt(`${K[k]} ${tally[0][k] + tally[1][k] + tally[2][k]}개`, { x: MX(k) + 86, y: 482, 'font-size': fs, 'font-weight': 700, 'text-anchor': 'middle', fill: KC[k], class: 'fade', opacity: 0 }, svg));
+      legend = el('g', { class: 'fade' }, svg);
+      K.forEach((k, i) => { el('circle', { cx: 196 + i * 70, cy: 132, r: 6, fill: KC[i] }, legend); txt(k, { x: 206 + i * 70, y: 137, 'font-size': fs - 1 }, legend); });
+      cur = -1;
+    };
+    const place = (g, x, y, op = 1) => { g.style.transform = `translate(${x}px, ${y}px)`; g.style.opacity = op; };
+    const NOTES = ['점 하나 = 질문 한 줄, 색 = 나라', '컴퓨터마다 executor 하나, 파티션 하나에 task 하나', '각자 자기 조각 안에서만 셉니다', '같은 나라 숫자를 한 컴퓨터로 모읍니다', '모인 숫자를 더하면 끝'];
+    const setStep = (st) => {
+      parts.forEach((g, i) => {
+        if (st === 0) place(g, 12 + (i % 6) * 92, 36 + Math.floor(i / 6) * 44);
+        else place(g, MX(Math.floor(i / 4)) + 46, 210 + (i % 4) * 38);
+      });
+      machines.forEach((g) => g.style.opacity = st === 0 ? .35 : 1);
+      lbl.style.opacity = st === 0 ? 1 : 0;
+      legend.style.opacity = 1;
+      chips.forEach(({ g, m, k }) => {
+        if (st < 2) place(g, MX(m) + 30 + k * 56, 376, 0);
+        else if (st === 2) place(g, MX(m) + 30 + k * 56, 376);
+        else place(g, MX(k) + 30 + m * 56, 444);
+      });
+      lines.forEach((l) => l.style.opacity = st === 3 ? .9 : st === 4 ? .25 : 0);
+      tasks.forEach((t) => t.style.opacity = st === 1 ? 1 : 0);
+      sums.forEach((s) => s.style.opacity = st === 4 ? 1 : 0);
+      if (note) note.textContent = NOTES[st];
+    };
+    build();
+    const steps = $$('[data-dl-step]'), sticky = $('[data-dl-sticky]');
+    const pick = () => {
+      const mob = window.innerWidth <= 900;
+      if (!mob) sticky.style.top = Math.max(80, (window.innerHeight - sticky.offsetHeight) / 2) + 'px'; else sticky.style.top = '';
+      const line = window.innerHeight * (mob ? 0.72 : 0.5);
+      let best = 0, bd = Infinity;
+      steps.forEach((e, i) => { const r = e.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bd) { bd = d; best = i; } });
+      if (best !== cur) { cur = best; steps.forEach((e, i) => e.classList.toggle('on', i === best)); setStep(best); }
+    };
+    let tk = 0;
+    on(window, 'scroll', () => { if (!tk) tk = requestAnimationFrame(() => { tk = 0; pick(); }); }, { passive: true });
+    redrawers.push(() => { build(); pick(); });
+    pick();
+    on(box, 'dl-spark-final', () => setStep(4));
+  })();
+
+  /* ---------- 12. 벡터 실행 경주 ---------- */
+  (() => {
+    let s = 5; const R = () => { s = (s * 48271) % 2147483647; return s / 2147483647; };
+    const AGES = [...Array(32)].map(() => 13 + Math.floor(R() * 50));
+    const ca = $('[data-dl-ca]'), cb = $('[data-dl-cb]');
+    const G = [];
+    const mk = (w, b) => AGES.map((a, k) => {
+      if (k % 8 === 0) { const g = document.createElement('span'); g.className = 'grp' + (b ? ' b' : ''); w.appendChild(g); if (b) G.push(g); }
+      const i = document.createElement('i'); i.textContent = a; w.lastChild.appendChild(i);
+      if (b && k % 8 === 7) { const n = document.createElement('b'); n.className = 'gn'; n.textContent = `${(k >> 3) + 1}번째 계산`; w.lastChild.appendChild(n); }
+      return i;
+    });
+    const A = mk(ca), B = mk(cb, true);
+    const runG = (n) => G.forEach((g, j) => g.classList.toggle('run', j === n));
+    const ra = $('[data-dl-ra]'), rb = $('[data-dl-rb]');
+    let run = 0;
+    const SUM = AGES.reduce((a, b) => a + b, 0);
+    const reset = () => { [...A, ...B].forEach((i) => i.className = ''); runG(-1); ra.textContent = '0번 계산'; rb.textContent = '0번 계산'; };
+    const mid = () => { A.forEach((x, i) => x.className = i < 11 ? 'done' : i === 11 ? 'on' : ''); ra.textContent = '12번 계산'; B.forEach((x) => x.className = 'done'); rb.textContent = `4번 계산 · 합계 ${SUM}`; };
+    mid();
+    on($('[data-dl-race]'), 'click', () => {
+      const id = ++run; reset();
+      const T = reduce ? 0 : 110;
+      for (let t = 0; t < 32; t++) later(() => {
+        if (id !== run) return;
+        A.forEach((x, i) => x.className = i < t ? 'done' : i === t ? 'on' : '');
+        ra.textContent = `${t + 1}번 계산`;
+        if (t < 4) { B.forEach((x, i) => x.className = i < t * 8 ? 'done' : i < t * 8 + 8 ? 'on' : ''); runG(t); rb.textContent = `${t + 1}번 계산`; }
+        if (t === 4) { B.forEach((x) => x.className = 'done'); runG(-1); rb.textContent = `4번 계산 · 합계 ${AGES.reduce((a, b) => a + b, 0)}`; }
+        if (t === 31) later(() => { if (id !== run) return; A.forEach((x) => x.className = 'done'); ra.textContent = `32번 계산 · 합계 ${AGES.reduce((a, b) => a + b, 0)}`; }, T);
+      }, t * T + 1);
+    });
+  })();
+
+  /* ---------- 13. AI 데이터 지도 ---------- */
+  (() => {
+    const svg = $('[data-dl-map]'), read = $('[data-dl-mapread]');
+    const N = {
+      chat: ['💬 대화 로그', '💬 대화 로그'], pdf: ['📄 안내문 PDF', '📄 안내문'], db: ['🗄️ 서비스 DB 사본', '🗄️ DB 사본'],
+      s3: ['🪣 S3 raw/ 원본', '🪣 S3 원본'], spark: ['⚙️ Spark 정리·자르기', '⚙️ Spark'],
+      train: ['학습 데이터 표', '학습 표'], chunks: ['청크 표', '청크 표'], logs: ['답변 로그 표', '로그 표'],
+      ft: ['파인튜닝', '파인튜닝'], vdb: ['임베딩 → 벡터 DB', '벡터 DB'], sr: ['StarRocks 대시보드', 'StarRocks'],
+    };
+    const ROUTES = {
+      ft: { c: 'var(--hot)', p: ['chat', 's3', 'spark', 'train', 'ft'], t: '학습 데이터: 대화 로그가 S3에 쌓이면 Spark가 개인정보를 지우고 잘된 답만 골라 학습 데이터 표로 씁니다. 학습할 때 그 표의 스냅샷 id를 함께 적어 둡니다.' },
+      vdb: { c: 'var(--c3)', p: ['pdf', 's3', 'spark', 'chunks', 'vdb'], t: 'RAG 문서: 안내문 PDF를 S3에 그대로 두고 Spark가 글을 뽑아 청크로 자른 표를 만듭니다. 청크마다 임베딩을 만들어 벡터 DB에 넣습니다.' },
+      sr: { c: 'var(--c4)', p: ['chat', 'db', 's3', 'spark', 'logs', 'sr'], t: '운영 로그: 대화 로그와 서비스 DB 사본을 Spark가 답변 로그 표로 합칩니다. StarRocks가 그 표를 바로 읽어 하루 질문 수, 답하지 못한 질문 수를 대시보드에 보여 줍니다.' },
+    };
+    let sel = 'ft';
+    const draw = () => {
+      svg.innerHTML = '';
+      const mob = isMob(), D = defs(svg);
+      let P, W, H, VW, VH, fs;
+      if (!mob) {
+        VW = 1000; VH = 400; W = 158; H = 56; fs = 15;
+        const cx = [20, 228, 420, 620, 826], ry = [44, 172, 300];
+        P = { chat: [cx[0], ry[0]], pdf: [cx[0], ry[1]], db: [cx[0], ry[2]], s3: [cx[1], ry[1]], spark: [cx[2], ry[1]], train: [cx[3], ry[0]], chunks: [cx[3], ry[1]], logs: [cx[3], ry[2]], ft: [cx[4], ry[0]], vdb: [cx[4], ry[1]], sr: [cx[4], ry[2]] };
+      } else {
+        VW = 420; VH = 640; W = 124; H = 54; fs = 16;
+        const cxs = [8, 148, 288], ry = [20, 150, 270, 390, 530];
+        P = { chat: [cxs[0], ry[0]], pdf: [cxs[1], ry[0]], db: [cxs[2], ry[0]], s3: [cxs[1], ry[1]], spark: [cxs[1], ry[2]], train: [cxs[0], ry[3]], chunks: [cxs[1], ry[3]], logs: [cxs[2], ry[3]], ft: [cxs[0], ry[4]], vdb: [cxs[1], ry[4]], sr: [cxs[2], ry[4]] };
+      }
+      svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+      const out = (k, o) => mob ? [P[k][0] + W / 2 + o, P[k][1] + H] : [P[k][0] + W, P[k][1] + H / 2 + o];
+      const inn = (k, o) => mob ? [P[k][0] + W / 2 + o, P[k][1]] : [P[k][0], P[k][1] + H / 2 + o];
+      const used = new Set(ROUTES[sel].p);
+      Object.entries(ROUTES).forEach(([rk, r], ri) => {
+        const o = (ri - 1) * 7;
+        for (let i = 0; i < r.p.length - 1; i++) {
+          let a = r.p[i], b = r.p[i + 1];
+          if (a === 'chat' && b === 'db') continue;
+          if (rk === 'sr' && a === 'db') a = 'db';
+          const [x1, y1] = out(a, o), [x2, y2] = inn(b, o);
+          const d = mob ? `M${x1} ${y1 + 2} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2 - 8}` : `M${x1 + 2} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2 - 8} ${y2}`;
+          el('path', { class: 'route', d, stroke: r.c, opacity: rk === sel ? 1 : .14 }, svg);
+        }
+        if (rk === 'sr') { const [x1, y1] = out('chat', o); const [x2, y2] = inn('s3', o); el('path', { class: 'route', d: mob ? `M${x1} ${y1 + 2} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2 - 8}` : `M${x1 + 2} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2 - 8} ${y2}`, stroke: r.c, opacity: rk === sel ? 1 : .14 }, svg); }
+      });
+      Object.entries(P).forEach(([k, [x, y]]) => {
+        const isUse = k in ROUTES, on1 = used.has(k);
+        const g = el('g', { class: 'node' + (isUse ? ' use' : ''), opacity: on1 ? 1 : .45 }, svg);
+        const isTable = ['train', 'chunks', 'logs'].includes(k);
+        rbox(g, x, y, W, H, { rx: 12, stroke: on1 ? ROUTES[sel].c : 'var(--line-strong)', sw: on1 ? 2.4 : 1.4, fill: isTable ? 'var(--bg-subtle)' : 'var(--bg-base)' });
+        txt(N[k][mob ? 1 : 0], { x: x + W / 2, y: y + (isTable ? 25 : H / 2 + 5), 'font-size': fs, 'text-anchor': 'middle', 'font-weight': 700 }, g);
+        if (isTable) txt('Iceberg', { x: x + W / 2, y: y + 44, 'font-size': fs - 2, 'text-anchor': 'middle', class: 'dim' }, g);
+        if (isUse) { g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.setAttribute('aria-label', N[k][0] + ' 길 보기'); const f = () => { sel = k; draw(); }; on(g, 'click', f); on(g, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); }
+      });
+      read.textContent = ROUTES[sel].t;
+    };
+    draw(); redrawers.push(draw);
+  })();
+})();
+</script>
