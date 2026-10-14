@@ -185,7 +185,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sa-story-fig[data-stage="1"] .sa-score,
 .post-page .sa-story-fig[data-stage="2"] .sa-score { opacity: 0; }
 .post-page .sa-story-steps { padding: 6svh 0 22svh; }
-.post-page .sa-step { min-height: 64svh; display: flex; flex-direction: column; justify-content: center; }
+.post-page .sa-step { min-height: 44svh; display: flex; flex-direction: column; justify-content: center; }
 .post-page .sa-js .sa-step { opacity: 0.32; transition: opacity 0.5s; }
 .post-page .sa-js .sa-step.is-on { opacity: 1; }
 .post-page .sa-step .n { font-family: var(--font-mono); font-size: 12px; color: var(--sa-q); font-weight: 700; margin-bottom: 8px; }
@@ -753,14 +753,32 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   };
   const setStage = (n) => { stage = n; stageFig.dataset.stage = n; stageLbl.textContent = STAGE_LBL[n]; drawPlay(); };
   // 단계 글이 화면 가운데를 지날 때 그림 상태를 바꾼다. 스크립트가 없으면 그림은 마지막 상태(6), 글은 모두 진하게 보인다
+  // 고정 그림은 화면 세로 가운데에 둔다(nav 에 붙이지 않는다). 모바일은 위쪽 고정(POSTING 5-3)
+  const centerStory = () => {
+    stageFig.style.top = matchMedia("(max-width: 900px)").matches ? "" : Math.max(84, Math.round((innerHeight - stageFig.offsetHeight) / 2) + 20) + "px";
+  };
+  centerStory();
+  addEventListener("resize", centerStory, { signal });
+  const storyRo = new ResizeObserver(centerStory); storyRo.observe(stageFig); signal.addEventListener("abort", () => storyRo.disconnect());
   const storySec = $("[data-sa-story]");
   storySec.classList.add("sa-js");
   const steps = [...storySec.querySelectorAll("[data-step]")];
-  const io = new IntersectionObserver((ents) => {
-    ents.forEach((e) => { if (e.isIntersecting) { steps.forEach((x) => x.classList.toggle("is-on", x === e.target)); setStage(+e.target.dataset.step); } });
-  }, { rootMargin: matchMedia("(max-width: 900px)").matches ? "-66% 0px -24% 0px" : "-45% 0px -45% 0px" }); // 모바일은 위에 붙은 그림 아래쪽에서 바꾼다
-  steps.forEach((x) => io.observe(x));
-  signal.addEventListener("abort", () => io.disconnect());
+  // 글 중심이 화면 가운데(모바일은 위에 붙은 그림 아래쪽 띠)에 가장 가까운 단계를 켠다 — 가운데를 지나면 흐려지고 다음이 켜진다
+  let raf = 0, cur = -1;
+  const pickStep = () => {
+    raf = 0;
+    const line = innerHeight * (matchMedia("(max-width: 900px)").matches ? 0.71 : 0.5);
+    let best = steps[0], bd = Infinity;
+    steps.forEach((x) => { const r = x.getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bd) { bd = d; best = x; } });
+    if (best === cur) return;
+    cur = best;
+    steps.forEach((x) => x.classList.toggle("is-on", x === best));
+    setStage(+best.dataset.step);
+  };
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(pickStep); };
+  addEventListener("scroll", onScroll, { passive: true, signal });
+  addEventListener("resize", onScroll, { signal });
+  pickStep();
   const toLocal = (e) => { const pt = plane.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(plane.getScreenCTM().inverse()); return [Math.max(-150, Math.min(150, p.x)), Math.max(-150, Math.min(150, -p.y))]; };
   let drag = false;
   plane.addEventListener("pointerdown", (e) => { drag = true; plane.setPointerCapture(e.pointerId); q = toLocal(e); drawPlay(); }, { signal });

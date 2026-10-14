@@ -207,7 +207,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-head-sub { margin-top: 8px; }
 .post-page .ag-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start; margin: 32px 0 0; }
 .post-page .ag-codepair .pg-code { margin-top: 0; }
-.post-page .ag-codepair-side { position: sticky; top: 88px; }
+.post-page .ag-codepair-side { align-self: start; }
 .post-page .ag-codepair-side ol.pg-code-notes { margin-top: 0; }
 .post-page .ag-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 .post-page .ag-codepair.rev > :first-child { order: 2; }
@@ -221,7 +221,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (max-width: 900px) {
   .post-page .ag-split, .post-page .ag-head, .post-page .ag-codepair, .post-page .ag-codepair.rev, .post-page .ag-two, .post-page .ag-zig, .post-page .ag-zig-b { grid-template-columns: minmax(0, 1fr); }
   .post-page .ag-codepair.rev > :first-child { order: 0; }
-  .post-page .ag-codepair-side { position: static; }
   .post-page .ag-head > h2 { margin-bottom: 4px; }
   .post-page .ag-pull { text-align: left; }
 }
@@ -234,7 +233,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-band .ag-stick { background: var(--bg-subtle); }
 .post-page .ag-loopscroll { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(40px, 6vw, 64px); }
 .post-page .ag-loop-steps { list-style: none; margin: 0; padding: 18vh 0 24vh; counter-reset: lp; }
-.post-page .ag-loop-steps li { counter-increment: lp; min-height: 44vh; display: flex; gap: 12px; align-items: center; font-size: 17px; line-height: 1.75; color: var(--fg-neutral); opacity: .35; transition: opacity .3s, color .3s; word-break: keep-all; }
+.post-page .ag-loop-steps li { counter-increment: lp; min-height: 36vh; display: flex; gap: 12px; align-items: center; font-size: 17px; line-height: 1.75; color: var(--fg-neutral); opacity: .35; transition: opacity .3s, color .3s; word-break: keep-all; }
 .post-page .ag-loop-steps li::before { content: counter(lp); flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--bg-base); background: var(--fg-alternative); }
 .post-page .ag-loop-steps li.on { opacity: 1; color: var(--fg-strong); }
 .post-page .ag-loop-steps li.on::before { background: var(--ag-model); }
@@ -749,9 +748,35 @@ while True:
   const who = { h: "사람", c: "미리 짠 코드", m: "모델" };
 
   // 스크롤로 단계 진행 — 고정된 그림(첫 자식)이 바깥 틀을 지나가는 정도를 0~1 로 재서 단계 번호로 바꾼다
+  // 고정 그림은 화면 세로 가운데에 둔다(nav 에 붙이지 않는다). 그림 높이에 맞춰 sticky top 을 계산한다. 모바일은 위쪽 고정
+  function centerSticky(el, mobileTop) {
+    const set = () => {
+      const mob = matchMedia("(max-width: 900px)").matches;
+      el.style.top = (mob ? mobileTop : Math.max(84, Math.round((innerHeight - el.offsetHeight) / 2) + 20)) + "px";
+    };
+    set();
+    addEventListener("resize", set, { signal });
+    const ro = new ResizeObserver(set); ro.observe(el); signal.addEventListener("abort", () => ro.disconnect());
+  }
+  // 단계 글 중 글 중심이 화면 가운데(모바일은 위에 붙은 그림 아래쪽 띠)에 가장 가까운 것을 켠다 — 가운데를 지나면 흐려지고 다음이 켜진다
+  function nearestStep(items, pick) {
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      const line = innerHeight * (matchMedia("(max-width: 900px)").matches ? 0.7 : 0.5);
+      let best = 0, bd = Infinity;
+      items.forEach((x, i) => { const r = x.getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bd) { bd = d; best = i; } });
+      pick(best);
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal });
+    addEventListener("resize", on, { signal });
+    tick();
+  }
   function scrollSteps(box, n, draw) {
     let last = -1, raf = 0;
     const stick = box.firstElementChild;
+    centerSticky(stick, 60);
     const tick = () => {
       raf = 0;
       const r = box.getBoundingClientRect(), h = stick.getBoundingClientRect().height;
@@ -925,9 +950,8 @@ while True:
     $$("[data-ag-li]").forEach((x) => x.classList.toggle("on", Number(x.dataset.agLi) === li));
   }
   // 화면 가운데 띠에 들어온 단계 글이 그림의 단계를 정한다
-  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { li = Number(e.target.dataset.agLi); drawLoop(); } }), { rootMargin: "-62% 0px -28% 0px" });
-  $$("[data-ag-li]").forEach((x) => io.observe(x));
-  signal.addEventListener("abort", () => io.disconnect());
+  centerSticky($(".ag-loop-stick"), 64);
   drawLoop();
+  nearestStep($$("[data-ag-li]"), (k) => { if (k !== li) { li = k; drawLoop(); } });
 })();
 </script>
