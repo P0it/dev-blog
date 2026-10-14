@@ -1,0 +1,909 @@
+---
+title: AI가 코드를 쓰면 개발자는 무슨 일을 할까요?
+slug: ai-native-dev-2026-what-changed
+excerpt: AI 코딩 도구는 다음 한 줄을 추천하던 자동완성에서 버그 하나를 통째로 맡는 에이전트로 커졌습니다. 2025년 실험에서 숙련 개발자들은 AI를 쓰고 19% 느려졌는데도 20% 빨라졌다고 느꼈습니다. 버그 하나를 고치는 일곱 단계를 사람 줄과 AI 줄에 놓고 조사 숫자와 실험으로 개발자의 하루가 어디로 옮겨 가는지 그렸습니다.
+tags: [AI 네이티브, 코딩 에이전트, METR, Stack Overflow, DORA, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 1
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-native-dev-2026-what-changed-mv8q2j0o.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열, 아래 전폭 두 레인 그림 + 시대 토글·판독) → 글 + 넓은 그림(세 창) → 그림 고정 스크롤리텔링(METR 시간 비율 띠 두 줄) → 글|그림(신뢰 100칸) → 글|가져온 SO 그림 → 실험판 전폭 띠(예상 먼저 고르고 공개) → 글|그림(제안 50칸) → 글|가져온 METR 2026 그림 → 글 + 넓은 그림(J 커브) → 글·목록|그림(두 레인 시리즈 지도) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 제목|글은 참고 자료 한 번만 | 글의 성격: 버그 하나를 고치는 일곱 단계가 사람 줄에서 AI 줄로 옮겨 가는 이야기. 주황 = 사람이 직접 하는 일, 청록 = AI 가 하거나 AI 와 주고받는 일, 회색 = 화면이 멈춘 시간이 글 끝까지 같은 뜻 | 버린 후보: 벤토 히어로(숫자 하나가 주인공이 아님), 가로 스크롤 띠(소유 이동이 핵심이라 나열이 안 맞음), 옆 조작판(모든 그림을 움직일 변수 없음), 2020/2023/2026 하루 시간표(근거 없는 꾸민 값이라 METR 실측 시간 비율로 바꿈) -->
+<style>
+.post-page .nd {
+  --me: rgb(222, 106, 28); --me-soft: rgb(253, 233, 214);
+  --ai: rgb(10, 136, 140); --ai-soft: rgb(208, 238, 236);
+  --idle: rgb(150, 156, 168); --slow: rgb(210, 48, 48);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .nd {
+  --me: rgb(255, 156, 84); --me-soft: rgb(84, 50, 24);
+  --ai: rgb(70, 206, 200); --ai-soft: rgb(18, 62, 62);
+  --idle: rgb(140, 146, 160); --slow: rgb(255, 104, 96);
+}
+.post-page .nd * { box-sizing: border-box; }
+.post-page .nd-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .nd h1, .post-page .nd h2, .post-page .nd h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .nd h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.22; max-width: 14em; margin-bottom: 28px; }
+.post-page .nd h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .nd h3 { font-size: 18px; line-height: 1.45; margin-bottom: 12px; }
+.post-page .nd p, .post-page .nd li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .nd p { margin: 0 0 1.5em; }
+.post-page .nd b { color: var(--fg-strong); }
+.post-page .nd code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .nd a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .nd .nd-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .nd details { margin: 0 0 1.4em; }
+.post-page .nd summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .nd details p, .post-page .nd details li { margin-top: 10px; font-size: 16px; }
+.post-page .nd svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .nd svg text:not([font-family]) { font-family: var(--font-sans); }
+.post-page .nd svg text:not([fill]) { fill: var(--fg-strong); }
+.post-page .nd svg .dim { fill: var(--fg-neutral); }
+.post-page .nd svg .grid { stroke: var(--line-subtle); stroke-width: 1; }
+
+/* 배치 */
+.post-page .nd-sec { padding: clamp(80px, 9vw, 120px) 0 0; }
+.post-page .nd-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .nd-col { max-width: 40em; }
+.post-page .nd-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .nd-fig { margin: 0; }
+.post-page .nd-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); background: #fff; }
+[data-theme="dark"] .post-page .nd-img img { filter: brightness(.8); border-color: var(--line-normal, var(--line-subtle)); }
+.post-page .nd-band { background: var(--bg-subtle); padding: clamp(64px, 7vw, 84px) 0 clamp(48px, 6vw, 68px); margin-top: clamp(40px, 6vw, 64px); }
+.post-page .nd-after { margin-top: clamp(48px, 6vw, 72px); }
+
+/* 조작 부품 */
+.post-page .nd-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+.post-page .nd-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .nd-tog button small { font-size: 12.5px; margin-left: 4px; font-family: var(--font-mono); }
+.post-page .nd-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.08)); }
+.post-page .nd-btn { font: inherit; font-size: 15px; font-weight: 600; color: var(--fg-strong); background: var(--bg-base); border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 999px; padding: 8px 16px; cursor: pointer; white-space: nowrap; }
+.post-page .nd-btn:hover { border-color: var(--fg-neutral); }
+.post-page .nd-btn[aria-pressed="true"] { border-color: var(--fg-strong); box-shadow: 0 0 0 1px var(--fg-strong) inset; }
+.post-page .nd-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* 히어로 */
+.post-page .nd-hero { padding-top: clamp(56px, 7vw, 88px); }
+.post-page .nd-lead { max-width: 40em; }
+.post-page .nd-control { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; margin: clamp(32px, 4vw, 44px) 0 18px; }
+.post-page .nd-read { font-size: 15px; color: var(--fg-neutral); }
+.post-page .nd-read b { font-family: var(--font-mono); font-weight: 600; }
+.post-page .nd-read .h { color: var(--me); }
+.post-page .nd-read .a { color: var(--ai); }
+.post-page .nd-lane { max-width: 1060px; }
+.post-page .nd-lane .blk { transition: transform .65s cubic-bezier(.2,.7,.2,1); }
+.post-page .nd-lane .blk rect { transition: height .65s cubic-bezier(.2,.7,.2,1), width .65s cubic-bezier(.2,.7,.2,1), fill .4s, stroke .4s; }
+.post-page .nd-lane .blk .tx { transition: transform .65s cubic-bezier(.2,.7,.2,1); }
+.post-page .nd-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; }
+.post-page .nd-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.post-page .nd .nd-says { font-size: 15px; color: var(--fg-strong); margin: 22px 0 0; max-width: 46em; line-height: 1.7; min-height: 3.4em; }
+
+/* 스크롤리텔링 */
+.post-page .nd-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); margin-top: clamp(32px, 4vw, 48px); }
+.post-page .nd-steps { padding: 4vh 0 30vh; }
+.post-page .nd-step { min-height: 62vh; display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .nd-step.on { opacity: 1; }
+.post-page .nd svg.nd-mini { display: none; }
+.post-page .nd-step:first-child { min-height: 48vh; justify-content: flex-start; }
+.post-page .nd-stick { position: sticky; top: 120px; align-self: start; }
+.post-page .nd-rib { max-width: 600px; }
+.post-page .nd-rib .seg, .post-page .nd-rib .lnk, .post-page .nd-rib .lab { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+
+/* 100칸 격자 */
+.post-page .nd-waf { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.post-page .nd-cells { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.post-page .nd-cells i { aspect-ratio: 1; border-radius: 4px; }
+.post-page .nd-keys { list-style: none; margin: 0; padding: 0; }
+.post-page .nd-keys li { display: grid; grid-template-columns: 16px 3.2em minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 15px; line-height: 1.5; padding: 7px 0; border-bottom: 1px solid var(--line-subtle); }
+.post-page .nd-keys li i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; transform: translateY(2px); }
+.post-page .nd-keys li b { font-family: var(--font-mono); font-weight: 600; }
+
+/* 예상 실험 */
+.post-page .nd-guess { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .nd .nd-q { font-size: 18px; font-weight: 700; color: var(--fg-strong); margin: 0 0 10px; line-height: 1.5; }
+.post-page .nd-guess .nd-btns { flex-direction: column; align-items: flex-start; }
+.post-page .nd .nd-verdict { font-size: 16px; color: var(--fg-neutral); margin: 0 0 22px; line-height: 1.7; min-height: 3.4em; }
+.post-page .nd-metr .bar { transition: width .7s cubic-bezier(.2,.7,.2,1), x .7s cubic-bezier(.2,.7,.2,1), opacity .5s; }
+.post-page .nd-metr .val, .post-page .nd-metr .ci { transition: opacity .5s .3s; }
+
+/* 시리즈 지도 */
+.post-page .nd-eps { padding: 0; margin: 0; list-style: none; counter-reset: ep; }
+.post-page .nd-eps li { font-size: 16px; line-height: 1.6; margin-bottom: 12px; counter-increment: ep; position: relative; padding-left: 1.9em; }
+.post-page .nd-eps li::before { content: counter(ep); position: absolute; left: 0; top: 0; font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .nd-eps li small { display: block; font-size: 14.5px; color: var(--fg-neutral); line-height: 1.6; }
+.post-page .nd-map a text { text-decoration: none; }
+.post-page .nd-map a:hover circle { stroke-width: 3; }
+
+.post-page .nd-refs ul { padding-left: 1.1em; }
+.post-page .nd-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .nd-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+.post-page .nd-gap { margin-top: clamp(28px, 4vw, 40px); }
+.post-page .nd-subfig { margin-top: clamp(40px, 5vw, 56px); }
+@media (max-width: 860px) {
+  .post-page .nd-wrap { padding: 0 20px; }
+  .post-page .nd-rib svg { max-height: 52svh; }
+  .post-page .nd-two, .post-page .nd-guess, .post-page .nd-refhead, .post-page .nd-story { grid-template-columns: minmax(0, 1fr); }
+  .post-page .nd-stick { top: 64px; z-index: 2; background: var(--bg-base); padding: 8px 0; order: -1; }
+  .post-page .nd-story .nd-stick { display: none; }
+  .post-page .nd-steps { padding: 0; }
+  .post-page .nd-step, .post-page .nd-step:first-child { min-height: 0; opacity: 1; margin-bottom: 48px; }
+  .post-page .nd svg.nd-mini { display: block; margin: 12px 0 18px; max-width: 360px; }
+  .post-page .nd-waf { grid-template-columns: minmax(0, 1fr); }
+  .post-page .nd-cells { max-width: 300px; }
+  .post-page .nd-tog button { font-size: 14px; padding: 7px 11px; }
+  .post-page .nd-tog button small { display: none; }
+  .post-page .nd-guess .nd-btns { flex-direction: row; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .nd * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="nd">
+
+<section class="nd-hero">
+  <div class="nd-wrap">
+    <div class="nd-lead">
+      <h1>AI가 코드를 쓰면 개발자는 무슨 일을 할까요?</h1>
+      <p>휴대폰 키보드가 다음 단어를 추천해 주듯, 2021년 개발자 화면에도 AI가 다음 코드 줄을 미리 보여 주는 자동완성(autocomplete)이 들어왔습니다. 2026년에는 "로그인 버그를 고쳐 줘" 한 줄을 받으면 파일을 찾아 고치고 테스트(test, 코드가 제대로 도는지 자동으로 확인하는 검사)까지 돌리는 코딩 에이전트(coding agent)가 흔해졌습니다.</p>
+      <p>그럼 개발자는 이제 무슨 일을 할까요? 코드를 치는 시간이 줄고 할 일을 설명하고 결과를 검토하는 시간이 늘었습니다. 아래 판은 버그 하나를 고치는 일곱 단계를 사람 줄과 AI 줄에 나눠 놓은 것입니다. 시대를 바꾸면 단계가 어느 줄로 옮겨 가는지 확인할 수 있습니다.</p>
+    </div>
+    <div class="nd-control">
+      <div class="nd-tog" role="group" aria-label="AI 코딩 도구의 시대 고르기" data-era>
+        <button type="button" data-v="0" aria-pressed="false">자동완성<small>2021~</small></button>
+        <button type="button" data-v="1" aria-pressed="false">채팅<small>2022~</small></button>
+        <button type="button" data-v="2" aria-pressed="true">에이전트<small>2025~</small></button>
+      </div>
+      <div class="nd-read" aria-live="polite" data-read>사람 줄 <b class="h">3</b> · 함께 <b>1</b> · AI 줄 <b class="a">3</b></div>
+    </div>
+    <figure class="nd-fig nd-lane" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('nd-thumb'))" data-hero>
+      <svg viewBox="0 0 1000 250" role="img" aria-label="버그 하나를 고치는 일곱 단계가 사람 줄과 AI 줄 중 어디에 있는지 보여 주는 그림. 시대를 바꾸면 블록이 줄 사이를 옮겨 간다" data-lanesvg></svg>
+      <div class="nd-legend"><span><i style="background:var(--me-soft);box-shadow:inset 0 0 0 2px var(--me)"></i>사람이 직접 하는 단계</span><span><i style="background:var(--ai-soft);box-shadow:inset 0 0 0 2px var(--ai)"></i>AI가 하는 단계</span><span><i style="background:linear-gradient(var(--me-soft) 50%, var(--ai-soft) 50%);box-shadow:inset 0 0 0 2px var(--fg-neutral)"></i>둘이 주고받는 단계</span></div>
+      <p class="nd-says" data-says>에이전트 시대에는 사람이 첫 단계에서 할 일을 글로 설명하고 마지막 두 단계에서 결과를 검토하고 반영할지 정합니다. 그 사이 네 단계는 AI가 합니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap">
+    <h2>AI가 한 번에 맡는 양이 한 줄에서 일 전체로 커졌습니다</h2>
+    <div class="nd-col">
+      <p>첫 단계는 2021년 6월 GitHub이 공개한 Copilot입니다. 코드를 쓰는 편집 프로그램인 IDE(Integrated Development Environment) 안에서 다음 한 줄이나 함수 하나를 제안했고 받아들일지는 사람이 Tab 키로 정했습니다.</p>
+      <p>2022년 11월 ChatGPT가 나온 뒤로는 대화창에 에러를 붙여 넣고 고친 코드를 받아 옮겨 붙이는 방식이 퍼졌습니다. 2025년 2월에 나온 Claude Code는 터미널(terminal, 글자 명령으로 컴퓨터를 다루는 창)에서 코드를 읽고 고치고 테스트를 돌려 커밋(commit, 바뀐 내용을 기록으로 저장하는 일)까지 합니다.</p>
+    </div>
+    <figure class="nd-fig nd-wide" data-figure>
+      <svg viewBox="0 0 980 400" role="img" aria-label="자동완성, 채팅, 에이전트 세 화면. 자동완성은 회색 글씨 한 줄, 채팅은 코드 덩어리 하나, 에이전트는 여러 파일 수정과 테스트 실행 기록을 내놓는다" data-windows></svg>
+      <figcaption class="nd-cap">세 화면은 설명을 위해 그린 것입니다. 실제 제품마다 모양은 다르지만 AI가 한 번에 내놓는 양은 이 순서로 커집니다. 맨 아래 줄은 학교생활에 빗댄 비유입니다.</figcaption>
+    </figure>
+    <div class="nd-col nd-after">
+      <p>에이전트를 조별 과제의 조원에 빗대면 맞지 않는 곳도 있습니다. 조별 과제에서는 맡긴 부분이 틀리면 조원도 같이 책임을 집니다. 에이전트가 쓴 코드는 그렇지 않습니다. 반영하기로 정한 사람이 끝까지 책임을 집니다. 그래서 단계가 AI 줄로 옮겨 갈수록 마지막 검토 단계가 무거워집니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap">
+    <h2>손으로 쓰던 시간이 지시·기다림·검토로 옮겨 갑니다</h2>
+    <div class="nd-col">
+      <p>정말 그렇게 옮겨 가는지 잰 연구가 있습니다. AI 연구 기관 METR은 2025년 초 숙련 개발자 16명의 작업 화면을 녹화했습니다. 그중 74건을 사람이 직접 보며 "지금 무엇을 하는 중인지" 분류했습니다. AI를 쓰지 못하게 한 작업과 쓰게 한 작업의 시간 쓰임을 견주면 아래와 같습니다.</p>
+    </div>
+    <div class="nd-story" data-story>
+      <div class="nd-steps">
+        <div class="nd-step on" data-step="0">
+          <h3>AI 없이 일할 때</h3>
+          <svg class="nd-mini" viewBox="0 0 360 330" aria-hidden="true" data-mini="0"></svg>
+          <p>시간의 37%를 직접 코드를 치는 데 썼습니다. 코드와 문서를 읽고 찾는 데 25%, 테스트와 디버깅(debugging, 잘못된 곳을 찾아 고치는 일)에 18%를 썼습니다. 띠 거의 전부가 주황, 사람이 손으로 하는 일입니다.</p>
+        </div>
+        <div class="nd-step" data-step="1">
+          <h3>AI를 쓸 때</h3>
+          <svg class="nd-mini" viewBox="0 0 360 330" aria-hidden="true" data-mini="1"></svg>
+          <p>같은 일끼리 옅은 띠로 이었습니다. 직접 코드를 치는 시간은 37%에서 25%로, 읽고 찾는 시간은 25%에서 17%로 줄었습니다. 띠 위쪽에는 전에 없던 청록 칸이 생겼습니다.</p>
+        </div>
+        <div class="nd-step" data-step="2">
+          <h3>새로 생긴 일 세 가지</h3>
+          <svg class="nd-mini" viewBox="0 0 360 330" aria-hidden="true" data-mini="2"></svg>
+          <p>AI가 내놓은 결과를 읽고 고치는 검토가 9%, AI에게 할 일을 적는 프롬프트(prompt, AI에게 주는 지시문) 쓰기가 8%, AI가 답을 다 쓸 때까지 기다리는 시간이 4%입니다. 합치면 일하는 시간의 5분의 1이 AI와 주고받는 데 들어갔습니다.</p>
+        </div>
+        <div class="nd-step" data-step="3">
+          <h3>화면이 멈춘 시간도 늘었습니다</h3>
+          <svg class="nd-mini" viewBox="0 0 360 330" aria-hidden="true" data-mini="3"></svg>
+          <p>녹화 화면에 아무 움직임이 없던 시간이 6%에서 10%로 늘었습니다. 기다리는 동안 다른 창을 보거나 잠깐 쉰 시간으로 보입니다. 손을 덜 쓰는 시간이 그만큼 늘었습니다. 이 시간은 뒤에서 볼 "체감과 실측의 차이"와 이어집니다.</p>
+        </div>
+      </div>
+      <figure class="nd-fig nd-stick nd-rib" data-figure data-stick>
+        <svg viewBox="0 0 560 520" role="img" aria-label="AI 없이 일한 작업과 AI를 쓴 작업의 시간 비율 띠 두 줄. AI를 쓰면 직접 코딩이 37퍼센트에서 25퍼센트로 줄고 검토 9, 프롬프트 8, 기다림 4퍼센트가 새로 생긴다" data-ribsvg></svg>
+      </figure>
+    </div>
+    <div class="nd-col">
+      <p class="nd-cap" style="margin:0 0 48px">시간 띠 그림의 세로 띠 하나가 작업 시간 전체(100%)입니다. 값은 METR 논문 Figure 6에서 눈으로 읽은 평균 비율이라 1%p(퍼센트포인트, 비율끼리 뺀 차이) 안팎 어긋날 수 있습니다. AI 없이 30건, AI 허용 44건이고 도구는 AI 기능을 넣은 코드 편집기 Cursor(2025년 초 판)입니다.</p>
+    </div>
+    <div class="nd-col">
+      <p>코드 치기는 원래도 개발자 하루의 일부였습니다. 시장 조사 기관 IDC가 2024년에 물었을 때 개발자가 애플리케이션 개발에 쓴 시간은 한 달의 16%였고 나머지는 요구 사항 정리, 보안, 배포, 운영 점검이었습니다. AI가 가장 먼저 가져간 것은 이 16% 안의 손으로 치는 부분입니다.</p>
+      <p>Andrej Karpathy는 2026년 4월 Sequoia Ascent 2026 대담에서 이 변화를 한 문장으로 정리했습니다. "전통적인 컴퓨터는 코드로 명세할 수 있는 일을 자동화하고 최근의 LLM은 검증할 수 있는 일을 자동화한다." LLM(Large Language Model)은 ChatGPT나 Claude처럼 많은 글을 읽고 학습한 거대 언어 모델입니다. 결과가 맞는지 확인할 방법이 있는 일일수록 AI에게 넘기기 쉽다는 뜻입니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap">
+    <h2>거의 다 쓰지만 그냥 믿는 사람은 드뭅니다</h2>
+  </div>
+  <div class="nd-wrap nd-two">
+    <div class="nd-col">
+      <p>조사마다 사용률은 비슷하게 높습니다. Stack Overflow가 2025년 5~6월 개발자 4만 9천여 명에게 물었을 때 84%가 AI 도구를 쓰거나 쓸 계획이라고 답했습니다. 같은 해 JetBrains 조사(2만 4,534명)는 85%, Google의 DORA 조사(약 5천 명)는 90%가 업무에 AI를 쓴다고 했습니다.</p>
+      <p>믿음은 그만큼 따라오지 않았습니다. 2025년 Stack Overflow 조사에서 AI 답의 정확도를 믿는다는 사람은 32.7%, 믿지 않는다는 사람은 45.7%였습니다. 가장 많이 꼽은 불만은 "거의 맞는데 딱 맞지는 않는 답"(66%)이었습니다.</p>
+      <p>2026년 조사(6~8월)는 질문을 바꿔 "어떤 조건에서 믿느냐"고 물었습니다. 답한 1만 4,304명을 100명으로 줄여 그리면 100칸 그림과 같습니다. 절반 가까이가 "쉽게 확인할 수 있을 때만 믿는다"를 골랐고 중요한 결정까지 맡긴다는 사람은 7명이었습니다.</p>
+      <details><summary>DORA 조사는 신뢰를 어떻게 물었나요</summary><p>DORA 2025 보고서(2025년 9월)는 AI가 만든 코드를 얼마나 믿는지 다섯 단계로 물었습니다. "매우 많이" 4%, "많이" 20%, "조금" 23%, "전혀" 7%였고 나머지는 그 중간("어느 정도") 답이었습니다. 같은 조사에서 80% 넘게 AI 덕분에 같은 시간에 더 많은 일을 해낸다고 답했습니다. AI를 쓰고 효과도 느끼지만 결과는 확인하고 쓰는 모습이 조사마다 되풀이됩니다.</p></details>
+    </div>
+    <figure class="nd-fig nd-gap" data-figure>
+      <div class="nd-waf">
+        <div class="nd-cells" data-cells aria-hidden="true"></div>
+        <ul class="nd-keys" data-keys></ul>
+      </div>
+      <figcaption class="nd-cap">Stack Overflow 2026 개발자 조사, "업무에서 AI 도구나 에이전트의 결과를 얼마나 믿습니까?"(1만 4,304명). 칸 하나가 1%, 반올림한 값입니다. 진한 칸일수록 더 많이 맡깁니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap nd-two">
+    <div class="nd-col">
+      <h2>에이전트를 매일 쓰는 사람은 1년 새 14%에서 37%로</h2>
+      <p>2025년까지 대부분은 자동완성과 채팅에 머물렀습니다. Stack Overflow 2025 조사에서 업무에 에이전트를 매일 쓴다는 사람은 14%였습니다. 2026년 4월 말 Stack Overflow가 1,100명에게 같은 질문을 다시 했습니다. 정기 조사 사이에 짧게 하는 펄스 조사입니다. 이번에는 매일 쓴다는 답이 37%였습니다.</p>
+      <p>회사 안 기록도 같은 방향입니다. Microsoft 연구진은 2026년 초 엔지니어 수만 명에게 Claude Code와 GitHub Copilot CLI를 배포한 뒤 네 달을 지켜봤습니다. 도입한 사람들은 PR(Pull Request)을 약 24% 더 많이 반영했습니다. PR은 "내가 바꾼 코드를 합쳐 주세요"라는 요청입니다.</p>
+      <p>다만 손을 완전히 놓지는 않습니다. 같은 4월 조사에서 69%는 에이전트 하나만 썼고 63%는 에이전트가 사람 확인 없이 끝까지 혼자 일하게 두는 일이 거의 없다고 답했습니다.</p>
+    </div>
+    <figure class="nd-fig" data-figure>
+      <svg viewBox="0 0 560 300" role="img" aria-label="업무에 AI 에이전트를 쓰는 빈도. 2025년 조사는 매일 14.1, 매주 9, 가끔 7.8퍼센트, 2026년 4월 펄스 조사는 매일 37, 매주 13, 가끔 9퍼센트" data-usesvg style="max-width:620px"></svg>
+      <figcaption class="nd-cap">막대 하나가 응답자 전체(100%)입니다. 2025년은 개발자 조사(3만 1,877명 응답), 2026년은 4월 펄스 조사(1,100명)라 응답자 수가 다릅니다. 출처: <a href="https://survey.stackoverflow.co/2025/ai">Stack Overflow Developer Survey 2025</a>, <a href="https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/">Stack Overflow Blog (2026-05-27)</a></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap">
+    <h2>AI를 쓰면 19% 느려졌다는 실험</h2>
+    <div class="nd-col">
+      <p>그럼 일이 실제로 빨라졌을까요? METR은 2025년 7월에 이 질문을 무작위 대조 실험(RCT, Randomized Controlled Trial)으로 쟀습니다. 무작위 대조 실험은 동전을 던지듯 조건을 무작위로 나눠 그 조건 말고는 차이가 없게 만드는 실험입니다. 신약이 정말 듣는지 확인할 때 쓰는 방법입니다.</p>
+      <p>참가자는 오픈소스(open source, 누구나 코드를 보고 고칠 수 있게 공개한 소프트웨어) 개발자 16명입니다. 각자 평균 5년 동안 기여해 온 큰 저장소(repository, 한 프로젝트의 코드와 변경 기록을 모아 둔 곳)에서 실제로 할 일 246개를 골랐습니다. 작업마다 AI 허용과 금지를 무작위로 정했고 작업 하나는 평균 두 시간쯤 걸렸습니다. AI 쪽 도구는 주로 Cursor Pro와 Claude 3.5·3.7 Sonnet이었습니다.</p>
+    </div>
+  </div>
+  <div class="nd-band">
+    <div class="nd-wrap nd-guess" data-guess>
+      <div>
+        <p class="nd-q">결과를 보기 전에 골라 보세요. AI를 쓰게 하면 작업 시간은 어떻게 됐을까요?</p>
+        <p class="nd-verdict" aria-live="polite" data-verdict>하나를 고르면 전문가 예상, 참가자의 체감, 실제로 잰 값이 차례로 나타납니다.</p>
+        <div class="nd-btns" role="group" aria-label="예상 고르기" data-choices>
+          <button class="nd-btn" type="button" data-g="-40">40% 줄었다</button>
+          <button class="nd-btn" type="button" data-g="-20">20% 줄었다</button>
+          <button class="nd-btn" type="button" data-g="0">그대로였다</button>
+          <button class="nd-btn" type="button" data-g="20">20% 늘었다</button>
+        </div>
+        <p style="margin:14px 0 0"><button class="nd-btn" type="button" data-showall style="font-weight:500;color:var(--fg-neutral)">고르지 않고 결과 보기</button></p>
+        <noscript><p class="nd-cap">결과: 경제 전문가 예상 −39%, 머신러닝 전문가 예상 −38%, 참가자 사전 예상 −24%, 사후 체감 −20%, 실제로 잰 값 +19%(신뢰구간 +2%~+39%).</p></noscript>
+      </div>
+      <figure class="nd-fig nd-metr" data-figure>
+        <svg viewBox="0 0 640 380" role="img" aria-label="AI를 쓸 때 작업 시간 변화. 경제 전문가 예상 39퍼센트 감소, 머신러닝 전문가 예상 38퍼센트 감소, 개발자 사전 예상 24퍼센트 감소, 개발자 사후 체감 20퍼센트 감소, 실제 측정 19퍼센트 증가" data-metrsvg></svg>
+        <figcaption class="nd-cap">막대가 왼쪽이면 시간이 줄어든 것(빨라짐), 오른쪽이면 늘어난 것(느려짐)입니다. 실측 막대 위의 가는 선은 95% 신뢰구간(confidence interval, 실제 값이 들어 있을 가능성이 높은 범위)입니다. 출처: METR(2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="nd-wrap nd-after">
+    <div class="nd-col">
+      <p>참가자들은 시작 전에 AI가 시간을 24% 줄여 줄 거라고 예상했고 다 끝난 뒤에도 20% 줄였다고 느꼈습니다. 실제로는 19% 늘었습니다. 신뢰구간은 +2%에서 +39%라서 "빨라졌다" 쪽은 이 범위에 들어 있지 않았습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap nd-two">
+    <div class="nd-col">
+      <h2>빨라졌다고 느꼈는데 느렸던 이유</h2>
+      <p>AI가 내놓은 코드는 대부분 그대로 쓰이지 않았습니다. 논문에 따르면 참가자들은 Cursor가 만든 결과의 44% 미만만 받아들였습니다. 버린 나머지도 읽고 판단하는 데 시간이 들었습니다.</p>
+      <p>남은 것도 손을 봐야 했습니다. 앞에서 본 시간 띠에서 AI 결과를 검토하고 고치는 데 9%가 들었습니다. Stack Overflow 2025 조사에서도 45.2%가 "AI가 만든 코드를 디버깅하는 데 시간이 더 걸린다"고 답했습니다.</p>
+      <p>왜 느끼기에는 빨랐을까요? 논문이 답을 주지는 않습니다. 제 짐작으로는 손이 쉬는 시간이 늘어서입니다. AI를 기다리는 4%와 화면이 멈춘 10%는 힘이 덜 드는 시간입니다. 덜 힘든 것을 빠른 것으로 착각하기 쉽습니다.</p>
+      <details><summary>METR이 꼽은 느려진 요인 다섯 가지</summary><p>METR은 20가지 후보 요인을 살펴보고 다섯 가지가 느려지는 데 영향을 줬을 가능성이 높다고 정리했습니다. AI가 쓸모 있을 거라는 지나친 기대, 개발자가 저장소를 이미 너무 잘 알았던 점, 저장소가 크고 복잡했던 점(평균 100만 줄 이상), 낮은 AI 신뢰도, 코드에 적혀 있지 않은 그 저장소만의 암묵적 규칙입니다. 그래서 이 결과를 "AI는 언제나 개발을 느리게 한다"로 넓히면 안 됩니다. 잘 아는 큰 저장소에서 일하는 숙련자라는 조건이 붙은 결과입니다.</p></details>
+    </div>
+    <figure class="nd-fig" data-figure>
+      <svg viewBox="0 0 520 330" role="img" aria-label="AI가 내놓은 제안 가운데 받아들인 것은 44퍼센트 미만, 나머지는 읽고 버렸다. 두 쪽 모두 읽는 시간이 든다" data-sugsvg style="max-width:560px"></svg>
+      <figcaption class="nd-cap">AI 제안이 받아들인 쪽과 버린 쪽으로 갈리는 비율입니다. 44% 미만은 논문 값이라, 받아들임 막대는 많아야 이만큼입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap nd-two">
+    <div class="nd-col">
+      <h2>1년 뒤 같은 실험은 제대로 잴 수조차 없었습니다</h2>
+      <p>METR은 2025년 8월부터 개발자 57명과 작업 800여 개로 같은 실험을 다시 했습니다. 2026년 2월 결과에서는 AI를 쓴 쪽이 더 빨랐습니다. 다만 두 무리 모두 신뢰구간이 0에 걸쳐 있어 "빨라졌다"고 단정하지는 못합니다.</p>
+      <p>실험 자체가 흔들린 게 더 큰 문제였습니다. 참가 개발자의 30~50%가 AI 없이 하기 싫은 작업은 아예 실험에 내지 않았다고 답했습니다. AI가 가장 잘 도와줄 작업이 빠진 것입니다. 이렇게 참가자나 작업이 한쪽으로 골라져 결과가 기우는 것을 선택 편향(selection bias)이라고 합니다.</p>
+      <p>METR은 지금의 AI가 개발자를 더 빠르게 할 가능성이 높다고 보면서도 이 데이터만으로는 증거가 약하다고 적었습니다. 그리고 실험 방식을 바꾸겠다고 했습니다.</p>
+      <details><summary>느낌으로 물으면 몇 배 빨라졌다고 답할까요</summary><p>2026년 5월 METR 설문에서는 기술직 349명을 빨라졌다고 느낀 정도 순으로 줄 세웠을 때 한가운데 선 사람(중앙값)이 "AI 덕분에 세 배 빨라졌다"고 답했습니다. METR은 같은 글에서 2025년 실험 참가자들이 AI가 작업 시간에 준 효과를 평균 40%p 과대평가했다고 적었습니다. "20% 빨라졌다"고 느꼈는데 실제로는 19% 느려진 차이가 이 정도입니다.</p></details>
+    </div>
+    <div>
+      <figure class="nd-fig" data-figure>
+        <svg viewBox="0 0 600 300" role="img" aria-label="AI를 허용했을 때 작업 시간 변화. 2025년 첫 실험 19퍼센트 증가, 2025년 하반기 후속 실험의 돌아온 10명 18퍼센트 감소, 새 47명 4퍼센트 감소. 후속 두 값의 범위는 0을 걸친다" data-followsvg style="max-width:620px"></svg>
+        <figcaption class="nd-cap">실험판과 같은 방향입니다. 막대가 왼쪽이면 빨라짐, 오른쪽이면 느려짐이고 가는 선은 95% 신뢰구간입니다. 출처: <a href="https://metr.org/blog/2026-02-24-uplift-update/">METR (2026-02-24), We are Changing our Developer Productivity Experiment Design</a></figcaption>
+      </figure>
+      <figure class="nd-fig nd-subfig" data-figure>
+        <svg viewBox="0 0 600 220" role="img" aria-label="개발자가 가진 작업 중 AI 없이는 하기 싫은 작업이 실험에서 빠지고 나머지만 실험에 들어가는 예시 그림" data-selsvg style="max-width:620px"></svg>
+        <figcaption class="nd-cap">선택 편향을 그린 예시입니다. 작업 수는 설명을 위해 정했습니다.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap">
+    <h2>도입 직후에는 오히려 내려갔다가 올라옵니다</h2>
+    <div class="nd-col">
+      <p>개인이 아니라 팀이나 회사 단위로 보면 그림이 하나 더 있습니다. Google의 DORA 팀은 2026년 낸 「ROI of AI-assisted Software Development」 보고서에서 대부분의 조직이 AI를 들인 직후 생산성(productivity, 같은 시간에 해낸 일의 양)이 잠시 떨어졌다가 나중에 오른다고 봤습니다. 곡선 모양이 알파벳 J를 닮아 J 커브(J-curve)라고 부릅니다.</p>
+      <p>새 스마트폰으로 바꾼 첫 주에 예전 폰보다 자판을 느리게 치는 것과 비슷합니다. 다만 보고서가 꼽은 원인 셋 가운데 둘은 개인이 아니라 팀이 일하는 방식에서 나옵니다.</p>
+    </div>
+    <figure class="nd-fig nd-wide" data-figure>
+      <svg viewBox="0 0 980 380" role="img" aria-label="J 커브. AI 도입 직후 생산성이 기준선 아래로 내려갔다가 시간이 지나 기준선 위로 올라간다. 내려간 구간에 학습, 검증 비용, 뒤 단계 절차 조정 세 원인이 적혀 있다" data-jsvg></svg>
+      <figcaption class="nd-cap">곡선의 깊이와 길이는 설명을 위한 예시 모양입니다. 보고서는 이 하락을 "전환의 수업료"라고 불렀습니다. 원인 셋은 DORA ROI 보고서(InfoQ 2026-05-11 요약)에서 가져왔습니다.</figcaption>
+    </figure>
+    <div class="nd-col nd-after">
+      <p>DORA 2025 보고서는 AI를 증폭기에 빗댔습니다. 작은 소리를 크게 키우는 스피커처럼 팀의 강점도 약점도 함께 키운다는 뜻입니다. 검토 절차가 탄탄한 팀은 늘어난 코드를 받아 내고 그렇지 못한 팀은 늘어난 코드에 더 깊이 묻힙니다. 2026년 DORA ROI 보고서는 하락 구간에서 AI 도입을 그만두면 뒤에 올 이득까지 놓친다고 경고합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="nd-sec">
+  <div class="nd-wrap nd-two">
+    <div class="nd-col">
+      <h2>이 시리즈에서 다룰 것</h2>
+      <p>코딩 에이전트를 쓰는 개발자가 알아야 할 것을 열한 편으로 나눴습니다. 그림처럼 첫 화면의 일곱 단계 위에 놓으면 각 글이 어느 단계를 다루는지 알 수 있습니다. 번호를 누르면 그 글로 갑니다.</p>
+      <ol class="nd-eps" start="1">
+        <li>AI가 코드를 쓰면 개발자는 무슨 일을 할까 — 지금 이 글</li>
+        <li><a href="/posts/ai-native-dev-loop-explore-plan-verify">에이전트 루프</a>: 요청 하나를 읽기 → 계획 → 고치기 → 확인 순서로 처리하는 방법</li>
+        <li><a href="/posts/ai-dlc-aws-methodology">AI-DLC</a>: AI가 묻고 사람이 답하는 개발 방법론<small>AWS가 제안한 개발 순서입니다. 방법론은 일을 어떤 차례로 나눠 할지 정한 약속입니다.</small></li>
+        <li><a href="/posts/spec-driven-development-spec-kit-kiro">스펙 주도 개발</a>: 무엇을 먼저 써 줘야 원하는 게 나오는지</li>
+        <li><a href="/posts/context-engineering-claude-md-agents-md">컨텍스트 엔지니어링</a>: 긴 작업에서 에이전트가 흐려지는 이유<small>CLAUDE.md는 에이전트가 일을 시작할 때마다 먼저 읽는 안내 파일입니다.</small></li>
+        <li><a href="/posts/mcp-model-context-protocol-usb-c">MCP</a>: 에이전트가 바깥 도구를 읽는 방법<small>MCP는 에이전트와 도구를 잇는 공통 규격입니다. 할 일 목록 앱이나 데이터를 모아 둔 데이터베이스(DB)에 붙일 때 씁니다.</small></li>
+        <li><a href="/posts/agent-skills-subagents-hooks">스킬·서브에이전트·훅</a>: 같은 설명을 반복하지 않고 일을 가르치는 법</li>
+        <li><a href="/posts/ai-pr-review-bottleneck-verification">리뷰 병목</a>: 쓰기가 빨라지면 왜 검토에서 막히는지</li>
+        <li><a href="/posts/coding-agent-security-prompt-injection-owasp">보안</a>: 문서 한 줄이 에이전트를 조종하는 공격<small>프로젝트 소개 문서(README)에 숨긴 명령으로 AI를 속이는 것을 프롬프트 인젝션이라고 합니다.</small></li>
+        <li><a href="/posts/sllm-self-hosted-coding-agent-2026">회사 안의 모델</a>: 회사 서버에 직접 둔 모델로 에이전트를 돌릴 때<small>오픈 웨이트 모델은 누구나 받아서 쓸 수 있게 공개한 AI 모델입니다.</small></li>
+        <li><a href="/posts/ai-native-team-capabilities-developer-skills">팀의 역량</a>: 같은 도구로도 팀마다 결과가 다른 이유</li>
+      </ol>
+    </div>
+    <figure class="nd-fig nd-map" data-figure>
+      <svg viewBox="0 0 440 560" role="img" aria-label="에이전트 시대의 일곱 단계 위에 시리즈 각 글의 번호를 붙인 지도" data-mapsvg style="max-width:520px"></svg>
+      <figcaption class="nd-cap">에이전트 시대의 일곱 단계(첫 화면 그림)를 세로로 세웠습니다. 동그라미 숫자가 그 단계를 다루는 글 번호입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="nd-sec nd-refs" style="padding-bottom:40px">
+  <div class="nd-wrap nd-refhead">
+    <h2>참고 자료</h2>
+    <div>
+      <ul>
+        <li><a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/">METR (2025-07-10), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</a> · <a href="https://arxiv.org/abs/2507.09089">arXiv 2507.09089</a> — 16명·246개 작업, 예상/체감/실측, Figure 6 활동별 시간 비율, 요인 분석</li>
+        <li><a href="https://metr.org/blog/2026-02-24-uplift-update/">METR (2026-02-24), We are Changing our Developer Productivity Experiment Design</a> — 후속 실험과 선택 편향</li>
+        <li><a href="https://metr.org/blog/2026-05-11-ai-usage-survey/">METR (2026-05-11), Measuring the Self-Reported Impact of Early-2026 AI on Technical Worker Productivity</a></li>
+        <li><a href="https://survey.stackoverflow.co/2025/ai">Stack Overflow Developer Survey 2025, AI</a> · <a href="https://survey.stackoverflow.co/2025/methodology">방법론</a> (2025-05-29~06-23, 49,009명)</li>
+        <li><a href="https://survey.stackoverflow.co/2026/ai/data">Stack Overflow Developer Survey 2026, AI 데이터</a> · <a href="https://survey.stackoverflow.co/2026/methodology">방법론</a> (2026-06-23~08-05, 유효 30,903명) · <a href="https://stackoverflow.blog/2026/10/06/the-results-of-the-2026-developer-survey-are-here/">발표 글(2026-10-06)</a></li>
+        <li><a href="https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/">Stack Overflow Blog (2026-05-27), Agents on a leash</a> — 2026년 4월 펄스 조사 1,100명</li>
+        <li><a href="https://blog.jetbrains.com/research/2025/10/state-of-developer-ecosystem-2025/">JetBrains Research (2025-10), State of Developer Ecosystem 2025</a> — 24,534명, 2025년 4~6월</li>
+        <li><a href="https://blog.google/technology/developers/dora-report-2025/">Google Blog (2025-09-23), How are developers using AI? Inside our 2025 DORA report</a> · <a href="https://dora.dev/research/2025/dora-report/">DORA 2025 State of AI-assisted Software Development</a></li>
+        <li><a href="https://www.infoq.com/news/2026/05/dora-roi-ai-assisted-dev-report/">InfoQ (2026-05-11), DORA ROI of AI-Assisted Software Development 보고서 요약</a> · <a href="https://dora.dev/ai/roi/report/">DORA, ROI of AI-assisted Software Development</a></li>
+        <li><a href="https://arxiv.org/abs/2607.01418">Murphy-Hill, Butler, Savelieva (2026), Adoption and Impact of Command-Line AI Coding Agents: A Study of Microsoft's Early 2026 Rollout of Claude Code and GitHub Copilot CLI</a>, arXiv 2607.01418</li>
+        <li><a href="https://www.infoworld.com/article/3831759/developers-spend-most-of-their-time-not-coding-idc-report.html">InfoWorld (2025-02-24), Developers spend most of their time not coding: IDC report</a></li>
+        <li><a href="https://karpathy.bearblog.dev/sequoia-ascent-2026/">Andrej Karpathy (2026-04-30), Sequoia Ascent 2026 summary</a></li>
+        <li><a href="https://github.blog/news-insights/product-news/introducing-github-copilot-ai-pair-programmer/">GitHub Blog (2021-06-29), Introducing GitHub Copilot</a> · <a href="https://www.anthropic.com/news/claude-3-7-sonnet">Anthropic (2025-02-24), Claude 3.7 Sonnet and Claude Code</a> · <a href="https://openai.com/index/chatgpt/">OpenAI (2022-11-30), Introducing ChatGPT</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const lines = (parent, x, y, s, lh, attrs = {}) => { const parts = s.split("|"); const y0 = y - ((parts.length - 1) * lh) / 2; parts.forEach((p, i) => txt(parent, x, y0 + i * lh, p, attrs)); };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+
+  /* ---------- 일곱 단계 · 세 시대 ---------- */
+  const STEPS = ["문제 정하기", "코드 찾기", "고칠 방법", "코드 쓰기", "실행·테스트", "결과 확인", "반영"];
+  const ERAS = [
+    { o: "hhhbhhh", t: ["직접|재현", "파일을 열어|읽기", "머리로|정하기", "사람이|코드를 친다~AI가 다음|줄을 제안", "직접|실행", "눈으로|확인", "직접|반영"],
+      say: "자동완성 시대에는 일곱 단계 모두 사람이 합니다. AI는 코드 쓰기 단계에서 다음 한 줄을 제안할 뿐이고 받아들일지는 사람이 정합니다." },
+    { o: "hhbbhhh", t: ["직접|재현", "의심 코드를|대화창에 복사", "방법을|고른다~AI가 방법|여럿 제안", "받은 코드를|옮겨 붙인다~AI가 코드|덩어리 작성", "직접|실행", "눈으로|확인", "직접|반영"],
+      say: "채팅 시대에는 고칠 방법과 코드 덩어리를 AI에게 받습니다. 하지만 코드를 찾아 보여 주고 받은 코드를 옮겨 붙이는 일은 여전히 사람 몫입니다." },
+    { o: "habaahh", t: ["할 일을|글로 설명", "AI가 파일을|찾아 읽기", "계획을|승인한다~AI가|계획 작성", "AI가 여러|파일 수정", "AI가 테스트|실행", "결과|검토하기", "반영|결정하기"],
+      say: "에이전트 시대에는 사람이 첫 단계에서 할 일을 글로 설명하고 마지막 두 단계에서 결과를 검토하고 반영할지 정합니다. 그 사이 네 단계는 AI가 합니다." },
+  ];
+  const fillOf = (o, m) => o === "h" ? "var(--me-soft)" : o === "a" ? "var(--ai-soft)" : (m ? "url(#nd-gh)" : "url(#nd-gv)");
+  const strokeOf = (o) => o === "h" ? "var(--me)" : o === "a" ? "var(--ai)" : "var(--fg-neutral)";
+  const gradients = (svg) => {
+    const d = el("defs", {}, svg);
+    const gv = el("linearGradient", { id: "nd-gv", x1: 0, y1: 0, x2: 0, y2: 1 }, d);
+    const gh = el("linearGradient", { id: "nd-gh", x1: 0, y1: 0, x2: 1, y2: 0 }, d);
+    for (const g of [gv, gh]) { el("stop", { offset: "50%", "stop-color": "var(--me-soft)" }, g); el("stop", { offset: "50%", "stop-color": "var(--ai-soft)" }, g); }
+  };
+  // 가로판(데스크톱) / 세로판(모바일) 좌표
+  const geo = (m, VW) => m || VW === "v"
+    ? (() => { const W = VW === "v" ? 440 : 360, L = 96, cw = VW === "v" ? 128 : 128, gap = 6, T = 46, rh = 64, bh = 56;
+        const hx = L + 4, ax = L + cw + gap + 4;
+        return { W, H: T + 7 * rh + 6, vertical: true, L, cw, gap, T, rh, bh, hx, ax,
+          box: (i, o) => o === "h" ? [hx, T + i * rh, cw - 8, bh] : o === "a" ? [ax, T + i * rh, cw - 8, bh] : [hx, T + i * rh, cw * 2 + gap - 8, bh] }; })()
+    : (() => { const W = 1000, L = 120, cw = (W - L) / 7, T = 38, lh = 80, bh = 68;
+        const hy = T + 6, ay = T + lh + 6;
+        return { W, H: T + lh * 2 + 8, vertical: false, L, cw, T, lh, bh, hy, ay,
+          box: (i, o) => o === "h" ? [L + i * cw + 6, hy, cw - 12, bh] : o === "a" ? [L + i * cw + 6, ay, cw - 12, bh] : [L + i * cw + 6, hy, cw - 12, lh + bh] }; })();
+
+  const drawLanes = (svg, m, era, opts = {}) => {
+    svg.innerHTML = "";
+    const G = geo(m, opts.vertical ? "v" : null);
+    svg.setAttribute("viewBox", `0 0 ${G.W} ${G.H}`);
+    gradients(svg);
+    const fs = 13.5, blocks = [];
+    if (!G.vertical) {
+      el("rect", { x: G.L, y: G.hy - 6, width: G.W - G.L, height: G.lh, rx: 12, fill: "var(--me-soft)", opacity: 0.35 }, svg);
+      el("rect", { x: G.L, y: G.ay - 6, width: G.W - G.L, height: G.lh, rx: 12, fill: "var(--ai-soft)", opacity: 0.35 }, svg);
+      txt(svg, 8, G.hy + G.bh / 2 - 4, "🧑‍💻 사람", { "font-size": 16, "font-weight": 700, fill: "var(--me)" });
+      txt(svg, 8, G.ay + G.bh / 2 - 4, "🤖 AI", { "font-size": 16, "font-weight": 700, fill: "var(--ai)" });
+      txt(svg, 8, G.hy + G.bh / 2 + 16, "직접 하는 일", { "font-size": 13, class: "dim" });
+      txt(svg, 8, G.ay + G.bh / 2 + 16, "맡긴 일", { "font-size": 13, class: "dim" });
+      STEPS.forEach((s, i) => txt(svg, G.L + i * G.cw + G.cw / 2, 22, `${i + 1} ${s}`, { "text-anchor": "middle", "font-size": 14, "font-weight": 600 }));
+    } else {
+      el("rect", { x: G.hx - 4, y: G.T - 4, width: G.cw, height: 7 * G.rh, rx: 12, fill: "var(--me-soft)", opacity: 0.35 }, svg);
+      el("rect", { x: G.ax - 4, y: G.T - 4, width: G.cw, height: 7 * G.rh, rx: 12, fill: "var(--ai-soft)", opacity: 0.35 }, svg);
+      txt(svg, G.hx + (G.cw - 8) / 2, 26, "🧑‍💻 사람", { "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: "var(--me)" });
+      txt(svg, G.ax + (G.cw - 8) / 2, 26, "🤖 AI", { "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: "var(--ai)" });
+      STEPS.forEach((s, i) => { txt(svg, 4, G.T + i * G.rh + G.bh / 2 - 3, `${i + 1}`, { "font-size": 13, class: "dim", "font-family": "var(--font-mono)" }); lines(svg, 20, G.T + i * G.rh + G.bh / 2 + 5, s.replace("·", "·|").replace(" ", "|"), 16, { "font-size": 13.5, "font-weight": 600 }); });
+    }
+    STEPS.forEach((s, i) => {
+      const g = el("g", { class: "blk" }, svg);
+      const r = el("rect", { x: 0, y: 0, rx: 10, "stroke-width": 2 }, g);
+      const tg = el("g", { class: "tx" }, g);
+      blocks.push({ g, r, tg });
+    });
+    const set = (k) => {
+      const E = ERAS[k];
+      blocks.forEach((b, i) => {
+        const o = E.o[i];
+        const [x, y, w, h] = G.box(i, o);
+        b.g.style.transform = `translate(${x}px, ${y}px)`;
+        b.r.style.width = w + "px"; b.r.style.height = h + "px";
+        b.r.setAttribute("width", w); b.r.setAttribute("height", h);
+        b.r.setAttribute("fill", fillOf(o, G.vertical)); b.r.setAttribute("stroke", strokeOf(o));
+        b.tg.innerHTML = "";
+        if (o === "b") {
+          const [hp, ap] = E.t[i].split("~");
+          b.tg.style.transform = "translate(0px, 0px)";
+          if (G.vertical) { const half = G.cw - 4; lines(b.tg, half / 2, h / 2 + 5, hp, 17, { "text-anchor": "middle", "font-size": fs, "font-weight": 600 }); lines(b.tg, half + G.gap + (G.cw - 8) / 2 - 2, h / 2 + 5, ap, 17, { "text-anchor": "middle", "font-size": fs }); }
+          else { lines(b.tg, w / 2, G.bh / 2 + 5, hp, 17, { "text-anchor": "middle", "font-size": fs, "font-weight": 600 }); lines(b.tg, w / 2, G.lh + G.bh / 2 + 5, ap, 17, { "text-anchor": "middle", "font-size": fs }); }
+        } else {
+          b.tg.style.transform = `translate(${w / 2}px, ${h / 2}px)`;
+          lines(b.tg, 0, 5, E.t[i], 17, { "text-anchor": "middle", "font-size": fs, "font-weight": o === "h" ? 600 : 500 });
+        }
+      });
+    };
+    return { set, G, blocks };
+  };
+
+  /* 히어로 */
+  (() => {
+    const fig = $("[data-hero]"); if (!fig) return;
+    const svg = $("[data-lanesvg]", fig), says = $("[data-says]", fig), read = $("[data-read]"), tog = $("[data-era]");
+    let era = 2, api;
+    const show = (k) => {
+      era = k; api.set(k);
+      $$("button", tog).forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.v === k)));
+      const o = ERAS[k].o, n = (c) => o.split("").filter((x) => x === c).length;
+      read.innerHTML = `사람 줄 <b class="h">${n("h")}</b> · 함께 <b>${n("b")}</b> · AI 줄 <b class="a">${n("a")}</b>`;
+      says.textContent = ERAS[k].say;
+    };
+    responsive((m) => { api = drawLanes(svg, m, era); api.set(era); });
+    $$("button", tog).forEach((b) => b.addEventListener("click", () => show(+b.dataset.v), { signal }));
+    fig.addEventListener("nd-thumb", () => show(2), { signal });
+    show(2);
+  })();
+
+  /* ---------- 세 창 ---------- */
+  (() => {
+    const svg = $("[data-windows]"); if (!svg) return;
+    const P = [
+      { k: "자동완성", y: "2021", amt: "한 줄", an: "📱 키보드 추천 단어", w: 1 },
+      { k: "채팅", y: "2022~", amt: "코드 한 덩어리", an: "💬 친구에게 문단 부탁하기", w: 2 },
+      { k: "에이전트", y: "2025~", amt: "여러 파일 + 실행", an: "👥 조원에게 발표 자료 맡기기", w: 3 },
+    ];
+    const bar = (g, x, y, w, c = "var(--fg-neutral)", o = 0.35) => el("rect", { x, y, width: w, height: 9, rx: 4.5, fill: c, opacity: o }, g);
+    const panel = (g, i, x, y, W, H) => {
+      el("rect", { x, y, width: W, height: H, rx: 12, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5 }, g);
+      el("line", { x1: x, x2: x + W, y1: y + 30, y2: y + 30, stroke: "var(--line-subtle)" }, g);
+      [0, 1, 2].forEach((d) => el("circle", { cx: x + 16 + d * 14, cy: y + 15, r: 4, fill: "var(--fg-neutral)", opacity: 0.4 }, g));
+      txt(g, x + W - 12, y + 20, ["login.js", "대화", "터미널"][i], { "text-anchor": "end", "font-size": 12.5, class: "dim" });
+      const ix = x + 16, iy = y + 48;
+      if (i === 0) {
+        [120, 160, 90].forEach((w, j) => bar(g, ix, iy + j * 22, w));
+        txt(g, ix, iy + 3 * 22 + 8, "if (user.", { "font-size": 14, "font-family": "var(--font-mono)" });
+        txt(g, ix + 82, iy + 3 * 22 + 8, "isLoggedIn()) {", { "font-size": 14, "font-family": "var(--font-mono)", fill: "var(--fg-neutral)", opacity: 0.8 });
+        el("rect", { x: ix + 79, y: iy + 3 * 22 - 8, width: 2, height: 20, fill: "var(--fg-strong)" }, g);
+        [140, 70].forEach((w, j) => bar(g, ix, iy + (4 + j) * 22 + 4, w));
+        txt(g, ix, iy + 6 * 22 + 30, "회색 글씨 = AI 제안, Tab 으로 받기", { "font-size": 13, fill: "var(--ai)", "font-weight": 600 });
+      } else if (i === 1) {
+        el("rect", { x: x + W - 196, y: iy - 6, width: 180, height: 32, rx: 14, fill: "var(--me-soft)" }, g);
+        txt(g, x + W - 106, iy + 15, "로그인이 안 돼요 😢", { "text-anchor": "middle", "font-size": 13.5 });
+        el("rect", { x: ix, y: iy + 38, width: W - 70, height: 128, rx: 14, fill: "var(--ai-soft)" }, g);
+        txt(g, ix + 12, iy + 60, "이렇게 고쳐 보세요", { "font-size": 13.5 });
+        el("rect", { x: ix + 12, y: iy + 72, width: W - 94, height: 82, rx: 8, fill: "var(--bg-base)", opacity: 0.85 }, g);
+        [150, 110, 170, 90].forEach((w, j) => bar(g, ix + 24, iy + 82 + j * 17, Math.min(w, W - 130), "var(--ai)", 0.45));
+        txt(g, ix, iy + 192, "📋 복사해서 내 파일에 붙이기", { "font-size": 13, fill: "var(--me)" });
+      } else {
+        const L = [["> 로그인 버그 고쳐 줘", "var(--me)"], ["● 파일 3개 읽음", "var(--ai)"], ["● 계획: 세션 검사 수정", "var(--ai)"], ["● auth.js, login.js 수정", "var(--ai)"], ["● 테스트 12개 실행 — 통과", "var(--ai)"], ["변경 2개 파일, 검토해 주세요", "var(--fg-strong)"]];
+        L.forEach(([s, c], j) => txt(g, ix, iy + 8 + j * 26, s, { "font-size": 13.5, "font-family": "var(--font-mono)", fill: c }));
+        txt(g, ix, iy + 192, "사람은 첫 줄과 마지막 줄만", { "font-size": 13, fill: "var(--me)" });
+      }
+    };
+    responsive((m) => {
+      svg.innerHTML = "";
+      if (!m) {
+        svg.setAttribute("viewBox", "0 0 980 400");
+        const W = 300, gap = 40;
+        P.forEach((p, i) => {
+          const x = i * (W + gap), g = el("g", {}, svg);
+          txt(g, x, 18, p.k, { "font-size": 17, "font-weight": 700 });
+          txt(g, x + 12 + p.k.length * 17, 18, p.y, { "font-size": 13.5, class: "dim", "font-family": "var(--font-mono)" });
+          panel(g, i, x, 34, W, 264);
+          el("rect", { x, y: 314, width: (W * p.w) / 3, height: 10, rx: 5, fill: "var(--ai)", opacity: 0.8 }, g);
+          txt(g, x, 346, "한 번에: " + p.amt, { "font-size": 14, "font-weight": 600 });
+          txt(g, x, 374, p.an, { "font-size": 14, class: "dim" });
+          if (i < 2) el("path", { d: `M${x + W + 10},166 l18,0 m-6,-6 l6,6 l-6,6`, stroke: "var(--fg-neutral)", "stroke-width": 2, fill: "none" }, g);
+        });
+      } else {
+        const W = 340, ph = 264, step = ph + 130;
+        svg.setAttribute("viewBox", `0 0 ${W + 10} ${step * 3 - 20}`);
+        P.forEach((p, i) => {
+          const y = i * step, g = el("g", {}, svg);
+          txt(g, 0, y + 18, p.k, { "font-size": 17, "font-weight": 700 });
+          txt(g, 12 + p.k.length * 17, y + 18, p.y, { "font-size": 13.5, class: "dim", "font-family": "var(--font-mono)" });
+          panel(g, i, 0, y + 34, W, ph);
+          el("rect", { x: 0, y: y + 34 + ph + 16, width: (W * p.w) / 3, height: 10, rx: 5, fill: "var(--ai)", opacity: 0.8 }, g);
+          txt(g, 0, y + 34 + ph + 48, "한 번에: " + p.amt, { "font-size": 14, "font-weight": 600 });
+          txt(g, 0, y + 34 + ph + 74, p.an, { "font-size": 14, class: "dim" });
+        });
+      }
+    });
+  })();
+
+  /* ---------- 시간 띠 (METR Figure 6 값) ---------- */
+  (() => {
+    // [이름, AI 없이 %, AI 허용 %, 종류(h 사람 손 · a AI와 주고받기 · i 멈춤 · o 그 밖), 진하기]
+    const C = [
+      ["AI 결과 검토", 0, 9, "a", 1], ["프롬프트 쓰기", 0, 8, "a", 0.7], ["AI 기다림", 0, 4, "a", 0.45],
+      ["직접 코딩", 37, 25, "h", 1], ["읽기·검색", 25, 17, "h", 0.72], ["테스트·디버깅", 18, 14, "h", 0.5], ["Git·환경", 13, 12, "h", 0.3],
+      ["화면 멈춤", 6, 10, "i", 0.6], ["그 밖", 1, 1, "o", 0.15],
+    ];
+    const SHORT = { "AI 결과 검토": "결과 검토", "프롬프트 쓰기": "프롬프트", "AI 기다림": "기다림", "테스트·디버깅": "테스트" };
+    const col = (k) => k === "h" ? "var(--me)" : k === "a" ? "var(--ai)" : "var(--idle)";
+    // m: 좁은 판(모바일 단계 그림)
+    const drawRib = (svg, m) => {
+      const segs = [], links = [], labs = [], news = [];
+      let T, H, X1, X2, BW;
+      if (m) { T = 56; H = 260; X1 = 96; X2 = 196; BW = 44; svg.setAttribute("viewBox", "0 0 360 330"); }
+      else { T = 34; H = 460; X1 = 150; X2 = 330; BW = 80; svg.setAttribute("viewBox", "0 0 560 520"); }
+      svg.innerHTML = "";
+      txt(svg, X1 + BW / 2, 20, "AI 없이", { "text-anchor": "middle", "font-size": 15, "font-weight": 700 });
+      const rh = txt(svg, X2 + BW / 2, 20, "AI 허용", { "text-anchor": "middle", "font-size": 15, "font-weight": 700 });
+      labs.push({ e: rh, side: 1 });
+      let y1 = T, y2 = T;
+      const nm = (n) => (m ? SHORT[n] || n : n);
+      C.forEach(([n, a, b, k, op]) => {
+        const h1 = (a / 100) * H, h2 = (b / 100) * H;
+        if (a > 0 && b > 0) links.push(el("path", { class: "lnk", d: `M${X1 + BW},${y1} L${X2},${y2} L${X2},${y2 + h2} L${X1 + BW},${y1 + h1} Z`, fill: col(k), opacity: 0 }, svg));
+        if (a > 0) segs.push({ e: el("rect", { class: "seg", x: X1, y: y1, width: BW, height: Math.max(h1 - 2, 1), fill: col(k), "fill-opacity": op, stroke: col(k), "stroke-width": 1 }, svg), side: 0, k, n });
+        if (b > 0) segs.push({ e: el("rect", { class: "seg", x: X2, y: y2, width: BW, height: Math.max(h2 - 2, 1), fill: col(k), "fill-opacity": op, stroke: col(k), "stroke-width": 1 }, svg), side: 1, k, n });
+        if (a >= 4) labs.push({ e: txt(svg, X1 - (m ? 5 : 10), y1 + h1 / 2 + 5, `${nm(n)} ${a}%`, { "text-anchor": "end", "font-size": 13, class: "lab" }), side: 0, k, n });
+        if (b >= 4) labs.push({ e: txt(svg, X2 + BW + 8, y2 + h2 / 2 + 5, `${b}% ${nm(n)}`, { "font-size": 13, class: "lab" }), side: 1, k, n });
+        y1 += h1; y2 += h2;
+      });
+      const top = T, bot = T + (21 / 100) * H;
+      news.push(el("path", { class: "lab", d: `M${X2 - 8},${top + 2} l-8,0 l0,${bot - top - 4} l8,0`, fill: "none", stroke: "var(--ai)", "stroke-width": 2 }, svg));
+      if (m) news.push(txt(svg, X2 + BW / 2, 42, "새로 생긴 일 21%", { "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "var(--ai)", class: "lab" }));
+      else {
+        news.push(txt(svg, X2 - 22, (top + bot) / 2 - 2, "새로 생긴 일", { "text-anchor": "end", "font-size": 13.5, "font-weight": 700, fill: "var(--ai)", class: "lab" }));
+        news.push(txt(svg, X2 - 22, (top + bot) / 2 + 16, "합계 21%", { "text-anchor": "end", "font-size": 13.5, "font-weight": 700, fill: "var(--ai)", class: "lab" }));
+      }
+      const show = (s) => {
+        const dimOf = (side, k, n) => {
+          if (side === 1 && s < 1) return 0;
+          if (s === 2 && k !== "a") return 0.3;
+          if (s === 3 && n !== "화면 멈춤") return 0.3;
+          return 1;
+        };
+        segs.forEach(({ e, side, k, n }) => { e.style.opacity = dimOf(side, k, n); });
+        labs.forEach(({ e, side, k, n }) => { const o = dimOf(side, k || "x", n || "x"); e.style.opacity = k ? (o < 1 && o > 0 ? 0.4 : o) : (side === 1 && s < 1 ? 0 : 1); });
+        links.forEach((l) => { l.style.opacity = s >= 1 ? (s === 1 ? (m ? 0.16 : 0.24) : 0.07) : 0; });
+        news.forEach((e) => { e.style.opacity = s === 2 ? 1 : s === 3 ? 0.25 : 0; });
+      };
+      return { show };
+    };
+    // 데스크톱: 고정 그림 스크롤리텔링
+    const svg = $("[data-ribsvg]");
+    if (svg) {
+      let api = drawRib(svg, false);
+      const steps = $$("[data-story] .nd-step");
+      let cur = -1;
+      const pick = () => {
+        if (mobile()) return;
+        const mid = window.innerHeight / 2;
+        let best = 0, bd = Infinity;
+        steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - mid); if (d < bd) { bd = d; best = i; } });
+        if (best !== cur) { cur = best; steps.forEach((s, i) => s.classList.toggle("on", i === best)); api.show(best); }
+      };
+      const stick = $("[data-stick]");
+      const placeStick = () => { if (mobile()) return; const h = stick.getBoundingClientRect().height; stick.style.top = Math.max(84, (window.innerHeight - h) / 2) + "px"; };
+      api.show(0);
+      window.addEventListener("scroll", pick, { passive: true, signal });
+      window.addEventListener("resize", () => { placeStick(); pick(); }, { passive: true, signal });
+      placeStick(); pick();
+    }
+    // 모바일: 단계마다 그 상태의 작은 띠 그림
+    $$("[data-mini]").forEach((m) => drawRib(m, true).show(+m.dataset.mini));
+  })();
+
+  /* ---------- 신뢰 100칸 ---------- */
+  (() => {
+    const cells = $("[data-cells]"), keys = $("[data-keys]"); if (!cells) return;
+    const D = [
+      ["중요한 결정까지 맡긴다", 7, 1], ["중요한 결정만 빼고 여러 일에", 16, 0.75],
+      ["쉽게 확인할 수 있을 때만", 48, 0.5], ["위험이 낮은 일에만", 16, 0.3],
+      ["대부분의 일에 믿지 않는다", 12, 0], ["모르겠다", 1, -1],
+    ];
+    D.forEach(([n, v, a]) => {
+      const bg = a < 0 ? "var(--bg-muted)" : a === 0 ? "var(--idle)" : `color-mix(in srgb, var(--ai) ${Math.round(a * 100)}%, var(--bg-base))`;
+      for (let i = 0; i < v; i++) { const c = document.createElement("i"); c.style.background = bg; if (a === 0) c.style.opacity = ".45"; cells.appendChild(c); }
+      const li = document.createElement("li");
+      li.innerHTML = `<i style="background:${bg};${a === 0 ? "opacity:.45" : ""}"></i><b>${v}%</b><span>${n}</span>`;
+      keys.appendChild(li);
+    });
+  })();
+
+  /* ---------- METR 예상 vs 실측 ---------- */
+  (() => {
+    const wrap = $("[data-guess]"); if (!wrap) return;
+    const svg = $("[data-metrsvg]", wrap), verdict = $("[data-verdict]", wrap);
+    const R = [
+      ["경제 전문가 예상", -39, "f"], ["머신러닝 전문가 예상", -38, "f"],
+      ["참가자 사전 예상", -24, "f"], ["참가자 사후 체감", -20, "f"], ["실제로 잰 값", 19, "m", [2, 39]],
+    ];
+    let guess = null, shown = false, parts = [];
+    const build = (m) => {
+      svg.innerHTML = ""; parts = [];
+      const VW = m ? 360 : 640, L = m ? 8 : 170, Rr = m ? 14 : 20, rowH = m ? 66 : 54, T = m ? 30 : 36;
+      const VH = T + R.length * rowH + 44;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${VH}`);
+      const W = VW - L - Rr, sx = (v) => L + ((v + 50) / 90) * W, z = sx(0);
+      for (const v of [-40, -20, 0, 20, 40]) { el("line", { x1: sx(v), x2: sx(v), y1: T - 8, y2: T + R.length * rowH, class: "grid" }, svg); txt(svg, sx(v), T + R.length * rowH + 20, (v > 0 ? "+" : "") + v + "%", { "text-anchor": "middle", "font-size": 13, class: "dim" }); }
+      el("line", { x1: z, x2: z, y1: T - 12, y2: T + R.length * rowH, stroke: "var(--fg-strong)", "stroke-width": 1.5 }, svg);
+      txt(svg, z - 8, T - 16, "← 빨라짐", { "text-anchor": "end", "font-size": 13, fill: "var(--ai)", "font-weight": 600 });
+      txt(svg, z + 8, T - 16, "느려짐 →", { "font-size": 13, fill: "var(--slow)", "font-weight": 600 });
+      R.forEach(([n, v, k, ci], i) => {
+        const y = T + i * rowH + (m ? 26 : 12), bh = m ? 22 : 26;
+        if (m) txt(svg, 0, y - 8, n, { "font-size": 13.5, "font-weight": k === "m" ? 700 : 500 });
+        else txt(svg, L - 14, y + bh / 2 + 5, n, { "text-anchor": "end", "font-size": 14, "font-weight": k === "m" ? 700 : 500 });
+        const c = k === "m" ? "var(--slow)" : "var(--ai)";
+        const b = el("rect", { class: "bar", x: z, y, width: 0, height: bh, rx: 4, fill: c, opacity: k === "m" ? 0.9 : 0.55 }, svg);
+        const lab = txt(svg, v < 0 ? sx(v) - 8 : sx(v) + 8, y + bh / 2 + 5, (v > 0 ? "+" : "") + v + "%", { class: "val", "text-anchor": v < 0 ? "end" : "start", "font-size": 14, "font-weight": 700, fill: c, opacity: 0 });
+        if (m) { lab.setAttribute("x", VW); lab.setAttribute("y", y - 8); lab.setAttribute("text-anchor", "end"); }
+        let ciEl = null;
+        if (ci) { ciEl = el("g", { class: "ci", opacity: 0 }, svg); el("line", { x1: sx(ci[0]), x2: sx(ci[1]), y1: y - 6, y2: y - 6, stroke: "var(--fg-strong)", "stroke-width": 2 }, ciEl); for (const e of ci) el("line", { x1: sx(e), x2: sx(e), y1: y - 11, y2: y - 1, stroke: "var(--fg-strong)", "stroke-width": 2 }, ciEl); if (!m) lab.setAttribute("x", sx(v) + 8); }
+        parts.push({ b, lab, ciEl, v, x: v < 0 ? sx(v) : z, w: Math.abs(sx(v) - z) });
+      });
+      const gl = el("g", { opacity: 0, "data-guessline": 1 }, svg);
+      el("line", { x1: 0, x2: 0, y1: T - 6, y2: T + R.length * rowH, stroke: "var(--me)", "stroke-width": 2.5, "stroke-dasharray": "6 5" }, gl);
+      txt(gl, 0, T + R.length * rowH + 40, "내 예상", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: "var(--me)" });
+      parts.sx = sx; parts.gl = gl;
+      if (shown) reveal(false);
+      if (guess !== null) placeGuess();
+    };
+    const placeGuess = () => { parts.gl.setAttribute("transform", `translate(${parts.sx(guess)},0)`); parts.gl.setAttribute("opacity", 1); };
+    const reveal = (anim = true) => {
+      parts.forEach((p, i) => {
+        const go = () => { p.b.setAttribute("x", p.x); p.b.setAttribute("width", p.w); p.b.style.width = p.w + "px"; p.b.style.x = p.x + "px"; p.lab.setAttribute("opacity", 1); if (p.ciEl) p.ciEl.setAttribute("opacity", 1); };
+        if (anim) setTimeout(go, i * 260); else go();
+      });
+    };
+    responsive(build);
+    $$("[data-choices] button", wrap).forEach((btn) => btn.addEventListener("click", () => {
+      guess = +btn.dataset.g;
+      $$("[data-choices] button", wrap).forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      placeGuess();
+      if (!shown) { shown = true; reveal(true); }
+      verdict.textContent = guess >= 20
+        ? "맞혔습니다. 실제로 잰 작업 시간은 19% 늘었습니다. 전문가와 참가자 본인은 모두 반대 방향을 예상했습니다."
+        : `실제로는 19% 늘었습니다. 고른 값(${guess > 0 ? "+" : ""}${guess}%)처럼 전문가와 참가자 본인도 모두 빨라질 거라고 봤습니다.`;
+    }, { signal }));
+    const showAll = () => { if (!shown) { shown = true; reveal(true); verdict.textContent = "실제로 잰 작업 시간은 19% 늘었습니다. 전문가와 참가자 본인은 모두 빨라질 거라고 봤습니다."; } };
+    $("[data-showall]", wrap)?.addEventListener("click", showAll, { signal });
+    const after = wrap.closest("section")?.querySelector(".nd-after");
+    if (after && "IntersectionObserver" in window) { const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { showAll(); io.disconnect(); } }, { threshold: 0.6 }); io.observe(after); signal?.addEventListener("abort", () => io.disconnect()); }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { shown = true; reveal(false); }
+  })();
+
+  /* ---------- 제안 갈림길 ---------- */
+  (() => {
+    const svg = $("[data-sugsvg]"); if (!svg) return;
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 520, acc = 0.44;
+      svg.setAttribute("viewBox", `0 0 ${W} 300`);
+      const fs = 14;
+      el("rect", { x: 0, y: 30, width: W, height: 40, rx: 8, fill: "var(--ai)", opacity: 0.25 }, svg);
+      txt(svg, 12, 56, "AI가 내놓은 제안 전부", { "font-size": 15, "font-weight": 700 });
+      const wa = W * acc - 6, xb = W * acc + 6, wb = W - xb;
+      el("path", { d: `M0,70 L${W * acc},70 L${wa},140 L0,140 Z`, fill: "var(--ai)", opacity: 0.12 }, svg);
+      el("path", { d: `M${W * acc},70 L${W},70 L${W},140 L${xb},140 Z`, fill: "var(--idle)", opacity: 0.14 }, svg);
+      el("rect", { x: 0, y: 140, width: wa, height: 44, rx: 8, fill: "var(--ai)", opacity: 0.9 }, svg);
+      el("rect", { x: xb + 1, y: 141, width: wb - 2, height: 42, rx: 8, fill: "none", stroke: "var(--idle)", "stroke-width": 2, "stroke-dasharray": "6 5" }, svg);
+      txt(svg, 0, 208, "받아들임", { "font-size": fs, "font-weight": 700, fill: "var(--ai)" });
+      txt(svg, 0, 228, "44% 미만", { "font-size": fs, "font-family": "var(--font-mono)" });
+      txt(svg, xb, 208, "읽고 버림", { "font-size": fs, "font-weight": 700, class: "dim" });
+      txt(svg, xb, 228, "56% 넘게", { "font-size": fs, "font-family": "var(--font-mono)" });
+      el("path", { d: `M2,252 l0,10 l${W - 4},0 l0,-10`, fill: "none", stroke: "var(--me)", "stroke-width": 2 }, svg);
+      txt(svg, W / 2, 288, "👀 두 쪽 모두 사람이 읽고 판단하는 시간", { "text-anchor": "middle", "font-size": fs, "font-weight": 600, fill: "var(--me)" });
+    });
+  })();
+
+  /* ---------- 에이전트 사용 빈도 ---------- */
+  (() => {
+    const svg = $("[data-usesvg]"); if (!svg) return;
+    const D = [["2025년 조사", [14.1, 9, 7.8]], ["2026년 4월", [37, 13, 9]]];
+    const K = [["매일", 1], ["매주", 0.6], ["가끔", 0.32]];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 560, L = m ? 0 : 110, BW = W - L - (m ? 4 : 10);
+      const rowH = m ? 104 : 92;
+      svg.setAttribute("viewBox", `0 0 ${W} ${44 + rowH * 2 + (m ? 22 : 0) - 14}`);
+      K.forEach(([k, o], i) => { const x = (m ? 0 : L) + i * 74; el("rect", { x, y: 4, width: 14, height: 14, rx: 3, fill: "var(--ai)", opacity: o }, svg); txt(svg, x + 20, 16, k, { "font-size": 13.5 }); });
+      el("rect", { x: (m ? 0 : L) + 222, y: 4, width: 14, height: 14, rx: 3, fill: "var(--bg-muted)", stroke: "var(--line-subtle)" }, svg);
+      txt(svg, (m ? 0 : L) + 242, 16, "안 씀·계획만", { "font-size": 13.5 });
+      D.forEach(([lab, v], r) => {
+        const y = 44 + r * rowH + (m ? 22 : 0);
+        if (m) txt(svg, 0, y - 8, lab, { "font-size": 14, "font-weight": 700 });
+        else txt(svg, L - 12, y + 22, lab, { "text-anchor": "end", "font-size": 14, "font-weight": 700 });
+        el("rect", { x: L, y, width: BW, height: 34, rx: 6, fill: "var(--bg-muted)" }, svg);
+        let x = L;
+        v.forEach((p, i) => { const w = (p / 100) * BW; el("rect", { x, y, width: Math.max(w - 2, 1), height: 34, fill: "var(--ai)", opacity: K[i][1] }, svg); x += w; });
+        const tot = v.reduce((a, b) => a + b, 0);
+        txt(svg, L, y + 56, `매일 ${v[0]}%`, { "font-size": 14, "font-weight": 700, fill: "var(--ai)" });
+        txt(svg, L + (m ? 110 : 140), y + 56, `한 번이라도 ${Math.round(tot)}%`, { "font-size": 14, class: "dim" });
+      });
+    });
+  })();
+
+  /* ---------- METR 후속 실험 ---------- */
+  (() => {
+    const svg = $("[data-followsvg]"); if (!svg) return;
+    const R2 = [["첫 실험", "2025년 초 · 16명", 19, [2, 39], "var(--slow)"], ["후속 · 돌아온 10명", "2025년 하반기", -18, [-38, 9], "var(--ai)"], ["후속 · 새 47명", "2025년 하반기", -4, [-15, 9], "var(--ai)"]];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const VW = m ? 360 : 600, L = m ? 8 : 160, Rr = m ? 14 : 20, rowH = m ? 76 : 64, T = 30;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${T + R2.length * rowH + 64}`);
+      const W = VW - L - Rr, sx = (v) => L + ((v + 50) / 90) * W, z = sx(0);
+      for (const v of [-40, -20, 0, 20, 40]) { el("line", { x1: sx(v), x2: sx(v), y1: T - 6, y2: T + R2.length * rowH, class: "grid" }, svg); txt(svg, sx(v), T + R2.length * rowH + 20, (v > 0 ? "+" : "") + v + "%", { "text-anchor": "middle", "font-size": 13, class: "dim" }); }
+      el("line", { x1: z, x2: z, y1: T - 12, y2: T + R2.length * rowH, stroke: "var(--fg-strong)", "stroke-width": 1.5 }, svg);
+      txt(svg, z - 8, T - 14, "← 빨라짐", { "text-anchor": "end", "font-size": 13, fill: "var(--ai)", "font-weight": 600 });
+      txt(svg, z + 8, T - 14, "느려짐 →", { "font-size": 13, fill: "var(--slow)", "font-weight": 600 });
+      R2.forEach(([n, sub, v, ci, c], i) => {
+        const y = T + i * rowH + (m ? 30 : 18), bh = 22;
+        if (m) txt(svg, 0, y - 12, `${n} (${sub})`, { "font-size": 13.5, "font-weight": 600 });
+        else { txt(svg, L - 14, y + 8, n, { "text-anchor": "end", "font-size": 14, "font-weight": 600 }); txt(svg, L - 14, y + 26, sub, { "text-anchor": "end", "font-size": 13, class: "dim" }); }
+        const x = Math.min(z, sx(v)), w = Math.abs(sx(v) - z);
+        el("rect", { x, y: y + 4, width: w, height: bh, rx: 4, fill: c, opacity: 0.8 }, svg);
+        el("line", { x1: sx(ci[0]), x2: sx(ci[1]), y1: y + 15, y2: y + 15, stroke: "var(--fg-strong)", "stroke-width": 1.6 }, svg);
+        for (const e of ci) el("line", { x1: sx(e), x2: sx(e), y1: y + 9, y2: y + 21, stroke: "var(--fg-strong)", "stroke-width": 1.6 }, svg);
+        if (m) txt(svg, VW, y - 12, (v > 0 ? "+" : "") + v + "%", { "text-anchor": "end", "font-size": 14, "font-weight": 700, fill: c });
+        else txt(svg, v < 0 ? sx(ci[0]) - 6 : sx(ci[1]) + 6, y + 20, (v > 0 ? "+" : "") + v + "%", { "text-anchor": v < 0 ? "end" : "start", "font-size": 14, "font-weight": 700, fill: c });
+      });
+      txt(svg, 0, T + R2.length * rowH + 50, m ? "← 실제로는 더 빨랐을 수 있음(선택 편향)" : "← 선택 편향 때문에 후속 값은 실제보다 덜 빠르게 찍혔을 가능성이 큽니다", { "font-size": m ? 12.5 : 13.5, fill: "var(--me)", "font-weight": 600 });
+    });
+  })();
+
+  /* ---------- 선택 편향 예시 ---------- */
+  (() => {
+    const svg = $("[data-selsvg]"); if (!svg) return;
+    // 개발자가 가진 작업 10개. ★ = AI 없이는 하기 싫은 작업(예시)
+    const tasks = [0, 1, 0, 0, 1, 0, 1, 0, 0, 0];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 600, cw = m ? 32 : 44, g = m ? 4 : 8, L = 0;
+      svg.setAttribute("viewBox", `0 0 ${W} 220`);
+      txt(svg, 0, 18, "개발자가 가진 작업", { "font-size": 14, "font-weight": 700 });
+      tasks.forEach((t, i) => {
+        const x = L + i * (cw + g);
+        el("rect", { x, y: 30, width: cw, height: cw, rx: 6, fill: t ? "var(--ai-soft)" : "var(--bg-muted)", stroke: t ? "var(--ai)" : "var(--line-subtle)", "stroke-width": t ? 2 : 1 }, svg);
+        if (t) txt(svg, x + cw / 2, 30 + cw / 2 + 5, "★", { "text-anchor": "middle", "font-size": 14, fill: "var(--ai)" });
+        if (!t) el("path", { d: `M${x + cw / 2},${34 + cw} L${x + cw / 2},${118}`, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "3 3" }, svg);
+      });
+      const kept = tasks.filter((t) => !t).length;
+      txt(svg, 0, 112, "실험에 낸 작업", { "font-size": 14, "font-weight": 700 });
+      tasks.forEach((t, i) => { if (t) return; const x = L + i * (cw + g); el("rect", { x, y: 122, width: cw, height: cw, rx: 6, fill: "var(--bg-muted)", stroke: "var(--line-subtle)" }, svg); });
+      txt(svg, 0, 122 + cw + 30, m ? "★ AI 없이는 하기 싫은 작업은 빠짐" : "★ AI 없이는 하기 싫은 작업 = AI가 가장 잘 도와줄 작업이 빠짐", { "font-size": m ? 13 : 14, fill: "var(--ai)", "font-weight": 600 });
+    });
+  })();
+
+  /* ---------- J 커브 ---------- */
+  (() => {
+    const svg = $("[data-jsvg]"); if (!svg) return;
+    const t0 = 0.1, f = (t) => { if (t <= t0) return 0; const s = (t - t0) / (1 - t0); return -10 * s * Math.exp(-5 * s) + 1.1 * Math.pow(s, 1.8); };
+    responsive((m) => {
+      svg.innerHTML = "";
+      const VW = m ? 360 : 980, VH = m ? 500 : 440;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${VH}`);
+      const L = m ? 16 : 70, R = m ? 10 : 30, T = 30, H = m ? 250 : 380, W = VW - L - R;
+      const base = T + H * (m ? 0.5 : 0.4), X = (t) => L + t * W, Y = (v) => base - v * H * (m ? 0.42 : 0.3);
+      el("line", { x1: L, x2: L + W, y1: T + H, y2: T + H, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+      el("line", { x1: L, x2: L, y1: T, y2: T + H, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+      el("line", { x1: L, x2: L + W, y1: base, y2: base, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "6 6" }, svg);
+      txt(svg, L + W, base + 22, "도입 전 수준", { "text-anchor": "end", "font-size": 13.5, class: "dim" });
+      txt(svg, L + W, T + H + 24, "도입 후 시간 →", { "text-anchor": "end", "font-size": 13.5, class: "dim" });
+      txt(svg, L + 8, T + 4, "↑ 팀의 생산성", { "font-size": 13.5, class: "dim" });
+      const pts = []; for (let i = 0; i <= 120; i++) { const t = i / 120; pts.push([X(t), Y(f(t)), f(t)]); }
+      const dip = pts.filter((p) => p[2] < 0);
+      el("path", { d: `M${dip[0][0]},${base} ` + dip.map(([x, y]) => `L${x},${y}`).join(" ") + ` L${dip[dip.length - 1][0]},${base} Z`, fill: "var(--slow)", opacity: 0.12 }, svg);
+      el("path", { d: "M" + pts.map((p) => p[0] + "," + p[1]).join(" L"), fill: "none", stroke: "var(--ai)", "stroke-width": 4, "stroke-linecap": "round" }, svg);
+      el("circle", { cx: X(t0), cy: base, r: 6, fill: "var(--me)" }, svg);
+      txt(svg, X(t0), base - 14, "AI 도입", { "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: "var(--me)" });
+      const low = dip.reduce((a, b) => (b[1] > a[1] ? b : a), dip[0]);
+      txt(svg, low[0], m ? low[1] + 26 : low[1] + 28, "전환의 수업료", { "text-anchor": "middle", "font-size": 14.5, "font-weight": 700, fill: "var(--slow)" });
+      const tu = 0.86; txt(svg, m ? X(0.68) : X(tu) + 10, m ? Y(0.6) : Y(f(tu)) + 30, m ? "도입 전보다 높아짐 ↗" : "도입 전보다 높아짐", { "text-anchor": m ? "end" : "middle", "font-size": 14, "font-weight": 700, fill: "var(--ai)" });
+      const causes = ["① 익숙해지는 시간", "② AI 코드 검증 비용", "③ 테스트·승인 절차 손보기"];
+      const subs = ["새 방식에 손이 익을 때까지", "늘어난 코드를 읽고 확인하기", "늘어난 코드량을 받아 낼 수 있게"];
+      if (m) { const cy0 = T + H + 56; causes.forEach((c, i) => { txt(svg, 0, cy0 + i * 46, c, { "font-size": 14.5, "font-weight": 700 }); txt(svg, 0, cy0 + i * 46 + 19, subs[i], { "font-size": 13, class: "dim" }); }); }
+      else { const cy0 = low[1] + 54; causes.forEach((c, i) => txt(svg, low[0], cy0 + i * 26, `${c} — ${subs[i]}`, { "text-anchor": "middle", "font-size": 14 })); }
+    });
+  })();
+
+  /* ---------- 시리즈 지도 ---------- */
+  (() => {
+    const svg = $("[data-mapsvg]"); if (!svg) return;
+    const api = drawLanes(svg, true, 2, { vertical: true });
+    api.set(2);
+    const G = api.G;
+    const SL = { 2: "ai-native-dev-loop-explore-plan-verify", 3: "ai-dlc-aws-methodology", 4: "spec-driven-development-spec-kit-kiro", 5: "context-engineering-claude-md-agents-md", 6: "mcp-model-context-protocol-usb-c", 7: "agent-skills-subagents-hooks", 8: "ai-pr-review-bottleneck-verification", 9: "coding-agent-security-prompt-injection-owasp", 10: "sllm-self-hosted-coding-agent-2026", 11: "ai-native-team-capabilities-developer-skills" };
+    const ROW = [[4, 5], [6], [3], [2, 7], [9], [8], []];
+    const H = G.H + 124;
+    svg.setAttribute("viewBox", `0 0 ${G.W} ${H}`);
+    const chip = (n, x, y) => {
+      const a = el("a", { href: "/posts/" + SL[n] }, svg);
+      el("circle", { cx: x, cy: y, r: 15, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 2 }, a);
+      txt(a, x, y + 5, String(n), { "text-anchor": "middle", "font-size": 14, "font-weight": 700, "font-family": "var(--font-mono)" });
+    };
+    const cx0 = G.ax + G.cw + 2;
+    ROW.forEach((ns, i) => ns.forEach((n, j) => chip(n, cx0 + 12 + j * 34, G.T + i * G.rh + G.bh / 2)));
+    const yb = G.H + 22;
+    el("rect", { x: G.ax - 4, y: yb - 18, width: G.cw, height: 40, rx: 12, fill: "none", stroke: "var(--ai)", "stroke-dasharray": "5 4" }, svg);
+    txt(svg, G.ax + 6, yb + 7, "AI 모델 자체", { "font-size": 13.5, "font-weight": 600 });
+    chip(10, cx0 + 12, yb + 2);
+    const yc = yb + 52;
+    el("rect", { x: G.hx - 4, y: yc - 18, width: G.cw * 2 + G.gap, height: 40, rx: 12, fill: "none", stroke: "var(--fg-neutral)", "stroke-dasharray": "5 4" }, svg);
+    txt(svg, G.hx + 10, yc + 7, "팀 전체가 일하는 방식", { "font-size": 13.5, "font-weight": 600 });
+    chip(11, cx0 + 12, yc + 2);
+  })();
+})();
+</script>

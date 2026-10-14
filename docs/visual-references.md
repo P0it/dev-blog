@@ -76,6 +76,10 @@
 | [Google Research, TimesFM 블로그](https://research.google/blog/a-decoder-only-foundation-model-for-time-series-forecasting/) · [GitHub](https://github.com/google-research/timesfm) | 시계열을 input_patch_len 32 칸으로 잘라 토큰처럼 쓰고 output_patch_len 128 칸을 한 번에 내는 구조도 한 장 | LLM 구조를 다른 데이터에 옮긴 모델을 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
 | [Covington 외, YouTube DNN (RecSys 2016)](https://research.google/pubs/deep-neural-networks-for-youtube-recommendations/) | millions → hundreds → dozens 깔때기 그림(Figure 2)과 "수십 밀리초 안에" 서빙 조건 | 두 단계 추천을 개수와 계산량으로 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
 | [Google Cloud, Two-Tower 검색](https://cloud.google.com/blog/products/ai-machine-learning/scaling-deep-retrieval-tensorflow-two-towers-architecture) | 행렬 분해 방식과 두 탑 신경망을 나란히 놓고 둘 다 위에서 내적(⊗) 하나로 만나게 그린다. 후보 임베딩은 미리 계산 | 두 탑 구조와 "미리 계산"을 보일 때 | 2026-10-15 | beyond-llm-xgboost-timesfm-two-tower |
+| [METR, Early-2025 AI 개발자 생산성 RCT](https://arxiv.org/abs/2507.09089) | 전문가 예상·참가자 사전 예상·사후 체감·실측을 같은 세로축 점 넷 + 하나로 세워 "느낌과 실측의 방향이 반대"를 한 장에 보인다(Figure 1). Figure 6 은 화면 녹화를 활동별로 분류해 AI 허용/금지 시간 비율을 막대로 견준다 | 체감과 실측이 갈리는 연구, 일의 구성이 바뀌는 것을 실제 시간 비율로 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (Figure 6 값을 100% 세로 띠 두 줄로 다시 그림, 예상→공개 막대) |
+| [METR, 실험 설계 변경(2026-02-24)](https://metr.org/blog/2026-02-24-uplift-update/) | 첫 실험과 후속 실험을 시간축 두 영역으로 나눠 같은 세로축에 점과 구간을 찍고, "선택 편향 때문에 실제는 더 위일 것"을 화살표 주석으로 단다 | 측정 방법 자체의 한계를 결과와 함께 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (가져와 씀) |
+| [Stack Overflow, Agents on a leash(2026-05-27)](https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/) | 같은 질문을 1년 간격으로 두 번 묻고 답 항목마다 두 해 막대를 짝지어 세운다 | 조사 숫자의 변화를 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (가져와 씀) |
+| [Stack Overflow Developer Survey 2026, AI 데이터](https://survey.stackoverflow.co/2026/ai/data) | 신뢰를 "믿나/안 믿나" 대신 "어떤 조건에서 믿나"(확인할 수 있을 때만 48%)로 묻는다 | 신뢰를 정도가 아니라 조건으로 보일 때 | 2026-10-15 | ai-native-dev-2026-what-changed (100칸 격자) |
 
 ## 미확인
 
@@ -87,6 +91,7 @@
 - [sixfoisneuf.fr/text-encoding](https://sixfoisneuf.fr/text-encoding) — 검색상 가장 유망했던 인코딩 인터랙티브 데모. DNS 차단으로 열지 못했다. 외부 망에서 다시 시도할 것
 - unicodefyi.com 인코딩 시각화, codeshack.io UTF-8 디코더, utf8-playground 라이브 데모(netlify) — 전부 차단
 - `*.github.io`·observablehq.com·distill.pub·setosa.io·pudding.cool·explorabl.es — 인터랙티브 explainer 생태계 대부분이 이 샌드박스에서 막힌다. 레퍼런스 탐색을 GitHub 저장소 README·소스로 돌려야 했다
+- SAE J3016 자율주행 단계 그림(sae.org·ANSI 블로그) — 2026-10-15 본문을 읽지 못했다(빈 페이지·403). "누가 운전하나" 단계 비유를 쓸 때 다시 볼 것
 - 유전 암호(코돈·리딩프레임), 악보 기보, 지도학 축 — 확인된 레퍼런스를 하나도 확보하지 못했다
 - maryrosecook.com "Git from the inside out", dag.ipfs.tech(IPFS DAG Builder), shattered.io, git-scm.com — 2026-10-14 차단. 내용 주소·Merkle tree 를 다시 다룰 때 외부 망에서 볼 것
 
@@ -122,6 +127,7 @@
 - **직접 돌린 학습 전·후 대조** (fine-tuning-lora-qlora-peft) — 1.5B 에 말투 LoRA 를 12초 학습시켜 말끝 "냥"(주황 바탕)은 붙고 틀린 설명(빨간 물결 밑줄)은 그대로인 세 질문을 나란히 놓으니 "파인튜닝은 말투, 지식은 RAG"가 주장이 아니라 결과가 됐다
 - **짐을 옮기면 사슬이 첫 빈칸에서 멈추기** (air-gapped-rag-on-premise-llm) — 바깥 | 빗금 갭 | 안 세 칸 지도에 실제 크기를 단 짐 일곱 개를 두고, 옆 "질문 하나가 답이 되기까지" 사슬이 처음 빠진 짐에서 빨강으로 멈추게 했다. 기본값은 가중치만 들인 실패 상태. 직접 재현한 오류는 원문으로, 에러 없이 지나가는 누락(토크나이저 → 빈 토큰)은 노랑으로 갈라 "조용한 실패"를 색 하나로 보였다
 - **1년 치 실제 보안 권고 위에 반입 주기 겹치기** (air-gapped-rag-on-premise-llm) — vLLM 권고 66건을 날짜 점으로 찍고 반입일 세로선까지 기다리는 막대를 그렸다. 주기 토글 하나로 평균 대기(3.2 ↔ 69.6일)와 반입 횟수(53 ↔ 3번)가 맞바뀌는 게 보인다
+- **두 레인 위에서 단계 블록 옮기기** (ai-native-dev-2026-what-changed, Critic 전) — 버그 하나를 고치는 일곱 단계를 사람 줄·AI 줄 두 레인에 블록으로 놓고 시대 토글(자동완성·채팅·에이전트)로 블록이 레인 사이를 옮겨 가게 했다. 사람 레인에 남은 블록의 동사가 "직접 재현·읽기·쓰기"에서 "설명·승인·검토·반영"으로 바뀌어 "쓰기에서 지시·검토로"가 문장 없이 보인다. 같은 레인을 세로로 세워 시리즈 지도로 다시 썼다
 - **브라우저에서 진짜 부스팅을 한 그루씩** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 예시 학생 60명 판에서 "+ 트리 하나"를 누르면 XGBoost 와 같은 식(로지스틱 손실, 잎 값 −Σg/(Σh+λ))으로 깊이 2 트리를 실제로 학습해 더한다. 칸 색 경계가 계단으로 다듬어지고 빨간 고리(틀린 학생)가 22 → 2명으로 준다. 트리 띠에 방금 만든 트리의 실제 질문이 쌓인다
 - **같은 문제를 LLM 에게도 주고 같은 그림에 올리기** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 표 300명 점 격자 세 장(실제 / LLM / XGBoost)과 승객 수 그래프의 LLM 선을 같은 축에 두니 "LLM 이 정답인가"가 주장이 아니라 실측이 됐다
 - **내적은 등고선으로** (beyond-llm-xgboost-timesfm-two-tower, Critic 전) — 사용자 화살표에 수직인 "점수가 같은 선"을 옅게 깔아, 화살표를 끌면 선이 돌면서 순위가 바뀌는 이유가 보인다
@@ -154,15 +160,15 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed |
 | 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 
