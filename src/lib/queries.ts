@@ -501,17 +501,24 @@ export async function getAllSeries(): Promise<SeriesSummary[]> {
       list.push(p);
       bySeries.set(p.series_slug, list);
     }
-    return series.map((s) => {
-      const rows = bySeries.get(s.slug) ?? [];
-      const dates = rows.map((r) => r.published_at).filter((d): d is string => !!d).sort();
-      return {
-        ...s,
-        count: rows.length,
-        preview: rows.slice(0, 3).map((r) => rowToPost(r, labels)),
-        firstAt: dates[0]?.slice(0, 10) ?? null,
-        lastAt: dates[dates.length - 1]?.slice(0, 10) ?? null,
-      };
-    });
+    // 최근에 글이 올라온 시리즈가 위로 — 마지막 편 발행 시각 내림차순, 공개 글이 없는 시리즈는 맨 아래
+    return series
+      .map((s) => {
+        const rows = bySeries.get(s.slug) ?? [];
+        const dates = rows.map((r) => r.published_at).filter((d): d is string => !!d).sort();
+        return {
+          summary: {
+            ...s,
+            count: rows.length,
+            preview: rows.slice(0, 3).map((r) => rowToPost(r, labels)),
+            firstAt: dates[0]?.slice(0, 10) ?? null,
+            lastAt: dates[dates.length - 1]?.slice(0, 10) ?? null,
+          },
+          latest: dates[dates.length - 1] ?? "",
+        };
+      })
+      .sort((a, b) => b.latest.localeCompare(a.latest))
+      .map((x) => x.summary);
   } catch {
     return [];
   }
