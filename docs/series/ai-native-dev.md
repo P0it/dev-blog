@@ -26,7 +26,7 @@
 | 5 | `context-engineering-claude-md-agents-md` | 긴 작업에서 에이전트는 왜 점점 멍청해질까? | 컨텍스트 창 = 책상 크기 · 무엇이 창을 채우나 · 프롬프트 vs 컨텍스트 엔지니어링 · CLAUDE.md·AGENTS.md 에 넣을 것/뺄 것 · 압축·새 세션·서브에이전트 | 컨텍스트 창, 토큰, CLAUDE.md, AGENTS.md, 압축 | 발행 |
 | 6 | `mcp-model-context-protocol-usb-c` | 코딩 에이전트는 회사 이슈 트래커·DB 를 어떻게 읽을까? | 연결마다 따로 짜던 문제(N×M) · Host·Client·Server · Tools·Resources·Prompts · 붙이는 법 · 서버를 고르기 전 확인할 것 · 재단 이관과 레지스트리 | MCP, 프로토콜, Host, Client, Server | 발행 |
 | 7 | `agent-skills-subagents-hooks` | 같은 설명을 매번 반복하지 않고 에이전트에게 일을 가르치려면? | 스킬(SKILL.md)과 단계적 공개 · 여러 도구가 같은 형식을 받아들인 이유 · 서브에이전트로 컨텍스트 격리 · 훅으로 규칙 강제 · 어디에 둘지 고르는 기준 | 스킬, 단계적 공개, 서브에이전트, 훅 | 발행 |
-| 8 | `ai-pr-review-bottleneck-verification` | AI 가 짠 코드가 늘면 왜 리뷰에서 막힐까? | PR·코드 리뷰란 · 쓰기는 빨라졌는데 읽기는 그대로(병목 이동) · AI PR 의 결함 특징 · 대책 셋(리뷰 에이전트·사전 자동 검사·위험도 나누기) · 읽기에서 검증 설계로 | PR, 코드 리뷰, CI, 병목, 위험도 | 계획 |
+| 8 | `ai-pr-review-bottleneck-verification` | AI 가 짠 코드가 늘면 왜 리뷰에서 막힐까? | PR·코드 리뷰란 · 쓰기는 빨라졌는데 읽기는 그대로(병목 이동) · AI PR 의 결함 특징 · 대책 셋(리뷰 에이전트·사전 자동 검사·위험도 나누기) · 읽기에서 검증 설계로 | PR, 코드 리뷰, CI, 병목, 위험도 | 발행 |
 | 9 | `coding-agent-security-prompt-injection-owasp` | README 한 줄이 어떻게 에이전트를 조종할까? | 프롬프트 인젝션 · 위험한 세 가지가 겹칠 때(lethal trifecta) · OWASP 에이전트 Top 10 · 방어 층(샌드박스·권한·감시·되먹임) | 프롬프트 인젝션, 샌드박스, 권한, 최소 권한 | 발행 |
 | 10 | `sllm-self-hosted-coding-agent-2026` | 회사 안에 모델을 직접 두면 코딩 에이전트가 나아질까? | sLLM·오픈 웨이트 · 소버린 AI·폐쇄망 수요 · 기업 사용량 흐름 · 2026 오픈 모델의 코딩 성적 · 고르는 기준(성능·비용·보안·운영) | sLLM, 오픈 웨이트, 벤치마크, 활성 파라미터 | 발행 |
 | 11 | `ai-native-team-capabilities-developer-skills` | 같은 도구를 써도 팀마다 결과가 다른 이유는? | DORA AI 역량 모델 · 도입이 퍼지는 방식 · 2026 현장의 모습(단일 에이전트 + 사람 감독) · 개발자가 키울 것 · 시리즈 마무리 | 역량 모델, 처리량, 안정성 | 발행 |
