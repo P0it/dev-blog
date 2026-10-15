@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|
 | 1 | `ai-native-dev-2026-what-changed` | AI 가 코드를 쓰기 시작하면 개발자의 하루는 무엇이 달라질까? | 자동완성 → 채팅 → 에이전트 세 단계 · 사람이 하는 일의 이동(쓰기 → 지시·검토) · 조사 숫자(사용률·신뢰도) · "AI 를 쓰면 느려진다" 연구와 그 뒤 · 도입 J 커브 | 코딩 에이전트, 자동완성, IDE, 생산성 | 발행 |
 | 2 | `ai-native-dev-loop-explore-plan-verify` | 코딩 에이전트는 요청 하나를 어떤 순서로 처리할까? | 에이전트 루프(읽기→계획→고치기→확인) · 사람이 붙이는 앞뒤 단계 · 검증이 루프를 닫는다(테스트·타입체크·린터·화면 확인, 멈춤 거는 네 방법) · 테스트를 고쳐 통과시키는 보상 해킹(ImpossibleBench) · 하네스 엔지니어링 사례 | 에이전트 루프, 도구 호출, 테스트, 타입체크, 린터, 하네스, 보상 해킹 | 발행 |
-| 3 | `ai-dlc-aws-methodology` | AI 가 계획하고 사람이 답하면 개발 방법론은 어떻게 바뀔까? | 애자일·스프린트 복습 · AI-DLC 의 "AI 가 묻고 사람이 답한다" 사이클 · Inception·Construction·Operations · 볼트(짧은 주기) · 방법론을 실행 가능한 규칙으로 · 주장의 한계 | 방법론, 애자일, 스프린트, AI-DLC | 계획 |
+| 3 | `ai-dlc-aws-methodology` | AI 가 계획하고 사람이 답하면 개발 방법론은 어떻게 바뀔까? | 애자일·스프린트 복습 · AI-DLC 의 "AI 가 묻고 사람이 답한다" 사이클 · Inception·Construction·Operations · 볼트(짧은 주기) · 방법론을 실행 가능한 규칙으로 · 주장의 한계 | 방법론, 애자일, 스프린트, AI-DLC | 발행 |
 | 4 | `spec-driven-development-spec-kit-kiro` | 에이전트에게 무엇을 먼저 써 줘야 원하는 게 나올까? | 대충 말하면 대충 나오는 이유 · 스펙 → 계획 → 작업 → 구현 흐름 · Spec Kit 단계와 Kiro 의 파일 세 개 · 좋은 스펙의 내용(완료 조건) · 워터폴과 다른 점 | 스펙, 요구사항, 완료 조건, 워터폴 | 계획 |
 | 5 | `context-engineering-claude-md-agents-md` | 긴 작업에서 에이전트는 왜 점점 멍청해질까? | 컨텍스트 창 = 책상 크기 · 무엇이 창을 채우나 · 프롬프트 vs 컨텍스트 엔지니어링 · CLAUDE.md·AGENTS.md 에 넣을 것/뺄 것 · 압축·새 세션·서브에이전트 | 컨텍스트 창, 토큰, CLAUDE.md, AGENTS.md, 압축 | 계획 |
 | 6 | `mcp-model-context-protocol-usb-c` | 코딩 에이전트는 회사 이슈 트래커·DB 를 어떻게 읽을까? | 연결마다 따로 짜던 문제(N×M) · Host·Client·Server · Tools·Resources·Prompts · 붙이는 법 · 서버를 고르기 전 확인할 것 · 재단 이관과 레지스트리 | MCP, 프로토콜, Host, Client, Server | 계획 |

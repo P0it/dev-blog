@@ -1,0 +1,1258 @@
+---
+title: AI-DLC에서는 왜 AI가 먼저 질문할까요?
+slug: ai-dlc-aws-methodology
+excerpt: AWS가 2025년 7월 제안한 AI-DLC는 사람이 AI에게 일을 하나씩 시키던 순서를 뒤집어, AI가 계획과 질문을 먼저 내놓고 사람이 답하고 승인하게 합니다. 2주짜리 스프린트 대신 몇 시간에서 며칠짜리 볼트로 돌고, 지금은 Claude Code·Kiro 같은 코딩 에이전트가 읽는 규칙 파일로 공개돼 있습니다. 급식 알림 앱 하나로 질문 파일에 직접 답해 보고 세 단계, 볼트, "몇 주를 몇 시간으로" 같은 주장의 근거까지 확인했습니다.
+tags: [AI-DLC, AWS, 개발 방법론, 애자일, 스프린트, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 3
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-dlc-aws-methodology-mv916gqx.jpg
+---
+<!-- page -->
+<!-- layout: 분할 히어로(제목·리드 왼쪽 | 질문 파일 실험판 오른쪽, 위 끝 맞춤) → 글|그림(12주 띠 두 줄) → 글 + 넓은 그림(2주 스프린트 달력) + 글|그림(개조: 개발 칸 안에만 AI, 모바일은 둘째 문단 뒤) → 글|그림(지도 앱 비유) + 실험판 전폭 띠(같은 앱 대화 두 판 토글) → 글 + 넓은 그림(장면이 다른 세 방과 넘어가는 문서) → 글|그림(공유 화면에 AI 초안과 사람 수정) → 글 + 넓은 그림(같은 열흘 위에 스프린트 위·볼트 아래를 함께 그림, 토글 없음 — 조작 없이 둘을 견주게. 2026-10-15 Critic 3차) → 글|그림(적응형 워크플로를 우리말로 다시 그림. 영어 원본 캡처 둘은 왼쪽 열 접는 상자로) + 넓은 그림(큰 단계 3 → 5, 세부 단계를 네모로) + 잡지식(에이전트 수·하네스·라이선스)은 접는 상자 → 글|그림(근거 계단: 높을수록 단단, 근거 있는 칸만 칠하고 통제 실험 칸은 점선 빈 칸 — 2026-10-15 Critic 4차, 모바일은 둘째 문단 뒤에 그림) + 넓은 그림(히어로·승인·볼트 그림을 작게 다시 불러 세 가지 정리) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 스크롤리텔링 없음 | 글의 성격: 사람이 시키던 대화를 AI가 먼저 묻는 대화로 뒤집는 이야기. 주황 = 사람이 정한 것(답·승인·확인), 청록 = AI가 먼저 낸 것(계획·질문·코드)이 시리즈 1·2편과 같은 뜻으로 글 끝까지 간다. 점선 = 아직 정해지지 않은 것 | 버린 후보: 그림 고정 스크롤리텔링(1·2편이 연달아 씀), 두 레인 히어로(1편과 겹침), 고리+터미널 히어로(2편과 겹침), AWS 세 단계 그림 재사용(사람 자리와 의식이 안 보여 직접 그림) -->
+<style>
+.post-page .dl {
+  --me: rgb(222, 106, 28); --me-soft: rgb(253, 233, 214);
+  --ai: rgb(10, 136, 140); --ai-soft: rgb(208, 238, 236);
+  --bad: rgb(208, 46, 46); --bad-soft: rgb(252, 224, 222);
+  --gr: rgb(128, 134, 146); --gr-soft: rgb(234, 236, 240);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .dl {
+  --me: rgb(255, 156, 84); --me-soft: rgb(84, 50, 24);
+  --ai: rgb(70, 206, 200); --ai-soft: rgb(18, 62, 62);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(84, 30, 30);
+  --gr: rgb(150, 156, 170); --gr-soft: rgb(44, 48, 56);
+}
+.post-page .dl * { box-sizing: border-box; }
+.post-page .dl-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .dl h1, .post-page .dl h2, .post-page .dl h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .dl h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; margin-bottom: 28px; }
+.post-page .dl h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .dl p, .post-page .dl li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .dl p { margin: 0 0 1.5em; }
+.post-page .dl b { color: var(--fg-strong); }
+.post-page .dl code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs, 4px); }
+.post-page .dl a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .dl .dl-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .dl details { margin: 0 0 1.4em; }
+.post-page .dl summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .dl details p { margin-top: 10px; font-size: 16px; }
+.post-page .dl details ul { margin: 10px 0 0; padding-left: 1.1em; }
+.post-page .dl details li { font-size: 16px; line-height: 1.75; margin: 4px 0; }
+.post-page .dl-orig img { max-width: 100%; }
+.post-page .dl svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .dl svg text:not([font-family]) { font-family: var(--font-sans); }
+.post-page .dl svg text:not([fill]) { fill: var(--fg-strong); }
+.post-page .dl svg .dim { fill: var(--fg-neutral); }
+
+/* 배치 */
+.post-page .dl-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .dl-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dl-col { max-width: 40em; }
+.post-page .dl-fig { margin: 0; }
+.post-page .dl-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .dl-after { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .dl-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(40px, 6vw, 60px); }
+.post-page .dl-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); background: #fff; }
+[data-theme="dark"] .post-page .dl-img img { filter: brightness(.8); border-color: var(--line-normal, var(--line-subtle)); }
+.post-page .dl-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; }
+.post-page .dl-calkey { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 36px; margin: 18px 0 0; }
+.post-page .dl-calkey p { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: baseline; font-size: 15px; line-height: 1.6; margin: 0; color: var(--fg-neutral); }
+.post-page .dl-calkey b { color: var(--fg-strong); margin-right: 6px; }
+.post-page .dl-calkey i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; }
+.post-page .dl-calkey .k-me { background: var(--me-soft); box-shadow: inset 0 0 0 2px var(--me); }
+.post-page .dl-calkey .k-gr { background: var(--gr-soft); }
+.post-page .dl-calkey .k-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gr); margin-left: 2px; vertical-align: 0; }
+.post-page .dl-flowkey i.skip { border: 1.5px dashed var(--fg-neutral); background: transparent; opacity: .5; }
+.post-page .dl-flowkey em { display: inline-block; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-neutral); border: 1px solid var(--fg-neutral); border-radius: 999px; padding: 0 6px; line-height: 1.35; margin: 0 6px 0 -2px; background: var(--bg-base); vertical-align: 1px; }
+.post-page .dl-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+
+/* 조작 부품: 토글 하나, 실행 버튼 하나 */
+.post-page .dl-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; max-width: 100%; }
+.post-page .dl-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .dl-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.08)); }
+.post-page .dl-run { font: inherit; font-size: 15px; font-weight: 600; color: var(--fg-strong); background: var(--bg-base); border: 1.5px solid var(--me); border-radius: 999px; padding: 8px 18px; cursor: pointer; white-space: nowrap; }
+.post-page .dl-run:disabled { opacity: .45; cursor: default; border-color: var(--line-normal, var(--line-subtle)); }
+.post-page .dl-control { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 0 0 14px; }
+.post-page .dl .dl-howto { margin: 0 0 26px; }
+.post-page .dl-band.dl-chatband { padding: 48px 0 44px; }
+.post-page .dl-read { font-size: 16px; color: var(--fg-strong); line-height: 1.7; margin: 18px 0 0; }
+.post-page .dl-read b { font-family: var(--font-mono); }
+
+/* 히어로 */
+.post-page .dl-hero { padding-top: clamp(56px, 7vw, 88px); }
+.post-page .dl-herogrid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 72px); align-items: start; }
+.post-page .dl-who { display: inline-block; font-size: 12.5px; font-weight: 700; border-radius: 6px; padding: 1px 8px; margin-right: 8px; vertical-align: 1px; }
+.post-page .dl-who.me { background: var(--me-soft); color: var(--me); box-shadow: inset 0 0 0 1.5px var(--me); }
+.post-page .dl-who.ai { background: var(--ai-soft); color: var(--ai); box-shadow: inset 0 0 0 1.5px var(--ai); }
+.post-page .dl-intent { font-size: 16px; color: var(--fg-strong); background: var(--me-soft); border-radius: 14px 14px 4px 14px; padding: 12px 16px; margin: 0 0 14px auto; width: fit-content; max-width: 100%; }
+.post-page .dl-file { border: 1.5px solid var(--ai); border-radius: var(--radius-md, 12px); background: var(--bg-base); overflow: hidden; }
+.post-page .dl-file-tab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; background: var(--ai-soft); padding: 8px 14px; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); }
+.post-page .dl-file-tab span { font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); }
+.post-page .dl-file-tab .cnt { margin-left: auto; font-size: 13.5px; font-weight: 700; color: var(--me); white-space: nowrap; }
+.post-page .dl-file-tab .cnt b { font-family: var(--font-mono); font-size: 15px; color: var(--me); }
+.post-page .dl-q { padding: 10px 14px 10px; border-top: 1px solid var(--line-subtle); }
+.post-page .dl-q:first-of-type { border-top: 0; }
+.post-page .dl-qrow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; margin: 0 0 8px; }
+.post-page .dl .dl-qrow .qt, .post-page .dl .dl-qrow .dl-ans { margin: 0; }
+.post-page .dl .dl-q .qt { font-size: 15.5px; line-height: 1.55; margin: 0 0 8px; color: var(--fg-strong); }
+.post-page .dl-hero .dl-legend { margin: 0 0 10px; font-size: 13.5px; }
+.post-page .dl-q .qt em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--ai); margin-right: 6px; }
+.post-page .dl-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.post-page .dl-opts button { font: inherit; font-size: 14.5px; color: var(--fg-strong); background: var(--bg-base); border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 8px; padding: 5px 10px; cursor: pointer; transition: background .35s, border-color .35s; }
+.post-page .dl-opts button:hover { border-color: var(--fg-neutral); }
+.post-page .dl-opts button[aria-pressed="true"] { background: var(--me-soft); border-color: var(--me); font-weight: 600; }
+.post-page .dl .dl-ans { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); margin: 8px 0 0; }
+.post-page .dl-ans span { display: inline-block; min-width: 2.4em; border-bottom: 1.5px dashed var(--fg-neutral); color: var(--me); font-weight: 700; text-align: center; transition: border-color .35s; }
+.post-page .dl-ans span.done { border-bottom: 2px solid var(--me); }
+.post-page .dl-plan { margin-top: 16px; }
+.post-page .dl-plan-h { font-size: 15px; color: var(--fg-strong); margin: 0 0 10px; }
+.post-page .dl-units { display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; }
+.post-page .dl-unit { font-size: 14.5px; line-height: 1.4; border-radius: 9px; padding: 7px 11px; border: 1.5px dashed var(--fg-neutral); color: var(--fg-neutral); background: transparent; transition: opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1), background .45s, border-color .45s, color .45s; }
+.post-page .dl-unit.set { border: 1.5px solid var(--ai); background: var(--ai-soft); color: var(--fg-strong); }
+.post-page .dl-unit.gone { display: none; }
+.post-page .dl-unit.new { opacity: 0; transform: translateY(10px); }
+.post-page .dl-unit.ok::after { content: " ✓"; color: var(--me); font-weight: 700; }
+.post-page .dl-risk { font-size: 14px; color: var(--fg-strong); margin: 10px 0 0; transition: opacity .5s; }
+.post-page .dl-risk[hidden] { display: none; }
+.post-page .dl-gate { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line-normal, var(--line-subtle)); }
+.post-page .dl-gate p { font-size: 14.5px; line-height: 1.6; color: var(--fg-neutral); margin: 0; flex: 1 1 220px; }
+.post-page .dl-gate p b { color: var(--me); }
+
+/* 공유 화면 (Mob Elaboration) */
+.post-page .dl-screen { border: 1.5px solid var(--line-normal, var(--line-subtle)); border-radius: var(--radius-md, 12px); background: var(--bg-base); padding: 14px 16px 16px; }
+.post-page .dl-screen .hd { font-size: 13.5px; color: var(--fg-neutral); margin: 0 0 10px; }
+.post-page .dl-screen .say { font-size: 15px; line-height: 1.6; margin: 0 0 12px; color: var(--fg-strong); }
+.post-page .dl-ucard { position: relative; padding: 9px 0 9px 22px; border-top: 1px dashed var(--line-normal, var(--line-subtle)); font-size: 15px; color: var(--fg-strong); }
+.post-page .dl-ucard::before { content: ""; position: absolute; left: 0; top: 15px; width: 12px; height: 12px; border-radius: 3px; background: var(--ai-soft); box-shadow: inset 0 0 0 2px var(--ai); }
+.post-page .dl-ucard small { display: block; font-size: 13.5px; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .dl-ucard ins { display: block; text-decoration: none; margin-top: 6px; padding: 5px 9px; border-radius: 7px; background: var(--me-soft); box-shadow: inset 0 0 0 1.5px var(--me); font-size: 14.5px; }
+.post-page .dl-mob { padding: 0; }
+.post-page .dl-mob .dl-seats { margin-top: 14px; }
+.post-page .dl-screen .say + .dl-ucard { margin-top: 6px; }
+.post-page .dl-seats { display: flex; justify-content: space-around; gap: 6px; margin-top: 0; padding-top: 12px; position: relative; }
+.post-page .dl-seats::before { content: ""; position: absolute; left: 12%; right: 12%; top: -1px; height: 0; border-top: 2px dashed var(--line-normal, var(--line-subtle)); }
+.post-page .dl-seats span { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--fg-strong); text-align: center; line-height: 1.3; }
+.post-page .dl-seats span::before { content: ""; width: 26px; height: 26px; border-radius: 50% 50% 40% 40%; background: var(--me-soft); box-shadow: inset 0 0 0 2px var(--me); }
+.post-page .dl-seats span.lead::before { box-shadow: inset 0 0 0 3px var(--me); background: var(--me); }
+
+/* 세 방 */
+.post-page .dl-rooms { display: grid; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr) 64px minmax(0, 1fr); align-items: start; }
+.post-page .dl-room .rn { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; margin: 0 0 8px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .dl-room .rn b { font-family: var(--font-display); font-size: 19px; color: var(--fg-strong); }
+.post-page .dl-room .scene { border: 2px solid var(--line-normal, var(--line-subtle)); border-radius: 16px; padding: 10px; background: var(--bg-base); }
+.post-page .dl .dl-room .did { font-size: 15px; line-height: 1.65; margin: 14px 0 0; }
+.post-page .dl .dl-room .did + .did { margin-top: 8px; }
+.post-page .dl-room .did small { display: block; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.5; margin-top: 4px; }
+.post-page .dl-room .rn small { font-size: 13px; }
+.post-page .dl-pass { padding-top: 92px; }
+.post-page .dl-loop { margin: 4px 0 0; }
+
+/* 숫자 띠·이름표 */
+.post-page .dl-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 20px; margin: 0 0 6px; }
+.post-page .dl-stats b { display: block; font-family: var(--font-mono); font-size: 20px; line-height: 1.3; color: var(--fg-strong); transition: color .4s; }
+.post-page .dl-stats b.hot { color: var(--bad); }
+.post-page .dl-stats span { display: block; font-size: 14px; line-height: 1.45; color: var(--fg-neutral); text-wrap: balance; word-break: keep-all; }
+
+/* 실험판 */
+.post-page .dl-bench { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .dl-chat .msg { transition: opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1); }
+.post-page .dl-chat .msg.off { opacity: 0; }
+
+.post-page .dl-refs ul { padding-left: 1.1em; }
+.post-page .dl-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .dl-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+@media (max-width: 860px) {
+  .post-page .dl-wrap { padding: 0 20px; }
+  .post-page .dl-two, .post-page .dl-herogrid, .post-page .dl-bench, .post-page .dl-refhead { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-tog button { font-size: 14px; padding: 7px 11px; }
+  .post-page .dl-opts button { font-size: 14px; padding: 4px 9px; }
+  .post-page .dl-q { padding: 8px 12px; }
+  .post-page .dl-qrow { margin-bottom: 6px; }
+  .post-page .dl-hero .dl-col p:last-of-type { margin-bottom: 0; }
+  /* 모바일 히어로: 짧은 도입 두 문단 → 질문 파일 → AI-DLC 소개 (첫 화면에 질문 파일이 걸리게) */
+  .post-page .dl-herogrid { gap: 0; }
+  .post-page .dl-herogrid > .dl-col { display: contents; }
+  .post-page .dl-herogrid > .dl-col > .dl-later { order: 2; margin: 40px 0 0; }
+  .post-page .dl-herogrid > figure { order: 1; }
+  .post-page .dl-hero h1 { margin-bottom: 20px; }
+  .post-page .dl-plan { margin-top: 12px; }
+  .post-page .dl-units { min-height: 0; }
+  .post-page .dl-rooms { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-pass { padding: 6px 0; }
+  .post-page .dl-pass svg { width: 60px; margin: 0 auto; transform: rotate(90deg); }
+  .post-page .dl .dl-qrow .dl-ans { width: 100%; }
+  .post-page .dl-stats { gap: 10px; }
+  .post-page .dl-stats b { font-size: 18px; }
+  .post-page .dl-stats span { font-size: 13px; line-height: 1.4; }
+  .post-page .dl-calkey { grid-template-columns: minmax(0, 1fr); }
+  /* 모바일: 두 번째 문단 다음에 그림을 끼워 글이 길게 이어지지 않게 */
+  .post-page .dl-split { gap: 0; }
+  .post-page .dl-split > .dl-col { display: contents; }
+  .post-page .dl-split > .dl-col > p:nth-of-type(n+3) { order: 2; }
+  .post-page .dl-split > figure { order: 1; margin: 8px 0 48px; }
+  .post-page .dl-split4 > .dl-col > p:nth-of-type(3) { order: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .dl * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="dl">
+
+<section class="dl-hero">
+  <div class="dl-wrap dl-herogrid">
+    <div class="dl-col">
+      <h1>AI-DLC에서는 왜 AI가 먼저 질문할까요?</h1>
+      <p>우리 학교 급식 알림 앱을 코딩 에이전트(coding agent)와 만든다고 해 봅시다. 보통은 사람이 "메뉴 불러오는 코드 짜 줘"처럼 할 일을 하나씩 시킵니다.</p>
+      <p>이번에는 AI가 먼저 묻습니다. AI가 만든 질문 파일에 답해 보세요. 답을 고를 때마다 계획에서 만들 덩어리가 생기거나 사라집니다.</p>
+      <p class="dl-later">하나씩 시키면 무엇을 만들지는 사람 머릿속에만 있고 AI는 시킨 만큼만 합니다. 컴퓨터와 저장 공간을 인터넷으로 빌려 주는 아마존의 클라우드(cloud) 회사 AWS(Amazon Web Services)가 2025년 7월 제안한 AI-DLC(AI-Driven Development Life Cycle)는 이 순서를 뒤집습니다. AI가 먼저 계획 초안과 질문을 내놓고 사람은 답하고 승인합니다. 답이 비어 있으면 AI는 다음 단계로 넘어가지 않습니다.</p>
+    </div>
+    <figure class="dl-fig" data-figure data-hero data-thumb data-thumb-act="el.dispatchEvent(new Event('dl-thumb'))">
+      <p class="dl-intent"><span class="dl-who me">사람</span>우리 학교 급식 알림 앱을 만들고 싶어요.</p>
+      <div class="dl-legend"><span><i style="background:var(--me-soft);box-shadow:inset 0 0 0 2px var(--me)"></i>사람이 정한 것</span><span><i style="background:var(--ai-soft);box-shadow:inset 0 0 0 2px var(--ai)"></i>AI가 먼저 낸 것</span><span><i style="border:1.5px dashed var(--fg-neutral);background:transparent"></i>아직 정하지 않은 것</span></div>
+      <div class="dl-file">
+        <div class="dl-file-tab">requirements-questions.md <span>AI가 만든 질문 파일</span><span class="cnt" aria-live="polite" data-count>사람이 정한 답 <b>0</b>/3</span></div>
+        <div class="dl-q" data-q="0">
+          <div class="dl-qrow"><p class="qt"><em>질문 1</em>이 앱은 주로 누가 쓰나요?</p><p class="dl-ans">[Answer]: <span data-ans></span></p></div>
+          <div class="dl-opts" role="group" aria-label="질문 1 답 고르기"><button type="button" data-a="A" aria-pressed="false">A) 학생</button><button type="button" data-a="B" aria-pressed="false">B) 학부모</button><button type="button" data-a="C" aria-pressed="false">C) 둘 다</button><button type="button" data-a="X" aria-pressed="false">X) 기타</button></div>
+        </div>
+        <div class="dl-q" data-q="1">
+          <div class="dl-qrow"><p class="qt"><em>질문 2</em>알림은 어떻게 받나요?</p><p class="dl-ans">[Answer]: <span data-ans></span></p></div>
+          <div class="dl-opts" role="group" aria-label="질문 2 답 고르기"><button type="button" data-a="A" aria-pressed="false">A) 앱 알림</button><button type="button" data-a="B" aria-pressed="false">B) 이메일</button><button type="button" data-a="C" aria-pressed="false">C) 알림 없음</button><button type="button" data-a="X" aria-pressed="false">X) 기타</button></div>
+        </div>
+        <div class="dl-q" data-q="2">
+          <div class="dl-qrow"><p class="qt"><em>질문 3</em>메뉴에 알레르기 재료를 표시할까요?</p><p class="dl-ans">[Answer]: <span data-ans></span></p></div>
+          <div class="dl-opts" role="group" aria-label="질문 3 답 고르기"><button type="button" data-a="A" aria-pressed="false">A) 예</button><button type="button" data-a="B" aria-pressed="false">B) 아니요</button><button type="button" data-a="X" aria-pressed="false">X) 기타</button></div>
+        </div>
+      </div>
+      <div class="dl-plan">
+        <p class="dl-plan-h"><span class="dl-who ai">AI</span>계획 초안: 따로 만들 덩어리, 단위(unit)</p>
+        <div class="dl-units" data-units>
+          <span class="dl-unit set" data-u="menu">메뉴 불러오기</span>
+          <span class="dl-unit" data-u="q0">누가 볼 화면? (질문 1)</span>
+          <span class="dl-unit gone" data-u="student">학생 화면</span>
+          <span class="dl-unit gone" data-u="parent">학부모 화면</span>
+          <span class="dl-unit gone" data-u="other0">사용자 화면: 적어 준 대로</span>
+          <span class="dl-unit" data-u="q1">알림 방법? (질문 2)</span>
+          <span class="dl-unit gone" data-u="push">앱 알림 보내기</span>
+          <span class="dl-unit gone" data-u="mail">이메일 보내기</span>
+          <span class="dl-unit gone" data-u="other1">알림: 적어 준 대로</span>
+          <span class="dl-unit" data-u="q2">알레르기 표시? (질문 3)</span>
+          <span class="dl-unit gone" data-u="allergy">알레르기 표시</span>
+          <span class="dl-unit gone" data-u="other2">알레르기: 적어 준 대로</span>
+        </div>
+        <p class="dl-risk" data-risk hidden><span class="dl-who ai">AI</span>위험 메모: 학생 건강 정보를 다루므로 개인정보 규정을 확인해야 합니다.</p>
+        <div class="dl-gate">
+          <button type="button" class="dl-run" data-approve disabled>사람 승인 · 답 0/3</button>
+          <p aria-live="polite" data-gatemsg>답 3개가 다 차야 승인할 수 있습니다. 그 전에는 AI가 계획을 확정하지 않습니다.</p>
+        </div>
+      </div>
+      <figcaption class="dl-cap">질문 형식(선택지, 마지막의 기타, <code>[Answer]:</code> 칸)은 AWS가 공개한 AI-DLC 규칙 파일을 따랐습니다. 앱과 질문 내용은 설명을 위해 만든 예시입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap dl-two">
+    <div class="dl-col">
+      <h2>방법론은 팀이 일하는 약속입니다</h2>
+      <p>개발 방법론(methodology)은 여러 사람이 소프트웨어를 함께 만들 때 누가, 언제, 무엇을 정할지 미리 맞춰 둔 약속입니다. 조별 과제에서 "주제는 다 같이 정하고 자료는 각자 찾고 금요일마다 모여 맞춰 본다"고 정해 두는 것과 비슷합니다.</p>
+      <p>다만 조별 과제는 한 번 내면 끝나지만 소프트웨어는 쓰는 사람의 요구가 계속 바뀝니다. 그래서 방법론은 만든 것을 얼마나 자주 보여 주고 고칠지를 중심에 둡니다.</p>
+      <p>오래 쓰인 방식은 워터폴(waterfall)입니다. 요구를 처음에 다 정하고 설계, 개발, 검사를 차례로 한 번씩 합니다. 2001년에 나온 애자일 선언(Agile Manifesto)은 동작하는 소프트웨어를 "몇 주에서 몇 달 간격으로, 되도록 짧은 간격으로" 자주 내놓으라고 했습니다.</p>
+    </div>
+    <figure class="dl-fig" data-figure>
+      <svg viewBox="0 0 620 300" role="img" aria-label="12주 동안 같은 앱을 만드는 두 방식. 워터폴은 요구 정리, 설계, 개발, 검사를 한 번씩 하고 12주째에 처음 보여 준다. 애자일은 2주짜리 주기를 여섯 번 돌며 주기마다 보여 준다" data-twelvesvg style="max-width:640px"></svg>
+      <figcaption class="dl-cap">주황 점은 쓰는 사람에게 결과를 보여 주고 의견을 듣는 때입니다. 칸 길이는 설명을 위한 예시입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap">
+    <h2>스프린트 한 바퀴는 사람이 열고 사람이 닫습니다</h2>
+    <div class="dl-col">
+      <p>애자일을 실제로 하는 대표적인 방법이 스크럼(Scrum)입니다. 스크럼은 일을 스프린트(sprint)라는 같은 길이의 주기로 나눕니다. 스크럼 가이드(2020)는 스프린트를 한 달 이하로 정해 두었습니다. 이 그림은 평일 열흘짜리 2주 스프린트를 예로 들었습니다.</p>
+    </div>
+    <figure class="dl-fig dl-wide" data-figure>
+      <svg viewBox="0 0 1000 330" role="img" aria-label="2주 스프린트 달력. 1일째 스프린트 계획, 매일 데일리 스크럼 15분을 뜻하는 회색 점, 2일부터 9일까지 이어진 개발, 10일째 리뷰와 회고" data-calsvg></svg>
+      <div class="dl-calkey">
+        <p><i class="k-me"></i><span><b>스프린트 계획</b> 첫날, 이번에 할 일을 고릅니다.</span></p>
+        <p><i class="k-dot"></i><span><b>데일리 스크럼(daily scrum)</b> 매일 15분, 진행 상황과 막힌 곳을 나눕니다.</span></p>
+        <p><i class="k-me"></i><span><b>리뷰(review) · 회고(retrospective)</b> 마지막 날, 리뷰에서는 만든 것을 관계자에게 보여 주고 의견을 듣습니다. 회고에서는 일하는 방식을 돌아봅니다.</span></p>
+        <p><i class="k-gr"></i><span><b>개발</b> 나머지 시간입니다.</span></p>
+      </div>
+    </figure>
+    <div class="dl-two dl-split dl-after">
+      <div class="dl-col">
+        <p>스크럼 팀은 일하는 방식을 돕는 스크럼 마스터(Scrum Master) 한 명, 무엇을 만들지 정하는 프로덕트 오너(Product Owner) 한 명, 개발자들로 이뤄집니다. 달력의 칸은 모두 이 사람들이 엽니다.</p>
+        <p>AI를 쓰더라도 이 달력은 그대로입니다. AI는 개발자가 맡긴 칸 안에서 코드를 쓰는 도구입니다.</p>
+        <p>AI-DLC 백서는 AWS가 이 방법을 정리해 낸 설명 문서입니다. 백서는 이렇게 원래 방법에 AI를 끼워 넣는 것을 개조(retrofit)라 부릅니다. 낡은 집에 새 설비만 덧대듯 틀은 그대로 둔다는 뜻입니다. 백서는 이 방식이 AI의 쓸모를 묶어 두고 옛 비효율까지 굳힌다며 피해야 한다고 봤습니다.</p>
+      </div>
+      <figure class="dl-fig" data-figure>
+        <svg viewBox="0 0 520 210" role="img" aria-label="AI를 끼워 넣은 2주 스프린트. 첫날 계획과 마지막 날 리뷰·회고 칸은 그대로이고, 가운데 개발 칸 안에만 AI가 들어가 코드를 쓴다" data-retrosvg style="max-width:520px"></svg>
+        <figcaption class="dl-cap">사람이 여는 칸과 2주라는 길이는 그대로 두고 개발 칸 안에만 AI를 넣었습니다.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap dl-two dl-split">
+    <div class="dl-col">
+      <h2>AI가 먼저 묻고 사람이 답합니다</h2>
+      <p>AI-DLC를 정리한 AWS의 Raja SP는 백서의 두 번째 원칙을 "대화 방향 뒤집기(reverse the conversation direction)"로 정했습니다. 사람이 AI에게 말을 걸어 일을 시키는 대신 AI가 대화를 시작하고 이끈다는 뜻입니다.</p>
+      <p>백서는 지도 앱에 빗댑니다. 사람은 목적지를 정하고 지도 앱은 갈 길을 단계별로 알려 줍니다. AI-DLC에서 목적지는 의도(intent), 길 안내는 AI가 의도를 할 일로 쪼갠 계획입니다. 사람은 가는 길을 지켜보다 필요하면 바로잡습니다. 그림에서 2분 느린 경로 2를 고른 것도 사람입니다. 계단을 피해야 하는 사정은 AI가 모릅니다.</p>
+      <p>비유가 맞지 않는 곳도 있습니다. 지도 앱의 목적지는 주소 하나로 분명하지만 소프트웨어의 의도는 대개 흐릿합니다. 그래서 AI-DLC의 AI는 길을 내기 전에 질문으로 목적지부터 분명히 합니다.</p>
+    </div>
+    <figure class="dl-fig" data-figure>
+      <svg viewBox="0 0 540 400" role="img" aria-label="지도 앱 비유. 사람이 목적지 핀을 찍으면 AI가 어느 길로 갈지 물으며 두 경로를 제안한다. 경로 1은 계단으로 블록을 가로지르는 14분짜리 지름길, 경로 2는 큰길로 돌아가는 16분짜리 계단 없는 길이고 사람이 경로 2를 고른다" data-mapsvg style="max-width:540px"></svg>
+      <figcaption class="dl-cap">지도 앱 비유는 AI-DLC 백서(Raja SP, AWS)에 나온 것입니다. 경로와 시간은 예시입니다.</figcaption>
+    </figure>
+  </div>
+  <div class="dl-band dl-chatband">
+    <div class="dl-wrap dl-bench">
+      <div>
+        <div class="dl-control">
+          <div class="dl-tog" role="group" aria-label="대화 방식 고르기" data-chatmode>
+            <button type="button" data-v="ask" aria-pressed="true">사람이 하나씩 시키기</button>
+            <button type="button" data-v="dlc" aria-pressed="false">AI가 먼저 묻기</button>
+          </div>
+        </div>
+        <p class="dl-cap dl-howto">대화는 ①부터 읽습니다. 굵은 화살표가 대화를 꺼낸 말이고 빨간 테두리는 뒤늦게 나온 요구입니다. 대화는 설명을 위해 만든 예시입니다.</p>
+        <div class="dl-stats" aria-live="polite" data-chatstats>
+          <div><b data-st="0">3번</b><span>사람이 일을 꺼낸 횟수</span></div>
+          <div><b data-st="1">0개</b><span>AI가 먼저 물은 질문</span></div>
+          <div><b data-st="2" class="hot">1덩어리</b><span>다시 쓴 코드</span></div>
+        </div>
+        <p class="dl-read" data-chatread>"학부모도 쓴다"는 요구가 코드를 다 쓴 뒤에 나와 앞에서 만든 화면을 다시 고칩니다.</p>
+      </div>
+      <figure class="dl-fig dl-chat" data-figure>
+        <svg viewBox="0 0 640 398" role="img" aria-label="같은 급식 알림 앱을 두 방식으로 만드는 대화. 사람이 하나씩 시키면 사람이 세 번 일을 꺼내고 학부모 화면 요구가 늦게 나와 코드를 다시 쓴다. AI가 먼저 물으면 AI가 계획 초안과 질문 세 개를 내고 사람이 답하고 승인한 뒤 구현한다" data-chatsvg></svg>
+      </figure>
+    </div>
+  </div>
+  <div class="dl-wrap dl-after">
+    <div class="dl-col">
+      <p>두 대화는 결정이 나오는 때가 다릅니다. 하나씩 시키는 쪽은 사람이 미처 떠올리지 못한 요구가 코드를 쓴 뒤에야 드러납니다. 먼저 묻는 쪽은 그 결정을 첫 질문에서 받아 둡니다.</p>
+      <p>AI가 질문을 이끈다고 해서 결정까지 넘기는 건 아닙니다. 백서는 지금의 AI가 사람의 감독 없이 의도를 코드로 옮길 만큼 믿을 만하지 않다고 보고, 검증과 결정의 최종 책임을 개발자에게 남겼습니다. 백서가 든 예시 프롬프트(prompt, AI에게 보내는 지시문)도 매번 "중요한 결정은 혼자 내리지 말라"고 적습니다.</p>
+      <details><summary>백서는 사람의 확인을 AI가 배울 때 쓰는 채점에 빗댑니다</summary><p>백서는 단계마다 사람이 확인하는 일을 손실 함수(loss function)에 빗댔습니다. AI 학습에서 손실 함수는 틀린 정도를 재서 고칠 방향을 알려 주는 값입니다. 사람의 확인도 이처럼 잘못된 방향을 아래 단계로 번지기 전에 잘라 냅니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap">
+    <h2>세 단계를 지날 때마다 문서가 쌓입니다</h2>
+    <div class="dl-col">
+      <p>AI-DLC는 일을 Inception(시작), Construction(만들기), Operations(운영) 세 단계로 나눕니다. Inception에서는 의도를 요구사항과 단위로 바꿉니다. 단위는 의도에서 떼어 낸, 따로 만들고 따로 내놓을 수 있는 일 덩어리입니다.</p>
+      <p>Construction에서는 설계와 코드·테스트를 만들고 Operations에서는 앱을 배포(deploy)하고 지켜봅니다. 배포는 늘 켜져 있는 컴퓨터인 서버(server)에 앱을 올려 사람들이 쓰게 하는 일입니다.</p>
+    </div>
+    <figure class="dl-fig dl-wide" data-figure>
+      <div class="dl-rooms" style="max-width:1060px;margin:0 auto">
+        <div class="dl-room">
+          <p class="rn"><b>Inception</b><span>모임: Mob Elaboration <small>(아래에서 설명)</small></span></p>
+          <div class="scene"><svg viewBox="0 0 300 168" role="img" aria-label="Inception 장면. AI가 만든 질문 파일에 질문 세 개가 있고 사람 넷이 함께 답을 적는다">
+            <rect x="40" y="4" width="220" height="104" rx="8" fill="var(--bg-base)" stroke="var(--ai)" stroke-width="2"/>
+            <rect x="40" y="4" width="220" height="22" rx="8" fill="var(--ai-soft)"/><text x="52" y="20" font-size="13" font-family="var(--font-mono)">질문 파일</text>
+            <text x="52" y="48" font-size="13">질문 1 누가 쓰나요?</text><text x="52" y="72" font-size="13">질문 2 알림은?</text><text x="52" y="96" font-size="13">질문 3 알레르기는?</text>
+            <text x="248" y="48" font-size="13" text-anchor="end" fill="var(--me)" font-weight="700">C</text><text x="248" y="72" font-size="13" text-anchor="end" fill="var(--me)" font-weight="700">A</text><line x1="234" y1="99" x2="250" y2="99" stroke="var(--fg-neutral)" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <g fill="var(--me-soft)" stroke="var(--me)" stroke-width="2"><circle cx="66" cy="140" r="13"/><circle cx="122" cy="146" r="13"/><circle cx="178" cy="146" r="13"/><circle cx="234" cy="140" r="13"/></g>
+          </svg></div>
+          <p class="did"><span class="dl-who ai">AI</span>질문 파일을 만들고 사용자 스토리와 위험을 적어 단위 나누기를 제안합니다.<small>사용자 스토리(user story)는 "학부모로서 오늘 급식에 알레르기 재료가 있는지 알고 싶다"처럼 쓰는 사람 입장에서 적은 요구 한 줄입니다.</small></p>
+          <p class="did"><span class="dl-who me">사람</span>답하고 고친 뒤 승인합니다.</p>
+        </div>
+        <div class="dl-pass" aria-hidden="true"><svg viewBox="0 0 64 70"><rect x="16" y="6" width="22" height="28" rx="3" fill="var(--bg-base)" stroke="var(--ai)" stroke-width="1.5"/><rect x="21" y="1" width="22" height="28" rx="3" fill="var(--bg-base)" stroke="var(--ai)" stroke-width="1.5"/><line x1="4" y1="50" x2="56" y2="50" stroke="var(--fg-neutral)" stroke-width="2"/><path d="M52,44 L62,50 L52,56 z" fill="var(--fg-neutral)"/></svg></div>
+        <div class="dl-room">
+          <p class="rn"><b>Construction</b><span>모임: Mob Construction <small>(아래에서 설명)</small></span></p>
+          <div class="scene"><svg viewBox="0 0 300 168" role="img" aria-label="Construction 장면. 메뉴, 알림, 알레르기 단위를 하나씩 맡은 팀 세 개가 가운데 설계 문서 하나를 같이 보며 연결 규격을 맞춘다">
+            <rect x="110" y="40" width="80" height="96" rx="6" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="2"/>
+            <text x="150" y="62" font-size="13" text-anchor="middle" font-weight="700">설계 문서</text>
+            <g stroke="var(--ai)" stroke-width="2" opacity=".55"><line x1="122" y1="78" x2="178" y2="78"/><line x1="122" y1="92" x2="170" y2="92"/><line x1="122" y1="106" x2="178" y2="106"/><line x1="122" y1="120" x2="160" y2="120"/></g>
+            <g stroke="var(--fg-neutral)" stroke-width="1.5" stroke-dasharray="4 4"><line x1="62" y1="44" x2="108" y2="64"/><line x1="238" y1="44" x2="192" y2="64"/><line x1="150" y1="138" x2="150" y2="146"/></g>
+            <g fill="var(--me-soft)" stroke="var(--me)" stroke-width="2"><circle cx="40" cy="36" r="11"/><circle cx="64" cy="26" r="11"/><circle cx="236" cy="26" r="11"/><circle cx="260" cy="36" r="11"/><circle cx="136" cy="156" r="10"/><circle cx="164" cy="156" r="10"/></g>
+            <text x="52" y="66" font-size="13" text-anchor="middle" class="dim">메뉴 팀</text><text x="248" y="66" font-size="13" text-anchor="middle" class="dim">알림 팀</text><text x="182" y="160" font-size="13" class="dim">알레르기 팀</text>
+          </svg></div>
+          <p class="did"><span class="dl-who ai">AI</span>도메인 설계, 논리 설계, 코드·테스트를 차례로 씁니다.<small>도메인 설계는 앱이 다루는 대상(메뉴·학생·알림)과 그 관계, 논리 설계는 어떤 부품으로 나눠 어떻게 이을지 정한 것입니다.</small></p>
+          <p class="did"><span class="dl-who me">사람</span>설계를 검토하고 고를 것을 승인합니다.</p>
+        </div>
+        <div class="dl-pass" aria-hidden="true"><svg viewBox="0 0 64 70"><rect x="16" y="6" width="22" height="28" rx="3" fill="var(--bg-base)" stroke="var(--ai)" stroke-width="1.5"/><rect x="21" y="1" width="22" height="28" rx="3" fill="var(--bg-base)" stroke="var(--ai)" stroke-width="1.5"/><line x1="4" y1="50" x2="56" y2="50" stroke="var(--fg-neutral)" stroke-width="2"/><path d="M52,44 L62,50 L52,56 z" fill="var(--fg-neutral)"/></svg></div>
+        <div class="dl-room">
+          <p class="rn"><b>Operations</b></p>
+          <div class="scene"><svg viewBox="0 0 300 168" role="img" aria-label="Operations 장면. 지표 그래프에 갑자기 튀어 오른 지점이 있고 AI가 조치를 제안하며 개발자 한 명이 승인한다">
+            <line x1="20" y1="120" x2="280" y2="120" stroke="var(--line-normal, var(--line-subtle))" stroke-width="1.5"/>
+            <text x="20" y="18" font-size="13" class="dim">응답 시간</text>
+            <polyline points="20,100 50,96 80,102 110,98 140,100 170,94 196,40 222,98 252,96 280,100" fill="none" stroke="var(--fg-neutral)" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="196" cy="40" r="7" fill="none" stroke="var(--bad)" stroke-width="2.5"/>
+            <rect x="52" y="30" width="122" height="30" rx="8" fill="var(--ai-soft)" stroke="var(--ai)" stroke-width="1.5"/><text x="113" y="50" font-size="13" text-anchor="middle">AI: 이상 찾음</text>
+            <circle cx="150" cy="148" r="12" fill="var(--me-soft)" stroke="var(--me)" stroke-width="2"/><text x="170" y="153" font-size="13" class="dim">개발자</text>
+          </svg></div>
+          <p class="did"><span class="dl-who ai">AI</span>배포 묶음을 만들고, 지표와 로그에서 이상을 찾아 조치를 제안합니다.<small>배포 묶음은 서버에 올릴 코드와 설정을 한데 묶은 것입니다. 지표(metric)는 응답 시간처럼 계속 재는 숫자, 로그(log)는 프로그램이 남기는 기록입니다.</small></p>
+          <p class="did"><span class="dl-who me">사람</span>배포와 조치를 승인합니다.</p>
+        </div>
+      </div>
+      <svg class="dl-loop" viewBox="0 0 1060 74" role="img" aria-label="Operations에서 Inception으로 돌아가는 화살표. 운영에서 배운 것이 다음 의도가 된다" data-loopsvg></svg>
+      <figcaption class="dl-cap">청록이 AI가 내놓는 것, 주황 원이 그 단계에서 정하는 사람입니다. 단계 사이로 문서가 넘어갑니다. 장면 아래 두 줄은 AI-DLC 백서가 단계마다 적은 AI의 일과 사람의 일을 줄인 것입니다.</figcaption>
+    </figure>
+    <div class="dl-col dl-after">
+      <p>단계 사이에는 문서가 넘어갑니다. AI가 만든 계획, 요구사항, 설계 문서는 코드를 모아 두는 저장소(repository)에 남아 다음 단계와 다음 대화의 맥락이 됩니다. 백서는 이를 맥락 기억(context memory)이라 부릅니다. 단계가 끝날 때마다 사람이 확인한 문서가 쌓여 AI가 참고할 근거가 늘어납니다.</p>
+      <p>Construction 단계는 Mob Construction이라는 모임으로 진행합니다. 단위를 맡은 팀들이 한 방에 모여 서로 주고받을 연결 규격을 맞추고 결정을 내린 뒤 각자의 일을 끝냅니다. 급식 앱이라면 메뉴, 알림, 알레르기 단위를 하나씩 맡은 세 팀입니다.</p>
+      <details><summary>이미 있는 코드에서 시작할 때는 한 단계가 더 붙습니다</summary><p>백서는 새로 만드는 경우와 기존 앱에 기능을 더하는 경우를 나눠 설명합니다. 기존 앱이면 Construction 첫머리에서 AI가 코드를 읽어 구성 요소와 그 관계, 구성 요소가 주고받는 흐름을 모델로 정리합니다. 개발자와 프로덕트 매니저가 그 모델을 검토하고 바로잡은 뒤 나머지 단계를 진행합니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap dl-two dl-split">
+    <div class="dl-col">
+      <h2>Mob Elaboration, 한 화면을 같이 보며 고치기</h2>
+      <p>Inception 단계는 Mob Elaboration이라는 모임으로 진행합니다. mob은 여럿이 한꺼번에 한다는 뜻입니다. 프로덕트 오너, 개발자, 품질을 확인하는 QA(Quality Assurance) 담당이 한 방에 모여 진행자 한 명과 함께 화면 하나를 봅니다.</p>
+      <p>학급 회의에서 칠판 하나를 보며 다 같이 안을 고치는 장면과 비슷합니다. 다만 학급 회의는 사람이 안을 내지만 여기서는 AI가 초안을 냅니다. AI가 질문하고 사용자 스토리, 위험, 비기능 요구사항(NFR, Non-Functional Requirement), 단위 나누기를 제안하면 모인 사람들이 고칩니다.</p>
+      <p>비기능 요구사항은 속도나 보안처럼 기능이 아닌 조건입니다. 백서가 든 예에서는 AI가 상품 추천 기능을 세 단위로 나눴고 프로덕트 오너가 GDPR(General Data Protection Regulation) 고려가 빠진 것을 찾아 넣었습니다. GDPR은 유럽연합의 개인정보 보호법입니다. AI가 모르는 회사 사정을 사람이 채운 것입니다.</p>
+    </div>
+    <figure class="dl-fig" data-figure>
+      <div class="dl-mob">
+        <div class="dl-screen">
+          <p class="hd">공유 화면 · 의도: 우리 학교 급식 알림 앱</p>
+          <p class="say"><span class="dl-who ai">AI</span>주로 누가 쓰나요? 학생 건강 정보도 다루나요?</p>
+          <p class="say" style="margin-bottom:4px"><span class="dl-who ai">AI</span>답을 받아 사용자 스토리를 묶어 단위 세 개를 제안합니다.</p>
+          <div class="dl-ucard">급식 메뉴 불러오기<small>사용자 스토리 묶음 · 위험 · 비기능 요구사항</small></div>
+          <div class="dl-ucard">학생·학부모 알림 보내기<small>사용자 스토리 묶음 · 위험 · 비기능 요구사항</small></div>
+          <div class="dl-ucard">내 알레르기 맞춤 경고<small>학생이 고른 알레르기 재료를 저장해 그 재료가 든 메뉴에 경고</small><ins><span class="dl-who me">프로덕트 오너</span>알레르기는 건강 정보라 저장하려면 따로 동의를 받아야 한다. 동의 화면을 요구사항에 넣는다.</ins></div>
+        </div>
+        <div class="dl-seats" aria-label="화면을 함께 보는 사람"><span class="lead">프로덕트<br>오너</span><span>개발자</span><span>QA</span><span>진행자</span></div>
+      </div>
+      <figcaption class="dl-cap">주황 원이 한 화면 앞에 모인 사람, 색이 찬 원이 수정을 낸 사람입니다. 단위와 수정은 백서의 예를 급식 알림 앱에 옮겨 만든 예시입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap">
+    <h2>스프린트 대신 몇 시간짜리 볼트</h2>
+    <div class="dl-col">
+      <p>AI-DLC는 스프린트를 볼트(bolt)라고 바꿔 부릅니다. 볼트는 단위 하나나 그 일부를 만드는 가장 작은 주기이고, 길이를 주가 아니라 시간이나 날로 잽니다. 백서는 익숙한 말과의 관계는 살리되 주기가 달라졌으니 일부러 이름을 바꿨다고 설명합니다.</p>
+      <p>기말고사 한 번과 매일 보는 쪽지시험의 차이와 비슷합니다. 쪽지시험을 자주 보면 틀린 곳을 빨리 알게 됩니다. 다만 볼트에서는 AI가 계획을 짜 오고 사람이 결과를 채점합니다.</p>
+    </div>
+  </div>
+  <div class="dl-wrap">
+    <figure class="dl-fig dl-wide dl-bolt" data-figure>
+      <svg viewBox="0 0 1060 520" role="img" aria-label="같은 열흘 위의 두 주기를 위아래로 견준 그림. 위 스프린트는 팀 전체가 한 주기를 돌며 1일째 계획을 승인하고 10일째 리뷰에서 결과물을 본다. 결과물을 보고 승인하는 때는 리뷰 1번이고, 다음 리뷰까지 열흘이다. 아래 볼트는 단위 세 개가 나란히 짧은 주기를 돌며 주기가 끝날 때마다 사람이 결과를 확인한다. 결과물을 보고 승인하는 때는 21번, 가장 긴 간격은 이틀이다. 맨 아래 띠는 볼트 한 칸 안의 순서로, AI가 계획 초안을 내고 사람이 승인하고 AI가 코드와 테스트를 쓰고 사람이 결과를 확인한다" data-boltsvg></svg>
+      <figcaption class="dl-cap">주황 점이 사람이 결과물을 보고 승인하는 때입니다. 속이 빈 점(1일 계획)은 결과물이 나오기 전의 승인입니다. 매일 하는 데일리 스크럼은 진행 상황을 나누는 모임이라 승인으로 세지 않았습니다. 볼트 길이는 설명을 위한 예시이고, 같은 열흘을 놓아 속도가 아니라 확인 횟수를 견줬습니다.</figcaption>
+    </figure>
+  </div>
+  <div class="dl-wrap dl-after">
+    <div class="dl-col">
+      <p>볼트는 단위마다 따로 돌기 때문에 여러 단위를 나란히 진행할 수 있습니다. 백서도 한 단위를 볼트 여러 개로 나눠 동시에 또는 차례로 돌릴 수 있다고 적었습니다. 볼트 계획은 AI가 짜고 개발자와 프로덕트 오너가 확인합니다.</p>
+      <p>주기가 짧아지면 기존 행사도 흔들립니다. 백서는 데일리 스크럼과 회고가 몇 주 단위 주기에 맞춰 생겼다고 봅니다. AI가 쉬운 일과 어려운 일의 경계를 흐리면 일의 크기를 점수로 어림하는 스토리 포인트(story point)가 여전히 중요할지도 묻습니다. 답은 내리지 않고 질문으로 남겼습니다.</p>
+      <details><summary>스프린트 길이를 백서와 스크럼 가이드가 다르게 적었습니다</summary><p>백서는 AI 이전의 스프린트가 보통 4~6주였다고 적었습니다. 스크럼 가이드(2020)는 스프린트를 한 달 이하로 정해 두었습니다. 이 글은 스크럼 가이드를 기준으로 삼았습니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap dl-two dl-split dl-split4">
+    <div class="dl-col">
+      <h2>방법론을 에이전트가 읽는 규칙 파일로</h2>
+      <p>AWS는 2025년 11월 AI-DLC를 코딩 에이전트가 읽는 규칙 파일로 만들어 코드를 올려 두고 함께 고치는 사이트 GitHub의 저장소 <code>awslabs/aidlc-workflows</code>에 공개했습니다. 규칙 파일은 에이전트가 일을 시작할 때 읽는 지침 문서입니다. 사람이 방법론 책을 읽고 지키는 대신 에이전트가 규칙을 읽고 그 순서대로 움직입니다.</p>
+      <p>처음 공개된 규칙에도 첫 화면과 같은 질문 형식이 들어 있습니다. 질문은 채팅창이 아니라 모두 질문 파일에 적습니다. 선택지 마지막에는 반드시 "기타"를 둡니다. 사람은 <code>[Answer]:</code> 뒤에 고른 글자를 적습니다.</p>
+      <p>AWS 블로그의 따라 하기 글은 강 건너기 퍼즐 웹 앱을 이 방식으로 만들었습니다. 도구는 AWS의 AI 코딩 도우미 Amazon Q Developer였습니다. 에이전트가 질문 7개를 파일로 만들었습니다. 사람이 답을 적은 뒤 채팅창에 끝났다고 알리자 다음 단계로 넘어갔습니다.</p>
+      <p>규칙은 단계를 고정하지 않습니다. 늘 하는 단계와 일에 따라 하는 단계를 나눠 두고, 무엇을 건너뛸지는 AI가 제안하고 사람이 승인합니다. 강 건너기 퍼즐은 역공학(reverse engineering)을 하지 않았습니다. 역공학은 이미 있는 코드를 읽어 구조를 거꾸로 정리하는 단계인데, 새로 만드는 작은 앱이라 읽을 코드가 없었습니다. 나머지 일에 따라 하는 단계도 모두 건너뛰고 바로 코드 생성으로 갔습니다.</p>
+    </div>
+    <figure class="dl-fig dl-flow" data-figure>
+      <svg viewBox="0 0 560 560" role="img" aria-label="AI-DLC 규칙 파일의 단계 흐름(2025년 11월 판). Inception은 작업 공간 확인, 역공학, 요구사항 분석, 사용자 스토리, 워크플로 계획, 애플리케이션 설계, 단위 생성 일곱 단계이고 이 가운데 작업 공간 확인, 요구사항 분석, 워크플로 계획이 늘 하는 단계다. Construction은 기능 설계, 비기능 요구사항, 비기능 설계, 인프라 설계, 코드 생성, 빌드와 테스트 여섯 단계이고 코드 생성과 빌드·테스트가 늘 하는 단계이며, 여섯 단계 전체를 단위마다 다시 돈다. Operations는 비어 있다. 새로 만든 강 건너기 퍼즐 앱은 늘 하는 다섯 단계만 거치고 역공학을 포함한 일에 따라 하는 단계를 모두 건너뛰었다" data-flowsvg style="max-width:560px"></svg>
+      <div class="dl-legend dl-flowkey"><span><i style="background:var(--ai-soft);box-shadow:inset 0 0 0 2px var(--ai)"></i>늘 하는 단계 · 퍼즐 앱이 한 단계</span><span><i style="border:1.5px dashed var(--fg-neutral);background:transparent"></i>일에 따라 하는 단계</span><span><i class="skip"></i><em>건너뜀</em>퍼즐 앱이 이번에 건너뛴 단계</span></div>
+      <figcaption class="dl-cap">AWS 따라 하기 글의 Figure 1을 우리말로 다시 그렸습니다. 워크플로 계획은 이번 일에 어느 단계를 할지 정하고, 인프라 설계는 앱이 돌아갈 서버 같은 바탕 설비를 정합니다. 빌드는 코드를 실행할 수 있는 형태로 묶는 일입니다. 2025년 11월 판이라 Operations 칸이 비어 있습니다.</figcaption>
+    </figure>
+  </div>
+  <div class="dl-wrap">
+    <div class="dl-col dl-after">
+      <p>2026년 10월 8일 나온 2.11.0 판 규칙 파일은 이 그림보다 훨씬 커졌습니다. 큰 단계가 셋에서 다섯으로, 세부 단계가 33개로 늘었습니다.</p>
+    </div>
+    <figure class="dl-fig dl-wide dl-phases" data-figure>
+        <svg viewBox="0 0 1060 146" role="img" aria-label="큰 단계 비교. 2025년 11월 판은 Inception 7개, Construction 6개, Operations 0개의 세부 단계였다. 2.11.0 판은 Initialization 3개, Ideation 7개, Inception 9개, Construction 7개, Operation 7개로 모두 33개다. Initialization과 Ideation이 새로 생겼다" data-phasesvg></svg>
+        <figcaption class="dl-cap">네모 하나가 세부 단계 하나입니다. 2.11.0 판 단계 이름과 개수는 저장소의 단계 규칙 파일 폴더(<code>core/aidlc-common/stages/</code>)에서 셌습니다. Operation(단수)은 저장소 폴더 이름 그대로입니다.</figcaption>
+      </figure>
+    <div class="dl-col dl-after">
+      <p>단계가 늘어도 뼈대는 같습니다. 규칙 파일은 세부 단계마다 사람의 승인을 받아야 다음 단계로 넘어가게 합니다. 이 관문을 승인 게이트(approval gate)라 부르고, 사람의 승인과 결정은 감사 기록(audit trail)으로 남습니다.</p>
+      <details class="dl-orig"><summary>규칙 파일을 더 들여다보면(원본 화면·2.11.0 판)</summary>
+        <p>에이전트가 만든 질문 파일의 앞부분입니다. 질문마다 마지막 선택지가 Other(기타)이고, <code>[Answer]:</code> 뒤 글자가 사람이 적은 답입니다.</p>
+        <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/b686e15e.webp"><picture><source media="(max-width: 860px)" srcset="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/718780ee.webp"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/931bfa2a.webp" alt="편집기에 열린 requirement-verification-questions.md 파일 일부. Question 1은 강 건너기 퍼즐의 종류를 묻고 A부터 E까지 선택지가 있으며 E는 Other이다. 그 아래 [Answer]: A 가 적혀 있다. Question 2는 조작 방식을 묻고 [Answer]: B 가 적혀 있다" loading="lazy" style="max-width:470px;margin-top:10px"></picture></a>
+        <p>단계 흐름 그림의 원본입니다. 초록 상자 MANDATORY는 늘 하는 단계, 노란 점선 상자 CONDITIONAL은 일에 따라 하는 단계입니다.</p>
+        <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/dff72121.webp"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-14/dff72121.webp" alt="AI-DLC 워크플로 흐름도 원본. 사용자 요청에서 시작해 INCEPTION PHASE, CONSTRUCTION PHASE, OPERATIONS PHASE를 거쳐 완료로 간다. 초록 상자는 MANDATORY, 노란 점선 상자는 CONDITIONAL이다" loading="lazy" style="margin-top:10px"></a>
+        <p class="dl-cap">출처: <a href="https://aws.amazon.com/blogs/devops/building-with-ai-dlc-using-amazon-q-developer/">AWS DevOps Blog (2025-11), Building with AI-DLC using Amazon Q Developer</a>, 질문 파일 화면과 Figure 1</p>
+        <p>2.11.0 판 규칙 파일은 이렇습니다.</p>
+        <ul>
+          <li>일은 역할을 나눈 에이전트 14개가 나눠 맡습니다.</li>
+          <li>규칙 하나가 일곱 가지 하네스(harness, 모델에 도구를 붙여 실제로 일하게 하는 프로그램)에서 돌도록 만들어졌습니다. Claude Code, Kiro CLI, Kiro IDE, Codex CLI, Cursor, opencode, GitHub Copilot입니다.</li>
+          <li>CLI(Command Line Interface)는 글자로 명령을 쳐서 쓰는 프로그램이고, IDE(Integrated Development Environment)는 코드 편집기에 여러 개발 도구를 묶은 프로그램입니다.</li>
+          <li>Claude Code에서는 질문이 화면의 선택지 상자로 뜹니다.</li>
+          <li>라이선스는 MIT-0입니다. 출처를 밝히지 않아도 누구나 고쳐 쓰고 팔 수 있게 한 오픈소스 라이선스입니다. 2026년 10월 15일 기준 GitHub Star는 약 5,200개입니다.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec">
+  <div class="dl-wrap dl-two dl-split">
+    <div class="dl-col">
+      <h2>"몇 주를 몇 시간으로"는 아직 주장입니다</h2>
+      <p>AI-DLC 자료에는 빨라진다는 말이 자주 나옵니다. AWS 블로그는 몇 주 걸리던 일을 몇 시간이나 며칠에 끝낸다고 했고 백서는 Mob Elaboration이 몇 주에서 몇 달 걸리던 일을 몇 시간으로 줄인다고 했습니다. 두 문서 모두 어떻게 쟀는지, 무엇과 비교했는지는 적지 않았습니다.</p>
+      <p>고객 사례는 조금 더 구체적입니다. 웅진씽크빅은 2025년 12월 워크숍에서 8명이 2일 만에 MVP(Minimum Viable Product, 핵심 기능만 갖춘 첫 제품)를 만들었다고 했습니다. ConnectiveRx 사례는 약 180시간 걸리던 일을 약 24시간에 끝냈다고 적었습니다. 두 글 모두 AWS가 쓰거나 함께 썼고 비교 기준은 밝히지 않았습니다.</p>
+      <p>"10배"처럼 자주 따라붙는 배수는 AWS 블로그와 백서에서 찾지 못했습니다. AI-DLC를 무작위 대조 실험(randomized controlled trial)으로 잰 연구도 찾지 못했습니다. 이 실험은 참가자를 제비뽑기로 두 무리로 나눠 한쪽에만 방법을 쓰게 합니다. 견줄 무리가 있어서 빨라진 게 방법 덕분인지 가려낼 수 있습니다.</p>
+    </div>
+    <figure class="dl-fig" data-figure>
+      <svg viewBox="0 0 560 402" role="img" aria-label="근거 계단. 가장 낮은 주장 계단에 백서와 AWS 블로그, 가운데 자체 사례 계단에 웅진씽크빅과 ConnectiveRx가 들어 있다. 가장 높은 통제 실험 계단은 점선 빈 칸으로, AI-DLC를 잰 실험은 찾지 못했고 참고로 AI 도구 전반을 잰 METR 2025 실험만 회색으로 적혀 있다" data-laddersvg style="max-width:580px"></svg>
+      <figcaption class="dl-cap">계단이 높을수록 근거가 단단합니다. 칠한 계단에는 실제 근거가 있습니다. 점선 계단은 AI-DLC를 잰 근거를 찾지 못한 칸입니다. METR 2025는 AI 코딩 도구 전반을 잰 실험이라 회색으로 적었습니다.</figcaption>
+    </figure>
+  </div>
+  <div class="dl-wrap dl-after">
+    <div class="dl-col">
+      <p>통제된 실험이 다른 결과를 낸 적도 있습니다. AI 평가 기관 METR의 2025년 실험에서 숙련 개발자들은 AI 도구를 쓰자 오히려 19% 느려졌는데도 스스로는 빨라졌다고 느꼈습니다. AI-DLC를 잰 실험은 아니지만 체감 속도와 잰 속도는 다를 수 있습니다. 이 실험은 <a href="/posts/ai-native-dev-2026-what-changed">AI가 코드를 쓰면 개발자의 하루가 어떻게 바뀌는지 다룬 글</a>에 자세히 정리했습니다.</p>
+      <p>그래서 AI-DLC에서 가져갈 것은 배수보다 구조입니다.</p>
+    </div>
+    <figure class="dl-fig dl-wide dl-recap" data-figure>
+        <svg viewBox="0 0 1060 196" role="img" aria-label="이 글의 그림 세 개를 작게 다시 그린 것. 1 질문 파일: 결정이 필요한 질문을 앞당긴다. 2 사람 승인 버튼: 승인 게이트를 정해 둔다. 3 짧은 볼트와 주황 점: 사람이 확인하는 간격을 줄인다" data-recapsvg></svg>
+      </figure>
+    <div class="dl-col dl-after">
+      <p>다음 글에서는 스펙 주도 개발(spec-driven development)을 다룹니다. 무엇을 만들지 적은 문서인 스펙(spec)을 먼저 쓰고, 그 문서를 기준으로 AI가 코드를 만들게 하는 방식입니다. Inception 단계에서 에이전트에게 무엇을 먼저 써 줘야 원하는 결과가 나오는지 알아보겠습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="dl-sec dl-refs" style="padding-bottom:40px">
+  <div class="dl-wrap dl-refhead">
+    <h2>참고 자료</h2>
+    <div>
+      <ul>
+        <li><a href="https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/">Raja SP, AWS DevOps Blog (2025-07-31), AI-Driven Development Life Cycle: Reimagining Software Engineering</a> — 세 단계, Mob Elaboration·Mob Construction, 볼트, "몇 주 → 몇 시간·며칠"</li>
+        <li><a href="https://prod.d13rzhkk8cj2z0.amplifyapp.com/">Raja SP, AWS, AI-Driven Development Lifecycle (AI-DLC) Method Definition</a> — 10원칙(retrofit, 대화 방향 뒤집기와 지도 앱 비유, 볼트 이름), 의도·단위·볼트 정의, 맥락 기억, 손실 함수 비유, 부록 프롬프트</li>
+        <li><a href="https://aws.amazon.com/blogs/devops/open-sourcing-adaptive-workflows-for-ai-driven-development-life-cycle-ai-dlc/">AWS DevOps Blog (2025-11), Open-Sourcing Adaptive Workflows for AI-DLC</a> — 적응형 워크플로, 승인 게이트, 기록</li>
+        <li><a href="https://aws.amazon.com/blogs/devops/building-with-ai-dlc-using-amazon-q-developer/">AWS DevOps Blog (2025-11), Building with AI-DLC using Amazon Q Developer</a> — 강 건너기 퍼즐 따라 하기, Figure 1·5</li>
+        <li><a href="https://github.com/awslabs/aidlc-workflows">awslabs/aidlc-workflows, GitHub</a> — README(2.11.0), 단계 규칙 파일 폴더 <code>core/aidlc-common/stages/</code>, 릴리스 목록, <code>question-format-guide.md</code>(1.0.0), <code>harness/claude/skills/aidlc/question-rendering.md</code></li>
+        <li><a href="https://scrumguides.org/scrum-guide.html">Ken Schwaber, Jeff Sutherland, The Scrum Guide (2020)</a> — 스프린트 한 달 이하, 데일리 스크럼 15분, 스크럼 팀 구성</li>
+        <li><a href="https://agilemanifesto.org/principles.html">Principles behind the Agile Manifesto (2001)</a></li>
+        <li><a href="https://aws.amazon.com/ko/blogs/tech/aws-aidlc-woongjinthinkbig-tech-blog">AWS 기술 블로그 (2026-02-12), 웅진씽크빅 AI-DLC 사례</a></li>
+        <li><a href="https://aws.amazon.com/blogs/publicsector/how-connectiverx-accelerated-innovation-with-ai-dlc/">AWS Public Sector Blog (2026-09-20), How ConnectiveRx accelerated innovation with AI-DLC</a></li>
+        <li><a href="https://arxiv.org/abs/2507.09089">METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  const arrowDefs = (svg, id, color, size = 10) => {
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: size, markerHeight: size, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+  };
+  const ME = "var(--me)", MES = "var(--me-soft)", AI = "var(--ai)", AIS = "var(--ai-soft)", GR = "var(--gr)", GRS = "var(--gr-soft)";
+
+  /* ---------- 히어로: 질문 파일 ---------- */
+  (() => {
+    const fig = $("[data-hero]"); if (!fig) return;
+    const qs = $$(".dl-q", fig);
+    const units = Object.fromEntries($$("[data-u]", fig).map((u) => [u.dataset.u, u]));
+    const cnt = $("[data-count]", fig), risk = $("[data-risk]", fig), approve = $("[data-approve]", fig), msg = $("[data-gatemsg]", fig);
+    const ans = [null, null, null];
+    let approved = false;
+    const MAP = [
+      { A: ["student"], B: ["parent"], C: ["student", "parent"], X: ["other0"] },
+      { A: ["push"], B: ["mail"], C: [], X: ["other1"] },
+      { A: ["allergy"], B: [], X: ["other2"] },
+    ];
+    const ALL = [["student", "parent", "other0"], ["push", "mail", "other1"], ["allergy", "other2"]];
+    const show = (u, on) => {
+      const n = units[u]; if (!n) return;
+      if (on && n.classList.contains("gone")) {
+        n.classList.remove("gone"); n.classList.add("new", "set");
+        requestAnimationFrame(() => requestAnimationFrame(() => n.classList.remove("new")));
+      } else if (!on) { n.classList.add("gone"); n.classList.remove("ok"); }
+    };
+    const render = () => {
+      ans.forEach((a, i) => {
+        units["q" + i].classList.toggle("gone", a !== null);
+        ALL[i].forEach((u) => show(u, a !== null && MAP[i][a].includes(u)));
+        const span = $("[data-ans]", qs[i]);
+        span.textContent = a || "";
+        span.classList.toggle("done", a !== null);
+        $$("button", qs[i]).forEach((b) => b.setAttribute("aria-pressed", b.dataset.a === a ? "true" : "false"));
+      });
+      risk.hidden = ans[2] !== "A";
+      const n = ans.filter((a) => a !== null).length;
+      Object.values(units).forEach((u) => u.classList.toggle("ok", approved && !u.classList.contains("gone")));
+      approve.disabled = n < 3 || approved;
+      const count = $$(".dl-unit:not(.gone)", fig).length;
+      cnt.innerHTML = approved ? `사람 승인 <b>✓</b>` : `사람이 정한 답 <b>${n}</b>/3`;
+      approve.title = n < 3 ? "질문 3개에 모두 답해야 누를 수 있습니다" : "";
+      if (approved) {
+        msg.innerHTML = `<b>승인됨.</b> 단위 ${count}개로 Construction 단계에 들어갑니다. 답을 바꾸면 다시 승인을 받아야 합니다.`;
+        approve.textContent = "승인 완료";
+      } else if (n < 3) {
+        msg.innerHTML = `답 3개가 다 차야 승인할 수 있습니다. 그 전에는 AI가 계획을 확정하지 않습니다.`;
+        approve.textContent = `사람 승인 · 답 ${n}/3`;
+      } else {
+        msg.innerHTML = `답 3개가 모두 찼습니다. AI가 단위 ${count}개로 계획을 고쳤습니다. 승인하면 다음 단계로 넘어갑니다.`;
+        approve.textContent = "사람 승인";
+      }
+    };
+    qs.forEach((q, i) => q.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      ans[i] = b.dataset.a; approved = false; render();
+    }, { signal }));
+    approve.addEventListener("click", () => { approved = true; render(); }, { signal });
+    fig.addEventListener("dl-thumb", () => { ans[0] = "C"; ans[1] = "A"; ans[2] = "A"; approved = false; render(); $$(".dl-unit", fig).forEach((u) => u.classList.remove("new")); }, { signal });
+    render();
+  })();
+
+  /* ---------- 12주 띠 두 줄 ---------- */
+  (() => {
+    const svg = $("[data-twelvesvg]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 620, x0 = 0, x1 = W - (m ? 8 : 12), fs = m ? 13 : 15;
+      const H = m ? 300 : 300;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const X = (w) => x0 + (x1 - x0) * w / 12;
+      const bh = m ? 38 : 44;
+      // 워터폴
+      const y1 = 34;
+      txt(svg, 0, y1 - 12, "한 번에 쭉 하기(워터폴)", { "font-size": m ? 14 : 16, "font-weight": 700 });
+      txt(svg, x1, y1 - 12, "보여 주기 1번", { "font-size": fs, "text-anchor": "end", fill: ME, "font-weight": 700 });
+      [["요구", 0, 2], ["설계", 2, 4], ["개발", 4, 10], ["검사", 10, 12]].forEach(([n, a, b]) => {
+        el("rect", { x: X(a) + 1.5, y: y1, width: X(b) - X(a) - 3, height: bh, rx: 6, fill: GRS, stroke: GR, "stroke-width": 1.5 }, svg);
+        txt(svg, (X(a) + X(b)) / 2, y1 + bh / 2 + 5, n, { "text-anchor": "middle", "font-size": fs });
+      });
+      el("circle", { cx: X(12) - 2, cy: y1 + bh + 16, r: 8, fill: ME }, svg);
+      txt(svg, X(12) - 16, y1 + bh + 21, "12주째 처음 보여 줌", { "text-anchor": "end", "font-size": fs, fill: ME, "font-weight": 600 });
+      // 애자일
+      const y2 = m ? 168 : 170;
+      txt(svg, 0, y2 - 12, "2주마다 보여 주기(애자일)", { "font-size": m ? 14 : 16, "font-weight": 700 });
+      txt(svg, x1, y2 - 12, "보여 주기 6번", { "font-size": fs, "text-anchor": "end", fill: ME, "font-weight": 700 });
+      for (let i = 0; i < 6; i++) {
+        const a = i * 2, b = a + 2;
+        el("rect", { x: X(a) + 1.5, y: y2, width: X(b) - X(a) - 3, height: bh, rx: 6, fill: GRS, stroke: GR, "stroke-width": 1.5 }, svg);
+        txt(svg, (X(a) + X(b)) / 2, y2 + bh / 2 + 5, m ? `${i + 1}` : `주기 ${i + 1}`, { "text-anchor": "middle", "font-size": fs });
+        el("circle", { cx: X(b) - 2, cy: y2 + bh + 16, r: 8, fill: ME }, svg);
+      }
+      // 축
+      const ya = H - 22;
+      el("line", { x1: X(0), y1: ya, x2: X(12), y2: ya, stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5 }, svg);
+      for (let w = 0; w <= 12; w += 2) {
+        el("line", { x1: X(w), y1: ya - 4, x2: X(w), y2: ya + 4, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+        txt(svg, X(w), ya + 20, w === 12 ? "12주" : `${w}`, { "text-anchor": w === 0 ? "start" : w === 12 ? "end" : "middle", "font-size": m ? 12.5 : 14, class: "dim" });
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 2주 스프린트 달력 ---------- */
+  (() => {
+    const svg = $("[data-calsvg]"); if (!svg) return;
+    const DAYS = ["월", "화", "수", "목", "금"];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const cols = m ? 2 : 5, rows = m ? 5 : 2;
+      const lab = m ? 0 : 74, top = m ? 30 : 0;
+      const cw = m ? 172 : 180, ch = m ? 92 : 130, g = m ? 10 : 12;
+      const W = lab + cols * cw + (cols - 1) * g, H = top + rows * ch + (rows - 1) * g + 4;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      if (m) { txt(svg, cw / 2, 18, "1주차", { "text-anchor": "middle", "font-size": 14, "font-weight": 700 }); txt(svg, cw + g + cw / 2, 18, "2주차", { "text-anchor": "middle", "font-size": 14, "font-weight": 700 }); }
+      else { txt(svg, 0, ch / 2 + 6, "1주차", { "font-size": 16, "font-weight": 700 }); txt(svg, 0, ch + g + ch / 2 + 6, "2주차", { "font-size": 16, "font-weight": 700 }); }
+      const cell = (d) => { const week = Math.floor(d / 5), wd = d % 5; const c = m ? week : wd, r = m ? wd : week; return [lab + c * (cw + g), top + r * (ch + g)]; };
+      const by = m ? 36 : 40, bh = ch - (m ? 44 : 50);
+      for (let d = 0; d < 10; d++) {
+        const [x, y] = cell(d);
+        el("rect", { x, y, width: cw, height: ch, rx: 10, fill: "var(--bg-base)", stroke: "var(--line-subtle)", "stroke-width": 1.5 }, svg);
+        txt(svg, x + 12, y + 24, `${d + 1}일 ${DAYS[d % 5]}`, { "font-size": m ? 13 : 15, "font-weight": 600, class: "dim" });
+        el("circle", { cx: x + cw - 18, cy: y + 19, r: 5.5, fill: GR }, svg);
+      }
+      // 개발: 한 띠로 이어 칠한다 (2~5일, 6~9일)
+      if (m) {
+        // 모바일: 날짜 머리(날짜·점)를 덮지 않게 칸마다 따로 칠한다
+        [1, 2, 3, 4, 5, 6, 7, 8].forEach((d) => {
+          const [x, y] = cell(d);
+          el("rect", { x: x + 8, y: y + by, width: cw - 16, height: bh, rx: 7, fill: GRS }, svg);
+          txt(svg, x + cw / 2, y + by + bh / 2 + 5, "개발", { "text-anchor": "middle", "font-size": 13.5, class: "dim", "font-weight": 600 });
+        });
+      } else [[1, 4], [5, 8]].forEach(([d0, d1]) => {
+        const [xa, ya] = cell(d0), [xb] = cell(d1);
+        const x = xa + 8, y = ya + by, w = xb + cw - 8 - x, h = bh;
+        el("rect", { x, y, width: w, height: h, rx: 8, fill: GRS }, svg);
+        txt(svg, x + w / 2, y + h / 2 + 5, "개발", { "text-anchor": "middle", "font-size": 16, class: "dim", "font-weight": 600 });
+      });
+      const ev = (d, part, label) => {
+        const [x, y] = cell(d);
+        const h = part ? bh * 0.5 - 3 : bh, yy = y + by + (part === 2 ? bh * 0.5 + 3 : 0);
+        el("rect", { x: x + 8, y: yy, width: cw - 16, height: h, rx: 7, fill: MES, stroke: ME, "stroke-width": 2 }, svg);
+        txt(svg, x + cw / 2, yy + h / 2 + 5, label, { "text-anchor": "middle", "font-size": m ? 13.5 : 15, "font-weight": 700 });
+      };
+      ev(0, 0, "스프린트 계획");
+      ev(9, 1, "리뷰"); ev(9, 2, "회고");
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 개조: 달력은 그대로, 개발 칸 안에만 AI ---------- */
+  (() => {
+    const svg = $("[data-retrosvg]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 520, fs = m ? 14 : 14.5;
+      const pw = m ? 66 : 92, rw = m ? 76 : 108, g = 8, by = 44, bh = m ? 84 : 92;
+      const dx = pw + g, dw = W - pw - rw - 2 * g;
+      // 위: 그대로인 칸 표시
+      txt(svg, pw / 2, 22, "그대로", { "text-anchor": "middle", "font-size": fs - 1, class: "dim" });
+      txt(svg, W - rw / 2, 22, "그대로", { "text-anchor": "middle", "font-size": fs - 1, class: "dim" });
+      txt(svg, dx + dw / 2, 22, "2주 스프린트", { "text-anchor": "middle", "font-size": fs, "font-weight": 700 });
+      // 사람이 여는 칸
+      el("rect", { x: 0, y: by, width: pw, height: bh, rx: 9, fill: MES, stroke: ME, "stroke-width": 2 }, svg);
+      txt(svg, pw / 2, by + bh / 2 + 5, "계획", { "text-anchor": "middle", "font-size": fs, "font-weight": 700 });
+      el("rect", { x: W - rw, y: by, width: rw, height: bh, rx: 9, fill: MES, stroke: ME, "stroke-width": 2 }, svg);
+      txt(svg, W - rw / 2, by + bh / 2 - 4, "리뷰·", { "text-anchor": "middle", "font-size": fs, "font-weight": 700 });
+      txt(svg, W - rw / 2, by + bh / 2 + 15, "회고", { "text-anchor": "middle", "font-size": fs, "font-weight": 700 });
+      // 개발 칸: 안에 AI
+      el("rect", { x: dx, y: by, width: dw, height: bh, rx: 9, fill: GRS, stroke: GR, "stroke-width": 1.5 }, svg);
+      txt(svg, dx + 12, by + 22, "개발", { "font-size": fs, "font-weight": 700, class: "dim" });
+      const cw = dw - 24, cx = dx + 12, cy = by + 34, ch = bh - 46;
+      el("rect", { x: cx, y: cy, width: cw, height: ch, rx: 7, fill: AIS, stroke: AI, "stroke-width": 1.8 }, svg);
+      txt(svg, cx + 12, cy + ch / 2 + 5, m ? "AI가 코드 작성" : "AI가 코드를 씁니다", { "font-size": fs, "font-weight": 700 });
+      // 빨라짐 표시: 오른쪽으로 짧은 줄 세 개
+      [0, 1, 2].forEach((k) => el("path", { d: `M${cx + cw - 46 + k * 12},${cy + ch / 2 - 7} l7,7 l-7,7`, fill: "none", stroke: AI, "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg));
+      // 아래: 칸 안만 빨라짐
+      const ay = by + bh + 14;
+      el("path", { d: `M${dx + 4},${ay} v8 H${dx + dw - 4} v-8`, fill: "none", stroke: AI, "stroke-width": 1.8 }, svg);
+      txt(svg, dx + dw / 2, ay + 30, "이 칸 안만 빨라집니다", { "text-anchor": "middle", "font-size": fs, "font-weight": 700, fill: AI });
+      svg.setAttribute("viewBox", `0 0 ${W} ${ay + 38}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 지도 앱 비유 ---------- */
+  (() => {
+    const svg = $("[data-mapsvg]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const k = m ? 0.68 : 1, fs = m ? 13.5 : 15;
+      const P = (x, y) => [x * k, y * k];
+      const mapH = 370 * k;
+      const W = m ? 360 : 540, H = mapH + (m ? 112 : 96);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const S = "var(--line-subtle)";
+      [60, 150, 240, 330].forEach((y) => el("line", { x1: 20 * k, y1: y * k, x2: 520 * k, y2: y * k, stroke: S, "stroke-width": 10 * k, "stroke-linecap": "round" }, svg));
+      [60, 180, 300, 420, 500].forEach((x) => el("line", { x1: x * k, y1: 40 * k, x2: x * k, y2: 350 * k, stroke: S, "stroke-width": 10 * k, "stroke-linecap": "round" }, svg));
+      const path = (pts) => "M" + pts.map(([x, y]) => P(x, y).join(",")).join(" L");
+      // AI가 낸 경로 두 개: 고르지 않은 쪽은 점선·옅게
+      // 경로 1(14분)은 계단으로 블록을 가로지르는 지름길이라 실제로 짧게, 경로 2(16분)는 큰길로 돌아간다
+      el("path", { d: path([[60, 330], [300, 150], [470, 150]]), fill: "none", stroke: AI, "stroke-width": 3.5, "stroke-dasharray": "8 7", "stroke-linecap": "round", opacity: .6 }, svg);
+      el("path", { d: path([[60, 330], [420, 330], [420, 150], [470, 150]]), fill: "none", stroke: AI, "stroke-width": 7, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+      // 경로 1 위 계단 아이콘
+      const [cx1, cy1] = P(120, 285), cr = m ? 13 : 17, st = m ? 4.2 : 5.5;
+      el("circle", { cx: cx1, cy: cy1, r: cr, fill: "var(--bg-base)", stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+      const sx0 = cx1 - st * 1.5, sy0 = cy1 + st * 1.5;
+      el("path", { d: `M${sx0},${sy0} V${sy0 - st} H${sx0 + st} V${sy0 - 2 * st} H${sx0 + 2 * st} V${sy0 - 3 * st} H${sx0 + 3 * st}`, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      const [sx, sy] = P(60, 330);
+      el("circle", { cx: sx, cy: sy, r: 10, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 3 }, svg);
+      txt(svg, sx + 16, sy + 30 * k + 6, "지금 여기", { "font-size": fs - 1, class: "dim" });
+      // 목적지 핀 (사람이 정함) — 그림의 첫 시선
+      const [px, py] = P(470, 150), s2 = m ? 1.1 : 1.5;
+      el("path", { d: `M${px},${py} C${px - 16 * s2},${py - 22 * s2} ${px - 18 * s2},${py - 38 * s2} ${px},${py - 46 * s2} C${px + 18 * s2},${py - 38 * s2} ${px + 16 * s2},${py - 22 * s2} ${px},${py} Z`, fill: ME }, svg);
+      el("circle", { cx: px, cy: py - 32 * s2, r: 6 * s2, fill: "var(--bg-base)" }, svg);
+      txt(svg, px, py + 26, "목적지", { "text-anchor": "middle", "font-size": fs, "font-weight": 700, fill: ME });
+      // 경로 1: 상자 없이 작은 글씨, 계단 아이콘 위 블록에
+      const [r1x, r1y] = P(72, 182);
+      txt(svg, r1x, r1y, "경로 1: 14분", { "font-size": fs - 1, class: "dim" });
+      txt(svg, r1x, r1y + fs + 4, "계단 있음", { "font-size": fs - 1, class: "dim" });
+      // AI가 먼저 묻는 말풍선
+      const qx = 0, qy = m ? 2 : 6, qh = m ? 26 : 32, qw = m ? 176 : 214;
+      el("rect", { x: qx, y: qy, width: qw, height: qh, rx: qh / 2, fill: AIS, stroke: AI, "stroke-width": 1.5 }, svg);
+      el("path", { d: `M${qx + 26},${qy + qh - 1} l6,${m ? 7 : 9} l6,-${m ? 7 : 9}`, fill: AIS, stroke: AI, "stroke-width": 1.5, "stroke-linejoin": "round" }, svg);
+      el("line", { x1: qx + 27, y1: qy + qh - 1, x2: qx + 37, y2: qy + qh - 1, stroke: AIS, "stroke-width": 2.5 }, svg);
+      txt(svg, qx + 12, qy + qh / 2 + 5, "AI", { "font-size": fs - 2, "font-weight": 700, fill: AI });
+      txt(svg, qx + (m ? 34 : 38), qy + qh / 2 + 5, "어느 길로 갈까요?", { "font-size": fs - 1, "font-weight": 600 });
+      // 경로 2: 고른 경로
+      const [r2x, r2y] = P(m ? 290 : 250, 330);
+      const bw = m ? 140 : 200, bh2 = 34;
+      el("rect", { x: r2x - bw / 2, y: r2y - bh2 - 14, width: bw, height: bh2, rx: 8, fill: AIS, stroke: AI, "stroke-width": 2 }, svg);
+      txt(svg, r2x - 8, r2y - 14 - bh2 / 2 + 5, "경로 2: 16분, 계단 없음", { "text-anchor": "middle", "font-size": fs - (m ? 1 : 0), "font-weight": 700 });
+      el("circle", { cx: r2x + bw / 2, cy: r2y - bh2 - 14, r: 12, fill: ME }, svg);
+      txt(svg, r2x + bw / 2, r2y - bh2 - 9, "✓", { "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: "var(--bg-base)" });
+      // 아래 두 줄: 누가 무엇을
+      const ly = mapH + (m ? 30 : 34);
+      el("circle", { cx: 8, cy: ly - 5, r: 7, fill: ME }, svg);
+      txt(svg, 24, ly, "사람: 목적지(의도)를 정하고 경로 하나를 고른다", { "font-size": fs });
+      el("line", { x1: 0, y1: ly + (m ? 30 : 31), x2: 16, y2: ly + (m ? 30 : 31), stroke: AI, "stroke-width": 5, "stroke-linecap": "round" }, svg);
+      txt(svg, 24, ly + (m ? 35 : 36), "AI: 갈 길을 쪼개 경로를 제안한다", { "font-size": fs });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 같은 앱, 두 대화 ---------- */
+  (() => {
+    const svg = $("[data-chatsvg]"); if (!svg) return;
+    const D = {
+      ask: [
+        { w: "me", t: ["급식 메뉴 불러오는", "코드 짜 줘"], s: 1 },
+        { w: "ai", t: ["메뉴 불러오기 코드 완성"] },
+        { w: "me", t: ["알림도 보내게 해 줘"], s: 1 },
+        { w: "ai", t: ["앱 알림 코드 추가"] },
+        { w: "me", t: ["아, 학부모도 쓴다는 걸", "깜빡했어"], s: 1, late: 1 },
+        { w: "ai", t: ["학부모 화면 추가,", "앞에서 쓴 코드 일부 다시 씀"], late: 1 },
+      ],
+      dlc: [
+        { w: "me", t: ["급식 알림 앱을 만들자", "(의도 한 줄)"], s: 1 },
+        { w: "ai", t: ["계획 초안 + 질문 3개:", "누가? 알림은? 알레르기는?"], s: 1, q: 1 },
+        { w: "me", t: ["답: 둘 다, 앱 알림,", "알레르기 표시"] },
+        { w: "ai", t: ["고친 계획: 단위 5개"] },
+        { w: "me", t: ["승인"] },
+        { w: "ai", t: ["단위마다 코드·테스트 작성"] },
+        { w: "me", t: ["결과 확인"] },
+      ],
+    };
+    const READ = {
+      ask: '"학부모도 쓴다"는 요구가 코드를 다 쓴 뒤에 나와 앞에서 만든 화면을 다시 고칩니다.',
+      dlc: '학부모도 쓴다는 결정이 첫 답에서 나와 다시 고칠 일이 없습니다. 사람은 답하고 승인하고 확인합니다.',
+    };
+    const STATS = { ask: ["3번", "0개", "1덩어리"], dlc: ["1번", "3개", "0덩어리"] };
+    let mode = "ask", groups = {};
+    const build = (m) => {
+      svg.innerHTML = ""; groups = {};
+      const W = m ? 360 : 640, bw = m ? 236 : 272, rowH = m ? 74 : 46, top = m ? 34 : 34, fs = m ? 13.5 : 15;
+      const H = top + 7 * rowH + 8;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      arrowDefs(svg, "dl-ca-me", ME, 12); arrowDefs(svg, "dl-ca-ai", AI, 12); arrowDefs(svg, "dl-ca-g", "var(--fg-neutral)", 9);
+      txt(svg, 0, 20, "사람", { "font-size": 16, "font-weight": 700, fill: ME });
+      txt(svg, W, 20, "AI", { "font-size": 16, "font-weight": 700, fill: AI, "text-anchor": "end" });
+      Object.entries(D).forEach(([k, list]) => {
+        const g = el("g", { class: "msg" + (k === mode ? "" : " off") }, svg);
+        groups[k] = g;
+        const box = list.map((r, i) => { const y = top + i * rowH, bh = r.t.length > 1 ? 50 : 34, x = r.w === "me" ? 0 : W - bw; return { x, y, bh }; });
+        list.forEach((r, i) => {
+          const { x, y, bh } = box[i];
+          const isMe = r.w === "me";
+          const col = isMe ? ME : AI, soft = isMe ? MES : AIS;
+          el("rect", { x, y, width: bw, height: bh, rx: 12, fill: soft, stroke: r.late ? "var(--bad)" : col, "stroke-width": r.late ? 3 : 1.5 }, g);
+          const tx = i === 0 ? x + 36 : x + 12;
+          if (i === 0) { el("circle", { cx: x + 19, cy: y + 18, r: 10, fill: col }, g); txt(g, x + 19, y + 23, "1", { "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "var(--bg-base)" }); }
+          r.t.forEach((s, j) => txt(g, tx, y + (r.t.length > 1 ? 21 : 22) + j * 20, s, { "font-size": fs, "font-weight": r.s ? 700 : 400 }));
+          // 말한 쪽 → 받아서 답하는 쪽(다음 말풍선)
+          const nx = box[i + 1];
+          if (!nx) return;
+          const stroke = r.s ? col : "var(--fg-neutral)", sw = r.s ? 4 : 1.5, mk = r.s ? (isMe ? "url(#dl-ca-me)" : "url(#dl-ca-ai)") : "url(#dl-ca-g)";
+          if (!m) {
+            const x0 = isMe ? x + bw + 6 : x - 6, x1 = isMe ? W - bw - 8 : bw + 8;
+            el("path", { d: `M${x0},${y + bh / 2} L${x1},${nx.y + nx.bh / 2}`, fill: "none", stroke, "stroke-width": sw, "marker-end": mk }, g);
+          } else {
+            const ax = isMe ? bw - 40 : W - bw + 40;
+            el("path", { d: `M${ax},${y + bh + 3} L${ax},${nx.y - 4}`, fill: "none", stroke, "stroke-width": sw, "marker-end": mk }, g);
+          }
+        });
+      });
+    };
+    const tog = $("[data-chatmode]"), read = $("[data-chatread]");
+    tog.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      mode = b.dataset.v;
+      $$("button", tog).forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      Object.entries(groups).forEach(([k, g]) => g.classList.toggle("off", k !== mode));
+      read.innerHTML = READ[mode];
+      STATS[mode].forEach((v, i) => { const b = $(`[data-st="${i}"]`); b.textContent = v; b.classList.toggle("hot", i === 2 && mode === "ask"); });
+    }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 스프린트 위, 볼트 아래 (같은 열흘) ---------- */
+  (() => {
+    const svg = $("[data-boltsvg]"); if (!svg) return;
+    const UNITS = [
+      { n: "메뉴 불러오기", b: [[0, 1.5], [1.5, 2], [2, 4], [4, 5], [5, 7], [7, 8.5], [8.5, 10]] },
+      { n: "앱 알림 보내기", b: [[0, 2], [2, 3], [3, 3.5], [3.5, 5.5], [5.5, 7], [7, 9], [9, 10]] },
+      { n: "알레르기 표시", b: [[0, 1], [1, 3], [3, 4.5], [4.5, 5], [5, 7], [7, 8], [8, 10]] },
+    ];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 1060, lab = m ? 0 : 150, x1 = W - 4, fs = m ? 13 : 15;
+      const bh = m ? 26 : 30, X = (d) => lab + (x1 - lab) * d / 10;
+      // 머리줄: 이름(왼쪽) + 숫자(오른쪽, 모바일은 아랫줄)
+      const head = (y, name, stat, statM) => {
+        txt(svg, 0, y, name, { "font-size": m ? 15 : 17, "font-weight": 700 });
+        txt(svg, m ? 0 : x1, m ? y + 22 : y, m ? statM : stat, { "font-size": m ? 13.5 : 15, "text-anchor": m ? "start" : "end", fill: ME, "font-weight": 600 });
+        return m ? y + 22 : y;
+      };
+      const rowName = (y, n) => { if (m) txt(svg, 0, y - 8, n, { "font-size": fs, "font-weight": 600 }); else txt(svg, 0, y + bh / 2 + 5, n, { "font-size": fs, "font-weight": 600 }); };
+      let y = 20;
+      // 스프린트
+      y = head(y, "스프린트 2주", "결과물을 보고 승인하는 때 1번 · 다음 리뷰까지 열흘", "결과물 보고 승인 1번 · 다음 리뷰까지 열흘") + (m ? 34 : 22);
+      if (m) rowName(y, "팀 전체"); else txt(svg, 0, y + (bh + 8) / 2 + 5, "팀 전체", { "font-size": fs, "font-weight": 600 });
+      el("rect", { x: X(0) + 2, y, width: X(10) - X(0) - 4, height: bh + 8, rx: 9, fill: GRS, stroke: GR, "stroke-width": 1.5 }, svg);
+      const cy = y + (bh + 8) / 2;
+      [[0, m ? "1일 계획" : "1일 계획 승인", "start"], [10, m ? "10일 리뷰" : "10일 리뷰", "end"]].forEach(([d, t, a]) => {
+        // 1일 계획 승인은 결과물을 보기 전이라 속이 빈 점
+        el("circle", { cx: X(d) + (d ? -16 : 16), cy, r: m ? 6 : 7, fill: d ? ME : "var(--bg-base)", stroke: ME, "stroke-width": d ? 2 : 2.5 }, svg);
+        txt(svg, X(d) + (d ? -30 : 30), cy + 5, t, { "font-size": fs, "font-weight": 700, fill: ME, "text-anchor": a });
+      });
+      if (!m) txt(svg, (X(0) + X(10)) / 2, cy + 5, "열흘짜리 주기 하나", { "text-anchor": "middle", "font-size": 14, class: "dim" });
+      y += bh + 8 + (m ? 44 : 46);
+      // 볼트
+      y = head(y, "볼트 몇 시간~며칠", "결과물을 보고 승인하는 때 21번 · 가장 긴 간격 이틀", "결과물 보고 승인 21번 · 가장 긴 간격 이틀") + (m ? 32 : 22);
+      const rowH = m ? 58 : 44;
+      UNITS.forEach((u, i) => {
+        const ry = y + i * rowH;
+        rowName(ry, u.n);
+        u.b.forEach(([a, b]) => {
+          el("rect", { x: X(a) + 2, y: ry, width: X(b) - X(a) - 4, height: bh, rx: 6, fill: AIS, stroke: AI, "stroke-width": 1.5 }, svg);
+          el("circle", { cx: X(b) - 3, cy: ry + bh / 2, r: m ? 6 : 7, fill: ME, stroke: "var(--bg-base)", "stroke-width": 2 }, svg);
+        });
+      });
+      y += 2 * rowH + bh + 16;
+      // 축 (두 주기가 같은 열흘)
+      el("line", { x1: X(0), y1: y, x2: X(10), y2: y, stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5 }, svg);
+      for (let d = 0; d <= 10; d += 2) {
+        el("line", { x1: X(d), y1: y - 4, x2: X(d), y2: y + 4, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+        txt(svg, X(d), y + 20, d === 10 ? "10일" : `${d}`, { "text-anchor": d === 0 ? "start" : d === 10 ? "end" : "middle", "font-size": m ? 12.5 : 13.5, class: "dim" });
+      }
+      // 볼트 한 칸을 펼치면
+      const zy = y + 58;
+      el("line", { x1: 0, y1: zy - 18, x2: W, y2: zy - 18, stroke: "var(--line-subtle)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
+      txt(svg, 0, zy + 6, m ? "볼트 한 칸을 펼치면" : "볼트 한 칸을 펼치면: AI가 계획을 짜 오고 사람은 승인하고 확인합니다", { "font-size": m ? 14 : 15, "font-weight": 700 });
+      const steps = [["AI", "계획 초안"], ["사람", "승인"], ["AI", "코드·테스트"], ["사람", "결과 확인"]];
+      const per = m ? 2 : 4, sw = m ? (W - 12) / 2 : (W - 3 * 26) / 4, sh = 38;
+      steps.forEach(([who, t], i) => {
+        const r = Math.floor(i / per), c = i % per;
+        const x = c * (sw + (m ? 12 : 26)), yy = zy + 22 + r * (sh + 12);
+        const me = who === "사람";
+        if (me) el("rect", { x, y: yy, width: sw, height: sh, rx: sh / 2, fill: MES, stroke: ME, "stroke-width": 2 }, svg);
+        else el("rect", { x, y: yy, width: sw, height: sh, rx: 8, fill: AIS, stroke: AI, "stroke-width": 1.5 }, svg);
+        txt(svg, x + sw / 2, yy + sh / 2 + 5, `${who}: ${t}`, { "text-anchor": "middle", "font-size": m ? 13.5 : 14.5, "font-weight": me ? 700 : 400 });
+        if (!m && i < 3) el("path", { d: `M${x + sw + 6},${yy + sh / 2 - 6} L${x + sw + 18},${yy + sh / 2} L${x + sw + 6},${yy + sh / 2 + 6}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 2 }, svg);
+      });
+      const H = zy + 22 + (m ? 2 * sh + 12 : sh) + 4;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 규칙 파일 단계 흐름 (Figure 1 다시 그림) ---------- */
+  (() => {
+    const svg = $("[data-flowsvg]"); if (!svg) return;
+    // [글자 줄, 1=늘 하는 단계 / 0=일에 따라 / 2=빈 칸, 1=퍼즐 앱이 건너뜀]
+    // 퍼즐 앱(새 앱)은 늘 하는 단계만 거치고 일에 따라 하는 단계는 역공학까지 모두 건너뛰었다 (AWS 따라 하기 글 Step 5·7)
+    const PH = [
+      { n: "Inception", s: [[["작업 공간", "확인"], 1], [["역공학"], 0, 1], [["요구사항", "분석"], 1], [["사용자", "스토리"], 0, 1], [["워크플로", "계획"], 1], [["애플리케이션", "설계"], 0, 1], [["단위", "생성"], 0, 1]] },
+      { n: "Construction", loop: 1, s: [[["기능", "설계"], 0, 1], [["비기능", "요구사항"], 0, 1], [["비기능", "설계"], 0, 1], [["인프라", "설계"], 0, 1], [["코드", "생성"], 1], [["빌드·", "테스트"], 1]] },
+      { n: "Operations", s: [[["2025년 11월 판엔", "아직 비어 있음"], 2]] },
+    ];
+    const build = (m) => {
+      svg.innerHTML = "";
+      arrowDefs(svg, "dl-fl", "var(--fg-neutral)", 9); arrowDefs(svg, "dl-fl2", "var(--fg-neutral)", 7);
+      const W = m ? 360 : 560, gl = 16, per = m ? 3 : 4, gap = m ? 12 : 16, bw = (W - gl - (per - 1) * gap) / per, bh = 54, fs = m ? 13 : 14.5;
+      const X = (c) => gl + c * (bw + gap);
+      let y = 0;
+      PH.forEach((ph) => {
+        txt(svg, 0, y + 20, ph.n, { "font-size": m ? 16 : 18, "font-weight": 700 });
+        y += 34;
+        const y0 = y;
+        const rows = Math.ceil(ph.s.length / per);
+        ph.s.forEach(([lines, req, skip], i) => {
+          const r = Math.floor(i / per), c = i % per;
+          const wide = req === 2, w = wide ? (m ? W - gl : bw * 2 + gap) : bw;
+          const x = X(c), yy = y + r * (bh + 22);
+          // 건너뛴 단계: 취소선 대신 상자째 흐리게 + 작은 "건너뜀" 꼬리표 (점선 = 일에 따라 하는 단계는 그대로)
+          const g = skip ? el("g", { opacity: .5 }, svg) : svg;
+          el("rect", { x: x + 1, y: yy, width: w - 2, height: bh, rx: 9, fill: req === 1 ? AIS : "var(--bg-base)", stroke: req === 1 ? AI : "var(--fg-neutral)", "stroke-width": req === 1 ? 2 : 1.5, "stroke-dasharray": req === 1 ? "" : "6 4" }, g);
+          lines.forEach((t, k) => {
+            const ty = yy + bh / 2 + 5 + (k - (lines.length - 1) / 2) * 19;
+            txt(g, x + w / 2, ty, t, { "text-anchor": "middle", "font-size": fs, "font-weight": req === 1 ? 700 : 400, class: req === 1 ? undefined : "dim" });
+          });
+          if (skip) {
+            const tw = m ? 40 : 44, th = 17, tr = m ? 0 : 6;
+            el("rect", { x: x + w - tw - tr, y: yy - th / 2, width: tw, height: th, rx: th / 2, fill: "var(--bg-base)", stroke: "var(--fg-neutral)", "stroke-width": 1 }, svg);
+            txt(svg, x + w - tr - tw / 2, yy + 4.5, "건너뜀", { "text-anchor": "middle", "font-size": m ? 11 : 12, "font-weight": 600, fill: "var(--fg-neutral)" });
+          }
+          if (i < ph.s.length - 1 && c === per - 1) el("path", { d: `M${x + w / 2},${yy + bh + 3} V${yy + bh + 11} H${X(0) + bw / 2} V${yy + bh + 20}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": "url(#dl-fl2)" }, svg);
+          if (i < ph.s.length - 1 && c < per - 1) el("path", { d: `M${x + w + 3},${yy + bh / 2 - 5} L${x + w + gap - 3},${yy + bh / 2} L${x + w + 3},${yy + bh / 2 + 5}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.8 }, svg);
+        });
+        y += rows * (bh + 22) - 22;
+        if (ph.loop) {
+          // 마지막 단계(빌드·테스트)에서 첫 단계(기능 설계)로: Construction 전체를 단위마다 다시 돈다 (데스크톱·모바일 같은 범위)
+          const last = ph.s.length - 1, lc = last % per;
+          const lx = X(lc) + bw / 2, ly = y + 18;
+          el("path", { d: `M${lx},${y + 3} V${ly} H5 V${y0 + bh / 2} H${gl - 2}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "5 4", "marker-end": "url(#dl-fl)" }, svg);
+          const lab = "↺ 단위마다 Construction 전체를 다시 돌기", lw = 262;
+          if (W - lx - 12 > lw) { txt(svg, lx + 10, ly + 5, lab, { "font-size": 13.5, class: "dim" }); y += 28; }
+          else { txt(svg, 14, ly + 24, lab, { "font-size": 13.5, class: "dim" }); y += 46; }
+        }
+        y += 34;
+      });
+      svg.setAttribute("viewBox", `0 0 ${W} ${y - 20}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 근거 사다리 ---------- */
+  (() => {
+    const svg = $("[data-laddersvg]"); if (!svg) return;
+    const Z = [
+      { n: "주장", d: "잰 방법 없음", c: [
+        { t: ["AI-DLC 백서"], s: ["몇 주~몇 달의 일을", "몇 시간으로"] },
+        { t: ["AWS 블로그 2025-07"], s: ["몇 주 걸리던 일을", "몇 시간·며칠에"] },
+      ] },
+      { n: "자체 사례", d: "비교 기준 미공개", c: [
+        { t: ["웅진씽크빅"], s: ["8명, 2일 만에 MVP", "AWS 글"] },
+        { t: ["ConnectiveRx"], s: ["약 180시간 → 약 24시간", "AWS 공저 글"] },
+      ] },
+      { n: "통제 실험", d: "제비뽑기로 나눠 비교", c: [
+        { t: ["AI-DLC를 잰 실험"], s: ["찾지 못함"], empty: 1 },
+        { t: ["METR 2025"], s: ["AI 도구 쓴 숙련 개발자", "19% 느려짐"], other: 1 },
+      ] },
+    ];
+    const build = (m) => {
+      svg.innerHTML = "";
+      arrowDefs(svg, "dl-la", "var(--fg-neutral)");
+      // 계단 칸: 실제 근거가 있는 칸(주장·자체 사례)만 칠하고, 통제 실험 칸은 점선 빈 칸
+      const FILL = ["var(--bg-subtle)", GRS, "none"];
+      // 큰 물음표는 글자 대신 선으로 그린다 (그림 속 글자 크기 상한 28px 을 넘지 않게)
+      const qmark = (cx, cy, k) => {
+        const r = 11 * k;
+        el("path", { d: `M${cx - r},${cy - 13 * k} A${r} ${r} 0 1 1 ${cx},${cy - 2 * k} V${cy + 6 * k}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 4.5 * k, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+        el("circle", { cx, cy: cy + 17 * k, r: 3.2 * k, fill: "var(--fg-neutral)" }, svg);
+      };
+      const item = (x, y, c, fs) => {
+        const lh = fs + 5;
+        const col = c.empty || c.other ? "var(--fg-neutral)" : undefined;
+        txt(svg, x, y + fs + 2, c.t[0], { "font-size": fs + 1, "font-weight": 700, fill: col });
+        c.s.forEach((t, k) => txt(svg, x, y + fs + 2 + (k + 1) * lh, t, { "font-size": fs, fill: c.empty ? "var(--fg-strong)" : col, "font-weight": c.empty ? 700 : 400, class: col || c.empty ? undefined : "dim" }));
+        return 6 + (1 + c.s.length) * lh;
+      };
+      if (!m) {
+        const cw = 180, g = 10, W = 3 * cw + 2 * g, base = 362, H = base + 40;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        Z.forEach((z, i) => {
+          const x = i * (cw + g), sh = 236 + i * 58, top = base - sh, empty = i === 2;
+          el("rect", { x, y: top, width: cw, height: sh, rx: 8, fill: FILL[i], stroke: empty ? "var(--fg-neutral)" : GR, "stroke-width": empty ? 1.8 : 1.5, "stroke-dasharray": empty ? "6 5" : "" }, svg);
+          txt(svg, x + 12, top + 26, z.n, { "font-size": 17, "font-weight": 700 });
+          txt(svg, x + 12, top + 47, z.d, { "font-size": 13.5, class: "dim" });
+          el("line", { x1: x + 12, y1: top + 62, x2: x + cw - 12, y2: top + 62, stroke: empty ? "var(--line-subtle)" : GR, "stroke-width": 1, opacity: .6 }, svg);
+          let y = top + 72;
+          z.c.forEach((c, k) => {
+            if (c.other) { el("line", { x1: x + 12, y1: y + 2, x2: x + cw - 12, y2: y + 2, stroke: "var(--line-subtle)", "stroke-width": 1, "stroke-dasharray": "3 3" }, svg); txt(svg, x + 12, y + 20, "참고: AI 도구 전반", { "font-size": 12.5, class: "dim" }); y += 26; }
+            y += item(x + 12, y, c, 14) + 12;
+            // 빈 맨 위 계단: AI-DLC를 잰 실험 자리에 큰 물음표
+            if (c.empty) { qmark(x + cw / 2, y + 30, 1.4); y += 70; }
+          });
+        });
+        el("line", { x1: 0, y1: base + 14, x2: W - 4, y2: base + 14, stroke: "var(--fg-neutral)", "stroke-width": 2, "marker-end": "url(#dl-la)" }, svg);
+        txt(svg, W - 18, base + 34, "근거가 단단할수록 계단이 높습니다", { "font-size": 13.5, class: "dim", "text-anchor": "end" });
+      } else {
+        // 위: 작은 가로 계단 (데스크톱과 같은 모양, 맨 위 칸은 점선 빈 칸 + 물음표)
+        const W = 360, cw = 114, g = 9, base = 116, rh = 150, top0 = base + 52, H = top0 + 3 * rh;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        Z.forEach((z, i) => {
+          const x = i * (cw + g), sh = 44 + i * 34, t = base - sh, empty = i === 2;
+          el("rect", { x, y: t, width: cw, height: sh, rx: 7, fill: FILL[i], stroke: empty ? "var(--fg-neutral)" : GR, "stroke-width": empty ? 1.6 : 1.2, "stroke-dasharray": empty ? "5 4" : "" }, svg);
+          txt(svg, x + 10, t + 22, z.n, { "font-size": 14, "font-weight": 700 });
+          if (empty) qmark(x + cw / 2, t + 58, 0.95);
+        });
+        el("line", { x1: 0, y1: base + 12, x2: W - 4, y2: base + 12, stroke: "var(--fg-neutral)", "stroke-width": 1.8, "marker-end": "url(#dl-la)" }, svg);
+        txt(svg, W - 10, base + 32, "근거가 단단할수록 계단이 높습니다", { "font-size": 12.5, class: "dim", "text-anchor": "end" });
+        Z.forEach((z, i) => {
+          const y = top0 + i * rh;
+          // 왼쪽 작은 계단: 근거가 있는 칸만 칠하고 통제 실험 칸은 점선
+          for (let k = 0; k <= i; k++) {
+            const emp = k === 2;
+            el("rect", { x: k * 12, y: y + 30 - k * 9, width: 9, height: 12 + k * 9, rx: 2, fill: emp ? "none" : GR, stroke: emp ? "var(--fg-neutral)" : "none", "stroke-width": 1.2, "stroke-dasharray": emp ? "2 2" : "" }, svg);
+          }
+          txt(svg, 46, y + 26, z.n, { "font-size": 16, "font-weight": 700 });
+          txt(svg, 46, y + 46, z.d, { "font-size": 13, class: "dim" });
+          z.c.forEach((c, k) => {
+            const x = 46 + k * 160, yy = y + 62;
+            if (c.empty) el("rect", { x: x - 8, y: yy - 4, width: 152, height: 6 + (1 + c.s.length) * 18 + 6, rx: 8, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.8, "stroke-dasharray": "6 5" }, svg);
+            item(x, yy, c, 13);
+          });
+          if (i < 2) el("line", { x1: 0, y1: y + rh - 8, x2: W, y2: y + rh - 8, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        });
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 세 단계: 운영 → 다음 의도 되돌이 화살표 ---------- */
+  (() => {
+    const svg = $("[data-loopsvg]"); if (!svg) return;
+    const scenes = $$(".dl-room .scene");
+    const build = () => {
+      svg.innerHTML = "";
+      const W = Math.round(svg.parentElement.getBoundingClientRect().width) || 1060, m = mobile();
+      arrowDefs(svg, "dl-lp", ME, 12);
+      const lab = "운영에서 배운 것 → 다음 의도", fs = m ? 14 : 15;
+      if (!m && scenes.length === 3) {
+        const L = svg.getBoundingClientRect().left;
+        const cx = (e) => { const r = e.getBoundingClientRect(); return r.left - L + r.width / 2; };
+        const a = cx(scenes[0]), b = cx(scenes[2]), H = 74;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        el("path", { d: `M${b},4 V40 H${a} V8`, fill: "none", stroke: ME, "stroke-width": 2.5, "stroke-linejoin": "round", "marker-end": "url(#dl-lp)" }, svg);
+        const mid = (a + b) / 2, tw = 250;
+        el("rect", { x: mid - tw / 2, y: 26, width: tw, height: 28, rx: 14, fill: "var(--bg-base)" }, svg);
+        txt(svg, mid, 45, lab, { "text-anchor": "middle", "font-size": fs, "font-weight": 700, fill: ME });
+        txt(svg, a + 8, 66, "다시 Inception으로", { "font-size": 13, class: "dim" });
+      } else {
+        const H = 70;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        el("path", { d: `M${W - 24},4 V30 Q${W - 24},44 ${W - 38},44 H24 Q10,44 10,30 V8`, fill: "none", stroke: ME, "stroke-width": 2.5, "marker-end": "url(#dl-lp)" }, svg);
+        txt(svg, 22, 24, "↑ Inception으로", { "font-size": 13.5, "font-weight": 700, fill: ME });
+        txt(svg, W / 2, 66, lab, { "text-anchor": "middle", "font-size": fs, "font-weight": 700, fill: ME });
+      }
+    };
+    build();
+    let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(build, 120); }, { passive: true, signal });
+  })();
+
+  /* ---------- 큰 단계 3 → 5 ---------- */
+  (() => {
+    const svg = $("[data-phasesvg]"); if (!svg) return;
+    const P = [
+      { n: "Initialization", k: "준비", old: null, now: 3 },
+      { n: "Ideation", k: "아이디어 구상", old: null, now: 7 },
+      { n: "Inception", k: "시작", old: 7, now: 9 },
+      { n: "Construction", k: "만들기", old: 6, now: 7 },
+      { n: "Operation", k: "운영", old: 0, now: 7 },
+    ];
+    const squares = (g, x, y, n, per, sz, gp, fill, stroke) => {
+      for (let i = 0; i < n; i++) el("rect", { x: x + (i % per) * (sz + gp), y: y + Math.floor(i / per) * (sz + gp), width: sz, height: sz, rx: 2, fill, stroke, "stroke-width": 1.2 }, g);
+    };
+    const cellBox = (x, y, w, h, v, isNew) => {
+      if (v === null) {
+        txt(svg, x + w / 2, y + h / 2 + 5, isNew ? "" : "없음", { "text-anchor": "middle", "font-size": 13, class: "dim" });
+        return;
+      }
+      if (v === 0) {
+        el("rect", { x, y, width: w, height: h, rx: 8, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+        txt(svg, x + w / 2, y + h / 2 + 5, "비어 있음", { "text-anchor": "middle", "font-size": 13, class: "dim" });
+        return;
+      }
+      return true;
+    };
+    const build = (m) => {
+      svg.innerHTML = "";
+      if (!m) {
+        const W = 1060, lab = 130, g = 14, cw = (W - lab - 4 * g) / 5, bh = 36, y1 = 58, y2 = 108, H = 146;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        txt(svg, 0, y1 + 23, "2025년 11월 · 13개", { "font-size": 14, class: "dim" });
+        txt(svg, 0, y2 + 23, "2.11.0 판 · 33개", { "font-size": 14, "font-weight": 700 });
+        P.forEach((p, i) => {
+          const x = lab + i * (cw + g);
+          txt(svg, x + 2, 18, p.n, { "font-size": 16, "font-weight": 700 });
+          txt(svg, x + 2, 38, p.k + (p.old === null ? " · 새로" : ""), { "font-size": 13, class: "dim" });
+          if (cellBox(x, y1, cw, bh, p.old, false)) {
+            el("rect", { x, y: y1, width: cw, height: bh, rx: 8, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5 }, svg);
+            squares(svg, x + 12, y1 + 11, p.old, 9, 13, 4, GRS, GR);
+          }
+          el("rect", { x, y: y2, width: cw, height: bh, rx: 8, fill: "var(--bg-base)", stroke: AI, "stroke-width": p.old === null ? 2.5 : 1.5 }, svg);
+          squares(svg, x + 12, y2 + 11, p.now, 9, 13, 4, AIS, AI);
+        });
+      } else {
+        const W = 360, nc = 128, c1 = 136, c2 = 252, rh = 50, top = 30, H = top + 5 * rh;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        txt(svg, c1, 16, "2025년 11월", { "font-size": 13, class: "dim" });
+        txt(svg, c2, 16, "2.11.0 판", { "font-size": 13, "font-weight": 700 });
+        P.forEach((p, i) => {
+          const y = top + i * rh;
+          el("line", { x1: 0, y1: y, x2: W, y2: y, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+          txt(svg, 0, y + 20, p.n, { "font-size": 13.5, "font-weight": 700 });
+          txt(svg, 0, y + 38, p.k + (p.old === null ? " · 새로" : ""), { "font-size": 12.5, class: "dim" });
+          if (p.old === null) txt(svg, c1, y + 26, "없음", { "font-size": 12.5, class: "dim" });
+          else if (p.old === 0) txt(svg, c1, y + 26, "비어 있음", { "font-size": 12.5, class: "dim" });
+          else squares(svg, c1, y + 14, p.old, 9, 9, 3, GRS, GR);
+          squares(svg, c2, y + 14, p.now, 9, 9, 3, AIS, AI);
+        });
+        void nc;
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 마무리: 이 글의 그림 셋을 작게 ---------- */
+  (() => {
+    const svg = $("[data-recapsvg]"); if (!svg) return;
+    const LAB = [["결정이 필요한 질문을", "앞당깁니다"], ["승인 게이트를", "정해 둡니다"], ["사람이 확인하는", "간격을 줄입니다"]];
+    const mini = [
+      (g, x, y, w) => { // 질문 파일
+        el("rect", { x, y, width: w, height: 112, rx: 8, fill: "var(--bg-base)", stroke: AI, "stroke-width": 1.8 }, g);
+        el("rect", { x: x + 1, y: y + 1, width: w - 2, height: 22, rx: 7, fill: AIS }, g);
+        txt(g, x + 10, y + 17, "질문 파일", { "font-size": 13, "font-family": "var(--font-mono)" });
+        ["질문 1", "질문 2", "질문 3"].forEach((q, i) => {
+          txt(g, x + 10, y + 46 + i * 24, q, { "font-size": 13 });
+          txt(g, x + w - 14, y + 46 + i * 24, ["C", "A", "A"][i], { "font-size": 13, "font-weight": 700, fill: ME, "text-anchor": "end" });
+        });
+      },
+      (g, x, y, w) => { // 계획 → 승인
+        [["메뉴", 0], ["알림", 1], ["알레르기", 2]].forEach(([n, i]) => {
+          el("rect", { x: x + i * (w / 3) + 1, y: y + 8, width: w / 3 - 4, height: 30, rx: 7, fill: AIS, stroke: AI, "stroke-width": 1.5 }, g);
+          txt(g, x + i * (w / 3) + w / 6 - 1, y + 28, n, { "font-size": 12, "text-anchor": "middle" });
+        });
+        el("line", { x1: x, y1: y + 62, x2: x + w, y2: y + 62, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, g);
+        el("rect", { x: x + w / 2 - 54, y: y + 76, width: 108, height: 34, rx: 17, fill: MES, stroke: ME, "stroke-width": 2 }, g);
+        txt(g, x + w / 2, y + 98, "사람 승인 ✓", { "font-size": 13.5, "font-weight": 700, "text-anchor": "middle" });
+      },
+      (g, x, y, w) => { // 짧은 볼트
+        [[0, .3, .55, .8, 1], [0, .4, .6, 1], [0, .2, .5, .75, 1]].forEach((cuts, r) => {
+          const yy = y + 14 + r * 34;
+          for (let k = 0; k < cuts.length - 1; k++) {
+            const a = x + cuts[k] * w, b = x + cuts[k + 1] * w;
+            el("rect", { x: a + 2, y: yy, width: b - a - 4, height: 22, rx: 5, fill: AIS, stroke: AI, "stroke-width": 1.3 }, g);
+            el("circle", { cx: b - 3, cy: yy + 11, r: 5.5, fill: ME, stroke: "var(--bg-base)", "stroke-width": 1.5 }, g);
+          }
+        });
+      },
+    ];
+    const badge = (x, y, n) => { el("circle", { cx: x, cy: y, r: 12, fill: ME }, svg); txt(svg, x, y + 5, String(n), { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: "var(--bg-base)" }); };
+    const build = (m) => {
+      svg.innerHTML = "";
+      if (!m) {
+        const W = 1060, pw = 230, gap = (W - 3 * pw) / 2, H = 196;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        mini.forEach((f, i) => {
+          const x = i * (pw + gap);
+          f(svg, x, 0, pw);
+          if (i < 2) el("path", { d: `M${x + pw + gap / 2 - 10},56 l20,0 m-7,-7 l7,7 l-7,7`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 2 }, svg);
+          badge(x + 12, 146, i + 1);
+          txt(svg, x + 32, 151, LAB[i].join(" "), { "font-size": 15, "font-weight": 600 });
+        });
+      } else {
+        const W = 360, pw = 176, rh = 136, H = 3 * rh - 16;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        mini.forEach((f, i) => {
+          const y = i * rh;
+          f(svg, 0, y, pw);
+          badge(pw + 22, y + 40, i + 1);
+          LAB[i].forEach((t, k) => txt(svg, pw + 40, y + 45 + k * 22, t, { "font-size": 14, "font-weight": 600 }));
+        });
+      }
+    };
+    responsive(build);
+  })();
+})();
+</script>
