@@ -42,6 +42,12 @@ const found = await p.evaluate(() => {
   }
   if (!el) return null;
   el.setAttribute("data-thumb-pick", "");
+  // 그림이 화면보다 길면 스크롤하며 찍는데, 그때 사이트 머리글처럼 고정된 요소가 그림 위에 겹쳐 찍힌다
+  for (const n of document.body.querySelectorAll("*")) {
+    if (root.contains(n) || n.contains(root)) continue;
+    const pos = getComputedStyle(n).position;
+    if (pos === "fixed" || pos === "sticky") n.style.visibility = "hidden";
+  }
   const act = el.getAttribute("data-thumb-act");
   if (act) new Function("el", act)(el);
   el.scrollIntoView({ block: "center" });
