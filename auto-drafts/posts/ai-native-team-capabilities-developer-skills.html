@@ -1,0 +1,1343 @@
+---
+title: AI 코딩 도구는 팀의 약점까지 키운다
+slug: ai-native-team-capabilities-developer-skills
+excerpt: 같은 날 같은 코딩 에이전트를 받아도 어떤 팀은 내보내는 일이 늘고 어떤 팀은 고칠 일만 늘어납니다. 기초 일곱 겹 위에 층을 쌓는 실험에서 시작해 DORA 2025 보고서의 처리량·불안정성 두 눈금, AI 역량 모델 일곱 가지, 일곱 팀 유형, 동료를 타고 퍼지는 도입(Microsoft 연구), 에이전트 하나를 사람이 지켜보는 2026년 현장, 개발자가 키울 것까지 원문으로 확인해 정리하고 시리즈 열한 편을 건물 하나로 묶었습니다.
+tags: [DORA, AI 역량 모델, 처리량, 안정성, 팀 도입, 코딩 에이전트, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 11
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-native-team-capabilities-developer-skills-mv9rv6if.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·짧은 리드 두 문단 → 토글·기초 범례 둘 → 공사장 두 개: 탑 높이 = 남은 층, 금 간 층은 옆 '버린 층' 더미, 판독은 남은 층 하나만 크게. 판정 문장은 데스크톱에선 토글 바로 아래, 모바일에선 공사장 아래. 기본 선택 'AI 도구를 주면') → 글|그림(앰프 두 줄 + 그림 아래 '같은 점', 왼쪽 글에 '다른 점') → 글 + 넓은 그림(한 주 배포 타임라인, 지표 정의 줄바꿈 목록) + 글|그림(2024·2025 방향 표) → 실험판(역량 7 → 결과 7, '작은 단위로 일하기' 기본 선택, 판독은 테두리 없는 소제목) + 글|그림(원 도식 접기 — 이름에 AI 가 든 두 역량은 실험판 왼쪽 칸에 AI 표시) → 제목 위 + 글|그림(100% 유형 띠, 4번 기본 선택) + 글|그림(1번·7번 평균 대비 점 그림, 원 거미줄 접기, 그 아래 2026 ROI·Quick Check 접기) → 실험판 전폭 띠(동료 묶음 '같은 큰 팀' 기본 → 조직도 | 오즈 막대) + 한 단 글 → 글|그림 세 칸(직접 그린 Stack Overflow 막대 + 지켜보는 사람 63% 막대·원본 접기 / 같은 0~100 눈금의 맡김 띠) → 인용(제목보다 약하게)|설명 + 글|그림(MenuGen, '이메일로 잇기' 기본 선택) + 전폭 네 칸(맡길 수 없는 네 가지 일) → 글|그림(시리즈 건물 지도, 기초 = 이 글이 다룬 일곱 역량 — 히어로 기초 일곱 겹과 같은 은유) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음 | 글의 성격: 같은 도구가 팀의 기초에 따라 다른 결과를 낸다는 것을 공사장 두 개로 겪게 하는 이야기. 보라 = 역량(기초), 초록 = 처리량·잘 되는 쪽, 빨강 = 불안정·어려움, 주황 = AI 도구가 글 끝까지 같은 뜻(시리즈 지도의 '결과를 지키는 것'은 파랑) | 버린 후보: 칩 채우기·요청/스펙 토글·하루 띠·배선 지도·서랍장·형광 랜턴·네 저울·물탱크(1~10편 히어로), 앰프 두 대 히어로(일곱 역량이 노브로 뭉개짐 → 비유 그림으로), 전염 시뮬레이션(확률을 지어내야 함), 레이더 직접 그리기(값 미공개), 목록형 시리즈 지도(LLM 인프라 12편과 겹침) -->
+<style>
+.post-page .tc {
+  --cap: rgb(112, 76, 208); --cap-soft: rgb(236, 230, 252);
+  --put: rgb(28, 136, 84); --put-soft: rgb(212, 240, 224);
+  --bad: rgb(208, 50, 50); --bad-soft: rgb(252, 224, 222);
+  --ai: rgb(214, 118, 18); --ai-soft: rgb(253, 234, 212);
+  --mute: rgb(128, 134, 146); --mute-soft: rgb(234, 236, 240);
+  --keep: rgb(40, 104, 196); --keep-soft: rgb(222, 234, 252);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .tc {
+  --cap: rgb(176, 148, 255); --cap-soft: rgb(50, 38, 92);
+  --put: rgb(96, 212, 148); --put-soft: rgb(20, 62, 40);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(86, 30, 30);
+  --ai: rgb(255, 168, 86); --ai-soft: rgb(84, 50, 20);
+  --mute: rgb(160, 166, 178); --mute-soft: rgb(48, 52, 60);
+  --keep: rgb(120, 170, 255); --keep-soft: rgb(26, 44, 80);
+}
+.post-page .tc * { box-sizing: border-box; }
+.post-page .tc-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .tc h1, .post-page .tc h2, .post-page .tc h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .tc h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; max-width: 15em; margin-bottom: 22px; }
+.post-page .tc h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .tc h3 { font-size: 18px; line-height: 1.45; margin-bottom: 12px; }
+.post-page .tc p, .post-page .tc li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .tc p { margin: 0 0 1.5em; }
+.post-page .tc b { color: var(--fg-strong); }
+.post-page .tc :not(pre) > code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.post-page .tc a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .tc .tc-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .tc details { margin: 0 0 1.4em; }
+.post-page .tc summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .tc details p { margin-top: 10px; font-size: 16px; }
+.post-page .tc svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .tc svg text { font-family: var(--font-sans); }
+.post-page .tc-try { font-size: 15px; color: var(--fg-strong); font-weight: 600; margin: 0 0 12px !important; line-height: 1.5 !important; }
+.post-page .tc-fig { margin: 0; }
+.post-page .tc-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; }
+[data-theme="dark"] .post-page .tc-img img { filter: brightness(.8); border-color: var(--line-normal); }
+.post-page .tc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; line-height: 1.6; }
+.post-page .tc-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.post-page .tc-legend i.cap { background: var(--cap); }
+.post-page .tc-legend i.hole { border: 2px dashed var(--mute); }
+.post-page .tc-legend i.put { background: var(--put); }
+.post-page .tc-legend i.bad { background: var(--bad); }
+.post-page .tc-legend i.ai { background: var(--ai); }
+
+.post-page .tc-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .tc-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .tc-split { grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; }
+.post-page .tc-split .ta { grid-area: a; }
+.post-page .tc-split .tf { grid-area: f; }
+.post-page .tc-split .tb { grid-area: b; }
+.post-page .tc-col { max-width: 40em; }
+.post-page .tc-head p { max-width: 42em; }
+.post-page .tc-wide { margin-top: clamp(36px, 5vw, 56px); }
+.post-page .tc-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(32px, 5vw, 48px); }
+
+.post-page .tc-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; max-width: 100%; }
+.post-page .tc-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 15px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .tc-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+/* 히어로 */
+.post-page .tc-hero { padding-top: clamp(28px, 4vw, 44px); }
+.post-page .tc-lead { max-width: 46em; }
+.post-page .tc-lead p { margin-bottom: 1.1em; }
+.post-page .tc-lead p:last-child { margin-bottom: 0; }
+.post-page .tc-yard { margin-top: clamp(24px, 3vw, 32px); }
+.post-page .tc-hint { font-size: 14px; color: var(--fg-neutral); line-height: 1.5; }
+.post-page .tc-hint.gone { visibility: hidden; }
+.post-page .tc-yard .tc-legend { margin: 0 0 14px; }
+.post-page .tc-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 14px; }
+.post-page .tc-ctl .lab { font-size: 15px; font-weight: 600; color: var(--fg-strong); }
+.post-page .tc-sites { display: grid; grid-template-columns: 1fr 1fr; gap: 0 clamp(20px, 5vw, 72px); max-width: 980px; }
+.post-page .tc-site .nm { font-size: 17px; font-weight: 700; color: var(--fg-strong); margin: 0 !important; line-height: 1.5 !important; }
+.post-page .tc-site .nm span { font-size: 14.5px; font-weight: 400; color: var(--fg-neutral); margin-left: 8px; }
+.post-page .tc-site svg { max-width: 420px; }
+.post-page .tc-site .fl { opacity: 0; transform: translateY(-10px); transition: opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1); }
+.post-page .tc-site .fl.on { opacity: 1; transform: none; }
+.post-page .tc-site .fl rect { fill: var(--put-soft); stroke: var(--put); stroke-width: 1.5; transition: fill .4s, stroke .4s; }
+.post-page .tc-site .fl .ck { stroke: transparent; transition: stroke .4s; }
+.post-page .tc-site .fl.bad rect { fill: var(--bad-soft); stroke: var(--bad); }
+.post-page .tc-site .fl.bad .ck { stroke: var(--bad); }
+.post-page .tc-site .crane { transition: opacity .5s; }
+.post-page .tc-site .bd { cursor: pointer; outline: none; }
+.post-page .tc-site .bd rect { fill: transparent; stroke: var(--mute); stroke-width: 1.5; stroke-dasharray: 5 4; transition: fill .3s, stroke .3s; }
+.post-page .tc-site .bd text { fill: var(--fg-normal); transition: fill .3s; }
+.post-page .tc-site .bd.full rect { fill: var(--cap); stroke: var(--cap); stroke-dasharray: none; }
+.post-page .tc-site .bd.full text { fill: #fff; font-weight: 600; }
+[data-theme="dark"] .post-page .tc-site .bd.full text { fill: rgb(24, 18, 44); }
+.post-page .tc-site .bd:focus-visible rect { stroke: var(--fg-strong); stroke-width: 2.5; }
+.post-page .tc-sites { grid-template-rows: auto auto auto; }
+.post-page .tc-site { display: grid; grid-row: span 3; grid-template-rows: subgrid; align-content: start; }
+.post-page .tc-read { display: flex; flex-direction: column; gap: 0; line-height: 1.5; margin: 4px 0 10px; color: var(--fg-neutral); }
+.post-page .tc-read .kp { font-size: 18px; font-weight: 600; color: var(--fg-strong); }
+.post-page .tc-read .kp b { font-family: var(--font-mono); font-size: 26px; color: var(--put); margin-left: 2px; }
+.post-page .tc-read .sm { font-size: 14px; }
+.post-page .tc-read .bd2 { color: var(--bad); }
+.post-page .tc-verdict { font-size: 16.5px !important; line-height: 1.75 !important; margin: 0 0 16px !important; max-width: 52em; min-height: 3.5em; }
+
+/* 앰프 */
+.post-page .tc-amp { max-width: 600px; }
+.post-page .tc-vs { margin: 0 0 1.5em; }
+.post-page .tc-amp .tc-vs { margin: 28px 0 0; }
+.post-page .tc-vs p { margin: 0 0 0.6em !important; }
+.post-page .tc-vs p:last-child { margin-bottom: 0 !important; }
+.post-page .tc-vs .k { display: block; font-size: 16px; font-weight: 700; color: var(--fg-strong); line-height: 1.6; margin-bottom: 2px; }
+/* 한 주의 배포 */
+.post-page .tc-pipe { max-width: none; }
+.post-page .tc-defs { display: flex; flex-direction: column; margin-top: 6px; }
+.post-page .tc-yr svg { max-width: 520px; }
+/* 역량 모델 */
+.post-page .tc-cmod { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 20px clamp(28px, 4vw, 56px); align-items: start; margin-top: clamp(36px, 5vw, 52px); }
+.post-page .tc-cmod .tc-try { grid-column: 1 / -1; }
+.post-page .tc-cmod svg { max-width: 760px; }
+.post-page .tc-cmod .cp { cursor: pointer; outline: none; }
+.post-page .tc-cmod .cp rect { fill: var(--cap-soft); stroke: var(--cap); stroke-width: 1.5; transition: fill .3s; }
+.post-page .tc-cmod .cp text { fill: var(--fg-strong); }
+.post-page .tc-cmod .cp.on rect { fill: var(--cap); }
+.post-page .tc-cmod .cp.on text { fill: #fff; font-weight: 600; }
+[data-theme="dark"] .post-page .tc-cmod .cp.on text { fill: rgb(24, 18, 44); }
+.post-page .tc-cmod .cp:focus-visible rect { stroke-width: 3; }
+.post-page .tc-cmod .oc rect { fill: var(--bg-base); stroke: var(--line-normal); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.post-page .tc-cmod .oc text { fill: var(--fg-neutral); }
+.post-page .tc-cmod .oc.on rect { fill: var(--cap-soft); stroke: var(--cap); stroke-width: 2.2; }
+.post-page .tc-cmod .oc.on text { fill: var(--fg-strong); font-weight: 600; }
+.post-page .tc-cmod .oc.on.up rect { fill: var(--put-soft); stroke: var(--put); }
+.post-page .tc-cmod .oc.on.dn rect { fill: var(--bad-soft); stroke: var(--bad); }
+.post-page .tc-cmod .ed { transition: opacity .3s, stroke .3s; }
+.post-page .tc-cmodread { font-size: 16px !important; line-height: 1.75 !important; margin: 0 !important; min-height: 9em; padding: 2px 0 0; }
+.post-page .tc-cmodread .g { color: var(--put); font-weight: 700; }
+.post-page .tc-cmodread .r { color: var(--bad); font-weight: 700; }
+.post-page .tc-cmodread .en { font-size: 14px; color: var(--fg-neutral); white-space: nowrap; }
+.post-page .tc-cmodread b:first-child { font-size: 18px; font-family: var(--font-display); }
+.post-page .tc-cmodread .to { color: var(--cap); font-weight: 600; }
+.post-page .tc-cmodread .g, .post-page .tc-cmodread .r { white-space: nowrap; }
+.post-page .tc-cmod .cp .aitag rect { fill: var(--ai); stroke: none; }
+.post-page .tc-cmod .cp .aitag text { fill: #fff; font-weight: 700; }
+[data-theme="dark"] .post-page .tc-cmod .cp .aitag text { fill: rgb(40, 22, 6); }
+.post-page .tc-cmod .cp.on .aitag rect { fill: var(--bg-base); }
+.post-page .tc-cmod .cp.on .aitag text { fill: var(--ai); }
+/* 시리즈 지도 */
+.post-page .tc-map svg { max-width: 640px; }
+.post-page .tc-map .ep rect { stroke-width: 1.5; transition: fill .2s; }
+.post-page .tc-map .ep rect.g0 { fill: var(--put-soft); stroke: var(--put); }
+.post-page .tc-map .ep rect.g1 { fill: var(--ai-soft); stroke: var(--ai); }
+.post-page .tc-map .ep rect.g2 { fill: var(--keep-soft); stroke: var(--keep); }
+.post-page .tc-map .ep:hover rect, .post-page .tc-map .ep:focus rect { stroke-width: 3; }
+.post-page .tc svg a, .post-page .tc-map a text { text-decoration: none; }
+/* 팀 유형 */
+.post-page .tc-clu svg { max-width: 600px; }
+.post-page .tc-clu .sg { cursor: pointer; outline: none; }
+.post-page .tc-clu .sg rect { stroke-width: 1.5; transition: opacity .3s, fill .3s; }
+.post-page .tc-clu .sg.h rect { fill: var(--bad-soft); stroke: var(--bad); }
+.post-page .tc-clu .sg.g rect { fill: var(--put-soft); stroke: var(--put); }
+.post-page .tc-clu .sg.h.on rect { fill: var(--bad); }
+.post-page .tc-clu .sg.g.on rect { fill: var(--put); }
+.post-page .tc-clu .sg text { fill: var(--fg-strong); }
+.post-page .tc-clu .sg.on text { fill: var(--bg-base); }
+.post-page .tc-clu .sg.dim { opacity: .45; }
+.post-page .tc-clu .sg:focus-visible rect { stroke-width: 3; }
+.post-page .tc-clread, .post-page .tc-netread, .post-page .tc-menuread { font-size: 16px !important; line-height: 1.75 !important; margin: 14px 0 0 !important; min-height: 5.4em; }
+.post-page .tc-menuread { min-height: 0; }
+.post-page .tc-clread .en { font-size: 14px; color: var(--fg-neutral); }
+.post-page .tc-dots svg { max-width: 560px; }
+.post-page .tc-sec .tc-h2top { margin-bottom: 28px; }
+.post-page .tc-split3 { grid-template-areas: "a f" "b f" "b g" "c g"; grid-template-rows: auto auto auto 1fr; }
+.post-page .tc-split3 .tg { margin-top: 48px; }
+.post-page .tc-split3 .ta { grid-area: a; } .post-page .tc-split3 .tf { grid-area: f; } .post-page .tc-split3 .tb { grid-area: b; } .post-page .tc-split3 .tg { grid-area: g; } .post-page .tc-split3 .tcc { grid-area: c; }
+/* 확산 */
+.post-page .tc-netread { margin: 0 0 18px !important; min-height: 3.6em; max-width: 46em; }
+.post-page .tc-net { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 24px clamp(28px, 4vw, 56px); align-items: center; }
+.post-page .tc-net svg[data-org] { max-width: 520px; }
+.post-page .tc-net svg[data-odds] { max-width: 440px; }
+.post-page .tc-net .pn circle { fill: var(--bg-base); stroke: var(--fg-neutral); stroke-width: 1.8; transition: fill .3s, stroke .3s; }
+.post-page .tc-net .pn text { fill: var(--fg-neutral); }
+.post-page .tc-net .pn.me circle { fill: var(--fg-strong); stroke: var(--fg-strong); }
+.post-page .tc-net .pn.me text.in { fill: var(--bg-base); }
+.post-page .tc-net .pn.on circle { fill: var(--ai); stroke: var(--ai); }
+.post-page .tc-net .pn.grp circle { stroke: var(--ai); stroke-width: 2.6; }
+.post-page .tc-net .pn.on text { fill: var(--fg-strong); font-weight: 700; }
+.post-page .tc-net .rv { transition: opacity .3s; }
+[data-theme="dark"] .post-page .tc-net .rv { stroke-width: 2.2; }
+[data-theme="dark"] .post-page .tc-net .pn circle { stroke: var(--fg-normal); }
+[data-theme="dark"] .post-page .tc-net .pn.grp circle, [data-theme="dark"] .post-page .tc-net .pn.on circle { stroke: var(--ai); }
+[data-theme="dark"] .post-page .tc-net .row.dim { opacity: .5; }
+.post-page .tc-net .row { transition: opacity .3s; }
+.post-page .tc-net .row.dim { opacity: .35; }
+.post-page .tc-net .row .tr { fill: var(--ai); }
+.post-page .tc-net .row .kp { fill: var(--put); }
+.post-page .tc-net .row .nm, .post-page .tc-net .row .tv { fill: var(--fg-strong); }
+.post-page .tc-net .row .kv { fill: var(--put); }
+/* 현장 */
+.post-page .tc-deleg { max-width: 560px; }
+/* 인용 */
+.post-page .tc-quote { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .tc-quote blockquote { margin: 0; padding: 4px 0 0; }
+.post-page .tc-quote .ko { font-family: var(--font-display); font-size: clamp(19px, 1.8vw, 22px) !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 500; margin: 0 0 12px !important; }
+.post-page .tc-quote .en { font-size: 15px !important; color: var(--fg-neutral); line-height: 1.6 !important; }
+.post-page .tc-menu svg { max-width: 560px; margin-top: 14px; }
+.post-page .tc-menu .tc-hint { display: block; margin-top: 8px; }
+.post-page .tc-menu .lnk line, .post-page .tc-menu .lnk path { stroke: var(--line-normal); stroke-dasharray: 5 5; transition: stroke .3s, opacity .3s; }
+.post-page .tc-menu .lnk text { fill: var(--fg-neutral); transition: fill .3s; }
+.post-page .tc-menu svg.m-em .em line, .post-page .tc-menu svg.m-em .em path { stroke: var(--bad); stroke-dasharray: 2 6; }
+.post-page .tc-menu svg.m-em .em text { fill: var(--bad); font-weight: 700; }
+.post-page .tc-menu svg.m-id .id line, .post-page .tc-menu svg.m-id .id path { stroke: var(--put); stroke-dasharray: none; }
+.post-page .tc-menu svg.m-id .id text { fill: var(--put); font-weight: 700; }
+.post-page .tc-menu svg.m-em .id, .post-page .tc-menu svg.m-id .em { opacity: .3; }
+.post-page .tc-menu .res { fill: var(--bg-subtle); stroke: var(--line-subtle); transition: fill .3s; }
+.post-page .tc-menu svg.m-em .res { fill: var(--bad-soft); stroke: var(--bad); }
+.post-page .tc-menu svg.m-id .res { fill: var(--put-soft); stroke: var(--put); }
+.post-page .tc-menu .rt, .post-page .tc-menu .rt2 { fill: var(--fg-strong); }
+.post-page .tc-grow { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px clamp(20px, 3vw, 36px); }
+.post-page .tc-grow li { font-size: 16px; line-height: 1.7; display: flex; flex-direction: column; gap: 4px; border-top: 2px solid var(--fg-strong); padding-top: 12px; }
+.post-page .tc-grow li b { font-size: 17px; }
+.post-page .tc-grow li a { font-size: 14.5px; }
+/* 참고 */
+.post-page .tc-refs ul { padding-left: 1.1em; }
+.post-page .tc-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .tc-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+@media (max-width: 860px) {
+  .post-page .tc-wrap { padding: 0 20px; }
+  .post-page .tc-two, .post-page .tc-refhead, .post-page .tc-cmod, .post-page .tc-net, .post-page .tc-quote { grid-template-columns: minmax(0, 1fr); }
+  .post-page .tc-split { grid-template-areas: "a" "f" "b"; grid-template-rows: auto; }
+  .post-page .tc-split3 { grid-template-areas: "a" "f" "b" "g" "c"; grid-template-rows: auto; }
+  .post-page .tc-split3 .tf, .post-page .tc-split3 .tg { margin: 4px 0 36px; }
+  .post-page .tc-site .nm span { display: block; margin: 0; font-size: 13px; line-height: 1.45; }
+  .post-page .tc-yard .tc-legend { font-size: 13px; gap: 2px 12px; }
+  .post-page .tc-cmodread { order: 1; min-height: 12.6em; }
+  .post-page .tc-cmod > figure { order: 2; }
+  .post-page .tc-split .tf { margin: 4px 0 36px; }
+  .post-page .tc-hero { padding-top: 16px; }
+  .post-page .tc-hero h1 { margin-bottom: 14px; }
+  .post-page .tc-lead p { margin-bottom: 0.8em; }
+  .post-page .tc-sites { gap: 0 14px; }
+  .post-page .tc-site .nm { font-size: 15.5px; }
+  .post-page .tc-read .kp { font-size: 15px; }
+  .post-page .tc-read .kp b { font-size: 21px; }
+  .post-page .tc-read .sm { font-size: 12.5px; }
+  .post-page .tc-yard .tc-hint { display: none; }
+  .post-page .tc-yard { display: flex; flex-direction: column; }
+  .post-page .tc-verdict { font-size: 15px !important; order: 1; margin: 14px 0 0 !important; }
+  .post-page .tc-yard > figcaption { order: 2; }
+  .post-page .tc-tog button { font-size: 13.5px; padding: 6px 10px; }
+  .post-page .tc-refs ul { padding-left: 0; }
+  .post-page .tc-menu-row .tc-menu { margin-top: 0; }
+  .post-page .tc-grow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .tc * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="tc">
+<section class="tc-hero">
+  <div class="tc-wrap">
+    <div class="tc-lead">
+      <h1>AI 코딩 도구는 팀의 약점까지 키운다</h1>
+      <p>같은 회사의 두 팀이 같은 날 같은 코딩 에이전트(coding agent)를 받았다고 해 봅시다. 코딩 에이전트는 파일을 읽고 고치고 명령을 실행하며 코딩을 대신 해 주는 AI 프로그램입니다. 석 달 뒤 한 팀은 내보내는 일이 늘었고 다른 팀은 고장 난 곳을 다시 고치느라 바빠졌습니다.</p>
+      <p>Google 의 DORA(DevOps Research and Assessment) 연구팀은 2025년 보고서에서 AI 를 팀의 강점도 약점도 함께 키우는 증폭기라고 했습니다. 아래 공사장에서 기초 일곱 겹은 팀의 역량, 크레인은 AI 도구, 층은 4주 동안 내보낸 일입니다.</p>
+    </div>
+    <figure class="tc-fig tc-yard" data-figure data-hero data-thumb data-thumb-act="el.dispatchEvent(new Event('tc-demo'))">
+      <div class="tc-ctl">
+        <span class="lab">두 팀에게</span>
+        <div class="tc-tog" role="group" aria-label="AI 도구" data-ai>
+          <button type="button" data-v="off" aria-pressed="false">AI 도구 없이</button>
+          <button type="button" data-v="on" aria-pressed="true">같은 AI 도구를 주면</button>
+        </div>
+        <span class="tc-hint" data-hint>처음엔 ‘같은 AI 도구를 주면’을 골라 두었습니다</span>
+      </div>
+      <p class="tc-verdict" data-verdict></p>
+      <div class="tc-legend"><span><i class="cap"></i>찬 기초 = 팀이 갖춘 역량</span><span><i class="hole"></i>빈 기초 = 갖추지 못한 역량</span></div>
+      <div class="tc-sites">
+        <div class="tc-site">
+          <p class="nm">A팀<span data-cnt="A"></span></p>
+          <div class="tc-read" data-read="A"></div>
+          <svg data-site="A" role="img" aria-label="A팀 공사장. 기초 일곱 겹 위에 남은 층이 탑으로 서 있고 금 간 층은 옆 더미에 버려져 있다"></svg>
+        </div>
+        <div class="tc-site">
+          <p class="nm">B팀<span data-cnt="B"></span></p>
+          <div class="tc-read" data-read="B"></div>
+          <svg data-site="B" role="img" aria-label="B팀 공사장. 기초 일곱 겹 위에 남은 층이 탑으로 서 있고 금 간 층은 옆 더미에 버려져 있다"></svg>
+        </div>
+      </div>
+      <figcaption class="tc-cap">탑 높이는 남은 층만 셉니다. 고장 나서 다시 한 일(금 간 층)은 옆 더미로 뺐습니다. 층 수는 채운 기초 겹 수만 세는 단순한 규칙으로 정한 예시 계산입니다. 실제로는 역량마다 키우는 결과가 다르고 그 모습은 아래 「일곱 가지 역량」 그림에서 볼 수 있습니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap tc-two tc-split">
+    <div class="tc-col ta">
+      <h2>AI는 팀이 가진 것을 크게 만듭니다</h2>
+      <p>DORA 2025 보고서 「State of AI-assisted Software Development」는 첫머리에 결론부터 적었습니다. AI 가 소프트웨어 개발에서 맡는 주된 역할은 증폭이고 잘하는 조직의 강점과 어려운 조직의 문제를 함께 키웁니다.</p>
+    </div>
+    <figure class="tc-fig tf tc-amp" data-figure>
+      <svg data-amp role="img" aria-label="같은 증폭기에 깨끗한 노래와 잡음 섞인 노래를 넣으면 둘 다 세 배로 커지고 잡음도 같이 커진다는 그림"></svg>
+      <figcaption class="tc-cap">같은 앰프에 넣어도 들어간 소리의 모양 그대로 커집니다.</figcaption>
+      <div class="tc-vs">
+        <p><span class="k">앰프와 같은 점</span>앰프는 노래를 크게 키우지만 음정이 틀린 노래도 똑같이 크게 들려줍니다. AI 도 팀이 원래 하던 방식을 더 빠르게, 더 많이 해 줍니다. 리뷰와 테스트가 탄탄한 팀은 늘어난 코드를 받아 내고 그렇지 못한 팀에서는 문제가 코드 양만큼 커집니다.</p>
+      </div>
+    </figure>
+    <div class="tc-col tb">
+      <p>DORA 는 소프트웨어 팀이 일하는 방식을 10년 넘게 조사해 온 Google 의 연구 프로그램입니다. 2025년 보고서는 6월 13일부터 7월 21일까지 기술직 5천 명 가까이에게 받은 설문과 100시간 넘는 인터뷰로 만들었습니다.</p>
+      <div class="tc-vs">
+        <p><span class="k">앰프와 다른 점</span>앰프는 모든 소리를 같은 배율로 키웁니다. AI 의 효과는 팀이 어떤 역량을 갖췄느냐에 따라 커지는 곳이 다릅니다. 그 차이는 아래 일곱 역량 그림에서 볼 수 있습니다.</p>
+      </div>
+      <p>개인이 AI 를 쓰면 실제로 빨라지는지 잰 실험은 <a href="/posts/ai-native-dev-2026-what-changed">AI가 코드를 쓰면 개발자가 하는 일을 다룬 글</a>에 정리했습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap">
+    <div class="tc-head">
+      <h2>팀이 낸 결과를 재는 두 눈금, 처리량과 불안정성</h2>
+      <p>DORA 는 팀이 소프트웨어를 얼마나 잘 내보내는지 두 묶음으로 잽니다. 얼마나 자주, 빨리 내보내는지가 <b>처리량</b>(throughput)이고 내보낸 것이 얼마나 자주 말썽을 일으키는지가 <b>불안정성</b>(instability)입니다. 불안정성이 낮으면 안정성(stability)이 높다고 말합니다. 배포(deployment)는 고친 코드를 사용자가 쓰는 서비스에 실제로 올리는 일입니다. 저장소(repository)는 팀의 코드와 그 변경 기록을 모아 두는 곳이고 고친 코드를 저장소에 기록하는 일을 커밋(commit)이라고 합니다.</p>
+    </div>
+    <figure class="tc-fig tc-wide tc-pipe" data-figure>
+      <svg data-pipe role="img" aria-label="한 주 동안 배포 10번을 요일 위 점으로 찍은 그림. 위쪽은 처리량 세 지표(배포 빈도, 리드 타임, 복구 시간), 아래쪽은 불안정성 두 지표(변경 실패율, 재작업률)"></svg>
+      <figcaption class="tc-cap">한 팀의 한 주를 예시 값으로 그렸습니다. 지표 정의는 DORA 2025 보고서 13쪽입니다.
+        <span class="tc-defs"><span>① 배포 빈도(deployment frequency)</span><span>② 리드 타임(lead time for changes): 코드가 저장소에 들어간 때부터 배포까지</span><span>③ 실패 배포 복구 시간(failed deployment recovery time)</span><span>④ 변경 실패율(change fail rate): 바로 손을 대야 했던 배포의 비율</span><span>⑤ 재작업률(rework rate): 운영 중 사고 때문에 계획에 없이 한 배포의 비율</span></span></figcaption>
+    </figure>
+  </div>
+  <div class="tc-wrap tc-two tc-split tc-wide">
+    <div class="tc-col ta">
+        <p>두 눈금을 따로 보는 이유가 있습니다. 하나만 보면 "빨라졌다"가 곧 "좋아졌다"로 읽히기 때문입니다. 2025년 조사에서는 AI 를 많이 쓰는 사람일수록 처리량이 높았습니다. 2024년 조사에서 AI 도입이 25% 늘 때마다 처리량이 1.5% 줄어든다고 추정했던 것과 방향이 바뀌었습니다.</p>
+    </div>
+    <figure class="tc-fig tf tc-yr" data-figure>
+      <svg data-yr role="img" aria-label="AI 를 많이 쓸수록 두 눈금이 어느 쪽으로 움직였는지 2024년과 2025년 조사를 비교한 표. 처리량은 2024년 줄어듦에서 2025년 늘어남으로 바뀌었고 불안정성은 두 해 모두 커지는 쪽이다"></svg>
+      <figcaption class="tc-cap">화살표는 방향만 나타냅니다. 2024년 처리량 −1.5% 는 AI 도입이 25% 늘 때의 추정치입니다 — DORA 2025 보고서 35쪽·41쪽</figcaption>
+    </figure>
+    <div class="tc-col tb">
+        <p>불안정성 쪽은 그대로였습니다. 보고서는 "AI 도입은 불안정성을 고치지 못할 뿐 아니라 지금은 불안정성이 커지는 것과 함께 나타난다"고 적었습니다. 맨 위 공사장에서 B팀의 층이 늘면서 버린 층도 늘어난 모습입니다.</p>
+        <p>늘어난 코드는 PR(Pull Request)로 리뷰 앞에 쌓입니다. PR 은 고친 코드를 합쳐 달라고 올리는 요청입니다. 이 문제는 <a href="/posts/ai-pr-review-bottleneck-verification">AI PR 이 리뷰 앞에서 기다리는 이유를 다룬 글</a>에 있습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap">
+    <div class="tc-head">
+      <h2>일곱 가지 역량이 AI의 효과를 바꿉니다</h2>
+      <p>DORA 는 2025년 보고서와 함께 DORA AI <b>역량 모델</b>(capabilities model)을 내놓았습니다. 역량 모델은 어떤 능력을 갖춘 팀에서 결과가 좋아지는지 묶어 놓은 지도입니다. 이 모델은 역량 일곱 가지를 꼽고 그 역량이 높은 팀일수록 AI 도입의 효과가 더 크게 나타난 결과를 이어 놓았습니다. 결과 가운데 마찰(friction)은 일하다 걸리고 막히는 정도이고 개인 효과성(individual effectiveness)은 개인이 스스로 느끼는 일의 효율입니다.</p>
+    </div>
+    <div class="tc-cmod" data-cmod>
+      <p class="tc-try">👆 역량을 눌러 보세요. 처음엔 ‘작은 단위로 일하기’를 골라 두었습니다.</p>
+      <figure class="tc-fig" data-figure>
+        <svg role="img" aria-label="왼쪽 일곱 역량과 오른쪽 일곱 결과를 잇는 그림. 역량을 누르면 그 역량이 AI 도입의 효과를 바꾸는 결과로 선이 이어진다. 결과가 좋아지는 쪽은 초록, 나빠지는 쪽은 빨강"></svg>
+        <div class="tc-legend"><span><i class="put"></i>초록 = 그 결과가 좋아지는 쪽(늘어나든 줄어들든)</span><span><i class="bad"></i>빨강 = 그 결과가 나빠지는 쪽</span></div>
+      </figure>
+      <p class="tc-cmodread" data-cmodread></p>
+    </div>
+  </div>
+  <div class="tc-wrap tc-two tc-split tc-wide">
+    <div class="tc-col ta">
+      <p>역량 하나가 모든 결과를 키우지는 않습니다. 사용자 중심은 팀 성과로만, 데이터 생태계는 조직 성과로만 이어집니다. 작은 단위로 일하기는 마찰을 줄이는 대신 개인이 느끼는 효과를 조금 줄이기도 합니다. 그래서 팀에서 약한 결과가 무엇인지 먼저 보고 거기에 이어진 역량부터 챙기는 순서가 맞습니다.</p>
+      <p>이름에 AI 가 들어간 역량은 AI 방침과 AI 가 읽을 수 있는 사내 데이터 두 가지뿐입니다. 위 그림에서 주황 AI 표시를 붙인 두 칸입니다. 버전 관리(version control), 작은 단위로 일하기, 사용자 중심, 내부 플랫폼은 AI 가 나오기 전부터 잘하는 팀의 습관으로 꼽히던 것들입니다.</p>
+    </div>
+    <div class="tf">
+      <details>
+          <summary>DORA 가 그린 원래 도식</summary>
+          <figure class="tc-fig tc-img">
+            <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9f9dddb5.webp" target="_blank" rel="noopener"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/9f9dddb5.webp" alt="AI Adoption 곱하기 일곱 역량이 팀 성과, 코드 품질, 개인 효과성, 제품 성과, 마찰, 처리량, 조직 성과로 이어지는 DORA AI 역량 모델 도식" loading="lazy"></a>
+            <figcaption class="tc-cap">"AI Adoption ×" 괄호 하나가 일곱 역량에 곱해지는 모양입니다. 화살표 몇 개가 보고서 본문 설명과 다르게 이어져 있어 역량을 눌러 보는 그림은 본문(Capabilities Model 보고서 각 장 첫 쪽)을 따랐습니다 — 출처: <a href="https://cloud.google.com/blog/products/ai-machine-learning/introducing-doras-inaugural-ai-capabilities-model" target="_blank" rel="noopener">Google Cloud Blog, Introducing DORA's inaugural AI Capabilities Model</a></figcaption>
+          </figure>
+      </details>
+    </div>
+    <div class="tc-col tb">
+      <p>버전 관리는 파일이 바뀐 기록을 모두 남겨 언제든 앞 상태로 되돌릴 수 있게 하는 방법입니다. 내부 플랫폼(internal platform)은 테스트·배포 같은 공용 도구를 회사가 한곳에 갖춰 둔 것입니다.</p>
+      <p>그러니 AI 를 잘 쓰기 위한 준비의 상당 부분은 원래 좋은 개발 습관입니다. 맨 위 공사장의 기초 일곱 겹이 이 일곱 역량입니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap"><h2 class="tc-h2top">같은 설문에서 나온 일곱 가지 팀 유형</h2></div>
+  <div class="tc-wrap tc-two tc-split">
+    <div class="tc-col ta">
+      <p>DORA 는 응답자들의 팀을 여덟 가지 지표로 견줘 서로 닮은 팀끼리 일곱 무리로 묶었습니다. 비슷한 것끼리 자동으로 묶는 이런 분석을 클러스터 분석(cluster analysis)이라고 합니다.</p>
+      <p>지표는 팀 성과, 제품 성과, 처리량, 불안정성, 개인 효과성, 가치 있는 일(스스로 가치 있다고 느끼는 일에 쓰는 시간), 마찰, 번아웃(burnout)입니다. 번아웃은 일에 지쳐 의욕이 바닥난 상태입니다.</p>
+    </div>
+    <figure class="tc-fig tf tc-clu" data-clu data-figure>
+      <p class="tc-try">👆 칸을 눌러 보세요. 처음엔 4번 유형을 골라 두었습니다.</p>
+      <svg role="img" aria-label="응답자 100%를 일곱 팀 유형의 비율로 나눈 띠. 1번 10%, 2번 11%, 3번 17%, 4번 7%, 5번 15%, 6번 20%, 7번 20%"></svg>
+      <p class="tc-clread" data-clread></p>
+      <figcaption class="tc-cap">비율과 설명은 DORA 2025 보고서 16~18쪽, 한국어 이름과 두 묶음(빨강·초록)은 이 글이 보고서 설명을 보고 붙였습니다.</figcaption>
+    </figure>
+    <div class="tc-col tb">
+      <p>반 친구들을 공부 시간, 성적, 피곤함 같은 여러 기준으로 재서 비슷한 친구끼리 모으는 것과 비슷합니다. 다만 사람이 기준을 정해 나누지 않고 숫자가 가까운 것끼리 계산으로 모읍니다. 유형 이름도 연구팀의 해석이라 보고서는 "우리 팀이 이 이름과 딱 맞지 않을 수 있다"고 적어 두었습니다.</p>
+      <p>4번 유형을 보면 결과 하나로 팀을 판단하면 안 된다는 걸 알 수 있습니다. 제품 성과는 높은데 처리량은 낮고 불안정성은 높습니다. 그리고 응답자의 45% 가 어려움을 겪는 네 유형에 들어 있었습니다. 이런 팀에 AI 를 주면 지금의 어려움도 같이 커집니다.</p>
+    </div>
+  </div>
+  <div class="tc-wrap tc-two tc-split tc-wide">
+    <div class="tc-col ta">
+      <p>1번 유형과 7번 유형을 여덟 지표로 견주면 거의 반대입니다. 1번은 번아웃·마찰·불안정성이 평균보다 높고 7번은 성과 쪽 다섯 지표가 평균보다 높습니다. 이 글 맨 위 실험은 같은 AI 도구가 두 팀에 들어가면 각자 튀어나온 방향이 더 커질 거라는 생각을 옮긴 것입니다.</p>
+    </div>
+    <div class="tc-dots tf">
+    <figure class="tc-fig" data-figure>
+      <svg data-dots role="img" aria-label="1번 유형과 7번 유형이 여덟 지표에서 평균보다 높은지 낮은지를 점으로 나타낸 그림. 1번은 번아웃·마찰·불안정성이 평균보다 높고 나머지는 낮다. 7번은 팀 성과·제품 성과·처리량·개인 효과성·가치 있는 일이 평균보다 높고 불안정성·마찰·번아웃은 낮다"></svg>
+      <figcaption class="tc-cap">보고서는 유형별 수치를 공개하지 않았습니다. 원본 거미줄 그림에서 평균선(점선) 기준으로 점의 위치를 읽어 다시 그렸습니다 — 출처: <a href="https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report" target="_blank" rel="noopener">Google Cloud Blog, Announcing the 2025 DORA Report</a></figcaption>
+    </figure>
+      <details>
+        <summary>DORA 가 그린 원래 거미줄 그림</summary>
+        <figure class="tc-fig tc-img">
+          <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/b922d5be.webp" target="_blank" rel="noopener"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/b922d5be.webp" alt="DORA 2025 보고서의 1번 유형과 7번 유형을 여덟 지표 거미줄 그림으로 비교한 그림" loading="lazy"></a>
+          <figcaption class="tc-cap">1번 유형(파랑)과 7번 유형(주황). 바깥으로 갈수록 그 지표가 높고 회색 점선이 평균입니다.</figcaption>
+        </figure>
+      </details>
+      <details>
+        <summary>2026년에 DORA 가 새로 낸 것</summary>
+        <p>DORA 의 2026년 연례 보고서는 10월 현재 아직 나오지 않았습니다. 2026년 4월에는 AI 도입의 투자 대비 효과(ROI, Return on Investment)를 계산하는 보고서가 나왔습니다. 질문 몇 개에 답하면 팀의 배포 성과를 재서 업계와 견줘 주는 웹 도구 Quick Check 에도 재작업률이 들어갔습니다.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap">
+    <div class="tc-head">
+      <h2>처음 써 보는 건 동료를 따라서</h2>
+      <p>Microsoft 는 2026년 초 엔지니어 수만 명에게 Claude Code 와 GitHub Copilot CLI 를 열어 주고 누가 써 보고 누가 계속 쓰는지 넉 달 동안 지켜봤습니다. CLI(Command Line Interface)는 마우스 대신 터미널에 명령어를 쳐서 쓰는 프로그램입니다. 2026년 7월 공개한 논문의 첫 결론에 따르면 처음 써 보는 일은 주로 사람 사이의 관계를 타고 퍼졌습니다.</p>
+    </div>
+  </div>
+  <div class="tc-band">
+    <div class="tc-wrap" data-net>
+      <div class="tc-ctl">
+        <span class="lab">이 사람들이 쓰는 걸 봤을 때</span>
+        <div class="tc-tog" role="group" aria-label="동료 묶음" data-grp>
+          <button type="button" data-v="reviewer" aria-pressed="false">리뷰 동료</button>
+          <button type="button" data-v="skip" aria-pressed="true">같은 큰 팀</button>
+          <button type="button" data-v="manager" aria-pressed="false">직속 팀장</button>
+        </div>
+      </div>
+      <p class="tc-netread" data-netread></p>
+      <figure class="tc-fig tc-net" data-figure>
+        <svg data-org role="img" aria-label="예시 조직도. 큰 팀장 아래 팀장 두 명, 그 아래 엔지니어 여덟 명. 고른 묶음은 주황 테두리, 그 가운데 쓰고 있는 사람은 주황으로 칠한다. 리뷰 동료를 고르면 나와 리뷰를 주고받는 세 명이 점선으로 이어진다"></svg>
+        <svg data-odds role="img" aria-label="Copilot CLI 를 처음 써 볼 오즈가 높아진 정도. 리뷰 동료 54%, 같은 큰 팀 동료 216%, 직속 팀장 82%. 계속 쓸 오즈는 같은 큰 팀 66%, 직속 팀장 22%"></svg>
+      </figure>
+      <div class="tc-legend"><span><i class="ai"></i>굵은 막대 = 처음 써 볼 가능성이 늘어난 정도</span><span><i class="put"></i>가는 막대 = 계속 쓸 가능성이 늘어난 정도</span></div>
+      <figcaption class="tc-cap">Copilot CLI 기준입니다. 그 묶음에서 네 명 중 한 명 넘게 쓰고 있으면(팀장은 쓰고 있으면) 아무도 안 쓸 때보다 내가 써 볼 가능성이 훨씬 커집니다. 막대 길이는 그 가능성을 오즈로 잰 값입니다. 조직도는 설명을 위한 예시입니다 — 출처: Murphy-Hill 외, arXiv 2607.01418</figcaption>
+      <details class="tc-odds">
+        <summary>오즈는 확률과 어떻게 다른가요?</summary>
+        <p>오즈는 일어날 확률을 일어나지 않을 확률로 나눈 값입니다. 그래서 오즈가 216% 높다고 확률이 그만큼 높아진 것은 아닙니다. 막대는 그 묶음에서 쓰는 사람이 0% 일 때와 25% 넘을 때를 견줬습니다.</p>
+      </details>
+    </div>
+  </div>
+  <div class="tc-wrap">
+    <div class="tc-col tc-wide">
+      <p>반에서 유행이 퍼지는 모습과 비슷합니다. 선생님이 공지할 때보다 옆자리 친구가 쓰는 걸 볼 때 따라 하게 됩니다. 식는 방식은 유행과 다릅니다. 이 연구에서 계속 쓰느냐는 나이나 직급보다 원래 코드를 얼마나 많이 쓰던 사람인지와 더 관련이 있었습니다.</p>
+      <p>써 본 사람들은 쓰지 않았을 때보다 머지한 PR 이 약 24% 많았고 넉 달 동안 줄지 않았습니다. 머지(merge)는 PR 의 코드를 실제로 합치는 일입니다. 논문은 머지된 PR 이 곧 만들어 낸 가치는 아니라고 분명히 적었고 배포 전략의 중심에 "눈에 보이는 동료의 사용"을 두라고 권했습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap tc-two tc-split3">
+    <div class="tc-col ta">
+      <h2>2026년 현장은 에이전트 하나와 지켜보는 사람</h2>
+      <p>여러 에이전트가 알아서 나눠 일하는 모습은 아직 드뭅니다. Stack Overflow 가 2026년 4월 개발자 약 1,100명에게 물은 조사에서 에이전트를 매일 쓰는 사람의 69% 가 에이전트 하나로 일했습니다. 응답자의 63% 는 에이전트를 사람 확인 없이 끝까지 돌리는 일이 거의 또는 전혀 없다고 답했습니다.</p>
+    </div>
+    <div class="tf">
+      <figure class="tc-fig" data-figure>
+        <svg data-so role="img" aria-label="에이전트를 매일 쓰는 사람 중 에이전트 하나 69%, 일을 나눠 맡은 여러 에이전트 17%, 겹치거나 서로 조율하는 여러 에이전트 16%. 응답자의 63% 는 에이전트를 사람 확인 없이 끝까지 돌리는 일이 거의 또는 전혀 없다"></svg>
+        <figcaption class="tc-cap">위 세 줄은 "지금 일할 때 여러 에이전트를 조율하거나 지켜보나요?"에 매일 쓰는 사람이 답한 비율입니다. 셋을 더하면 102% 인데 원문은 둘 이상 고를 수 있었는지 밝히지 않았습니다. 아래 줄은 응답자 전체 기준입니다 — 출처: <a href="https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/" target="_blank" rel="noopener">Stack Overflow, Agents on a leash (2026-05-27)</a></figcaption>
+      </figure>
+      <details>
+        <summary>Stack Overflow 가 그린 원래 막대그림</summary>
+        <figure class="tc-fig tc-img">
+          <img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/f138cf0d.webp" alt="에이전트를 매일 쓰는 사람 중 단일 에이전트 69%, 여러 전문 에이전트 17%, 겹치거나 조율하는 여러 에이전트 16%를 보여 주는 막대그림" loading="lazy">
+        </figure>
+      </details>
+    </div>
+    <div class="tc-col tb">
+      <p>AI 를 만드는 회사 안에서도 비슷합니다. Anthropic 이 2025년 12월 공개한 사내 조사에서 엔지니어와 연구자 132명은 일의 약 60% 에 Claude 를 썼다고 했습니다. 그런데 사람이 확인하지 않고 통째로 맡길 수 있다는 일은 대부분 0~20% 였습니다.</p>
+      <p>대신 한 번 맡기면 혼자 가는 길이는 길어졌습니다. 같은 회사의 Claude Code 기록을 보면 사람이 끼어들기 전까지 이어서 부른 도구 호출이 반년 만에 9.8번에서 21.2번으로 늘었습니다. 도구 호출(tool call)은 에이전트가 파일 읽기·명령 실행 같은 기능을 한 번 부르는 것입니다. 같은 기간 기록 한 건당 사람이 입력한 횟수는 6.2번에서 4.1번으로 줄었습니다.</p>
+    </div>
+    <figure class="tc-fig tc-deleg tg" data-figure>
+      <svg data-deleg role="img" aria-label="Anthropic 엔지니어의 일 가운데 Claude 와 함께 한 일은 약 60, 통째로 맡길 수 있는 일은 0에서 20. 기록 한 건에서 사람 입력 없이 가장 길게 이어진 도구 호출은 2025년 2월 9.8번에서 8월 21.2번으로 늘었고 기록 한 건당 사람이 입력한 횟수는 6.2번에서 4.1번으로 줄었다"></svg>
+      <figcaption class="tc-cap">Anthropic, How AI is transforming work at Anthropic (2025-12-02). 설문 132명, Claude Code 기록 20만 건. 위 두 막대는 같은 눈금(일 전체 = 100)입니다. 도구 호출 줄은 기록 한 건에서 사람 입력 없이 가장 길게 이어진 도구 호출 수의 평균, ‘사람 입력’은 기록 한 건당 사람이 입력한 차례 수의 평균입니다.</figcaption>
+    </figure>
+    <div class="tc-col tcc">
+      <p>자동차의 차선 유지 보조와 비슷합니다. 차가 혼자 차선을 따라가는 시간은 길어졌지만 운전자는 여전히 핸들에 손을 얹고 길을 봅니다. 다만 코딩에는 차선 같은 정해진 길이 없습니다. 무엇이 맞는 결과인지 확인할 기준을 사람이 정해 줘야 합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap">
+    <h2 class="tc-qh">개발자가 키울 것, 맡길 수 없는 이해</h2>
+    <div class="tc-quote">
+      <blockquote>
+        <p class="ko">“생각은 맡길 수 있어도 이해는 맡길 수 없다.”</p>
+        <p class="en">You can outsource your thinking, but you can't outsource your understanding.</p>
+      </blockquote>
+      <div class="tc-col">
+        <p>Andrej Karpathy 가 2026년 4월 Sequoia Ascent 대담에서 소개한 문장입니다. Sequoia Ascent 는 투자 회사 Sequoia 가 연 행사입니다. 그는 최근 본 트윗이라며 이 말을 인용했습니다. 에이전트에게 코드를 쓰게 할 수는 있어도 그 코드가 우리 시스템에서 맞는지 판단하는 일은 사람에게 남는다는 뜻입니다.</p>
+      </div>
+    </div>
+    <div class="tc-two tc-split tc-wide tc-menu-row">
+      <div class="tc-col ta">
+        <p>그가 든 예는 자기가 만든 앱 MenuGen 입니다. 에이전트가 결제 서비스 Stripe 의 결제 기록을 Google 계정과 이메일 주소로 짝지으려 했습니다. 결제 기록이 맞는 계정과 짝지어져야 결제한 만큼 앱을 쓸 수 있는 이용권인 크레딧(credit)이 그 계정에 들어갑니다. 그는 이것을 "그럴듯한 코드지만 나쁜 시스템 설계"라고 불렀습니다.</p>
+        <p>그래서 Karpathy 는 에이전트와 일하는 엔지니어가 만들어진 코드를 그대로 받아들이지 않는다고 말합니다. 그가 꼽은 일을 이 시리즈의 글과 이으면 아래 네 가지입니다.</p>
+      </div>
+      <figure class="tc-fig tc-menu tf" data-menu data-figure>
+        <div class="tc-tog" role="group" aria-label="계정을 잇는 방법" data-mm>
+          <button type="button" data-v="email" aria-pressed="true">이메일로 잇기</button>
+          <button type="button" data-v="id" aria-pressed="false">사용자 ID 로 잇기</button>
+        </div>
+        <span class="tc-hint" data-mhint>처음엔 에이전트가 짠 ‘이메일로 잇기’를 골라 두었습니다</span>
+        <svg role="img" aria-label="한 사람의 Google 로그인 이메일과 Stripe 결제 이메일이 다를 때 이메일로 짝지으면 실패하고 사용자 ID 로 짝지으면 성공하는 그림"></svg>
+        <p class="tc-menuread" data-menuread></p>
+        <figcaption class="tc-cap">이메일과 ID 는 설명을 위한 예시입니다. 사례는 <a href="https://karpathy.bearblog.dev/sequoia-ascent-2026/" target="_blank" rel="noopener">Karpathy, Sequoia Ascent 2026 정리 글</a>에서 가져왔습니다.</figcaption>
+      </figure>
+    </div>
+    <div class="tc-grow-row tc-wide">
+      <ul class="tc-grow">
+        <li><b>스펙 설계</b>무엇을 만들지 먼저 적기<a href="/posts/spec-driven-development-spec-kit-kiro">스펙 글</a></li>
+        <li><b>계획 감독</b>에이전트가 세운 계획을 고치고 승인하기<a href="/posts/ai-dlc-aws-methodology">AI-DLC 글</a></li>
+        <li><b>diff 확인</b>바뀐 줄만 모아 보여 주는 diff 를 직접 읽기<a href="/posts/ai-pr-review-bottleneck-verification">리뷰 글</a></li>
+        <li><b>테스트와 평가 루프</b>에이전트가 스스로 돌릴 확인 수단 만들기<a href="/posts/ai-native-dev-loop-explore-plan-verify">에이전트 루프 글</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec">
+  <div class="tc-wrap tc-two tc-split">
+    <div class="tc-col ta">
+      <h2>열한 편을 건물 하나로</h2>
+      <p>이 시리즈는 AI 가 코드를 쓰기 시작하면 개발자의 하루가 어떻게 바뀌는지에서 출발했습니다. 그다음 에이전트에게 무엇을 건네는지(스펙·컨텍스트·MCP·스킬), 결과를 어떻게 지키는지(리뷰·보안·모델 위치)를 차례로 다뤘습니다.</p>
+    </div>
+    <figure class="tc-fig tf tc-map" data-figure>
+      <svg data-map role="img" aria-label="AI 네이티브 개발 입문 시리즈 열한 편을 건물로 그린 지도. 기초는 이 글이 다룬 일곱 역량, 그 위에 앞의 열 편이 층으로 쌓여 있다. 층을 누르면 그 글로 이동한다"></svg>
+      <figcaption class="tc-cap">층을 누르면 그 글로 갑니다. 초록 = 일하는 순서, 주황 = 에이전트에게 건네는 것, 파랑 = 결과를 지키는 것.</figcaption>
+    </figure>
+    <div class="tc-col tb">
+      <p>맨 아래 기초는 이 글이 다룬 일곱 역량이고 맨 위 공사장의 기초 일곱 겹과 같습니다. 위의 열 층은 개인과 도구의 이야기였습니다. 그 효과가 팀의 결과로 남는지는 기초가 정합니다. 공사장에서 기초가 빈 B팀이 층을 더 쌓고도 남은 층이 그대로였던 것도 그래서입니다.</p>
+      <p>도구 이름과 모델 이름은 내년이면 또 바뀔 겁니다. 그래도 일곱 겹의 기초와 "이해는 맡길 수 없다"는 원칙은 한동안 쓸 수 있을 것 같습니다. 새 도구가 나오면 우리 팀의 어느 기초가 비어 있는지부터 물어보면 됩니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tc-sec tc-refs" style="padding-bottom: clamp(80px, 10vw, 120px)">
+  <div class="tc-wrap tc-refhead">
+    <h2>참고 자료</h2>
+    <ul>
+      <li><a href="https://dora.dev/research/2025/dora-report/" target="_blank" rel="noopener">DORA, 2025 State of AI-assisted Software Development</a> · <a href="https://services.google.com/fh/files/misc/2025_state_of_ai_assisted_software_development.pdf" target="_blank" rel="noopener">보고서 PDF(v. 2025.2)</a> — 증폭기 결론, 13쪽 지표 정의, 15~18쪽 팀 유형, 35쪽 2024년 비교, 41쪽 불안정성</li>
+      <li><a href="https://services.google.com/fh/files/misc/2025_dora_ai_capabilities_model.pdf" target="_blank" rel="noopener">DORA, AI Capabilities Model 보고서(v. 2025.1)</a> · <a href="https://cloud.google.com/blog/products/ai-machine-learning/introducing-doras-inaugural-ai-capabilities-model" target="_blank" rel="noopener">Google Cloud Blog, Introducing DORA's inaugural AI Capabilities Model</a></li>
+      <li><a href="https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report" target="_blank" rel="noopener">Google Cloud Blog, Announcing the 2025 DORA Report (2025-09)</a> — 팀 유형 거미줄 그림</li>
+      <li><a href="https://dora.dev/ai/roi/report/" target="_blank" rel="noopener">DORA, ROI of AI-assisted Software Development (2026-04-22 갱신)</a> · <a href="https://dora.dev/insights/" target="_blank" rel="noopener">DORA Insights, Quick Check updates (2026-04-22)</a></li>
+      <li><a href="https://arxiv.org/abs/2607.01418" target="_blank" rel="noopener">Murphy-Hill, Butler, Savelieva, Adoption and Impact of Command-Line AI Coding Agents: A Study of Microsoft's Early 2026 Rollout of Claude Code and GitHub Copilot CLI (arXiv 2607.01418, 2026-07)</a></li>
+      <li><a href="https://stackoverflow.blog/2026/05/27/agents-on-a-leash-agentic-ai-remains-mostly-monitored-at-work/" target="_blank" rel="noopener">Stack Overflow, Agents on a leash (2026-05-27)</a> — 2026년 4월 Pulse 조사</li>
+      <li><a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic" target="_blank" rel="noopener">Anthropic, How AI is transforming work at Anthropic (2025-12-02)</a></li>
+      <li><a href="https://karpathy.bearblog.dev/sequoia-ascent-2026/" target="_blank" rel="noopener">Andrej Karpathy, Sequoia Ascent 2026 (2026-04-30)</a></li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null && attrs[k] !== "") e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  let uid = 0;
+  const arrowDefs = (svg, color) => {
+    const id = "tcar" + (++uid);
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+    return `url(#${id})`;
+  };
+  /* ---------- 히어로: 같은 크레인, 두 공사장 ---------- */
+  const CAPS = [
+    ["user", "사용자 중심", "사용자 중심으로 일하기", "User-centric Focus"],
+    ["vcs", "버전 관리", "탄탄한 버전 관리 습관", "Strong Version Control Practices"],
+    ["access", "사내 데이터 연결", "AI가 읽을 수 있는 사내 데이터", "AI-accessible Internal Data"],
+    ["small", "작은 단위로 일하기", "작은 단위로 나눠 일하기", "Working in Small Batches"],
+    ["stance", "AI 방침", "분명하게 알린 AI 방침", "Clear and Communicated AI Stance"],
+    ["platform", "내부 플랫폼", "잘 갖춘 내부 플랫폼", "Quality Internal Platform"],
+    ["data", "데이터 생태계", "건강한 데이터 생태계", "Healthy Data Ecosystems"],
+  ];
+  const calc = (n, ai) => {
+    const redoOff = 1 + Math.floor((7 - n) / 4);
+    if (!ai) return { floors: 10, redo: redoOff };
+    return { floors: 12 + Math.floor(n / 2), redo: redoOff + Math.floor(0.6 * (7 - n)) };
+  };
+  (() => {
+    const fig = $("[data-hero]"); if (!fig) return;
+    const hint = $("[data-hint]", fig);
+    const seen = () => hint && hint.classList.add("gone");
+    const st = {
+      ai: true,
+      A: new Set(["stance", "data", "vcs", "small", "user", "platform"]),
+      B: new Set(["stance", "access"]),
+    };
+    const S = {};
+    const MAXF = 14, MAXP = 6;
+    const build = (m) => {
+      for (const team of ["A", "B"]) {
+        const svg = $(`svg[data-site="${team}"]`, fig);
+        svg.innerHTML = "";
+        const W = m ? 190 : 420, fh = m ? 12 : 13, fg = 2, bh = m ? 20 : 22, bg = 3;
+        const ground = (m ? 30 : 34) + MAXF * (fh + fg) + 8;
+        const H = ground + 6 + 7 * (bh + bg) + 2;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        const fw = m ? 186 : 330, cx0 = W / 2;
+        // 탑(남은 층)은 오른쪽, 버린 더미는 왼쪽 땅 위
+        const tw = m ? 92 : 200, tx = m ? 58 : 150, pw = m ? 46 : 104, px = m ? 2 : 14;
+        // 크레인(AI 도구) — 켜면 나타난다
+        const crane = el("g", { class: "crane" }, svg);
+        const kx = tx + tw + (m ? 18 : 30), jy = m ? 20 : 22;
+        el("line", { x1: kx, y1: ground, x2: kx, y2: jy - 4, stroke: "var(--ai)", "stroke-width": m ? 3 : 4 }, crane);
+        el("line", { x1: kx + (m ? 4 : 8), y1: jy, x2: tx + 10, y2: jy, stroke: "var(--ai)", "stroke-width": m ? 3 : 4 }, crane);
+        el("line", { x1: tx + 24, y1: jy, x2: tx + 24, y2: jy + (m ? 10 : 14), stroke: "var(--ai)", "stroke-width": 1.5 }, crane);
+        txt(crane, m ? kx + 6 : kx + 8, m ? jy - 8 : ground - 8, "AI 도구", { "font-size": m ? 12 : 13, fill: "var(--ai)", "font-weight": 700, "text-anchor": m ? "end" : "start" });
+        // 남은 층(탑)
+        const floors = [];
+        for (let i = 0; i < MAXF; i++) {
+          const y = ground - (i + 1) * (fh + fg);
+          const g = el("g", { class: "fl" }, svg);
+          el("rect", { x: tx, y, width: tw, height: fh, rx: 3 }, g);
+          floors.push(g);
+        }
+        const kl = txt(svg, tx + tw / 2, ground - 6, "남은 층", { "font-size": m ? 12 : 13, fill: "var(--put)", "font-weight": 700, "text-anchor": "middle", class: "klab" });
+        // 버린 더미(금 간 층)
+        const pile = [];
+        for (let i = 0; i < MAXP; i++) {
+          const y = ground - (i + 1) * (fh + 1);
+          const dx = [0, 4, -2, 3, -3, 2][i] * (m ? 0.5 : 1);
+          const rg = el("g", { transform: `rotate(${[-2, 3, -1, 2, -3, 1][i]} ${px + pw / 2} ${y + fh / 2})` }, svg);
+          const g = el("g", { class: "fl bad" }, rg);
+          el("rect", { x: px + dx, y, width: pw, height: fh, rx: 3 }, g);
+          el("path", { class: "ck", d: `M${px + dx + pw / 2 - 3} ${y + 2} l5 ${fh / 2 - 1} l-4 2 l6 ${fh / 2 - 3}`, fill: "none", "stroke-width": 1.6 }, g);
+          pile.push(g);
+        }
+        const pl = txt(svg, px + pw / 2, ground - 6, "버린 층", { "font-size": m ? 12 : 13, fill: "var(--bad)", "font-weight": 700, "text-anchor": "middle" });
+        el("line", { x1: 2, y1: ground + 2, x2: W - 2, y2: ground + 2, stroke: "var(--fg-neutral)", "stroke-width": 2 }, svg);
+        // 기초 일곱 겹
+        const bands = [];
+        CAPS.forEach(([k, name], i) => {
+          const y = ground + 6 + i * (bh + bg);
+          const g = el("g", { class: "bd", tabindex: 0, role: "button", "data-k": k }, svg);
+          el("rect", { x: cx0 - fw / 2, y, width: fw, height: bh, rx: 4 }, g);
+          txt(g, cx0, y + bh / 2 + (m ? 4.5 : 5), name, { "font-size": m ? 13.5 : 14, "text-anchor": "middle" });
+          const toggle = () => { const s = st[team]; s.has(k) ? s.delete(k) : s.add(k); seen(); render(); };
+          g.addEventListener("click", toggle, { signal });
+          g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }, { signal });
+          bands.push([k, g]);
+        });
+        S[team] = { svg, floors, pile, bands, crane, kl, pl, ground, fh, fg };
+      }
+      render();
+    };
+    const render = () => {
+      const out = {};
+      const kept = (c) => c.floors - c.redo;
+      for (const team of ["A", "B"]) {
+        const s = S[team], n = st[team].size;
+        const off = calc(n, false), cur = calc(n, st.ai);
+        const kN = kept(cur), kO = kept(off);
+        s.floors.forEach((g, i) => {
+          g.classList.toggle("on", i < kN);
+          g.style.transitionDelay = (st.ai && i >= kO ? (i - kO) * 90 : 0) + "ms";
+        });
+        s.pile.forEach((g, i) => {
+          g.classList.toggle("on", i < cur.redo);
+          g.style.transitionDelay = (st.ai && i >= off.redo ? 300 + (i - off.redo) * 120 : 0) + "ms";
+        });
+        s.kl.setAttribute("y", s.ground - kN * (s.fh + s.fg) - 6);
+        s.pl.setAttribute("y", s.ground - cur.redo * (s.fh + 1) - 8);
+        s.bands.forEach(([k, g]) => g.classList.toggle("full", st[team].has(k)));
+        s.crane.style.opacity = st.ai ? 1 : 0;
+        out[team] = { n, off, cur };
+        $(`[data-cnt="${team}"]`, fig).textContent = `기초 ${n}/7겹`;
+        const r = $(`[data-read="${team}"]`, fig);
+        const pair = (a, b) => st.ai ? `${a} → <b>${b}</b>` : `<b>${a}</b>`;
+        const pairS = (a, b) => st.ai ? `${a} → ${b}` : `${a}`;
+        r.innerHTML = `<span class="kp">남은 층 ${pair(kO, kN)}</span><span class="sm">쌓은 층 ${pairS(off.floors, cur.floors)} · <span class="bd2">버린 층 ${pairS(off.redo, cur.redo)}</span></span>`;
+      }
+      const v = $("[data-verdict]", fig);
+      const k = (t) => out[t].cur.floors - out[t].cur.redo, ko = (t) => out[t].off.floors - out[t].off.redo;
+      if (!st.ai) {
+        v.innerHTML = `AI 없이는 두 팀 모두 4주에 10층을 쌓습니다. 기초가 빈 B팀은 버리는 층이 조금 더 많습니다. <b>↑ 같은 AI 도구를 두 팀에 줘 보세요.</b>`;
+      } else {
+        const dA = k("A") - ko("A"), dB = k("B") - ko("B");
+        const mid = (t, d) => d > 0 ? `${ko(t)} → ${k(t)}층으로 늘었고` : d === 0 ? `${ko(t)} → ${k(t)}층 그대로이고` : `${ko(t)} → ${k(t)}층으로 줄었고`;
+        const end = (t, d) => d > 0 ? `${ko(t)} → ${k(t)}층으로 늘었습니다` : d === 0 ? `${ko(t)} → ${k(t)}층 그대로입니다` : `${ko(t)} → ${k(t)}층으로 줄었습니다`;
+        const rB = out.B.cur.redo - out.B.off.redo;
+        v.innerHTML = `같은 도구를 받았는데 남은 층이 A팀은 ${mid("A", dA)} B팀은 ${end("B", dB)}. ` + (rB > 0 ? `B팀은 버린 층(빨강)도 ${out.B.off.redo} → ${out.B.cur.redo}층으로 늘었습니다. ` : "") + `<b>기초 겹을 눌러 채우거나 비워 보세요.</b>`;
+      }
+    };
+    $$("[data-ai] button", fig).forEach((b) => b.addEventListener("click", () => {
+      st.ai = b.dataset.v === "on"; seen();
+      $$("[data-ai] button", fig).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      render();
+    }, { signal }));
+    fig.addEventListener("tc-demo", () => { $(`[data-ai] button[data-v="on"]`, fig).click(); }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 앰프 비유 ---------- */
+  (() => {
+    const svg = $("[data-amp]"); if (!svg) return;
+    const wave = (x0, y0, w, amp, noise, seed) => {
+      let d = "", r = seed;
+      const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280 - 0.5; };
+      for (let i = 0; i <= 60; i++) {
+        const x = x0 + (w * i) / 60;
+        const y = y0 - amp * Math.sin((i / 60) * Math.PI * 4) - noise * rnd() * 2;
+        d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+      }
+      return d;
+    };
+    const build = (m) => {
+      svg.innerHTML = "";
+      // 모바일은 화면에서 약 0.58배로 줄어든다 → 글자를 키워 12px 이상으로
+      const k = m ? 1.4 : 1, W = 600, H = m ? 370 : 330;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const rows = [
+        { y: m ? 110 : 92, t: "기반이 탄탄한 팀", n: 0, col: "var(--put)", s: "노래가 그대로 커진다" },
+        { y: m ? 278 : 242, t: "기반에 구멍이 있는 팀", n: 7, col: "var(--bad)", s: "노래도 잡음도 같이 커진다" },
+      ];
+      txt(svg, 70, 20, "들어가는 것", { "font-size": 16 * k, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      txt(svg, 300, 20, "AI", { "font-size": 16 * k, fill: "var(--ai)", "font-weight": 700, "text-anchor": "middle" });
+      txt(svg, 520, 20, "나오는 것", { "font-size": 16 * k, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      const ar = arrowDefs(svg, "var(--fg-neutral)");
+      rows.forEach((r, i) => {
+        txt(svg, 0, r.y - (m ? 50 : 44), r.t, { "font-size": 17 * k, "font-weight": 700, fill: "var(--fg-strong)" });
+        el("path", { d: wave(10, r.y, 120, 10, r.n * 0.5, 7 + i), fill: "none", stroke: r.col, "stroke-width": 2.4 * (m ? 1.3 : 1) }, svg);
+        el("line", { x1: 150, y1: r.y, x2: 236, y2: r.y, stroke: "var(--fg-neutral)", "stroke-width": 1.6, "marker-end": ar }, svg);
+        el("rect", { x: 244, y: r.y - 34, width: 112, height: 68, rx: 12, fill: "var(--ai-soft)", stroke: "var(--ai)", "stroke-width": 2 }, svg);
+        txt(svg, 300, r.y + 6 * k, "증폭 ×3", { "font-size": 17 * k, "font-weight": 700, fill: "var(--ai)", "text-anchor": "middle" });
+        el("line", { x1: 364, y1: r.y, x2: 404, y2: r.y, stroke: "var(--fg-neutral)", "stroke-width": 1.6, "marker-end": ar }, svg);
+        el("path", { d: wave(414, r.y, 150, 30, r.n * 1.5, 7 + i), fill: "none", stroke: r.col, "stroke-width": 2.6 * (m ? 1.3 : 1) }, svg);
+        txt(svg, 600, r.y + (m ? 66 : 58), r.s, { "font-size": 15 * k, fill: r.col, "text-anchor": "end", "font-weight": 600 });
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 처리량과 불안정성: 한 주의 배포 ---------- */
+  (() => {
+    const svg = $("[data-pipe]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 380 : 960, H = m ? 372 : 360;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const fs = m ? 14 : 15;
+      const x0 = m ? 14 : 40, x1 = W - (m ? 14 : 40);
+      const ly = m ? 150 : 170;
+      const days = ["월", "화", "수", "목", "금"];
+      const dx = (x1 - x0) / 5;
+      days.forEach((d, i) => {
+        // 모바일은 칸이 좁아 복구 화살표가 요일 글자를 지나지 않게 한 글자로
+        txt(svg, x0 + dx * i + dx / 2, ly + (m ? 40 : 44), m ? d : d + "요일", { "font-size": fs, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        if (i) el("line", { x1: x0 + dx * i, y1: ly - 60, x2: x0 + dx * i, y2: ly + 22, stroke: "var(--line-subtle)", "stroke-dasharray": "3 4" }, svg);
+      });
+      el("line", { x1: x0, y1: ly, x2: x1, y2: ly, stroke: "var(--fg-neutral)", "stroke-width": 2 }, svg);
+      // 배포 10번 (예시): 0.1 단위 위치(요일 칸 안), 4번째 실패, 5번째가 고치는 배포
+      const at = [0.25, 0.7, 1.3, 1.75, 2.05, 2.6, 3.2, 3.6, 4.2, 4.7];
+      const xs = at.map((a) => x0 + dx * a);
+      // 리드 타임: 전날 커밋 → 수요일 배포. 가로 화살표 길이가 걸린 시간
+      const cy = ly - (m ? 50 : 58);
+      const ar = arrowDefs(svg, "var(--put)");
+      const cx0 = x0 + dx * 1.55;
+      el("line", { x1: xs[5], y1: cy, x2: xs[5], y2: ly - 13, stroke: "var(--put)", "stroke-width": 1.5, "stroke-dasharray": "3 3" }, svg);
+      el("line", { x1: cx0 + 8, y1: cy, x2: xs[5] - 1, y2: cy, stroke: "var(--put)", "stroke-width": 2.2, "marker-end": ar }, svg);
+      el("circle", { cx: cx0, cy, r: 6, fill: "var(--bg-base)", stroke: "var(--put)", "stroke-width": 2 }, svg);
+      txt(svg, cx0 - 12, cy + 5, "커밋", { "font-size": fs, fill: "var(--fg-strong)", "text-anchor": "end" });
+      txt(svg, (cx0 + xs[5]) / 2, cy - 12, "② 리드 타임", { "font-size": fs, fill: "var(--put)", "font-weight": 700, "text-anchor": "middle" });
+      // 실패 → 복구
+      const fy = ly + (m ? 70 : 78);
+      el("path", { d: `M${xs[3]} ${ly + 12} L${xs[3]} ${fy} L${xs[4]} ${fy} L${xs[4]} ${ly + 12}`, fill: "none", stroke: "var(--put)", "stroke-width": 2, "marker-end": ar }, svg);
+      txt(svg, (xs[3] + xs[4]) / 2, fy + (m ? 20 : 22), "③ 복구 시간", { "font-size": fs, fill: "var(--put)", "font-weight": 700, "text-anchor": "middle" });
+      at.forEach((a, i) => {
+        const x = xs[i];
+        if (i === 3) {
+          el("circle", { cx: x, cy: ly, r: m ? 8 : 10, fill: "var(--bad)" }, svg);
+          el("path", { d: `M${x - 4} ${ly - 4} L${x + 4} ${ly + 4} M${x + 4} ${ly - 4} L${x - 4} ${ly + 4}`, stroke: "var(--bg-base)", "stroke-width": 2.2 }, svg);
+        } else if (i === 4) {
+          el("circle", { cx: x, cy: ly, r: m ? 8 : 10, fill: "var(--bg-base)", stroke: "var(--bad)", "stroke-width": 2.5, "stroke-dasharray": "3 2.5" }, svg);
+        } else {
+          el("circle", { cx: x, cy: ly, r: m ? 8 : 10, fill: "var(--put)" }, svg);
+        }
+      });
+      // 범례 판독
+      const ty = m ? 18 : 22;
+      txt(svg, x0, ty, "처리량 — 얼마나 자주, 빨리 내보내나", { "font-size": fs + 1, "font-weight": 700, fill: "var(--put)" });
+      txt(svg, x0, ty + (m ? 22 : 26), "① 배포 빈도 이번 주 10번", { "font-size": fs, fill: "var(--fg-strong)" });
+      const by = m ? H - 74 : H - 52;
+      txt(svg, x0, by, "불안정성 — 내보낸 것이 얼마나 자주 말썽인가", { "font-size": fs + 1, "font-weight": 700, fill: "var(--bad)" });
+      const l1 = "④ 변경 실패율 10번 중 1번(✕) = 10%", l2 = "⑤ 재작업률 10번 중 1번(점선, 고치려고 다시 낸 배포) = 10%";
+      if (m) {
+        txt(svg, x0, by + 22, l1, { "font-size": fs, fill: "var(--fg-strong)" });
+        txt(svg, x0, by + 44, "⑤ 재작업률 10번 중 1번(점선) = 10%", { "font-size": fs, fill: "var(--fg-strong)" });
+      } else {
+        txt(svg, x0, by + 26, l1, { "font-size": fs, fill: "var(--fg-strong)" });
+        txt(svg, x0 + 380, by + 26, l2, { "font-size": fs, fill: "var(--fg-strong)" });
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 2024 vs 2025: AI 를 더 쓸 때 두 눈금의 방향 ---------- */
+  (() => {
+    const svg = $("[data-yr]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 520, fs = m ? 14 : 15.5, lx = m ? 92 : 120, cw = (W - lx) / 2, rh = m ? 66 : 70, top = 54;
+      const H = top + 2 * rh + 34;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      txt(svg, 0, 18, "AI 를 더 많이 쓸 때", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      [["처리량", "var(--put)"], ["불안정성", "var(--bad)"]].forEach(([n, c], j) => txt(svg, lx + cw * j + cw / 2, top - 10, n, { "font-size": fs, "font-weight": 700, fill: c, "text-anchor": "middle" }));
+      const cells = [
+        [["↓", "줄어듦 −1.5%", "var(--bad)"], ["↑", "커짐", "var(--bad)"]],
+        [["↑", "늘어남", "var(--put)"], ["↑", "커짐", "var(--bad)"]],
+      ];
+      ["2024년 조사", "2025년 조사"].forEach((yr, i) => {
+        const y = top + i * rh;
+        txt(svg, 0, y + rh / 2 + 5, yr, { "font-size": fs, fill: "var(--fg-strong)" });
+        cells[i].forEach(([ar, w, c], j) => {
+          const x = lx + cw * j + 6;
+          el("rect", { x, y: y + 6, width: cw - 12, height: rh - 12, rx: 10, fill: c === "var(--put)" ? "var(--put-soft)" : "var(--bad-soft)" }, svg);
+          txt(svg, x + 16, y + rh / 2 + 9, ar, { "font-size": fs + 10, "font-weight": 700, fill: c });
+          txt(svg, x + (m ? 38 : 44), y + rh / 2 + 5, w, { "font-size": m ? 13 : fs, "font-weight": 600, fill: "var(--fg-strong)" });
+        });
+      });
+      const by = top + 2 * rh + 24;
+      txt(svg, lx + cw / 2, by, "방향이 바뀜", { "font-size": m ? 13 : 14, fill: "var(--put)", "font-weight": 700, "text-anchor": "middle" });
+      txt(svg, lx + cw * 1.5, by, "그대로", { "font-size": m ? 13 : 14, fill: "var(--bad)", "font-weight": 700, "text-anchor": "middle" });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 역량 모델: 일곱 역량 → 결과 ---------- */
+  const OUTS = [
+    ["team", "팀 성과"], ["quality", "코드 품질"], ["indiv", "개인 효과성"], ["product", "제품 성과"],
+    ["friction", "마찰"], ["thru", "처리량"], ["org", "조직 성과"],
+  ];
+  // 보고서 본문(Capabilities Model PDF 각 장 첫 쪽) 기준. DOWN: 그 결과가 줄어든다. 마찰은 줄어드는 게 좋은 결과다
+  const EDGES = { user: ["team"], vcs: ["indiv", "team"], access: ["indiv", "quality"], small: ["product", "friction", "indiv"], stance: ["indiv", "org", "thru", "friction"], platform: ["org"], data: ["org"] };
+  const DOWN = { "small:friction": 1, "small:indiv": 1, "stance:friction": 1 };
+  const LOWGOOD = { friction: 1 };
+  const isGood = (k, o) => !!DOWN[k + ":" + o] === !!LOWGOOD[o];
+  (() => {
+    const fig = $("[data-cmod]"); if (!fig) return;
+    const svg = $("svg", fig), read = $("[data-cmodread]", fig);
+    let sel = "small";
+    const G = { caps: {}, outs: {}, edges: [] };
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 760, rowH = m ? 50 : 60, top = m ? 30 : 36, H = top + 7 * rowH;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const lw = m ? 156 : 300, rx0 = m ? 222 : 540, rw = W - rx0, bh = m ? 36 : 40, fs = m ? 13 : 15.5;
+      txt(svg, 0, top - 14, "일곱 역량", { "font-size": fs, "font-weight": 700, fill: "var(--cap)" });
+      txt(svg, rx0, top - 14, m ? "달라지는 결과" : "AI 도입의 효과가 달라지는 결과", { "font-size": fs, "font-weight": 700, fill: "var(--fg-neutral)" });
+      const gE = el("g", {}, svg);
+      const arG = arrowDefs(svg, "var(--put)");
+      const arR = arrowDefs(svg, "var(--bad)");
+      const arM = arrowDefs(svg, "var(--mute)");
+      G.edges = [];
+      CAPS.forEach(([k], i) => {
+        const y1 = top + i * rowH + bh / 2;
+        EDGES[k].forEach((o) => {
+          const j = OUTS.findIndex((x) => x[0] === o);
+          const y2 = top + j * rowH + bh / 2;
+          const p = el("path", { d: `M${lw + 4} ${y1} C${(lw + rx0) / 2} ${y1} ${(lw + rx0) / 2} ${y2} ${rx0 - 8} ${y2}`, fill: "none", "stroke-width": 1.6, class: "ed" }, gE);
+          const good = isGood(k, o);
+          G.edges.push({ p, k, o, col: good ? "var(--put)" : "var(--bad)", ar: good ? arG : arR, arM });
+        });
+      });
+      CAPS.forEach(([k, short], i) => {
+        const y = top + i * rowH;
+        const g = el("g", { class: "cp", tabindex: 0, role: "button", "data-k": k }, svg);
+        el("rect", { x: 0, y, width: lw, height: bh, rx: bh / 2 }, g);
+        const ai = k === "stance" || k === "access";
+        txt(g, lw / 2 + (ai ? (m ? 12 : 10) : 0), y + bh / 2 + fs * 0.36, short, { "font-size": fs, "text-anchor": "middle" });
+        if (ai) {
+          // 이름에 AI 가 든 두 역량 표시
+          const tg = el("g", { class: "aitag" }, g), tw = m ? 24 : 28, th = m ? 18 : 20;
+          el("rect", { x: m ? 7 : 10, y: y + (bh - th) / 2, width: tw, height: th, rx: th / 2 }, tg);
+          txt(tg, (m ? 7 : 10) + tw / 2, y + bh / 2 + 4.2, "AI", { "font-size": m ? 11.5 : 12.5, "text-anchor": "middle" });
+        }
+        const pick = () => { sel = sel === k ? null : k; render(); };
+        g.addEventListener("click", pick, { signal });
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } }, { signal });
+        G.caps[k] = g;
+      });
+      OUTS.forEach(([k, name], j) => {
+        const y = top + j * rowH;
+        const g = el("g", { class: "oc" }, svg);
+        el("rect", { x: rx0, y, width: rw, height: bh, rx: 8 }, g);
+        const t = txt(g, rx0 + rw / 2, y + bh / 2 + fs * 0.36, name, { "font-size": fs, "text-anchor": "middle" });
+        G.outs[k] = { g, t, name };
+      });
+      render();
+    };
+    const NOTE = {
+      user: "만드는 사람이 쓰는 사람의 필요를 계속 확인하는 습관입니다. 이게 약한 팀은 AI 를 들인 뒤 팀 성과가 오히려 떨어졌습니다. 틀린 방향으로 빨리 가면 손해만 커집니다.",
+      vcs: "변경을 자주 저장(커밋)하고 문제가 생기면 되돌리는 습관입니다. 자주 커밋하는 팀은 개인 효과성이, 자주 되돌릴 수 있는 팀은 팀 성과가 AI 와 함께 더 올랐습니다.",
+      access: "회사 문서·코드를 AI 가 읽을 수 있게 연결한 상태입니다. 보고서는 이 연결이 AI 를 일반 조수에서 회사 사정을 아는 전문가로 바꾼다고 적었습니다.",
+      small: "일을 작게 쪼개 자주 내보내는 습관입니다. AI 가 크고 불안정한 변경을 한 번에 만드는 위험을 막아 제품 성과와 마찰이 좋아집니다. 대신 개인이 느끼는 효과는 조금 줄었습니다.",
+      stance: "어떤 AI 도구를 어디까지 써도 되는지 회사가 정하고 모두에게 알린 상태입니다. 규칙이 분명하면 마음 놓고 시험해 볼 수 있어 결과 네 곳이 함께 움직였습니다.",
+      platform: "테스트·배포·권한 같은 공용 도구를 회사가 한곳에 갖춰 둔 것입니다. 플랫폼 품질이 높을 때 AI 가 조직 성과에 주는 효과가 강했습니다.",
+      data: "회사 데이터가 정확하고 서로 이어져 있고 찾기 쉬운 상태입니다. AI 가 읽는 재료가 지저분하면 결과도 지저분합니다.",
+    };
+    const render = () => {
+      for (const e of G.edges) {
+        const on = sel === e.k;
+        e.p.setAttribute("stroke", on ? e.col : "var(--mute)");
+        e.p.setAttribute("stroke-width", on ? 2.8 : 1.3);
+        e.p.setAttribute("marker-end", on ? e.ar : e.arM);
+        e.p.style.opacity = on ? 1 : sel ? 0.3 : 0.7;
+        if (on) e.p.parentNode.appendChild(e.p);
+      }
+      for (const k in G.caps) G.caps[k].classList.toggle("on", sel === k);
+      for (const k in G.outs) {
+        const o = G.outs[k], hit = !!sel && EDGES[sel].includes(k);
+        const good = hit && isGood(sel, k), dn = hit && DOWN[sel + ":" + k];
+        o.g.classList.toggle("on", hit);
+        o.g.classList.toggle("up", hit && good);
+        o.g.classList.toggle("dn", hit && !good);
+        o.t.textContent = hit ? `${o.name} ${dn ? "↓" : "↑"}` : o.name;
+      }
+      if (!sel) { read.innerHTML = `<b>👆 역량을 하나 눌러 보세요.</b> 그 역량을 갖춘 팀에서 AI 도입의 효과가 달라진 결과로 화살표가 이어집니다.`; return; }
+      const c = CAPS.find((x) => x[0] === sel);
+      const outs = EDGES[sel].map((o) => {
+        const nm = OUTS.find((x) => x[0] === o)[1], dn = DOWN[sel + ":" + o], good = isGood(sel, o);
+        return `<span class="${good ? "g" : "r"}">${nm} ${dn ? "↓" : "↑"} ${good ? "좋아짐" : "나빠짐"}</span>`;
+      }).join(" · ");
+      read.innerHTML = `<b>${c[1]}</b> <span class="en">${c[3]}</span><br>${NOTE[sel]}<br>${outs}`;
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 시리즈 지도: 열한 편 건물 ---------- */
+  (() => {
+    const svg = $("[data-map]"); if (!svg) return;
+    const EPS = [
+      [1, "ai-native-dev-2026-what-changed", "AI가 코드를 쓰면 개발자의 하루는"],
+      [2, "ai-native-dev-loop-explore-plan-verify", "에이전트 루프와 검증"],
+      [3, "ai-dlc-aws-methodology", "AI가 먼저 묻는 방법론, AI-DLC"],
+      [4, "spec-driven-development-spec-kit-kiro", "코드보다 먼저 쓰는 스펙"],
+      [5, "context-engineering-claude-md-agents-md", "컨텍스트 창과 CLAUDE.md"],
+      [6, "mcp-model-context-protocol-usb-c", "회사 시스템을 잇는 MCP"],
+      [7, "agent-skills-subagents-hooks", "스킬·서브에이전트·훅"],
+      [8, "ai-pr-review-bottleneck-verification", "리뷰에서 막히는 AI PR"],
+      [9, "coding-agent-security-prompt-injection-owasp", "프롬프트 인젝션과 방어 층"],
+      [10, "sllm-self-hosted-coding-agent-2026", "모델을 회사 안에 둘 때"],
+    ];
+    const GROUPS = [[1, 3, "일하는 순서가 바뀐다"], [4, 7, "에이전트에게 건네는 것"], [8, 10, "결과를 지키는 것"]];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 640, fh = m ? 36 : 40, gap = 6, top = 8;
+      const bx = 0, bw = m ? W : 420;
+      const ground = top + EPS.length * (fh + gap);
+      const H = ground + 12 + 52 + 6;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const fs = m ? 14 : 15.5;
+      EPS.forEach(([n, slug, t], i) => {
+        const y = ground - (i + 1) * (fh + gap);
+        const a = el("a", { href: "/posts/" + slug, class: "ep" }, svg);
+        const gi = GROUPS.findIndex((g) => n >= g[0] && n <= g[1]);
+        el("rect", { x: bx, y, width: bw, height: fh, rx: 4, class: "g" + gi }, a);
+        txt(a, bx + 14, y + fh / 2 + fs * 0.36, String(n), { "font-size": fs, "font-family": "var(--font-mono)", fill: "var(--fg-neutral)" });
+        txt(a, bx + (m ? 42 : 48), y + fh / 2 + fs * 0.36, t, { "font-size": fs, fill: "var(--fg-strong)" });
+      });
+      el("line", { x1: 0, y1: ground + 2, x2: m ? W : bw + 20, y2: ground + 2, stroke: "var(--fg-neutral)", "stroke-width": 2 }, svg);
+      el("rect", { x: bx, y: ground + 10, width: bw, height: 52, rx: 6, fill: "var(--cap)" }, svg);
+      txt(svg, bx + 14, ground + 36 + fs * 0.36 - 8, "기초", { "font-size": m ? 12.5 : 13.5, "font-weight": 700, fill: "var(--bg-base)" });
+      txt(svg, bx + (m ? 50 : 56), ground + 30, "일곱 역량 (이 글이 다룬 것)", { "font-size": fs, "font-weight": 700, fill: "var(--bg-base)" });
+      txt(svg, bx + (m ? 50 : 56), ground + 50, "위의 열 층이 모두 이 위에 올라갑니다", { "font-size": m ? 12.5 : 13.5, fill: "var(--bg-base)" });
+      if (!m) {
+        GROUPS.forEach(([a, b, name]) => {
+          const yTop = ground - b * (fh + gap) + 2, yBot = ground - (a - 1) * (fh + gap) - gap - 2;
+          const x = bw + 22;
+          el("path", { d: `M${x} ${yTop} h8 V${yBot} h-8`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+          txt(svg, x + 18, (yTop + yBot) / 2 + 5, name, { "font-size": 15, fill: "var(--fg-strong)", "font-weight": 600 });
+        });
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 일곱 팀 유형: 100% 띠 ---------- */
+  (() => {
+    const fig = $("[data-clu]"); if (!fig) return;
+    const svg = $("svg", fig), read = $("[data-clread]", fig);
+    const CL = [
+      [1, 10, "기초부터 흔들리는 팀", "Foundational challenges", "버티기에 급급합니다. 팀 성과·제품 성과가 낮고 번아웃과 마찰이 크며 시스템도 자주 불안정합니다.", "h"],
+      [2, 11, "레거시에 묶인 팀", "The legacy bottleneck", "불안정한 옛 시스템이 일을 정합니다. 업데이트는 꾸준히 내지만 품질 문제로 계획에 없던 급한 일이 많습니다.", "h"],
+      [3, 17, "절차에 묶인 팀", "Constrained by process", "시스템은 안정적인데 비효율적인 절차에 힘을 다 씁니다. 러닝머신 위를 달리듯 번아웃은 크고 성과는 작습니다.", "h"],
+      [4, 7, "성과는 크지만 느린 팀", "High impact, low cadence", "제품 성과와 개인 효과성은 높습니다. 그런데 처리량이 낮고 불안정성이 높습니다.", "h"],
+      [5, 15, "꾸준한 장인형 팀", "Stable and methodical", "품질 좋고 가치 있는 일을 신중한 속도로 냅니다. 처리량은 낮은 편입니다.", "g"],
+      [6, 20, "실용적으로 잘하는 팀", "Pragmatic performers", "처리량은 평균보다 높고 불안정성은 낮습니다. 일하는 분위기가 최고 수준은 아닙니다.", "g"],
+      [7, 20, "조화로운 상위 팀", "Harmonious high-achievers", "안정적이고 마찰이 적은 환경에서 번아웃 없이 좋은 결과를 냅니다.", "g"],
+    ];
+    let sel = 3;
+    const segs = [];
+    const build = (m) => {
+      svg.innerHTML = ""; segs.length = 0;
+      const W = m ? 360 : 600, bh = m ? 60 : 72, H = bh + (m ? 64 : 70);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      let x = 0;
+      const fs = m ? 14 : 16;
+      CL.forEach(([n, p, ko], i) => {
+        const w = (W * p) / 100;
+        const g = el("g", { class: "sg " + CL[i][5], tabindex: 0, role: "button" }, svg);
+        el("rect", { x: x + 1, y: 0, width: w - 2, height: bh, rx: 5 }, g);
+        txt(g, x + w / 2, bh / 2 - 2, String(n), { "font-size": fs + 2, "font-weight": 700, "text-anchor": "middle" });
+        txt(g, x + w / 2, bh / 2 + (m ? 17 : 20), p + "%", { "font-size": m ? 12.5 : 14, "text-anchor": "middle", class: "pc" });
+        const pick = () => { sel = sel === i ? null : i; render(); };
+        g.addEventListener("click", pick, { signal });
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } }, { signal });
+        segs.push(g);
+        x += w;
+      });
+      const by = bh + 14, x4 = (W * 45) / 100;
+      el("path", { d: `M2 ${by} v8 H${x4 - 4} v-8`, fill: "none", stroke: "var(--bad)", "stroke-width": 1.5 }, svg);
+      const two = (x, a, b, col) => { if (m) { txt(svg, x, by + 26, a, { "font-size": 12.5, fill: col, "text-anchor": "middle", "font-weight": 600 }); txt(svg, x, by + 44, b, { "font-size": 12.5, fill: col, "text-anchor": "middle", "font-weight": 600 }); } else txt(svg, x, by + 30, a + " " + b, { "font-size": fs - 1, fill: col, "text-anchor": "middle", "font-weight": 600 }); };
+      two(x4 / 2, "어려움을 겪는", "네 유형 45%", "var(--bad)");
+      el("path", { d: `M${x4 + 4} ${by} v8 H${W - 2} v-8`, fill: "none", stroke: "var(--put)", "stroke-width": 1.5 }, svg);
+      two((x4 + W) / 2, "잘 돌아가는", "세 유형 55%", "var(--put)");
+      render();
+    };
+    const render = () => {
+      segs.forEach((g, i) => { g.classList.toggle("on", sel === i); g.classList.toggle("dim", sel !== null && sel !== i); });
+      if (sel === null) { read.innerHTML = `<b>👆 띠의 칸을 눌러 보세요.</b> 칸 너비가 그 유형에 속한 응답자 비율입니다.`; return; }
+      const c = CL[sel];
+      read.innerHTML = `<b>${c[0]}. ${c[2]}</b> <span class="en">${c[3]} · 응답자 ${c[1]}%</span><br>${c[4]}`;
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 동료를 타고 퍼지는 도입: 조직도 + 오즈 막대 ---------- */
+  (() => {
+    const fig = $("[data-net]"); if (!fig) return;
+    const org = $("svg[data-org]", fig), bars = $("svg[data-odds]", fig), read = $("[data-netread]", fig);
+    let sel = "skip";
+    const G = { nodes: [], links: [], rows: [] };
+    // 사람: 0 큰 팀장, 1·2 팀장, 3~6 A팀(3 = 나), 7~10 B팀
+    const groups = {
+      reviewer: { name: "리뷰 동료", who: [4, 5, 8], use: [4, 5, 8], trial: 54, keep: null, say: "코드 리뷰를 주고받는 동료입니다. 이들 가운데 4분의 1 넘게 쓰고 있으면 처음 써 볼 오즈(odds)가 54% 높았습니다. 계속 쓰는 쪽도 비슷하게 올랐다고 적었지만 숫자는 따로 밝히지 않았습니다." },
+      skip: { name: "같은 큰 팀 동료", who: [4, 5, 6, 7, 8, 9, 10], use: [6, 9], trial: 216, keep: 66, say: "팀장의 팀장이 같은 사람들, 곧 옆 팀까지 묶은 큰 팀입니다. 가장 센 신호였습니다. 4분의 1 넘게 쓰고 있으면 써 볼 오즈(odds)가 216% 높았고 계속 쓸 오즈는 66% 높았습니다. 조직도에서는 테두리가 주황인 일곱 명 가운데 칠한 두 명이 쓰고 있습니다." },
+      manager: { name: "직속 팀장", who: [1], use: [1], trial: 82, keep: 22, say: "내 팀장이 쓰고 있으면 써 볼 오즈(odds)가 82%, 계속 쓸 오즈가 22% 높았습니다." },
+    };
+    const buildOrg = (m) => {
+      org.innerHTML = ""; G.nodes = []; G.links = [];
+      const W = m ? 360 : 520, H = m ? 236 : 330;
+      org.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const r = m ? 16 : 20, fs = m ? 13 : 13.5;
+      const P = [];
+      P[0] = [W / 2, m ? 32 : 34];
+      P[1] = [W * 0.27, m ? 96 : 124]; P[2] = [W * 0.73, m ? 96 : 124];
+      const ey = m ? 168 : 250;
+      for (let i = 0; i < 4; i++) P[3 + i] = [W * (0.06 + i * 0.12), ey];
+      for (let i = 0; i < 4; i++) P[7 + i] = [W * (0.58 + i * 0.12), ey];
+      const lg = el("g", {}, org);
+      [[0, 1], [0, 2], [1, 3], [1, 4], [1, 5], [1, 6], [2, 7], [2, 8], [2, 9], [2, 10]].forEach(([a, b]) => {
+        el("line", { x1: P[a][0], y1: P[a][1] + r, x2: P[b][0], y2: P[b][1] - r, stroke: "var(--line-normal)", "stroke-width": 1.5 }, lg);
+      });
+      // 리뷰 주고받는 선(나 ↔ 4, 5, 8)
+      [4, 5, 8].forEach((b) => {
+        const [x1, y1] = P[3], [x2, y2] = P[b];
+        const p = el("path", { d: `M${x1} ${y1 + r} Q${(x1 + x2) / 2} ${y1 + r + (b === 8 ? 52 : 26 + (b - 4) * 10)} ${x2} ${y2 + r}`, fill: "none", stroke: "var(--ai)", "stroke-width": 1.8, "stroke-dasharray": "4 4", class: "rv" }, org);
+        G.links.push([b, p]);
+      });
+      const label = ["큰 팀장", "팀장", "팀장", "나", "", "", "", "", "", "", ""];
+      P.forEach(([x, y], i) => {
+        const g = el("g", { class: "pn" + (i === 3 ? " me" : "") }, org);
+        el("circle", { cx: x, cy: y, r }, g);
+        if (label[i]) txt(g, x, i === 3 ? y + 5 : y - r - 8, label[i], { "font-size": i === 3 ? fs + 1 : fs, "text-anchor": "middle", "font-weight": i === 3 ? 700 : 500, class: i === 3 ? "in" : "" });
+        G.nodes.push(g);
+      });
+      txt(org, P[3][0] - r, ey + r + (m ? 44 : 44), "A팀", { "font-size": fs, fill: "var(--fg-neutral)" });
+      txt(org, P[7][0] - r, ey + r + (m ? 44 : 44), "B팀(옆 팀)", { "font-size": fs, fill: "var(--fg-neutral)" });
+      render();
+    };
+    const buildBars = (m) => {
+      bars.innerHTML = ""; G.rows = [];
+      const W = m ? 360 : 440, rowH = m ? 66 : 76, top = 26, H = top + 3 * rowH + 30;
+      bars.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const lx = m ? 110 : 128, mx = W - (m ? 46 : 52), sc = (mx - lx) / 220, fs = m ? 13 : 14;
+      txt(bars, lx, 14, "0%", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      txt(bars, lx + 100 * sc, 14, "+100%", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      txt(bars, lx + 200 * sc, 14, "+200%", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      [100, 200].forEach((v) => el("line", { x1: lx + v * sc, y1: 20, x2: lx + v * sc, y2: top + 3 * rowH, stroke: "var(--line-subtle)", "stroke-dasharray": "3 4" }, bars));
+      el("line", { x1: lx, y1: 20, x2: lx, y2: top + 3 * rowH, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, bars);
+      txt(bars, lx, top + 3 * rowH + 18, "변화 없음", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      ["reviewer", "skip", "manager"].forEach((k, i) => {
+        const gdat = groups[k], y = top + i * rowH + 8;
+        const g = el("g", { class: "row" }, bars);
+        txt(g, lx - 10, y + 14, gdat.name, { "font-size": fs, "text-anchor": "end", class: "nm" });
+        el("rect", { x: lx, y, width: gdat.trial * sc, height: 20, rx: 3, class: "tr" }, g);
+        txt(g, lx + gdat.trial * sc + 6, y + 15, "+" + gdat.trial + "%", { "font-size": fs, "font-weight": 700, class: "tv" });
+        if (gdat.keep !== null) {
+          el("rect", { x: lx, y: y + 26, width: gdat.keep * sc, height: 12, rx: 3, class: "kp" }, g);
+          txt(g, lx + gdat.keep * sc + 6, y + 37, "+" + gdat.keep + "%", { "font-size": 12.5, class: "kv" });
+        } else {
+          txt(g, lx + 4, y + 37, "계속 씀: 숫자 없음", { "font-size": 12.5, fill: "var(--fg-neutral)" });
+        }
+        G.rows.push([k, g]);
+      });
+    };
+    const render = () => {
+      // 테두리 = 그 묶음, 칠함 = 지금 쓰는 사람. 점선은 칠한 리뷰 동료에게만
+      const who = sel ? new Set(groups[sel].who) : new Set(), use = sel ? new Set(groups[sel].use) : new Set();
+      G.nodes.forEach((g, i) => { g.classList.toggle("on", use.has(i)); g.classList.toggle("grp", who.has(i) && !use.has(i)); });
+      G.links.forEach(([b, p]) => { p.style.opacity = sel === "reviewer" && use.has(b) ? 1 : 0; });
+      G.rows.forEach(([k, g]) => { g.classList.toggle("dim", !!sel && sel !== k); });
+      $$("[data-grp] button", fig).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === sel)));
+      read.innerHTML = sel ? (first ? `<span class="tc-hint">처음엔 ‘같은 큰 팀’을 골라 두었습니다. 다른 묶음도 눌러 보세요.</span><br>` : "") + `<b>${groups[sel].name}</b> — ${groups[sel].say}` : `<b>↑ 누가 쓰는 걸 봤을 때인지 골라 보세요.</b> 조직도에서 그 사람들이 칠해지고 막대 그림의 그 줄이 남습니다.`;
+    };
+    let first = true;
+    $$("[data-grp] button", fig).forEach((b) => b.addEventListener("click", () => { first = false; sel = sel === b.dataset.v ? null : b.dataset.v; render(); }, { signal }));
+    responsive((m) => { buildBars(m); buildOrg(m); });
+  })();
+
+  /* ---------- 2026 현장: 맡김 띠 + 도구 호출 점 ---------- */
+  (() => {
+    const svg = $("[data-deleg]"); if (!svg) return;
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 560, H = m ? 340 : 306, fs = m ? 13 : 14.5;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const x0 = 0, bw = W;
+      txt(svg, 0, 18, "엔지니어 한 사람의 일 전체 = 100", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const by = 32, bh = 34;
+      el("rect", { x: x0, y: by, width: bw, height: bh, rx: 5, fill: "var(--mute-soft)" }, svg);
+      el("rect", { x: x0, y: by, width: bw * 0.6, height: bh, rx: 5, fill: "var(--ai-soft)", stroke: "var(--ai)", "stroke-width": 1.5 }, svg);
+      txt(svg, 10, by + 22, "Claude 와 함께 한 일 약 60", { "font-size": fs, fill: "var(--fg-strong)", "font-weight": 600 });
+      // 완전히 맡김 0~20 구간 — 위 막대와 같은 0~100 눈금
+      const dy = by + bh + 10;
+      const pat = el("pattern", { id: "tcHatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, el("defs", {}, svg));
+      el("rect", { width: 3, height: 6, fill: "var(--ai)" }, pat);
+      el("rect", { x: x0, y: dy, width: bw, height: 16, rx: 3, fill: "var(--mute-soft)" }, svg);
+      el("rect", { x: x0, y: dy, width: bw * 0.2, height: 16, rx: 3, fill: "url(#tcHatch)", opacity: 0.8 }, svg);
+      // 공통 눈금
+      const ay = dy + 24;
+      el("line", { x1: x0, y1: ay, x2: bw, y2: ay, stroke: "var(--fg-neutral)", "stroke-width": 1.2 }, svg);
+      [0, 20, 60, 100].forEach((v) => {
+        const x = Math.min(bw - 1, Math.max(1, bw * v / 100));
+        el("line", { x1: x, y1: ay, x2: x, y2: ay + 5, stroke: "var(--fg-neutral)", "stroke-width": 1.2 }, svg);
+        txt(svg, x, ay + 19, String(v), { "font-size": m ? 12 : 12.5, fill: "var(--fg-neutral)", "text-anchor": v === 0 ? "start" : v === 100 ? "end" : "middle" });
+      });
+      if (m) {
+        txt(svg, x0, ay + 44, "빗금: 사람이 확인하지 않고 통째로", { "font-size": fs, fill: "var(--ai)", "font-weight": 600 });
+        txt(svg, x0, ay + 63, "맡길 수 있다는 일, 대부분 0~20", { "font-size": fs, fill: "var(--ai)", "font-weight": 600 });
+      } else txt(svg, x0, ay + 44, "빗금: 사람이 확인하지 않고 통째로 맡길 수 있다는 일, 대부분 0~20", { "font-size": fs, fill: "var(--ai)", "font-weight": 600 });
+      // 도구 호출 점
+      const ty = ay + (m ? 104 : 84);
+      txt(svg, 0, ty, "사람이 끼어들기 전까지 이어서 부른 도구 호출(평균)", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const rows = [["2025년 2월", 9.8, 6.2], ["2025년 8월", 21.2, 4.1]];
+      const step = m ? 11.5 : 15, dx0 = m ? 82 : 96;
+      rows.forEach(([lab, n, turns], i) => {
+        const y = ty + 30 + i * (m ? 62 : 54);
+        txt(svg, 0, y + 5, lab, { "font-size": fs, fill: "var(--fg-neutral)" });
+        const perRow = m ? 22 : 30;
+        for (let j = 0; j < Math.ceil(n); j++) {
+          const rr = Math.floor(j / perRow), cc = j % perRow;
+          const part = Math.min(1, n - j);
+          el("circle", { cx: dx0 + cc * step, cy: y + rr * 14, r: m ? 4.2 : 5, fill: "var(--ai)", opacity: part < 1 ? 0.45 : 1 }, svg);
+        }
+        txt(svg, dx0, y + (m ? 32 : 26), `${n}번 · 기록 한 건당 사람 입력 ${turns}번`, { "font-size": m ? 12.5 : 13.5, fill: "var(--fg-strong)" });
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 1번·7번 유형: 평균 대비 점 그림 (원본 거미줄 그림에서 읽은 위치, 고리 5칸 중 3칸 = 평균) ---------- */
+  (() => {
+    const svg = $("[data-dots]"); if (!svg) return;
+    const ROWS = [
+      ["좋을수록 높은 지표"],
+      ["팀 성과", 1.5, 3.8], ["제품 성과", 1.9, 3.7], ["처리량", 2.5, 3.3], ["개인 효과성", 1.5, 3.6], ["가치 있는 일", 1.5, 3.6],
+      ["나쁠수록 높은 지표"],
+      ["불안정성", 3.4, 2.1], ["마찰", 4.0, 2.3], ["번아웃", 4.3, 2.3],
+    ];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 560, fs = m ? 13 : 14.5, rh = m ? 30 : 32, hh = m ? 30 : 32, top = m ? 64 : 58;
+      const lx = m ? 92 : 120, rx = W - 8;
+      const X = (v) => lx + ((v - 0.5) / 4.5) * (rx - lx);
+      let y = top;
+      const pos = ROWS.map((r) => { const yy = y; y += r.length === 1 ? hh : rh; return yy; });
+      const H = y + 30;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      // 범례
+      el("circle", { cx: 7, cy: 12, r: 6, fill: "var(--bad)" }, svg);
+      txt(svg, 20, 17, "1번 기초부터 흔들리는 팀", { "font-size": fs, fill: "var(--fg-strong)", "font-weight": 600 });
+      const lx2 = m ? 0 : 250, ly2 = m ? 38 : 12;
+      el("circle", { cx: lx2 + 7, cy: ly2, r: 6, fill: "var(--put)" }, svg);
+      txt(svg, lx2 + 20, ly2 + 5, "7번 조화로운 상위 팀", { "font-size": fs, fill: "var(--fg-strong)", "font-weight": 600 });
+      // 평균선
+      const ax = X(3), y0 = top - 6, y1 = y - 6;
+      el("line", { x1: ax, y1: y0, x2: ax, y2: y1, stroke: "var(--fg-neutral)", "stroke-width": 1.4, "stroke-dasharray": "4 4" }, svg);
+      txt(svg, ax, y1 + 20, "평균", { "font-size": fs - 1, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      txt(svg, lx, y1 + 20, "← 낮음", { "font-size": fs - 1, fill: "var(--fg-neutral)" });
+      txt(svg, rx, y1 + 20, "높음 →", { "font-size": fs - 1, fill: "var(--fg-neutral)", "text-anchor": "end" });
+      ROWS.forEach((r, i) => {
+        const yy = pos[i];
+        if (r.length === 1) { txt(svg, 0, yy + 18, r[0], { "font-size": fs - 1, fill: "var(--fg-neutral)", "font-weight": 700 }); return; }
+        const cy = yy + rh / 2;
+        txt(svg, 0, cy + fs * 0.36, r[0], { "font-size": fs, fill: "var(--fg-strong)" });
+        el("line", { x1: lx, y1: cy, x2: rx, y2: cy, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        el("line", { x1: X(r[1]), y1: cy, x2: X(r[2]), y2: cy, stroke: "var(--fg-neutral)", "stroke-width": 2, opacity: 0.5 }, svg);
+        el("circle", { cx: X(r[1]), cy, r: m ? 7 : 8, fill: "var(--bad)" }, svg);
+        el("circle", { cx: X(r[2]), cy, r: m ? 7 : 8, fill: "var(--put)" }, svg);
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- Stack Overflow 2026-04: 에이전트 몇 개로 일하나 + 지켜보는 사람 ---------- */
+  (() => {
+    const svg = $("[data-so]"); if (!svg) return;
+    const D = [["에이전트 하나", 69], ["일을 나눠 맡은 여러 에이전트", 17], ["겹치거나 서로 조율하는 여러 에이전트", 16]];
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 540, fs = m ? 13.5 : 15, rowH = m ? 58 : 60, bh = m ? 24 : 26;
+      const mx = W - 56;
+      txt(svg, 0, 15, "에이전트를 매일 쓰는 사람 가운데", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      D.forEach(([name, v], i) => {
+        const y = 30 + i * rowH;
+        txt(svg, 0, y + fs * 0.9, name, { "font-size": fs, fill: "var(--fg-strong)" });
+        const by = y + fs + 8;
+        el("rect", { x: 0, y: by, width: mx, height: bh, rx: 4, fill: "var(--mute-soft)" }, svg);
+        el("rect", { x: 0, y: by, width: (mx * v) / 100, height: bh, rx: 4, fill: i ? "var(--ai-soft)" : "var(--ai)", stroke: "var(--ai)", "stroke-width": 1.5 }, svg);
+        txt(svg, mx + 8, by + bh / 2 + fs * 0.36, v + "%", { "font-size": fs + 1, "font-weight": 700, fill: "var(--fg-strong)" });
+      });
+      // 지켜보는 사람 63%
+      const y0 = 30 + D.length * rowH + 22;
+      el("line", { x1: 0, y1: y0 - 12, x2: W, y2: y0 - 12, stroke: "var(--line-subtle)" }, svg);
+      txt(svg, 0, y0 + 12, "응답자 가운데", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const l1 = m ? "에이전트를 사람 확인 없이 끝까지" : "에이전트를 사람 확인 없이 끝까지 돌리는 일이";
+      const l2 = m ? "돌리는 일이 거의·전혀 없다" : "거의·전혀 없다";
+      txt(svg, 0, y0 + 36, l1, { "font-size": fs, fill: "var(--fg-strong)" });
+      txt(svg, 0, y0 + 36 + fs + 6, l2, { "font-size": fs, fill: "var(--fg-strong)" });
+      const by = y0 + 36 + fs + 18;
+      el("rect", { x: 0, y: by, width: mx, height: bh + 6, rx: 4, fill: "var(--mute-soft)" }, svg);
+      el("rect", { x: 0, y: by, width: mx * 0.63, height: bh + 6, rx: 4, fill: "var(--fg-strong)" }, svg);
+      // 사람 아이콘: 막대 안에서 지켜보는 사람
+      const ix = mx * 0.63 - 22, iy = by + (bh + 6) / 2;
+      el("circle", { cx: ix, cy: iy - 5, r: 4.5, fill: "var(--bg-base)" }, svg);
+      el("path", { d: `M${ix - 8} ${iy + 11} q0 -10 8 -10 q8 0 8 10 z`, fill: "var(--bg-base)" }, svg);
+      txt(svg, 10, iy + 5, "지켜보는 사람", { "font-size": fs - 1, "font-weight": 700, fill: "var(--bg-base)" });
+      txt(svg, mx + 8, iy + fs * 0.36, "63%", { "font-size": fs + 1, "font-weight": 700, fill: "var(--fg-strong)" });
+      svg.setAttribute("viewBox", `0 0 ${W} ${by + bh + 10}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- MenuGen: 이메일로 잇기 vs 사용자 ID ---------- */
+  (() => {
+    const fig = $("[data-menu]"); if (!fig) return;
+    const svg = $("svg", fig), read = $("[data-menuread]", fig), mh = $("[data-mhint]", fig);
+    let mode = "email";
+    const build = (m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 560, fs = m ? 13 : 14.5;
+      const cw = m ? 168 : 210, ch = 76;
+      const L = [0, 4], R = [W - cw, 4];
+      const card = (x, y, head, l1, l2) => {
+        el("rect", { x, y, width: cw, height: ch, rx: 10, fill: "var(--bg-base)", stroke: "var(--line-normal)", "stroke-width": 1.5 }, svg);
+        txt(svg, x + 12, y + 24, head, { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+        txt(svg, x + 12, y + 46, l1, { "font-size": m ? 12.5 : 13.5, fill: "var(--fg-neutral)", "font-family": "var(--font-mono)" });
+        txt(svg, x + 12, y + 66, l2, { "font-size": m ? 12.5 : 13.5, fill: "var(--fg-neutral)", "font-family": "var(--font-mono)" });
+      };
+      card(L[0], L[1], "Google 로그인", "jin@gmail.com", "id: u_1042");
+      card(R[0], R[1], "Stripe 결제", "jin.pay@naver.com", "id: u_1042");
+      let ry;
+      if (m) {
+        const ax = cw / 2, bx = W - cw / 2, y0 = L[1] + ch;
+        const g1 = el("g", { class: "lnk em" }, svg);
+        el("path", { d: `M${ax - 20} ${y0 + 4} V${y0 + 26} H${bx - 20} V${y0 + 4}`, fill: "none", "stroke-width": 2.5 }, g1);
+        txt(g1, W / 2, y0 + 44, "이메일이 같나?", { "font-size": 13, "text-anchor": "middle" });
+        const g2 = el("g", { class: "lnk id" }, svg);
+        el("path", { d: `M${ax + 20} ${y0 + 4} V${y0 + 62} H${bx + 20} V${y0 + 4}`, fill: "none", "stroke-width": 2.5 }, g2);
+        txt(g2, W / 2, y0 + 80, "같은 사용자 ID 인가?", { "font-size": 13, "text-anchor": "middle" });
+        ry = y0 + 96;
+      } else {
+        const my = L[1] + ch / 2;
+        const g1 = el("g", { class: "lnk em" }, svg);
+        el("line", { x1: cw + 10, y1: my - 8, x2: W - cw - 10, y2: my - 8, "stroke-width": 2.5 }, g1);
+        const g2 = el("g", { class: "lnk id" }, svg);
+        el("line", { x1: cw + 10, y1: my + 12, x2: W - cw - 10, y2: my + 12, "stroke-width": 2.5 }, g2);
+        txt(g1, W / 2, my - 16, "이메일이 같나?", { "font-size": 13.5, "text-anchor": "middle" });
+        txt(g2, W / 2, my + 32, "같은 사용자 ID 인가?", { "font-size": 13.5, "text-anchor": "middle" });
+        ry = L[1] + ch + 34;
+      }
+      const rh = m ? 100 : 92;
+      svg.setAttribute("viewBox", `0 0 ${W} ${ry + rh + 2}`);
+      el("rect", { x: 0, y: ry, width: W, height: rh, rx: 12, class: "res" }, svg);
+      txt(svg, 16, ry + 30, "결과", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)", class: "rh" });
+      txt(svg, 16, ry + (m ? 56 : 56), "", { "font-size": fs, class: "rt" });
+      txt(svg, 16, ry + (m ? 80 : 78), "", { "font-size": fs, class: "rt2" });
+      render();
+    };
+    const render = () => {
+      svg.classList.toggle("m-em", mode === "email");
+      svg.classList.toggle("m-id", mode === "id");
+      const rt = $(".rt", svg), rt2 = $(".rt2", svg);
+      const m = mobile();
+      if (!mode) { rt.textContent = "↑ 잇는 방법을 골라 보세요"; rt2.textContent = ""; }
+      else if (mode === "email") { rt.textContent = m ? "테스트 계정: 두 이메일이 같아 통과 ✓" : "테스트 계정: 두 이메일이 같아서 시험은 통과 ✓"; rt2.textContent = m ? "이 사용자: 짝 못 찾음 → 크레딧 ✕" : "이 사용자: 두 이메일이 달라 짝을 못 찾음 → 크레딧이 안 들어옴 ✕"; }
+      else { rt.textContent = m ? "테스트 계정: 같은 ID 라 통과 ✓" : "테스트 계정: 같은 ID 라 통과 ✓"; rt2.textContent = m ? "이 사용자: 같은 ID → 크레딧 ✓" : "이 사용자: 이메일이 달라도 같은 ID 로 이음 → 크레딧이 들어옴 ✓"; }
+      $$("[data-mm] button", fig).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === mode)));
+      read.innerHTML = !mode ? "" : mode === "email" ? "테스트로 쓴 계정은 두 이메일이 같아서 이 코드는 통과합니다. 실제 사용자 중에는 결제 이메일이 다른 사람이 있다는 걸 아는 사람만 이 문제를 잡습니다." : "로그인할 때 받은 바뀌지 않는 사용자 ID 를 결제에도 붙여 두면 이메일이 달라도 짝이 맞습니다. Karpathy 가 \"영구 사용자 ID 를 쓰라고 고집하라\"고 한 부분입니다.";
+    };
+    $$("[data-mm] button", fig).forEach((b) => b.addEventListener("click", () => { mode = b.dataset.v; if (mh) mh.classList.add("gone"); render(); }, { signal }));
+    responsive(build);
+  })();
+})();
+</script>
