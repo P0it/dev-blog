@@ -85,6 +85,16 @@
 | [OpenAI, Harness engineering](https://openai.com/index/harness-engineering/) | 에이전트가 막힐 때 "더 열심히"가 아니라 "빠진 능력이 무엇인가"를 묻고 저장소에 넣는 바깥 고리. Chrome DevTools 확인 루프를 시퀀스 다이어그램 + LOOP UNTIL CLEAN 상자로 그린다 | 사람의 일이 루프 바깥으로 옮겨 가는 것을 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify (DevTools 그림 가져와 씀) |
 | [Zhong 외, ImpossibleBench](https://arxiv.org/abs/2510.20270) | 테스트를 명세와 반대로 뒤집은 "불가능한 과제"를 만들어 통과율 = 부정행위율로 정의한다(is_prime(7) 한 줄 예, Figure 1). 테스트 열어 둠·읽기 전용·숨김에 따라 정상 성공률과 부정행위가 함께 움직이는 막대(Figure 7) | 보상 해킹을 측정 가능한 숫자로 보일 때, 대책의 대가를 같이 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify (Figure 1·2 를 한국어 두 과제 카드 + 막대로, Figure 7 값은 토글 막대로 다시 그림) |
 | [METR, Recent Frontier Models Are Reward Hacking](https://metr.org/blog/2025-06-05-recent-reward-hacking/) | 실제 실행 기록 조각(채점기를 늘 통과하게 바꾸는 코드)을 그대로 보이고, 과제별 보상 해킹 비율 표와 "속이지 마세요" 같은 프롬프트별 비율 표를 둔다 | 보상 해킹이 지시로는 잘 안 막힌다는 것을 보일 때 | 2026-10-15 | ai-native-dev-loop-explore-plan-verify |
+| [VS Code, Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) | 언어 3개 × 편집기 3개가 엇갈린 선 9개(NO LSP)와 가운데 약속 상자 하나로 모인 선(LSP)을 나란히 둔다. "M × N 일"을 그림 한 장으로 | 표준·프로토콜이 짝마다 만들던 일을 줄이는 것을 보일 때 | 2026-10-15 | mcp-model-context-protocol-usb-c (가져와 씀) |
+| [MCP Docs, Architecture overview](https://modelcontextprotocol.io/docs/learn/architecture) · [Understanding MCP servers](https://modelcontextprotocol.io/docs/learn/server-concepts) | Host 하나가 서버마다 Client 를 하나씩 만드는 그림, `tools/list` → `tools/call` 실제 JSON 왕복. 서버 기능 셋을 "누가 고르나(Model / Application / User)" 한 칸으로 가른다 | 프로토콜 참가자와 기능을 처음 세울 때 | 2026-10-15 | mcp-model-context-protocol-usb-c |
+| [Invariant Labs, GitHub MCP Exploited](https://invariantlabs.ai/blog/mcp-github-vulnerability) | 사용자 요청 → 에이전트(정상 → 손상) → 도구 세 개 → 저장소 세 개(INJECTION·SENSITIVE·LEAK 꼬리표)로 독이 든 흐름을 한 장에 | 프롬프트 인젝션이 도구를 따라 번지는 경로를 보일 때. 원 그림은 모바일 글자가 작다 | 2026-10-15 | mcp-model-context-protocol-usb-c (권한 토글로 2단계에서 끊기게 한국어로 다시 그림, 원본은 접기) |
+| [Anthropic, Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) | 서버 다섯 개 도구 58개 ≈ 55K 토큰을 서버별로 쪼개 적고, 도구 검색을 켜면 처음 싣는 양이 줄어든 창 막대를 나란히 | 도구 설명이 컨텍스트를 먹는 양을 실제 값으로 보일 때 | 2026-10-15 | mcp-model-context-protocol-usb-c (200K 창 막대 + 서버 플러그로 다시 그림) |
+| [The MCP Registry](https://modelcontextprotocol.io/registry/about) · [레지스트리 API](https://registry.modelcontextprotocol.io/) | 코드가 아니라 메타데이터만, 이름은 거꾸로 쓴 도메인으로 주인만 확인, 보안 검사는 패키지 저장소·마켓플레이스에 위임. API 로 직접 셀 수 있다 | "목록에 있으면 안전하다"는 오해를 깰 때 | 2026-10-15 | mcp-model-context-protocol-usb-c (v0.1 API 로 43,784개 직접 집계) |
+| [Agent Skills Specification (agentskills.io)](https://agentskills.io/specification) | 단계적 공개를 "메타데이터 ~100 토큰 / 본문 5,000 토큰 아래 / 리소스는 필요할 때" 세 층으로 토큰 크기와 함께 적는다 | 층마다 무엇이 언제 올라오는지 숫자로 보일 때 | 2026-10-15 | agent-skills-subagents-hooks (서랍장 히어로·SKILL.md 해부) |
+| [Anthropic, Equipping agents for the real world with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) | 컨텍스트 창 하나 안에 시스템 프롬프트 + 스킬 이름표 줄 → 사용자 요청 → `cat SKILL.md` → `cat forms.md` 를 메시지 칸으로 쌓고 옆에 "Claude 가 읽기로 정함" 주석을 단다 | "스킬을 연다 = 파일을 읽는다"를 보일 때. 원 그림은 모바일 5px 이라 한국어로 다시 그림 | 2026-10-15 | agent-skills-subagents-hooks (대화 기록 일곱 칸으로 다시 그림, 원 그림은 접기) |
+| [Claude Code Docs, Extend Claude Code](https://code.claude.com/docs/en/features-overview) | 기능마다 "언제 올라오나 · 무엇이 올라오나 · 컨텍스트 비용" 표, 그리고 "같은 절차를 세 번째 붙여 넣으면 스킬"처럼 증상 → 기능 트리거 표 | CLAUDE.md·스킬·서브에이전트·훅을 가를 때 | 2026-10-15 | agent-skills-subagents-hooks (2축 지도 + 트리거 목록) |
+| [Claude Code Docs, Automate actions with hooks](https://code.claude.com/docs/en/hooks-guide) | 실제 보호 스크립트(protect-files.sh) 한 장으로 "exit 2 = 막기, stderr = Claude 에게 사유"를 보이고 exit 1 은 막지 못한다고 따로 적는다 | 훅의 종료 코드를 오해 없이 보일 때 | 2026-10-15 | agent-skills-subagents-hooks (검문소 실험판) |
+| [Anthropic, Steering Claude Code](https://claude.com/blog/steering-claude-code-skills-hooks-rules-subagents-and-more) | CLAUDE.md 를 다시 읽으며 "매번 X 하면 Y → 훅, 30줄 절차 → 스킬" 처럼 줄 단위 진단 질문을 준다 | 무엇을 어디에 둘지 독자가 스스로 고르게 할 때 | 2026-10-15 | agent-skills-subagents-hooks |
 
 ## 미확인
 
@@ -141,6 +151,14 @@
 - **AI 가 낸 질문 파일에 사람이 답을 채워야 승인 버튼이 열린다** (ai-dlc-aws-methodology, Critic 4/4) — 실제 규칙 파일 형식(선택지·[Answer]: 칸)을 히어로로 쓰고, 답 3개가 차면 계획 덩어리가 바뀌며 "사람 승인"이 열린다. 스프린트와 볼트는 토글 대신 같은 열흘 축에 위아래로 그려 승인 점 개수(1번 vs 21번)를 조작 없이 비교하게 했다. 근거 계단은 실제 근거가 있는 칸만 칠하고 빈 칸은 점선+물음표로 — 반대로 칠하면 "근거가 있다"로 읽힌다(Critic 지적)
 
 - **같은 요청을 실제로 두 번 돌려 결정을 나란히** (spec-driven-development-spec-kit-kiro, Critic 4/4) — 요청 한 줄만 준 실행과 SPEC.md 를 준 실행의 server.js 를 줄마다 "추측"/스펙 칸 이름표로 갈라 보여 주고, 두 실행의 결정 13가지를 나란히 놓아 다른 값 3가지를 드러냈다. 스펙 한 줄을 바꾸는 탭은 기본 상태를 칠하지 않고, 누르면 R→P→T→코드 줄이 차례 번호와 함께 주황으로 번진다(기본부터 칠해 두면 "무엇이 바뀌었나"가 안 보인다는 Critic 지적). 같은 숫자를 다른 뜻으로 두 번 크게 쓰지 않는다
+- **배선 지도에서 노란 칸을 양 끝으로 모으기** (mcp-model-context-protocol-usb-c, Critic 전) — 앱 3 × 시스템 4 연결선마다 붙은 노란 칸(직접 짜야 하는 연결 코드) 12개가 "MCP로" 스위치 하나로 양 끝의 Client·Server 칸 7개로 미끄러진다. 선은 남겨 "줄어드는 건 코드 수, 실행할 때 연결은 그대로"를 정직하게 보이고, + 앱 / + 시스템 버튼으로 곱(30)과 합(11)이 벌어지는 걸 겪게 했다
+- **생명선 시퀀스를 스크롤로 한 줄씩 쌓기** (mcp-model-context-protocol-usb-c, Critic 전) — 사람·모델·Claude Code·서버·Jira 다섯 세로줄 위로 메시지 13개가 단계마다 나타나고, 마지막 단계에 모델 줄을 칠해 "모델 화살표는 Claude Code 로만 간다"를 문장 없이 보였다
+
+
+- **요청을 보내면 맞는 서랍만 열리는 서랍장** (agent-skills-subagents-hooks, Critic 전) — 스킬 다섯 개를 서랍 앞면(이름표, 회색)으로만 두고 요청 말풍선을 누르면 이름표를 훑은 뒤 맞는 서랍만 열려 본문(청록)과 부록(청록)·스크립트(보라, 실행만)가 차례로 펼쳐진다. 판독은 "책상에 올라간 스킬 글 450 → 3,080 토큰"과 점선 칸(다 펼쳤다면 11,650). 아무 서랍도 안 열리는 요청을 하나 섞어 "스킬을 많이 깔아도 이름표만 올라간다"를 보였다. 기본 상태는 아무것도 칠하지 않는다
+- **실제 문서 스크립트 + 종료 코드 토글 검문소** (agent-skills-subagents-hooks, Critic 전) — 도구 호출 세 장 중 하나를 고르고 스크립트의 `exit 2` 줄만 `exit 1` 로 바꾸게 했다. 검문소 그림이 막힘(빨강, 사유가 돌아감)/뚫림(주황 점선, 보호 파일이 바뀜)/통과(초록)로 바뀌고 스크립트에서 지나간 줄만 보라로 칠한다. "1 로 끝내도 막히지 않는다"가 조작 결과로 보인다
+
+- **하루치 세션을 컨텍스트 창 띠 하나에 쌓기** (context-engineering-claude-md-agents-md, Critic 4/4/4) — 20만 토큰 띠에 시각별로 시스템·사람·AI 칸이 쌓이고 지금 일과 관계없는 칸은 빗금, 아침 규칙 위에 "뒤로 17만 토큰" 치수선. 같은 띠를 압축·새 세션·서브에이전트 탭으로 바꿔 무엇이 남는지 보여 준다. CLAUDE.md 는 줄을 눌러 지우면 토큰 막대와 "약 350줄 / 권장 200줄" 계기가 바뀐다. 모바일은 6번 돌고서야 4점 — 2단 섹션을 모바일에서 "h2 → 그림을 말하는 첫 문단 → 그림 → 나머지"로 두고, 그림 속 계산(n²: 짝 28 / 자기 자신 포함 방향까지 64)을 검산해야 했다
 
 ## 페이지 레이아웃
 
@@ -168,17 +186,17 @@
 
 | 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 |
 |---|---|---|---|
-| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래) |
+| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래), mcp-model-context-protocol-usb-c(제목·첫 문단 옆 배선 지도) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠) |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
-| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization |
-| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify |
-| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm |
-| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify |
+| 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, agent-skills-subagents-hooks |
+| 글 \| 그림 2단 | 글 왼쪽, 세로로 쌓은 그림 오른쪽 / 위아래 | 짧은 설명 + 조작 그림 하나 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify, mcp-model-context-protocol-usb-c, agent-skills-subagents-hooks |
+| 코드 \| 해설 짝 | 코드·터미널 왼쪽, 번호 해설 오른쪽(sticky), 다음 짝은 좌우 뒤집기 / 위아래 | 코드 해부(5-7) | ai-agent-vs-chatbot, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, mcp-model-context-protocol-usb-c, agent-skills-subagents-hooks |
+| 실험판 전폭 띠 | 화면 끝까지 닿는 회색 띠 안에 조작 그림 / 같음 | 독자가 직접 눌러 보는 실험 | ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, pytorch-to-vllm-serving, fine-tuning-lora-qlora-peft, air-gapped-rag-on-premise-llm, beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed, ai-native-dev-loop-explore-plan-verify, mcp-model-context-protocol-usb-c, agent-skills-subagents-hooks |
 | 인용 \| 설명 지그재그 | 큰 따옴표 인용 왼쪽, 풀이 오른쪽 / 위아래 | 정의·원문 인용을 풀 때 | ai-agent-vs-chatbot |
 | 벤토 히어로 | 제목·리드 칸, 숫자 하나 칸, 아래 전폭 결과 칸을 한 격자에 / 위아래 | 작은 단위 하나(숫자 하나)와 큰 결과(76억 개)를 한 화면에서 이을 때 | gpu-vram-fp16-int4-quantization |
 

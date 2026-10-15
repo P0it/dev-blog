@@ -1,0 +1,1519 @@
+---
+title: 컨텍스트 창이 남았는데 에이전트가 규칙을 잊는 이유
+slug: context-engineering-claude-md-agents-md
+excerpt: 코딩 에이전트는 답할 때마다 컨텍스트 창에 쌓인 글 전체를 다시 읽고, 한도에 닿기 전부터 쌓인 양만큼 성능이 떨어집니다. 하루치 세션을 20만 토큰 책상 위에 쌓아 보고 Chroma·Lost in the Middle 실험, CLAUDE.md·AGENTS.md 에 넣을 것과 뺄 것, 압축·새 세션·서브에이전트로 책상을 치우는 법을 정리했습니다.
+tags: [컨텍스트 엔지니어링, CLAUDE.md, AGENTS.md, 컨텍스트 창, Claude Code, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 5
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/context-engineering-claude-md-agents-md-mv93xj0h.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열, 아래 전폭 책상 띠 + ▶·손질 토글·판독, 띠 위 치수선 주석) → h2 위 + 글|그림(터미널 한 줄 ↔ 모델이 받는 토큰) → 글|그림(점 잇기 n²) + 전폭 아령 그림(Chroma LongMemEval 값, 원본은 접기) → 실험판 전폭 띠(문서 20장 중 정답 위치 옮기기) → 글|그림(프롬프트 vs 컨텍스트 엔지니어링, Anthropic 도식을 옮겨 그림) → 글|그림(CLAUDE.md 파일 자체, 줄 아래 막대 = 토큰, 눌러 지우기, 끈적이 계기) → 글|그림(상자 안의 상자 폴더 지도) → 글|그림 두 쌍(Gloaguen 막대 · Lulla 막대) → 글|그림(압축 전후 대응 + 규칙 위치 토글) → 글 + 전폭 그림(서브에이전트 두 책상) → 글|그림 + 글 이어짐(TodoWrite 전후를 옮겨 그림, 모바일은 그림이 해당 문단 바로 뒤) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음 | 글의 성격: 하루 동안 책상(컨텍스트 창)에 쌓이는 것과 그것을 치우는 법. 주황 = 사람이 쓴 것, 청록 = AI 가 읽고 받은 것, 회색 = 시스템이 깐 것. 흐린 칸 = 지금 일과 관계없는 토큰 | 버린 후보: 그림 고정 스크롤리텔링(앞 편들이 씀), 분할 히어로, 품질 % 계기판(근거 없는 수치), 벤토 히어로, 체크 카드 편집기(앞 편 체크리스트 히어로와 겹침), 들여쓰기 트리(앞 편 .specify/ 트리와 같은 문법) -->
+<style>
+.post-page .cx {
+  --me: rgb(222, 106, 28); --me-soft: rgb(253, 233, 214);
+  --ai: rgb(10, 136, 140); --ai-soft: rgb(208, 238, 236);
+  --sys: rgb(112, 118, 130); --sys-soft: rgb(230, 232, 236);
+  --ok: rgb(28, 138, 70); --ok-soft: rgb(214, 240, 222);
+  --bad: rgb(208, 46, 46); --bad-soft: rgb(252, 224, 222);
+  --q: rgb(52, 104, 210); --q-soft: rgb(224, 233, 252);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .cx {
+  --me: rgb(255, 156, 84); --me-soft: rgb(84, 50, 24);
+  --ai: rgb(70, 206, 200); --ai-soft: rgb(18, 62, 62);
+  --sys: rgb(160, 166, 180); --sys-soft: rgb(48, 52, 60);
+  --ok: rgb(98, 214, 132); --ok-soft: rgb(22, 62, 36);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(84, 30, 30);
+  --q: rgb(124, 166, 255); --q-soft: rgb(30, 46, 84);
+}
+.post-page .cx * { box-sizing: border-box; }
+.post-page .cx-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .cx h1, .post-page .cx h2, .post-page .cx h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .cx h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; max-width: 15em; margin-bottom: 24px; }
+.post-page .cx h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; text-wrap: balance; }
+.post-page .cx h1 { text-wrap: balance; }
+.post-page .cx h2.cx-h2wide { margin-bottom: 36px; }
+.post-page .cx h3 { font-size: 18px; line-height: 1.45; margin-bottom: 12px; }
+.post-page .cx p, .post-page .cx li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .cx p { margin: 0 0 1.5em; }
+.post-page .cx b { color: var(--fg-strong); }
+.post-page .cx code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs, 4px); word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .cx a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .cx .cx-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .cx details { margin: 0 0 1.4em; }
+.post-page .cx summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .cx details p { margin-top: 10px; font-size: 16px; }
+.post-page .cx svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .cx svg text:not([font-family]) { font-family: var(--font-sans); }
+.post-page .cx svg text:not([fill]) { fill: var(--fg-strong); }
+.post-page .cx svg .dim { fill: var(--fg-neutral); }
+.post-page .cx ul.cx-list { list-style: disc; padding-left: 1.3em; margin: 0 0 1.5em; }
+.post-page .cx ul.cx-list li { margin-bottom: 8px; padding-left: 4px; }
+.post-page .cx ul.cx-list li::marker { color: var(--fg-neutral); }
+
+/* 배치 */
+.post-page .cx-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .cx-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .cx-col { max-width: 40em; }
+.post-page .cx-fig { margin: 0; }
+.post-page .cx-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .cx-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(32px, 5vw, 48px); }
+.post-page .cx-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); background: #fff; }
+[data-theme="dark"] .post-page .cx-img img { filter: brightness(.8); border-color: var(--line-normal, var(--line-subtle)); }
+.post-page .cx-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; color: var(--fg-neutral); margin-top: 12px; }
+.post-page .cx-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.post-page .cx-legend i.me { background: var(--me); }
+.post-page .cx-legend i.ai { background: var(--ai); }
+.post-page .cx-legend i.sys { background: var(--sys); }
+.post-page .cx-legend i.faint { background: repeating-linear-gradient(135deg, var(--sys-soft) 0 3px, var(--bg-base) 3px 6px); border: 1px solid var(--sys); }
+
+/* 조작 부품: 토글 하나, 실행 버튼 하나 */
+.post-page .cx-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; max-width: 100%; }
+.post-page .cx-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 15px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .cx-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.08)); }
+.post-page .cx-tog button:disabled { opacity: .45; cursor: default; }
+.post-page .cx-run { font: inherit; font-size: 15px; font-weight: 600; color: var(--fg-strong); background: var(--bg-base); border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 999px; padding: 8px 18px; cursor: pointer; white-space: nowrap; }
+.post-page .cx-run:hover { border-color: var(--fg-neutral); }
+.post-page .cx-run:disabled { opacity: .5; cursor: default; }
+.post-page .cx-control { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 0 0 18px; }
+.post-page .cx-control .lab { font-size: 14px; color: var(--fg-neutral); }
+
+/* 히어로 */
+.post-page .cx-hero { padding-top: clamp(28px, 4vw, 44px); }
+.post-page .cx-hero h1 { margin-bottom: 20px; }
+.post-page .cx-lead p { margin-bottom: 1.1em; }
+.post-page .cx-lead { max-width: 46em; }
+.post-page .cx-lead p:last-child { margin-bottom: 0; }
+.post-page .cx-desk { margin-top: clamp(20px, 2.6vw, 28px); }
+.post-page .cx-desk .cx-control { margin-bottom: 4px; }
+.post-page .cx-desk .cx-legend { margin: 2px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .cx .cx-key { font-size: 15px; line-height: 1.6; color: var(--fg-neutral); margin: 0 0 2px; min-height: 1.6em; }
+.post-page .cx .cx-key b { margin-right: 4px; }
+.post-page .cx-desk .seg { transition: x .7s cubic-bezier(.2,.7,.2,1), width .7s cubic-bezier(.2,.7,.2,1), opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .cx-desk .lbl { transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+.post-page .cx-desk .pin { transition: transform .7s cubic-bezier(.2,.7,.2,1), opacity .5s; }
+.post-page .cx ul.cx-keys { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line-subtle); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 28px; }
+.post-page .cx ul.cx-keys li { font-size: 14px; line-height: 1.6; color: var(--fg-neutral); margin: 0; }
+.post-page .cx ul.cx-keys b { color: var(--fg-strong); margin-right: 2px; }
+.post-page .cx-read { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px 36px; margin-top: 2px; align-items: start; }
+.post-page .cx-read .k { font-size: 14px; color: var(--fg-neutral); margin: 0 0 2px; line-height: 1.5; }
+.post-page .cx-read .v { font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--fg-strong); margin: 0; line-height: 1.35; }
+.post-page .cx-read .v { white-space: nowrap; }
+.post-page .cx-read .v small { font-size: 14px; color: var(--fg-neutral); font-weight: 500; }
+.post-page .cx-read .note { font-size: 15px; line-height: 1.7; color: var(--fg-neutral); margin: 0; }
+.post-page .cx-read .note b.bad { color: var(--bad); }
+.post-page .cx-read .note b.ok { color: var(--ok); }
+
+/* 터미널 vs 모델 */
+.post-page .cx-seen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; font-size: 14px; }
+.post-page .cx-seen .hd { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 16px; font-size: 13px; color: var(--fg-neutral); padding: 0 0 8px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .cx-seen .row { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 16px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line-subtle); }
+.post-page .cx-seen .term { font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-page .cx-seen .term.none { color: var(--fg-neutral); font-family: var(--font-sans); font-style: normal; }
+.post-page .cx-seen .bar { display: flex; align-items: center; gap: 10px; }
+.post-page .cx-seen .bar { flex-wrap: wrap; row-gap: 2px; }
+.post-page .cx-seen .bar i { display: block; height: 18px; border-radius: 4px; flex: none; width: calc(var(--w) / 4200 * 52%); min-width: 4px; }
+.post-page .cx-seen .bar i.me { background: var(--me); }
+.post-page .cx-seen .bar i.ai { background: var(--ai); }
+.post-page .cx-seen .bar i.sys { background: var(--sys); }
+.post-page .cx-seen .bar span { font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); white-space: nowrap; }
+.post-page .cx-seen .bar em { white-space: nowrap; font-style: normal; font-family: var(--font-sans); color: var(--fg-neutral); font-size: 13px; }
+
+/* 점 잇기 */
+.post-page .cx-dots { max-width: 520px; }
+.post-page .cx-dots input[type="range"] { width: 220px; max-width: 100%; accent-color: var(--ai); }
+.post-page .cx-nbig { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.post-page .cx-nbig .big { font-size: 16px; font-weight: 600; color: var(--fg-strong); }
+.post-page .cx-nbig .big b { font-family: var(--font-mono); font-size: 15px; color: var(--ai); }
+.post-page .cx-nbig .sm { font-size: 14px; color: var(--fg-neutral); flex-basis: 100%; }
+.post-page .cx-nbig .big.alt { font-size: 15px; font-weight: 500; color: var(--fg-neutral); flex-basis: 100%; }
+.post-page .cx-nbig .big.alt b { color: var(--fg-strong); }
+.post-page .cx-dots line { transition: opacity .4s; }
+
+.post-page .cx-lme svg { max-width: 1060px; }
+.post-page .cx-lme > .cx-cap { max-width: 46em; }
+.post-page .cx .cx-figtitle { font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--fg-strong); margin: 0 0 18px; word-break: keep-all; }
+.post-page .cx-orig { margin-top: 18px; }
+.post-page .cx-orig .cx-img { max-width: 760px; margin-top: 12px; }
+.post-page .cx-orig p { font-size: 15px; color: var(--fg-neutral); }
+
+/* 위치 실험판 */
+.post-page .cx-litm { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .cx-litm .doc { cursor: pointer; }
+.post-page .cx-litm .doc rect { transition: fill .4s, stroke .4s; }
+.post-page .cx-litm .bar { transition: fill .4s, opacity .4s; }
+[data-theme="dark"] .post-page .cx-litm .bar.off { fill-opacity: .4; }
+.post-page .cx-hint { font-size: 16px; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; line-height: 1.6; }
+.post-page .cx-litm .hint { font-size: 16px; font-weight: 600; color: var(--fg-strong); margin: 0 0 14px; line-height: 1.6; }
+.post-page .cx-litm .cx-tog { margin: 0 0 4px; }
+.post-page .cx-litm .cx-tog button { min-width: 3.4em; }
+.post-page .cx-out { font-size: 16px; color: var(--fg-strong); line-height: 1.7; margin: 14px 0 0; }
+.post-page .cx-out b.bad { color: var(--bad); }
+.post-page .cx-out b.ok { color: var(--ok); }
+
+/* CLAUDE.md 파일: 줄 아래 막대 길이 = 토큰 */
+.post-page .cx-edfig { position: relative; }
+.post-page .cx-meter { position: sticky; top: 64px; z-index: 3; background: var(--bg-base); padding: 10px 0 12px; border-bottom: 1px solid var(--line-normal, var(--line-subtle)); box-shadow: 0 10px 14px -10px rgba(0, 0, 0, .28); isolation: isolate; }
+.post-page .cx-meter::before { content: ""; position: absolute; inset: 0 -8px; background: var(--bg-base); z-index: -1; }
+.post-page .cx-meter .row { display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 14px; color: var(--fg-neutral); margin-bottom: 6px; gap: 2px 12px; }
+.post-page .cx-meter .row b { font-family: var(--font-mono); color: var(--fg-strong); font-size: 16px; }
+.post-page .cx-meter .track { height: 14px; border-radius: 4px; background: var(--bg-base); border: 1px solid var(--line-subtle); display: flex; overflow: hidden; }
+.post-page .cx-meter .track i { display: block; height: 100%; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .cx-meter .track i.good { background: var(--me); }
+.post-page .cx .cx-meter .lines { font-size: 14px; line-height: 1.5; color: var(--fg-neutral); margin: 6px 0 0; }
+.post-page .cx-meter .lines b { font-family: var(--font-mono); font-size: 15px; color: var(--ok); }
+.post-page .cx-meter .lines b.over { color: var(--bad); }
+.post-page .cx-meter .track i.bad { background: repeating-linear-gradient(135deg, var(--bad) 0 2px, var(--bg-base) 2px 6px); opacity: .55; }
+.post-page .cx .cx-mnote { font-size: 14px; line-height: 1.6; color: var(--fg-strong); margin: 4px 0 0; min-height: 3.2em; }
+.post-page .cx-edbox .cx-flegend { margin: 4px 0 12px; }
+.post-page .cx-file { background: var(--code-bg, #1e2127); color: var(--code-fg, #d7dae0); border-radius: var(--radius-md, 12px); padding: 0 0 6px; overflow: hidden; }
+.post-page .cx-file .tt { display: flex; justify-content: space-between; gap: 10px; font-family: var(--font-sans); font-size: 13px; color: rgb(160, 168, 182); padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.post-page .cx-file .tt span:first-child { font-family: var(--font-mono); color: rgb(215, 218, 224); }
+.post-page .cx-file ol { list-style: none; margin: 0; padding: 0; }
+.post-page .cx-file li { margin: 0; padding: 0; font-size: 13px; line-height: 1.5; }
+.post-page .cx-file li.hd .tx { font-family: var(--font-mono); color: rgb(229, 192, 123); padding: 8px 16px 2px; }
+.post-page .cx-file li.hd { transition: opacity .5s; }
+.post-page .cx-file li.hd.off { opacity: .3; }
+.post-page .cx-file button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 5px; width: 100%; padding: 7px 16px 8px; border-top: 1px solid rgba(255,255,255,.06); transition: background .3s; }
+.post-page .cx-file button:hover { background: rgba(255,255,255,.05); }
+.post-page .cx-file button:focus-visible { outline: 2px solid rgb(124, 166, 255); outline-offset: -2px; }
+.post-page .cx-file .tx { grid-column: 1; grid-row: 1; font-family: var(--font-mono); color: rgb(215, 218, 224); word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .cx-file .tk { grid-column: 2; grid-row: 1; font-family: var(--font-mono); font-size: 12.5px; color: rgb(160, 168, 182); text-align: right; }
+.post-page .cx-file .tb { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.post-page .cx-file .tb i { display: block; flex: none; height: 10px; border-radius: 2px; width: max(14px, calc(var(--t) / 6000 * 100%)); max-width: 100%; transition: opacity .4s; }
+.post-page .cx-file .tb em { font-style: normal; font-family: var(--font-sans); font-size: 12.5px; color: rgb(160, 168, 182); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.post-page .cx-file li.good .tb i { background: rgb(255, 156, 84); }
+.post-page .cx-file li.bad .tb i { background: repeating-linear-gradient(135deg, rgb(255, 120, 110) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px rgba(255, 120, 110, .7); }
+.post-page .cx-file li.bad.big .tb i { width: calc(var(--t) / 6000 * 100%); }
+.post-page .cx-file li.big .tb { flex-wrap: wrap; row-gap: 3px; }
+.post-page .cx-file .gone { display: none; font-family: var(--font-sans); font-size: 12.5px; color: rgb(160, 168, 182); }
+.post-page .cx-file li.off .tx { text-decoration: line-through; color: rgb(110, 116, 128); }
+.post-page .cx-file li.off .tk { color: rgb(110, 116, 128); text-decoration: line-through; }
+.post-page .cx-file li.off .tb i { opacity: .2; }
+.post-page .cx-file li.off .tb em.why { display: none; }
+.post-page .cx-file li.off .gone { display: inline; }
+.post-page .cx .cx-flegend { display: flex; line-height: 1.5; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--fg-neutral); margin: 8px 0 0; }
+.post-page .cx-flegend i { display: inline-block; width: 22px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.post-page .cx-flegend i.g { background: var(--me); }
+.post-page .cx-flegend i.b { background: repeating-linear-gradient(135deg, var(--bad) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px var(--bad); }
+
+[data-theme="dark"] .post-page .cx-file { border: 1px solid var(--line-normal, var(--line-subtle)); }
+
+/* AGENTS.md 읽는 도구 */
+.post-page .cx-readers { margin: 4px 0 1.8em; }
+.post-page .cx .cx-rdhd { font-size: 14px; color: var(--fg-neutral); margin: 0 0 10px; line-height: 1.5; }
+.post-page .cx ul.cx-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.post-page .cx ul.cx-chips li { margin: 0; font-size: 14.5px; line-height: 1.4; font-weight: 600; color: var(--me); background: var(--me-soft); border: 0; border-radius: 4px; padding: 4px 10px; white-space: nowrap; }
+.post-page .cx ul.cx-chips li.cond { background: var(--bg-muted); }
+.post-page .cx ul.cx-chips li small { font-size: 12.5px; font-weight: 500; color: var(--fg-neutral); margin-left: 4px; }
+.post-page .cx-readers .cx-cap { margin-top: 12px; font-size: 14px; }
+
+/* 트리 */
+.post-page .cx-tree { max-width: 560px; }
+.post-page .cx-tree rect { transition: fill .4s, stroke .4s, fill-opacity .4s; }
+.post-page .cx-tree g { transition: opacity .4s; }
+
+/* 연구 막대 */
+.post-page .cx-res svg { max-width: 440px; }
+.post-page .cx .cx-resnote { font-size: 15px; line-height: 1.65; color: var(--fg-neutral); margin: 10px 0 14px; max-width: 30em; }
+.post-page .cx .cx-reshd { font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); margin: 0; }
+.post-page .cx .cx-ressub { font-size: 13px; line-height: 1.5; color: var(--fg-neutral); margin: 2px 0 0; }
+.post-page .cx .cx-reslg { margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+.post-page .cx-resnote b { color: var(--fg-strong); }
+.post-page .cx-own svg { max-width: 560px; }
+.post-page .cx-row2 { margin-top: clamp(56px, 7vw, 88px); }
+
+
+/* 압축 대응도 */
+.post-page .cx-comp { max-width: 600px; }
+.post-page .cx-comp .mv { transition: opacity .5s, transform .6s cubic-bezier(.2,.7,.2,1); }
+
+/* 두 책상 */
+.post-page .cx-notes { max-width: 460px; }
+.post-page .cx-notes pre { margin: 0; padding: 14px 18px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; color: rgb(215, 218, 224); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .cx-notes pre .h { color: rgb(229, 192, 123); }
+.post-page .cx-notes pre .r { color: rgb(255, 156, 84); font-weight: 600; }
+
+
+/* 마무리: 모바일에서 그림이 해당 문단 바로 뒤에 오게 */
+.post-page .cx-split { grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; row-gap: 0; }
+.post-page .cx-split .cx-ta { grid-area: a; }
+.post-page .cx-split .cx-tf { grid-area: f; }
+.post-page .cx-split .cx-tb { grid-area: b; }
+.post-page .cx-litm { grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; row-gap: 0; }
+.post-page .cx-litm .cx-ta { grid-area: a; }
+.post-page .cx-litm .cx-tf { grid-area: f; }
+.post-page .cx-litm .cx-tb { grid-area: b; }
+@media (min-width: 861px) {
+  .post-page .cx-split > .cx-tf.cx-low { margin-top: 58px; }
+  .post-page .cx-split > .cx-tf:not(.cx-edfig) { position: sticky; top: 96px; }
+  .post-page .cx-edsec > .cx-tb { position: sticky; top: 140px; align-self: start; }
+}
+.post-page .cx-close { font-size: 19px !important; line-height: 1.7 !important; color: var(--fg-strong); }
+.post-page .cx-img > a { display: block; }
+
+.post-page .cx-refs ul { padding-left: 1.1em; }
+.post-page .cx-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .cx-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+@media (max-width: 860px) {
+  .post-page .cx-wrap { padding: 0 20px; }
+  .post-page .cx-two, .post-page .cx-litm, .post-page .cx-refhead { grid-template-columns: minmax(0, 1fr); }
+  .post-page .cx-split, .post-page .cx-litm { grid-template-areas: "a" "f" "b"; grid-template-rows: auto; }
+  .post-page .cx-split .cx-tb { margin-top: 40px; }
+  .post-page .cx-litm .cx-tf { margin-top: 4px; }
+  .post-page .cx-litm .cx-tb { margin-top: 10px; }
+  .post-page .cx-refs ul { padding-left: 0; }
+  .post-page .cx-hero { padding-top: 16px; }
+  .post-page .cx-hero h1 { margin-bottom: 14px; }
+  .post-page .cx-lead p { margin-bottom: 0.8em; }
+  .post-page .cx-desk { margin-top: 14px; }
+  .post-page .cx-desk .cx-control { flex-wrap: nowrap; gap: 8px; }
+  .post-page .cx-run { padding: 8px 14px; }
+  .post-page .cx-run .lng { display: none; }
+  .post-page .cx-read { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .post-page .cx .cx-key { font-size: 14px; min-height: 3.2em; margin-top: 2px; }
+  .post-page .cx-desk .cx-legend { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0 0 10px; padding-bottom: 10px; }
+  .post-page .cx-desk .cx-legend .lx { display: none; }
+  .post-page .cx-read .note { margin-top: -4px; }
+  .post-page .cx-read .note { grid-column: 1 / -1; }
+  .post-page .cx-read .v { font-size: 16px; }
+  .post-page .cx-tog button { font-size: 14px; padding: 7px 11px; }
+  .post-page .cx-seen .hd, .post-page .cx-seen .row { grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr); gap: 10px; }
+  .post-page .cx-seen .term { font-size: 12px; }
+  .post-page .cx-seen .bar i { width: calc(var(--w) / 4200 * 40%); }
+}
+@media (max-width: 400px) {
+  .post-page .cx-tog button { font-size: 13px; padding: 7px 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .cx * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="cx">
+
+<section class="cx-hero">
+  <div class="cx-wrap">
+    <div class="cx-lead">
+      <h1>컨텍스트 창이 남았는데 에이전트가 규칙을 잊는 이유</h1>
+      <p>아침 아홉 시, 코딩 에이전트(coding agent)에게 "테스트는 <code>pnpm test</code> 로 돌려 줘"라고 말했습니다. 오후 세 시가 되자 에이전트가 <code>npm test</code> 를 돌립니다. 둘은 이름이 비슷한 다른 패키지 관리 도구(남이 만든 코드 묶음을 설치하는 프로그램)라 프로젝트가 정한 쪽을 써야 합니다. Claude Code 공식 문서에도 대화가 길어지면 앞에서 한 지시를 놓칠 수 있다고 적혀 있습니다.</p>
+      <p>에이전트가 한 번에 받아 읽는 글 전체를 컨텍스트 창(context window)이라고 합니다. 책상과 비슷합니다. 책상 넓이는 모델(글을 읽고 답을 만드는 AI 본체)이 글을 읽는 조각인 토큰(token)으로 재고 토큰 하나는 단어보다 조금 작습니다. 아래 띠가 하루 동안 이 책상에 쌓이는 것입니다. ▶ 로 다시 쌓아 보고 다 쌓이면 세 방법으로 치워 보세요.</p>
+    </div>
+    <figure class="cx-fig cx-desk" data-figure data-hero data-thumb>
+      <div class="cx-control">
+        <button type="button" class="cx-run" data-run aria-label="하루 다시 쌓기">▶<span class="lng"> 하루 다시 쌓기</span></button>
+        <div class="cx-tog" role="group" aria-label="책상 치우는 방법 고르기" data-act>
+          <button type="button" data-v="none" aria-pressed="true">그대로</button>
+          <button type="button" data-v="compact" aria-pressed="false">압축</button>
+          <button type="button" data-v="clear" aria-pressed="false">새 세션</button>
+          <button type="button" data-v="sub" aria-pressed="false">서브에이전트</button>
+        </div>
+      </div>
+      <p class="cx-key" data-key aria-live="polite"><b>그대로</b> 아무것도 치우지 않은 15시의 책상입니다.</p>
+      <svg data-desksvg viewBox="0 0 1060 180" role="img" aria-label="20만 토큰 컨텍스트 창 띠에 하루 동안 쌓인 내용. 시스템이 깐 것, 사람이 쓴 것, AI가 읽고 받은 것이 차례로 쌓이고 지금 일과 관계없는 칸은 흐리게 표시된다"></svg>
+      <div class="cx-legend">
+        <span><i class="sys"></i>시스템이 깐 것<span class="lx">(기본 지시·도구 목록)</span></span>
+        <span><i class="me"></i>사람이 쓴 것<span class="lx">(CLAUDE.md·메시지)</span></span>
+        <span><i class="ai"></i>AI가 읽고 받은 것<span class="lx">(파일·명령 출력·답)</span></span>
+        <span><i class="faint"></i>지금 일과 관계없는 칸</span>
+      </div>
+      <div class="cx-read" aria-live="polite">
+        <div><p class="k">책상 위 토큰</p><p class="v" data-used>174,040 <small>/ 200,000</small></p></div>
+        <div><p class="k">지금 일과 관계없는 토큰</p><p class="v" data-junk>133,830 <small>77%</small></p></div>
+        <p class="note" data-note>15시 빌드 오류. 전체 로그 41,000 토큰 중 쓸모 있는 건 오류 줄뿐입니다. 아침 규칙은 아직 책상 위에 있지만 그 뒤로 쌓인 17만 토큰에 희석됐습니다.</p>
+      </div>
+      <figcaption class="cx-cap">책상 넓이는 Claude Code 문서의 예시와 같은 20만 토큰입니다. 세션(에이전트를 켜서 대화를 이어 가는 한 판) 시작과 09시 버그 수정 칸은 문서 「Explore the context window」의 대표 값이고, 10시 이후 칸과 압축·서브에이전트 결과는 설명을 위한 예시 값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap">
+    <h2 class="cx-h2wide">모델은 답할 때마다 책상 위 전부를 다시 읽습니다</h2>
+  </div>
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <p>에이전트가 파일 하나를 읽으면 터미널(명령을 글자로 치고 결과를 글자로 받는 창)에는 <code>Read auth.ts</code> 한 줄만 뜹니다. 모델 쪽에는 그 파일 내용 2,400 토큰이 통째로 들어갑니다.</p>
+      <p>책상에 올라가는 것은 다섯 가지입니다. 에이전트를 만든 회사가 넣는 기본 지시인 시스템 프롬프트(system prompt), 쓸 수 있는 도구의 설명, CLAUDE.md 같은 안내 파일, 사람과 주고받은 대화, 그리고 파일 내용·명령 출력 같은 도구 결과(tool result)입니다. 대부분은 화면에 거의 보이지 않습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>책상과 다른 점도 있습니다. 사람은 필요한 자료만 집어 봅니다. 모델은 답을 한 번 만들 때마다 책상 위 전부를 처음부터 입력으로 받습니다. 그래서 쌓인 양이 곧 매 턴의 계산량과 비용이 됩니다. 턴은 사람이 한 번 말하고 에이전트가 한 번 답하는 한 차례입니다.</p>
+      <p>이미 계산한 앞부분을 저장해 두고 다시 쓰는 캐시(cache)는 <a href="/posts/prefill-decode-kv-cache">Prefill·Decode·KV Cache 글</a>에 따로 정리했습니다.</p>
+    </div>
+    <figure class="cx-fig cx-tf" data-figure>
+      <div class="cx-seen" aria-label="터미널에 보이는 한 줄과 모델이 실제로 받는 토큰 수를 짝지은 표 그림">
+        <div class="hd"><span>터미널에 보이는 것</span><span>모델이 받는 것(토큰)</span></div>
+        <div class="row"><span class="term none">(보이지 않음)</span><span class="bar"><i class="sys" style="--w:4200"></i><span>4,200</span><em>시스템 프롬프트</em></span></div>
+        <div class="row"><span class="term none">(보이지 않음)</span><span class="bar"><i class="me" style="--w:1800"></i><span>1,800</span><em>CLAUDE.md</em></span></div>
+        <div class="row"><span class="term">Read auth.ts</span><span class="bar"><i class="ai" style="--w:2400"></i><span>2,400</span></span></div>
+        <div class="row"><span class="term">Read middleware.ts</span><span class="bar"><i class="ai" style="--w:1800"></i><span>1,800</span></span></div>
+        <div class="row"><span class="term">Read auth.test.ts</span><span class="bar"><i class="ai" style="--w:1600"></i><span>1,600</span></span></div>
+        <div class="row"><span class="term">Running npm test…</span><span class="bar"><i class="ai" style="--w:1200"></i><span>1,200</span><em>테스트 출력 전체</em></span></div>
+        <div class="row"><span class="term">grep "refreshToken"</span><span class="bar"><i class="ai" style="--w:600"></i><span>600</span></span></div>
+        <div class="row"><span class="term">› 401 버그 고쳐 줘</span><span class="bar"><i class="me" style="--w:45"></i><span>45</span><em>내가 쓴 요청</em></span></div>
+      </div>
+      <figcaption class="cx-cap">막대 길이가 토큰 수입니다. 내가 쓴 요청은 45 토큰인데 그 요청을 처리하며 책상에 올라간 것은 수천 토큰입니다. 값은 Claude Code 문서 「Explore the context window」의 대표 값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <h2>많이 쌓을수록 흐려지는 컨텍스트 부패</h2>
+      <p>한도까지 자리가 남아 있어도 쌓인 양만큼 성능은 떨어집니다. 이 현상을 컨텍스트 부패(context rot)라고 부릅니다. 오래 둔 음식이 상하듯 쌓인 글이 답을 흐린다는 뜻입니다.</p>
+      <p>Anthropic 은 원인을 이렇게 설명합니다. 모델 안에서는 모든 토큰이 다른 모든 토큰과 관계를 계산합니다. 이 계산을 주의(attention)라고 합니다. 토큰이 n 개면 관계는 n² 개입니다. 자기 자신과의 관계까지 넣고 A→B 와 B→A 를 따로 세서 n × n 입니다. 점을 늘려 보면 관계가 얼마나 빨리 늘어나는지 보입니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>Anthropic 은 주의를 정해진 예산에 비유합니다. 토큰이 늘수록 예산이 얇게 퍼져서 정말 봐야 할 토큰에 가는 몫이 줄어듭니다. 그림에서 점점 가늘어지는 선이 그 몫입니다.</p>
+      <details>
+        <summary>창이 100만 토큰이면 괜찮지 않나요?</summary>
+        <p>최근 Claude 모델은 100만 토큰 창을 기본으로 쓰고 Claude Code 는 약 96만 7천 토큰에서 자동으로 정리를 시작합니다. 그래도 흐려지는 문제는 사라지지 않습니다. 모델이 배운 글도 대부분 짧아서 멀리 떨어진 토큰끼리 잇는 연습이 부족하다고 Anthropic 은 설명합니다.</p>
+      </details>
+    </div>
+    <figure class="cx-fig cx-dots cx-tf cx-low" data-figure>
+      <p class="cx-nbig" data-nout><span class="big">점 <b>8</b>개 → 관계 <b>64</b>개(8 × 8)</span><span class="sm">짝으로만 세면 28쌍 · 선 하나가 짝 하나 · 선 굵기는 한 관계에 가는 몫</span></p>
+      <div class="cx-control">
+        <label class="lab" for="cx-n">점(토큰) 수를 바꿔 보세요</label>
+        <input id="cx-n" type="range" min="2" max="16" step="1" value="8" data-n>
+      </div>
+      <svg data-dotsvg viewBox="0 18 480 266" role="img" aria-label="원 위에 놓인 토큰 점들이 서로 모두 선으로 이어진 그림. 점이 늘면 선이 제곱에 가깝게 늘어난다"></svg>
+      <figcaption class="cx-cap">점 하나가 토큰 하나, 선 하나가 두 토큰 사이의 관계입니다. 점이 늘수록 선이 가늘어지는 건 같은 예산을 더 많은 관계에 나눠 주기 때문입니다. 실제 모델은 이 계산을 층마다 여러 번 합니다.</figcaption>
+    </figure>
+  </div>
+  <div class="cx-wrap">
+    <figure class="cx-fig cx-wide cx-lme" data-figure>
+      <p class="cx-figtitle">입력이 길어지면 Claude 모델 7개 모두 점수가 떨어집니다</p>
+      <svg data-lmesvg viewBox="0 0 1060 400" role="img" aria-label="Claude 모델 일곱 가지의 LongMemEval 평균 점수. 필요한 대화만 넣었을 때 0.79~0.95, 대화 전부를 넣었을 때 0.38~0.72 로 모든 모델에서 떨어진다"></svg>
+      <figcaption class="cx-cap">같은 질문, 다른 책상. 점수는 1이 만점이고 ‘생각’은 답하기 전에 길게 추론하는 모드입니다. AI 검색용 데이터베이스 회사 Chroma 의 실험입니다 — Hong·Troynikov·Huber, <a href="https://www.trychroma.com/research/context-rot" target="_blank" rel="noopener">Context Rot</a>, 2025-07-14.</figcaption>
+      <details class="cx-orig">
+        <summary>실험 조건과 원래 그래프 보기</summary>
+        <p>‘필요한 대화만’은 답에 필요한 대화만 넣은 약 300 토큰 입력, ‘대화 전부’는 관계없는 대화까지 넣은 약 113,000 토큰 입력입니다. Chroma 는 이 실험을 포함해 모델 18개를 시험했고, 모든 실험에서 입력이 길어질수록 성능이 떨어졌다고 보고했습니다. 그림의 값은 보고서 그래프에서 옮겼습니다.</p>
+        <div class="cx-img"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/d0ec0690.webp" alt="Chroma 보고서의 LongMemEval 막대그래프 원본. 빨강 Focused, 파랑 Full" loading="lazy"></div>
+        <p>빨강(Focused)이 ‘필요한 대화만’, 파랑(Full)이 ‘대화 전부’입니다.</p>
+      </details>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap">
+    <h2>가운데 둔 정보를 가장 자주 놓칩니다</h2>
+    <div class="cx-col">
+      <p>같은 내용이라도 책상 어디에 놓였는지에 따라 결과가 달라집니다. Stanford 등의 연구진이 2023년 발표한 Lost in the Middle 실험은 문서 20장 가운데 한 장에만 답을 넣고 그 정답 문서의 위치만 바꿔 가며 질문했습니다. 아래 값은 OpenAI 의 모델 GPT-3.5-Turbo 결과입니다. 정답 문서를 직접 옮겨 보세요.</p>
+    </div>
+  </div>
+  <div class="cx-band">
+    <div class="cx-wrap cx-litm">
+      <div class="cx-ta">
+        <p class="hint">👆 정답 문서(파랑)를 어디에 둘지 골라 보세요. 막대를 눌러도 됩니다.</p>
+        <div class="cx-tog" role="group" aria-label="정답 문서 위치 고르기" data-litmpos>
+          <button type="button" data-k="0" aria-pressed="false">1번째</button>
+          <button type="button" data-k="1" aria-pressed="false">5번째</button>
+          <button type="button" data-k="2" aria-pressed="true">10번째</button>
+          <button type="button" data-k="3" aria-pressed="false">15번째</button>
+          <button type="button" data-k="4" aria-pressed="false">20번째</button>
+        </div>
+      </div>
+      <div class="cx-tb">
+        <p class="cx-out" data-litmout>정답 문서를 <b>10번째</b>에 두면 정답률은 <b class="bad">53.8%</b> 입니다. 문서를 하나도 주지 않았을 때(56.1%)보다 낮습니다.</p>
+        <p class="cx-cap">GPT-3.5-Turbo, 문서 20장 질의응답. 논문 부록 표 6의 측정값이고 다섯 자리만 쟀습니다 — Liu 외, Lost in the Middle, TACL 2024.</p>
+      </div>
+      <figure class="cx-fig cx-tf" data-figure>
+        <svg data-litmsvg viewBox="0 0 640 300" role="img" aria-label="문서 20장이 한 줄로 놓이고 그중 정답 문서 위치에 따른 정답률 막대 다섯 개. 첫 자리와 마지막 자리가 높고 가운데가 낮다"></svg>
+      </figure>
+    </div>
+  </div>
+  <div class="cx-wrap">
+    <div class="cx-col cx-after" style="margin-top:clamp(40px,5vw,56px)">
+      <p>정답이 맨 앞에 있으면 75.8%, 맨 끝이면 63.2%, 가운데면 53.8% 였습니다. 시험 볼 때 오픈북을 펼쳐도 앞쪽 목차와 마지막 요약만 보고 가운데 페이지를 놓치는 것과 비슷합니다. 다만 사람은 다시 넘겨 보면 되지만 모델은 한 번 읽은 입력 안에서 답을 내야 합니다.</p>
+      <p>맨 위 하루 띠에서 아침 규칙은 책상 맨 앞쪽에 있었습니다. 이 실험대로라면 잘 보여야 할 자리입니다. 그런데도 잊힌 건 위치보다 쌓인 길이 탓으로, 앞에서 본 컨텍스트 부패입니다.</p>
+      <details>
+        <summary>왜 U자가 될까요? 요즘 모델도 그럴까요?</summary>
+        <p>연구진도 원인을 다 밝히지는 못했습니다. 점 잇기 그림에서 모든 점이 서로 이어져 있었듯 주의는 구조상 어느 자리의 토큰이든 똑같이 볼 수 있습니다. 그래서 연구진은 이 U자 모양이 뜻밖이라고 적었습니다. 사람이 목록의 처음과 끝을 잘 기억하는 현상과 닮았다고 덧붙였습니다.</p>
+        <p>이 실험은 2023년 모델로 했습니다. Chroma 의 2025년 실험에서는 바늘(찾을 문장)의 위치를 11곳으로 바꿔도 뚜렷한 차이가 나지 않았고 대신 입력 길이와 헷갈리는 비슷한 문장(distractor) 수가 성능을 끌어내렸습니다. 위치 효과는 모델마다 다르지만 길게 쌓을수록 흐려진다는 결과는 두 연구가 같습니다.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <h2>프롬프트 엔지니어링에서 컨텍스트 엔지니어링으로</h2>
+      <p>지시문 한 편을 잘 쓰는 일을 프롬프트 엔지니어링(prompt engineering)이라고 합니다. 에이전트는 한 번 묻고 끝나지 않고 도구를 수십 번 부르며 책상을 계속 채웁니다. 그래서 Anthropic 은 2025년 9월 매 턴 책상에 무엇을 올릴지 고르고 관리하는 일을 컨텍스트 엔지니어링(context engineering)이라고 따로 불렀습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>목표는 한 문장입니다. 원하는 결과가 나올 가능성을 가장 높이는, 가장 작은 토큰 묶음을 찾는 것입니다. 꼭 필요한 정보만 담긴 토큰을 Anthropic 은 고신호(high-signal) 토큰이라고 부릅니다. 수학여행 가방을 쌀 때 가방 크기보다 무엇을 넣을지가 중요한 것과 비슷합니다. 가방은 한 번 싸면 끝이지만 컨텍스트는 도구를 부를 때마다 다시 골라야 한다는 점이 다릅니다.</p>
+    </div>
+    <figure class="cx-fig cx-own cx-tf cx-low" data-figure>
+      <svg data-pcsvg viewBox="0 0 540 420" role="img" aria-label="위는 프롬프트 엔지니어링: 시스템 프롬프트와 사용자 메시지를 넣은 컨텍스트 창을 모델에 한 번 보내고 답을 받으면 끝. 아래는 컨텍스트 엔지니어링: 문서·도구 설명·메모리 파일·지난 대화·도구 결과 후보 가운데 이번 턴에 필요한 것만 골라 창에 넣고 모델이 부른 도구의 결과가 다시 후보로 돌아가 다음 턴에 또 고르는 고리"></svg>
+      <figcaption class="cx-cap">Anthropic 이 두 방식을 비교한 도식을 옮겨 그렸습니다. 위는 한 번 보내고 끝나지만 아래는 도구 결과가 후보로 돌아와 턴마다 다시 고릅니다 — Anthropic, <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Effective context engineering for AI agents</a>, 2025-09-29.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split cx-edsec">
+    <div class="cx-col cx-ta">
+      <h2>CLAUDE.md 에는 지우면 실수할 줄만</h2>
+      <p>CLAUDE.md 는 Claude Code 가 세션을 시작할 때마다 읽는 프로젝트 안내 파일입니다. 매번 책상 맨 처음에 깔리니 뭐든 적어 두고 싶어집니다. 공식 문서의 기준은 반대입니다. 줄마다 "이 줄을 지우면 Claude 가 실수할까?"를 묻고, 아니면 지우라고 합니다. 파일이 부풀면 정작 중요한 규칙이 묻혀서 무시되기 때문입니다.</p>
+      <p>문서는 CLAUDE.md 를 200줄 아래로 유지하라고 권하고 지시는 확인할 수 있을 만큼 구체적으로 쓰라고 합니다. "코드를 깔끔하게"보다 "들여쓰기는 공백 두 칸"이 낫다는 식입니다. 서로 어긋나는 두 지시가 있으면 Claude 가 아무거나 하나를 고를 수 있다는 경고도 있습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>절대 어기면 안 되는 규칙은 훅(hook)으로 옮깁니다. 훅은 정해진 순간에 스크립트를 자동으로 실행하는 장치라서 모델의 판단과 상관없이 매번 돌아갑니다. 한 줄이 계속 무시될 때는 그 줄에만 "IMPORTANT" 같은 강조를 붙입니다.</p>
+    </div>
+    <figure class="cx-fig cx-edfig cx-tf cx-low" data-figure>
+      <div class="cx-edbox">
+      <p class="cx-hint">👆 줄을 눌러 지워 보세요. 다시 누르면 돌아옵니다.</p>
+      <div class="cx-meter" aria-live="polite">
+        <div class="row"><span>매 세션 쓰는 토큰 <b data-mtok>9,455</b></span><span>실수를 막는 줄 <b data-mgood>120</b> 토큰 · <b data-mng>5</b>줄</span></div>
+        <div class="track"><i class="good" data-mg style="width:1.3%"></i><i class="bad" data-mb style="width:98.7%"></i></div>
+        <p class="lines">파일 길이 <b data-mlines class="over">약 350줄</b> / 권장 200줄 이하</p>
+      </div>
+      <p class="cx-mnote" data-mnote aria-live="polite">9,455 토큰 중 실수를 막는 줄은 120 토큰입니다. 나머지 9,335 토큰이 그 다섯 줄을 덮고 있습니다.</p>
+      <p class="cx-flegend"><span><i class="g"></i>실수를 막는 줄</span><span><i class="b"></i>책상만 채우는 줄</span></p>
+      <div class="cx-file">
+        <div class="tt"><span>CLAUDE.md</span><span>매 세션 책상 맨 앞에 깔림</span></div>
+        <ol data-file>
+            <li class="hd" data-l="h"><div class="tx"># 명령</div></li>
+            <li class="ln good" data-l="0" style="--t:30"><button type="button" data-i="0" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 테스트: pnpm test (한 파일: pnpm test -- 경로)</span><span class="tk">30</span><span class="tb"><i aria-hidden="true"></i><em class="why">코드만 보고는 추측 못 하는 명령</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln good" data-l="1" style="--t:20"><button type="button" data-i="1" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 커밋 전에 pnpm typecheck</span><span class="tk">20</span><span class="tb"><i aria-hidden="true"></i><em class="why">이 팀의 작업 순서</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="hd" data-l="h2"><div class="tx"># 구조와 함정</div></li>
+            <li class="ln good" data-l="2" style="--t:20"><button type="button" data-i="2" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- API 핸들러는 src/api/handlers/</span><span class="tk">20</span><span class="tb"><i aria-hidden="true"></i><em class="why">이 프로젝트만의 설계 결정</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln good" data-l="3" style="--t:25"><button type="button" data-i="3" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 로컬 실행: .env.local 의 SUPABASE_URL 필요</span><span class="tk">25</span><span class="tb"><i aria-hidden="true"></i><em class="why">환경 특이점</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln good" data-l="4" style="--t:25"><button type="button" data-i="4" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- legacy/ 는 결제 팀 코드, 수정 금지</span><span class="tk">25</span><span class="tb"><i aria-hidden="true"></i><em class="why">겉으로 안 보이는 함정</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad" data-l="5" style="--t:15"><button type="button" data-i="5" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 깨끗하고 읽기 좋은 코드를 쓴다</span><span class="tk">15</span><span class="tb"><i aria-hidden="true"></i><em class="why">누구나 아는 당연한 말</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad" data-l="6" style="--t:10"><button type="button" data-i="6" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 파일을 잘 정리해 둔다</span><span class="tk">10</span><span class="tb"><i aria-hidden="true"></i><em class="why">확인할 수 없는 막연한 말</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad big" data-l="7" style="--t:900"><button type="button" data-i="7" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">## TypeScript 기초 … (60줄)</span><span class="tk">900</span><span class="tb"><i aria-hidden="true"></i><em class="why">모델이 이미 아는 언어 표준</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad big" data-l="8" style="--t:2400"><button type="button" data-i="8" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">## 파일 설명 auth.ts tokens.ts … (40줄)</span><span class="tk">2,400</span><span class="tb"><i aria-hidden="true"></i><em class="why">코드를 읽으면 알 수 있는 것</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad big" data-l="9" style="--t:6000"><button type="button" data-i="9" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">## API 문서 GET /users … (240줄)</span><span class="tk">6,000</span><span class="tb"><i aria-hidden="true"></i><em class="why">링크 한 줄로 충분</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+            <li class="ln bad" data-l="10" style="--t:10"><button type="button" data-i="10" aria-pressed="false" aria-label="이 줄 지우기"><span class="tx">- 이번 주 배포 담당: 민수</span><span class="tk">10</span><span class="tb"><i aria-hidden="true"></i><em class="why">자주 바뀌는 정보</em><em class="gone">지운 줄 · 눌러서 되돌리기</em></span></button></li>
+        </ol>
+      </div>
+      </div>
+      <figcaption class="cx-cap">줄마다 아래 막대 길이가 그 줄의 토큰 수입니다(가장 긴 막대가 6,000 토큰). 맨 위 하루 띠의 CLAUDE.md 보다 일부러 부풀린 예시입니다. 수십 토큰짜리 줄은 보이게 최소 길이로 그렸습니다. 토큰 수는 설명을 위한 어림값이고, 판정 기준은 Claude Code 문서 「Best practices」의 넣을 것·뺄 것 표입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <h2>AGENTS.md, 여러 에이전트가 같이 읽는 안내서</h2>
+      <p>CLAUDE.md 는 Claude Code 의 파일이고 다른 코딩 에이전트도 같은 역할의 파일을 읽습니다. AGENTS.md 는 그 파일 이름을 하나로 맞춘 공개 형식입니다. 공식 사이트는 "에이전트를 위한 README"라고 소개합니다. README 는 저장소(코드를 모아 둔 곳)에 맨 먼저 두는 안내 문서입니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>폴더마다 AGENTS.md 를 둘 수도 있습니다. 지시가 서로 어긋나면 고치는 파일에서 가장 가까운 AGENTS.md 가 이기고 사람이 채팅으로 준 지시는 모든 파일보다 우선합니다. Codex 는 루트부터 안쪽까지 파일을 이어 붙여 함께 읽어서 겹치지 않는 바깥 규칙도 그대로 지킵니다.</p>
+      <figure class="cx-fig cx-readers" data-figure>
+        <p class="cx-rdhd">AGENTS.md 를 읽는 도구</p>
+        <ul class="cx-chips">
+          <li>Codex</li><li>Cursor</li><li>GitHub Copilot</li><li>Gemini CLI</li><li>Jules</li><li class="cond">Claude Code <small>CLAUDE.md 가 없을 때</small></li>
+        </ul>
+        <figcaption class="cx-cap">공식 사이트는 6만 개가 넘는 오픈소스 프로젝트가 AGENTS.md 를 쓴다고 적었습니다. 지금은 Linux Foundation 산하 Agentic AI Foundation 이 관리합니다.</figcaption>
+      </figure>
+      <p>Claude Code 는 v2.1.277 부터 CLAUDE.md 가 없는 저장소에서 AGENTS.md 를 읽습니다. 둘 다 있으면 CLAUDE.md 만 읽으므로, 한 파일을 같이 쓰려면 CLAUDE.md 첫 줄에 <code>@AGENTS.md</code> 를 적어 불러옵니다.</p>
+    </div>
+    <figure class="cx-fig cx-tree cx-tf cx-low" data-figure>
+      <p class="cx-hint">👆 고칠 파일을 눌러 보세요. 어느 AGENTS.md 를 읽는지 바뀝니다.</p>
+      <svg data-treesvg viewBox="0 0 520 320" role="img" aria-label="저장소를 상자 안의 상자로 그린 폴더 지도. 루트 상자 안에 apps/web 과 packages/db 상자가 있고 세 상자에 각각 AGENTS.md 가 있다. 고르는 파일을 감싼 상자의 AGENTS.md 와 루트 AGENTS.md 를 함께 읽고 겹치는 지시는 가장 안쪽 파일이 이긴다"></svg>
+      <figcaption class="cx-cap" data-treeout><code>page.tsx</code> 를 고칠 때는 루트와 <code>apps/web/AGENTS.md</code> 를 함께 읽습니다. 두 파일이 같은 일을 다르게 말하면 더 가까운 <code>apps/web</code> 쪽이 이깁니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <h2>컨텍스트 파일이 정말 도움이 되는지 잰 연구</h2>
+      <p>2026년 초 두 연구가 같은 질문을 실험했습니다. Gloaguen 외 연구진(ETH Zurich·LogicStar.ai)은 Claude Code·Codex·Qwen Code 에게 컨텍스트 파일(AGENTS.md·CLAUDE.md)이 있을 때와 없을 때 Python 저장소 과제를 맡겼습니다.</p>
+      <p>과제는 SWE-bench Lite(실제 GitHub 이슈를 고치는 과제 모음) 300개와 직접 만든 138개입니다. 성공률은 거의 그대로였습니다. 비용은 AI가 만든 파일이 평균 20% 넘게, 개발자가 쓴 파일도 최대 19% 늘렸습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>에이전트는 파일 속 지시를 잘 따랐습니다. Python 패키지 도구 <code>uv</code> 를 쓰라고 적으면 과제당 1.6번 썼고 안 적으면 거의 쓰지 않았습니다. 그런데 거의 모든 파일에 들어 있던 저장소 개요는 관련 파일을 더 빨리 찾게 해 주지 못했습니다. 따르기는 하는데 도움이 안 되는 내용이 비용만 늘린 셈입니다.</p>
+    </div>
+    <figure class="cx-fig cx-res cx-tf cx-low" data-figure>
+      <p class="cx-legend cx-reslg"><span><i class="ai"></i>AI가 만든 파일</span><span><i class="me"></i>개발자가 쓴 파일</span></p>
+      <p class="cx-reshd">성공률 변화</p>
+      <p class="cx-ressub">%p, 파일 없을 때 대비 · 모두 유의하지 않음</p>
+      <p class="cx-resnote">%p 는 성공률끼리 뺀 차이입니다(50% → 52% 면 +2%p). 유의하지 않음은 우연으로도 생길 만한 차이라 파일 덕분이라고 말할 수 없다는 뜻입니다.</p>
+      <svg data-ressvg viewBox="0 0 380 560" role="img" aria-label="컨텍스트 파일을 넣었을 때 성공률 변화(퍼센트포인트)와 비용 변화(퍼센트) 막대. 성공률은 -2에서 +2.4 포인트 사이, 비용은 19~23% 늘었다"></svg>
+      <figcaption class="cx-cap">Gloaguen 외, <a href="https://arxiv.org/abs/2602.11988" target="_blank" rel="noopener">Evaluating AGENTS.md</a>(2026-02). 개발자가 쓴 파일은 직접 만든 138개 과제에서만 쟀습니다. 성공률 +2.4%p 는 세 에이전트 평균이고 비용 +19% 는 셋 가운데 가장 큰 값입니다.</figcaption>
+    </figure>
+  </div>
+  <div class="cx-wrap cx-two cx-split cx-row2">
+    <div class="cx-col cx-ta">
+      <p>Lulla 외 연구는 다른 쪽을 쟀습니다. 저장소 10개의 실제 PR(Pull Request, 코드 변경 제안) 124건을 AGENTS.md 가 있을 때와 없을 때 돌렸습니다. 완료는 비슷했고 실행 시간과 출력 토큰이 줄었습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>두 결과를 겹쳐 보면 같은 결론이 나옵니다. 코드에서 알 수 없는 명령과 이 팀만의 규칙은 일을 줄여 주고 코드를 읽으면 알 수 있는 설명은 책상만 채웁니다. Gloaguen 외 연구진도 사람이 쓴 파일에는 표준과 다른 관행만 적으라고 권했습니다.</p>
+    </div>
+    <figure class="cx-fig cx-res cx-tf" data-figure>
+      <svg data-ressvg2 viewBox="0 0 380 200" role="img" aria-label="AGENTS.md 가 있을 때 실행 시간 중앙값 28.64%, 출력 토큰 16.58% 감소"></svg>
+      <figcaption class="cx-cap">Lulla 외, <a href="https://arxiv.org/abs/2601.20404" target="_blank" rel="noopener">On the Impact of AGENTS.md Files</a>(2026-01). 저장소 10개·PR 124건이고 과제 완료는 두 조건이 비슷했습니다. 중앙값은 시간을 줄 세웠을 때 가운데 값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split">
+    <div class="cx-col cx-ta">
+      <h2>압축하면 대화는 요약되고 CLAUDE.md 는 다시 읽힙니다</h2>
+      <p>책상이 한도에 가까워지면 Claude Code 는 압축(compaction)을 합니다. 먼저 오래된 도구 출력을 비우고 그래도 모자라면 대화 전체를 구조화된 요약 하나로 바꿉니다. 직접 <code>/compact</code> 를 쳐서 할 수도 있습니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>무엇이 살아남는지는 들어온 길에 따라 다릅니다. 시스템 프롬프트는 그대로이고 CLAUDE.md 와 자동 메모리는 디스크(파일을 저장해 두는 컴퓨터 저장 장치)에서 다시 읽습니다. 자동 메모리는 Claude 가 지난 세션에서 알게 된 빌드 명령 같은 것을 스스로 적어 두는 노트 파일입니다.</p>
+      <p>최근에 고친 파일은 다섯 개까지 다시 읽고 대화로 오간 나머지는 요약 속 몇 줄이 됩니다. 문서는 이때 초반 대화의 자세한 지시가 사라질 수 있다고 적었습니다. 그래서 오래 지켜야 할 규칙은 대화가 아니라 CLAUDE.md 에 둡니다.</p>
+      <p>요약에 꼭 남길 것은 <code>/compact focus on the API changes</code> 처럼 직접 지정하거나 CLAUDE.md 에 압축 때 지킬 지시를 적어 둘 수 있습니다.</p>
+    </div>
+    <figure class="cx-fig cx-comp cx-tf cx-low" data-figure>
+      <p class="cx-hint">👆 아침 규칙을 어디에 적었나요?</p>
+      <div class="cx-control">
+        <div class="cx-tog" role="group" aria-label="아침 규칙을 적은 곳 고르기" data-rulepos>
+          <button type="button" data-v="chat" aria-pressed="true">대화로 말함</button>
+          <button type="button" data-v="file" aria-pressed="false">CLAUDE.md 에 적음</button>
+        </div>
+      </div>
+      <svg data-compsvg viewBox="0 0 560 420" role="img" aria-label="압축 전 책상의 항목들이 압축 후 어디로 가는지 선으로 이은 그림. 시스템 프롬프트는 그대로, CLAUDE.md 와 자동 메모리는 디스크에서 다시 읽히고, 오래된 도구 출력은 먼저 비워지며 대화만 요약 하나로 합쳐진다"></svg>
+      <figcaption class="cx-cap" data-compout>대화로 말한 규칙은 요약 속으로 들어갑니다. 요약에 남을지는 압축이 무엇을 중요하다고 보느냐에 달렸습니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap">
+    <h2>새 세션과 서브에이전트로 책상을 따로 쓰기</h2>
+    <div class="cx-col">
+      <p>파일을 수십 개 읽어야 하는 조사는 서브에이전트(subagent)에게 맡깁니다. 자기 책상을 따로 쓰는 보조 에이전트로, 도서관에서 자료를 찾고 요약 메모만 들고 오는 친구와 비슷합니다.</p>
+    </div>
+    <figure class="cx-fig cx-two-desk cx-wide" data-figure>
+      <svg data-subsvg viewBox="0 0 1000 300" role="img" aria-label="메인 책상과 서브에이전트 책상 두 띠. 서브에이전트 책상에는 파일 세 개를 읽은 6,100 토큰이 쌓이고, 메인 책상으로는 420 토큰 요약만 돌아온다"></svg>
+      <figcaption class="cx-cap">세션 타임아웃(한동안 아무 동작이 없으면 로그인을 끊는 기능) 처리를 조사하는 서브에이전트가 파일을 읽은 6,100 토큰은 자기 책상에 남고, 메인 책상에는 420 토큰 결과만 돌아옵니다. 빗금 칸은 메인이 직접 읽었다면 쌓였을 양입니다. 값은 Claude Code 문서 「Explore the context window」의 대표 값입니다.</figcaption>
+    </figure>
+    <div class="cx-col" style="margin-top:clamp(32px,4vw,44px)">
+      <p>다만 요약에서 빠진 내용은 메인 에이전트가 모릅니다. 서브에이전트도 CLAUDE.md 를 자기 책상에 다시 깔기 때문에 토큰은 사라지지 않고 다른 책상으로 옮겨 갈 뿐입니다. Anthropic 은 서브에이전트가 수만 토큰을 쓰며 탐색하고 1,000~2,000 토큰으로 줄인 요약을 돌려주는 경우가 많다고 적었습니다.</p>
+    </div>
+  </div>
+  <div class="cx-wrap cx-two cx-split" style="margin-top:clamp(48px,6vw,72px)">
+    <div class="cx-col cx-ta">
+      <p>관계없는 일로 넘어갈 때는 <code>/clear</code> 로 새 세션을 엽니다. 깨끗한 세션에 더 나은 요청을 주는 쪽이 고친 기록이 쌓인 긴 세션보다 거의 항상 낫다고 문서는 말합니다. 비우기 전에는 노트 파일에 진행 상황을 적어 둡니다.</p>
+    </div>
+    <div class="cx-col cx-tb">
+      <p>에이전트가 <code>NOTES.md</code> 나 할 일 목록에 진행 상황을 적어 두면 책상을 비운 뒤에도 그 파일을 다시 읽고 이어 갈 수 있습니다. 같은 문제를 두 번 넘게 고쳐 달라고 해도 안 되면 책상이 실패한 시도로 가득 찬 것이니 비우고 배운 점을 담아 다시 요청하라고 문서는 권합니다.</p>
+      <details>
+        <summary>포켓몬 게임을 하던 Claude 의 노트</summary>
+        <p>Anthropic 은 Claude 에게 포켓몬 게임을 시키며 노트를 쓰게 했습니다. Claude 는 수천 단계 동안 "피카츄가 목표 10레벨 가운데 8레벨을 올렸다" 같은 진행 상황과 지도, 업적을 적어 두었습니다. 책상이 비워진 뒤에도 노트를 읽고 몇 시간짜리 작업을 이어 갔다고 합니다.</p>
+      </details>
+    </div>
+    <figure class="cx-fig cx-notes cx-tf" data-figure>
+      <div class="cx-file">
+        <div class="tt"><span>NOTES.md</span><span>책상을 비우기 전에 적어 둠</span></div>
+<pre><span class="h">## 진행 상황</span>
+- [x] 로그인 401 버그 수정, 테스트 통과
+- [ ] 검색 기능: src/search/ 수정 중
+- [ ] 빌드 오류: 오류 줄만 남겨 둠
+<span class="h">## 계속 지킬 것</span>
+<span class="r">- 테스트는 pnpm test</span></pre>
+      </div>
+      <figcaption class="cx-cap">설명을 위한 예시 노트입니다. 새 세션에서 이 파일을 다시 읽으면 어디까지 했는지부터 이어 갈 수 있습니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="cx-sec">
+  <div class="cx-wrap cx-two cx-split cx-todo">
+    <div class="cx-col cx-ta">
+      <h2>모델이 좋아지면 적어 둘 것도 줄어듭니다</h2>
+      <p>Anthropic 은 2026년 7월 24일 Claude 5 세대 모델(Claude Opus 5·Fable 5 등)에서 Claude Code 시스템 프롬프트를 80% 넘게 지웠는데 코딩 평가에서 잴 수 있는 손실이 없었다고 밝혔습니다. 예전 모델의 최악을 막으려고 적어 둔 규칙을 새 모델은 없이도 잘 판단한다는 설명입니다.</p>
+      <p>할 일 목록 도구인 TodoWrite 가 대표 예입니다. 언제 쓰는지 목록과 예시로 9,100자를 채웠던 설명을 한 줄 설명과 상태 세 가지(pending·in_progress·completed)로 바꿨습니다.</p>
+    </div>
+    <figure class="cx-fig cx-own cx-tf cx-low" data-figure>
+      <svg data-todosvg viewBox="0 0 540 330" role="img" aria-label="TodoWrite 도구 설명의 전후. 예전 설명은 언제 쓰는지 목록과 예시로 약 9,100자를 채웠고 새 설명은 할 일 목록을 만들고 고친다는 한 줄, 상태 값 세 가지, 진행 중은 한 번에 하나라는 규칙 하나로 줄었다"></svg>
+      <figcaption class="cx-cap">TodoWrite 도구 설명의 전후를 옮겨 그렸습니다. 예전 설명의 약 9,100자는 출처에 적힌 값이고 새 설명은 한 줄 설명·상태 세 가지·규칙 하나입니다 — Anthropic, <a href="https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models" target="_blank" rel="noopener">The new rules of context engineering for Claude 5 generation models</a>, 2026-07-24.</figcaption>
+    </figure>
+    <div class="cx-col cx-tb">
+      <p>같은 글은 이런 방향을 함께 정리했습니다.</p>
+      <ul class="cx-list">
+        <li>규칙을 늘어놓는 대신 판단을 맡긴다.</li>
+        <li>다 앞에 두지 않고 필요할 때 불러온다.</li>
+        <li>CLAUDE.md 는 저장소가 무엇인지 짧게 쓰고 토큰 대부분은 코드 속 함정에 쓴다.</li>
+      </ul>
+      <p class="cx-close">책상을 치우는 일은 결국 이 질문으로 돌아옵니다. <b>지금 이 토큰이 다음 답을 낫게 하는가.</b></p>
+      <p>다음 글에서는 에이전트가 회사 이슈 트래커나 데이터베이스를 읽게 해 주는 MCP(Model Context Protocol)를 알아보겠습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cx-sec cx-refs" style="padding-bottom: clamp(80px, 10vw, 120px)">
+  <div class="cx-wrap cx-refhead">
+    <h2>참고 자료</h2>
+    <ul>
+      <li><a href="https://code.claude.com/docs/en/context-window" target="_blank" rel="noopener">Explore the context window — Claude Code Docs</a> (세션 대표 토큰 수, 압축 뒤 남는 것)</li>
+      <li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Best practices for Claude Code — Claude Code Docs</a> (CLAUDE.md 넣을 것·뺄 것, /clear, 서브에이전트)</li>
+      <li><a href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener">How Claude Code works — Claude Code Docs</a> (책상이 찰 때 일어나는 일)</li>
+      <li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">How Claude remembers your project — Claude Code Docs</a> (200줄 권장, AGENTS.md 읽는 조건)</li>
+      <li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Model configuration — Claude Code Docs</a> (100만 토큰 창, 자동 압축 지점)</li>
+      <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Effective context engineering for AI agents — Anthropic (2025-09-29)</a></li>
+      <li><a href="https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models" target="_blank" rel="noopener">The new rules of context engineering for Claude 5 generation models — Anthropic (2026-07-24)</a></li>
+      <li><a href="https://www.trychroma.com/research/context-rot" target="_blank" rel="noopener">Context Rot: How Increasing Input Tokens Impacts LLM Performance — Chroma (2025-07-14)</a></li>
+      <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu 외, Lost in the Middle: How Language Models Use Long Contexts (TACL 2024)</a></li>
+      <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a></li>
+      <li><a href="https://developers.openai.com/codex/guides/agents-md" target="_blank" rel="noopener">Custom instructions with AGENTS.md — OpenAI Codex</a> (루트부터 안쪽까지 이어 붙여 읽기, 가까운 파일이 우선)</li>
+      <li><a href="https://arxiv.org/abs/2602.11988" target="_blank" rel="noopener">Gloaguen 외, Evaluating AGENTS.md: Are Repository-Level Context Files Helpful for Coding Agents? (arXiv 2602.11988)</a></li>
+      <li><a href="https://arxiv.org/abs/2601.20404" target="_blank" rel="noopener">Lulla 외, On the Impact of AGENTS.md Files on the Efficiency of AI Coding Agents (arXiv 2601.20404)</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null && attrs[k] !== "") e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  const arrowDefs = (svg, id, color) => {
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+  };
+  const COL = { sys: "var(--sys)", me: "var(--me)", ai: "var(--ai)" };
+  const SOFT = { sys: "var(--sys-soft)", me: "var(--me-soft)", ai: "var(--ai-soft)" };
+
+  /* ---------- 히어로: 책상 띠 ---------- */
+  (() => {
+    const svg = $("[data-desksvg]"); if (!svg) return;
+    const MAX = 200000;
+    // st: 처음 나타나는 단계, rel: 관계있는 단계(마지막 단계 기준 판단은 rel5), act: 보이는 손질 방법
+    const SEGS = [
+      { id: "sys", c: "sys", t: 4200, st: 0, rel: "all", lab: "시스템 프롬프트" },
+      { id: "env", c: "sys", t: 850, st: 0, rel: "all" },
+      { id: "mem", c: "ai", t: 680, st: 0, rel: "all" },
+      { id: "cmd", c: "me", t: 2120, st: 0, rel: "all", lab: "CLAUDE.md" },
+      { id: "c1q", c: "me", t: 60, st: 1, rel: "all", conv: true, rule: true },
+      { id: "c1r", c: "ai", t: 6900, st: 1, rel: [1], conv: true },
+      { id: "c1m", c: "ai", t: 1270, st: 1, rel: [1], conv: true },
+      { id: "c1f", c: "ai", t: 2020, st: 1, rel: [1], conv: true },
+      { id: "c1t", c: "ai", t: 1600, st: 1, rel: [1], conv: true },
+      { id: "c2q", c: "me", t: 40, st: 2, rel: [2], conv: true },
+      { id: "c2r", c: "ai", t: 9000, st: 2, rel: [2], conv: true },
+      { id: "c2a", c: "ai", t: 11000, st: 2, rel: [2], conv: true },
+      { id: "c3q", c: "me", t: 80, st: 3, rel: [3, 4, 5], conv: true },
+      { id: "c3a", c: "ai", t: 15000, st: 3, rel: [3, 4, 5], conv: true, noSub: true },
+      { id: "c3b", c: "ai", t: 39000, st: 3, rel: [3], conv: true, noSub: true },
+      { id: "c3s", c: "ai", t: 1800, st: 3, rel: [3, 4, 5], conv: true, onlySub: true },
+      { id: "c3p", c: "ai", t: 3000, st: 3, rel: [3, 4, 5], conv: true },
+      { id: "c4o", c: "ai", t: 18000, st: 4, rel: [4], conv: true },
+      { id: "c4x", c: "ai", t: 5000, st: 4, rel: [4], conv: true },
+      { id: "c4h", c: "me", t: 180, st: 4, rel: [4, 5], conv: true },
+      { id: "c4n", c: "ai", t: 9000, st: 4, rel: [4, 5], conv: true },
+      { id: "c4f", c: "ai", t: 2500, st: 4, rel: [4, 5], conv: true },
+      { id: "c5q", c: "me", t: 40, st: 5, rel: [5], conv: true },
+      { id: "c5l", c: "ai", t: 40000, st: 5, rel: [], conv: true, noSub: true },
+      { id: "c5e", c: "ai", t: 1000, st: 5, rel: [5], conv: true, noSub: true },
+      { id: "c5s", c: "ai", t: 600, st: 5, rel: [5], conv: true, onlySub: true },
+      { id: "c5a", c: "ai", t: 1500, st: 5, rel: [5], conv: true },
+      { id: "ksum", c: "ai", t: 5000, act: "compact", rel: "all", lab: "대화 요약" },
+      { id: "kfil", c: "ai", t: 9400, act: "compact", rel: "all", lab: "최근 파일 4개" },
+      { id: "krme", c: "ai", t: 2600, act: "compact", rel: [], lab: "README" },
+      { id: "nreq", c: "me", t: 1200, act: "clear", rel: "all", lab: "새 요청 + 오류 줄" },
+    ];
+    const STEPS = [
+      { t: "시작", tm: "", note: "세션 시작. 아무것도 묻기 전에 7,850 토큰이 깔립니다. 시스템 프롬프트, 도구·스킬 목록, 메모리, CLAUDE.md 입니다." },
+      { t: "버그 수정", tm: "09시", note: "09시 로그인 버그. 요청과 함께 \"테스트는 pnpm test 로\"라고 말했습니다. 파일 네 개와 테스트 출력이 따라 올라옵니다." },
+      { t: "README 번역", tm: "10시", note: "10시 관계없는 질문 하나. README 번역 20,040 토큰이 그대로 책상에 남습니다." },
+      { t: "검색 기능 · 파일 32개 탐색", s: "파일 32개", tm: "11시", note: "11시 검색 기능 추가. 파일 32개를 읽었는데 실제로 필요한 건 9개였습니다." },
+      { t: "테스트 실패 3번", s: "실패 3번", tm: "13시", note: "13시 테스트가 세 번 실패했습니다. 실패 로그와 고친 시도가 다 쌓입니다. 지금 쓸모 있는 건 마지막 한 번뿐입니다." },
+      { t: "빌드 오류 · 로그 전체", s: "로그 전체", tm: "15시", note: "" },
+    ];
+    const ACT_NOTE = {
+      none: '15시 빌드 오류. 전체 로그 41,000 토큰 중 쓸모 있는 건 오류 줄뿐입니다. 아침 규칙은 아직 책상 위에 있지만 그 뒤로 쌓인 17만 토큰에 희석됐습니다.',
+      compact: '압축. 대화가 요약 하나로 바뀌고 CLAUDE.md 는 저장된 파일에서 다시 읽힙니다. 최근 고친 파일 다섯 개를 다시 읽는데 그중 README 는 지금 일과 관계없습니다. <b class="bad">대화로 말한 아침 규칙은 요약에 남을지 장담할 수 없습니다.</b>',
+      clear: '새 세션(/clear). 시작 때 깔린 것과 새 요청만 남습니다. <b class="bad">대화로 말한 아침 규칙도 함께 사라집니다.</b> 그래서 오래 지킬 규칙은 CLAUDE.md 에 적어야 합니다.',
+      sub: '서브에이전트. 파일 32개 탐색(54,000)과 빌드 로그 읽기(41,000)를 서브에이전트의 책상에서 하고 <b class="ok">두 요약을 합쳐 2,400 토큰만 돌려받았습니다.</b> 앞서 쌓인 다른 칸은 그대로입니다.',
+    };
+    const visible = (s, step, act) => {
+      if (s.act) return step >= 5 && act === s.act;
+      if (s.st > step) return false;
+      if (step >= 5) {
+        if (act === "compact" || act === "clear") return !s.conv;
+        if (act === "sub") return !s.noSub;
+      }
+      return !s.onlySub;
+    };
+    const isRel = (s, step) => s.rel === "all" || s.rel.includes(step);
+
+    let G, x0, W, BY, BH, m, segEls = {}, pinG, pinTxt, labs = [], stepMarks = [], dimG, dimLn, dimT1, dimT2, dimTx;
+    const build = (mob) => {
+      m = mob;
+      svg.innerHTML = "";
+      svg.setAttribute("viewBox", mob ? "0 0 350 166" : "0 0 1060 180");
+      x0 = mob ? 6 : 20; W = mob ? 338 : 1020; BY = mob ? 44 : 50; BH = mob ? 44 : 54;
+      const defs = el("defs", {}, svg);
+      ["sys", "me", "ai"].forEach((c) => {
+        const p = el("pattern", { id: "cx-h-" + c, width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+        el("rect", { width: 6, height: 6, fill: SOFT[c] }, p);
+        el("rect", { width: 2.2, height: 6, fill: COL[c], opacity: .45 }, p);
+      });
+      // 빈 책상
+      el("rect", { x: x0, y: BY, width: W, height: BH, rx: 6, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      txt(svg, x0 + W, BY + BH + (mob ? 72 : 32), "한도 200,000 토큰", { "text-anchor": "end", "font-size": 14, class: "dim" });
+      G = el("g", {}, svg);
+      segEls = {};
+      SEGS.forEach((s) => {
+        const r = el("rect", { class: "seg", x: x0, y: BY, width: 0, height: BH, fill: COL[s.c], stroke: "var(--bg-base)", "stroke-width": 1 }, G);
+        r.style.opacity = 0;
+        segEls[s.id] = r;
+      });
+      // 단계 눈금
+      stepMarks = STEPS.map((st, i) => {
+        const g = el("g", { class: "lbl" }, svg);
+        g.style.transition = "opacity .5s";
+        const ln = el("line", { x1: 0, x2: 0, y1: BY + BH + 4, y2: BY + BH + 14, stroke: "var(--fg-neutral)", "stroke-width": 1.2 }, g);
+        const t1 = txt(g, 0, BY + BH + (mob ? 30 : 32), "", { "font-size": 14, "font-weight": 700 });
+        const t2 = txt(g, 0, BY + BH + (mob ? 50 : 52), "", { "font-size": mob ? 13 : 13.5, class: "dim" });
+        g.style.opacity = 0;
+        return { g, ln, t1, t2 };
+      });
+      // 아침 규칙 핀
+      pinG = el("g", { class: "pin" }, svg);
+      el("line", { x1: 0, x2: 0, y1: BY - (mob ? 30 : 34), y2: BY + 2, stroke: "var(--me)", "stroke-width": 2 }, pinG);
+      el("circle", { cx: 0, cy: BY - (mob ? 30 : 34), r: 5, fill: "var(--me)" }, pinG);
+      pinTxt = txt(pinG, 9, BY - (mob ? 25 : 29), mob ? "아침 규칙" : "아침 규칙: 테스트는 pnpm test", { "font-size": mob ? 14.5 : 14, "font-weight": 600, fill: "var(--me)" });
+      pinG.style.opacity = 0;
+      // 아침 규칙 뒤로 쌓인 양: 띠 위 치수선
+      dimG = el("g", { class: "lbl" }, svg);
+      dimLn = el("line", { y1: BY - 7, y2: BY - 7, stroke: "var(--bad)", "stroke-width": 1.6 }, dimG);
+      dimT1 = el("line", { y1: BY - 12, y2: BY - 2, stroke: "var(--bad)", "stroke-width": 1.6 }, dimG);
+      dimT2 = el("line", { y1: BY - 12, y2: BY - 2, stroke: "var(--bad)", "stroke-width": 1.6 }, dimG);
+      dimTx = txt(dimG, 0, BY - 14, "", { "text-anchor": "end", "font-size": mob ? 13.5 : 14.5, "font-weight": 700, fill: "var(--bad)" });
+      dimG.style.opacity = 0;
+      draw(cur.step, cur.act, true);
+    };
+
+    const cur = { step: 5, act: "none" };
+    const used = $("[data-used]"), junk = $("[data-junk]"), note = $("[data-note]"), key = $("[data-key]");
+    const KEY = {
+      none: "<b>그대로</b> 아무것도 치우지 않은 15시의 책상입니다.",
+      compact: "<b>압축</b> 쌓인 대화를 요약 하나로 줄입니다.",
+      clear: "<b>새 세션</b> 세션은 대화 한 판입니다. 새 창을 열듯 새로 시작해 책상을 비웁니다.",
+      sub: "<b>서브에이전트</b> 조사만 맡은 보조 에이전트가 자기 책상에서 읽고 요약만 돌려줍니다.",
+    };
+    const draw = (step, act, instant) => {
+      cur.step = step; cur.act = act;
+      let x = x0, total = 0, rel = 0;
+      const span = {};
+      SEGS.forEach((s) => {
+        const r = segEls[s.id];
+        if (instant) r.style.transition = "none";
+        if (visible(s, step, act)) {
+          const w = s.t / MAX * W;
+          r.setAttribute("x", x); r.setAttribute("width", Math.max(w, 0.8));
+          r.style.x = x + "px"; r.style.width = Math.max(w, 0.8) + "px";
+          const re = isRel(s, step);
+          r.setAttribute("fill", re ? COL[s.c] : `url(#cx-h-${s.c})`);
+          r.style.opacity = 1;
+          const key = s.act ? "act" : s.st;
+          if (!span[key]) span[key] = [x, x];
+          span[key][1] = x + w;
+          if (s.rule) span.rule = x + w / 2;
+          if (s.id === "ksum") span.sum = x + w / 2;
+          x += w; total += s.t; if (re) rel += s.t;
+        } else {
+          r.style.opacity = 0;
+          r.setAttribute("width", 0); r.style.width = "0px";
+        }
+        if (instant) { r.getBoundingClientRect(); requestAnimationFrame(() => { r.style.transition = ""; }); }
+      });
+      // 단계 표지
+      const showSteps = act === "none" || act === "sub" || step < 5;
+      // 시간 눈금은 두 줄: 윗줄에 겹치면 아랫줄(긴 눈금선), 둘 다 겹치면 숨김
+      const last = [-999, -999];
+      stepMarks.forEach((mk, i) => {
+        const sp = span[i];
+        if (!sp || !showSteps) { mk.g.style.opacity = 0; return; }
+        const lx = sp[0] + 1;
+        const need = m ? 32 : 36;
+        const row = lx - last[0] >= need ? 0 : lx - last[1] >= need ? 1 : -1;
+        if (row < 0) { mk.g.style.opacity = 0; return; }
+        last[row] = lx;
+        const ty = BY + BH + (m ? 30 : 32) + row * 20;
+        mk.ln.setAttribute("x1", lx); mk.ln.setAttribute("x2", lx);
+        // 아랫줄 눈금선은 윗줄 글자를 지나가지 않게 띠 바로 아래에서 멈춘다
+        mk.ln.setAttribute("y2", row ? BY + BH + 12 : ty - 15);
+        mk.t1.textContent = i === 0 ? "시작" : STEPS[i].tm;
+        mk.t1.setAttribute("x", lx); mk.t1.setAttribute("y", ty);
+        mk.t2.textContent = i === 0 ? "" : (m ? STEPS[i].s || "" : STEPS[i].t); mk.t2.setAttribute("x", lx);
+        mk.g.style.opacity = 1;
+        mk.t2.style.opacity = (row === 0 && sp[1] - sp[0] > (m ? 54 : 120)) ? 1 : 0;
+      });
+      // 핀
+      let pinX = null, pinOp = 1, pinDash = false;
+      if (span.rule !== undefined) pinX = span.rule;
+      else if (act === "compact" && step >= 5) { pinX = span.sum; pinDash = true; }
+      else pinOp = 0;
+      if (step < 1) pinOp = 0;
+      if (pinX !== null) pinG.style.transform = `translateX(${pinX}px)`;
+      pinG.style.opacity = pinOp;
+      pinG.querySelector("line").setAttribute("stroke-dasharray", pinDash ? "4 3" : "");
+      pinTxt.textContent = pinDash ? (m ? "규칙 → 요약?" : "아침 규칙 → 요약에 남을까?") : (m ? "아침 규칙" : "아침 규칙: 테스트는 pnpm test");
+      // 치수선: 대화로 말한 규칙이 책상에 있을 때만
+      const endX = x, afterRule = span.rule !== undefined ? (endX - span.rule) / W * MAX : 0;
+      const need = m ? 180 : 330;
+      if (span.rule !== undefined && pinOp && endX - span.rule > need) {
+        const a = span.rule + 4, b = endX - 1;
+        dimLn.setAttribute("x1", a); dimLn.setAttribute("x2", b);
+        dimT1.setAttribute("x1", a); dimT1.setAttribute("x2", a);
+        dimT2.setAttribute("x1", b); dimT2.setAttribute("x2", b);
+        dimTx.setAttribute("x", b);
+        dimTx.textContent = (m ? "규칙 뒤로 " : "아침 규칙 뒤로 ") + Math.round(afterRule / 10000) + "만 토큰";
+        dimG.style.opacity = 1;
+      } else dimG.style.opacity = 0;
+      // 판독
+      used.innerHTML = `${fmt(total)} <small>/ 200,000</small>`;
+      const j = total - rel;
+      junk.innerHTML = `${fmt(j)} <small>${Math.round(j / total * 100)}%</small>`;
+      note.innerHTML = step < 5 ? STEPS[step].note : ACT_NOTE[act];
+      if (key) key.innerHTML = KEY[act];
+    };
+
+    responsive(build);
+
+    const run = $("[data-run]"), tog = $("[data-act]");
+    const setAct = (v) => $$("button", tog).forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"));
+    const lock = (on) => $$("button", tog).forEach((b) => { b.disabled = on; });
+    let timer = 0;
+    run.addEventListener("click", () => {
+      clearTimeout(timer);
+      setAct("none");
+      if (reduced()) { draw(5, "none"); return; }
+      lock(true); run.disabled = true;
+      let i = 0;
+      const tick = () => {
+        draw(i, "none");
+        if (i >= 5) { lock(false); run.disabled = false; return; }
+        i++; timer = setTimeout(tick, 1100);
+      };
+      tick();
+    }, { signal });
+    tog.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b || b.disabled) return;
+      setAct(b.dataset.v);
+      draw(5, b.dataset.v);
+    }, { signal });
+  })();
+
+  /* ---------- 점 잇기 ---------- */
+  (() => {
+    const svg = $("[data-dotsvg]"); if (!svg) return;
+    const inp = $("[data-n]"), out = $("[data-nout]");
+    const drawN = (n) => {
+      svg.innerHTML = "";
+      const cx = 240, cy = 150, R = 118;
+      const pts = Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + R * Math.cos(a), cy + R * Math.sin(a)]; });
+      const lines = el("g", {}, svg);
+      // 주의 예산이 n 개에 나뉜다: 선 굵기·진하기를 1/n 로
+      const sw = Math.max(0.35, 8 / n), op = Math.max(0.25, Math.min(0.95, 3 / n + 0.2));
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        el("line", { x1: pts[i][0], y1: pts[i][1], x2: pts[j][0], y2: pts[j][1], stroke: "var(--ai)", "stroke-width": sw, opacity: op }, lines);
+      }
+      pts.forEach(([x, y], i) => {
+        el("circle", { cx: x, cy: y, r: 10, fill: "var(--bg-base)", stroke: "var(--ai)", "stroke-width": 2.5 }, svg);
+      });
+      const pairs = n * (n - 1) / 2;
+      out.innerHTML = `<span class="big">점 <b>${n}</b>개 → 관계 <b>${n * n}</b>개(${n} × ${n})</span><span class="sm">짝으로만 세면 ${pairs}쌍 · 선 하나가 짝 하나 · 선 굵기는 한 관계에 가는 몫</span>`;
+    };
+    drawN(+inp.value);
+    inp.addEventListener("input", () => drawN(+inp.value), { signal });
+  })();
+
+  /* ---------- LongMemEval 아령 그림 ---------- */
+  (() => {
+    const svg = $("[data-lmesvg]"); if (!svg) return;
+    // Chroma, Context Rot (2025-07-14) LongMemEval Claude 그래프의 막대 위 값
+    const D = [
+      ["Opus 4 · 생각", 0.95, 0.72], ["Opus 4", 0.92, 0.38], ["Sonnet 4 · 생각", 0.95, 0.71], ["Sonnet 4", 0.89, 0.38],
+      ["Sonnet 3.7", 0.87, 0.45], ["Sonnet 3.5", 0.88, 0.49], ["Haiku 3.5", 0.79, 0.38],
+    ];
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 380 : 1060, LW = mob ? 120 : 170, R = VW - (mob ? 46 : 56), top = mob ? 84 : 66, RH = mob ? 44 : 42;
+      const H = top + D.length * RH + 44;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${H}`);
+      const X = (v) => LW + v * (R - LW);
+      // 범례
+      const lg = (x, c, t, filled) => { el("circle", { cx: x + 7, cy: 20, r: 7, fill: filled ? c : "var(--bg-base)", stroke: c, "stroke-width": 2.5 }, svg); txt(svg, x + 20, 25, t, { "font-size": 14, "font-weight": 600 }); };
+      lg(mob ? 0 : 0, "var(--ok)", mob ? "필요한 대화만" : "필요한 대화만 · 약 300 토큰", true);
+      lg(mob ? 170 : 270, "var(--bad)", mob ? "대화 전부" : "대화 전부 · 약 113,000 토큰", false);
+      if (mob) { txt(svg, 20, 45, "약 300 토큰", { "font-size": 13, class: "dim" }); txt(svg, 190, 45, "약 113,000 토큰", { "font-size": 13, class: "dim" }); }
+      // 눈금
+      [0, 0.25, 0.5, 0.75, 1].forEach((v) => {
+        el("line", { x1: X(v), x2: X(v), y1: top - 12, y2: top + D.length * RH - 10, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, X(v), top + D.length * RH + 16, v === 0 ? "0" : v === 1 ? "1" : String(v), { "text-anchor": "middle", "font-size": 13, class: "dim" });
+      });
+      txt(svg, R, top + D.length * RH + 38, "평균 점수", { "text-anchor": "end", "font-size": 13, class: "dim" });
+      D.forEach(([name, f, u], i) => {
+        const y = top + i * RH + 6;
+        txt(svg, 0, y + 5, name, { "font-size": mob ? 13 : 14.5, "font-weight": 600 });
+        el("line", { x1: X(f) - 9, x2: X(u) + 10, y1: y, y2: y, stroke: "var(--bad)", "stroke-width": 3, opacity: .55 }, svg);
+        el("circle", { cx: X(f), cy: y, r: 7, fill: "var(--ok)" }, svg);
+        el("circle", { cx: X(u), cy: y, r: 7, fill: "var(--bg-base)", stroke: "var(--bad)", "stroke-width": 2.5 }, svg);
+        txt(svg, X(f) + 12, y + 5, f.toFixed(2), { "font-size": 13.5, "font-weight": 700 });
+        txt(svg, X(u) - 12, y + 5, u.toFixed(2), { "font-size": 13.5, "font-weight": 700, "text-anchor": "end", fill: "var(--bad)" });
+      });
+    };
+    responsive(build);
+  })();
+
+  /* ---------- Lost in the Middle ---------- */
+  (() => {
+    const svg = $("[data-litmsvg]"); if (!svg) return;
+    const out = $("[data-litmout]");
+    const DATA = [[1, 75.8], [5, 57.2], [10, 53.8], [15, 55.4], [20, 63.2]];
+    const CB = 56.1;
+    let sel = 2, m;
+    const build = (mob) => {
+      m = mob;
+      svg.innerHTML = "";
+      const VW = mob ? 360 : 640, VH = mob ? 350 : 322;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${VH}`);
+      // 문서 줄
+      const left = mob ? 8 : 20, right = VW - (mob ? 78 : 150);
+      const dw = (right - left) / 20;
+      const docs = [];
+      for (let i = 0; i < 20; i++) {
+        const g = el("g", { class: "doc" }, svg);
+        const x = left + i * dw;
+        const r = el("rect", { x: x + 1.5, y: 30, width: dw - 3, height: mob ? 30 : 38, rx: 3, fill: "var(--sys-soft)", stroke: "var(--sys)", "stroke-width": 1 }, g);
+        docs.push({ g, r, x: x + dw / 2 });
+      }
+      txt(svg, left, 18, "질문과 함께 넣은 문서 20장", { "font-size": 14, class: "dim" });
+      txt(svg, right, mob ? 82 : 90, "끝", { "text-anchor": "end", "font-size": 13, class: "dim" });
+      txt(svg, left, mob ? 82 : 90, mob ? "앞 · 아침 규칙 자리" : "앞 · 하루 띠의 아침 규칙 자리", { "font-size": 13, "font-weight": 600, fill: "var(--me)" });
+      // 막대
+      const by = mob ? 110 : 112, bh = mob ? 190 : 160, base = by + bh;
+      const yOf = (v) => base - (v - 40) / 40 * bh;
+      el("line", { x1: left, x2: right, y1: base, y2: base, stroke: "var(--line-normal, var(--line-subtle))" }, svg);
+      const cby = yOf(CB);
+      el("line", { x1: left, x2: right, y1: cby, y2: cby, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      el("line", { x1: right, x2: right + 8, y1: cby, y2: cby, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+      txt(svg, right + 12, cby + 5, "56.1%", { "font-size": 15, "font-weight": 700 });
+      txt(svg, right + 12, cby + 24, mob ? "문서 없이" : "문서를 하나도", { "font-size": 13, class: "dim" });
+      txt(svg, right + 12, cby + 41, mob ? "" : "안 줬을 때", { "font-size": 13, class: "dim" });
+      const bars = DATA.map(([pos, v], k) => {
+        const d = docs[pos - 1];
+        const bw = mob ? 30 : 40;
+        const b = el("rect", { class: "bar", x: d.x - bw / 2, y: yOf(v), width: bw, height: base - yOf(v), rx: 3, fill: "var(--q)", "fill-opacity": .22, stroke: "var(--q)", "stroke-width": 1.8 }, svg);
+        const t = txt(svg, d.x, yOf(v) - 8, v.toFixed(1) + "%", { "text-anchor": "middle", "font-size": 14, "font-weight": 700, stroke: "var(--bg-subtle)", "stroke-width": 5, "paint-order": "stroke", "stroke-linejoin": "round" });
+        const pl = txt(svg, d.x, base + 20, pos + "번째", { "text-anchor": "middle", "font-size": mob ? 12.5 : 13.5, class: "dim" });
+        // 문서 위 표시
+        d.g.addEventListener("click", () => { sel = k; paint(); }, { signal });
+        b.addEventListener("click", () => { sel = k; paint(); }, { signal });
+        b.style.cursor = "pointer";
+        d.g.setAttribute("tabindex", "0"); d.g.setAttribute("role", "button"); d.g.setAttribute("aria-label", `정답 문서를 ${pos}번째에 두기`);
+        d.g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sel = k; paint(); } }, { signal });
+        return { b, t, d };
+      });
+      txt(svg, left, base + (mob ? 40 : 42), "정답 문서 위치별 정답률(GPT-3.5-Turbo)", { "font-size": 13, class: "dim" });
+      const paint = () => {
+        if (posTog) $$("button", posTog).forEach((bt) => bt.setAttribute("aria-pressed", +bt.dataset.k === sel ? "true" : "false"));
+        docs.forEach((d, i) => { const m5 = DATA.some(([p]) => p === i + 1); d.r.setAttribute("fill", "var(--sys-soft)"); d.r.setAttribute("stroke", m5 ? "var(--q)" : "var(--sys)"); d.r.setAttribute("stroke-width", m5 ? 1.8 : 1); });
+        bars.forEach((bb, k) => {
+          const on = k === sel;
+          bb.b.setAttribute("fill-opacity", on ? 1 : .22);
+          bb.b.classList.toggle("off", !on);
+        });
+        const d = bars[sel].d;
+        d.r.setAttribute("fill", "var(--q)"); d.r.setAttribute("stroke", "var(--q)");
+        const [pos, v] = DATA[sel];
+        const below = v < CB;
+        out.innerHTML = `정답 문서를 <b>${pos}번째</b>에 두면 정답률은 <b class="${v >= 70 ? "ok" : "bad"}">${v.toFixed(1)}%</b> 입니다. ` +
+          (below ? "문서를 하나도 주지 않았을 때(56.1%)보다 낮습니다." : v >= 70 ? "같은 문서인데 가운데보다 22%p 높습니다." : "앞보다는 낮지만 가운데보다는 높습니다.");
+      };
+      paint();
+      repaint = paint;
+    };
+    let repaint = null;
+    const posTog = $("[data-litmpos]");
+    if (posTog) posTog.addEventListener("click", (e) => { const bt = e.target.closest("button"); if (!bt) return; sel = +bt.dataset.k; if (repaint) repaint(); }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 프롬프트 vs 컨텍스트 엔지니어링 ---------- */
+  (() => {
+    const svg = $("[data-pcsvg]"); if (!svg) return;
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 350 : 540, FS = mob ? 13 : 14;
+      arrowDefs(svg, "cx-pa", "var(--fg-neutral)");
+      arrowDefs(svg, "cx-pl", "var(--ai)");
+      const cw = mob ? 104 : 150, c2x = mob ? 128 : 196, c2w = mob ? 116 : 180, c3x = mob ? 270 : 410, c3w = VW - c3x;
+      const chip = (x, y, w, t, c, solid) => {
+        el("rect", { x, y, width: w, height: 26, rx: 5, fill: solid ? SOFT[c] : "var(--bg-base)", stroke: COL[c], "stroke-width": 1.3 }, svg);
+        txt(svg, x + 8, y + 18, t, { "font-size": FS - 0.5 });
+      };
+      const arrow = (x1, y1, x2, y2, id = "cx-pa", col = "var(--fg-neutral)") => el("path", { d: `M${x1},${y1} L${x2},${y2}`, stroke: col, "stroke-width": 1.6, fill: "none", "marker-end": `url(#${id})` }, svg);
+      const modelBox = (y, h) => {
+        el("rect", { x: c3x, y, width: c3w, height: h, rx: 8, fill: "var(--fg-strong)" }, svg);
+        txt(svg, c3x + c3w / 2, y + h / 2 + 5, "모델", { "font-size": FS + 1, "font-weight": 700, "text-anchor": "middle", fill: "var(--bg-base)" });
+      };
+      // 위: 프롬프트 엔지니어링
+      txt(svg, 0, 18, "프롬프트 엔지니어링", { "font-size": FS + 1.5, "font-weight": 700 });
+      txt(svg, mob ? 0 : 168, mob ? 38 : 18, "한 번 보내고 끝", { "font-size": FS, class: "dim" });
+      const y1 = mob ? 52 : 34, ww = c2x + c2w;
+      el("rect", { x: 0, y: y1, width: ww, height: 70, rx: 8, fill: "none", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      txt(svg, 10, y1 + 20, "컨텍스트 창", { "font-size": FS - 1, class: "dim" });
+      chip(10, y1 + 32, mob ? 112 : 160, "시스템 프롬프트", "sys", true);
+      chip(mob ? 128 : 180, y1 + 32, mob ? 106 : 160, "사용자 메시지", "me", true);
+      arrow(ww + 6, y1 + 35, c3x - 6, y1 + 35);
+      modelBox(y1 + 10, 50);
+      txt(svg, c3x + c3w / 2, y1 + 82, "→ 답", { "font-size": FS, "text-anchor": "middle", class: "dim" });
+      // 아래: 컨텍스트 엔지니어링
+      const t2 = y1 + 120;
+      txt(svg, 0, t2, "컨텍스트 엔지니어링", { "font-size": FS + 1.5, "font-weight": 700 });
+      txt(svg, mob ? 0 : 180, mob ? t2 + 20 : t2, "턴마다 다시 고름", { "font-size": FS, class: "dim" });
+      const y2 = t2 + (mob ? 34 : 16), CANDS = ["문서", "도구 설명", "메모리 파일", "지난 대화", "도구 결과"], bh = 34 + CANDS.length * 32;
+      el("rect", { x: 0, y: y2, width: cw, height: bh, rx: 8, fill: "none", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      txt(svg, 10, y2 + 20, "넣을 수 있는 후보", { "font-size": FS - 1, class: "dim" });
+      CANDS.forEach((t, i) => chip(8, y2 + 30 + i * 32, cw - 16, t, i === 4 ? "ai" : "sys", false));
+      el("rect", { x: c2x, y: y2, width: c2w, height: bh, rx: 8, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 1.6 }, svg);
+      txt(svg, c2x + 10, y2 + 20, "컨텍스트 창", { "font-size": FS - 1, "font-weight": 700 });
+      [["시스템 프롬프트", "sys"], ["고른 문서", "sys"], ["사용자 메시지", "me"], ["도구 결과", "ai"]].forEach(([t, c], i) => chip(c2x + 8, y2 + 30 + i * 32, c2w - 16, t, c, true));
+      txt(svg, (cw + c2x) / 2, y2 + bh / 2 - 10, "고르기", { "font-size": FS - 1, "font-weight": 700, "text-anchor": "middle", fill: "var(--me)" });
+      arrow(cw + 4, y2 + bh / 2, c2x - 6, y2 + bh / 2);
+      const my = y2 + bh / 2 - 25;
+      arrow(c2x + c2w + 4, y2 + bh / 2, c3x - 6, y2 + bh / 2);
+      modelBox(my, 50);
+      // 고리: 모델 → 도구 결과 → 후보
+      const ly = y2 + bh + 30, mx = c3x + c3w / 2;
+      el("path", { d: `M${mx},${my + 54} L${mx},${ly} L${cw / 2},${ly} L${cw / 2},${y2 + bh + 6}`, stroke: "var(--ai)", "stroke-width": 2, fill: "none", "marker-end": "url(#cx-pl)" }, svg);
+      txt(svg, mx - 8, my + 76, "도구 호출", { "font-size": FS - 1, "text-anchor": "end", fill: "var(--ai)", "font-weight": 600 });
+      txt(svg, (mx + cw / 2) / 2, ly + 20, "결과가 다시 후보로 → 다음 턴에 또 고름", { "font-size": FS - 0.5, "text-anchor": "middle", fill: "var(--ai)", "font-weight": 600 });
+      svg.setAttribute("viewBox", `0 0 ${VW} ${ly + 30}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- TodoWrite 전후: 글자 수에 비례한 높이 ---------- */
+  (() => {
+    const svg = $("[data-todosvg]"); if (!svg) return;
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 350 : 540, FS = mob ? 13 : 14, gap = mob ? 14 : 28, cw = (VW - gap) / 2;
+      // 줄 하나 = 100자. 예전 설명 약 9,100자 = 91줄
+      const top = 92, pitch = 3.4, N = 91;
+      const X2 = cw + gap;
+      txt(svg, 0, 20, "예전 설명", { "font-size": FS + 1, "font-weight": 700 });
+      txt(svg, 0, 44, "약 9,100자", { "font-size": FS + 3, "font-weight": 700, fill: "var(--me)" });
+      txt(svg, 0, 66, mob ? "언제 쓰는지 목록·예시" : "언제 쓰는지 목록과 예시", { "font-size": FS - 1, class: "dim" });
+      txt(svg, X2, 20, "지금 설명", { "font-size": FS + 1, "font-weight": 700 });
+      txt(svg, X2, 44, "한 줄", { "font-size": FS + 3, "font-weight": 700, fill: "var(--ok)" });
+      txt(svg, X2, 66, "+ 상태 값 셋 · 규칙 하나", { "font-size": FS - 1, class: "dim" });
+      // 예전: 91줄짜리 글 덩어리. 문단 끝 줄은 짧게
+      const lw = cw - 56;
+      for (let i = 0; i < N; i++) {
+        const short = i % 7 === 6;
+        const w = lw * (short ? 0.45 : 0.86 + ((i * 37) % 13) / 100);
+        el("rect", { x: 0, y: top + i * pitch, width: w, height: 2.2, rx: 1, fill: "var(--me)", opacity: .7 }, svg);
+      }
+      const bot = top + N * pitch;
+      // 높이 자: 91줄
+      el("path", { d: `M${lw + 6},${top} h8 V${bot} h-8`, fill: "none", stroke: "var(--me)", "stroke-width": 1.4 }, svg);
+      txt(svg, lw + 20, (top + bot) / 2 + 5, "91줄", { "font-size": 13, "font-weight": 700, fill: "var(--me)" });
+      // 지금: 같은 자로 한 줄
+      el("rect", { x: X2, y: top, width: lw * 0.9, height: 2.2, rx: 1, fill: "var(--ok)" }, svg);
+      txt(svg, X2 + lw * 0.9 + 8, top + 5, "1줄", { "font-size": 13, "font-weight": 700, fill: "var(--ok)" });
+      txt(svg, X2, top + 26, "“세션의 할 일 목록을", { "font-size": FS });
+      txt(svg, X2, top + 46, "만들고 고친다”", { "font-size": FS });
+      [["pending", "대기"], ["in_progress", "진행 중"], ["completed", "완료"]].forEach(([en, ko], i) => {
+        const yy = top + 64 + i * 32;
+        el("rect", { x: X2, y: yy, width: cw, height: 24, rx: 12, fill: "var(--bg-muted, var(--sys-soft))", stroke: "var(--line-normal, var(--line-subtle))" }, svg);
+        txt(svg, X2 + 12, yy + 16.5, en, { "font-size": mob ? FS : FS - 1.5, "font-family": "var(--font-mono)", "font-weight": 600 });
+        if (!mob) txt(svg, X2 + cw - 12, yy + 16.5, ko, { "font-size": FS - 1.5, class: "dim", "text-anchor": "end" });
+      });
+      const ry = top + 64 + 3 * 32 + 4;
+      el("rect", { x: X2, y: ry, width: cw, height: 28, rx: 7, fill: "var(--ok-soft)", stroke: "var(--ok)" }, svg);
+      txt(svg, X2 + 12, ry + 19, mob ? "진행 중은 하나만" : "진행 중은 한 번에 하나", { "font-size": FS - 1, "font-weight": 700, fill: "var(--ok)" });
+      txt(svg, 0, bot + 24, "가로줄 하나 ≈ 100자", { "font-size": 12.5, class: "dim" });
+      svg.setAttribute("viewBox", `0 0 ${VW} ${bot + 30}`);
+    };
+    responsive(build);
+  })();
+
+  /* ---------- CLAUDE.md 파일: 줄을 눌러 지우기 ---------- */
+  (() => {
+    const file = $("[data-file]"); if (!file) return;
+    const TOK = [30, 20, 20, 25, 25, 15, 10, 900, 2400, 6000, 10];
+    const GOOD = [0, 1, 2, 3, 4];
+    const T = TOK.reduce((a, b) => a + b, 0); // 9,455
+    const LINES = [1, 1, 1, 1, 1, 1, 1, 60, 40, 240, 1]; // 제목 두 줄을 더하면 350줄
+    const mlines = $("[data-mlines]");
+    const mtok = $("[data-mtok]"), mgood = $("[data-mgood]"), mng = $("[data-mng]"), mg = $("[data-mg]"), mb = $("[data-mb]"), mnote = $("[data-mnote]");
+    const btns = $$("button[data-i]", file);
+    const upd = () => {
+      let tot = 0, good = 0, ng = 0, na = 0;
+      btns.forEach((b) => {
+        const i = +b.dataset.i, on = b.getAttribute("aria-pressed") !== "true";
+        b.closest("li").classList.toggle("off", !on);
+        b.setAttribute("aria-label", on ? "이 줄 지우기" : "이 줄 되돌리기");
+        if (on) { tot += TOK[i]; na++; if (GOOD.includes(i)) { good += TOK[i]; ng++; } }
+      });
+      const live = (f) => btns.some((b) => b.getAttribute("aria-pressed") !== "true" && f(+b.dataset.i));
+      $('[data-l="h"]', file).classList.toggle("off", !live((i) => i <= 1));
+      $('[data-l="h2"]', file).classList.toggle("off", !live((i) => i >= 2));
+      mtok.textContent = fmt(tot); mgood.textContent = fmt(good); mng.textContent = ng;
+      let nl = 0;
+      btns.forEach((b) => { if (b.getAttribute("aria-pressed") !== "true") nl += LINES[+b.dataset.i]; });
+      nl += (live((i) => i <= 1) ? 1 : 0) + (live((i) => i >= 2) ? 1 : 0);
+      if (mlines) { mlines.textContent = `약 ${fmt(nl)}줄`; mlines.classList.toggle("over", nl > 200); }
+      mg.style.width = good / T * 100 + "%";
+      mb.style.width = (tot - good) / T * 100 + "%";
+      if (!na) mnote.textContent = "빈 파일입니다. 이번엔 Claude 가 테스트 명령과 결제 팀 폴더를 추측해야 합니다.";
+      else if (ng < 5) mnote.textContent = `실수를 막던 줄이 ${5 - ng}개 빠졌습니다. 그 줄이 맡던 일은 이제 Claude 가 추측합니다.`;
+      else if (tot - good < 50) mnote.textContent = `${fmt(tot)} 토큰. 다섯 줄 모두 남았고 덮는 줄이 거의 없습니다. 처음보다 ${Math.round(T / tot)}분의 1로 줄었습니다.`;
+      else mnote.textContent = `${fmt(tot)} 토큰 중 실수를 막는 줄은 ${fmt(good)} 토큰입니다. 나머지 ${fmt(tot - good)} 토큰이 그 다섯 줄을 덮고 있습니다.`;
+    };
+    btns.forEach((b) => b.addEventListener("click", () => { b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true"); upd(); }, { signal }));
+    upd();
+  })();
+
+  /* ---------- AGENTS.md 폴더 지도: 상자 안의 상자 ---------- */
+  (() => {
+    const svg = $("[data-treesvg]"); if (!svg) return;
+    const out = $("[data-treeout]");
+    const OUT = {
+      page: "<code>page.tsx</code> 를 고칠 때는 루트와 <code>apps/web/AGENTS.md</code> 를 함께 읽습니다. 두 파일이 같은 일을 다르게 말하면 더 가까운 <code>apps/web</code> 쪽이 이깁니다.",
+      schema: "<code>schema.ts</code> 를 고칠 때는 루트의 pnpm·커밋 규칙과 <code>packages/db/AGENTS.md</code> 의 마이그레이션 규칙을 함께 읽습니다. 겹치는 지시는 <code>packages/db</code> 쪽이 이깁니다.",
+      deploy: "<code>deploy.sh</code> 가 있는 폴더에는 따로 AGENTS.md 가 없으니 루트 파일만 읽습니다.",
+    };
+    const NEAR = { page: "web", schema: "db", deploy: "root" };
+    let sel = "page", P = null;
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 340 : 520;
+      const boxes = {}, files = {};
+      const box = (id, x, y, w, h, title, rx) => {
+        const r = el("rect", { x, y, width: w, height: h, rx, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--line-subtle))", "stroke-width": 1.5 }, svg);
+        const t = txt(svg, x + 14, y + 26, title, { "font-size": 14.5, "font-weight": 700, "font-family": "var(--font-mono)" });
+        const st = txt(svg, x + w - 14, y + 26, "", { "font-size": 13.5, "font-weight": 700, "text-anchor": "end" });
+        boxes[id] = { r, t, st };
+        return boxes[id];
+      };
+      const badge = (id, x, y, desc, dx, dy) => {
+        const g = el("g", {}, svg);
+        const r = el("rect", { x, y, width: 112, height: 28, rx: 6, fill: "var(--me-soft)", stroke: "var(--me)", "stroke-width": 1.5 }, g);
+        const t = txt(g, x + 11, y + 19, "AGENTS.md", { "font-size": 14.5, "font-weight": 600, "font-family": "var(--font-mono)", fill: "var(--me)" });
+        const d = txt(g, x + dx, y + dy, desc, { "font-size": 13.5, class: "dim" });
+        Object.assign(boxes[id], { bg: g, br: r, bt: t, bd: d, desc });
+      };
+      const file = (id, name, x, y) => {
+        const g = el("g", { tabindex: 0, role: "button", "aria-label": `${name} 고치기` }, svg);
+        g.style.cursor = "pointer";
+        const w = name.length * 9 + 22;
+        const r = el("rect", { x, y, width: w, height: 30, rx: 6, fill: "var(--bg-base)", stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, g);
+        const t = txt(g, x + 11, y + 20, name, { "font-size": 14.5, "font-weight": 600, "font-family": "var(--font-mono)" });
+        const h = txt(g, x + w + 8, y + 20, "← 눌러 보기", { "font-size": 13, class: "dim" });
+        const go = () => { sel = id; paint(); };
+        g.addEventListener("click", go, { signal });
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }, { signal });
+        files[id] = { r, t, h };
+      };
+      if (!mob) {
+        box("root", 2, 2, 516, 316, "my-app/", 12);
+        badge("root", 100, 12, "pnpm·커밋 규칙", 122, 19);
+        box("web", 18, 56, 234, 192, "apps/web/", 10);
+        badge("web", 32, 96, "Next.js 규칙", 0, 50);
+        file("page", "page.tsx", 32, 186);
+        box("db", 268, 56, 234, 192, "packages/db/", 10);
+        badge("db", 282, 96, "마이그레이션 규칙", 0, 50);
+        file("schema", "schema.ts", 282, 186);
+        file("deploy", "deploy.sh", 18, 266);
+        svg.setAttribute("viewBox", "0 0 520 320");
+      } else {
+        box("root", 1, 2, 338, 446, "my-app/", 12);
+        badge("root", 14, 40, "pnpm·커밋 규칙", 122, 19);
+        box("web", 14, 80, 312, 142, "apps/web/", 10);
+        badge("web", 28, 118, "Next.js 규칙", 122, 19);
+        file("page", "page.tsx", 28, 170);
+        box("db", 14, 236, 312, 142, "packages/db/", 10);
+        badge("db", 28, 274, "마이그레이션 규칙", 122, 19);
+        file("schema", "schema.ts", 28, 326);
+        file("deploy", "deploy.sh", 14, 400);
+        svg.setAttribute("viewBox", "0 0 340 450");
+      }
+      P = { boxes, files };
+      paint();
+    };
+    const paint = () => {
+      if (!P) return;
+      const near = NEAR[sel];
+      const home = sel === "page" ? "web" : sel === "schema" ? "db" : "root";
+      Object.entries(P.boxes).forEach(([id, b]) => {
+        const on = id === near;
+        const chain = id === home || id === "root";
+        b.r.setAttribute("stroke", on ? "var(--me)" : chain ? "var(--fg-neutral)" : "var(--line-normal, var(--line-subtle))");
+        b.r.setAttribute("stroke-width", on ? 2.6 : chain ? 1.8 : 1.5);
+        b.r.setAttribute("fill", on ? "var(--me-soft)" : "var(--bg-base)");
+        if (id !== "root") b.r.setAttribute("fill-opacity", on ? .45 : 1); else b.r.setAttribute("fill-opacity", on ? .3 : 1);
+        b.t.setAttribute("fill", chain ? "var(--fg-strong)" : "var(--fg-neutral)");
+        b.br.setAttribute("fill", on ? "var(--me)" : "var(--me-soft)");
+        b.bt.setAttribute("fill", on ? "var(--bg-base)" : "var(--me)");
+        // 고치는 파일을 감싼 상자의 안내서는 모두 읽는다. 겹치면 가장 안쪽이 이긴다
+        const read = chain;
+        b.bg.style.opacity = read ? 1 : .62;
+        b.st.textContent = on ? (id === "root" ? "이 안내서를 따름" : "겹치면 이김") : read ? "함께 읽음" : "";
+        b.st.setAttribute("fill", on ? "var(--me)" : "var(--fg-strong)");
+        b.bd.setAttribute("font-weight", read ? 700 : 400);
+        b.bd.setAttribute("fill", on ? "var(--me)" : read ? "var(--fg-strong)" : "var(--fg-neutral)");
+        b.bd.removeAttribute("class");
+      });
+      // 안쪽 상자가 강조될 때 루트는 테두리만 기본으로
+      Object.entries(P.files).forEach(([id, f]) => {
+        const on = id === sel;
+        f.r.setAttribute("fill", on ? "var(--fg-strong)" : "var(--bg-base)");
+        f.t.setAttribute("fill", on ? "var(--bg-base)" : "var(--fg-strong)");
+        f.h.textContent = on ? "← 고치는 중" : "← 눌러 보기";
+      });
+      out.innerHTML = OUT[sel];
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 연구 막대 ---------- */
+  (() => {
+    const svg = $("[data-ressvg]"), svg2 = $("[data-ressvg2]"); if (!svg || !svg2) return;
+    const P = [
+      { html: true, title: "성공률 변화", sub: "%p, 파일 없을 때 대비 · 모두 유의하지 않음", zero: 150, scale: 32, unit: "%p", rows: [
+        { lab: "AI가 만든 파일 · SWE-bench Lite", v: -0.5, c: "var(--ai)" },
+        { lab: "AI가 만든 파일 · 직접 만든 과제", v: -2, c: "var(--ai)" },
+        { lab: "개발자가 쓴 파일 · 직접 만든 과제 평균", v: 2.4, c: "var(--me)" },
+      ] },
+      { title: "비용 변화", sub: "%, 파일 없을 때 대비", zero: 4, scale: 9.5, unit: "%", rows: [
+        { lab: "AI가 만든 파일 · SWE-bench Lite", v: 20, c: "var(--ai)" },
+        { lab: "AI가 만든 파일 · 직접 만든 과제", v: 23, c: "var(--ai)" },
+        { lab: "개발자가 쓴 파일 · 에이전트 중 최대", v: 19, c: "var(--me)" },
+      ] },
+      { title: "AGENTS.md 가 있을 때", sub: "%, 없을 때 대비 · 과제 완료는 비슷", zero: 290, scale: 7.5, unit: "%", rows: [
+        { lab: "실행 시간 중앙값", v: -28.64, c: "var(--sys)" },
+        { lab: "출력 토큰", v: -16.58, c: "var(--sys)" },
+      ] },
+    ];
+    // 막대 이름은 막대 위 왼쪽에, 0 기준선은 막대 칸에만 그어 글자를 지나가지 않게 한다
+    const panel = (s, pp, ox, oy) => {
+      // 첫 패널의 제목·부제는 풀이 문단과 함께 그림 위 HTML 로 뺐다
+      if (!pp.html) {
+        txt(s, ox, oy, pp.title, { "font-size": 15, "font-weight": 600 });
+        txt(s, ox, oy + 22, pp.sub, { "font-size": 13, class: "dim" });
+      }
+      const top = pp.html ? oy : oy + 44, rh = 60;
+      const z = ox + pp.zero;
+      pp.rows.forEach((r, i) => {
+        const y = top + i * rh;
+        txt(s, ox, y + 8, r.lab, { "font-size": 13.5 });
+        el("line", { x1: z, x2: z, y1: y + 14, y2: y + 42, stroke: "var(--fg-neutral)", "stroke-width": 1.3 }, s);
+        const w = Math.abs(r.v) * pp.scale;
+        const x = r.v >= 0 ? z : z - w;
+        el("rect", { x, y: y + 18, width: Math.max(w, 2), height: 20, rx: 3, fill: r.c }, s);
+        const vx = r.v >= 0 ? z + w + 6 : z - w - 6;
+        txt(s, vx, y + 33, (r.v > 0 ? "+" : "") + r.v + pp.unit, { "font-size": 14, "font-weight": 700, "text-anchor": r.v >= 0 ? "start" : "end" });
+      });
+      const end = top + pp.rows.length * rh;
+      // 0 눈금: 막대 칸 아래 기준선 끝에
+      el("line", { x1: z, x2: z, y1: end - 18, y2: end - 8, stroke: "var(--fg-neutral)", "stroke-width": 1.3 }, s);
+      txt(s, z, end + 8, "0", { "text-anchor": "middle", "font-size": 13, class: "dim" });
+      return end + 12;
+    };
+    svg.innerHTML = "";
+    const a = panel(svg, P[0], 0, 4);
+    const b = panel(svg, P[1], 0, a + 30);
+    svg.setAttribute("viewBox", `0 0 380 ${b + 4}`);
+    svg2.innerHTML = "";
+    const c = panel(svg2, P[2], 0, 18);
+    svg2.setAttribute("viewBox", `0 0 380 ${c + 4}`);
+  })();
+
+  /* ---------- 압축 대응도 ---------- */
+  (() => {
+    const svg = $("[data-compsvg]"); if (!svg) return;
+    const tog = $("[data-rulepos]"), out = $("[data-compout]");
+    let mode = "chat", parts = null;
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 380 : 560;
+      arrowDefs(svg, "cx-ca", "var(--fg-neutral)");
+      const LX = mob ? 2 : 10, BW = mob ? 150 : 200, RX = mob ? 222 : 330, RW = mob ? 156 : 220, FS = mob ? 14 : 14.5;
+      txt(svg, LX, 18, "압축 전", { "font-size": 15, "font-weight": 700 });
+      txt(svg, RX, 18, "압축 후", { "font-size": 15, "font-weight": 700 });
+      const L = [
+        { k: "sys", lab: "시스템 프롬프트", c: "sys", h: 34, to: "sys" },
+        { k: "cmd", lab: "CLAUDE.md", c: "me", h: 34, to: "cmd" },
+        { k: "mem", lab: "자동 메모리", c: "ai", h: 34, to: "mem" },
+        { k: "rule", lab: "아침 규칙(대화)", c: "me", h: 34, to: "sum", rule: true },
+        { k: "logs", lab: "실패·빌드 로그", sub: "오래된 도구 출력", c: "sys", h: 76, to: null, cleared: true },
+        { k: "talk", lab: "주고받은 대화", c: "ai", h: 46, to: "sum" },
+        { k: "files", lab: mob ? "읽은 파일들" : "읽은 파일 수십 개", c: "ai", h: 56, to: "files" },
+      ];
+      const R = [
+        { k: "sys", lab: "시스템 프롬프트", sub: "그대로", c: "sys", h: 50 },
+        { k: "cmd", lab: "CLAUDE.md", sub: "디스크에서 다시 읽음", c: "me", h: 74 },
+        { k: "mem", lab: "자동 메모리", sub: "디스크에서 다시 읽음", c: "ai", h: 50 },
+        { k: "sum", lab: "대화 요약", sub: "구조화된 요약 하나", c: "ai", h: 84 },
+        { k: "files", lab: "최근 파일 5개", sub: "다시 읽음", c: "ai", h: 50 },
+      ];
+      let y = 34; const LP = {}, lg = {};
+      L.forEach((it) => {
+        const g = el("g", {}, svg);
+        if (it.cleared) {
+          // 압축은 오래된 도구 출력부터 비운다: 요약으로 가지 않고 그 자리에서 지워진다
+          el("rect", { x: LX, y, width: BW, height: it.h, rx: 6, fill: "var(--bg-base)", stroke: COL[it.c], "stroke-width": 1.5, "stroke-dasharray": "5 4" }, g);
+          const t = txt(g, LX + 10, y + 23, it.lab, { "font-size": FS, "font-weight": 600, class: "dim", "text-decoration": "line-through" });
+          txt(g, LX + 10, y + 43, it.sub, { "font-size": 13, class: "dim" });
+          txt(g, LX + 10, y + 64, "✕ 먼저 비움", { "font-size": 13.5, "font-weight": 700, fill: "var(--sys)" });
+          LP[it.k] = [LX + BW, y + it.h / 2]; lg[it.k] = t;
+          y += it.h + 12;
+          return;
+        }
+        el("rect", { x: LX, y, width: BW, height: it.h, rx: 6, fill: SOFT[it.c], stroke: COL[it.c], "stroke-width": 1.5 }, g);
+        const t = txt(g, LX + 10, y + it.h / 2 + 5, it.lab, { "font-size": FS, "font-weight": 600 });
+        LP[it.k] = [LX + BW, y + it.h / 2]; lg[it.k] = t;
+        y += it.h + 12;
+      });
+      const endL = y;
+      let ry = 34; const RP = {}, rg = {};
+      R.forEach((it) => {
+        const g = el("g", {}, svg);
+        el("rect", { x: RX, y: ry, width: RW, height: it.h, rx: 6, fill: SOFT[it.c], stroke: COL[it.c], "stroke-width": 1.5 }, g);
+        txt(g, RX + 10, ry + 21, it.lab, { "font-size": FS, "font-weight": 600 });
+        txt(g, RX + 10, ry + 40, it.sub, { "font-size": 13, class: "dim" });
+        RP[it.k] = [RX - 8, ry + 22]; rg[it.k] = { y: ry, h: it.h };
+        ry += it.h + 14;
+      });
+      const sumRule = el("g", { class: "mv" }, svg);
+      el("rect", { x: RX + 10, y: rg.sum.y + 52, width: RW - 30, height: 22, rx: 4, fill: "var(--me-soft)", stroke: "var(--me)", "stroke-dasharray": "4 3" }, sumRule);
+      txt(sumRule, RX + 18, rg.sum.y + 68, "아침 규칙이 남을까?", { "font-size": 13, fill: "var(--me)", "font-weight": 700 });
+      const cmdRule = el("g", { class: "mv" }, svg);
+      el("rect", { x: RX + 10, y: rg.cmd.y + 48, width: RW - 30, height: 20, rx: 4, fill: "var(--me)" }, cmdRule);
+      txt(cmdRule, RX + 18, rg.cmd.y + 63, "아침 규칙 그대로", { "font-size": 13, fill: "var(--bg-base)", "font-weight": 700 });
+      const curve = (k, to) => { const [x1, y1] = LP[k]; const [x2, y2] = RP[to]; return `M${x1 + 6},${y1} C${x1 + 40},${y1} ${x2 - 40},${y2} ${x2},${y2}`; };
+      const lines = L.filter((it) => it.to).map((it) => ({ it, p: el("path", { d: curve(it.k, it.to), fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": "url(#cx-ca)", opacity: .65 }, svg) }));
+      const H = Math.max(endL, ry) + 4;
+      svg.setAttribute("viewBox", `0 0 ${VW} ${H}`);
+      parts = { lg, lines, sumRule, cmdRule, curve };
+      set(mode);
+    };
+    const set = (v) => {
+      mode = v;
+      $$("button", tog).forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"));
+      if (!parts) return;
+      const file = v === "file";
+      parts.lg.rule.textContent = file ? "아침 규칙(CLAUDE.md)" : "아침 규칙(대화)";
+      const ln = parts.lines.find((l) => l.it.rule);
+      ln.p.setAttribute("d", parts.curve("rule", file ? "cmd" : "sum"));
+      ln.p.setAttribute("stroke", "var(--me)");
+      ln.p.setAttribute("stroke-width", 2.2);
+      ln.p.setAttribute("stroke-dasharray", file ? "" : "5 4");
+      ln.p.setAttribute("opacity", 1);
+      parts.sumRule.style.opacity = file ? 0 : 1;
+      parts.cmdRule.style.opacity = file ? 1 : 0;
+      out.innerHTML = file
+        ? "CLAUDE.md 에 적은 규칙은 압축 뒤 디스크에서 다시 읽혀 <b>그대로</b> 돌아옵니다. 새 세션을 열어도 마찬가지입니다."
+        : "대화로 말한 규칙은 요약 속으로 들어갑니다(점선). 요약에 남을지는 압축이 무엇을 중요하다고 보느냐에 달렸습니다.";
+    };
+    tog.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) set(b.dataset.v); }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 두 책상 ---------- */
+  (() => {
+    const svg = $("[data-subsvg]"); if (!svg) return;
+    const build = (mob) => {
+      svg.innerHTML = "";
+      const VW = mob ? 400 : 1000;
+      arrowDefs(svg, "cx-sa", "var(--ai)");
+      const pt = el("pattern", { id: "cx-sg", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, el("defs", {}, svg));
+      el("rect", { width: 6, height: 6, fill: "var(--bg-base)" }, pt);
+      el("rect", { width: 2, height: 6, fill: "var(--ai)", opacity: .35 }, pt);
+      // 제목은 띠 위 왼쪽, 띠 아래 이름표는 두 줄(겹치면 아랫줄 + 지시선)
+      const x0 = mob ? 4 : 0, W = mob ? 390 : 1000, MAX = 28000, BH = 40;
+      const bar = (y, title, segs) => {
+        txt(svg, x0, y - 14, title, { "font-size": mob ? 15 : 16, "font-weight": 700 });
+        el("rect", { x: x0, y, width: W, height: BH, rx: 5, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--line-subtle))", "stroke-dasharray": "5 4" }, svg);
+        let x = x0; const pos = {};
+        segs.forEach((s) => {
+          const w = s.t / MAX * W;
+          if (!s.ghost) el("rect", { x, y, width: Math.max(w, 2), height: BH, fill: COL[s.c], stroke: "var(--bg-base)" }, svg);
+          pos[s.id] = [x, x + w];
+          if (s.ghost) {
+            el("rect", { x, y: y + 1, width: w, height: BH - 2, fill: "url(#cx-sg)", stroke: "var(--ai)", "stroke-dasharray": "4 3", opacity: .9 }, svg);
+          }
+          if (s.lab) {
+            const ly = y + BH + 22 + (s.row || 0) * 22;
+            const mid = x + Math.min(w / 2, 40);
+            if (s.row) el("line", { x1: mid, x2: mid, y1: y + BH + 3, y2: ly - 13, stroke: "var(--fg-neutral)", "stroke-width": 1.2 }, svg);
+            const end = s.ghost && mob, inside = s.ghost && !mob;
+            if (end) {
+              // 모바일: 빗금 칸 바로 아래 오른쪽 끝에 두 줄로. 결과 칸 쪽으로 넘어가지 않게
+              txt(svg, x0 + W, ly, "직접 읽었으면", { "font-size": mob ? 14.5 : 13.5, "font-weight": 700, "text-anchor": "end", fill: "var(--ai)" });
+              txt(svg, x0 + W, ly + 18, "+6,100", { "font-size": mob ? 14.5 : 13.5, "font-weight": 700, "text-anchor": "end", fill: "var(--ai)" });
+              x += w; return;
+            }
+            txt(svg, end ? x0 + W : inside ? x + w / 2 : x + 2, inside ? y + BH / 2 + 5 : ly, s.lab, { "font-size": mob ? 14 : 13.5, class: s.strong || s.ghost || s.strongC ? undefined : "dim", "font-weight": s.strong || s.ghost || s.strongC ? 700 : 400, stroke: inside ? "var(--bg-base)" : undefined, "stroke-width": inside ? 4 : undefined, "paint-order": inside ? "stroke" : undefined, "text-anchor": end ? "end" : inside ? "middle" : undefined, fill: s.ghost ? "var(--ai)" : s.strongC });
+          }
+          x += w;
+        });
+        return pos;
+      };
+      const yM = 30, yS = mob ? 236 : 214;
+      const main = bar(yM, "메인 책상", [
+        { id: "start", c: "sys", t: 7850, lab: mob ? "시작 7,850" : "시작 때 깔린 것 7,850" },
+        { id: "work", c: "ai", t: 11850, lab: "앞선 버그 수정 11,850" },
+        { id: "req", c: "me", t: 40 },
+        { id: "res", c: "ai", t: 420, lab: mob ? "" : "결과 420", strong: true },
+        { id: "ghost", c: "ai", t: 6100, ghost: true, lab: "직접 읽었으면 +6,100" },
+      ]);
+      const sub = bar(yS, "서브에이전트 책상", [
+        { id: "sp", c: "sys", t: 900, lab: "시스템 프롬프트", row: mob ? 2 : 1 },
+        { id: "cmd", c: "me", t: 1800, lab: "CLAUDE.md", row: mob ? 1 : 0, strongC: "var(--me)" },
+        { id: "tools", c: "sys", t: 970 },
+        { id: "task", c: "me", t: 120 },
+        { id: "reads", c: "ai", t: 6100, lab: "파일 읽기 6,100", strong: true },
+      ]);
+      // 돌아가는 화살표: 서브 책상 오른쪽 끝 → 메인 결과 칸. 두 제목과 이름표를 비켜 가는 오른쪽 길
+      const rx = (main.res[0] + main.res[1]) / 2;
+      const sx = sub.reads[1] + 10;
+      const y1 = yS - 6, y2 = yM + BH + (mob ? 4 : 32);
+      const p = mob
+        ? `M${sx},${y1} C${sx + 30},${y1 - 50} ${rx},${y2 + 70} ${rx},${y2}`
+        : `M${sx},${y1} C${sx + 40},${(y1 + y2) / 2} ${rx + 30},${y2 + 30} ${rx + 3},${y2}`;
+      el("path", { d: p, fill: "none", stroke: "var(--ai)", "stroke-width": 2, "marker-end": "url(#cx-sa)", opacity: .85 }, svg);
+      txt(svg, sx + (mob ? 14 : 22), yS + BH / 2 + 5, "↑ 요약만 메인으로", { "font-size": mob ? 14.5 : 14, fill: "var(--ai)", "font-weight": 600 });
+      if (mob) {
+        // 결과 칸 바로 위 이름표 + 짧은 지시선
+        txt(svg, rx, yM - 12, "결과 420", { "font-size": 14.5, "font-weight": 700, "text-anchor": "middle" });
+        el("line", { x1: rx, x2: rx, y1: yM - 8, y2: yM - 1, stroke: "var(--fg-strong)", "stroke-width": 1.4 }, svg);
+      }
+      svg.setAttribute("viewBox", `0 0 ${VW} ${yS + BH + (mob ? 80 : 60)}`);
+    };
+    responsive(build);
+  })();
+})();
+</script>
