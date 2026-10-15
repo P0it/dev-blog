@@ -1,0 +1,1187 @@
+---
+title: 같은 설명을 세 번째 붙여 넣기 전에 만드는 에이전트 스킬
+slug: agent-skills-subagents-hooks
+excerpt: 코딩 에이전트에게 매번 하던 설명은 SKILL.md 한 장으로 적어 둘 수 있습니다. 스킬을 다섯 개 깔아도 평소에는 이름표 450 토큰만 올라가고 요청이 맞을 때만 본문이 펼쳐지는 단계적 공개를 서랍장으로 열어 봤습니다. 46개 도구가 같은 형식을 읽는 이유, 일을 따로 맡기는 서브에이전트 정의 파일, 규칙을 코드로 막는 훅과 종료 코드 2, 무엇을 어디에 둘지 고르는 기준도 2026년 10월 공식 문서로 확인했습니다.
+tags: [Agent Skills, SKILL.md, 서브에이전트, 훅, Claude Code, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 7
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-skills-subagents-hooks-mv948d0n.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열 → 아래 넓은 작업대: 요청 열 | 서랍장 | 책상 판독, 모바일은 요청 → 판독(숫자·막대·설명) → 서랍장) → 글|그림(SKILL.md 해부 + 폴더) → 글 + 넓은 그림(대화 기록 일곱 칸 | 층 표시, 원 그림은 접기) → 글|그림(표준 칸 / Claude Code 확장 칸, 두 경로) → 글|그림(서브에이전트 봉투, 결과가 메인으로 돌아옴) + 코드|해설 + 글|그림(일꾼 층·동시 20) → 글 + 넓은 그림(훅 이벤트 흐름 위 검문소) → 실험판 전폭 띠(도구 호출 세 장 × exit 2/1 토글 → 검문소 + 스크립트 지나간 줄) → 글|그림(어디에 둘지 2축 지도) → 글|그림(플러그인 상자 → 네 칸으로 나뉨, 그림 sticky) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 스크롤리텔링 없음 | 글의 성격: 한 번 가르친 것을 언제 책상에 올리고 누가 지키게 할지 나눠 두는 이야기. 회색 = 늘 깔려 있는 것(이름표·CLAUDE.md), 청록 = 필요할 때 펼쳐 읽은 것, 주황 = 사람이 쓴 것(요청·쪽지·정의), 보라 = 모델 판단 없이 코드가 실행하는 것(스크립트·훅), 빨강 = 막힘, 초록 = 통과가 글 끝까지 같은 뜻 | 버린 후보: 그림 고정 스크롤리텔링(2·4·6편), 분할 히어로(3·6편), 하루 책상 띠(5편), 컨텍스트 막대 + 개수 토글(6편 MCP 섹션과 겹침), CLAUDE.md 줄 클릭 편집기(5편과 겹침), 46개 로고 칩 벽(목록일 뿐), 공식 hooks lifecycle·plugin 도식 가져오기(모바일 글자 6~9px — 직접 그림) -->
+<style>
+.post-page .sk {
+  --me: rgb(222, 106, 28); --me-soft: rgb(253, 233, 214);
+  --ai: rgb(10, 136, 140); --ai-soft: rgb(208, 238, 236);
+  --sys: rgb(112, 118, 130); --sys-soft: rgb(232, 234, 238);
+  --code: rgb(118, 82, 214); --code-soft: rgb(234, 228, 252);
+  --ok: rgb(28, 138, 70); --ok-soft: rgb(214, 240, 222);
+  --bad: rgb(208, 46, 46); --bad-soft: rgb(252, 224, 222);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .sk {
+  --me: rgb(255, 156, 84); --me-soft: rgb(84, 50, 24);
+  --ai: rgb(70, 206, 200); --ai-soft: rgb(18, 62, 62);
+  --sys: rgb(160, 166, 180); --sys-soft: rgb(46, 50, 58);
+  --code: rgb(176, 150, 255); --code-soft: rgb(50, 38, 88);
+  --ok: rgb(98, 214, 132); --ok-soft: rgb(22, 62, 36);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(84, 30, 30);
+}
+.post-page .sk * { box-sizing: border-box; }
+.post-page .sk-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .sk h1, .post-page .sk h2, .post-page .sk h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .sk h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; max-width: 15em; margin-bottom: 22px; }
+.post-page .sk h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .sk p, .post-page .sk li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .sk p { margin: 0 0 1.5em; }
+.post-page .sk b { color: var(--fg-strong); }
+.post-page .sk code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs, 4px); word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .sk a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .sk .sk-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .sk details { margin: 0 0 1.4em; }
+.post-page .sk summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .sk details p { margin-top: 10px; font-size: 16px; }
+.post-page .sk svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .sk svg text { font-family: var(--font-sans); }
+.post-page .sk ul.sk-list { list-style: disc; padding-left: 1.3em; margin: 0 0 1.5em; }
+.post-page .sk ul.sk-list li { margin-bottom: 8px; padding-left: 4px; }
+.post-page .sk ul.sk-list li::marker { color: var(--fg-neutral); }
+.post-page .sk .mono { font-family: var(--font-mono); }
+
+/* 배치 */
+.post-page .sk-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .sk-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .sk-col { max-width: 40em; }
+.post-page .sk-fig { margin: 0; }
+.post-page .sk-wide { margin-top: clamp(40px, 5vw, 56px); }
+.post-page .sk-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(32px, 5vw, 48px); }
+.post-page .sk-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: var(--radius-md, 12px); background: #fff; }
+[data-theme="dark"] .post-page .sk-img img { filter: brightness(.8); border-color: var(--line-normal, var(--line-subtle)); }
+.post-page .sk-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; line-height: 1.6; }
+.post-page .sk-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.post-page .sk-legend i.sys { background: var(--sys-soft); border: 1.5px solid var(--sys); }
+.post-page .sk-legend i.ai { background: var(--ai-soft); border: 1.5px solid var(--ai); }
+.post-page .sk-legend i.me { background: var(--me-soft); border: 1.5px solid var(--me); }
+.post-page .sk-legend i.code { background: var(--code-soft); border: 1.5px solid var(--code); }
+.post-page .sk-try { font-size: 15px; color: var(--fg-strong); font-weight: 600; margin: 0 0 12px !important; line-height: 1.5 !important; }
+
+/* 조작 부품: 토글 하나, 실행 버튼 하나 */
+.post-page .sk-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; max-width: 100%; }
+.post-page .sk-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 15px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .sk-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,.08)); }
+
+/* ---------- 히어로 ---------- */
+.post-page .sk-hero { padding-top: clamp(28px, 4vw, 44px); }
+.post-page .sk-lead { max-width: 46em; }
+.post-page .sk-lead p { margin-bottom: 1.1em; }
+.post-page .sk-lead p:last-child { margin-bottom: 0; }
+.post-page .sk-stage { margin-top: clamp(26px, 3vw, 36px); display: grid; grid-template-columns: minmax(0, 250px) minmax(0, 1fr) minmax(0, 230px); gap: 28px 32px; align-items: start; }
+.post-page .sk-asks { display: flex; flex-direction: column; gap: 10px; }
+.post-page .sk-asks .who { font-size: 13px; color: var(--fg-neutral); margin: 0 0 2px !important; line-height: 1.4 !important; }
+.post-page .sk-ask { font: inherit; text-align: left; font-size: 15px; line-height: 1.5; color: var(--fg-strong); background: var(--bg-base); border: 1.5px solid var(--me); border-radius: 16px 16px 4px 16px; padding: 10px 14px; cursor: pointer; transition: background .3s, transform .3s cubic-bezier(.2,.7,.2,1); word-break: keep-all; }
+@media (hover: hover) { .post-page .sk-ask:hover { box-shadow: 0 0 0 3px var(--me-soft); } }
+.post-page .sk-ask[aria-pressed="true"] { background: var(--me-soft); font-weight: 600; transform: translateX(6px); }
+.post-page .sk-cab { display: flex; flex-direction: column; gap: 8px; }
+.post-page .sk-cabhd { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .sk-cabhd b { font-size: 16px; font-weight: 700; }
+.post-page .sk-dr { border-radius: 12px; border: 1.5px solid var(--sys); background: var(--sys-soft); transition: border-color .4s, box-shadow .4s, opacity .4s; }
+.post-page .sk-dr .front { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 9px 14px 10px; align-items: center; position: relative; }
+.post-page .sk-dr .nm { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--fg-strong); }
+.post-page .sk-dr .ds { grid-column: 1; font-size: 13.5px; line-height: 1.5; color: var(--fg-neutral); word-break: keep-all; }
+.post-page .sk-dr .tk { grid-column: 2; grid-row: 1 / span 2; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); display: flex; align-items: center; gap: 10px; }
+.post-page .sk-dr.scan { box-shadow: 0 0 0 3px var(--me-soft); border-color: var(--me); }
+.post-page .sk-dr.miss { opacity: .62; }
+.post-page .sk-dr.open { border-color: var(--ai); opacity: 1; }
+.post-page .sk-dr .body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .65s cubic-bezier(.2,.7,.2,1); }
+.post-page .sk-dr.open .body { grid-template-rows: 1fr; }
+.post-page .sk-dr .body > div { overflow: hidden; }
+.post-page .sk-dr .sheet { margin: 0 10px 10px; background: var(--ai-soft); border-radius: 8px; padding: 10px 14px 12px; }
+.post-page .sk-dr .lv { font-size: 12.5px; color: var(--ai); font-weight: 600; margin: 0 0 4px; display: flex; justify-content: space-between; gap: 8px; }
+.post-page .sk-dr pre { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.65; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .sk-att { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 10px 10px; }
+.post-page .sk-att .f { font-size: 12.5px; line-height: 1.45; border-radius: 8px; padding: 6px 10px; border: 1.5px dashed var(--sys); color: var(--fg-neutral); background: var(--bg-base); opacity: .55; transform: translateY(8px); transition: opacity .5s, transform .6s cubic-bezier(.2,.7,.2,1), background .4s, border-color .4s; }
+.post-page .sk-att .f b { font-family: var(--font-mono); font-weight: 600; }
+.post-page .sk-att .f.on { opacity: 1; transform: none; border-style: solid; }
+.post-page .sk-att .f.ref.on { border-color: var(--ai); background: var(--ai-soft); color: var(--fg-strong); }
+.post-page .sk-att .f.run.on { border-color: var(--code); background: var(--code-soft); color: var(--fg-strong); }
+.post-page .sk-att .f .s { display: block; font-size: 12px; color: var(--fg-neutral); }
+.post-page .sk-read .k { font-size: 13.5px; color: var(--fg-neutral); margin: 0 0 2px !important; line-height: 1.5 !important; }
+.post-page .sk-read .v { font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--fg-strong); margin: 0 0 10px !important; line-height: 1.3 !important; }
+.post-page .sk-read .v small { font-size: 14px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .sk-meter { position: relative; height: 16px; border-radius: 5px; border: 1.5px dashed var(--sys); margin: 2px 0 6px; overflow: hidden; }
+.post-page .sk-meter i { position: absolute; top: 0; bottom: 0; transition: width .6s cubic-bezier(.2,.7,.2,1), left .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .sk-meter i.g { left: 0; background: var(--sys); }
+.post-page .sk-meter i.t { background: var(--ai); }
+.post-page .sk-meter i.c { background: var(--code); }
+.post-page .sk-read .scale { font-size: 12.5px; color: var(--fg-neutral); margin: 0 0 18px !important; line-height: 1.5 !important; }
+.post-page .sk-read .note { font-size: 15px; line-height: 1.7; color: var(--fg-normal); margin: 0 !important; }
+.post-page .sk-read .note b.t { color: var(--ai); }
+.post-page .sk-heroleg { margin: 0 0 4px; gap: 4px 16px; font-size: 13px; }
+.post-page .sk-herocap { grid-column: 2 / 4; margin-top: 0 !important; }
+
+/* ---------- 해부 ---------- */
+.post-page .sk-anat { max-width: 600px; }
+.post-page .sk-file { border: 1px solid var(--line-normal, var(--line-subtle)); border-radius: 12px; overflow: hidden; background: var(--bg-base); }
+.post-page .sk-file .tt { font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); padding: 8px 14px; border-bottom: 1px solid var(--line-subtle); display: flex; justify-content: space-between; gap: 10px; }
+.post-page .sk-zone { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 148px); gap: 0 14px; padding: 10px 14px; align-items: start; }
+.post-page .sk-zone.l1 { background: var(--sys-soft); }
+.post-page .sk-zone.l2 { background: var(--ai-soft); }
+.post-page .sk-zone pre { margin: 0; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .sk-zone pre .k { color: var(--fg-neutral); }
+.post-page .sk-tag { font-size: 13px; line-height: 1.5; color: var(--fg-normal); border-left: 0; }
+.post-page .sk-tag b { display: block; font-size: 13.5px; }
+.post-page .sk-zone.l1 .sk-tag b { color: var(--sys); }
+.post-page .sk-zone.l2 .sk-tag b { color: var(--ai); }
+.post-page .sk-tree { margin-top: 18px; font-size: 14px; }
+.post-page .sk-tree .r { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 210px); gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line-subtle); }
+.post-page .sk-tree .p { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-page .sk-tree .p i { font-style: normal; color: var(--fg-neutral); }
+.post-page .sk-tree .d { font-size: 13px; line-height: 1.45; color: var(--fg-neutral); display: flex; align-items: center; gap: 8px; }
+.post-page .sk-tree .d::before { content: ""; flex: none; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--sys); background: var(--sys-soft); }
+.post-page .sk-tree .d.ai::before { border-color: var(--ai); background: var(--ai-soft); }
+.post-page .sk-tree .d.code::before { border-color: var(--code); background: var(--code-soft); }
+
+/* ---------- 대화 기록 ---------- */
+.post-page .sk-log { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 0 36px; max-width: 1060px; }
+.post-page .sk-log .m { grid-column: 1; align-self: start; margin: 0 0 10px; border-radius: 12px; padding: 10px 14px; border: 1.5px solid var(--sys); background: var(--sys-soft); font-size: 14.5px; line-height: 1.6; }
+.post-page .sk-log .m .who { display: inline-block; font-size: 12px; font-weight: 600; color: var(--fg-neutral); margin-right: 8px; }
+.post-page .sk-log .m .c { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); word-break: break-all; }
+.post-page .sk-log .m.me { border-color: var(--me); background: var(--me-soft); }
+.post-page .sk-log .m.call { background: var(--bg-base); border-style: dashed; margin-left: 48px; }
+.post-page .sk-log .m.ai { border-color: var(--ai); background: var(--ai-soft); margin-left: 48px; }
+.post-page .sk-log .m.code { border-color: var(--code); background: var(--code-soft); margin-left: 48px; }
+.post-page .sk-log .m .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.post-page .sk-log .m .chips span { font-family: var(--font-mono); font-size: 12.5px; background: var(--bg-base); border: 1px solid var(--sys); border-radius: 6px; padding: 1px 8px; color: var(--fg-strong); }
+.post-page .sk-log .n { grid-column: 2; font-size: 14.5px; line-height: 1.6; color: var(--fg-normal); padding: 10px 0 0; display: flex; gap: 10px; align-items: baseline; }
+.post-page .sk-log .n b { flex: none; font-size: 13px; padding: 1px 8px; border-radius: 999px; color: var(--fg-strong); }
+.post-page .sk-log .n b.l1 { background: var(--sys-soft); border: 1px solid var(--sys); }
+.post-page .sk-log .n b.l2, .post-page .sk-log .n b.l3 { background: var(--ai-soft); border: 1px solid var(--ai); }
+.post-page .sk-log .n b.x { background: var(--code-soft); border: 1px solid var(--code); }
+.post-page .sk-log .n b.me { background: var(--me-soft); border: 1px solid var(--me); }
+
+/* ---------- 표준 ---------- */
+.post-page .sk-std { max-width: 580px; }
+.post-page .sk-std .doc { border-radius: 12px; overflow: hidden; border: 1px solid var(--line-normal, var(--line-subtle)); background: var(--bg-base); }
+.post-page .sk-std .tt { font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); padding: 8px 14px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .sk-std .lay { padding: 10px 14px 12px; position: relative; }
+.post-page .sk-std .lay h3 { font-family: var(--font-sans); font-size: 13.5px; letter-spacing: 0; margin: 0 0 6px; color: var(--fg-strong); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.post-page .sk-std .lay h3 span { font-weight: 500; color: var(--fg-neutral); font-size: 13px; }
+.post-page .sk-std .lay.std { background: var(--sys-soft); }
+.post-page .sk-std .lay.ext { margin: 10px; border: 2px dashed var(--sys); border-radius: 10px; background: var(--bg-base); }
+.post-page .sk-std pre { margin: 0; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .sk-std pre .q { color: var(--fg-neutral); }
+.post-page .sk-paths { margin-top: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; align-items: center; font-size: 14px; }
+.post-page .sk-paths .tool { font-weight: 600; color: var(--fg-strong); white-space: nowrap; }
+.post-page .sk-paths .p { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); background: var(--bg-muted); border-radius: 8px; padding: 6px 10px; }
+.post-page .sk-paths .p em { font-style: normal; background: var(--ai-soft); color: var(--fg-strong); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+.post-page .sk-time { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 14px; position: relative; }
+.post-page .sk-time::before { content: ""; position: absolute; left: 6px; right: 6px; top: 6px; height: 2px; background: var(--line-normal, var(--sys)); }
+.post-page .sk-time li { position: relative; padding-top: 22px; font-size: 13px; line-height: 1.5; color: var(--fg-neutral); margin: 0; word-break: keep-all; }
+.post-page .sk-time li::before { content: ""; position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-base); border: 2.5px solid var(--sys); box-sizing: border-box; }
+.post-page .sk-time li.now::before { border-color: var(--ai); background: var(--ai); }
+.post-page .sk-time .d { display: block; font-family: var(--font-mono); font-size: 12.5px; }
+.post-page .sk-time b { display: block; font-size: 14.5px; color: var(--fg-strong); margin: 2px 0; }
+.post-page .sk-time small { display: block; font-size: 13px; }
+
+/* ---------- 서브에이전트 봉투 ---------- */
+.post-page .sk-env { max-width: 600px; display: grid; grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1.25fr); gap: 0; align-items: stretch; position: relative; padding-bottom: 64px; }
+.post-page .sk-desk { border: 1.5px solid var(--line-normal, var(--sys)); border-radius: 14px; padding: 12px 12px 10px; background: var(--bg-base); display: flex; flex-direction: column; position: relative; z-index: 1; }
+.post-page .sk-desk h3 { font-family: var(--font-sans); font-size: 14.5px; letter-spacing: 0; margin: 0 0 8px; color: var(--fg-strong); }
+.post-page .sk-desk h3 small { display: block; font-weight: 500; font-size: 13px; color: var(--fg-neutral); font-family: var(--font-mono); }
+.post-page .sk-desk .it { font-size: 13.5px; line-height: 1.45; border-radius: 8px; padding: 6px 9px; margin: 0 0 6px; border: 1.5px solid var(--sys); background: var(--sys-soft); color: var(--fg-strong); }
+.post-page .sk-desk .it small { display: block; color: var(--fg-neutral); font-size: 13px; }
+.post-page .sk-desk .it.me { border-color: var(--me); background: var(--me-soft); }
+.post-page .sk-desk .it.ai { border-color: var(--ai); background: var(--ai-soft); }
+.post-page .sk-desk .it.stay { border-style: dashed; background: var(--bg-base); color: var(--fg-neutral); position: relative; }
+.post-page .sk-desk .it.stay .x { color: var(--bad); font-weight: 700; margin-right: 4px; }
+.post-page .sk-desk .sk-back { margin-top: auto; margin-bottom: 0; border-width: 2px; font-weight: 600; }
+.post-page .sk-desk .sk-back small { font-weight: 400; }
+.post-page .sk-desk .tools { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }
+.post-page .sk-desk .tools span { font-family: var(--font-mono); font-size: 13px; border-radius: 6px; padding: 1px 7px; border: 1px solid var(--sys); color: var(--fg-strong); }
+.post-page .sk-desk .tools span.no { text-decoration: line-through; color: var(--fg-neutral); border-style: dashed; }
+.post-page .sk-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 90px; }
+.post-page .sk-mid svg.env { width: 40px; transform: none !important; margin-bottom: 4px; }
+.post-page .sk-mid svg { width: 50px; }
+.post-page .sk-mid .lb { font-size: 13px; color: var(--me); font-weight: 600; white-space: nowrap; }
+.post-page .sk-retsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
+.post-page .sk-retlb { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 !important; font-size: 14px !important; line-height: 1.5 !important; color: var(--fg-strong); text-align: center; }
+.post-page .sk-code { margin-top: clamp(48px, 6vw, 72px); display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .sk .pg-code-notes { margin: 0; padding-left: 0; }
+.post-page .sk .pg-code-notes li { font-size: 16px; line-height: 1.75; margin: 0 0 14px; }
+
+/* ---------- 훅 이벤트 흐름 ---------- */
+.post-page .sk-flow { max-width: 1060px; }
+.post-page .sk-flow svg { max-width: 1060px; }
+.post-page .sk-flowleg { margin: 0 0 18px; }
+.post-page .sk-flowleg i.bar { width: 7px; height: 18px; border-radius: 3px; background: var(--code); vertical-align: -4px; margin-right: 8px; }
+.post-page .sk-flowleg i.ring { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--code); background: var(--bg-base); }
+
+/* ---------- 검문소 실험판 ---------- */
+.post-page .sk-lab h2 { margin-bottom: 20px; }
+.post-page .sk-labtop { margin-bottom: 26px; }
+.post-page .sk-exitrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.post-page .sk-exitrow .sk-try { margin: 0 !important; }
+.post-page .sk-calls { display: flex; flex-wrap: wrap; gap: 10px; }
+.post-page .sk-call { font: inherit; text-align: left; cursor: pointer; border: 1.5px dashed var(--sys); background: var(--bg-base); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; line-height: 1.45; color: var(--fg-strong); transition: border-color .3s, background .3s; }
+.post-page .sk-call .t { display: block; font-size: 12px; color: var(--fg-neutral); }
+.post-page .sk-call .p { font-family: var(--font-mono); font-size: 13px; word-break: break-all; }
+.post-page .sk-call[aria-pressed="true"] { border-style: solid; border-color: var(--fg-strong); background: var(--sys-soft); }
+.post-page .sk-labgrid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); grid-template-areas: "x s" "g s" "t s"; grid-template-rows: auto auto 1fr; gap: 0 44px; align-items: start; }
+.post-page .sk-labgrid .sk-gate { grid-area: g; }
+.post-page .sk-labgrid .sk-exitrow { grid-area: x; }
+.post-page .sk-labgrid .sk-tr { grid-area: t; }
+.post-page .sk-labgrid .sk-script { grid-area: s; }
+.post-page .sk-script { background: var(--code-bg, rgb(40, 44, 52)); border: 1px solid var(--code-border, transparent); box-shadow: var(--code-shadow, none); border-radius: 12px; overflow: hidden; }
+.post-page .sk-script .tt { display: flex; align-items: center; height: 38px; padding: 0 8px 0 84px; background: var(--code-dots), var(--code-head-bg, rgb(33, 37, 43)); background-repeat: no-repeat; border-bottom: 1px solid var(--code-border, rgba(255,255,255,.08)); font-family: var(--font-mono); font-size: 12px; }
+.post-page .sk-script .tt span { display: flex; align-items: center; height: 26px; padding: 0 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); color: var(--code-head-fg, rgb(160, 166, 180)); white-space: nowrap; }
+.post-page .sk-tr .sk-hint { color: var(--fg-neutral); }
+[data-theme="dark"] .post-page .sk-band { background: rgb(30, 32, 37); }
+.post-page .sk-script ol { list-style: none; margin: 0; padding: 10px 0 12px; counter-reset: ln; }
+.post-page .sk-script li { counter-increment: ln; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; color: rgb(205, 210, 220); padding: 0 14px 0 46px; position: relative; white-space: pre-wrap; overflow-wrap: anywhere; transition: background .35s; }
+.post-page .sk-script li::before { content: counter(ln); position: absolute; left: 0; width: 32px; text-align: right; color: rgb(100, 106, 120); }
+.post-page .sk-script li .cm { color: rgb(127, 132, 142); }
+.post-page .sk-script li.hit { background: rgba(176, 150, 255, .2); }
+.post-page .sk-script li.stop { background: rgba(176, 150, 255, .48); box-shadow: inset 3px 0 0 rgb(196, 176, 255); }
+.post-page .sk-script li.stop::before { color: rgb(230, 222, 255); }
+.post-page .sk-script li .ex { color: rgb(255, 196, 120); font-weight: 600; }
+.post-page .sk-gate svg { max-width: 520px; }
+.post-page .sk-tr { margin-top: 12px; font-size: 14.5px; line-height: 1.65; min-height: 6.6em; }
+.post-page .sk-tr p { margin: 0 0 6px !important; font-size: 14.5px !important; line-height: 1.65 !important; }
+.post-page .sk-tr .tm { font-family: var(--font-mono); font-size: 13px; display: block; background: var(--bg-base); border-radius: 8px; padding: 6px 10px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .sk-tr .tm.bad { color: var(--bad); }
+.post-page .sk-tr b.bad { color: var(--bad); }
+.post-page .sk-tr b.ok { color: var(--ok); }
+.post-page .sk-labcap { margin-top: 22px !important; }
+.post-page .sk-after { margin-top: clamp(48px, 6vw, 64px); }
+.post-page .sk-hookset .pg-code { max-width: 740px; }
+/* 코드 블록: 화면보다 긴 줄은 옆으로 밀지 않고 줄 번호 뒤에서 접는다 */
+.post-page .sk .pg-code pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .sk .pg-code, .post-page .sk .pg-code * { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+.post-page .sk .pg-code .line { position: relative; padding-left: calc(3ch + 28px); }
+.post-page .sk .pg-code .line::before { position: absolute; left: 0; top: 0; }
+
+/* ---------- 일꾼 층 · Stop 횟수 ---------- */
+.post-page .sk-crew { max-width: 520px; }
+.post-page .sk-built { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.post-page .sk-built .hd, .post-page .sk-stop .hd { width: 100%; font-size: 14px; font-weight: 600; color: var(--fg-strong); margin: 0 0 2px !important; line-height: 1.5 !important; }
+.post-page .sk-stop .hd small { font-weight: 400; color: var(--fg-neutral); font-size: 13px; margin-left: 6px; }
+.post-page .sk-built span { font-size: 13px; line-height: 1.45; color: var(--fg-neutral); border: 1.5px solid var(--sys); background: var(--sys-soft); border-radius: 10px; padding: 6px 10px; }
+.post-page .sk-built span b { display: block; font-family: var(--font-mono); font-size: 13.5px; }
+.post-page .sk-depth { position: relative; }
+.post-page .sk-depth .lv { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; position: relative; }
+.post-page .sk-depth .l1 { margin-left: 26px; } .post-page .sk-depth .l2 { margin-left: 52px; } .post-page .sk-depth .l3 { margin-left: 78px; } .post-page .sk-depth .l4 { margin-left: 104px; }
+.post-page .sk-depth .lv:not(.l0)::before { content: ""; position: absolute; left: -16px; top: -12px; width: 12px; height: 28px; border-left: 2px solid var(--line-normal, var(--sys)); border-bottom: 2px solid var(--line-normal, var(--sys)); border-bottom-left-radius: 6px; }
+.post-page .sk-depth .tg { font-size: 13px; color: var(--fg-neutral); width: 2.4em; flex: none; }
+.post-page .sk-depth .bx { font-size: 13.5px; line-height: 1.4; border-radius: 8px; padding: 6px 10px; border: 1.5px solid var(--me); background: var(--me-soft); color: var(--fg-strong); }
+.post-page .sk-depth .bx.main { border-color: var(--sys); background: var(--sys-soft); font-weight: 600; }
+.post-page .sk-depth .bx.no { border: 1.5px dashed var(--bad); background: transparent; color: var(--bad); }
+.post-page .sk-twenty { position: absolute; right: 0; top: 0; width: 132px; text-align: center; }
+.post-page .sk-twenty p { font-size: 13px !important; line-height: 1.4 !important; margin: 0 0 6px !important; color: var(--fg-neutral); }
+.post-page .sk-twenty p b { font-size: 16px; color: var(--fg-strong); }
+.post-page .sk-twenty div { display: grid; grid-template-columns: repeat(5, 18px); gap: 6px; justify-content: center; }
+.post-page .sk-twenty i { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--me); background: var(--me-soft); }
+.post-page .sk-stop { max-width: 520px; }
+.post-page .sk-stop ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.post-page .sk-stop li { margin: 0; aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; border: 1.5px solid var(--bad); background: var(--bad-soft); color: var(--bad); font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.post-page .sk-stop .end { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.post-page .sk-stop .ar { font-size: 20px; color: var(--ok); line-height: 1.2; padding-right: calc((100% - 42px) / 16); }
+.post-page .sk-stop .bx { font-size: 14px; line-height: 1.5; border-radius: 10px; padding: 8px 12px; border: 1.5px solid var(--ok); background: var(--ok-soft); color: var(--fg-strong); font-weight: 600; }
+
+/* ---------- 2축 지도 ---------- */
+.post-page .sk-map { max-width: 560px; }
+.post-page .sk-mapg { display: grid; grid-template-columns: 96px repeat(2, minmax(0, 1fr)); gap: 6px; }
+.post-page .sk-mapg .yl { font-size: 13.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); text-align: center; padding: 0 0 4px; word-break: keep-all; }
+.post-page .sk-mapg .yl.code { color: var(--code); }
+.post-page .sk-mapg .xl { font-size: 13px; line-height: 1.45; color: var(--fg-neutral); display: flex; flex-direction: column; justify-content: center; word-break: keep-all; }
+.post-page .sk-mapg .xl b { font-size: 14px; color: var(--fg-strong); }
+.post-page .sk-mapg .cell { min-height: 78px; border-radius: 10px; background: var(--bg-subtle); padding: 8px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.post-page .sk-mapg .cell.empty { background: transparent; border: 1.5px dashed var(--line-normal, var(--sys)); opacity: .55; }
+.post-page .sk-mapg .dot { flex: 1 1 110px; max-width: 200px; border-radius: 10px; padding: 7px 10px; font-size: 13px; line-height: 1.4; text-align: center; background: var(--bg-base); border: 2px solid var(--sys); color: var(--fg-strong); }
+.post-page .sk-mapg .dot b { display: block; font-size: 14px; white-space: nowrap; }
+.post-page .sk-mapg .dot small { display: block; color: var(--fg-neutral); font-size: 12.5px; }
+.post-page .sk-mapg .dot.ai { border-color: var(--ai); }
+.post-page .sk-mapg .dot.code { border-color: var(--code); }
+.post-page .sk-mapg .dot.ghost { border-style: dashed; color: var(--fg-neutral); background: transparent; }
+
+/* ---------- 플러그인 ---------- */
+.post-page .sk-plug { max-width: 560px; }
+.post-page .sk-plug .pk { display: flex; align-items: center; gap: 12px; border: 2px solid var(--fg-strong); border-radius: 14px; padding: 12px 16px; background: var(--bg-base); max-width: 380px; margin: 0 auto; }
+.post-page .sk-plug .pk .ic { font-size: 30px; line-height: 1; }
+.post-page .sk-plug .pk b { display: block; font-family: var(--font-mono); font-size: 16px; color: var(--fg-strong); }
+.post-page .sk-plug .pk small { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); overflow-wrap: anywhere; }
+.post-page .sk-plug .go { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 4px 0; }
+.post-page .sk-plug .go svg { width: 20px; }
+.post-page .sk-plug .go span { font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .sk-plug .tray { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 2px dashed var(--line-normal, var(--sys)); border-radius: 16px; padding: 12px; margin-top: 6px; }
+.post-page .sk-plug .pt { display: flex; flex-direction: column; gap: 6px; }
+.post-page .sk-plug .pt .nm { font-size: 14px !important; font-weight: 700; color: var(--fg-strong); margin: 0 !important; line-height: 1.4 !important; }
+.post-page .sk-plug .pt .fp { font-family: var(--font-mono); font-size: 12px !important; color: var(--fg-neutral); margin: 0 !important; line-height: 1.4 !important; }
+.post-page .sk-plug .pt > div { flex: 1; font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 8px 10px; color: var(--fg-neutral); }
+.post-page .sk-plug .pt > div b { display: block; color: var(--fg-strong); font-size: 13.5px; }
+.post-page .sk-plug .mini-dr { border: 1.5px solid var(--ai); background: var(--ai-soft); }
+.post-page .sk-plug .mini-dr b { font-family: var(--font-mono); font-size: 13px !important; }
+.post-page .sk-plug .mini-desk { border: 1.5px solid var(--me); background: var(--me-soft); }
+.post-page .sk-plug .mini-desk b { font-family: var(--font-mono); font-size: 13px !important; overflow-wrap: anywhere; }
+.post-page .sk-plug .mini-gate { display: flex; gap: 10px; align-items: stretch; border: 1.5px solid var(--code); background: var(--code-soft); }
+.post-page .sk-plug .mini-gate i { flex: none; width: 8px; border-radius: 4px; background: var(--code); }
+.post-page .sk-plug .mini-gate b { font-family: var(--font-mono); font-size: 13px !important; }
+.post-page .sk-plug .mini-mcp { display: flex; gap: 8px; align-items: center; border: 1.5px solid var(--sys); background: var(--sys-soft); color: var(--fg-strong) !important; }
+.post-page .sk-plug .mini-mcp span:first-child { font-size: 20px; }
+.post-page .sk-split { grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; row-gap: 0; }
+.post-page .sk-split .sk-ta > p:last-child { margin-bottom: 1.5em; }
+.post-page .sk-split .sk-ta { grid-area: a; }
+.post-page .sk-split .sk-tf { grid-area: f; }
+.post-page .sk-split .sk-tb { grid-area: b; }
+@media (min-width: 861px) { .post-page .sk-split .sk-tf { position: sticky; top: 96px; align-self: start; } }
+.post-page .sk-refs ul { padding-left: 1.1em; }
+.post-page .sk-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .sk-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+.post-page .sk-close { font-size: 19px !important; line-height: 1.7 !important; color: var(--fg-strong); }
+
+@media (max-width: 860px) {
+  .post-page .sk-wrap { padding: 0 20px; }
+  .post-page .sk-two, .post-page .sk-refhead, .post-page .sk-code, .post-page .sk-labgrid { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sk-refs ul { padding-left: 0; }
+  .post-page .sk-split { grid-template-areas: "a" "f" "b"; grid-template-rows: auto; }
+  .post-page .sk-split .sk-tb { margin-top: 40px; }
+  .post-page .sk-split .sk-tf { margin-top: 4px; }
+  .post-page .sk-hero { padding-top: 16px; }
+  .post-page .sk-hero h1 { margin-bottom: 14px; }
+  .post-page .sk-lead p { margin-bottom: 0.8em; }
+  .post-page .sk-stage { grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 18px; }
+  .post-page .sk-asks { gap: 7px; }
+  .post-page .sk-ask { font-size: 14.5px; padding: 8px 12px; }
+  .post-page .sk-ask[aria-pressed="true"] { transform: none; }
+  .post-page .sk-read[data-read] { display: none; }
+  .post-page .sk-mread { display: block !important; margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--bg-subtle); }
+  .post-page .sk-mread .k { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 4px !important; }
+  .post-page .sk-mread .v { margin: 0 !important; font-size: 17px; }
+  .post-page .sk-mread .sk-meter { margin-bottom: 8px; }
+  .post-page .sk-mread .note { font-size: 14.5px; line-height: 1.65; }
+  .post-page .sk-cabhd b { font-size: 15px; }
+  .post-page .sk-herocap { grid-column: 1; }
+  .post-page .sk-dr .front { padding: 8px 12px 9px; }
+  .post-page .sk-dr .ds { font-size: 13px; }
+  .post-page .sk-log { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sk-log .n { grid-column: 1; padding: 0 0 6px; font-size: 14px; }
+  .post-page .sk-log .m.call, .post-page .sk-log .m.ai, .post-page .sk-log .m.code { margin-left: 18px; }
+  .post-page .sk-log .m { margin-bottom: 16px; }
+  .post-page .sk-zone { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sk-tag { margin-top: 8px; }
+  .post-page .sk-tree .r { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .post-page .sk-env { grid-template-columns: minmax(0, 1fr); padding: 0 30px 50px 0; }
+  .post-page .sk-mid { padding: 4px 0; flex-direction: row; justify-content: center; gap: 8px; }
+  .post-page .sk-mid svg { transform: rotate(90deg); width: 36px; }
+  .post-page .sk-desk .sk-back { margin-top: 4px; }
+  .post-page .sk-retlb { right: 30px; font-size: 13.5px !important; }
+  .post-page .sk-mapg { grid-template-columns: 74px repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .post-page .sk-mapg .cell { min-height: 64px; padding: 5px; }
+  .post-page .sk-mapg .dot { padding: 5px 6px; flex-basis: 96px; }
+  .post-page .sk-mapg .dot small { font-size: 12px; }
+  .post-page .sk-mapg .yl { font-size: 12.5px; }
+  .post-page .sk-mapg .xl { font-size: 12px; }
+  .post-page .sk-mapg .xl b { font-size: 13px; }
+  .post-page .sk-plug .tray { gap: 8px; padding: 8px; }
+  .post-page .sk-plug .pt > div { padding: 7px 8px; }
+  .post-page .sk-tr { min-height: 0; }
+  .post-page .sk .pg-code-head { height: auto; min-height: 38px; padding-top: 6px; padding-bottom: 6px; }
+  .post-page .sk .pg-code-file { height: auto; min-height: 26px; white-space: normal; overflow-wrap: anywhere; padding: 3px 10px; }
+  .post-page .sk .pg-code-lang { display: none; }
+  .post-page .sk-labgrid { grid-template-areas: "x" "g" "t" "s"; grid-template-rows: auto; gap: 12px; }
+  .post-page .sk-exitrow { margin-bottom: 0; justify-content: space-between; }
+  .post-page .sk-script li { font-size: 12.5px; line-height: 1.6; padding-left: 36px; }
+  .post-page .sk-script li::before { width: 24px; }
+  .post-page .sk-labtop { margin-bottom: 18px; }
+  .post-page .sk-call { padding: 6px 10px; }
+  .post-page .sk-twenty { position: static; width: auto; text-align: left; margin-top: 14px; }
+  .post-page .sk-twenty div { justify-content: start; grid-template-columns: repeat(10, 18px); }
+  .post-page .sk-time { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .post-page .sk-time::before { left: 6px; right: auto; top: 6px; bottom: 6px; width: 2px; height: auto; }
+  .post-page .sk-time li { padding: 0 0 0 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .sk * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="sk">
+
+<section class="sk-hero">
+  <div class="sk-wrap">
+    <div class="sk-lead">
+      <h1>같은 설명을 세 번째 붙여 넣기 전에 만드는 에이전트 스킬</h1>
+      <p>동아리 출석 앱을 코딩 에이전트(coding agent)와 만들고 있습니다. 출석 기록은 데이터를 표로 저장하는 프로그램인 DB(Database)에 있습니다. 이 표를 바꿀 때마다 같은 말을 붙여 넣습니다. "마이그레이션 파일 이름은 날짜_설명.sql 로, 이미 적용된 파일은 고치지 말고, 다 쓰면 check.sh 를 돌려." 마이그레이션(migration)은 표의 구조를 바꾸는 변경 파일입니다. 지난주에도 그 전 주에도 이 설명을 붙여 넣었습니다.</p>
+      <p>이런 설명을 파일로 적어 두고 필요할 때만 꺼내 읽게 하는 것이 스킬(skill)입니다. 에이전트가 한 번에 보는 글인 컨텍스트 창(context window)을 여기서는 책상이라 부르고 그 양은 토큰(token)으로 셉니다. 책상에 많이 올릴수록 비용이 늘고 중요한 지시가 흐려집니다(<a href="/posts/context-engineering-claude-md-agents-md">컨텍스트 엔지니어링 글</a>).</p>
+    </div>
+    <figure class="sk-fig sk-stage" data-figure data-hero data-thumb data-thumb-act="el.querySelector('[data-ask=db]').click()">
+      <div class="sk-asks">
+        <p class="sk-try">👆 요청을 하나 보내 보세요</p>
+        <button type="button" class="sk-ask" data-ask="db" aria-pressed="false">members 표에 생일 칸을 추가해 줘</button>
+        <button type="button" class="sk-ask" data-ask="rel" aria-pressed="false">이번 주 바뀐 것으로 릴리스 노트 써 줘</button>
+        <button type="button" class="sk-ask" data-ask="ui" aria-pressed="false">로그인 버튼 색을 파랗게 바꿔 줘</button>
+        <div class="sk-mread sk-read" style="display:none" aria-live="polite">
+          <p class="k">책상에 올라간 스킬 글 <b class="v"><span data-mtok>450</span> <small>토큰</small></b></p>
+          <div class="sk-meter"><i class="g" data-mg></i><i class="t" data-mt></i><i class="c" data-mc></i></div>
+          <p class="note" data-mnote>아직 요청이 없습니다. 책상에는 서랍 다섯 개의 이름표만 450 토큰 올라가 있습니다.</p>
+        </div>
+      </div>
+      <div class="sk-cab" data-cab>
+        <div class="sk-cabhd"><b>스킬 서랍장 · 다섯 개 설치</b><span>이름표 토큰</span></div>
+        <div class="sk-legend sk-heroleg">
+          <span><i class="sys"></i>늘 책상에 깔린 이름표</span>
+          <span><i class="ai"></i>요청이 맞을 때 펼쳐 읽은 글</span>
+          <span><i class="code"></i>읽지 않고 실행만 한 스크립트(script)</span>
+          <span><i class="me"></i>사람이 보낸 요청</span>
+        </div>
+        <div class="sk-dr" data-sk="db">
+          <div class="front"><span class="nm">db-migration</span><span class="ds">DB 표 구조를 바꾸는 마이그레이션 파일을 만든다. 표나 칸을 추가·변경할 때 쓴다.</span><span class="tk">96</span></div>
+          <div class="body"><div>
+            <div class="sheet"><p class="lv"><span>SKILL.md 본문을 펼침</span><span>1,900 토큰</span></p><pre># DB 마이그레이션
+1. 새 파일은 migrations/날짜_설명.sql
+2. 이미 적용된 파일은 고치지 않는다
+3. 이름 규칙은 references/naming.md
+4. 다 쓰면 scripts/check.sh 실행</pre></div>
+            <div class="sk-att"><span class="f ref" data-att="ref"><b>references/naming.md</b><span class="s">본문이 가리켜서 읽음 · 700 토큰</span></span><span class="f run" data-att="run"><b>scripts/check.sh</b><span class="s">내용은 안 읽고 실행만 · 출력 30 토큰</span></span></div>
+          </div></div>
+        </div>
+        <div class="sk-dr" data-sk="rel">
+          <div class="front"><span class="nm">release-notes</span><span class="ds">새 버전에서 바뀐 점을 알리는 릴리스 노트를 쓴다. 변경 사항을 정리해 달라고 할 때 쓴다.</span><span class="tk">84</span></div>
+          <div class="body"><div>
+            <div class="sheet"><p class="lv"><span>SKILL.md 본문을 펼침</span><span>1,200 토큰</span></p><pre># 릴리스 노트
+1. 지난 릴리스 뒤의 변경 기록을 모은다
+2. 새 기능 / 고친 버그 / 주의할 점으로 나눈다
+3. 변경 번호 대신 쉬운 말로 쓴다</pre></div>
+          </div></div>
+        </div>
+        <div class="sk-dr" data-sk="api">
+          <div class="front"><span class="nm">api-style</span><span class="ds">우리 API 응답 형식 규칙. API 주소를 만들거나 고칠 때 쓴다.</span><span class="tk">78</span></div>
+        </div>
+        <div class="sk-dr" data-sk="pdf">
+          <div class="front"><span class="nm">attendance-pdf</span><span class="ds">출석 통계를 PDF 보고서로 만든다. 월간 출석 보고서를 뽑을 때 쓴다.</span><span class="tk">90</span></div>
+        </div>
+        <div class="sk-dr" data-sk="inc">
+          <div class="front"><span class="nm">incident</span><span class="ds">서버 장애가 났을 때 확인 순서. 오류 알림이나 장애 대응을 요청할 때 쓴다.</span><span class="tk">102</span></div>
+        </div>
+      </div>
+      <div class="sk-read" data-read aria-live="polite">
+        <p class="k">책상에 올라간 스킬 글</p>
+        <p class="v"><span data-tok>450</span> <small>토큰</small></p>
+        <div class="sk-meter"><i class="g" data-g></i><i class="t" data-t></i><i class="c" data-c></i></div>
+        <p class="scale">점선 칸 전체 = 서랍 다섯 개를 다 펼쳐 뒀을 때 11,650 토큰</p>
+        <p class="note" data-note>아직 요청이 없습니다. 책상에는 서랍 다섯 개의 이름표만 450 토큰 올라가 있습니다.</p>
+      </div>
+      <figcaption class="sk-cap sk-herocap">이름표 한 장이 100 토큰 안팎이라는 것은 Agent Skills 규격 문서의 값입니다. 스킬 다섯 개와 본문·부록의 토큰 수는 설명을 위한 예시 값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap sk-two sk-split">
+    <div class="sk-col sk-ta">
+      <h2>스킬은 폴더 하나와 SKILL.md 한 장입니다</h2>
+      <p>스킬은 <code>SKILL.md</code> 라는 파일이 든 폴더입니다. 파일 맨 위 <code>---</code> 두 줄 사이에는 이름과 설명을 적습니다. 이 머리말을 프런트매터(frontmatter)라고 부릅니다. 그 아래 본문에는 일하는 순서를 평범한 글로 씁니다.</p>
+    </div>
+    <figure class="sk-fig sk-tf sk-anat" data-figure>
+      <div class="sk-file">
+        <div class="tt"><span>.claude/skills/db-migration/SKILL.md</span></div>
+        <div class="sk-zone l1">
+          <pre><span class="k">---</span>
+name: db-migration
+description: DB 표 구조를 바꾸는
+  마이그레이션 파일을 만든다. 표나 칸을
+  추가·변경할 때 쓴다.
+<span class="k">---</span></pre>
+          <div class="sk-tag"><b>1층 · 프런트매터(이름표)</b>레시피 카드 앞면. 새 대화를 열 때부터 늘 책상에, 100 토큰 안팎. name 은 소문자·숫자·하이픈 64자, description 은 1,024자 이내</div>
+        </div>
+        <div class="sk-zone l2">
+          <pre># DB 마이그레이션
+1. 새 파일은 migrations/날짜_설명.sql
+2. 이미 적용된 파일은 고치지 않는다
+3. 이름 규칙은 references/naming.md
+4. 다 쓰면 scripts/check.sh 실행</pre>
+          <div class="sk-tag"><b>2층 · 본문(일하는 순서)</b>카드 안쪽. 서랍을 열 때만 책상에, 5,000 토큰 아래 권장</div>
+        </div>
+      </div>
+      <div class="sk-tree" aria-label="db-migration 폴더 구조">
+        <div class="r"><span class="p">db-migration/</span></div>
+        <div class="r"><span class="p"><i>├─ </i>SKILL.md</span><span class="d">1층은 늘, 2층은 서랍을 열 때</span></div>
+        <div class="r"><span class="p"><i>├─ </i>references/naming.md</span><span class="d ai">3층 · 본문이 가리킬 때 읽는 부록</span></div>
+        <div class="r"><span class="p"><i>└─ </i>scripts/check.sh</span><span class="d code">3층 · 읽지 않고 실행, 출력만 책상에</span></div>
+      </div>
+      <figcaption class="sk-cap">맨 위 서랍장의 db-migration 서랍을 펼친 모습입니다. 층마다 책상에 올라오는 때가 다릅니다. 토큰 기준은 agentskills.io 규격 문서의 권장값입니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-tb">
+      <p>레시피 카드와 비슷합니다. 앞면에 요리 이름과 언제 만드는지가 있고 안쪽에 순서, 뒤에 계량표가 붙어 있습니다. 다른 점이 하나 있습니다. 카드를 꺼낼지 말지는 모델이 앞면 설명만 보고 정합니다. 앞면은 세션(session), 즉 에이전트와 새 대화를 열 때마다 책상에 깔립니다.</p>
+      <p>그래서 <code>description</code> 한 줄이 가장 중요합니다. 규격은 무엇을 하는지와 언제 쓰는지를 함께 적으라고 합니다. "PDF를 도와줌"처럼 막연하면 필요한 때에 서랍이 열리지 않습니다.</p>
+      <p>폴더에는 참고 문서(<code>references/</code>), 실행할 스크립트(<code>scripts/</code>), 서식 같은 자료(<code>assets/</code>)를 함께 둘 수 있습니다. 스크립트는 명령을 순서대로 적어 둔 작은 프로그램입니다. 규격은 SKILL.md 를 500줄 아래로 두고 긴 내용은 이런 파일로 나누라고 권합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap">
+    <h2>스킬을 연다는 건 파일을 읽는다는 뜻입니다</h2>
+    <div class="sk-col">
+      <p>스킬에는 따로 돌아가는 프로그램이 없습니다. 모델이 이름표를 보고 이 서랍이 맞다고 판단하면 그 파일 내용이 대화에 들어올 뿐입니다. 모델이 파일 읽기나 명령 실행처럼 바깥일을 맡기는 기능을 도구(tool)라고 합니다. Claude Code 에서는 모델이 Skill 도구를 부르면 SKILL.md 가 메시지 하나로 들어오고 부록은 평소처럼 Read 도구로 읽습니다.</p>
+      <p>이렇게 필요한 만큼만 한 층씩 펼치는 방식을 단계적 공개(progressive disclosure)라고 합니다. 맨 위 서랍장에서 보낸 "생일 칸 추가" 요청을 처리할 때 대화 기록에 쌓이는 순서는 아래와 같습니다.</p>
+    </div>
+    <figure class="sk-fig sk-wide" data-figure>
+      <div class="sk-log" aria-label="생일 칸 추가 요청을 처리하는 동안 대화 기록에 쌓이는 일곱 칸과 각 칸이 몇 층인지 표시한 그림">
+        <div class="m"><span class="who">시스템</span>기본 지시 + 스킬 이름표 다섯 장<div class="chips"><span>db-migration</span><span>release-notes</span><span>api-style</span><span>attendance-pdf</span><span>incident</span></div></div>
+        <p class="n"><b class="l1">1층</b>세션을 열 때 이름과 설명만 깔립니다. 서랍을 하나도 열지 않아도 늘 있는 450 토큰입니다.</p>
+        <div class="m me"><span class="who">사람</span>members 표에 생일 칸을 추가해 줘</div>
+        <p class="n"><b class="me">요청</b>모델이 요청과 이름표 다섯 장을 견줍니다.</p>
+        <div class="m call"><span class="who">모델 → 도구</span><span class="c">Skill("db-migration")</span></div>
+        <p class="n"><b class="l2">2층</b>"표나 칸을 추가할 때"와 맞으니 이 서랍을 엽니다.</p>
+        <div class="m ai"><span class="who">도구 결과</span>SKILL.md 본문 1,900 토큰이 메시지 하나로 들어옴</div>
+        <p class="n"><b class="l2">2층</b>이제부터 본문의 네 단계를 따릅니다.</p>
+        <div class="m call"><span class="who">모델 → 도구</span><span class="c">Read references/naming.md</span></div>
+        <div class="m ai"><span class="who">도구 결과</span>이름 규칙 700 토큰</div>
+        <p class="n"><b class="l3">3층</b>본문 3번 줄이 가리켜서 부록을 읽습니다. 가리키지 않은 파일은 끝까지 안 읽습니다.</p>
+        <div class="m code"><span class="who">모델 → 도구</span><span class="c">Bash scripts/check.sh → "OK: 20261015_add_birthday.sql"</span></div>
+        <p class="n"><b class="x">실행</b>스크립트는 내용을 읽지 않고 실행합니다. 책상에는 출력 한 줄만 올라옵니다.</p>
+      </div>
+      <figcaption class="sk-cap">세 층 구분과 "스크립트는 실행만"은 agentskills.io 규격과 Anthropic 공지 글을 따랐습니다. 도구 이름은 Claude Code 기준이고 토큰 수는 맨 위 서랍장과 같은 예시 값입니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-after">
+      <p>비유가 안 맞는 곳이 하나 있습니다. 한 번 펼친 본문은 서랍에 다시 들어가지 않습니다. Claude Code 는 불러온 SKILL.md 를 대화에 남겨 둡니다. 대화가 길어져 앞부분을 요약으로 줄이는 압축(compaction) 때도 스킬마다 앞쪽 5,000 토큰, 모두 합쳐 25,000 토큰까지 다시 붙입니다.</p>
+      <p>배포처럼 함부로 실행되면 곤란한 스킬은 프런트매터에 <code>disable-model-invocation: true</code> 를 넣습니다. 그러면 이름표조차 책상에 올라가지 않고 사람이 <code>/deploy</code> 처럼 이름을 불러야만 열립니다. 에이전트를 바깥 서비스에 잇는 MCP(Model Context Protocol)에도 같은 생각이 있습니다. 도구 설명을 이름만 실어 두고 필요할 때 찾아 쓰는 MCP tool search 입니다(<a href="/posts/mcp-model-context-protocol-usb-c">MCP 글</a>).</p>
+      <details>
+        <summary>Anthropic 이 그린 원래 그림 보기</summary>
+        <figure class="sk-fig sk-img" style="margin-top:14px">
+          <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/13690460.webp" target="_blank" rel="noopener"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-15/13690460.webp" alt="컨텍스트 창 안에 시스템 프롬프트와 스킬 이름표(bigquery, docx, pdf 등)가 깔려 있고 사용자의 PDF 요청 뒤에 Claude 가 Bash 로 pdf/SKILL.md 와 forms.md 를 차례로 읽는 그림" loading="lazy"></a>
+          <figcaption class="sk-cap">Skills and the Context Window — 모델이 처음 받는 기본 지시 뒤에 스킬마다 짧은 이름표가 붙고(Short snippets), Claude 가 PDF 스킬을 읽기로 정한 뒤(decides to trigger) SKILL.md 다음에 forms.md 를 읽습니다. claude.ai 환경이라 Bash 의 <code>cat</code> 으로 읽습니다 — Anthropic, <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Equipping agents for the real world with Agent Skills</a>, 2025-10-16.</figcaption>
+        </figure>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap sk-two sk-split">
+    <div class="sk-col sk-ta">
+      <h2>여러 도구가 같은 SKILL.md 를 읽는 이유</h2>
+      <p>Anthropic 은 2025년 10월 16일 Claude 에 스킬을 내놓았고 12월 18일 이 형식을 공개 표준(open standard)으로 풀었습니다. 공개 표준은 누구나 따라 만들 수 있게 공개한 약속입니다. 2026년 10월 15일 agentskills.io 첫 화면에는 이 형식을 지원하는 도구 46곳의 로고가 올라 있습니다. Codex, Cursor, Gemini CLI, GitHub Copilot, Kiro 도 그 안에 있습니다.</p>
+    </div>
+    <figure class="sk-fig sk-tf sk-std" data-figure>
+      <div class="doc">
+        <div class="tt">db-migration/SKILL.md 프런트매터</div>
+        <div class="lay std">
+          <h3>표준 칸 <span>agentskills.io 규격 · 어느 도구든</span></h3>
+          <pre>name: db-migration          <span class="q"># 필수</span>
+description: DB 표 구조를 … <span class="q"># 필수</span>
+license: MIT                <span class="q"># 선택</span>
+metadata:                   <span class="q"># 선택</span>
+  author: attendance-team
+allowed-tools: Bash(git:*)  <span class="q"># 선택, 실험 단계 기능</span></pre>
+        </div>
+        <div class="lay ext">
+          <h3>Claude Code 확장 칸 <span>표준에 없음</span></h3>
+          <pre>disable-model-invocation: false
+  <span class="q"># 기본값. true 면 사람이 /이름 으로만 연다</span>
+context: fork       <span class="q"># 다른 책상에서 실행</span>
+paths: "migrations/**"</pre>
+        </div>
+      </div>
+      <div class="sk-paths" aria-label="같은 폴더를 도구마다 다른 위치에 둔다">
+        <span class="tool">Claude Code</span><span class="p">.claude/skills/<wbr><em>db-migration/</em></span>
+        <span class="tool">Codex</span><span class="p">.agents/skills/<wbr><em>db-migration/</em></span>
+      </div>
+      <ol class="sk-time" aria-label="SKILL.md 형식이 퍼진 순서">
+        <li><span class="d">2025-10-16</span><b>Claude 에 스킬 출시</b><small>Anthropic 공지</small></li>
+        <li><span class="d">2025-12-18</span><b>공개 표준으로 풀림</b><small>누구나 같은 형식으로</small></li>
+        <li class="now"><span class="d">2026-10-15</span><b>지원 도구 46곳</b><small>Codex · Cursor · Gemini CLI · GitHub Copilot · Kiro …</small></li>
+      </ol>
+      <figcaption class="sk-cap">회색 판은 어느 도구로 옮겨도 같은 뜻인 칸, 점선 판은 Claude Code 만 정한 칸입니다. 폴더는 그대로 두고 위치만 도구가 찾는 곳으로 옮깁니다. 칸 목록은 agentskills.io 규격과 Claude Code·Codex 문서(2026-10-15)로 확인했습니다. 연표는 Anthropic 공지와 agentskills.io 첫 화면 기준입니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-tb">
+      <p>받아들이기 쉬운 형식이라서입니다. <code>#</code> 같은 기호로 제목을 표시하는 평범한 글인 마크다운(Markdown)이 든 폴더라 실행 엔진도 서버도 필요 없습니다. 도구는 시작할 때 이름표를 읽고 필요할 때 파일을 열기만 하면 됩니다. 만드는 쪽도 한 번 써 둔 스킬을 도구를 바꿔도 그대로 가져갑니다.</p>
+      <p>모두 같지는 않습니다. 표준이 정한 칸은 <code>name</code>·<code>description</code> 과 몇 가지 선택 칸뿐입니다. 이름을 불러야만 여는 칸, 일을 떼어 맡는 보조 에이전트인 서브에이전트(subagent)에서 돌리는 <code>context: fork</code> 같은 칸은 Claude Code 가 더한 것이라 다른 도구가 같은 뜻으로 읽는다는 보장이 없습니다. 폴더 위치도 도구마다 다릅니다.</p>
+      <p>남이 만든 스킬을 나눠 받는 곳도 생겼습니다. Vercel 이 운영하는 skills.sh 에서는 1위 스킬 find-skills 의 설치 수가 390만입니다(2026-10-15). 스킬에 든 스크립트는 내 컴퓨터에서 실행되니 받기 전에 폴더를 열어 보는 편이 안전합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap sk-two sk-split">
+    <div class="sk-col sk-ta">
+      <h2>서브에이전트에게는 일을 봉투째 맡깁니다</h2>
+      <p>서브에이전트는 메인 에이전트가 일을 떼어 맡기는 보조 에이전트입니다. 자기 책상(컨텍스트 창)을 따로 써서 파일을 수십 개 읽어도 메인 대화에는 요약만 돌아옵니다. 책상을 나눠 쓰면 무엇이 좋은지는 <a href="/posts/context-engineering-claude-md-agents-md">컨텍스트 엔지니어링 글</a>에 정리했습니다.</p>
+    </div>
+    <figure class="sk-fig sk-tf" data-figure>
+      <div class="sk-env" data-env aria-label="메인 대화에서 쪽지 한 장을 봉투에 담아 migration-reviewer 서브에이전트에게 보낸다. 서브에이전트 책상에는 자기 지침, CLAUDE.md, db-migration 스킬, 쪽지, 허락된 도구만 있다. 메인의 대화 120턴은 가져가지 않고 결과 요약 한 장만 메인 대화로 돌아온다">
+        <div class="sk-desk sk-main">
+          <h3>메인 대화</h3>
+          <div class="it">대화 120턴<small>요청·읽은 파일·고친 기록</small></div>
+          <div class="it me">쪽지<small>"방금 만든 20261015_add_birthday.sql 을 검토해 줘. 적용된 파일을 건드렸는지 봐 줘."</small></div>
+          <div class="it ai sk-back" data-back>돌아온 결과 요약 1장<small>"문제 없음, 새 파일만 추가됨"</small></div>
+        </div>
+        <div class="sk-mid" aria-hidden="true">
+          <svg class="env" viewBox="0 0 40 28"><rect x="2" y="2" width="36" height="24" rx="4" fill="var(--me-soft)" stroke="var(--me)" stroke-width="2.5"/><path d="M3 4 L20 16 L37 4" stroke="var(--me)" stroke-width="2.5" fill="none" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 54 20"><path d="M4 10 H42" stroke="var(--me)" stroke-width="2.5" fill="none"/><path d="M40 4 L50 10 L40 16 z" fill="var(--me)"/></svg>
+          <span class="lb">쪽지만</span>
+        </div>
+        <div class="sk-desk sk-subd" data-subd>
+          <h3>서브에이전트 책상<small>migration-reviewer</small></h3>
+          <div class="it me">자기 업무 지침<small>정의 파일 본문이 기본 지시가 됨</small></div>
+          <div class="it">CLAUDE.md · 프로젝트 변경 상태<small>CLAUDE.md 는 프로젝트 규칙을 적어 두면 세션마다 읽는 파일</small></div>
+          <div class="it ai">db-migration 스킬 본문<small>정의 파일이 미리 펼쳐 둔 스킬</small></div>
+          <div class="it me">받은 쪽지</div>
+          <div class="tools"><span>Read</span><span>Grep</span><span>Glob</span><span class="no">Edit</span><span class="no">Bash</span></div>
+          <div class="it stay"><span class="x">✕</span>메인 대화 120턴은 가져오지 않음</div>
+        </div>
+        <svg class="sk-retsvg" data-retsvg aria-hidden="true"></svg>
+        <p class="sk-retlb" data-retlb>결과 요약 1장만 메인 대화로 돌아옵니다</p>
+      </div>
+      <figcaption class="sk-cap">무엇이 서브에이전트 책상에 깔리는지는 Claude Code 문서 「Extend Claude Code」의 Subagents 항목을 따랐습니다. 쪽지·결과 문구와 120턴은 설명을 위한 예시입니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-tb">
+      <p>이 글에서는 서브에이전트 하나를 파일 하나로 정의하는 쪽을 다룹니다. 일꾼에게 봉투를 건네 심부름을 보내는 것과 비슷합니다. 일꾼은 봉투에 든 쪽지와 자기 업무 지침만 들고 갑니다. 그래서 메인 대화에서 120턴 동안 나눈 이야기는 모릅니다. 필요한 사정은 쪽지에 다 적어야 합니다.</p>
+      <p>스킬과 헷갈리기 쉽습니다. 스킬은 내 책상에 펼쳐 놓고 따르는 설명서라서 단계마다 지켜보며 방향을 바꿀 수 있습니다. 서브에이전트는 다른 책상에서 일하고 결과만 가져옵니다. 중간 과정을 다시 볼 일이 없는 곁일이면 서브에이전트가 맞습니다.</p>
+    </div>
+  </div>
+  <div class="sk-wrap sk-code">
+    <div>
+<pre data-title=".claude/agents/migration-reviewer.md" data-hl="3,6,8,10-11,14" data-start="1"><code class="language-markdown">---
+# ① 이름과 언제 맡길지
+name: migration-reviewer
+description: 마이그레이션 파일을 만든 뒤 검토할 때 쓴다.
+  적용된 파일 수정과 되돌릴 수 없는 삭제를 찾는다.
+# ② 손에 쥘 도구
+tools: Read, Grep, Glob
+# ③ 쓸 모델
+model: sonnet
+# ④ 처음부터 펼쳐 둘 스킬
+skills:
+  - db-migration
+---
+&lt;!-- ⑤ 여기부터 시스템 프롬프트 --&gt;
+너는 DB 마이그레이션 검토자다.
+migrations/applied/ 아래 파일이 바뀌었으면 가장 먼저 알린다.
+DROP 처럼 되돌릴 수 없는 명령을 찾는다.
+고치지 말고 찾은 것만 짧게 보고한다.</code></pre>
+    </div>
+    <ol class="pg-code-notes">
+      <li><code>name</code> 은 일꾼의 이름, <code>description</code> 은 메인 에이전트가 "이 일은 이 일꾼에게" 하고 고를 때 읽는 설명입니다. 스킬의 이름표와 같은 역할입니다.</li>
+      <li><code>tools</code> 에 적은 도구만 쓸 수 있습니다. 검토자는 읽기만 하면 되니 파일을 읽는 Read, 글자를 찾는 Grep, 파일 이름으로 찾는 Glob 만 줍니다. 파일을 고치는 Edit 이나 명령을 실행하는 Bash 는 빼 둡니다. 빼면 메인 에이전트가 가진 도구를 그대로 받습니다.</li>
+      <li>쓸 모델을 고를 수 있습니다. sonnet 은 중간급이고 haiku 가 더 빠르고 쌉니다. 빼면 메인 대화와 같은 모델을 씁니다.</li>
+      <li>여기 적은 스킬은 이름표가 아니라 본문 전체가 처음부터 책상에 깔립니다. 서브에이전트 안에서는 단계적 공개 대신 미리 실어 두는 셈입니다.</li>
+      <li>프런트매터 아래 본문은 이 일꾼의 시스템 프롬프트(system prompt)가 됩니다. 대화를 시작하기 전에 깔리는 기본 지시입니다. 쪽지는 이 지시 위에 얹혀 들어갑니다.</li>
+    </ol>
+  </div>
+  <div class="sk-wrap sk-two sk-after">
+    <div class="sk-col">
+      <p>파일은 프로젝트의 <code>.claude/agents/</code> 나 내 컴퓨터 전체에 쓰는 <code>~/.claude/agents/</code> 에 둡니다. Claude Code 에는 처음부터 든 일꾼도 있습니다. 읽기만 하며 코드를 찾는 Explore, 계획 모드에서 조사하는 Plan, 무엇이든 하는 general-purpose 가 그렇습니다.</p>
+      <p>서브에이전트는 다시 서브에이전트를 부를 수 있습니다. 기본값은 메인 대화 아래로 세 층까지, 동시에 20개까지입니다. 다만 일꾼이 쓰는 토큰도 내 사용량에 똑같이 잡힙니다.</p>
+    </div>
+    <figure class="sk-fig sk-crew" data-figure>
+      <div class="sk-built" aria-label="처음부터 든 일꾼 세 가지">
+        <p class="hd">처음부터 든 일꾼</p>
+        <span><b>Explore</b>읽기만 하며 코드 찾기</span>
+        <span><b>Plan</b>계획 모드에서 조사</span>
+        <span><b>general-purpose</b>무엇이든</span>
+      </div>
+      <div class="sk-depth" aria-label="메인 대화 아래로 일꾼이 일꾼을 부르는 층. 기본값은 세 층까지이고 동시에 20개까지 돈다">
+        <div class="lv l0"><span class="bx main">메인 대화</span></div>
+        <div class="lv l1"><span class="tg">1층</span><span class="bx">일꾼</span></div>
+        <div class="lv l2"><span class="tg">2층</span><span class="bx">일꾼이 부른 일꾼</span></div>
+        <div class="lv l3"><span class="tg">3층</span><span class="bx">그 아래 일꾼</span></div>
+        <div class="lv l4"><span class="bx no">✕ 기본값으로는 여기까지</span></div>
+        <div class="sk-twenty" aria-hidden="true"><p>동시에 <b>20개</b>까지</p><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      </div>
+      <figcaption class="sk-cap">층 수와 동시 개수는 Claude Code 문서 「Create custom subagents」의 기본값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap">
+    <h2>훅은 정해진 순간마다 스크립트를 실행합니다</h2>
+    <div class="sk-col">
+      <p>CLAUDE.md 와 스킬은 부탁입니다. 모델이 읽고 판단해서 따르기 때문에 어길 수 있습니다. Claude Code 문서도 "<code>.env</code> 를 고치지 마" 같은 지시는 보장이 아니라 요청이라고 적었습니다. <code>.env</code> 는 비밀번호 같은 설정값을 담는 파일입니다.</p>
+      <p>훅(hook)은 Claude Code 가 일하는 흐름의 정해진 순간마다 내가 정한 스크립트를 실행하는 장치입니다. 그 순간을 이벤트(event)라고 부릅니다. 실행 여부를 모델이 고르지 않고 Claude Code 가 매번 실행합니다. 학교 정문의 출입 확인과 비슷합니다. 다만 사람 경비원과 달리 적어 둔 검사만 합니다.</p>
+    </div>
+    <figure class="sk-fig sk-wide sk-flow" data-figure>
+      <div class="sk-legend sk-flowleg">
+        <span><i class="bar"></i>막을 수 있는 순간</span>
+        <span><i class="ring"></i>알리기만 하는 순간</span>
+      </div>
+      <svg data-flowsvg viewBox="0 0 1060 330" role="img" aria-label="세션 시작, 사람 요청, 모델과 도구가 주고받는 반복, 응답 끝, 세션 끝으로 이어지는 흐름 위에 훅이 끼어드는 여섯 순간. UserPromptSubmit, PreToolUse, Stop 은 막을 수 있고 SessionStart, PostToolUse, SessionEnd 는 알리기만 한다"></svg>
+      <figcaption class="sk-cap">Claude Code 문서의 이벤트 33가지(2026-10-15) 가운데 자주 쓰는 여섯 가지만 그렸습니다. 막을 수 있는지와 아래 예시 용도는 Hooks reference 와 hooks-guide 를 따랐습니다.</figcaption>
+    </figure>
+    <div class="sk-after sk-hookset">
+      <div class="sk-col">
+        <p>훅은 설정 파일에 등록합니다. 프로젝트 코드와 변경 기록을 모아 둔 곳을 저장소(repository)라고 하는데 저장소에 함께 올려 팀이 같이 쓰려면 <code>.claude/settings.json</code>, 나만 쓰려면 <code>~/.claude/settings.json</code> 입니다. 어떤 이벤트에서 어떤 도구일 때(<code>matcher</code>), 무엇을 실행할지를 적습니다.</p>
+        <p>이 설정은 파일을 고치는 Edit·Write 도구가 실행되기 직전마다 <code>protect-files.sh</code> 를 돌립니다. 훅은 모델의 책상을 쓰지 않습니다. 결과를 돌려줄 때만 그 글이 대화에 들어갑니다.</p>
+      </div>
+<pre data-title=".claude/settings.json" data-hl="3-4,7" data-start="1"><code class="language-json">{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Edit|Write",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh"
+      }]
+    }]
+  }
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec sk-lab">
+  <div class="sk-wrap">
+    <h2>막는 것은 종료 코드 2뿐입니다</h2>
+    <div class="sk-col">
+      <p>스크립트가 끝날 때 돌려주는 숫자를 종료 코드(exit code)라고 합니다. 훅에서는 이 숫자가 결과를 정합니다. 0 은 이의 없음, 2 는 막기입니다. 그 밖의 숫자는 오류 표시만 남기고 그대로 진행합니다. 프로그래밍에서는 흔히 1 을 "실패"로 쓰는데 훅을 1 로 끝내면 아무것도 막지 못합니다.</p>
+    </div>
+  </div>
+  <div class="sk-band">
+    <div class="sk-wrap">
+      <div class="sk-labtop">
+        <div>
+          <p class="sk-try">👆 에이전트가 시도할 도구 호출을 하나 고르세요</p>
+          <div class="sk-calls" role="group" aria-label="도구 호출 고르기">
+            <button type="button" class="sk-call" data-call="applied" aria-pressed="false"><span class="t">Edit · 적용된 마이그레이션 고치기</span><span class="p">migrations/applied/20261001_init.sql</span></button>
+            <button type="button" class="sk-call" data-call="new" aria-pressed="false"><span class="t">Write · 새 마이그레이션 만들기</span><span class="p">migrations/20261015_add_birthday.sql</span></button>
+            <button type="button" class="sk-call" data-call="env" aria-pressed="false"><span class="t">Edit · 설정값 파일 고치기</span><span class="p">.env</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="sk-labgrid">
+        <div class="sk-exitrow">
+          <p class="sk-try">스크립트 9번 줄 바꾸기</p>
+          <div class="sk-tog" role="group" aria-label="막을 때 쓰는 종료 코드" data-exit>
+            <button type="button" data-v="2" aria-pressed="true">exit 2</button>
+            <button type="button" data-v="1" aria-pressed="false">exit 1</button>
+          </div>
+        </div>
+        <figure class="sk-fig sk-gate" data-figure>
+          <svg data-gatesvg viewBox="0 0 520 210" role="img" aria-label="Claude 의 도구 호출이 PreToolUse 훅 검문소를 지나 파일에 닿거나, 막혀서 사유가 Claude 에게 돌아가는 그림"></svg>
+        </figure>
+        <div class="sk-tr" data-tr aria-live="polite"><p class="sk-hint">호출을 고르면 훅이 그 호출을 받아 스크립트를 실행합니다. 실행된 줄은 옅은 보라, 스크립트가 끝난 줄은 진한 보라로 칠해집니다.</p></div>
+        <div class="sk-script" aria-label="protect-files.sh 스크립트">
+          <div class="tt"><span>.claude/hooks/protect-files.sh</span></div>
+          <ol data-script>
+            <li data-l="1">#!/bin/bash</li>
+            <li data-l="2">INPUT=$(cat)  <span class="cm"># 훅이 받은 도구 호출(JSON)</span></li>
+            <li data-l="3">FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')</li>
+            <li data-l="4">PROTECTED=(".env" "migrations/applied/")</li>
+            <li data-l="5">for pattern in "${PROTECTED[@]}"; do</li>
+            <li data-l="6">  if [[ "$FILE_PATH" == *"$pattern"* ]]; then</li>
+            <li data-l="7">    echo "Blocked: $FILE_PATH is protected" &gt;&amp;2</li>
+            <li data-l="8">    <span class="cm"># 막을 때 돌려줄 종료 코드</span></li>
+            <li data-l="9" class="end" data-exitline>    <span class="ex">exit 2</span></li>
+            <li data-l="10">  fi</li>
+            <li data-l="11">done</li>
+            <li data-l="12" class="end" data-okline>exit 0</li>
+          </ol>
+        </div>
+      </div>
+      <p class="sk-cap sk-labcap">스크립트는 Claude Code 문서 hooks-guide 의 「Block edits to protected files」 예시에서 보호할 이름만 이 앱에 맞게 바꿨습니다. 2번 줄은 훅이 넘겨받은 도구 호출 내용을 <code>$INPUT</code> 에 담고 3번 줄은 JSON 형식 글을 읽는 프로그램 jq 로 그 안의 파일 경로만 꺼냅니다. 옅은 보라 줄은 고른 호출이 실행한 줄이고 진한 보라 줄은 스크립트가 끝난 줄입니다. 막힌 뒤 Claude 가 하는 말은 예시입니다.</p>
+    </div>
+  </div>
+  <div class="sk-wrap sk-two sk-after">
+    <div class="sk-col">
+      <p>막을 때 <code>&gt;&amp;2</code> 로 내보낸 글이 stderr(오류 메시지를 내보내는 통로)입니다. PreToolUse 훅이 2 로 끝나면 이 글이 Claude 에게 사유로 전달되고 Claude 는 다른 방법을 찾습니다. 0 으로 끝난다고 허락되는 것도 아닙니다. 훅이 반대하지 않았을 뿐이고 평소의 권한 확인, 즉 Claude Code 가 사람에게 실행해도 되는지 묻는 단계는 그대로 거칩니다.</p>
+      <p>Stop 훅에 테스트를 걸면 테스트가 통과할 때까지 Claude 가 일을 끝내지 못하게 할 수 있습니다. 끝없이 돌지 않도록 Claude Code 는 Stop 훅이 그 사이 도구 호출 없이 여덟 번 연속으로 막으면 훅을 넘기고 끝냅니다.</p>
+    </div>
+    <figure class="sk-fig sk-stop" data-figure>
+      <p class="hd">Stop 훅이 끝내기를 막은 횟수 <small>사이에 도구 호출 없음</small></p>
+      <ol aria-label="Stop 훅이 1번부터 8번까지 연속으로 막으면 Claude Code 가 훅을 넘기고 끝낸다"><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li></ol>
+      <div class="end"><span class="ar" aria-hidden="true">↓</span><span class="bx">8번 연속이면 Claude Code 가 훅을 넘기고 응답을 끝냄</span></div>
+      <figcaption class="sk-cap">빨간 칸 하나가 Stop 훅이 exit 2 로 끝내기를 막은 한 번입니다. 여덟 번은 Claude Code 문서 hooks-guide 의 값입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap sk-two sk-split">
+    <div class="sk-col sk-ta">
+      <h2>무엇을 어디에 둘지 고르는 기준</h2>
+      <p>네 가지는 언제 책상에 올라오는지와 얼마나 확실히 지켜지는지가 다릅니다. 저도 처음에는 전부 CLAUDE.md 에 적었다가 파일이 길어지고 "절대 금지" 줄이 가끔 무시되는 걸 보고 나눴습니다.</p>
+    </div>
+    <figure class="sk-fig sk-tf sk-map" data-figure>
+      <div class="sk-mapg" aria-label="세로는 책상에 올라오는 때(늘, 필요할 때, 다른 책상, 안 올라옴), 가로는 지켜지는 방식(모델이 읽고 판단, 코드가 매번 실행). CLAUDE.md 는 늘·판단, 스킬은 필요할 때·판단(이름표만 늘), 서브에이전트는 다른 책상·판단, 훅은 안 올라옴·코드가 매번">
+        <div></div><div class="yl">모델이 읽고 판단</div><div class="yl code">코드가 매번 실행</div>
+        <div class="xl"><b>늘</b>세션마다</div>
+        <div class="cell"><div class="dot"><b>CLAUDE.md</b><small>빌드 명령, 관례</small></div><div class="dot ghost"><b>이름표</b><small>스킬 description</small></div></div>
+        <div class="cell empty"></div>
+        <div class="xl"><b>필요할 때</b>펼침</div>
+        <div class="cell"><div class="dot ai"><b>스킬</b><small>배포 절차, API 규칙</small></div></div>
+        <div class="cell empty"></div>
+        <div class="xl"><b>다른 책상</b>요약만</div>
+        <div class="cell"><div class="dot"><b>서브에이전트</b><small>대량 조사, 새 눈 검토</small></div></div>
+        <div class="cell empty"></div>
+        <div class="xl"><b>안 올라옴</b>밖에서 실행</div>
+        <div class="cell empty"></div>
+        <div class="cell"><div class="dot code"><b>훅</b><small>.env 막기, 고친 뒤 정렬</small></div></div>
+      </div>
+      <figcaption class="sk-cap">위치는 Claude Code 문서 「Extend Claude Code」의 기능별 로딩 표를 옮긴 것입니다. 스킬의 이름표는 CLAUDE.md 처럼 늘 올라가서 점선으로 따로 그렸습니다. 훅도 결과를 돌려주면 그 글은 책상에 들어옵니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-tb">
+      <p>Claude Code 문서는 무엇을 언제 더할지 신호로 알려 줍니다.</p>
+      <ul class="sk-list">
+        <li>같은 관례나 명령을 두 번 틀린다 → CLAUDE.md</li>
+        <li>같은 절차를 세 번째 붙여 넣는다 → 스킬</li>
+        <li>곁일의 출력이 대화를 덮는다 → 서브에이전트</li>
+        <li>묻지 않아도 매번 일어나야 한다 → 훅</li>
+        <li>두 번째 저장소에도 같은 설정이 필요하다 → 플러그인(plugin)</li>
+      </ul>
+      <p>CLAUDE.md 를 다시 읽으며 고를 수도 있습니다. "매번 X 하면 Y 해"라는 줄은 훅 후보, "절대 하지 마"는 막는 장치가 필요한 줄, 30줄짜리 절차는 스킬 후보입니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec">
+  <div class="sk-wrap sk-two sk-split">
+    <div class="sk-col sk-ta">
+      <h2>네 가지를 한 폴더에 묶은 플러그인</h2>
+      <p>플러그인은 스킬, 서브에이전트, 훅, MCP 서버를 한 번에 설치하는 묶음 폴더입니다. MCP 서버는 에이전트를 회사 시스템에 잇는 연결 프로그램입니다(<a href="/posts/mcp-model-context-protocol-usb-c">MCP 글</a>). 폴더 안 <code>.claude-plugin/plugin.json</code> 이 이름과 버전을 적은 안내 파일입니다. 출석 앱에서 만든 스킬과 검토자, 보호 훅을 <code>db-kit</code> 으로 묶으면 다른 저장소에서도 한 번에 쓸 수 있습니다.</p>
+    </div>
+    <figure class="sk-fig sk-plug sk-tf" data-figure>
+      <div class="pk"><span class="ic" aria-hidden="true">📦</span><div><b>db-kit</b><small>.claude-plugin/plugin.json · 이름·버전·설명</small></div></div>
+      <div class="go"><svg viewBox="0 0 20 44" aria-hidden="true"><path d="M10 2 V34" stroke="var(--fg-neutral)" stroke-width="2.5" fill="none"/><path d="M3 30 L10 42 L17 30 z" fill="var(--fg-neutral)"/></svg><span>설치하면 네 칸으로 나뉩니다</span></div>
+      <div class="tray">
+        <div class="pt"><p class="nm">스킬 서랍</p><div class="mini-dr"><b>/db-kit:<wbr>db-migration</b><span>이름표만 늘 책상에</span></div><p class="fp">skills/<wbr>db-migration/<wbr>SKILL.md</p></div>
+        <div class="pt"><p class="nm">서브에이전트 책상</p><div class="mini-desk"><b>migration-reviewer</b><span>맡길 때만 따로 일함</span></div><p class="fp">agents/<wbr>migration-reviewer.md</p></div>
+        <div class="pt"><p class="nm">훅 검문소</p><div class="mini-gate"><i aria-hidden="true"></i><span><b>PreToolUse</b>편집 직전마다 보호 파일 검사</span></div><p class="fp">hooks/hooks.json</p></div>
+        <div class="pt"><p class="nm">MCP 연결</p><div class="mini-mcp"><span aria-hidden="true">🔌</span><span>DB 를 읽는 MCP 서버</span></div><p class="fp">.mcp.json</p></div>
+      </div>
+      <figcaption class="sk-cap">폴더 구성과 각 파일이 세션에서 하는 일은 Claude Code 문서 「Plugins overview」의 my-plugin 그림을 이 앱의 이름으로 옮겨 그렸습니다.</figcaption>
+    </figure>
+    <div class="sk-col sk-tb">
+      <p>플러그인은 플러그인 목록을 모아 둔 저장소인 마켓플레이스(marketplace)에서 받습니다. Claude Code 안에서 <code>/plugin</code> 을 열면 Anthropic 공식 목록이 보입니다. 플러그인 안의 스킬은 <code>/db-kit:db-migration</code> 처럼 플러그인 이름이 앞에 붙어 다른 플러그인과 겹치지 않습니다.</p>
+      <p>켜 둔 플러그인은 쓰지 않는 세션에도 붙어 있습니다. 스킬과 일꾼의 이름표가 매번 책상에 올라가고 훅은 이벤트마다 돕니다. 안에 든 코드는 내 권한으로 실행됩니다. 공식 목록은 설치 전에 책상을 얼마나 차지할지 어림한 값을 Context cost(컨텍스트 비용) 칸에 보여 주니 확인하고 받습니다.</p>
+      <p class="sk-close">한 번 설명한 것은 파일로 남기고 꼭 지킬 것은 코드로 막습니다. 이 두 가지면 같은 설명을 되풀이하지 않아도 됩니다.</p>
+      <p>에이전트가 이렇게 손에 익으면 코드는 빨리 늘어납니다. 다음 글은 늘어난 코드를 사람이 읽고 승인하는 리뷰가 왜 막히는지 다룹니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sk-sec sk-refs" style="padding-bottom: clamp(80px, 10vw, 120px)">
+  <div class="sk-wrap sk-refhead">
+    <h2>참고 자료</h2>
+    <ul>
+      <li><a href="https://agentskills.io/" target="_blank" rel="noopener">Agent Skills Overview — agentskills.io</a> (세 단계, 지원 도구 로고 46곳, 2026-10-15 확인)</li>
+      <li><a href="https://agentskills.io/specification" target="_blank" rel="noopener">Agent Skills Specification — agentskills.io</a> (프런트매터 칸, 100 토큰·5,000 토큰·500줄 권장)</li>
+      <li><a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Equipping agents for the real world with Agent Skills — Anthropic (2025-10-16, 공개 표준 업데이트 2025-12-18)</a></li>
+      <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Extend Claude with skills — Claude Code Docs</a> (확장 칸, 압축 뒤 5,000·25,000 토큰)</li>
+      <li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Create custom subagents — Claude Code Docs</a> (정의 파일 칸, 기본 일꾼, 세 층·20개)</li>
+      <li><a href="https://code.claude.com/docs/en/hooks-guide" target="_blank" rel="noopener">Automate actions with hooks — Claude Code Docs</a> (protect-files.sh, 종료 코드, Stop 훅 여덟 번)</li>
+      <li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Hooks reference — Claude Code Docs</a> (이벤트 33가지, 이벤트별 exit 2 동작)</li>
+      <li><a href="https://code.claude.com/docs/en/features-overview" target="_blank" rel="noopener">Extend Claude Code — Claude Code Docs</a> (기능별 로딩·비용 표, 언제 무엇을 더할지)</li>
+      <li><a href="https://code.claude.com/docs/en/plugins" target="_blank" rel="noopener">Plugins overview — Claude Code Docs</a></li>
+      <li><a href="https://claude.com/blog/steering-claude-code-skills-hooks-rules-subagents-and-more" target="_blank" rel="noopener">Steering Claude Code: when to use CLAUDE.md, skills, hooks, and subagents — Anthropic (2026-06-18)</a></li>
+      <li><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noopener">Build skills — OpenAI Codex 문서</a> (.agents/skills, 같은 SKILL.md)</li>
+      <li><a href="https://skills.sh/" target="_blank" rel="noopener">skills.sh — Vercel</a> (설치 순위, 2026-10-15 확인)</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null && attrs[k] !== "") e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  const arrowDefs = (svg, id, color) => {
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 10, markerHeight: 10, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+  };
+
+  /* ---------- 히어로: 서랍장 ---------- */
+  (() => {
+    const stage = $(".sk-stage"); if (!stage) return;
+    const LABELS = 450, FULL = 11650;
+    const PLAN = {
+      db: { open: "db", body: 1900, att: [["ref", 700], ["run", 30]], note: "'표에 칸 추가'가 <b class=\"t\">db-migration</b> 이름표와 맞아 본문을 펼쳤습니다. 본문이 가리킨 이름 규칙 파일도 읽었습니다. check.sh 는 내용을 읽지 않고 실행만 해서 출력 한 줄만 올라왔습니다." },
+      rel: { open: "rel", body: 1200, att: [], note: "<b class=\"t\">release-notes</b> 본문만 펼쳤습니다. 본문 안에서 끝나는 일이라 부록은 열지 않았습니다." },
+      ui: { open: null, body: 0, att: [], note: "맞는 이름표가 없어 어떤 서랍도 열지 않았습니다. 모델이 스킬 없이 평소대로 처리하고 책상에는 이름표 450 토큰만 남습니다." },
+    };
+    const asks = $$(".sk-ask", stage), drawers = $$(".sk-dr", stage);
+    const tokEl = $("[data-tok]", stage), mtokEl = $("[data-mtok]", stage);
+    const notes = [$("[data-note]", stage), $("[data-mnote]", stage)];
+    const setNote = (html) => notes.forEach((n) => { n.innerHTML = html; });
+    const bars = [[$("[data-g]", stage), $("[data-t]", stage), $("[data-c]", stage)], [$("[data-mg]", stage), $("[data-mt]", stage), $("[data-mc]", stage)]];
+    let timers = [], shown = LABELS, raf = 0;
+    const later = (fn, ms) => { timers.push(setTimeout(fn, reduced() ? 0 : ms)); };
+    const setBar = (teal, code) => {
+      const p = (v) => (v / FULL * 100) + "%";
+      for (const [g, t, c] of bars) {
+        g.style.width = p(LABELS);
+        t.style.left = p(LABELS); t.style.width = p(teal);
+        c.style.left = p(LABELS + teal); c.style.width = code ? `max(3px, ${p(code)})` : "0";
+      }
+    };
+    const setTok = (to) => {
+      cancelAnimationFrame(raf);
+      const from = shown, t0 = performance.now(), dur = reduced() ? 0 : 500;
+      const step = (now) => {
+        const k = dur ? Math.min(1, (now - t0) / dur) : 1;
+        shown = from + (to - from) * (1 - Math.pow(1 - k, 3));
+        tokEl.textContent = fmt(shown); mtokEl.textContent = fmt(shown);
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    setBar(0, 0);
+    const reset = () => {
+      timers.forEach(clearTimeout); timers = [];
+      drawers.forEach((d) => { d.classList.remove("open", "scan", "miss"); $$(".f", d).forEach((f) => f.classList.remove("on")); });
+    };
+    const run = (key) => {
+      reset();
+      asks.forEach((a) => a.setAttribute("aria-pressed", String(a.dataset.ask === key)));
+      const plan = PLAN[key];
+      setNote("요청과 이름표 다섯 장을 견주는 중…");
+      setTok(LABELS); setBar(0, 0);
+      drawers.forEach((d, i) => {
+        later(() => d.classList.add("scan"), 120 * i);
+        later(() => { d.classList.remove("scan"); if (d.dataset.sk !== plan.open) d.classList.add("miss"); }, 120 * i + 260);
+      });
+      const t1 = 120 * drawers.length + 300;
+      later(() => {
+        setNote(plan.note);
+        if (!plan.open) return;
+        const d = drawers.find((x) => x.dataset.sk === plan.open);
+        d.classList.add("open");
+        setTok(LABELS + plan.body); setBar(plan.body, 0);
+      }, t1);
+      let teal = plan.body, code = 0;
+      plan.att.forEach(([kind, n], i) => {
+        later(() => {
+          const d = drawers.find((x) => x.dataset.sk === plan.open);
+          $(`[data-att="${kind}"]`, d).classList.add("on");
+          if (kind === "run") code += n; else teal += n;
+          setTok(LABELS + teal + code); setBar(teal, code);
+        }, t1 + 800 + 650 * i);
+      });
+    };
+    asks.forEach((a) => a.addEventListener("click", () => run(a.dataset.ask), { signal }));
+  })();
+
+  /* ---------- 서브에이전트: 결과 요약이 메인 대화로 돌아오는 화살표 ---------- */
+  (() => {
+    const env = $("[data-env]"); if (!env) return;
+    const svg = $("[data-retsvg]", env), sub = $("[data-subd]", env), back = $("[data-back]", env), main = $(".sk-main", env);
+    const draw = () => {
+      const E = env.getBoundingClientRect(), S = sub.getBoundingClientRect(), B = back.getBoundingClientRect(), M = main.getBoundingClientRect();
+      if (!E.width) return;
+      svg.replaceChildren();
+      const r = (R) => ({ l: R.left - E.left, r: R.right - E.left, t: R.top - E.top, b: R.bottom - E.top, cx: R.left - E.left + R.width / 2, cy: R.top - E.top + R.height / 2 });
+      const s = r(S), b = r(B), m = r(M);
+      const line = { stroke: "var(--ai)", "stroke-width": 2.5, fill: "none", "stroke-linejoin": "round" };
+      if (mobile()) {
+        const x = E.width - 10, y = s.b + 16;
+        el("path", { d: `M ${s.cx} ${s.b + 2} V ${y} H ${x} V ${b.cy} H ${m.r + 9}`, ...line }, svg);
+        el("path", { d: `M ${m.r + 1} ${b.cy} L ${m.r + 11} ${b.cy - 6} L ${m.r + 11} ${b.cy + 6} z`, fill: "var(--ai)" }, svg);
+      } else {
+        const y = Math.max(s.b, m.b) + 24;
+        el("path", { d: `M ${s.cx} ${s.b + 2} V ${y} H ${b.cx} V ${m.b + 9}`, ...line }, svg);
+        el("path", { d: `M ${b.cx} ${m.b + 1} L ${b.cx - 6} ${m.b + 11} L ${b.cx + 6} ${m.b + 11} z`, fill: "var(--ai)" }, svg);
+      }
+    };
+    draw();
+    if ("ResizeObserver" in window) { const ro = new ResizeObserver(draw); ro.observe(env); signal?.addEventListener("abort", () => ro.disconnect()); }
+    window.addEventListener("resize", draw, { passive: true, signal });
+  })();
+
+  /* ---------- 훅 이벤트 흐름 ---------- */
+  (() => {
+    const svg = $("[data-flowsvg]"); if (!svg) return;
+    const STEPS = [
+      { id: "start", t: "세션 시작" },
+      { id: "ask", t: "사람 요청" },
+      { id: "think", t: "모델 판단" },
+      { id: "tool", t: "도구 실행" },
+      { id: "end", t: "응답 끝" },
+      { id: "close", t: "세션 끝" },
+    ];
+    const HOOKS = [
+      { at: 0, name: "SessionStart", block: false, ex: "작업 목록을 책상에 넣기" },
+      { at: 1, name: "UserPromptSubmit", block: true, ex: "비밀번호가 든 요청 막기" },
+      { at: 2, name: "PreToolUse", block: true, ex: "보호 파일 편집 막기" },
+      { at: 3, name: "PostToolUse", block: false, ex: "고친 파일 모양 정리" },
+      { at: 3, name: "Stop", block: true, ex: "테스트 통과 전엔 못 끝냄" },
+      { at: 5, name: "SessionEnd", block: false, ex: "작업 기록 남기기" },
+    ];
+    const build = (m) => {
+      svg.replaceChildren();
+      arrowDefs(svg, "skFlowA", "var(--fg-neutral)");
+      const box = (x, y, w, h, label, loop) => {
+        el("rect", { x, y, width: w, height: h, rx: 12, fill: loop ? "var(--bg-base)" : "var(--bg-subtle)", stroke: "var(--line-normal, var(--fg-neutral))", "stroke-width": 1.5 }, svg);
+        txt(svg, x + w / 2, y + h / 2 + 6, label, { "text-anchor": "middle", "font-size": 16, "font-weight": 600, fill: "var(--fg-strong)" });
+      };
+      const mark = (x, y, h, horiz) => {
+        const g = el("g", {}, svg);
+        if (h.block) {
+          if (horiz) el("rect", { x: x - 4, y: y - 22, width: 8, height: 44, rx: 3, fill: "var(--code)" }, g);
+          else el("rect", { x: x - 24, y: y - 4, width: 48, height: 8, rx: 3, fill: "var(--code)" }, g);
+        } else {
+          el("circle", { cx: x, cy: y, r: 9, fill: "var(--bg-base)", stroke: "var(--code)", "stroke-width": 3 }, g);
+        }
+        return g;
+      };
+      if (!m) {
+        svg.setAttribute("viewBox", "0 0 1060 330");
+        // 상자: 6개, 가운데 둘은 고리로 묶는다
+        const W = 128, H = 52, Y = 70;
+        const xs = [10, 194, 378, 562, 746, 922];
+        // 고리 영역
+        el("rect", { x: 362, y: 40, width: 360, height: 112, rx: 18, fill: "none", stroke: "var(--line-normal, var(--fg-neutral))", "stroke-dasharray": "5 6", "stroke-width": 1.5 }, svg);
+        txt(svg, 542, 30, "도구를 부르고 결과를 읽는 반복", { "text-anchor": "middle", "font-size": 14, fill: "var(--fg-neutral)" });
+        STEPS.forEach((s, i) => box(xs[i], Y, W, H, s.t, i === 2 || i === 3));
+        // 고리 되돌림 화살표
+        el("path", { d: `M ${xs[3] + W / 2} ${Y + H + 4} V ${Y + H + 20} H ${xs[2] + W / 2} V ${Y + H + 10}`, stroke: "var(--fg-neutral)", "stroke-width": 1.8, fill: "none", "marker-end": "url(#skFlowA)" }, svg);
+        txt(svg, xs[2] + W / 2 + 34, Y + H + 36, "결과", { "text-anchor": "middle", "font-size": 13, fill: "var(--fg-neutral)" });
+        // 연결 화살표와 훅 표시
+        for (let i = 0; i < 5; i++) {
+          const x1 = xs[i] + W + 6, x2 = xs[i + 1] - 8;
+          el("path", { d: `M ${x1} ${Y + H / 2} H ${x2}`, stroke: "var(--fg-neutral)", "stroke-width": 1.8, fill: "none", "marker-end": "url(#skFlowA)" }, svg);
+        }
+        // 훅 위치: 0=세션 시작 상자 아래, 1=요청→판단 사이, 2=판단→실행 사이, 3=실행 뒤(상자 아래 오른쪽), 4=실행→끝 사이 다음 상자 앞, 5=세션 끝 아래
+        const hx = [xs[0] + W / 2, (xs[1] + W + xs[2]) / 2, (xs[2] + W + xs[3]) / 2, xs[3] + W - 6, (xs[3] + W + xs[4]) / 2 + 6, xs[5] + W / 2];
+        HOOKS.forEach((h, i) => {
+          const x = hx[i];
+          const onArrow = i === 1 || i === 2 || i === 4;
+          const y = onArrow ? Y + H / 2 : Y + H + 2;
+          if (!onArrow) el("path", { d: `M ${x} ${Y + H} V ${Y + H + 2}`, stroke: "var(--code)", "stroke-width": 2 }, svg);
+          mark(x, y, h, true);
+          // 이름·예시: 두 줄로 엇갈려 놓고 점선으로 잇는다. PostToolUse·Stop 은 표시가 붙어 있어 지시선이 엇갈리지 않게 위·아래 줄을 나눈다
+          const LX = [74, 350, 534, 690, 850, 1000], ROW = [0, 1, 0, 0, 1, 1];
+          const lx = LX[i], ly = 214 + ROW[i] * 58;
+          el("path", { d: `M ${x} ${y + (h.block ? 24 : 11)} L ${lx} ${ly - 22}`, stroke: "var(--code)", "stroke-width": 1.2, "stroke-dasharray": "3 4", fill: "none" }, svg);
+          txt(svg, lx, ly - 4, h.name, { "text-anchor": "middle", "font-size": 14.5, "font-weight": 700, fill: "var(--code)", "font-family": "var(--font-mono)" });
+          txt(svg, lx, ly + 16, h.ex, { "text-anchor": "middle", "font-size": 13.5, fill: "var(--fg-normal)" });
+        });
+      } else {
+        // 모바일: 세로 흐름
+        const W = 120, H = 44, X = 14, gap = 92;
+        const top = 14, n = STEPS.length;
+        svg.setAttribute("viewBox", `0 0 340 ${top + n * H + (n - 1) * (gap - H) + 20}`);
+        const ys = STEPS.map((_, i) => top + i * gap);
+        el("rect", { x: X - 8, y: ys[2] - 10, width: W + 16, height: ys[3] + H - ys[2] + 20, rx: 14, fill: "none", stroke: "var(--line-normal, var(--fg-neutral))", "stroke-dasharray": "5 6", "stroke-width": 1.5 }, svg);
+        STEPS.forEach((s, i) => box(X, ys[i], W, H, s.t, i === 2 || i === 3));
+        for (let i = 0; i < n - 1; i++) el("path", { d: `M ${X + W / 2} ${ys[i] + H + 6} V ${ys[i + 1] - 8}`, stroke: "var(--fg-neutral)", "stroke-width": 1.8, fill: "none", "marker-end": "url(#skFlowA)" }, svg);
+        el("path", { d: `M ${X + 4} ${ys[3] + H / 2} H ${X - 2} V ${ys[2] + H / 2} H ${X + 2}`, stroke: "var(--fg-neutral)", "stroke-width": 1.5, fill: "none", "marker-end": "url(#skFlowA)" }, svg);
+        HOOKS.forEach((h, i) => {
+          const onArrow = i === 1 || i === 2 || i === 4;
+          const y = onArrow ? (ys[h.at] + H + ys[h.at + 1]) / 2 : ys[h.at] + H / 2;
+          const x = onArrow ? X + W / 2 : X + W + 2;
+          if (!onArrow) el("path", { d: `M ${X + W} ${y} H ${X + W + 2}`, stroke: "var(--code)", "stroke-width": 2 }, svg);
+          mark(x, y, h, false);
+          el("path", { d: `M ${x + (h.block ? 28 : 12)} ${y} H 158`, stroke: "var(--code)", "stroke-width": 1.2, "stroke-dasharray": "3 4", fill: "none" }, svg);
+          txt(svg, 164, y - 3, h.name, { "font-size": 14, "font-weight": 700, fill: "var(--code)", "font-family": "var(--font-mono)" });
+          txt(svg, 164, y + 16, h.ex, { "font-size": 13, fill: "var(--fg-normal)" });
+        });
+      }
+    };
+    responsive(build);
+  })();
+
+  /* ---------- 검문소 실험판 ---------- */
+  (() => {
+    const svg = $("[data-gatesvg]"); if (!svg) return;
+    const calls = $$(".sk-call"), tog = $("[data-exit]"), tr = $("[data-tr]");
+    const lines = $$("[data-script] li"), exitLine = $("[data-exitline] .ex");
+    let call = null, code = 2;
+    const PATH = { applied: "migrations/applied/20261001_init.sql", new: "migrations/20261015_add_birthday.sql", env: ".env" };
+    const SHORT = { applied: "applied/…init.sql", new: "…add_birthday.sql", env: ".env" };
+    const draw = (state) => {
+      const m = mobile();
+      const W = m ? 340 : 520, bw = m ? 104 : 150, gx = W / 2, fx = W - bw - 2;
+      svg.setAttribute("viewBox", m ? `0 14 ${W} 194` : `0 0 ${W} 210`);
+      svg.replaceChildren();
+      arrowDefs(svg, "skGateA", "var(--fg-neutral)");
+      arrowDefs(svg, "skGateB", "var(--bad)");
+      arrowDefs(svg, "skGateO", "var(--ok)");
+      arrowDefs(svg, "skGateW", "var(--me)");
+      const cx = 2 + bw / 2, fcx = fx + bw / 2;
+      // Claude 상자
+      el("rect", { x: 2, y: 46, width: bw, height: 74, rx: 12, fill: "var(--bg-base)", stroke: "var(--line-normal, var(--fg-neutral))", "stroke-width": 1.5 }, svg);
+      txt(svg, cx, 76, "Claude", { "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "var(--fg-strong)" });
+      const sub = !call ? "호출 대기" : (call === "new" ? "Write" : "Edit") + (m ? "" : " " + SHORT[call]);
+      txt(svg, cx, 100, sub, { "text-anchor": "middle", "font-size": 13, fill: "var(--fg-neutral)", "font-family": "var(--font-mono)" });
+      // 검문소
+      el("rect", { x: gx - 62, y: 18, width: 124, height: 28, rx: 8, fill: "var(--code-soft)", stroke: "var(--code)", "stroke-width": 1.5 }, svg);
+      txt(svg, gx, 37, "PreToolUse 훅", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: "var(--fg-strong)" });
+      el("rect", { x: gx - 5, y: 52, width: 10, height: 68, rx: 4, fill: state === "block" ? "var(--bad)" : "var(--code)", opacity: state === "idle" ? 0.45 : 1 }, svg);
+      if (state === "leak") txt(svg, gx, 142, "hook error", { "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "var(--me)", "font-family": "var(--font-mono)" });
+      // 파일 상자
+      const fileBad = state === "leak";
+      el("rect", { x: fx, y: 46, width: bw, height: 74, rx: 12, fill: fileBad ? "var(--bad-soft)" : state === "pass" ? "var(--ok-soft)" : "var(--bg-base)", stroke: fileBad ? "var(--bad)" : state === "pass" ? "var(--ok)" : "var(--line-normal, var(--fg-neutral))", "stroke-width": 1.5 }, svg);
+      txt(svg, fcx, 76, "파일", { "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "var(--fg-strong)" });
+      const fsub = state === "pass" ? (m ? "권한 확인으로" : "평소 권한 확인으로") : fileBad ? (m ? "바뀜" : "보호 파일이 바뀜") : state === "block" ? "그대로" : "";
+      txt(svg, fcx, 100, fsub, { "text-anchor": "middle", "font-size": 13, fill: fileBad ? "var(--bad)" : "var(--fg-neutral)" });
+      const x0 = 2 + bw + 6;
+      if (state === "idle") {
+        el("path", { d: `M ${x0} 83 H ${gx - 14}`, stroke: "var(--fg-neutral)", "stroke-width": 2, "stroke-dasharray": "5 5", fill: "none", "marker-end": "url(#skGateA)", opacity: .6 }, svg);
+        txt(svg, W / 2, 168, "↑ 위 도구 호출을 하나 눌러 보세요", { "text-anchor": "middle", "font-size": 14.5, "font-weight": 600, fill: "var(--fg-strong)" });
+      } else if (state === "block") {
+        el("path", { d: `M ${x0} 83 H ${gx - 14}`, stroke: "var(--fg-neutral)", "stroke-width": 2.5, fill: "none", "marker-end": "url(#skGateA)" }, svg);
+        el("path", { d: `M ${gx - 8} 126 C ${gx - 24} 170, ${cx + 30} 176, ${cx + 6} 128`, stroke: "var(--bad)", "stroke-width": 2.5, fill: "none", "marker-end": "url(#skGateB)" }, svg);
+        txt(svg, W / 2, 198, "exit 2 · 사유(stderr)가 Claude 에게", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 600, fill: "var(--bad)" });
+      } else if (state === "pass") {
+        el("path", { d: `M ${x0} 83 H ${fx - 8}`, stroke: "var(--ok)", "stroke-width": 2.5, fill: "none", "marker-end": "url(#skGateO)" }, svg);
+        txt(svg, W / 2, 172, "exit 0 · 훅은 이의 없음", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 600, fill: "var(--ok)" });
+      } else if (state === "leak") {
+        el("path", { d: `M ${x0} 83 H ${fx - 8}`, stroke: "var(--me)", "stroke-width": 2.5, fill: "none", "marker-end": "url(#skGateW)" }, svg);
+        txt(svg, W / 2, 172, "exit 1 · 오류 표시만 남기고 진행", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 600, fill: "var(--me)" });
+      }
+    };
+    const update = () => {
+      exitLine.textContent = "exit " + code;
+      lines.forEach((l) => l.classList.remove("hit", "stop"));
+      if (!call) { draw("idle"); return; }
+      const prot = call !== "new";
+      // 실행된 줄은 옅게, 스크립트가 끝난 줄은 진하게. 보호 경로는 exit 2 든 exit 1 이든 9번 줄에서 끝난다
+      const ran = prot ? [1, 2, 3, 4, 5, 6, 7, 8] : [1, 2, 3, 4, 5, 6, 10, 11], stopAt = prot ? 9 : 12;
+      lines.forEach((l) => { const n = +l.dataset.l; if (n === stopAt) l.classList.add("stop"); else if (ran.includes(n)) l.classList.add("hit"); });
+      const p = PATH[call];
+      if (!prot) {
+        draw("pass");
+        tr.innerHTML = `<p>보호할 이름이 경로에 없어 반복을 다 돌고 12번 줄에서 <b class="ok">exit 0</b> 으로 끝납니다. 훅은 반대하지 않았고 파일 쓰기는 평소처럼 권한 확인을 거칩니다.</p><span class="tm">⏺ Write(${p})</span>`;
+      } else if (code === 2) {
+        draw("block");
+        tr.innerHTML = `<p>경로에 보호할 이름이 있어 7번 줄이 사유를 stderr 로 쓰고 9번 줄에서 <b class="bad">exit 2</b> 로 끝납니다. 편집은 실행되지 않습니다.</p><span class="tm bad">PreToolUse hook: Blocked: ${p} is protected</span><span class="tm" style="margin-top:6px">⏺ ${call === "env" ? "이 파일은 보호돼 있어 고치지 않겠습니다. 바꿀 값을 알려 드릴게요." : "적용된 파일 대신 새 마이그레이션 파일을 만들겠습니다."}</span>`;
+      } else {
+        draw("leak");
+        tr.innerHTML = `<p>같은 줄을 지나 9번 줄에서 <b class="bad">exit 1</b> 로 끝나지만 1 은 막는 신호가 아닙니다. 오류 표시만 남고 <b class="bad">보호 파일이 고쳐집니다.</b></p><span class="tm">PreToolUse hook error: Failed with non-blocking status code: Blocked: ${p} is protected</span><span class="tm bad" style="margin-top:6px">⏺ Edit(${p}) 완료</span>`;
+      }
+    };
+    calls.forEach((b) => b.addEventListener("click", () => {
+      call = b.dataset.call;
+      calls.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      update();
+    }, { signal }));
+    $$("button", tog).forEach((b) => b.addEventListener("click", () => {
+      code = +b.dataset.v;
+      $$("button", tog).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      update();
+    }, { signal }));
+    update();
+    let mm = mobile();
+    window.addEventListener("resize", () => { if (mobile() !== mm) { mm = mobile(); update(); } }, { passive: true, signal });
+  })();
+})();
+</script>
