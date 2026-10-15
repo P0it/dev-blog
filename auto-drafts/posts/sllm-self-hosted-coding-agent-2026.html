@@ -1,0 +1,1550 @@
+---
+title: 회사 안에 sLLM을 두면 확실히 나아지는 한 가지
+slug: sllm-self-hosted-coding-agent-2026
+excerpt: 코딩 에이전트에 붙일 모델을 회사 서버에 직접 두면 코드가 밖으로 나가지 않습니다. 확실한 건 거기까지입니다. 성능·비용·보안·운영 네 저울에 회사 조건을 올려 보는 실험에서 시작해 2026년 오픈 웨이트 코딩 모델의 크기와 라이선스, 조건이 다른 벤치마크 점수를 읽는 법, 닫힌 모델과의 4개월 격차, 세계 기업과 한국의 엇갈린 흐름, 서버 한 대를 얼마나 채워야 싸지는지까지 2026년 10월 원문으로 확인해 정리했습니다.
+tags: [sLLM, 오픈 웨이트, 자체 호스팅, 소버린 AI, SWE-bench, 코딩 에이전트, AI 네이티브 개발 입문]
+category: ai
+series: ai-native-dev
+series_order: 10
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/sllm-self-hosted-coding-agent-2026-mv9snn0g.jpg
+---
+<!-- page -->
+<!-- layout: 히어로(제목·리드 왼쪽 열 → 가로 띠 회사 조건 세 칸(20명 팀 예시로 골라 둠) → 네 저울 한 줄 → 판정|캡션. '안 된다'면 보안 외 저울을 흐림. 데스크톱은 조건을 납작한 한 줄로 둬 저울까지 첫 화면에. 모바일은 조건 → 2×2 저울 → 판정) → 글|그림(밀키트 상자·내 주방 + 라이선스 가로 눈금) → 글|작은 MoE 예시 그림 + 실험판 전폭 띠(범례·안내 위, 총·활성 겹친 정사각형, 모델 누르기) → 글|그림(채점 흐름 + 아령) → 글 + 넓은 그림 두 장(같은 조건 수직선, Epoch 계단선 + 개월 화살표) → 글|직접 그림(세 가지 자로 잰 오픈 모델 몫, 데스크톱 sticky, Menlo 원 그림은 접기) → 글 + 넓은 그림(정부 사업 연표 축 위 점 + 규제 연표) → 글|그림(가끔 탐·매일 탐 두 줄 칸 그림) + 실험판 전폭 띠(손익 그래프 + 서버 한 대가 맡는 인원 토글) → 글|그림(여섯 층 목록 옆 막대 둘) + 코드|해설 → 그림 고정 스크롤리텔링(질문 네 단계 + 결론 상자) → 제목|글(참고 자료). 본문 시작 x 는 왼쪽 열 하나, 그림|글 반전 없음, 제목|글은 참고 자료 한 번 | 글의 성격: 모델을 어디에 둘지는 모델이 아니라 회사 조건이 정한다는 것을 저울 네 개로 겪게 하는 이야기. 파랑 = 닫힌 모델·클라우드 API, 주황 = 오픈 웨이트·자체 호스팅, 초록 = 유리(가벼운 쪽), 빨강 = 막힘이 글 끝까지 같은 뜻 | 버린 후보: 칩 채우기·요청/스펙 토글·하루 띠·배선 지도·서랍장·물탱크·형광 랜턴(1~9편 히어로), 분할 히어로(3·6편), 레이더 차트(근거 없는 점수), 결정 나무 히어로(정답을 먼저 줌), Epoch 원 그림(직접 그린 계단선과 같은 내용) -->
+<style>
+.post-page .sl {
+  --api: rgb(38, 106, 214); --api-soft: rgb(222, 234, 252);
+  --own: rgb(214, 112, 20); --own-soft: rgb(253, 234, 212);
+  --ok: rgb(28, 138, 70); --ok-soft: rgb(214, 240, 222);
+  --bad: rgb(206, 44, 44); --bad-soft: rgb(252, 224, 222);
+  --mute: rgb(120, 126, 138); --mute-soft: rgb(234, 236, 240);
+  color: var(--fg-normal); font-family: var(--font-sans);
+}
+[data-theme="dark"] .post-page .sl {
+  --api: rgb(112, 164, 255); --api-soft: rgb(26, 48, 88);
+  --own: rgb(255, 162, 84); --own-soft: rgb(86, 50, 20);
+  --ok: rgb(98, 214, 132); --ok-soft: rgb(22, 62, 36);
+  --bad: rgb(255, 112, 102); --bad-soft: rgb(84, 30, 30);
+  --mute: rgb(160, 166, 178); --mute-soft: rgb(48, 52, 60);
+}
+.post-page .sl * { box-sizing: border-box; }
+.post-page .sl-wrap { max-width: 1140px; margin: 0 auto; padding: 0 40px; }
+.post-page .sl h1, .post-page .sl h2, .post-page .sl h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .sl h1 { font-size: clamp(32px, 4.2vw, 48px); line-height: 1.24; max-width: 15em; margin-bottom: 22px; }
+.post-page .sl h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .sl p, .post-page .sl li { font-size: 17px; line-height: 1.85; word-break: keep-all; }
+.post-page .sl p { margin: 0 0 1.5em; }
+.post-page .sl b { color: var(--fg-strong); }
+.post-page .sl :not(pre) > code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg-muted); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.post-page .sl a { color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; }
+.post-page .sl .sl-cap { font-size: 15px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .sl details { margin: 0 0 1.4em; }
+.post-page .sl summary { cursor: pointer; font-size: 16px; color: var(--fg-strong); font-weight: 600; padding: 4px 0; }
+.post-page .sl details p { margin-top: 10px; font-size: 16px; }
+.post-page .sl svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .sl svg text { font-family: var(--font-sans); }
+.post-page .sl-try { font-size: 15px; color: var(--fg-strong); font-weight: 600; margin: 0 0 12px !important; line-height: 1.5 !important; }
+
+.post-page .sl-sec { padding: clamp(80px, 10vw, 128px) 0 0; }
+.post-page .sl-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 0 clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .sl-split { grid-template-areas: "a f" "b f"; grid-template-rows: auto 1fr; }
+.post-page .sl-split .ta { grid-area: a; }
+.post-page .sl-split .tf { grid-area: f; }
+.post-page .sl-split .tb { grid-area: b; }
+.post-page .sl-split .tc { grid-area: c; }
+.post-page .sl-split.sl-fl { grid-template-areas: "a f" "b f" "c f"; grid-template-rows: auto auto 1fr; }
+.post-page .sl-col { max-width: 40em; }
+.post-page .sl-head p { max-width: 42em; }
+.post-page .sl-fig { margin: 0; }
+.post-page .sl-wide { margin-top: clamp(36px, 5vw, 56px); }
+.post-page .sl-band { background: var(--bg-subtle); padding: clamp(56px, 7vw, 80px) 0 clamp(48px, 6vw, 64px); margin-top: clamp(32px, 5vw, 48px); }
+.post-page .sl-img img { width: 100%; height: auto; display: block; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; }
+[data-theme="dark"] .post-page .sl-img img { filter: brightness(.8); border-color: var(--line-normal); }
+.post-page .sl-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--fg-neutral); margin-top: 14px; line-height: 1.6; }
+.post-page .sl-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; }
+.post-page .sl-legend i.api { background: var(--api); }
+.post-page .sl-legend i.own { background: var(--own); }
+.post-page .sl-legend.sl-legtop { margin: 0 0 14px; }
+.post-page .sl-legend i.ring { background: var(--bg-base); border: 2.5px solid var(--own); }
+
+/* 고르기 부품: 토글 하나 */
+.post-page .sl-tog { display: inline-flex; background: var(--bg-muted); border-radius: 999px; padding: 4px; gap: 2px; max-width: 100%; }
+.post-page .sl-tog button { font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--fg-neutral); padding: 7px 15px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.post-page .sl-tog button[aria-pressed="true"] { background: var(--bg-base); color: var(--fg-strong); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+/* ---------- 히어로 ---------- */
+.post-page .sl-hero { padding-top: clamp(28px, 4vw, 44px); }
+.post-page .sl-lead { max-width: 46em; }
+.post-page .sl-lead p { margin-bottom: 1.1em; }
+.post-page .sl-lead p:last-child { margin-bottom: 0; }
+.post-page .sl-bench { margin-top: clamp(24px, 3vw, 32px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.post-page .sl-co { border: 1px solid var(--line-normal); border-radius: 16px; padding: 10px 20px 12px; background: var(--bg-base); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
+.post-page .sl-co .hd { flex: 1 0 100%; font-size: 13px; font-weight: 700; color: var(--fg-neutral); letter-spacing: .04em; margin: 0 !important; line-height: 1.5 !important; }
+.post-page .sl-co .hd span { font-weight: 400; letter-spacing: 0; }
+.post-page .sl-cond { display: flex; align-items: center; gap: 10px; }
+.post-page .sl-cond .q { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.45; white-space: nowrap; }
+.post-page .sl-scales { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 26px; }
+.post-page .sl-scale { position: relative; transition: opacity .5s; }
+.post-page .sl-scale.dim { opacity: .28; }
+.post-page .sl-scale .beam, .post-page .sl-scale .pan { transform-box: view-box; transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+.post-page .sl-scale .wt { transition: opacity .5s, transform .6s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: 50% 100%; }
+.post-page .sl-scale .fav { transition: opacity .5s; }
+.post-page .sl-out { display: block; }
+.post-page .sl-out .sl-herocap { max-width: 40em; }
+.post-page .sl-wide .sl-cap, .post-page .sl-wide > figcaption.sl-cap { max-width: 40em; }
+.post-page .sl-verdict { font-size: 16.5px !important; line-height: 1.7 !important; margin: 0 !important; min-height: 3.4em; color: var(--fg-normal); max-width: 60em; }
+.post-page .sl-verdict b.api { color: var(--api); }
+.post-page .sl-verdict b.own { color: var(--own); }
+.post-page .sl-herocap { margin-top: 2px !important; font-size: 14px !important; }
+
+/* ---------- 상자 + 라이선스 ---------- */
+.post-page .sl-box { max-width: 600px; }
+
+/* ---------- 세 가지 자 ---------- */
+.post-page .sl-share { position: sticky; top: 100px; max-width: 560px; }
+.post-page .sl-share .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 16px 0 18px; border-top: 1px solid var(--line-subtle); }
+.post-page .sl-share .who { grid-column: 1 / -1; font-size: 13px; font-weight: 700; color: var(--fg-neutral); letter-spacing: .02em; }
+.post-page .sl-share .what { grid-column: 1 / -1; font-size: 15.5px; font-weight: 600; color: var(--fg-strong); line-height: 1.5; margin-bottom: 8px; }
+.post-page .sl-share .bar { position: relative; height: 26px; border-radius: 5px; background: var(--mute-soft); margin: 14px 0 0; }
+.post-page .sl-share .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--own); font-style: normal; }
+.post-page .sl-share .bar i b { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--bg-base); white-space: nowrap; line-height: 1; }
+.post-page .sl-share .bar:has(em.dn) { margin-bottom: 18px; }
+.post-page .sl-share .bar em { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dotted var(--fg-strong); font-style: normal; }
+.post-page .sl-share .bar em span { position: absolute; bottom: 100%; left: 3px; font-size: 13px; color: var(--fg-neutral); white-space: nowrap; line-height: 1.3; }
+.post-page .sl-share .bar em.dn span { bottom: auto; top: 100%; }
+.post-page .sl-share .sl-will { margin-top: 30px !important; }
+/* Menlo: 시간 순 작은 막대 세 개(0~100% 같은 눈금) */
+.post-page .sl-share .ts { display: grid; grid-template-columns: 6.4em minmax(0, 1fr) 3.4em; align-items: center; gap: 10px; margin-top: 6px; }
+.post-page .sl-share .ts .t { font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .sl-share .ts .bar { height: 16px; margin: 0; }
+.post-page .sl-share .ts .bar i { opacity: .45; }
+.post-page .sl-share .ts > b { font-size: 14px; color: var(--fg-neutral); font-weight: 600; }
+.post-page .sl-share .ts.now .bar i { opacity: 1; }
+.post-page .sl-share .ts.now .t, .post-page .sl-share .ts.now > b { color: var(--fg-strong); font-weight: 700; }
+.post-page .sl-share .ts + small { margin-top: 8px; }
+.post-page .sl-share .row.will .bar i { background: transparent; border: 2px solid var(--own); }
+.post-page .sl-share .row.will .bar i b { color: var(--fg-strong); }
+.post-page .sl-share .bar em.x { border-left-style: dashed; border-left-color: var(--fg-neutral); }
+.post-page .sl-share small { grid-column: 1 / -1; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.55; margin-top: 8px; }
+
+/* ---------- 정사각형 ---------- */
+.post-page .sl-moefig { margin-top: 6px; max-width: 460px; }
+.post-page .sl-sq { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 28px clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .sl-sqlead { margin-bottom: 26px; }
+.post-page .sl-sqlead h3 { font-size: clamp(20px, 2.2vw, 24px); line-height: 1.45; margin-bottom: 10px; }
+.post-page .sl-sqlead p { margin: 0; }
+.post-page .sl-sqread { padding-top: 4px; }
+.post-page .sl-sqafter { margin-top: clamp(36px, 5vw, 52px); }
+.post-page .sl-sqafter p:last-child { margin-bottom: 0; }
+.post-page .sl-sq svg .m { cursor: pointer; outline: none; }
+.post-page .sl-steps svg .hit { outline: none; }
+.post-page .sl-sq svg .m .bx { transition: stroke-width .3s, stroke .3s; }
+.post-page .sl-sqread { font-size: 16px; line-height: 1.75; }
+.post-page .sl-sqread .nm { font-size: 20px; font-weight: 700; color: var(--fg-strong); font-family: var(--font-display); margin: 0 0 6px !important; line-height: 1.4 !important; }
+.post-page .sl-sqread .row { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 10px 0 12px; font-size: 15px; }
+.post-page .sl-sqread .row span:nth-child(odd) { color: var(--fg-neutral); }
+.post-page .sl-sqread .row b { font-family: var(--font-mono); font-size: 15.5px; }
+.post-page .sl-sqread .row b.own { color: var(--own); }
+.post-page .sl-sqread p { font-size: 15px !important; line-height: 1.7 !important; margin: 0 !important; }
+.post-page .sl-sqread .hint { color: var(--fg-strong); font-weight: 600; }
+
+/* ---------- 아령 ---------- */
+.post-page .sl-grade { max-width: 620px; margin-bottom: 36px; }
+.post-page .sl-dumb { max-width: 620px; }
+[data-theme="dark"] .post-page .sl-dumb svg .cond { fill: rgb(196, 200, 210); }
+.post-page .sl .sl-cardimg { max-width: 620px; margin: 40px 0 0; }
+
+/* ---------- 수직선 / 계단 ---------- */
+.post-page .sl-line { max-width: none; }
+.post-page .sl-steps { max-width: none; }
+.post-page .sl-steps svg .hit { cursor: pointer; }
+.post-page .sl-stephead { margin-bottom: 10px; }
+.post-page .sl-stephead .sl-try span { display: block; font-weight: 400; color: var(--fg-neutral); font-size: 14.5px; margin-top: 4px; }
+.post-page .sl-stephead .sl-try span b { color: var(--fg-strong); font-family: var(--font-mono); }
+.post-page .sl-stepbox { position: relative; }
+.post-page .sl-stepread { font-size: 16px !important; line-height: 1.7 !important; margin: 0 !important; position: absolute; max-width: 25em; background: var(--bg-base); padding: 10px 14px; border: 1px solid var(--line-subtle); border-radius: 10px; }
+.post-page .sl-stepread b.n { font-family: var(--font-mono); font-size: 18px; }
+
+/* ---------- 정부 사업 단계 ---------- */
+.post-page .sl-dp { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 18px; position: relative; padding-top: 26px; }
+.post-page .sl-dp::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: linear-gradient(90deg, var(--own) 0 80%, var(--line-normal) 80% 100%); }
+.post-page .sl-dp .st { position: relative; }
+.post-page .sl-dp .st::before { content: ""; position: absolute; left: 0; top: -26px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--own); box-sizing: border-box; }
+.post-page .sl-dp .st:last-child::before { border-color: var(--mute); border-style: dashed; }
+.post-page .sl-dp .d { font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); display: block; }
+.post-page .sl-dp .t { font-size: 15.5px; font-weight: 700; color: var(--fg-strong); display: block; margin: 2px 0 10px; line-height: 1.45; }
+.post-page .sl-dp .tm { display: block; position: relative; font-size: 14.5px; line-height: 1.4; padding: 3px 0 3px 17px; margin-bottom: 5px; color: var(--fg-strong); }
+.post-page .sl-dp .tm::before { content: ""; position: absolute; left: 1px; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--own); }
+.post-page .sl-dp .tm small { display: block; font-size: 13px; color: var(--fg-neutral); margin-top: 1px; }
+.post-page .sl-dp .tm.out { color: var(--fg-neutral); }
+.post-page .sl-dp .tm.out s { text-decoration: none; }
+.post-page .sl-dp .tm.out s::after { content: "탈락"; margin-left: 6px; font-size: 11.5px; font-weight: 700; color: var(--bad); border: 1.5px solid var(--bad); border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
+.post-page .sl-dp .tm.out::before { background: transparent; border: 1.5px solid var(--mute); box-sizing: border-box; }
+.post-page .sl-dp .tm.new { font-weight: 700; }
+.post-page .sl-dp .tm.new::after { content: "새로"; margin-left: 6px; font-size: 11.5px; font-weight: 700; color: var(--own); border: 1.5px solid var(--own); border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
+.post-page .sl-dp .tm.tbd { color: var(--fg-neutral); }
+.post-page .sl-dp .tm.tbd::before { background: transparent; border: 1.5px dashed var(--mute); box-sizing: border-box; }
+.post-page .sl-reg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 18px; position: relative; padding-top: 30px; margin-bottom: 8px; }
+.post-page .sl-reg::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--bad) 0 18%, var(--ok) 34% 100%); opacity: .7; }
+.post-page .sl-reg .ev { position: relative; font-size: 14.5px; line-height: 1.5; }
+.post-page .sl-reg .ev::before { content: ""; position: absolute; left: 0; top: -28px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--ok); box-sizing: border-box; }
+.post-page .sl-reg .ev.st0::before { border-color: var(--bad); }
+.post-page .sl-reg .ev .ic { font-size: 15px; margin-right: 6px; }
+.post-page .sl-reg .ev .d { font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); display: block; }
+.post-page .sl-reg .ev b { display: block; font-size: 15.5px; color: var(--fg-strong); }
+.post-page .sl-reg .ev.st0 b { color: var(--bad); margin-top: 19.5px; }
+.post-page .sl-reg .ev .s { display: block; color: var(--fg-neutral); }
+.post-page .sl-reglab { font-size: 13px; font-weight: 700; color: var(--fg-neutral); letter-spacing: .04em; margin: 0 0 14px !important; line-height: 1.5 !important; }
+
+.post-page .sl-cases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: -4px 0 0; }
+.post-page .sl-cases > div { border: 1px solid var(--line-normal); border-radius: 12px; padding: 14px 16px; font-size: 15px; line-height: 1.6; color: var(--fg-normal); word-break: keep-all; }
+.post-page .sl-cases .ic { font-size: 18px; margin-right: 8px; }
+.post-page .sl-cases b { font-size: 16px; }
+.post-page .sl-cases .d { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); margin: 2px 0 6px; }
+.post-page .sl-cases .d + span { display: block; }
+
+/* ---------- 비용 ---------- */
+.post-page .sl-bike { max-width: 520px; }
+.post-page .sl-be { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 28px clamp(28px, 4vw, 56px); align-items: start; }
+.post-page .sl-be svg { touch-action: pan-y; cursor: ew-resize; }
+/* 초록 띠(그래프 아래 x축 위)와 범례 칸은 같은 색·같은 투명도. 띠를 그래프 안에 칠하면 파란 부채꼴과 겹쳐 탁해져서 아래로 뺐다 */
+.post-page .sl-be { --chp: rgb(28, 150, 70); --chp-a: .7; }
+[data-theme="dark"] .post-page .sl-be { --chp: rgb(110, 230, 140); --chp-a: .75; }
+.post-page .sl-be .chp { fill: var(--chp); opacity: var(--chp-a); }
+.post-page .sl-legend i.ok { background: var(--chp); opacity: var(--chp-a); border-radius: 2px; width: 22px; height: 8px; vertical-align: 1px; }
+.post-page .sl-beread { font-size: 15.5px; line-height: 1.7; }
+.post-page .sl-beread .who { font-size: 15px; color: var(--fg-neutral); margin: 0 0 6px !important; line-height: 1.5 !important; }
+.post-page .sl-beread .big { font-family: var(--font-mono); font-size: 18px; display: block; line-height: 1.5; }
+.post-page .sl-beread .big.api { color: var(--api); }
+.post-page .sl-beread .big.own { color: var(--own); }
+.post-page .sl-beread .v { margin: 12px 0 0 !important; font-size: 15px !important; line-height: 1.7 !important; min-height: 5em; }
+.post-page .sl-bectl { margin-bottom: 18px; }
+.post-page .sl-bectl .lab { display: block; font-size: 14.5px; font-weight: 600; color: var(--fg-strong); margin-bottom: 8px; }
+
+/* ---------- 층 ---------- */
+.post-page .sl-stack { max-width: 560px; }
+.post-page .sl-code { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 24px clamp(28px, 4vw, 56px); align-items: start; margin-top: clamp(48px, 6vw, 72px); }
+.post-page .sl-code pre { margin: 0; }
+.post-page .sl .pg-code-notes li { font-size: 16px; line-height: 1.75; margin-bottom: 14px; }
+
+/* ---------- 스크롤 순서도 ---------- */
+.post-page .sl-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 0 clamp(36px, 5vw, 80px); align-items: start; margin-top: 8px; }
+.post-page .sl-stepsx { padding: 12px 0 6vh; }
+.post-page .sl-step { min-height: 34vh; display: flex; flex-direction: column; justify-content: flex-start; opacity: .35; transition: opacity .5s; }
+.post-page .sl-step.on { opacity: 1; }
+.post-page .sl-step h3 { font-family: var(--font-sans); font-size: 19px; letter-spacing: 0; margin: 0 0 10px; }
+.post-page .sl-step h3 .n { display: inline-block; min-width: 26px; height: 26px; border-radius: 999px; background: var(--fg-strong); color: var(--bg-base); font-size: 14px; text-align: center; line-height: 26px; margin-right: 10px; vertical-align: 1px; }
+.post-page .sl-step p { margin-bottom: 0.8em; }
+.post-page .sl-sticky { position: sticky; top: 120px; }
+.post-page .sl-flow .nd { transition: opacity .5s, fill .5s, stroke .5s; }
+.post-page .sl-flow .lk { transition: opacity .5s; }
+.post-page .sl-stepfig { display: none; }
+/* 모바일 vLLM 해설: 코드 줄 바로 아래에 끼운다 */
+.post-page .sl .sl-cnote { display: none; }
+
+/* ---------- 참고 ---------- */
+.post-page .sl-refs ul { padding-left: 1.1em; }
+.post-page .sl-refs li { font-size: 15px; margin-bottom: 8px; }
+.post-page .sl-refhead { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 48px; }
+
+@media (max-width: 860px) {
+  .post-page .sl-wrap { padding: 0 20px; }
+  .post-page .sl-stepread { position: static; max-width: none; border: 0; padding: 0; margin: 0 0 10px !important; font-size: 15px !important; min-height: 5.1em; }
+  .post-page .sl-two, .post-page .sl-refhead, .post-page .sl-code, .post-page .sl-bench, .post-page .sl-story, .post-page .sl-sq, .post-page .sl-be { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sl-co { display: block; }
+  .post-page .sl-scales { grid-template-columns: 1fr 1fr; order: 1; }
+  .post-page .sl-bench > .sl-verdict { order: 2; }
+  .post-page .sl-bench > .sl-out { order: 3; }
+  .post-page .sl-split { grid-template-areas: "a" "f" "b"; grid-template-rows: auto; }
+  .post-page .sl-split .tf { margin: 4px 0 36px; }
+  .post-page .sl-hero { padding-top: 16px; }
+  .post-page .sl-hero h1 { margin-bottom: 14px; }
+  .post-page .sl-lead p { margin-bottom: 0.8em; font-size: 16px; line-height: 1.72; }
+  .post-page .sl-bench { gap: 10px; margin-top: 20px; }
+  .post-page .sl-co { padding: 10px 14px 2px; }
+  .post-page .sl-co .hd { margin-bottom: 4px !important; }
+  .post-page .sl-cond { padding: 7px 0; border-top: 1px dashed var(--line-subtle); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .post-page .sl-cond .q { margin: 0; font-size: 14px; white-space: normal; }
+  .post-page .sl-tog button { font-size: 13.5px; padding: 6px 10px; }
+  .post-page .sl-scales { gap: 4px 10px; }
+  .post-page .sl-verdict { font-size: 15px !important; }
+  .post-page .sl-dp { grid-template-columns: minmax(0, 1fr); padding: 0 0 0 26px; }
+  .post-page .sl-dp::before { left: 7px; right: auto; top: 6px; bottom: 6px; width: 2px; height: auto; background: linear-gradient(180deg, var(--own) 0 88%, var(--line-normal) 88% 100%); }
+  .post-page .sl-dp .st { padding-bottom: 18px; }
+  .post-page .sl-dp .st::before { left: -26px; top: 2px; }
+  .post-page .sl-dp .tms { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .post-page .sl-dp .tm { margin: 0; }
+  .post-page .sl-reg { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0 0 0 30px; }
+  .post-page .sl-reg::before { left: 7px; right: auto; top: 6px; bottom: 6px; width: 3px; height: auto; background: linear-gradient(180deg, var(--bad) 0 14%, var(--ok) 30% 100%); }
+  .post-page .sl-reg .ev::before { left: -30px; top: 2px; }
+  .post-page .sl-reg .ev.st0 b { margin-top: 0; }
+  .post-page .sl-share { position: static; }
+  .post-page .sl-cases { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .post-page .sl-sq { gap: 14px; }
+  .post-page .sl-beread { order: -1; }
+  .post-page .sl-beread .v { min-height: 0; }
+  /* 모바일: 고정 그림이 단계 제목을 덮어서(세 번 지적) 고정을 없애고 단계마다 작은 그림을 둔다 */
+  .post-page .sl-sticky { display: none; }
+  .post-page .sl-stepfig { display: block; margin: 2px 0 14px; }
+  .post-page .sl-fin .sl-stepfig { margin-bottom: 20px; }
+  .post-page .sl-stepsx { padding: 8px 0 0; }
+  .post-page .sl-step { min-height: 0; padding: 0; margin-bottom: 40px; opacity: 1; display: block; }
+  .post-page .sl-step:last-child { margin-bottom: 0; }
+  .post-page .sl-split.sl-fl { grid-template-areas: "a" "b" "f" "c"; grid-template-rows: auto; }
+  .post-page .sl-split.sl-fl .tf { margin: 4px 0 28px; }
+  .post-page .sl .sl-cnote { display: block; white-space: normal; font-family: var(--font-sans); font-style: normal; font-size: 14.5px; line-height: 1.65; color: rgb(214, 218, 226); background: rgba(255,255,255,.06); border-left: 3px solid rgb(229, 192, 123); margin: 4px 0 8px; padding: 8px 10px; word-break: keep-all; }
+  .post-page .sl .sl-cnote b { color: rgb(229, 192, 123); margin-right: 4px; }
+  .post-page .sl .sl-codenotes-moved { display: none; }
+  .post-page .sl .pg-code-head { height: auto; min-height: 38px; padding-top: 6px; padding-bottom: 6px; }
+  .post-page .sl .pg-code-lang { display: none; }
+  .post-page .sl-refs ul { padding-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .sl * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="sl">
+
+<section class="sl-hero">
+  <div class="sl-wrap">
+    <div class="sl-lead">
+      <h1>회사 안에 sLLM을 두면 확실히 나아지는 한 가지</h1>
+      <p>보안팀 공지가 내려옵니다. "회사 코드를 외부 AI 서비스로 보내지 마세요." 코딩 에이전트(coding agent)는 코드를 고치기 전에 모델에게 먼저 보여 줘야 해서 이 공지에 바로 걸립니다.</p>
+      <p>다른 회사의 모델을 인터넷으로 빌려 쓰면 클라우드 API(Application Programming Interface), 모델 파일을 받아 회사 서버에서 직접 돌리면 자체 호스팅(self-hosting)입니다. 이렇게 회사 안에 두는 작은 LLM(Large Language Model)을 국내에서는 흔히 sLLM 이라 부릅니다.</p>
+      <p>확실히 나아지는 건 코드가 밖으로 나가지 않는다는 한 가지입니다. 나머지는 회사 조건에 달렸습니다.</p>
+    </div>
+    <figure class="sl-fig sl-bench" data-figure data-hero data-thumb>
+      <div class="sl-co" data-co>
+        <p class="hd">우리 회사 조건 <span>· 20명 팀을 예로 골라 두었습니다. 버튼을 눌러 바꿔 보세요</span></p>
+        <div class="sl-cond">
+          <span class="q">코드를 밖으로 보내도 되나요?</span>
+          <div class="sl-tog" role="group" aria-label="코드 반출" data-k="out">
+            <button type="button" data-v="ok" aria-pressed="true">된다</button>
+            <button type="button" data-v="no" aria-pressed="false">안 된다</button>
+          </div>
+        </div>
+        <div class="sl-cond">
+          <span class="q">에이전트 쓰는 개발자</span>
+          <div class="sl-tog" role="group" aria-label="개발자 수" data-k="dev">
+            <button type="button" data-v="20" aria-pressed="true">20명</button>
+            <button type="button" data-v="100" aria-pressed="false">100명</button>
+            <button type="button" data-v="500" aria-pressed="false">500명</button>
+          </div>
+        </div>
+        <div class="sl-cond">
+          <span class="q">모델 서버 맡을 팀</span>
+          <div class="sl-tog" role="group" aria-label="운영 팀" data-k="ops">
+            <button type="button" data-v="none" aria-pressed="true">없다</button>
+            <button type="button" data-v="have" aria-pressed="false">있다</button>
+          </div>
+        </div>
+      </div>
+      <p class="sl-verdict" data-verdict></p>
+      <div class="sl-scales">
+        <div class="sl-scale" data-sc="perf"><svg data-scale="perf" role="img" aria-label="성능 저울"></svg></div>
+        <div class="sl-scale" data-sc="cost"><svg data-scale="cost" role="img" aria-label="비용 저울"></svg></div>
+        <div class="sl-scale" data-sc="sec"><svg data-scale="sec" role="img" aria-label="보안 저울"></svg></div>
+        <div class="sl-scale" data-sc="ops"><svg data-scale="ops" role="img" aria-label="운영 저울"></svg></div>
+      </div>
+      <div class="sl-out">
+        <figcaption class="sl-cap sl-herocap">접시에는 그 기준에서 치르는 부담을 답니다. 무거운 쪽이 내려가고 위로 뜬 쪽(초록 ✓)이 유리합니다. 파랑 = 클라우드 API, 주황 = 자체 호스팅. 성능은 AI 연구 기관 Epoch AI 가 잰 평균 격차, 비용은 공개 가격으로 낸 예시 계산이고 보안·운영의 무게는 설명을 위해 정한 예시입니다.</figcaption>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap sl-two sl-split">
+    <div class="sl-col ta">
+      <h2>오픈 웨이트로 받는 것과 못 받는 것</h2>
+      <p>회사 안에 둘 수 있는 모델은 가중치(weight)를 공개한 모델입니다. 가중치는 모델이 학습으로 맞춰 둔 숫자 수십억~수조 개로, 모델의 실력이 그대로 담긴 파일입니다. 이 파일을 누구나 받을 수 있게 푼 모델을 <b>오픈 웨이트</b>(open weight) 모델이라고 부릅니다.</p>
+      <p>밀키트를 떠올리면 쉽습니다. 상자를 열면 재료와 조리법이 들어 있지만 가스레인지와 요리할 사람은 집에 있어야 합니다. 오픈 웨이트 모델도 가중치 파일, 설계도인 config, 글을 숫자로 바꾸는 토크나이저(tokenizer)가 들어 있을 뿐입니다. 모델을 돌릴 계산용 칩 GPU(Graphics Processing Unit)와 운영은 받는 쪽이 마련합니다.</p>
+    </div>
+    <figure class="sl-fig tf sl-box" data-figure>
+      <svg data-box role="img" aria-label="오픈 웨이트 모델을 밀키트 상자로 그린 그림. 상자 안에는 가중치·설계도·토크나이저·라이선스가 들어 있고 학습 데이터·GPU 서버·서빙 프로그램·운영할 사람은 내 주방에서 따로 마련한다. 아래 눈금에는 실제 모델들이 라이선스 조건이 적은 쪽부터 놓여 있다"></svg>
+      <figcaption class="sl-cap">밀키트처럼 재료는 상자에 들어 있지만 주방과 요리할 사람은 내 몫입니다. 학습 데이터와 학습 코드는 대부분 공개하지 않아서 결과물만 받는다는 점이 오픈소스와 다릅니다. safetensors 는 가중치를 담는 파일 형식이고 config.json 은 층 수·크기 같은 설계 값을 적은 파일입니다. 라이선스 눈금은 2026년 10월 모델 공개 사이트 Hugging Face 의 모델 카드(model card)에 적힌 조건으로 나눴습니다. 모델 카드는 모델마다 붙는 설명서입니다.</figcaption>
+    </figure>
+    <div class="sl-col tb">
+      <p>비유가 맞지 않는 곳도 있습니다. 밀키트는 사면 끝이지만 모델에는 쓰는 조건, 곧 라이선스(license)가 붙습니다. 예를 들어 Kimi K2.6 의 수정 MIT 는 월 사용자 1억 명이나 월 매출 2천만 달러를 넘는 서비스에 모델 이름을 표시하게 합니다.</p>
+      <p>sLLM 이라는 이름에도 정해진 크기 기준은 없습니다. 2026년 오픈 웨이트 코딩 모델은 작지도 않습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap">
+    <div class="sl-two sl-moe">
+      <div class="sl-col">
+        <h2>총 파라미터와 활성 파라미터</h2>
+        <p>2026년 코딩용 오픈 웨이트 모델은 대부분 숫자를 수천억에서 1조 개 넘게 갖고 있지만 글자 하나를 만들 때는 그중 몇 %만 계산에 씁니다. 모델이 읽고 쓰는 단위는 정확히는 토큰(token)이라는 글 조각입니다. 모델이 가진 숫자 전체가 총 파라미터(parameter), 한 번 계산에 실제로 쓰는 몫이 <b>활성 파라미터</b>(active parameter)입니다.</p>
+        <p>이 차이는 MoE(Mixture of Experts) 구조에서 나옵니다. 모델 안에는 계산 단계가 여러 겹 있는데 단계마다 전문가 묶음을 여러 벌 두고 토큰마다 몇 벌만 골라 씁니다. 파라미터가 무엇인지는 <a href="/posts/llm-parameters-7b-explained">7B 가 무엇을 센 숫자인지 다룬 글</a>에 있습니다.</p>
+      </div>
+      <figure class="sl-fig sl-moefig" data-figure>
+        <svg data-moe role="img" aria-label="MoE 구조 예시. 층 세 개에 전문가가 여덟 벌씩 있고 토큰 하나가 지나갈 때 층마다 두 벌만 켜져 계산한다"></svg>
+        <figcaption class="sl-cap">층 수와 전문가 수는 설명을 위해 정한 예시입니다. 칠한 칸만 이 토큰을 계산하지만 빈 칸도 메모리에는 올라 있어야 합니다.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="sl-band">
+    <div class="sl-wrap sl-sqlead">
+      <h3>계산은 칠한 칸만큼, 메모리는 테두리만큼 듭니다</h3>
+    </div>
+    <div class="sl-wrap sl-sq">
+      <figure class="sl-fig" data-figure>
+        <div class="sl-legend sl-legtop"><span><i class="ring"></i>테두리 넓이 = 총 파라미터(메모리에 올릴 양)</span><span><i class="own"></i>칠한 넓이 = 활성 파라미터(토큰 하나 계산)</span><span>B = 10억 개(billion) · T = 1조 개(trillion)</span></div>
+        <p class="sl-try">👆 정사각형을 눌러 보세요</p>
+        <svg data-sq role="img" aria-label="오픈 웨이트 코딩 모델 아홉 개를 총 파라미터 넓이의 정사각형으로 그리고 그 안에 활성 파라미터 넓이를 칠한 그림"></svg>
+      </figure>
+      <div class="sl-sqread" data-sqread>
+        <p>넓이를 숫자 개수에 맞춰 그렸습니다. 큰 테두리 안의 칠한 칸이 작을수록 계산은 가볍고 메모리는 그대로 무겁습니다. 누르면 NVIDIA 의 데이터센터용 GPU 인 H100(메모리 80GB)이 몇 장 필요한지도 나옵니다.</p>
+      </div>
+    </div>
+    <div class="sl-wrap">
+    <div class="sl-col sl-sqafter">
+      <p>계산이 가벼우니 같은 GPU 로 답을 빨리 낼 수 있습니다. 하지만 메모리는 총 파라미터를 따릅니다. 어떤 전문가를 고를지는 토큰마다 달라서 숫자 전체를 늘 GPU 메모리에 올려 둬야 하기 때문입니다. 숫자 하나를 몇 바이트로 적는지에 따라 이 양이 바뀌는 원리는 <a href="/posts/gpu-vram-fp16-int4-quantization">GPU 메모리와 양자화 글</a>에서 다뤘습니다.</p>
+      <p>그래서 "활성 3B 면 노트북에서도 돌겠다"는 말은 반만 맞습니다. Qwen3-Coder-Next 는 활성이 3B 이지만 총 80B 입니다. 모델 카드는 GPU 두 장에 나눠 띄우는 명령을 적어 두었습니다. 1조 개 넘는 모델은 서버 여러 대를 묶어야 하고 그 방법은 <a href="/posts/enterprise-llm-serving-kubernetes-llm-d-mig">GPU 여러 장에 나눠 싣는 글</a>에 있습니다.</p>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap sl-two sl-split">
+    <div class="sl-col ta">
+      <h2>벤치마크 점수는 시험 조건까지 읽어야 합니다</h2>
+      <p>모델의 코딩 실력은 보통 벤치마크(benchmark)로 잽니다. 모든 모델에게 같은 문제를 풀게 해서 점수를 견주는 공통 시험입니다. 코딩 에이전트에서는 SWE-bench Verified 가 가장 많이 인용됩니다. 이름의 SWE 는 소프트웨어 엔지니어링(Software Engineering)의 줄임말입니다.</p>
+      <p>문제는 실제 GitHub 저장소에 올라왔던 이슈 500개입니다. 사람이 문제마다 테스트가 제대로인지 확인해 골라서 Verified 라는 이름이 붙었습니다.</p>
+    </div>
+    <div class="tf">
+      <figure class="sl-fig sl-grade" data-figure>
+        <svg data-grade role="img" aria-label="SWE-bench 한 문제가 채점되는 순서: 실제 이슈와 저장소를 주면 에이전트가 코드를 고치고 숨겨 둔 테스트로 통과 여부를 가린다"></svg>
+      </figure>
+      <figure class="sl-fig sl-dumb" data-figure>
+        <div class="sl-legend sl-legtop"><span><i class="ring"></i>카드: 모델 카드에 적힌 점수(만든 회사가 고른 조건)</span><span><i class="own"></i>공식: 공식 리더보드(leaderboard) 점수(mini-SWE-agent, 한 번 시도)</span></div>
+        <svg data-dumb role="img" aria-label="같은 모델 네 개의 SWE-bench Verified 점수를 모델 카드 자체 보고와 공식 리더보드 같은 조건으로 나란히 찍은 아령 그림"></svg>
+        <figcaption class="sl-cap">리더보드는 같은 시험 점수를 한곳에 모아 순위를 매긴 표입니다. 공식 값은 SWE-bench 리더보드 데이터에서 Devstral 2 는 2025년 12월, 나머지는 2026년 2월 17일 기록입니다. 모델 카드 조건은 회색 글씨로 적었습니다.</figcaption>
+      </figure>
+      <details class="sl-cardimg" data-cardimg>
+      <summary>모델 카드의 실제 그림 보기</summary>
+      <figure class="sl-fig sl-img" data-figure>
+        <img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/bcfd0f3d.webp" alt="Qwen3-Coder-Next 모델 카드의 코딩 에이전트 벤치마크 막대그림" loading="lazy">
+        <figcaption class="sl-cap">모델 카드의 실제 그림입니다. 그림 속 GLM·MiniMax 는 이전 버전(GLM-4.7·MiniMax M2.1) 기준이라 아령 그림의 모델과 다릅니다. 막대 아래 작은 "w/ SWE-Agent"(SWE-Agent 프로그램으로 잼)가 조건 표시의 전부입니다. Qwen3-Coder-Next 70.6, DeepSeek-V3.2 70.2, GLM-4.7 74.2, MiniMax M2.1 74.8 — 출처: <a href="https://huggingface.co/Qwen/Qwen3-Coder-Next" target="_blank" rel="noopener">Qwen/Qwen3-Coder-Next 모델 카드</a></figcaption>
+      </figure>
+      </details>
+    </div>
+    <div class="sl-col tb">
+      <p>모의고사도 계산기를 쓰게 했는지에 따라 점수가 달라집니다. 벤치마크에서는 모델을 감싼 에이전트 프로그램(scaffold)과 몇 번 풀어 평균을 냈는지에 따라 같은 모델이 4~18점씩 오르내립니다. 이 조건은 각주에 작게 적히거나 아예 빠지기도 합니다.</p>
+      <p>그래서 모델 카드 숫자끼리는 견주지 않고 한 기관이 같은 프로그램으로 잰 표를 찾습니다. 2026년 새 모델은 SWE-bench Pro·Terminal-Bench 같은 더 어려운 시험 점수를 앞세웁니다. 우리 저장소에서 잘하는지는 우리 코드로 직접 시켜 봐야 압니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap">
+    <div class="sl-head">
+      <h2>같은 조건이면 1점 차, 시간으로는 4개월</h2>
+      <p>같은 프로그램으로 같은 달에 잰 공식 기록에서는 오픈 웨이트 1위와 닫힌 모델 1위가 1점 차이였습니다. 닫힌 모델은 가중치를 공개하지 않고 API 로만 쓰게 하는 모델입니다. 2026년 2월 SWE-bench 리더보드에는 모델 13개에 같은 에이전트 프로그램 mini-SWE-agent 2.0.0 을 씌워 한 번씩 풀게 한 기록이 올라왔습니다.</p>
+    </div>
+    <figure class="sl-fig sl-wide sl-line" data-figure>
+      <svg data-line role="img" aria-label="2026년 2월 같은 조건에서 잰 SWE-bench Verified 점수를 높은 순으로 줄 세운 그림. 닫힌 모델은 파랑, 오픈 웨이트 모델은 주황"></svg>
+      <figcaption class="sl-cap">파랑 = 닫힌 모델, 주황 굵은 글씨 = 오픈 웨이트. 모두 mini-SWE-agent 2.0.0, 한 번 시도. GPT 5.2 Codex 는 2월 19일, Gemini 3 Pro 는 2월 26일 기록입니다. 2월 기록이라 Kimi K2.5·DeepSeek V3.2 는 앞 버전입니다. 가로축은 50% 에서 시작합니다. 출처: SWE-bench 리더보드 데이터.</figcaption>
+    </figure>
+    <div class="sl-wide">
+      <div class="sl-col">
+        <p>이 줄만 보면 오픈 웨이트가 다 따라잡은 것 같습니다. 하지만 이 측정은 2월에 멈췄습니다. 2026년 9월에 나온 Claude Opus 5.5 처럼 그 뒤의 닫힌 모델은 이 표에 없습니다. 한 시점 사진만으로는 누가 앞서 가는지 알기 어렵습니다.</p>
+        <p>Epoch AI 는 여러 시험을 묶은 지수 ECI(Epoch Capabilities Index)로 닫힌 모델과 오픈 웨이트 모델의 최고 기록을 시간에 따라 이었습니다. 2026년 5월 분석에서 오픈 웨이트는 2026년 1월 이후 평균 4개월 뒤처져 있었습니다. 두 계단의 가로 거리가 그 4개월입니다.</p>
+      </div>
+    </div>
+    <figure class="sl-fig sl-wide sl-steps" data-figure>
+      <div class="sl-stephead">
+        <p class="sl-try">👆 주황 계단의 점을 눌러 보세요</p>
+      </div>
+      <div class="sl-stepbox">
+      <p class="sl-stepread" data-stepread></p>
+      <svg data-stepsvg role="img" aria-label="2024년부터 2026년 5월까지 닫힌 모델과 오픈 웨이트 모델의 최고 ECI 를 잇는 계단선 두 개. 오픈 웨이트 점을 누르면 닫힌 모델이 같은 점수에 먼저 닿은 날까지 가로 화살표가 그어진다"></svg>
+      </div>
+      <figcaption class="sl-cap">Epoch AI 가 공개한 데이터로 다시 그렸습니다. 이 데이터는 출처만 밝히면 누구나 다시 쓸 수 있는 CC-BY(Creative Commons Attribution) 라이선스입니다. 모델 하나씩 재면 2024년 상반기에는 1년 넘게, 2025년 이후로는 1~8개월로 들쭉날쭉합니다. Epoch 가 2026년 1월 이후를 평균 낸 값이 4개월, 지수로는 8점입니다. 8점은 이 그림 세로축 눈금 한 칸(10점)보다 조금 작은 높이입니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap sl-two sl-split sl-fl">
+    <div class="sl-col ta">
+      <h2>미국 기업에서는 오히려 줄어든 오픈 모델 몫</h2>
+      <p>미국 기업이 LLM API 에 쓰는 돈에서 오픈 모델의 몫은 2024년 말 19% 에서 2025년 중반 13%, 2025년 말 11% 로 줄었습니다. 벤처 투자사 Menlo Ventures 가 2025년 11월 미국 기업 의사결정자 495명에게 물어 낸 숫자입니다.</p>
+    </div>
+    <figure class="sl-fig tf sl-share" data-figure>
+      <p class="sl-reglab">오픈 모델이 실제로 쓰이는 몫</p>
+      <div class="row">
+        <span class="who">Menlo Ventures · 2024년 말 → 2025년 말</span>
+        <span class="what">미국 기업 LLM API 지출 중 오픈 모델</span>
+        <span class="ts"><span class="t">2024년 말</span><span class="bar"><i style="width:19%"></i></span><b>19%</b></span>
+        <span class="ts"><span class="t">2025년 중반</span><span class="bar"><i style="width:13%"></i></span><b>13%*</b></span>
+        <span class="ts now"><span class="t">2025년 말</span><span class="bar"><i style="width:11%"></i></span><b>11%</b></span>
+        <small>* 13% 는 실제로 돌리는 일의 비율로 센 값이라 지출 추정인 11% 와 기준이 다릅니다</small>
+      </div>
+      <div class="row">
+        <span class="who">OpenRouter · 2025년 말</span>
+        <span class="what">중계 서비스에서 쓰인 토큰 중 오픈 모델</span>
+        <span class="bar"><i style="width:33.3%"><b>약 3분의 1</b></i></span>
+        <small>회사 안에서 돌리는 모델은 집계에 없습니다</small>
+      </div>
+      <p class="sl-reglab sl-will">쓰는 몫이 아니라 받아들일 마음</p>
+      <div class="row will">
+        <span class="who">a16z · 2026년 1월</span>
+        <span class="what">대기업 임원 100명 중 "직접 호스팅해도 괜찮다"</span>
+        <span class="bar"><i style="width:80%"><b>약 80%</b></i><em style="left:40%"><span>40%</span></em></span>
+        <small>점선 눈금은 2024년 약 40%</small>
+      </div>
+      <figcaption class="sl-cap">막대 길이는 각 조사가 낸 비율(0~100%)입니다. 맨 아래 빈 막대는 실제 사용량과 달리 "직접 호스팅해도 괜찮다"고 답한 임원의 비율입니다. 출처는 참고 자료의 Menlo Ventures·OpenRouter·a16z 보고서입니다.</figcaption>
+    </figure>
+    <div class="sl-col tb">
+      <p>보고서는 2025년 4월 Llama 4 이후 Meta 의 큰 새 모델이 나오지 않은 것을 이유로 들었습니다. 같은 보고서에서 코딩 쪽 API 지출의 54% 는 Anthropic 이었습니다. 개발자가 직접 고르는 중계 서비스 OpenRouter 에서는 오픈 모델이 약 3분의 1 로 더 컸습니다.</p>
+      <p>마음은 다른 쪽으로 움직였습니다. 미국 벤처 투자사 a16z(Andreessen Horowitz)의 대기업 임원 조사에서 직접 호스팅해도 괜찮다는 답은 2024년 약 40% 에서 약 80% 로 늘었습니다. 그런데 닫힌 모델을 더 선호한다는 답도 3분의 1 을 넘겼고 해마다 올랐습니다. 모델 품질이 바뀌는 속도와 사내 AI 인력 부족이 이유였습니다.</p>
+    </div>
+    <div class="sl-col tc">
+      <details>
+        <summary>Menlo Ventures 보고서의 원래 그림 보기</summary>
+        <figure class="sl-fig sl-img">
+          <a href="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/c7766ffc.webp" target="_blank" rel="noopener"><img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-09-16/c7766ffc.webp" alt="기업 오픈소스 LLM 몫이 2024년 12월 19%, 2025년 6월 13%, 2025년 12월 11%로 줄고 그 안에서 Meta 가 70%를 차지하는 막대그림" loading="lazy"></a>
+          <figcaption class="sl-cap">막대는 오픈 모델 안에서 회사별 몫(초록 Meta 70%, 하늘 Mistral 15%, 분홍 Qwen 6%, 연두 DeepSeek 4%), 맨 아래 줄 Total open-source LLM market share 가 전체 중 오픈 모델 몫입니다 — 출처: <a href="https://menlovc.com/perspective/2025-the-state-of-generative-ai-in-the-enterprise/" target="_blank" rel="noopener">Menlo Ventures, 2025: The State of Generative AI in the Enterprise (2025-12)</a></figcaption>
+        </figure>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap">
+    <div class="sl-head">
+      <h2>한국이 모델을 직접 두려는 이유</h2>
+      <p>한국에서는 규제와 정부 사업이 자체 호스팅 쪽으로 밀고 있습니다. 금융·공공은 업무용 컴퓨터를 인터넷과 끊어 두는 망분리(network separation)를 오래 지켜 와서 외부 AI 서비스에 코드를 보내기 어렵습니다. 정부는 핵심 AI 기술을 다른 나라에 기대지 않고 갖추려는 소버린 AI(sovereign AI) 정책으로 독자 AI 파운데이션 모델(foundation model) 사업을 진행하고 있습니다. 파운데이션 모델은 여러 일에 두루 쓰도록 처음부터 크게 학습한 바탕 모델입니다.</p>
+    </div>
+    <figure class="sl-fig sl-wide" data-figure>
+      <p class="sl-reglab">망분리 규제가 풀린 순서</p>
+      <div class="sl-reg">
+        <div class="ev st0"><b><span class="ic" aria-hidden="true">🔒</span>망분리</b><span class="s">업무망에서 외부 AI 를 쓰기 어려움</span></div>
+        <div class="ev"><span class="d">2024-08-13</span><b>금융 망분리 개선 로드맵</b><span class="s">보안 조건을 붙여 생성형 AI 허용</span></div>
+        <div class="ev"><span class="d">2024-12-09</span><b>첫 지정 10건</b><span class="s">은행·증권·보험·카드 9곳</span></div>
+        <div class="ev"><span class="d">2025-09-30</span><b>국정원 N²SF 1.0</b><span class="s">공개 등급 정보에 생성형 AI 반영</span></div>
+      </div>
+      <p class="sl-reglab" style="margin-top:44px !important">정부 독자 AI 파운데이션 모델 사업</p>
+      <div class="sl-dp" data-dp>
+        <div class="st"><span class="d">2025-08-04</span><span class="t">정예팀 5곳 선정</span><div class="tms">
+          <span class="tm">LG AI연구원</span><span class="tm">SK텔레콤</span><span class="tm">업스테이지</span><span class="tm">네이버클라우드</span><span class="tm">NC AI</span></div></div>
+        <div class="st"><span class="d">2026-01-15</span><span class="t">1차 평가</span><div class="tms">
+          <span class="tm">LG AI연구원<small>K-EXAONE 236B</small></span><span class="tm">SK텔레콤<small>A.X K1 519B</small></span><span class="tm">업스테이지<small>약 100B</small></span><span class="tm out"><s>네이버클라우드</s><small>독자성 기준 미달</small></span><span class="tm out"><s>NC AI</s><small>종합 점수</small></span></div></div>
+        <div class="st"><span class="d">2026-02-20</span><span class="t">추가 공모로 1곳 합류</span><div class="tms">
+          <span class="tm">LG AI연구원</span><span class="tm">SK텔레콤</span><span class="tm">업스테이지</span><span class="tm new">모티프테크놀로지스</span></div></div>
+        <div class="st"><span class="d">2026-08-18</span><span class="t">2차 평가</span><div class="tms">
+          <span class="tm">LG AI연구원<small>K-EXAONE 2.0 750B</small></span><span class="tm">SK텔레콤<small>A.X K2 688B</small></span><span class="tm">업스테이지<small>Solar Open2 250B</small></span><span class="tm out"><s>모티프</s><small>Motif 3 314B</small></span></div></div>
+        <div class="st"><span class="d">2027-02 예정</span><span class="t">최종 2곳</span><div class="tms">
+          <span class="tm tbd">3차 평가 뒤 결정</span></div></div>
+      </div>
+      <figcaption class="sl-cap">N²SF 는 공공 정보를 기밀·민감·공개로 나누는 국가 망 보안체계(National Network Security Framework)입니다. 아래 줄은 과기정통부 독자 AI 파운데이션 모델 사업의 단계마다 남은 팀(주황 점)과 떨어진 팀(빈 점·"탈락" 표시). "새로" 표시는 추가 공모로 들어온 팀, 이름 아래 작은 글씨는 평가에 낸 모델과 파라미터 수입니다. 출처는 참고 자료의 언론 보도와 금융위원회 보도자료입니다.</figcaption>
+    </figure>
+    <div class="sl-wide">
+      <div class="sl-col">
+        <p>이 사업의 모델은 sLLM 이라는 말과 달리 파라미터가 수천억 개입니다. LG 의 K-EXAONE 2.0 은 활성 37B, SK텔레콤의 A.X K1 은 활성 33B 이고 둘 다 Apache 2.0 입니다. 1차 평가에서는 가중치를 처음부터 직접 학습했는지 따지는 독자성 기준에 못 미친 팀이 떨어졌습니다.</p>
+        <p>기업 사례도 있습니다. 폐쇄망에 모델을 들이는 절차는 <a href="/posts/air-gapped-rag-on-premise-llm">폐쇄망 LLM 글</a>에 있습니다.</p>
+        <div class="sl-cases">
+          <div><span class="ic" aria-hidden="true">🏦</span><b>미래에셋증권</b><span class="d">2024년 9월</span><span>네이버의 LLM HyperCLOVA X 의 경량 모델로 사내 sLLM 구축</span></div>
+          <div><span class="ic" aria-hidden="true">📱</span><b>삼성전자</b><span class="d">2024년 11월 기준</span><span>자체 모델 Gauss2 로 만든 코딩 어시스턴트 code.i 를 DX(Device eXperience, 가전·모바일)부문 소프트웨어 개발자 약 60% 가 씀</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap sl-two sl-split">
+    <div class="sl-col ta">
+      <h2>비용은 GPU 를 얼마나 쉬지 않게 쓰느냐에 달렸습니다</h2>
+      <p>클라우드 API 는 쓴 만큼 내고 자체 호스팅은 쓰지 않아도 서버값을 냅니다. 그래서 서버 한 대가 맡을 사람을 꽉 채워 쓸 때만 자체 호스팅이 싸집니다.</p>
+      <p>공공 자전거와 내 자전거를 생각하면 쉽습니다. 따릉이는 탄 만큼 내고 내 자전거는 세워 둬도 산 값이 듭니다. 매일 타는 사람에게는 사는 편이 싸고 열흘에 사흘 타는 사람에게는 빌리는 편이 쌉니다.</p>
+    </div>
+    <figure class="sl-fig tf sl-bike" data-figure>
+      <svg data-bike role="img" aria-label="열흘 동안 낸 돈을 칸으로 쌓은 그림. 빌리면 탄 날만 하루 2,000원, 사면 산 값을 날로 나눈 하루 1,000원을 열흘 내내 낸다. 열흘에 3일 타면 빌리기 6,000원 대 사기 10,000원, 매일 타면 20,000원 대 10,000원"></svg>
+      <figcaption class="sl-cap">칸 하나를 1,000원으로 정한 예시입니다. 빌리면 탄 날마다 칸 두 개, 사 두면 날마다 칸 한 개가 쌓입니다. 그래서 가끔 타면 빌리는 쪽이, 매일 타면 사는 쪽이 쌉니다. 점선 칸은 안 탄 날에도 낸 몫입니다.</figcaption>
+    </figure>
+    <div class="sl-col tb">
+      <p>나눠 쓰기에서는 비유가 어긋납니다. 자전거는 한 번에 한 명이 타지만 GPU 서버 한 대는 여러 개발자의 요청을 동시에 받습니다. 몇 명까지 받을 수 있는지는 모델 크기, 요청 길이, 서빙 프로그램의 설정에 따라 크게 달라집니다.</p>
+    </div>
+  </div>
+  <div class="sl-band">
+    <div class="sl-wrap sl-be">
+      <figure class="sl-fig" data-figure>
+        <div class="sl-legend sl-legtop"><span><i class="api"></i>클라우드 API(띠 = 한 명당 월 150~250달러)</span><span><i class="own"></i>자체 호스팅(H100 8장 서버 대여료)</span><span><i class="ok"></i>자체 호스팅이 더 싼 구간</span></div>
+        <svg data-be role="img" aria-label="개발자 수에 따른 한 달 비용. 클라우드 API 는 곧게 오르는 선, 자체 호스팅은 서버를 한 대씩 더할 때마다 오르는 계단. 그래프 위를 끌면 그 인원의 두 비용이 보인다"></svg>
+        <figcaption class="sl-cap">계산에 쓴 값: API 는 Claude Code 문서가 적은 기업 배포 개발자 한 명당 한 달 평균 150~250달러(선은 가운데 200달러). 서버는 GPU 를 시간 단위로 빌려주는 클라우드 업체 Lambda 의 H100 8장 묶음, 장당 시간당 3.99달러 × 730시간 = 한 달 23,302달러. 서버 한 대가 맡는 인원은 공개된 기준이 없어 예시로 정했습니다.</figcaption>
+      </figure>
+      <div class="sl-beread">
+        <div class="sl-bectl">
+          <span class="lab">서버 한 대가 맡는 개발자(예시 가정)</span>
+          <div class="sl-tog" role="group" aria-label="서버 한 대가 맡는 개발자" data-cap>
+            <button type="button" data-v="50" aria-pressed="false">50명</button>
+            <button type="button" data-v="150" aria-pressed="true">150명</button>
+            <button type="button" data-v="300" aria-pressed="false">300명</button>
+          </div>
+        </div>
+        <p class="who" data-bewho>👆 그래프 위를 끌어 보세요</p>
+        <span class="big api" data-beapi></span>
+        <span class="big own" data-beown></span>
+        <p class="v" data-bev></p>
+      </div>
+    </div>
+  </div>
+  <div class="sl-wrap sl-wide">
+    <div class="sl-col">
+      <p>계단 모양에 결론이 보입니다. 서버를 한 대 더한 직후에는 빈자리가 많아 API 보다 비쌉니다. 서버가 꽉 찰수록 싸지고 다시 한 대를 더하면 비싸집니다. 여기에 운영할 사람의 인건비는 넣지 않았습니다. 넣으면 계단 전체가 위로 올라갑니다.</p>
+      <p>시간도 계산을 바꿉니다. a16z 는 같은 성능을 내는 LLM 의 가격이 해마다 약 10분의 1 로 떨어진다고 분석했습니다. 3년 쓸 GPU 를 오늘 값으로 사면 그사이 API 가격이 내려가는 것까지 따져야 합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap sl-two sl-split">
+    <div class="sl-col ta">
+      <h2>자체 호스팅에서 회사가 새로 맡는 일</h2>
+      <p>클라우드 API 를 쓰면 모델 아래 층은 모델 회사가 맡습니다. 자체 호스팅으로 바꾸면 GPU 서버부터 에이전트 도구 연결까지 여섯 층을 회사가 직접 맡습니다. 그림의 게이트웨이(gateway)는 회사의 모든 AI 요청을 한곳에서 받아 넘기는 중계 서버입니다.</p>
+    </div>
+    <figure class="sl-fig tf sl-stack" data-figure>
+      <svg data-stack role="img" aria-label="에이전트 도구 연결부터 GPU 서버까지 여섯 층 옆에 막대 두 개를 세운 그림. 클라우드 API 는 위 두 층만, 자체 호스팅은 여섯 층 전부를 회사가 맡는다"></svg>
+      <figcaption class="sl-cap">색 막대가 닿은 층은 회사가 맡고 회색 점선 구간은 모델 회사가 맡습니다.</figcaption>
+    </figure>
+    <div class="sl-col tb">
+      <p>층마다 사람의 시간이 듭니다. 새 모델이 나오면 받아서 평가하고 바꿔 끼워야 하고 서빙 프로그램의 보안 패치도 따라가야 합니다. 아래 명령에 쓰는 vLLM 은 대표적인 오픈소스 서빙 프로그램으로 여러 사람의 요청을 GPU 메모리에 빈틈없이 채워 한꺼번에 처리합니다. 원리는 <a href="/posts/pytorch-to-vllm-serving">vLLM 서빙 글</a>에 있습니다.</p>
+      <p>에이전트 도구도 다시 골라야 할 수 있습니다. Claude Code 문서는 게이트웨이를 거쳐 Claude 가 아닌 모델로 보내는 연결을 지원하지 않는다고 적었습니다. 오픈 웨이트 모델은 그 모델을 지원하는 다른 에이전트 도구와 짝을 맞춰야 합니다.</p>
+    </div>
+  </div>
+  <div class="sl-wrap sl-code">
+    <div>
+      <pre data-title="serve.sh" data-hl="2,5,7-8,10,12" data-start="1"><code class="language-bash"># ① 받을 모델 (Hugging Face 이름)
+MODEL=Qwen/Qwen3-Coder-Next
+ARGS=(
+  # ② GPU 두 장에 나눠 싣기
+  --tensor-parallel-size 2
+  # ③ 도구 호출을 알아듣게
+  --enable-auto-tool-choice
+  --tool-call-parser qwen3_coder
+  # ④ 이 주소로 요청을 받는다
+  --port 8000
+)
+vllm serve "$MODEL" "${ARGS[@]}"</code></pre>
+      <p class="sl-cap">Qwen3-Coder-Next 모델 카드에 적힌 <code>vllm serve</code> 명령을 옵션마다 설명을 달 수 있게 나눠 적었습니다(vLLM 0.15.0 이상).</p>
+    </div>
+    <ol class="pg-code-notes">
+      <li>Hugging Face 에 올라온 모델 이름입니다. 처음 실행하면 가중치를 다운받는데 폐쇄망이라면 미리 들여온 경로를 적습니다.</li>
+      <li>총 80B 를 GPU 한 장에 다 담을 수 없어 두 장에 나눠 싣습니다. 카드는 서버가 뜨지 않으면 컨텍스트 길이(context length)를 32,768 처럼 줄이라고 적었습니다. 컨텍스트 길이는 모델이 한 번에 읽는 토큰 수라 줄이면 그만큼 메모리가 남습니다.</li>
+      <li>에이전트는 "파일 읽기" 같은 도구를 정해진 형식으로 부릅니다. 모델이 내놓는 도구 호출을 그 형식으로 바꿔 주는 설정이고 모델마다 이름이 다릅니다.</li>
+      <li>포트(port)는 한 서버 안에서 프로그램마다 나눠 쓰는 문 번호입니다. 서버가 뜨면 8000번 문으로 OpenAI API 와 같은 형식의 요청을 받습니다. ChatGPT 를 만든 OpenAI 가 정한 요청 모양(보낼 주소와 항목 이름)을 그대로 따른다는 뜻입니다. 그 형식을 쓰는 에이전트 도구라면 이 주소만 모델 주소로 넣으면 됩니다.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="sl-sec">
+  <div class="sl-wrap">
+    <div class="sl-head">
+      <h2>모델보다 먼저 물어야 할 네 가지</h2>
+      <p>고르는 순서를 정해 두면 회의가 짧아집니다. 보안이 문을 정하고 사용량과 사람이 비용을 정하며 마지막으로 나눠 쓸지 묻습니다. 어느 답에 닿든 성능 차이를 메우는 일은 남습니다.</p>
+    </div>
+    <div class="sl-story">
+      <div class="sl-stepsx" data-steps>
+        <div class="sl-step" data-step="1">
+          <h3><span class="n">1</span>코드를 밖으로 보내도 되나</h3>
+          <p>규정이나 고객 계약이 막으면 다른 질문은 의미가 없습니다. 자체 호스팅만 남습니다. 클라우드 업체가 회사 전용 공간에 모델을 띄워 주는 방식도 있지만 그것도 회사 밖 서버이므로 규정 문구를 확인해야 합니다.</p>
+        </div>
+        <div class="sl-step" data-step="2">
+          <h3><span class="n">2</span>서버를 꽉 채울 만큼 쓰나</h3>
+          <p>보내도 된다면 비용을 봅니다. 사용량이 적거나 들쭉날쭉하면 API 가 쌉니다. 작은 팀이 몇 주 시험 삼아 쓸 때도 API 로 먼저 써 보고 실제 사용량을 잰 다음 계산합니다.</p>
+        </div>
+        <div class="sl-step" data-step="3">
+          <h3><span class="n">3</span>서버를 맡을 사람이 있나</h3>
+          <p>사용량이 많아도 GPU 서버와 서빙 프로그램을 맡을 사람이 없으면 그 사람을 뽑는 비용이 계단 위에 얹힙니다. 이미 GPU 를 운영하는 팀이 있는 회사만 이 칸을 쉽게 넘습니다.</p>
+        </div>
+        <div class="sl-step" data-step="4">
+          <h3><span class="n">4</span>민감한 일만 나눌 수 있나</h3>
+          <p>둘 중 하나만 고를 필요는 없습니다. 민감한 저장소와 반복 작업은 사내 모델에, 어려운 설계는 클라우드 API 에 보내는 식입니다. 게이트웨이 하나가 요청을 받아 규칙대로 나눠 보내고 사용량도 사람별로 기록합니다. 나눌 수 없다면 전부 사내 모델로 보냅니다. 여기까지 왔다면 서버를 꽉 채워 쓰고 맡을 사람도 있는 회사라 자체 호스팅이 이미 쌉니다.</p>
+        </div>
+        <div class="sl-step sl-fin" data-step="5">
+          <div class="fb">
+          <h3>결론 · 격차는 검증으로 메운다</h3>
+          <p>어느 쪽이든 사내 모델은 몇 달 뒤의 실력입니다. 테스트와 리뷰 같은 확인 단계를 더 촘촘히 걸어야 같은 결과가 나옵니다(<a href="/posts/ai-native-dev-loop-explore-plan-verify">에이전트 루프 글</a>). 격차와 가격이 계속 움직이니 이 순서도는 반년마다 다시 그립니다.</p>
+          </div>
+        </div>
+      </div>
+      <figure class="sl-fig sl-sticky" data-figure>
+        <svg class="sl-flow" data-flow role="img" aria-label="코드 반출, 사용량, 운영 인력, 섞어 쓰기, 검증 순서로 내려가는 결정 순서도"></svg>
+      </figure>
+    </div>
+    <p style="margin-top:56px">다음 글에서는 같은 도구를 쓰는데도 팀마다 결과가 다른 이유와 개발자가 키워야 할 역량을 알아보겠습니다.</p>
+  </div>
+</section>
+
+<section class="sl-sec sl-refs" style="padding-bottom: clamp(80px, 10vw, 120px)">
+  <div class="sl-wrap sl-refhead">
+    <h2>참고 자료</h2>
+    <ul>
+      <li><a href="https://epoch.ai/data-insights/open-closed-eci-gap" target="_blank" rel="noopener">Open models lag state-of-the-art closed models by 4 months — Epoch AI (2026-05-29)</a> (계단선 데이터, CC-BY)</li>
+      <li><a href="https://epoch.ai/data-insights/open-weights-vs-closed-weights-models" target="_blank" rel="noopener">Open-weight models lag state-of-the-art by around 3 months — Epoch AI (2025-10-30)</a></li>
+      <li><a href="https://www.swebench.com/verified.html" target="_blank" rel="noopener">SWE-bench Verified</a> · <a href="https://github.com/SWE-bench/swe-bench.github.io" target="_blank" rel="noopener">리더보드 데이터(data/leaderboards.json)</a> (2026-10-15 확인)</li>
+      <li>모델 카드: <a href="https://huggingface.co/Qwen/Qwen3-Coder-Next" target="_blank" rel="noopener">Qwen3-Coder-Next</a> · <a href="https://huggingface.co/MiniMaxAI/MiniMax-M2.5" target="_blank" rel="noopener">MiniMax-M2.5</a> · <a href="https://huggingface.co/zai-org/GLM-5" target="_blank" rel="noopener">GLM-5</a> · <a href="https://huggingface.co/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">Kimi K2.5</a> · <a href="https://huggingface.co/moonshotai/Kimi-K2.6" target="_blank" rel="noopener">Kimi K2.6</a> · <a href="https://huggingface.co/mistralai/Devstral-2-123B-Instruct-2512" target="_blank" rel="noopener">Devstral 2</a> · <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro" target="_blank" rel="noopener">DeepSeek-V4-Pro</a> · <a href="https://huggingface.co/openai/gpt-oss-120b" target="_blank" rel="noopener">gpt-oss-120b</a> · <a href="https://huggingface.co/skt/A.X-K1" target="_blank" rel="noopener">A.X K1</a> · <a href="https://huggingface.co/upstage/Solar-Open2-250B" target="_blank" rel="noopener">Solar Open2</a> · <a href="https://huggingface.co/LGAI-EXAONE" target="_blank" rel="noopener">K-EXAONE</a></li>
+      <li><a href="https://menlovc.com/perspective/2025-the-state-of-generative-ai-in-the-enterprise/" target="_blank" rel="noopener">2025: The State of Generative AI in the Enterprise — Menlo Ventures (2025-12)</a> · <a href="https://menlovc.com/perspective/2025-mid-year-llm-market-update/" target="_blank" rel="noopener">2025 Mid-Year LLM Market Update</a></li>
+      <li><a href="https://www.a16z.news/p/leaders-gainers-and-unexpected-winners" target="_blank" rel="noopener">Leaders, gainers and unexpected winners (CIO 조사) — a16z (2026-01-30)</a></li>
+      <li><a href="https://openrouter.ai/state-of-ai" target="_blank" rel="noopener">State of AI — OpenRouter · a16z (2025-12)</a></li>
+      <li><a href="https://a16z.com/llmflation-llm-inference-cost/" target="_blank" rel="noopener">Welcome to LLMflation — a16z (2024-11-12)</a></li>
+      <li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Manage costs effectively — Claude Code Docs</a> · <a href="https://code.claude.com/docs/en/llm-gateway" target="_blank" rel="noopener">Other LLM gateways</a> (2026-10-15 확인)</li>
+      <li><a href="https://lambda.ai/pricing" target="_blank" rel="noopener">Lambda GPU Cloud 가격</a> (2026-10-15 확인)</li>
+      <li><a href="https://www.fsc.go.kr/po010101/82885" target="_blank" rel="noopener">금융분야 망분리 개선 로드맵 — 금융위원회 (2024-08-13)</a> · <a href="https://www.ajunews.com/view/20241209132158309" target="_blank" rel="noopener">생성형 AI 혁신금융서비스 첫 지정 — 아주경제 (2024-12-09)</a> · <a href="https://byline.network/2025/09/30-445/" target="_blank" rel="noopener">국정원 N²SF 가이드라인 1.0 — 바이라인네트워크 (2025-09-30)</a></li>
+      <li>독자 AI 파운데이션 모델: <a href="https://www.fnnews.com/news/202601151434578353" target="_blank" rel="noopener">1차 평가 — 파이낸셜뉴스 (2026-01-15)</a> · <a href="https://www.newsis.com/view/NISX20260220_0003520469" target="_blank" rel="noopener">추가 선정 — 뉴시스 (2026-02-20)</a> · <a href="https://byline.network/2026/08/0818-7/" target="_blank" rel="noopener">2차 평가 — 바이라인네트워크 (2026-08-18)</a> · <a href="https://www.dailian.co.kr/news/view/1697561/" target="_blank" rel="noopener">3차·최종 일정 — 데일리안 (2026-10-05)</a></li>
+      <li><a href="https://www.navercorp.com/media/pressReleasesDetail?seq=32047" target="_blank" rel="noopener">미래에셋증권 온프레미스 sLLM — 네이버 (2024-09-19)</a> · <a href="https://www.cio.com/article/3610084/" target="_blank" rel="noopener">삼성전자 code.i — CIO (2024-11)</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+  const root = window.postPage?.root || document;
+  const signal = window.postPage?.signal;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null && attrs[k] !== "") e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const txt = (parent, x, y, s, attrs = {}) => { const t = el("text", { x, y, ...attrs }, parent); t.textContent = s; return t; };
+  const mobile = () => window.matchMedia("(max-width: 860px)").matches;
+  const responsive = (build) => {
+    let m = mobile(); build(m);
+    window.addEventListener("resize", () => { if (mobile() !== m) { m = mobile(); build(m); } }, { passive: true, signal });
+  };
+  const usd = (n) => "$" + Math.round(n).toLocaleString("en-US");
+  let uid = 0;
+  const arrowDefs = (svg, color) => {
+    const id = "slar" + (++uid);
+    const d = el("defs", {}, svg);
+    const mk = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 9, markerHeight: 9, markerUnits: "userSpaceOnUse", orient: "auto-start-reverse" }, d);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: color }, mk);
+    return `url(#${id})`;
+  };
+
+  /* ---------- 비용 계산(히어로와 손익 그래프가 같이 쓴다) ---------- */
+  const PER_DEV = 200, PER_DEV_LO = 150, PER_DEV_HI = 250;
+  const NODE = Math.round(3.99 * 8 * 730); // 23,301.6 → 캡션과 같은 23,302(한 달 값을 먼저 반올림해 500명 4대 = 93,208)
+  const apiCost = (n) => n * PER_DEV;
+  const ownCost = (n, cap) => (n <= 0 ? 0 : Math.ceil(n / cap) * NODE);
+
+  /* ---------- 히어로: 네 저울 ---------- */
+  (() => {
+    const fig = $("[data-hero]"); if (!fig) return;
+    const st = { out: "ok", dev: "20", ops: "none" };
+    const verdict = $("[data-verdict]", fig);
+    const S = {};
+    const DEF = {
+      perf: { t: "성능", s: "같은 실력에 늦게 닿는 기간" },
+      cost: { t: "비용", s: "한 달 비용(예시 계산)" },
+      sec: { t: "보안", s: "회사 밖으로 나가는 코드" },
+      ops: { t: "운영", s: "회사가 새로 맡을 일" },
+    };
+    const val = (k) => {
+      if (k === "perf") return { L: 0, R: 4, l: "기준", r: "약 4개월" };
+      if (k === "cost") {
+        if (!st.dev) return null;
+        const n = +st.dev, a = apiCost(n), o = ownCost(n, 150);
+        return { L: a, R: o, l: usd(a), r: usd(o) };
+      }
+      if (k === "sec") {
+        if (!st.out) return null;
+        return st.out === "no" ? { L: 10, R: 0, l: "보낼 수 없음", r: "없음", lock: true } : { L: 3, R: 0, l: "요청마다", r: "없음" };
+      }
+      if (k === "ops") {
+        if (!st.ops) return null;
+        return st.ops === "none" ? { L: 1, R: 5, l: "계정 관리", r: "새 팀 꾸림" } : { L: 1, R: 2.4, l: "계정 관리", r: "기존 팀 활용" };
+      }
+    };
+    const build = (m) => {
+      $$("svg[data-scale]", fig).forEach((svg) => {
+        const k = svg.dataset.scale;
+        svg.innerHTML = "";
+        const W = m ? 190 : 250, H = m ? 168 : 178;
+        const cx = W / 2, py = m ? 56 : 66, L = m ? 54 : 78, sl = m ? 26 : 30, pw = m ? 27 : 36;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        txt(svg, 0, m ? 16 : 20, DEF[k].t, { "font-size": m ? 15 : 17, "font-weight": 700, fill: "var(--fg-strong)" });
+        txt(svg, 0, m ? 34 : 39, DEF[k].s, { "font-size": m ? 13.5 : 13, fill: "var(--fg-neutral)" });
+        const base = H - 6;
+        el("path", { d: `M${cx - 4} ${py} L${cx - 7} ${base} L${cx + 7} ${base} L${cx + 4} ${py} Z`, fill: "var(--fg-neutral)", opacity: 0.35 }, svg);
+        el("rect", { x: cx - 30, y: base - 4, width: 60, height: 5, rx: 2.5, fill: "var(--fg-neutral)", opacity: 0.45 }, svg);
+        const beam = el("g", { class: "beam" }, svg);
+        beam.style.transformOrigin = `${cx}px ${py}px`;
+        el("rect", { x: cx - L - 4, y: py - 3, width: 2 * L + 8, height: 6, rx: 3, fill: "var(--fg-strong)" }, beam);
+        el("circle", { cx, cy: py, r: 6, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 2.5 }, svg);
+        const pans = {};
+        for (const side of ["L", "R"]) {
+          const x0 = side === "L" ? cx - L : cx + L;
+          const col = side === "L" ? "var(--api)" : "var(--own)";
+          const g = el("g", { class: "pan" }, svg);
+          const dy = py + sl;
+          el("path", { d: `M${x0 - pw + 4} ${dy} L${x0} ${py} L${x0 + pw - 4} ${dy}`, fill: "none", stroke: col, "stroke-width": 1.3 }, g);
+          const wt = el("g", { class: "wt" }, g);
+          el("rect", { x: x0 - 17, y: dy - 22, width: 34, height: 22, rx: 5, fill: side === "L" ? "var(--api-soft)" : "var(--own-soft)", stroke: col, "stroke-width": 1.5 }, wt);
+          el("path", { d: `M${x0 - pw} ${dy} Q${x0} ${dy + (m ? 13 : 16)} ${x0 + pw} ${dy} Z`, fill: col }, g);
+          const ny = dy + (m ? 26 : 29);
+          txt(g, x0, ny, side === "L" ? "API" : "자체 호스팅", { "font-size": m ? 13.5 : 13.5, fill: col, "font-weight": 600, "text-anchor": "middle" });
+          const vt = txt(g, x0, ny + (m ? 17 : 19), "?", { "font-size": m ? 13.5 : 14.5, "font-weight": 700, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+          const fav = el("g", { class: "fav", opacity: 0 }, g);
+          el("circle", { cx: 0, cy: 0, r: m ? 8 : 9.5, fill: "var(--ok)" }, fav);
+          el("path", { d: m ? "M-4 0 L-1 3 L4 -3" : "M-4.5 0 L-1 3.5 L4.5 -3.5", fill: "none", stroke: "var(--bg-base)", "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }, fav);
+          // '안 된다'면 API 상자는 접시에 올리지 않고 저울 밖 바닥에 X 친 채 둔다
+          const lock = el("g", { class: "fav", opacity: 0 }, svg);
+          const lw = m ? 30 : 34, lh = m ? 19 : 20, ly = base - lh - 2;
+          el("rect", { x: x0 - lw / 2, y: ly, width: lw, height: lh, rx: 5, fill: "var(--api-soft)", stroke: "var(--api)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, lock);
+          el("line", { x1: x0 - lw / 2 + 3, y1: ly + 2, x2: x0 + lw / 2 - 3, y2: ly + lh - 2, stroke: "var(--bad)", "stroke-width": 3, "stroke-linecap": "round" }, lock);
+          el("line", { x1: x0 + lw / 2 - 3, y1: ly + 2, x2: x0 - lw / 2 + 3, y2: ly + lh - 2, stroke: "var(--bad)", "stroke-width": 3, "stroke-linecap": "round" }, lock);
+          txt(lock, x0, ny + (m ? 17 : 19), "보낼 수 없음", { "font-size": m ? 13.5 : 14, "font-weight": 700, fill: "var(--bad)", "text-anchor": "middle" });
+          pans[side] = { g, wt, vt, fav, lock, x0, vy: ny + (m ? 17 : 19) };
+        }
+        S[k] = { svg, beam, pans, L, m };
+      });
+      render();
+    };
+    const render = () => {
+      for (const k in S) {
+        const s = S[k], v = val(k);
+        let ang = 0;
+        if (v) {
+          const mx = Math.max(v.L, v.R) || 1;
+          ang = v.lock ? 0 : Math.max(-12, Math.min(12, 12 * (v.R - v.L) / mx));
+          const close = !v.lock && Math.abs(v.R - v.L) / mx < 0.2;
+          for (const side of ["L", "R"]) {
+            const p = s.pans[side], w = v[side] / mx;
+            p.wt.style.opacity = w > 0 && !(v.lock && side === "L") ? 1 : 0;
+            p.wt.style.transform = `scaleY(${Math.max(0.3, w)})`;
+            p.vt.textContent = v.lock && side === "L" ? "" : side === "L" ? v.l : v.r;
+            p.vt.setAttribute("fill", v.lock && side === "L" ? "var(--bad)" : "var(--fg-strong)");
+            p.lock.style.opacity = v.lock && side === "L" ? 1 : 0;
+            const win = !close && (side === "L" ? v.L < v.R : v.R < v.L);
+            let len = 40; try { len = p.vt.getComputedTextLength(); } catch (e) {}
+            p.fav.setAttribute("transform", `translate(${p.x0 + len / 2 + (s.m ? 12 : 14)} ${p.vy - (s.m ? 4 : 5)})`);
+            p.fav.style.opacity = win ? 1 : 0;
+          }
+        } else {
+          for (const side of ["L", "R"]) {
+            const p = s.pans[side];
+            p.wt.style.opacity = 0; p.vt.textContent = "?"; p.vt.setAttribute("fill", "var(--fg-neutral)");
+            p.fav.style.opacity = 0; p.lock.style.opacity = 0;
+          }
+        }
+        s.beam.style.transform = `rotate(${ang}deg)`;
+        const rad = ang * Math.PI / 180, dx = s.L * (Math.cos(rad) - 1), dy = s.L * Math.sin(rad);
+        s.pans.R.g.style.transform = `translate(${dx}px, ${dy}px)`;
+        s.pans.L.g.style.transform = `translate(${-dx}px, ${-dy}px)`;
+      }
+      $$("[data-sc]", fig).forEach((d) => d.classList.toggle("dim", st.out === "no" && d.dataset.sc !== "sec"));
+      verdict.innerHTML = say();
+    };
+    const say = () => {
+      if (st.out === "no") return "보안 저울에서 클라우드 API 는 접시에 올릴 수조차 없습니다. 나머지 세 저울은 흐리게 바뀝니다. 어느 쪽으로 기울든 <b class=\"own\">자체 호스팅</b>만 남기 때문입니다. 약 4개월 늦은 실력은 테스트와 리뷰를 더 촘촘히 걸어 메워야 합니다.";
+      const n = +st.dev, a = apiCost(n), o = ownCost(n, 150);
+      const costClose = Math.abs(a - o) / Math.max(a, o) < 0.2;
+      if (n === 500 && st.ops === "have") return `비용이 ${usd(a)} 대 ${usd(o)} 로 비슷해지고 운영 부담도 줄었습니다. 이런 회사는 민감한 저장소만 사내 모델에 맡기고 나머지는 API 로 보내는 <b class="own">섞어 쓰기</b>를 따져 볼 만합니다.`;
+      if (costClose) return `비용은 ${usd(a)} 대 ${usd(o)} 로 비슷하지만 성능과 운영이 클라우드 API 쪽으로 기웁니다. 보안 저울만 자체 호스팅이 가볍습니다. 이 회사라면 <b class="api">클라우드 API</b> 가 맞습니다.`;
+      return `성능·비용·운영 저울이 모두 클라우드 API 쪽이 가볍고 보안 저울만 자체 호스팅이 가볍습니다. 코드를 보내도 되는 회사라면 <b class="api">클라우드 API</b> 가 맞습니다. ↑ 개발자 수나 운영 팀을 바꿔 보세요.`;
+    };
+    $$(".sl-tog", fig).forEach((tg) => {
+      const k = tg.dataset.k;
+      $$("button", tg).forEach((b) => b.addEventListener("click", () => {
+        st[k] = b.dataset.v;
+        $$("button", tg).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        render();
+      }, { signal }));
+    });
+    fig.addEventListener("sl-demo", () => {
+      const pick = (k, v) => { st[k] = v; $$(`[data-k="${k}"] button`, fig).forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.v === v))); };
+      pick("out", "ok"); pick("dev", "100"); pick("ops", "none"); render();
+    }, { signal });
+    responsive(build);
+  })();
+
+  /* ---------- 받는 상자(밀키트) + 라이선스 눈금 ---------- */
+  (() => {
+    const svg = $("[data-box]"); if (!svg) return;
+    const IN = [["💾", "가중치 파일", "safetensors, 수백 GB"], ["📐", "설계도", "config.json"], ["🔤", "토크나이저", "글 → 숫자"], ["📜", "라이선스", "쓰는 조건"]];
+    const OUT = [["📚", "학습 데이터·코드", "대부분 비공개"], ["🖥️", "GPU 서버", "GPU 여러 장"], ["⚙️", "서빙 프로그램", "모델을 띄워 요청을 받음", "serving"], ["🧑‍🔧", "운영할 사람", "갱신·장애 대응"]];
+    const BAND = [["Apache 2.0·MIT", "거의 조건 없음", ["Qwen3-Coder-Next", "gpt-oss-120b", "GLM-5", "DeepSeek-V4-Pro", "A.X K1", "K-EXAONE 2.0"]], ["수정 MIT", "큰 서비스면 이름 표시", ["Kimi K2.6", "Devstral 2", "MiniMax M2.5"]], ["자체 라이선스", "조건을 읽어야 함", ["Solar Open2"], "고친 모델 이름 앞에 \"Solar\""]];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 600, fs = 15.5;
+      const bw = m ? W : 296, rh = 43, bh = 4 * rh + 20, by = 46;
+      // 상자: 열린 뚜껑 두 장 + 몸통
+      txt(svg, 0, 18, "📦 받는 상자", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      el("path", { d: `M3 ${by} L14 ${by - 14} L${bw / 2 - 8} ${by - 14} L${bw / 2 - 2} ${by} Z`, fill: "var(--own)", opacity: 0.35 }, svg);
+      el("path", { d: `M${bw / 2 + 2} ${by} L${bw / 2 + 8} ${by - 14} L${bw - 14} ${by - 14} L${bw - 3} ${by} Z`, fill: "var(--own)", opacity: 0.35 }, svg);
+      el("rect", { x: 1, y: by, width: bw - 2, height: bh, rx: 6, fill: "var(--own-soft)", stroke: "var(--own)", "stroke-width": 2 }, svg);
+      IN.forEach(([ic, a, b], i) => {
+        const yy = by + 12 + i * rh;
+        el("rect", { x: 12, y: yy, width: bw - 24, height: rh - 8, rx: 7, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 1.2 }, svg);
+        txt(svg, 22, yy + 23, ic, { "font-size": 16 });
+        txt(svg, 46, yy + 23, a, { "font-size": 15, "font-weight": 700, fill: "var(--fg-strong)" });
+        txt(svg, m ? 150 : 142, yy + 23, b, { "font-size": 13.5, fill: "var(--fg-neutral)" });
+      });
+      // 내 주방: 상자 밖에서 직접 마련
+      const ox = m ? 0 : bw + 26, ow = m ? W : W - bw - 26;
+      const oy = m ? by + bh + 50 : by;
+      txt(svg, ox, oy - 28, "🍳 내 주방에서 직접 마련", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const kh = m ? 2 * 54 + 10 : bh;
+      el("rect", { x: ox, y: oy - 14, width: ow, height: kh + 14, rx: 12, fill: "none", stroke: "var(--mute)", "stroke-width": 1.4, "stroke-dasharray": "6 5" }, svg);
+      OUT.forEach(([ic, a, b, en], i) => {
+        const cw = m ? (ow - 30) / 2 : ow - 20;
+        const x = ox + 10 + (m ? (i % 2) * (cw + 10) : 0), yy = oy - 4 + (m ? Math.floor(i / 2) * 58 : i * (bh / 4) + 4);
+        txt(svg, x, yy + 20, ic, { "font-size": 16 });
+        const nt = txt(svg, x + 24, yy + 20, en ? "" : a, { "font-size": 15, "font-weight": 700, fill: "var(--fg-normal)" });
+        // 서빙은 여기서 처음 나오므로 영어를 한 번 병기한다(본문에서는 다시 달지 않음)
+        if (en) { const [k1, k2] = a.split(" "); el("tspan", {}, nt).textContent = k1; el("tspan", { "font-size": 12.5, "font-weight": 400, fill: "var(--fg-neutral)" }, nt).textContent = `(${en}) `; el("tspan", {}, nt).textContent = k2; }
+        txt(svg, x + 24, yy + 38, b, { "font-size": 13.5, fill: "var(--fg-neutral)" });
+      });
+      // 라이선스: 조건이 적은 쪽 → 많은 쪽 한 줄 눈금
+      let T = (m ? oy + kh + 54 : by + bh + 58);
+      txt(svg, 0, T, "라이선스, 조건이 적은 쪽 → 많은 쪽", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const gid = "slgr" + (++uid);
+      const lg = el("linearGradient", { id: gid, x1: 0, x2: m ? 0 : 1, y1: 0, y2: m ? 1 : 0 }, el("defs", {}, svg));
+      el("stop", { offset: 0, "stop-color": "var(--own)", "stop-opacity": 0.2 }, lg);
+      el("stop", { offset: 1, "stop-color": "var(--own)", "stop-opacity": 1 }, lg);
+      if (!m) {
+        const ay = T + 46;
+        el("rect", { x: 0, y: ay - 2, width: W, height: 4, rx: 2, fill: `url(#${gid})` }, svg);
+        BAND.forEach(([a, b, list, note], i) => {
+          const cx = W * (2 * i + 1) / 6;
+          txt(svg, cx, ay - 14, a, { "font-size": 14.5, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+          el("circle", { cx, cy: ay, r: 7, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 3, "stroke-opacity": 0.4 + i * 0.3 }, svg);
+          txt(svg, cx, ay + 28, b, { "font-size": 14, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+          list.forEach((n, j) => txt(svg, cx, ay + 54 + j * 22, n, { "font-size": 14.5, fill: "var(--fg-normal)", "text-anchor": "middle" }));
+          if (note) txt(svg, cx, ay + 54 + list.length * 22, note, { "font-size": 13.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        });
+        svg.setAttribute("viewBox", `0 0 ${W} ${ay + 54 + 5 * 22 + 8}`);
+      } else {
+        let y = T + 28;
+        const top = y;
+        BAND.forEach(([a, b, list, note]) => {
+          el("circle", { cx: 8, cy: y - 5, r: 6, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 3 }, svg);
+          txt(svg, 26, y, a, { "font-size": 14, "font-weight": 700, fill: "var(--fg-strong)" });
+          txt(svg, W, y, b, { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "end" });
+          const rows = Math.ceil(list.length / 2);
+          list.forEach((n, j) => txt(svg, 26 + (j % 2) * ((W - 26) / 2), y + 24 + Math.floor(j / 2) * 21, n, { "font-size": 13.5, fill: "var(--fg-normal)" }));
+          if (note) txt(svg, 26 + (W - 26) / 2, y + 24, note, { "font-size": 12.5, fill: "var(--fg-neutral)" });
+          y += 24 + rows * 21 + 14;
+        });
+        el("rect", { x: 6, y: top - 5, width: 4, height: y - top - 30, rx: 2, fill: `url(#${gid})` }, svg);
+        svg.insertBefore(svg.lastChild, svg.querySelector("circle"));
+        svg.setAttribute("viewBox", `0 0 ${W} ${y - 14}`);
+      }
+    });
+  })();
+
+  /* ---------- 총·활성 정사각형 ---------- */
+  (() => {
+    const svg = $("[data-sq]"); if (!svg) return;
+    const read = $("[data-sqread]");
+    const M = [
+      { n: "Qwen3-Coder-Next", t: 80, a: 3, lic: "Apache 2.0", note: "가중치만 80GB 라 H100 한 장이 꽉 찹니다. 모델 카드는 두 장에 나눠 띄우는 명령을 적었습니다." },
+      { n: "gpt-oss-120b", t: 117, a: 5.1, lic: "Apache 2.0" },
+      { n: "Devstral 2", t: 123, a: 123, lic: "수정 MIT", note: "MoE 가 아닌 모델이라 숫자 전부가 매번 계산에 쓰입니다. 총과 활성이 같습니다." },
+      { n: "Solar Open2", t: 250, a: 15, lic: "Upstage Solar License", note: "업스테이지가 정부 사업 2차 평가에 낸 국산 모델입니다." },
+      { n: "A.X K1", t: 519, a: 33, lic: "Apache 2.0", note: "SK텔레콤이 정부 사업 1차 평가에 낸 국산 모델입니다." },
+      { n: "GLM-5", t: 744, a: 40, lic: "MIT" },
+      { n: "K-EXAONE 2.0", t: 750, a: 37, lic: "Apache 2.0", note: "LG AI연구원이 정부 사업 2차 평가에 낸 국산 모델입니다." },
+      { n: "Kimi K2.6", t: 1000, a: 32, lic: "수정 MIT" },
+      { n: "DeepSeek-V4-Pro", t: 1600, a: 49, lic: "MIT" },
+    ];
+    let sel = -1, G = [];
+    const show = () => {
+      G.forEach((g, i) => { const on = i === sel; g.ring.style.opacity = on ? 1 : 0; g.nm.setAttribute("fill", on ? "var(--own)" : "var(--fg-strong)"); g.nm.setAttribute("font-weight", on ? 800 : 600); g.ul.style.opacity = on ? 1 : 0; });
+      if (sel < 0) return;
+      const d = M[sel], gpu = Math.ceil(d.t / 80), node = Math.ceil(gpu / 8);
+      const pct = d.a / d.t * 100;
+      read.innerHTML = `<p class="nm">${d.n}</p>
+        <div class="row"><span>총 파라미터</span><b>${d.t >= 1000 ? (d.t / 1000).toFixed(1) + "T" : d.t + "B"}</b>
+        <span>활성 파라미터</span><b class="own">${d.a}B (${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%)</b>
+        <span>가중치만 담을 H100</span><b>${gpu}장${node > 1 ? ` · 8장 서버 ${node}대` : ""}</b>
+        <span>라이선스</span><b style="font-family:var(--font-sans);font-size:15px">${d.lic}</b></div>
+        <p>${d.note || "글자 하나를 만들 때마다 칠한 몫만 계산합니다. 그래도 GPU 메모리에는 테두리 전체를 올려 둬야 합니다."}</p>
+        <p style="margin-top:8px !important;color:var(--fg-neutral)">숫자 하나를 1바이트(8비트)로 적고 가중치만 센 장수입니다. 비트는 0 이나 1 하나를 담는 칸이고 1바이트는 그 칸 8개입니다.</p>`;
+    };
+    responsive((m) => {
+      svg.innerHTML = ""; G = [];
+      const cols = m ? 3 : 5, cell = m ? 120 : 128, maxS = m ? 92 : 116, gapY = m ? 20 : 30, pad = 8;
+      const rows = Math.ceil(M.length / cols);
+      const sc = (p) => maxS * Math.sqrt(p / 1600);
+      // 줄마다 그 줄에서 가장 큰 정사각형 높이만큼만 자리를 잡는다(작은 줄 위 빈 곳을 없앤다)
+      const rowH = [...Array(rows)].map((_, r) => Math.max(...M.slice(r * cols, r * cols + cols).map((d) => sc(d.t))) + 6);
+      const rowB = []; { let acc = 0; rowH.forEach((h, r) => { acc += h; rowB.push(acc); acc += 50 + gapY; }); }
+      const W = cols * cell, H = rowB[rows - 1] + 50;
+      svg.setAttribute("viewBox", `0 ${-pad} ${W} ${H + pad}`);
+      M.forEach((d, i) => {
+        const c = i % cols, r = Math.floor(i / cols);
+        const cx = c * cell + cell / 2, by = rowB[r];
+        const s = sc(d.t), sa = sc(d.a);
+        const g = el("g", { class: "m", tabindex: 0, role: "button", "aria-label": d.n }, svg);
+        el("rect", { x: cx - cell / 2, y: by - rowH[r] - 4, width: cell, height: rowH[r] + 50, fill: "transparent" }, g);
+        const ring = el("rect", { x: cx - s / 2 - 6, y: by - s - 6, width: s + 12, height: s + 12, rx: 6, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 1.6, "stroke-dasharray": "4 3", opacity: 0 }, g);
+        ring.style.transition = "opacity .3s";
+        const bx = el("rect", { class: "bx", x: cx - s / 2, y: by - s, width: s, height: s, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 1.8 }, g);
+        el("rect", { x: cx - s / 2, y: by - sa, width: sa, height: sa, fill: "var(--own)" }, g);
+        const lab = d.n;
+        const nm = txt(g, cx, by + 22, lab, { "font-size": m ? 12.5 : 14, "font-weight": 600, fill: "var(--fg-strong)", "text-anchor": "middle" });
+        let tw = lab.length * 7; try { tw = nm.getComputedTextLength(); } catch (e) {}
+        const ul = el("rect", { x: cx - tw / 2, y: by + 26, width: tw, height: 2.5, rx: 1, fill: "var(--own)", opacity: 0 }, g);
+        if (d.a === d.t) txt(g, cx, by - s - 9, "전부 계산", { "font-size": m ? 12 : 12.5, "font-weight": 700, fill: "var(--own)", "text-anchor": "middle" });
+        txt(g, cx, by + (m ? 41 : 44), `${d.t >= 1000 ? (d.t / 1000).toFixed(1) + "T" : d.t + "B"} / ${d.a}B`, { "font-size": m ? 12 : 13, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        g.addEventListener("click", () => { sel = i; show(); }, { signal });
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sel = i; show(); } }, { signal });
+        G.push({ bx, ring, nm, ul });
+      });
+      show();
+    });
+  })();
+
+  /* ---------- MoE 예시: 층마다 전문가 8벌 중 2벌만 켜짐 ---------- */
+  (() => {
+    const svg = $("[data-moe]"); if (!svg) return;
+    const ON = [[1, 5], [3, 6], [0, 4]];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const bs = m ? 30 : 34, gp = m ? 7 : 9, x0 = m ? 40 : 46, W = x0 + 8 * bs + 7 * gp, rg = m ? 30 : 34, y0 = 52;
+      const H = y0 + 3 * bs + 2 * rg + 54;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const bx = (j) => x0 + j * (bs + gp), ry = (i) => y0 + i * (bs + rg);
+      const cx = x0 + (8 * bs + 7 * gp) / 2;
+      // 토큰 하나
+      el("rect", { x: cx - 46, y: 0, width: 92, height: 28, rx: 14, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 1.5 }, svg);
+      txt(svg, cx, 19, "토큰 하나", { "font-size": 13.5, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+      const ln = (x1, y1, x2, y2) => el("line", { x1, y1, x2, y2, stroke: "var(--own)", "stroke-width": 1.6, opacity: 0.7 }, svg);
+      ON[0].forEach((j) => ln(cx, 28, bx(j) + bs / 2, ry(0)));
+      for (let i = 0; i < 2; i++) ON[i].forEach((a) => ON[i + 1].forEach((b) => ln(bx(a) + bs / 2, ry(i) + bs, bx(b) + bs / 2, ry(i + 1))));
+      for (let i = 0; i < 3; i++) {
+        txt(svg, 0, ry(i) + bs / 2 + 5, `${i + 1}층`, { "font-size": 13, "font-weight": 600, fill: "var(--fg-neutral)" });
+        for (let j = 0; j < 8; j++) {
+          const on = ON[i].includes(j);
+          el("rect", { x: bx(j), y: ry(i), width: bs, height: bs, rx: 5, fill: on ? "var(--own)" : "var(--bg-base)", stroke: "var(--own)", "stroke-width": 1.5, "stroke-opacity": on ? 1 : 0.55 }, svg);
+        }
+      }
+      const ly = ry(2) + bs + 30;
+      el("rect", { x: x0, y: ly - 11, width: 13, height: 13, rx: 3, fill: "var(--own)" }, svg);
+      txt(svg, x0 + 19, ly, "칠한 칸 = 활성", { "font-size": 13, fill: "var(--fg-normal)" });
+      const x2 = x0 + (m ? 112 : 124);
+      el("rect", { x: x2, y: ly - 11, width: 13, height: 13, rx: 3, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 1.5, "stroke-opacity": 0.55 }, svg);
+      txt(svg, x2 + 19, ly, "모든 칸 = 총 파라미터", { "font-size": 13, fill: "var(--fg-normal)" });
+    });
+  })();
+
+  /* ---------- 모델 카드 그림: 데스크톱·모바일 모두 접어 둔다(아령 그림과 같은 내용을 두 번 보이지 않게) ---------- */
+
+  /* ---------- 채점 흐름 ---------- */
+  (() => {
+    const svg = $("[data-grade]"); if (!svg) return;
+    responsive((m) => {
+      svg.innerHTML = "";
+      const B = [["실제 이슈", "버그 설명 글"], ["에이전트가 고침", "저장소 읽기·수정"], ["숨긴 테스트", "고쳤는지 확인"], ["통과?", "500문제 중 비율"]];
+      const W = m ? 340 : 620, bw = m ? 150 : 130, bh = 60, gap = m ? 20 : (620 - 4 * 130) / 3;
+      const H = m ? 2 * bh + 30 + 10 : bh + 10;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const ar = arrowDefs(svg, "var(--fg-neutral)");
+      B.forEach(([a, b], i) => {
+        const x = m ? (i % 2) * (bw + 40) : i * (bw + gap), y = m ? Math.floor(i / 2) * (bh + 30) : 0;
+        el("rect", { x, y, width: bw, height: bh, rx: 10, fill: i === 3 ? "var(--ok-soft)" : "var(--bg-base)", stroke: i === 3 ? "var(--ok)" : "var(--line-normal)", "stroke-width": 1.5 }, svg);
+        txt(svg, x + bw / 2, y + 25, a, { "font-size": 15, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+        txt(svg, x + bw / 2, y + 45, b, { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        if (i < 3) {
+          if (!m) el("line", { x1: x + bw + 6, y1: bh / 2, x2: x + bw + gap - 8, y2: bh / 2, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, svg);
+          else if (i === 0 || i === 2) el("line", { x1: x + bw + 6, y1: y + bh / 2, x2: x + bw + 32, y2: y + bh / 2, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, svg);
+          else el("path", { d: `M${x + bw / 2} ${y + bh + 4} L${x + bw / 2} ${y + bh + 14} L${bw / 2} ${y + bh + 14} L${bw / 2} ${y + bh + 24}`, fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, svg);
+        }
+      });
+    });
+  })();
+
+  /* ---------- 아령 ---------- */
+  (() => {
+    const svg = $("[data-dumb]"); if (!svg) return;
+    const D = [
+      { n: "MiniMax M2.5", c: 80.2, cc: "Claude Code 프로그램, 4번 평균", o: 75.8 },
+      { n: "GLM-5", c: 77.8, cc: "OpenHands 프로그램", o: 72.8 },
+      { n: "Kimi K2.5", c: 76.8, cc: "자체 프로그램, 5번 평균", o: 70.8 },
+      { n: "Devstral 2", c: 72.2, cc: "조건을 적지 않음", o: 53.8 },
+    ];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 340 : 620, x0 = m ? 0 : 222, x1 = W - 40, rowH = m ? 78 : 64, top = 24;
+      const H = top + D.length * rowH + 18;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const lo = 50, hi = 85, X = (v) => x0 + (v - lo) / (hi - lo) * (x1 - x0);
+      for (let v = 50; v <= 85; v += 5) {
+        el("line", { x1: X(v), y1: top - 6, x2: X(v), y2: H - 20, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, X(v), H - 2, v + "%", { "font-size": m ? 12.5 : 13.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      }
+      D.forEach((d, i) => {
+        const y = top + i * rowH + (m ? 30 : 16);
+        txt(svg, 0, m ? y - 26 : y - 2, d.n, { "font-size": m ? 14 : 15.5, "font-weight": 700, fill: "var(--fg-strong)" });
+        txt(svg, m ? 110 : 0, m ? y - 26 : y + 16, "카드: " + d.cc, { "font-size": m ? 12.5 : 14, fill: "var(--fg-neutral)", class: "cond" });
+        el("line", { x1: X(d.o), y1: y, x2: X(d.c), y2: y, stroke: "var(--own)", "stroke-width": 3, opacity: 0.45 }, svg);
+        el("circle", { cx: X(d.o), cy: y, r: 7, fill: "var(--own)" }, svg);
+        el("circle", { cx: X(d.c), cy: y, r: 7, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 2.5 }, svg);
+        txt(svg, X(d.o) - 11, y + 5, d.o.toFixed(1), { "font-size": m ? 13 : 14, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "end" });
+        txt(svg, X(d.c) + 11, y + 5, d.c.toFixed(1), { "font-size": m ? 13 : 14, fill: "var(--fg-strong)" });
+        if (i === 0) {
+          txt(svg, X(d.o), y + 24, "공식", { "font-size": 13.5, "font-weight": 700, fill: "var(--own)", "text-anchor": "middle" });
+          txt(svg, X(d.c), y + 24, "카드", { "font-size": 13.5, "font-weight": 700, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        }
+        const gap = (d.c - d.o).toFixed(1);
+        txt(svg, (X(d.o) + X(d.c)) / 2, y - 9, "−" + gap, { "font-size": m ? 12.5 : 13.5, fill: "var(--own)", "font-weight": 700, "text-anchor": "middle" });
+      });
+    });
+  })();
+
+  /* ---------- 같은 조건 수직선 ---------- */
+  (() => {
+    const svg = $("[data-line]"); if (!svg) return;
+    const C = [["Claude 4.5 Opus", 76.8], ["Gemini 3 Flash", 75.8], ["Claude 4.6 Opus", 75.6], ["GPT 5.2", 72.8], ["GPT 5.2 Codex", 72.8], ["Claude 4.5 Sonnet", 71.4], ["Gemini 3 Pro", 69.6], ["Claude 4.5 Haiku", 66.6], ["GPT 5 mini", 56.2]];
+    const O = [["MiniMax M2.5", 75.8], ["GLM-5", 72.8], ["Kimi K2.5", 70.8], ["DeepSeek V3.2", 70.0]];
+    const R = [...C.map(([n, v]) => ({ n, v, o: 0 })), ...O.map(([n, v]) => ({ n, v, o: 1 }))].sort((a, b) => b.v - a.v || a.o - b.o);
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 1060, x0 = m ? 132 : 210, x1 = W - (m ? 34 : 60), rh = m ? 24 : 27, top = 6;
+      const lo = 50, hi = 80, X = (v) => x0 + (v - lo) / (hi - lo) * (x1 - x0);
+      const H = top + R.length * rh + 26;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      for (let v = lo; v <= hi; v += 5) {
+        el("line", { x1: X(v), y1: top, x2: X(v), y2: H - 22, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, X(v), H - 6, v + "%", { "font-size": 12, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+      }
+      // 축 끊김 표시: 0 에서 50% 사이를 생략했다
+      const bx = X(lo), by = H - 29;
+      el("rect", { x: bx - 7, y: by - 7, width: 14, height: 14, fill: "var(--bg-base)" }, svg);
+      for (const d of [-3, 3]) el("line", { x1: bx + d - 3, y1: by + 5, x2: bx + d + 3, y2: by - 5, stroke: "var(--fg-neutral)", "stroke-width": 1.5 }, svg);
+      R.forEach((r, i) => {
+        const y = top + i * rh + rh / 2, col = r.o ? "var(--own)" : "var(--api)";
+        const t = txt(svg, x0 - 12, y + 5, r.n, { "font-size": m ? 12.5 : 14, fill: r.o ? "var(--own)" : "var(--fg-strong)", "font-weight": r.o ? 700 : 400, "text-anchor": "end" });
+        // 축이 50% 에서 시작하므로 길이로 읽히는 줄기는 두지 않는다. 줄 안내선은 모든 줄에 같은 길이로.
+        el("line", { x1: X(lo), y1: y, x2: x1, y2: y, stroke: "var(--line-subtle)", "stroke-width": 1, "stroke-dasharray": "2 4" }, svg);
+        el("circle", { cx: X(r.v), cy: y, r: m ? 6 : 7, fill: col }, svg);
+        txt(svg, X(r.v) + 12, y + 5, r.v.toFixed(1), { "font-size": m ? 12 : 13.5, "font-weight": 700, fill: "var(--fg-strong)" });
+      });
+    });
+  })();
+
+  /* ---------- Epoch 계단선 ---------- */
+  (() => {
+    const svg = $("[data-stepsvg]"); if (!svg) return;
+    const read = $("[data-stepread]");
+    const C = [["2023-03-14", 126.0, "GPT-4"], ["2024-02-15", 127.8, "Gemini 1.5 Pro"], ["2024-05-13", 128.9, "GPT-4o"], ["2024-06-20", 130.0, "Claude 3.5 Sonnet"], ["2024-09-12", 136.7, "o1-mini"], ["2024-12-17", 142.8, "o1"], ["2025-03-25", 145.1, "Gemini 2.5 Pro"], ["2025-04-16", 147.3, "o3"], ["2025-07-09", 147.4, "Grok 4"], ["2025-08-07", 150.0, "GPT-5"], ["2025-10-07", 150.2, "GPT-5 Pro"], ["2025-11-18", 153.4, "Gemini 3 Pro"], ["2025-12-11", 154.2, "GPT-5.2 Pro"], ["2026-02-05", 155.9, "GPT-5.3 Codex"], ["2026-02-19", 156.6, "Gemini 3.1 Pro"], ["2026-03-05", 157.7, "GPT-5.4 Pro"], ["2026-04-23", 159.3, "GPT-5.5 Pro"]];
+    const O = [["2024-04-18", 122.6, "Llama 3-70B"], ["2024-05-07", 124.4, "DeepSeek-V2"], ["2024-06-07", 125.7, "Qwen2-72B"], ["2024-07-23", 129.0, "Llama 3.1-405B"], ["2024-09-19", 129.4, "Qwen2.5-72B"], ["2024-12-12", 131.2, "Phi-4"], ["2024-12-26", 133.1, "DeepSeek-V3"], ["2025-01-20", 139.9, "DeepSeek-R1"], ["2025-05-28", 142.2, "DeepSeek-R1(5월판)"], ["2025-07-25", 145.8, "Qwen3-235B"], ["2025-12-01", 146.5, "DeepSeek-V3.2"], ["2026-01-27", 148.2, "Kimi K2.5"], ["2026-04-20", 151.6, "Kimi K2.6"]];
+    const T = (s) => Date.parse(s + "T00:00:00Z");
+    const t0 = T("2024-01-01"), t1 = T("2026-06-01");
+    const MON = 30.44 * 864e5;
+    let sel = O.length - 1, G = {};
+    const reach = (v) => C.find((c) => c[1] >= v);
+    const draw = () => {
+      const { X, Y, arrow, ar } = G;
+      arrow.innerHTML = "";
+      G.dots.forEach((d, i) => { d.setAttribute("r", i === sel ? 8 : 5); d.setAttribute("fill", i === sel ? "var(--own)" : "var(--bg-base)"); });
+      const o = O[sel], c = reach(o[1]);
+      const lag = (T(o[0]) - T(c[0])) / MON;
+      const xa = Math.max(X(T(c[0])), X(t0)), xb = X(T(o[0])), y = Y(o[1]);
+      el("line", { x1: xb - 10, y1: y, x2: xa + 4, y2: y, stroke: "var(--fg-strong)", "stroke-width": 2, "marker-end": ar }, arrow);
+      el("circle", { cx: X(T(c[0])), cy: Y(c[1]), r: 6, fill: "var(--api)", stroke: "var(--bg-base)", "stroke-width": 2 }, arrow);
+      // 숫자는 주황 계단 아래 빈 곳(오른쪽 아래)에 둔다. 주황선은 오른쪽으로 갈수록 올라가므로 그 아래는 선이 없다.
+      // 고른 점의 거리와 본문의 Epoch 평균 4개월을 한 라벨에 둔다(모바일은 두 줄)
+      const fs = G.m ? 14 : 15;
+      const lt = txt(arrow, 0, 0, "", { "font-size": fs, "font-weight": 700, fill: "var(--fg-strong)" });
+      const t1s = el("tspan", {}, lt); t1s.textContent = `← 이 점 ${lag.toFixed(1)}개월`;
+      const t2s = el("tspan", { "font-weight": 600, fill: "var(--fg-neutral)" }, lt); t2s.textContent = G.m ? "Epoch 평균 4개월" : " · Epoch 평균 4개월";
+      let tw = 0; try { tw = G.m ? Math.max(t1s.getComputedTextLength(), t2s.getComputedTextLength()) : lt.getComputedTextLength(); } catch (e) {}
+      if (!tw) tw = (G.m ? 12 : 26) * fs * 0.9;
+      const lh2 = G.m ? fs + 4 : 0;
+      let lx0 = xb + 10;
+      if (lx0 + tw > G.W - 2) lx0 = G.W - 2 - tw;
+      const oAt = (x) => { let v = O[0][1]; for (const q of O) if (X(T(q[0])) <= x + 0.5) v = q[1]; return v; };
+      let low = y;
+      for (let x = lx0; x <= lx0 + tw; x += 4) low = Math.max(low, Y(oAt(x)));
+      const ly = Math.min(low + fs + 6, G.H - G.B - 4 - lh2);
+      lt.setAttribute("x", lx0); lt.setAttribute("y", ly);
+      if (G.m) { t2s.setAttribute("x", lx0); t2s.setAttribute("dy", lh2); }
+      read.innerHTML = `<b>${o[2]}</b>(${o[0]}, ECI ${o[1]})가 닿은 점수에 닫힌 모델은 <b>${c[2]}</b>(${c[0]})로 먼저 닿았습니다.`;
+      // 데스크톱: 결과 문장을 고른 점 가까이, 주황 계단 아래 빈 곳에 둔다. 공간이 모자라면 왼쪽 위 빈 곳.
+      if (G.m) { read.style.left = read.style.top = read.style.width = ""; return; }
+      const k = svg.getBoundingClientRect().width / G.W || 1;
+      const bw = Math.min(400, 0.42 * G.W * k) / k;
+      read.style.width = bw * k + "px";
+      const bh = read.offsetHeight / k;
+      let bx1 = Math.min(xb + 60, G.W - G.R), bx0 = bx1 - bw;
+      let top = Math.max(ly + lh2 + 14, Y(oAt(bx0)) + 14);
+      if (top + bh > G.H - G.B - 6) { bx0 = G.L + 10; top = G.Tp + 6; }
+      read.style.left = (bx0 / G.W * 100) + "%";
+      read.style.top = (top / G.H * 100) + "%";
+    };
+    // 누른 곳에서 가장 가까운 주황 점을 고른다(모바일에서 붙어 있는 점도 손가락으로 고르기 쉽게)
+    svg.addEventListener("click", (e) => {
+      const r = svg.getBoundingClientRect(), k = G.W / r.width;
+      const x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k;
+      let best = -1, bd = (G.m ? 40 : 26) ** 2;
+      O.forEach(([s0, v], i) => { const d = (G.X(T(s0)) - x) ** 2 + (G.Y(v) - y) ** 2; if (d < bd) { bd = d; best = i; } });
+      if (best >= 0) { sel = best; draw(); }
+    }, { signal });
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 1000, H = m ? 300 : 380, L = m ? 34 : 44, R = m ? 12 : 120, Tp = 14, B = 32;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const lo = 120, hi = 162;
+      const X = (t) => L + (Math.max(t, t0) - t0) / (t1 - t0) * (W - L - R);
+      const Y = (v) => Tp + (hi - v) / (hi - lo) * (H - Tp - B);
+      const ar = arrowDefs(svg, "var(--fg-strong)");
+      for (let v = 120; v <= 160; v += 10) {
+        el("line", { x1: L, y1: Y(v), x2: W - R, y2: Y(v), stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, L - 6, Y(v) + 4, v, { "font-size": 12, fill: "var(--fg-neutral)", "text-anchor": "end" });
+      }
+      ["2024", "2025", "2026"].forEach((yr) => {
+        const x = X(T(yr + "-01-01"));
+        el("line", { x1: x, y1: Tp, x2: x, y2: H - B, stroke: "var(--line-subtle)", "stroke-width": 1, "stroke-dasharray": "3 4" }, svg);
+        txt(svg, x + 4, H - B + 18, yr, { "font-size": 12.5, fill: "var(--fg-neutral)" });
+      });
+      txt(svg, L, Tp - 2, "ECI", { "font-size": 12, fill: "var(--fg-neutral)" });
+      const path = (arr, endT) => {
+        let d = "", prevV = null;
+        arr.forEach(([s, v], i) => {
+          const x = X(T(s));
+          if (i === 0) { d += `M${X(t0)} ${Y(arr.filter((a) => T(a[0]) <= t0).pop()?.[1] ?? v)} `; if (T(s) > t0) d += `L${x} ${Y(arr.filter((a) => T(a[0]) <= t0).pop()?.[1] ?? v)} L${x} ${Y(v)} `; else d += ""; }
+          else d += `L${x} ${Y(prevV)} L${x} ${Y(v)} `;
+          prevV = v;
+        });
+        d += `L${X(endT)} ${Y(prevV)}`;
+        return d;
+      };
+      const Cin = C.filter((c) => T(c[0]) >= t0 || c === C.filter((a) => T(a[0]) <= t0).pop());
+      el("path", { d: path(Cin, t1), fill: "none", stroke: "var(--api)", "stroke-width": 3 }, svg);
+      el("path", { d: path(O, t1), fill: "none", stroke: "var(--own)", "stroke-width": 3 }, svg);
+      if (!m) {
+        txt(svg, X(t1) + 8, Y(159.3) + 5, "닫힌 모델", { "font-size": 14, "font-weight": 700, fill: "var(--api)" });
+        txt(svg, X(t1) + 8, Y(151.6) + 5, "오픈 웨이트", { "font-size": 14, "font-weight": 700, fill: "var(--own)" });
+      } else {
+        txt(svg, L + 4, Tp + 14, "■ 닫힌 모델", { "font-size": 12.5, "font-weight": 700, fill: "var(--api)" });
+        txt(svg, L + 90, Tp + 14, "■ 오픈 웨이트", { "font-size": 12.5, "font-weight": 700, fill: "var(--own)" });
+      }
+      const arrow = el("g", {}, svg);
+      const dots = O.map(([s, v], i) => {
+        const g = el("g", { class: "hit", tabindex: 0, role: "button", "aria-label": O[i][2] }, svg);
+        el("circle", { cx: X(T(s)), cy: Y(v), r: m ? 22 : 16, fill: "transparent" }, g);
+        const d = el("circle", { cx: X(T(s)), cy: Y(v), r: 5, fill: "var(--bg-base)", stroke: "var(--own)", "stroke-width": 2.5 }, g);
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sel = i; draw(); } }, { signal });
+        return d;
+      });
+      G = { X, Y, arrow, ar, dots, m, W, H, B, L, R, Tp };
+      draw();
+    });
+  })();
+
+  /* ---------- 따릉이 비유 ---------- */
+  (() => {
+    const svg = $("[data-bike]"); if (!svg) return;
+    const RENT = 2, OWN = 1; // 하루 값(예시): 빌리면 2,000원, 산 값을 날로 나누면 1,000원
+    const bike = (g, x, y, col) => {
+      const b = el("g", { transform: `translate(${x} ${y}) scale(.42)` }, g);
+      el("circle", { cx: 0, cy: 0, r: 16, fill: "none", stroke: col, "stroke-width": 4.5 }, b);
+      el("circle", { cx: 52, cy: 0, r: 16, fill: "none", stroke: col, "stroke-width": 4.5 }, b);
+      el("path", { d: "M0 0 L18 -26 L44 -26 L52 0 M18 -26 L28 0 L44 -26 M14 -34 L24 -34 M44 -26 L42 -36 L50 -38", fill: "none", stroke: col, "stroke-width": 4.5, "stroke-linecap": "round", "stroke-linejoin": "round" }, b);
+    };
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 350 : 520, bx0 = m ? 52 : 98, tot = m ? 84 : 92;
+      const u = (W - bx0 - tot - 27) / 20, bh = 20;
+      const G = [["가끔 탐", "열흘에 3일", [1, 0, 0, 1, 0, 0, 0, 1, 0, 0]], ["매일 탐", "열흘에 10일", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]];
+      let y = 16;
+      txt(svg, 0, y, "열흘 동안 낸 돈", { "font-size": 14, "font-weight": 700, fill: "var(--fg-strong)" });
+      txt(svg, W, y, "칸 하나 = 1,000원(예시)", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "end" });
+      y += 26;
+      G.forEach(([nm, sub, days], gi) => {
+        txt(svg, 0, y + 4, nm, { "font-size": 15, "font-weight": 700, fill: "var(--fg-strong)" });
+        txt(svg, m ? 62 : 70, y + 4, sub, { "font-size": 13, fill: "var(--fg-neutral)" });
+        y += 14;
+        const rentSum = days.filter(Boolean).length * RENT, ownSum = days.length * OWN;
+        [["빌리기", "var(--api)", "var(--api-soft)", rentSum], ["사기", "var(--own)", "var(--own-soft)", ownSum]].forEach(([lab, col, soft, sum], ri) => {
+          const ry = y + 6;
+          if (!m) bike(svg, 6, ry + bh / 2 + 6, col);
+          txt(svg, m ? 0 : 46, ry + bh / 2 + 5, lab, { "font-size": 13.5, "font-weight": 600, fill: col });
+          let x = bx0;
+          if (ri === 0) {
+            days.forEach((d) => { if (!d) return; for (let k = 0; k < RENT; k++) { el("rect", { x, y: ry, width: u - 2, height: bh, rx: 3, fill: soft, stroke: col, "stroke-width": 1.2 }, svg); x += u; } x += 3; });
+          } else {
+            days.forEach((d) => { el("rect", { x, y: ry, width: u * OWN - 2, height: bh, rx: 3, fill: d ? soft : "none", stroke: col, "stroke-width": 1.2, "stroke-dasharray": d ? "" : "3 2" }, svg); x += u * OWN; });
+          }
+          const win = ri === 0 ? rentSum < ownSum : ownSum < rentSum;
+          const t = txt(svg, W - (win ? 22 : 0), ry + bh / 2 + 5, (sum * 1000).toLocaleString("en-US") + "원", { "font-size": 14, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "end" });
+          if (win) {
+            const f = el("g", { transform: `translate(${W - 9} ${ry + bh / 2})` }, svg);
+            el("circle", { cx: 0, cy: 0, r: 9, fill: "var(--ok)" }, f);
+            el("path", { d: "M-4.5 0 L-1 3.5 L4.5 -3.5", fill: "none", stroke: "var(--bg-base)", "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }, f);
+          }
+          y = ry + bh + 4;
+        });
+        y += gi === 0 ? 30 : 6;
+      });
+      svg.setAttribute("viewBox", `0 0 ${W} ${y}`);
+    });
+  })();
+
+  /* ---------- 손익 그래프 ---------- */
+  (() => {
+    const svg = $("[data-be]"); if (!svg) return;
+    const who = $("[data-bewho]"), ap = $("[data-beapi]"), ow = $("[data-beown]"), vv = $("[data-bev]");
+    let cap = 150, cur = null, G = {};
+    const NMAX = 600;
+    const upd = () => {
+      const { X, Y, cursor, ownPath, cheap } = G;
+      let d = "", prev = 0, cd = "";
+      for (let n = 1; n <= NMAX; n++) {
+        const o = ownCost(n, cap);
+        d += n === 1 ? `M${X(0)} ${Y(o)} ` : (o !== prev ? `L${X(n - 1)} ${Y(prev)} L${X(n - 1)} ${Y(o)} ` : "");
+        prev = o;
+      }
+      d += `L${X(NMAX)} ${Y(prev)}`;
+      ownPath.setAttribute("d", d);
+      cheap.innerHTML = "";
+      let s = null;
+      for (let n = 1; n <= NMAX + 1; n++) {
+        const c = n <= NMAX && ownCost(n, cap) < apiCost(n);
+        if (c && s === null) s = n; if (!c && s !== null) { el("rect", { x: X(s - 1), y: G.base + 4, width: X(n - 1) - X(s - 1), height: 9, rx: 2, class: "chp" }, cheap); s = null; }
+      }
+      if (cur === null) { cursor.style.opacity = 0; who.textContent = "👆 그래프 위를 끌어 보세요"; ap.textContent = ""; ow.textContent = ""; vv.innerHTML = cap === 50 ? "서버 한 대가 50명만 맡으면 어느 인원에서도 자체 호스팅이 비쌉니다." : cap === 150 ? "그래프 아래 초록 띠가 자체 호스팅이 더 싼 구간입니다. 서버를 한 대 더한 직후마다 끊깁니다." : "서버 한 대가 300명을 맡으면 120명을 넘긴 뒤로는 대부분 자체 호스팅이 쌉니다."; return; }
+      const n = cur, a = apiCost(n), o = ownCost(n, cap), k = Math.ceil(n / cap);
+      cursor.style.opacity = 1;
+      cursor.setAttribute("transform", `translate(${X(n)} 0)`);
+      who.textContent = `개발자 ${n}명일 때 한 달`;
+      ap.textContent = `API ${usd(a)}`;
+      ow.textContent = `자체 ${usd(o)} (서버 ${k}대)`;
+      const used = Math.round(n / (k * cap) * 100);
+      vv.innerHTML = o < a ? `<b style="color:var(--ok)">자체 호스팅이 ${usd(a - o)} 쌉니다.</b> 서버 ${k}대가 맡을 수 있는 인원의 ${used}% 를 채웠습니다.` : `<b style="color:var(--api)">API 가 ${usd(o - a)} 쌉니다.</b> 서버 ${k}대가 맡을 수 있는 인원의 ${used}% 만 채웠습니다.`;
+    };
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 680, H = m ? 330 : 410, L = m ? 50 : 64, R = 14, Tp = 34, B = 60;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const YM = 120000;
+      const X = (n) => L + n / NMAX * (W - L - R);
+      const Y = (v) => Tp + (1 - v / YM) * (H - Tp - B);
+      const base = H - B;
+      const cid = "slclip" + (++uid);
+      el("rect", { x: L, y: Tp, width: W - L - R, height: base - Tp }, el("clipPath", { id: cid }, el("defs", {}, svg)));
+      const cheap = el("g", {}, svg);
+      for (let v = 0; v <= YM; v += 20000) {
+        el("line", { x1: L, y1: Y(v), x2: W - R, y2: Y(v), stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, L - 6, Y(v) + 4, v === 0 ? "$0" : `$${v / 1000}k`, { "font-size": 12, fill: "var(--fg-neutral)", "text-anchor": "end" });
+      }
+      for (let n = 0; n <= NMAX; n += m ? 200 : 100) txt(svg, X(n), base + 30, n, { "font-size": 12, fill: "var(--fg-neutral)", "text-anchor": n === NMAX ? "end" : "middle" });
+      txt(svg, W - R, base + 52, "개발자 수(명) →", { "font-size": 12.5, "font-weight": 600, fill: "var(--fg-strong)", "text-anchor": "end" });
+      txt(svg, 0, 14, "↑ 한 달 비용(달러)", { "font-size": 12.5, "font-weight": 600, fill: "var(--fg-strong)" });
+      el("path", { d: `M${X(0)} ${Y(0)} L${X(NMAX)} ${Y(NMAX * PER_DEV_HI)} L${X(NMAX)} ${Y(NMAX * PER_DEV_LO)} Z`, fill: "var(--api)", opacity: 0.14, "clip-path": `url(#${cid})` }, svg);
+      el("line", { x1: X(0), y1: Y(0), x2: X(NMAX), y2: Y(NMAX * PER_DEV), stroke: "var(--api)", "stroke-width": 3 }, svg);
+      const ownPath = el("path", { fill: "none", stroke: "var(--own)", "stroke-width": 3, "stroke-linejoin": "round", "clip-path": `url(#${cid})` }, svg);
+      const cursor = el("g", { opacity: 0 }, svg);
+      el("line", { x1: 0, y1: Tp, x2: 0, y2: base, stroke: "var(--fg-strong)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, cursor);
+      G = { X, Y, cursor, ownPath, cheap, Tp, base };
+      const pick = (e) => {
+        const r = svg.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width * W;
+        cur = Math.max(1, Math.min(NMAX, Math.round((x - L) / (W - L - R) * NMAX)));
+        upd();
+      };
+      svg.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" || e.buttons) pick(e); }, { signal });
+      svg.addEventListener("pointerdown", pick, { signal });
+      upd();
+    });
+    $$("[data-cap] button").forEach((b) => b.addEventListener("click", () => {
+      cap = +b.dataset.v;
+      $$("[data-cap] button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      upd();
+    }, { signal }));
+  })();
+
+  /* ---------- 맡는 층 ---------- */
+  (() => {
+    const svg = $("[data-stack]"); if (!svg) return;
+    const LY = ["에이전트 도구 연결", "게이트웨이·사용량 기록", "평가·모델 교체", "서빙 프로그램·보안 패치", "모델 파일 보관", "GPU 서버·전기"];
+    responsive((m) => {
+      svg.innerHTML = "";
+      const W = m ? 340 : 560, lw = m ? 196 : 330, lh = m ? 40 : 44, top = m ? 44 : 34;
+      const H = top + LY.length * lh + 4;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      txt(svg, 0, top - 12, "층(위가 에이전트 쪽)", { "font-size": 12.5, fill: "var(--fg-neutral)" });
+      LY.forEach((l, i) => {
+        const y = top + i * lh;
+        el("line", { x1: 0, y1: y, x2: W, y2: y, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+        txt(svg, 0, y + lh / 2 + 5, l, { "font-size": m ? 13 : 15, "font-weight": 600, fill: "var(--fg-strong)" });
+      });
+      el("line", { x1: 0, y1: top + LY.length * lh, x2: W, y2: top + LY.length * lh, stroke: "var(--line-subtle)", "stroke-width": 1 }, svg);
+      const colW = (W - lw) / 2;
+      [["클라우드 API", "var(--api)", 2], ["자체 호스팅", "var(--own)", 6]].forEach(([nm, col, mine], c) => {
+        const cx = lw + colW * c + colW / 2;
+        if (m) { const [a, b] = nm.split(" "); txt(svg, cx, 14, a, { "font-size": 13, "font-weight": 700, fill: col, "text-anchor": "middle" }); txt(svg, cx, 30, b, { "font-size": 13, "font-weight": 700, fill: col, "text-anchor": "middle" }); }
+        else txt(svg, cx, 18, nm, { "font-size": 15, "font-weight": 700, fill: col, "text-anchor": "middle" });
+        el("rect", { x: cx - 6, y: top + 6, width: 12, height: mine * lh - 12, rx: 6, fill: col }, svg);
+        if (mine < LY.length) {
+          txt(svg, cx, top + mine * lh + 24, "모델 회사", { "font-size": 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+          el("line", { x1: cx, y1: top + mine * lh + 34, x2: cx, y2: top + LY.length * lh - 8, stroke: "var(--mute)", "stroke-width": 2, "stroke-dasharray": "4 5" }, svg);
+        }
+        txt(svg, cx + 12, top + mine * lh - 10, `${mine}층`, { "font-size": 13, "font-weight": 700, fill: col });
+      });
+    });
+  })();
+
+  /* ---------- 고르는 순서도(스크롤) ---------- */
+  (() => {
+    const svg = $("[data-flow]"); if (!svg) return;
+    const steps = $$("[data-step]");
+    let cur = 0, G = {};
+    const N = [
+      { q: "코드를 밖으로 보내도 되나?", no: "자체 호스팅만", noCol: "own" },
+      { q: "서버를 꽉 채울 만큼 쓰나?", no: "클라우드 API", noCol: "api" },
+      { q: "서버를 맡을 사람이 있나?", no: "클라우드 API", noCol: "api" },
+      { q: "민감한 일만 나눌 수 있나?", no: "전부 자체 호스팅", noCol: "own", yes: "섞어 쓰기" },
+    ];
+    // 순서도 전체를 svg 하나에 그리고 단계 n 상태로 바꾸는 함수를 돌려준다
+    const make = (svg, m) => {
+      svg.innerHTML = "";
+      const W = m ? 360 : 560, qw = m ? 188 : 300, qh = m ? 32 : 50, vg = m ? 16 : 40, top = 4;
+      const H = top + N.length * (qh + vg) + (m ? 58 : 82);
+      const g0 = { nodes: [], links: [], geo: { top, qh, vg, W } };
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const ar = arrowDefs(svg, "var(--fg-neutral)");
+      N.forEach((n, i) => {
+        const y = top + i * (qh + vg), x = 0;
+        const g = el("g", { class: "nd" }, svg);
+        el("rect", { x, y, width: qw, height: qh, rx: 10, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 1.6 }, g);
+        txt(g, x + qw / 2, y + qh / 2 + 5, n.q, { "font-size": m ? 13 : 15.5, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+        const ox = qw + (m ? 44 : 52), ow = W - ox;
+        const lk = el("g", { class: "lk" }, svg);
+        el("line", { x1: qw + 6, y1: y + qh / 2, x2: ox - 6, y2: y + qh / 2, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, lk);
+        txt(lk, (qw + ox) / 2, y + qh / 2 - (m ? 5 : 8), "아니요", { "font-size": m ? 12.5 : 12.5, fill: "var(--fg-neutral)", "text-anchor": "middle" });
+        el("rect", { x: ox, y: y + (m ? 3 : 6), width: ow, height: qh - (m ? 6 : 12), rx: 999, fill: `var(--${n.noCol}-soft)`, stroke: `var(--${n.noCol})`, "stroke-width": 1.5 }, lk);
+        txt(lk, ox + ow / 2, y + qh / 2 + 5, n.no, { "font-size": m ? 13 : 14.5, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+        const dn = el("g", { class: "lk" }, svg);
+        if (i < N.length - 1) {
+          el("line", { x1: qw / 2, y1: y + qh + 5, x2: qw / 2, y2: y + qh + vg - 6, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, dn);
+          txt(dn, qw / 2 + 8, y + qh + vg / 2 + 5, "예", { "font-size": m ? 13 : 12.5, fill: "var(--fg-neutral)" });
+        }
+        g0.nodes.push(g); g0.links.push(lk, dn);
+      });
+      const fy = top + (N.length - 1) * (qh + vg) + qh + (m ? vg + 4 : vg - 10);
+      const fin = el("g", { class: "lk" }, svg);
+      if (!m) {
+        el("line", { x1: qw / 2, y1: fy - vg + 15, x2: qw / 2, y2: fy - 6, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, fin);
+        txt(fin, qw / 2 + 8, fy - vg / 2 + 10, "예", { "font-size": 12.5, fill: "var(--fg-neutral)" });
+      } else {
+        el("line", { x1: qw / 2, y1: fy - vg + 1, x2: qw / 2, y2: fy - 3, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, fin);
+        txt(fin, qw / 2 + 8, fy - vg / 2 + 3, "예", { "font-size": 13, fill: "var(--fg-neutral)" });
+      }
+      const fh = m ? qh - 6 : qh - 8;
+      el("rect", { x: 0, y: fy, width: qw, height: fh, rx: 999, fill: "var(--ok-soft)", stroke: "var(--ok)", "stroke-width": 1.5 }, fin);
+      txt(fin, qw / 2, fy + fh / 2 + 5, "섞어 쓰기", { "font-size": m ? 13 : 15, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+      const ver = el("g", { class: "lk" }, svg);
+      const vy = fy + fh + (m ? 8 : 10);
+      g0.geo.vy = vy + (m ? 13 : 14);
+      const verBg = el("rect", { x: 0, y: vy, width: W, height: m ? 26 : 28, rx: 6, fill: "var(--ok-soft)", stroke: "var(--ok)", "stroke-width": 1.2 }, svg);
+      txt(ver, W / 2, vy + (m ? 17.5 : 19), "결론 · 어느 칸에 닿든 테스트·리뷰로 격차를 메운다", { "font-size": m ? 12.5 : 14, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+      svg.insertBefore(verBg, ver);
+      // all: 모바일 결론 단계의 전체 순서도처럼 모든 칸을 진하게
+      g0.set = (n, all) => {
+        if (all) { [...g0.nodes, ...g0.links, fin, ver].forEach((g) => { g.style.opacity = 1; }); verBg.setAttribute("fill", "var(--ok-soft)"); verBg.setAttribute("stroke", "var(--ok)"); return; }
+        g0.nodes.forEach((g, i) => { g.style.opacity = i < n ? (i === n - 1 ? 1 : 0.55) : 0.15; });
+        g0.links.forEach((l, j) => { const i = Math.floor(j / 2); l.style.opacity = i < n - 1 ? 0.55 : (i === n - 1 && j % 2 === 0 ? 1 : (i === n - 1 && n >= 4 && j % 2 === 1 ? 1 : 0.12)); });
+        fin.style.opacity = n >= 4 ? 1 : 0.12;
+        ver.style.opacity = n >= 5 ? 1 : 0.3;
+        verBg.setAttribute("fill", n >= 5 ? "var(--ok-soft)" : "var(--bg-muted)");
+        verBg.setAttribute("stroke", n >= 5 ? "var(--ok)" : "var(--line-subtle)");
+      };
+      return g0;
+    };
+    // 모바일 단계 그림: 질문은 바로 위 제목에 있으니 두 갈래(아니요·예)가 어디로 가는지만 작게 그린다. 결론 단계는 순서도 전체
+    const mini = (svg, i) => {
+      svg.innerHTML = "";
+      const n = N[i], W = 360, cw = 64, ax = cw + 40, pw = 210, rh = 30, gap = 10;
+      const H = 2 * rh + gap + 2;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const ar = arrowDefs(svg, "var(--fg-neutral)");
+      [["아니요", n.no, n.noCol, false], ["예", n.yes || `다음 질문 ${i + 2}`, n.yes ? "ok" : null, !n.yes]].forEach(([lab, to, col, next], r) => {
+        const y = 1 + r * (rh + gap), cy = y + rh / 2;
+        el("rect", { x: 1, y, width: cw, height: rh, rx: 8, fill: "var(--bg-muted)" }, svg);
+        txt(svg, 1 + cw / 2, cy + 5, lab, { "font-size": 13.5, "font-weight": 700, fill: "var(--fg-strong)", "text-anchor": "middle" });
+        el("line", { x1: cw + 8, y1: cy, x2: ax - 6, y2: cy, stroke: "var(--fg-neutral)", "stroke-width": 1.5, "marker-end": ar }, svg);
+        el("rect", next ? { x: ax, y, width: pw, height: rh, rx: 8, fill: "none", stroke: "var(--line-normal)", "stroke-width": 1.3, "stroke-dasharray": "4 4" }
+          : { x: ax, y, width: pw, height: rh, rx: 999, fill: `var(--${col}-soft)`, stroke: `var(--${col})`, "stroke-width": 1.5 }, svg);
+        txt(svg, ax + pw / 2, cy + 5, next ? `${to}(아래)` : to, { "font-size": 13.5, "font-weight": next ? 400 : 700, fill: next ? "var(--fg-neutral)" : "var(--fg-strong)", "text-anchor": "middle" });
+      });
+    };
+    const stepFigs = (m) => {
+      $$(".sl-stepfig").forEach((f) => f.remove());
+      if (!m) return;
+      steps.forEach((st) => {
+        const k = +st.dataset.step;
+        const f = document.createElement("figure");
+        f.className = "sl-fig sl-stepfig";
+        f.innerHTML = `<svg class="sl-flow" role="img" aria-label="${st.querySelector("h3").textContent.trim()} 단계의 순서도"></svg>`;
+        if (k <= N.length) { st.querySelector("p").after(f); mini(f.querySelector("svg"), k - 1); }
+        else { st.querySelector("h3").after(f); make(f.querySelector("svg"), true).set(5, true); }
+      });
+    };
+    const set = (n, force) => {
+      if (n === cur && !force) return; cur = n;
+      steps.forEach((s) => s.classList.toggle("on", +s.dataset.step === n));
+      G.set(n);
+    };
+    responsive((m) => { G = make(svg, false); set(cur || 1, true); stepFigs(m); });
+    let ticking = false;
+    const pick = () => {
+      ticking = false;
+      if (mobile()) return;
+      // 단계 제목이 그림 속 해당 질문 높이에 닿으면 켠다
+      const fr = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, k = vb && vb.width ? fr.width / vb.width : 1;
+      const { top, qh, vg, vy } = G.geo;
+      let best = 1;
+      steps.forEach((s, i) => {
+        const r = s.getBoundingClientRect();
+        const line = fr.top + (i < 4 ? top + i * (qh + vg) + qh / 2 : vy) * k + 30;
+        if (r.top <= line) best = i + 1;
+      });
+      set(best);
+    };
+    const place = () => {
+      const fig = svg.closest(".sl-sticky");
+      fig.style.top = mobile() ? "" : "110px";
+    };
+    place(); pick();
+    window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(pick); } }, { passive: true, signal });
+    window.addEventListener("resize", () => { place(); pick(); }, { passive: true, signal });
+  })();
+
+  /* ---------- 모바일 vLLM 해설: 번호 해설을 해당 코드 줄 바로 아래에 끼운다 ---------- */
+  (() => {
+    const box = $(".sl-code"); if (!box) return;
+    const ol = $(".pg-code-notes", box), code = $("pre code", box); if (!ol || !code) return;
+    const AFTER = [2, 5, 8, 10];
+    const MARK = ["①", "②", "③", "④"];
+    responsive((m) => {
+      $$(".sl-cnote", code).forEach((x) => x.remove());
+      ol.classList.toggle("sl-codenotes-moved", m);
+      if (!m) return;
+      $$("li", ol).forEach((li, i) => {
+        const line = $(`.line[data-ln="${AFTER[i]}"]`, code); if (!line) return;
+        const note = document.createElement("span");
+        note.className = "sl-cnote";
+        note.innerHTML = `<b>${MARK[i]}</b>${li.innerHTML}`;
+        const nl = line.nextSibling;
+        if (nl && nl.nodeType === 3) nl.after(note); else line.after(note);
+      });
+    });
+  })();
+})();
+</script>
