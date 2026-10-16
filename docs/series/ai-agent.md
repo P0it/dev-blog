@@ -86,7 +86,7 @@
 
 | # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
 |---|---|---|---|---|---|---|---|
-| 20 | MCP 란 무엇인가 | 도구를 이미 부를 수 있는데 MCP 는 왜 필요한가? | USB-C 비유와 한계 · Host/Client/Server · Tools/Resources/Prompts · Tool Calling 과의 관계 · 2026-07-28 변화(stateless·MRTR·Tasks) · A2A 의 자리 | MCP, Host, Client, Server, Resource, A2A | 구조도(코드 최소) | 6 | 계획 |
+| 20 | x (`mcp-host-client-server-primitives`) | 도구를 이미 부를 수 있는데 MCP 는 왜 필요한가? | USB-C 비유와 한계 · Host/Client/Server · Tools/Resources/Prompts · Tool Calling 과의 관계 · 2026-07-28 변화(stateless·MRTR·Tasks) · A2A 의 자리 | MCP, Host, Client, Server, Resource, A2A | 구조도(코드 최소) | 6 | 발행 |
 | 21 | Python 으로 MCP Server 만들기 | 내 사내 시스템을 어떤 Agent 든 쓰게 하려면? | FastMCP · 도구·입력 스키마 · stdio vs Streamable HTTP · Inspector 테스트 | stdio, Streamable HTTP, Inspector | 티켓 MCP 서버 | 20 | 계획 |
 | 22 | Agent 에 MCP 연결하기 | 남이 만든 도구를 내 Agent 에 꽂으면 무엇을 조심하나? | `MultiServerMCPClient` · 도구 발견 · 타임아웃·인증(OAuth)·권한 · 실패 처리 | OAuth, 권한 범위 | MCP 연동 헬프데스크 Agent | 12, 21 | 계획 |
 

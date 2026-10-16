@@ -1,0 +1,498 @@
+---
+title: 도구를 이미 부를 수 있는데 MCP는 왜 필요할까요?
+slug: mcp-host-client-server-primitives
+excerpt: MCP는 AI 앱과 외부 시스템을 잇는 공통 규격입니다. 앱마다 도구마다 따로 연결하던 일을 한 번씩만 만들면 되게 바꿉니다. Host·Client·Server의 역할, 서버가 내놓는 세 가지(Tools·Resources·Prompts), 모델의 tool calling과 MCP의 관계, 요청마다 정보를 싣는 2026-07-28 규격의 변화(MRTR·Tasks), A2A와의 차이를 공식 문서 기준으로 그림으로 정리합니다.
+tags: [AI Agent, MCP, Model Context Protocol, A2A, Tool Calling]
+category: ai
+series: ai-agent
+series_order: 20
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/mcp-host-client-server-primitives-mvb8ot9q.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 연결 가닥 히어로(앱×도구 그물 대 MCP 허브, 개수 토글) + 그림|글(Host·Client·Server 서버 고르기) + 서랍 세 개(Tools·Resources·Prompts) + 그림 고정 스크롤리텔링(메시지 시퀀스) + JSON 코드 + 모델·앱·서버 층 그림 + 2026-07-28 MRTR 단계 장면 + A2A 가로·세로 그림 + 정리 | 글의 성격: 규격을 처음 접하는 글이라 연결 가닥이 얼마나 줄어드는지, 누가 누구와 이어지는지, 메시지가 어떤 순서로 오가는지를 그림으로 먼저 보이고 이름은 그림 옆에 붙인다 | 버린 후보: 용어 정의 카드 나열(그림이 아니라 목록이라서) -->
+<style>
+.post-page .mp {
+  --mp-human: rgb(37, 112, 235); --mp-code: rgb(16, 150, 120); --mp-model: rgb(226, 106, 28); --mp-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .mp { --mp-human: rgb(110, 165, 255); --mp-code: rgb(60, 205, 165); --mp-model: rgb(255, 150, 80); --mp-bad: rgb(255, 110, 110); }
+.post-page .mp * { box-sizing: border-box; }
+.post-page .mp-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .mp h1, .post-page .mp h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .mp h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .mp h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .mp h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .mp p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .mp b { color: var(--fg-strong); }
+.post-page .mp .nw { white-space: nowrap; }
+.post-page .mp code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .mp p.mp-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .mp-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .mp-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .mp-head > h2 { margin: 0; }
+.post-page .mp-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .mp-split.top { align-items: start; }
+.post-page .mp-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .mp-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .mp-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .mp-seg button:hover { color: var(--fg-strong); }
+.post-page .mp-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .mp-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .mp-act::before { content: "▶ "; font-size: 11px; }
+.post-page .mp-act:disabled { opacity: .4; cursor: default; }
+.post-page .mp-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .mp-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .mp-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .mp-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .mp-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .mp-tag.n { --t: var(--fg-strong); } .post-page .mp-tag.m { --t: var(--mp-model); } .post-page .mp-tag.c { --t: var(--mp-code); } .post-page .mp-tag.h { --t: var(--mp-human); } .post-page .mp-tag.x { --t: var(--mp-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .mp-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .mp-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .mp-codepair .pg-code { margin-top: 0; }
+.post-page .mp-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .mp-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .mp-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .mp-codepair.rev > .cp-code, .post-page .mp-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .mp-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .mp .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .mp ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .mp ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .mp-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .mp-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .mp-term-bar .mp-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .mp-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .mp-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-mp-blink 1s steps(1) infinite; }
+@keyframes pg-mp-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .mp-codepair, .post-page .mp-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .mp-codepair > .cp-code, .post-page .mp-codepair > .cp-term, .post-page .mp-codepair > .cp-notes,
+  .post-page .mp-codepair.rev > .cp-code, .post-page .mp-codepair.rev > .cp-term, .post-page .mp-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .mp-codepair > .cp-notes, .post-page .mp-codepair.rev > .cp-notes { order: 2; } .post-page .mp-codepair > .cp-term, .post-page .mp-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .mp-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .mp-tbl th, .post-page .mp-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .mp-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .mp-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .mp-tbl code { font-size: 12.5px; }
+.post-page .mp details { margin: 0 0 24px; }
+.post-page .mp summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .mp details > .mp-in-d { padding-top: 14px; }
+.post-page .mp-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .mp-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .mp-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .mp-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .mp-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .mp-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .mp-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .mp-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .mp-tbl { font-size: 13.5px; } .post-page .mp-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .mp *, .post-page .mp *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .mp-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .mp-wrap { padding: 0 20px; }
+  .post-page .mp-head, .post-page .mp-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .mp-split.rev > :first-child { order: 0; }
+  .post-page p.mp-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .mp-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .mp-lab h2 { margin-bottom: 24px; }
+.post-page .mp-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .mp-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .mp-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .mp-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .mp-stack { display: grid; gap: 8px; }
+.post-page .mp-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .mp-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .mp-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .mp-s.m { --k: var(--mp-model); } .post-page .mp-s.c { --k: var(--mp-code); } .post-page .mp-s.x { --k: var(--mp-bad); } .post-page .mp-s.h { --k: var(--mp-human); }
+.post-page .mp-s + .mp-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .mp-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .mp-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .mp-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .mp-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .mp-hero-top p { margin: 0 0 1.2em; }
+.post-page .mp-hero-top p:last-child { margin-bottom: 0; }
+.post-page .mp-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .mp-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .mp [hidden] { display: none !important; }
+
+.post-page .mp-stack { gap: 22px !important; } .post-page .mp-s + .mp-s::before { top: -19px !important; }
+.post-page .mp-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .mp-flow .mp-s { flex: 1 1 0; min-width: 0; } .post-page .mp-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .mp-flow .mp-s + .mp-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .mp-flow .mp-s { flex: 1 1 180px; } .post-page .mp-flow i.ar { display: none; } }
+
+.post-page .mp-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .mp-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .mp-nar { max-width: 520px; }
+.post-page .mp-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .mp-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .mp-scene .t-d { fill: var(--fg-neutral); }
+.post-page .mp-scene .mono { font-family: var(--font-mono); }
+.post-page .mp-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .mp-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .mp-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .mp-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .mp-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .mp-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .mp-steps { padding-bottom: 14vh; }
+.post-page .mp-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .mp-step.on { opacity: 1; }
+.post-page .mp-step h3 { font-size: 20px; }
+.post-page .mp-step p { margin: 0; }
+.post-page .mp-sfig { position: sticky; top: var(--mp-top, 96px); }
+.post-page .mp-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .mp-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .mp-story { grid-template-columns: minmax(0, 1fr); } .post-page .mp-sfig { position: static; order: -1; } .post-page .mp-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .mp-steps { padding-bottom: 0; } }
+
+.post-page .mp-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .mp-stage .mp-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .mp-lede { max-width: 780px; margin-top: 24px; }
+.post-page .mp-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .mp-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="mp-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="mp-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="mp-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="mp-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="mp-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="mp-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="mp-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="mp-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="mp-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="mp">
+  <section class="mp-hero">
+    <div class="mp-wrap">
+      <h1>도구를 이미 부를 수 있는데 MCP는 왜 필요할까요?</h1>
+      <div class="mp-lede">
+        <p>Agent에게 티켓 시스템을 쓰게 하려면 그 시스템의 API를 부르는 도구를 만들면 됩니다. 그런데 AI 앱이 여러 개이고 연결할 시스템도 여러 개라면 앱마다 시스템마다 따로 만들어야 합니다. 앱이 3개이고 시스템이 3개면 연결 부품이 9개입니다.</p>
+        <p>MCP(Model Context Protocol)는 AI 앱과 외부 시스템을 잇는 공개 표준입니다. 공식 문서는 AI 앱을 위한 USB-C 단자에 비유합니다. 앱과 시스템이 모두 이 규격을 따르면 연결 부품이 앱 수와 시스템 수의 합으로 줄어듭니다. 개수를 바꿔 가며 눌러 보세요.</p>
+      </div>
+      <div class="mp-stage" data-figure data-thumb data-mp-hero>
+        <div class="mp-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">연결 방식</span>
+          <div class="mp-seg" role="group" aria-label="연결 방식 고르기">
+            <button type="button" data-mp-mode="direct" aria-pressed="false">각자 따로 연결</button>
+            <button type="button" data-mp-mode="mcp" aria-pressed="true">MCP로 연결</button>
+          </div>
+          <span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">앱·시스템 수</span>
+          <div class="mp-seg" role="group" aria-label="개수 고르기">
+            <button type="button" data-mp-n="3" aria-pressed="false">3개씩</button>
+            <button type="button" data-mp-n="5" aria-pressed="true">5개씩</button>
+          </div>
+        </div>
+        <svg class="mp-scene mp-nar" data-mp-hv viewBox="0 0 460 600" role="img" aria-label="연결 가닥 그림. 왼쪽에 AI 앱, 오른쪽에 외부 시스템이 같은 수만큼 있다. 각자 따로 연결하면 앱과 시스템의 모든 짝마다 선이 하나씩 그어져 선이 그물처럼 많아지고, MCP로 연결하면 가운데 단자를 거쳐 앱마다 선 하나, 시스템마다 선 하나만 그어진다. 아래에 연결 부품 수가 적힌다."></svg>
+        <p class="mp-verdict" data-mp-hsum></p>
+        <p class="mp-cap" style="margin-bottom:0">설명을 위한 예시입니다. USB-C 비유는 MCP 공식 문서의 표현입니다. USB-C가 모양만 맞추는 것과 달리 MCP는 주고받는 메시지의 규칙까지 정합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap mp-split rev">
+      <div data-figure>
+        <div class="mp-ctrl" style="margin-bottom:8px"><div class="mp-seg" role="group" aria-label="서버 고르기"><button type="button" data-mp-sv="0" aria-pressed="true">파일 서버</button><button type="button" data-mp-sv="1" aria-pressed="false">데이터베이스 서버</button><button type="button" data-mp-sv="2" aria-pressed="false">원격 오류 추적 서버</button></div></div>
+        <svg class="mp-scene mp-nar" data-mp-hc viewBox="0 0 460 520" role="img" aria-label="Host Client Server 그림. 왼쪽 큰 상자가 AI 앱인 Host이고 그 안에 클라이언트가 서버마다 하나씩 있다. 오른쪽에 서버 셋이 있고 클라이언트와 서버가 전용 선으로 이어진다. 파일 서버와 데이터베이스 서버는 내 컴퓨터에서 도는 로컬 서버로 stdio 선, 오류 추적 서버는 원격 서버로 Streamable HTTP 선을 쓴다."></svg>
+        <p class="mp-wnote" data-mp-hcnote></p>
+      </div>
+      <div>
+        <h2>앱 안에 서버마다 클라이언트가 하나씩 생깁니다</h2>
+        <p>MCP에는 세 역할이 있습니다. AI 앱인 호스트(host)가 연결을 총괄하고 서버마다 클라이언트(client)를 하나씩 만들어 전용 연결을 유지합니다. 서버(server)는 도구와 자료를 내놓는 프로그램입니다.</p>
+        <p>서버는 내 컴퓨터에서 실행될 수도 있고 원격에서 실행될 수도 있습니다. 위치가 아니라 연결 방식으로 나뉩니다. 내 컴퓨터의 서버는 표준 입출력(stdio)으로 연결하고 원격 서버는 HTTP 기반의 Streamable HTTP로 연결합니다. 서버를 눌러 확인하세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap">
+      <div class="mp-head">
+        <h2>서버가 내놓는 것은 도구, 자료, 프롬프트입니다</h2>
+        <div>
+          <p>서버가 클라이언트에게 줄 수 있는 것은 세 가지입니다. 도구(tools)는 AI 모델이 실행하는 함수입니다. 자료(resources)는 사용자나 모델이 읽는 데이터이고 프롬프트(prompts)는 사용자를 위한 틀입니다. 셋은 쓰는 주체가 서로 다르니 눈여겨보세요.</p>
+          <p>공식 문서의 예는 데이터베이스 서버입니다. 이 서버는 질의를 실행하는 도구, 표 구조를 담은 자료, 질문 예시를 담은 프롬프트를 함께 내놓을 수 있습니다. 서랍을 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="mp-ctrl"><div class="mp-seg" role="group" aria-label="서랍 고르기"><button type="button" data-mp-dr="0" aria-pressed="true">도구 (Tools)</button><button type="button" data-mp-dr="1" aria-pressed="false">자료 (Resources)</button><button type="button" data-mp-dr="2" aria-pressed="false">프롬프트 (Prompts)</button></div></div>
+        <svg class="mp-scene mp-nar" data-mp-dw viewBox="0 0 460 460" role="img" aria-label="서랍 그림. 데이터베이스 서버 상자에 서랍 세 개가 있다. 도구 서랍에는 질의 실행 함수가 있고 AI 모델이 쓴다. 자료 서랍에는 표 구조 문서가 있고 사용자나 모델이 읽는다. 프롬프트 서랍에는 질문 예시 틀이 있고 사용자가 고른다. 고른 서랍이 열리며 쓰는 주체가 표시된다."></svg>
+        <p class="mp-verdict" data-mp-dwsay></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap">
+      <div class="mp-head">
+        <h2>클라이언트는 서버에게 먼저 묻고 그다음에 부릅니다</h2>
+        <div>
+          <p>메시지는 JSON-RPC 2.0이라는 형식을 씁니다. 요청과 응답을 번호로 짝지어 주고받는 약속입니다. 클라이언트는 필요하면 서버의 능력을 묻는 <code>server/discover</code>를 보내고 <code>tools/list</code>로 도구 목록을 받은 뒤 <code>tools/call</code>로 하나를 실행합니다.</p>
+          <p>목록을 먼저 받으니 서버가 도구를 늘리거나 바꿔도 앱은 고칠 필요가 없습니다. 스크롤하며 메시지가 오가는 순서를 보세요.</p>
+        </div>
+      </div>
+      <div class="mp-story" style="margin-top:40px" data-mp-story>
+        <div class="mp-steps">
+          <div class="mp-step" data-mp-step><h3>능력을 물어봄 (선택)</h3><p>클라이언트가 <code>server/discover</code>를 보내면 서버가 지원하는 규격 버전, 능력, 이름을 알려 줍니다. 꼭 거쳐야 하는 단계는 아닙니다.</p></div>
+          <div class="mp-step" data-mp-step><h3>도구 목록을 받음</h3><p><code>tools/list</code> 응답에는 도구마다 이름, 설명, 입력 모양(JSON Schema)이 담겨 옵니다. 앱은 이 목록을 모델에게 전해 줍니다.</p></div>
+          <div class="mp-step" data-mp-step><h3>도구를 호출함</h3><p>모델이 도구를 고르면 앱이 <code>tools/call</code>에 도구 이름과 인자를 담아 서버에 보냅니다.</p></div>
+          <div class="mp-step" data-mp-step><h3>결과가 돌아옴</h3><p>서버가 도구를 실행하고 <code>content</code> 목록에 결과를 담아 돌려줍니다. 앱은 이 결과를 모델에게 전합니다.</p></div>
+        </div>
+        <div class="mp-sfig" data-mp-sfig data-figure>
+          <svg class="mp-scene mp-nar" data-mp-sq viewBox="0 0 460 560" role="img" aria-label="메시지 순서 그림. 왼쪽 줄은 클라이언트, 오른쪽 줄은 서버이다. 위에서 아래로 server/discover, tools/list, tools/call 요청 화살표가 오른쪽으로 가고 각 응답 화살표가 왼쪽으로 돌아온다. 단계마다 화살표가 하나씩 더해진다."></svg>
+          <p class="mp-stat" data-mp-sqstat></p>
+        </div>
+      </div>
+      <div class="mp-codepair" style="margin-top:48px">
+        <div class="cp-code">
+<pre data-title="tools/call 요청과 응답 (공식 문서 예시)" data-hl="2-4,12-14"><code class="language-json">{ "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+  "params": {
+    "name": "weather_current",
+    "arguments": { "location": "San Francisco", "units": "imperial" }
+  }
+}
+
+{ "jsonrpc": "2.0", "id": 3,
+  "result": {
+    "resultType": "complete",
+    "content": [
+      { "type": "text",
+        "text": "Current weather in San Francisco: 68°F, partly cloudy ..." }
+    ]
+  }
+}</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>도구 이름과 인자입니다.</b> <code>name</code>은 <code>tools/list</code>로 받은 이름과 같아야 하고 <code>arguments</code>는 그 도구의 입력 모양을 따릅니다. 앞서 배운 도구의 이름과 설명, 입력 스키마가 그대로 쓰입니다.</li>
+  <li><b>같은 번호로 돌아옵니다.</b> 응답의 <code>id</code>가 요청과 같아 어느 요청의 답인지 알 수 있습니다. <code>content</code>에는 글뿐 아니라 이미지나 자료도 담을 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+      <p class="mp-cap" style="margin-top:12px">모든 요청에는 규격 버전과 클라이언트 정보를 담는 <code>_meta</code>가 붙는데 위 예시에서는 줄였습니다. 메시지는 MCP 2026-07-28 공식 문서에서 가져왔고 이 글에서 직접 실행한 것은 아닙니다.</p>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap mp-split">
+      <div>
+        <h2>tool calling과 MCP는 서로 다른 구간을 맡습니다</h2>
+        <p>도구를 부르는 길에는 두 구간이 있습니다. 모델과 앱 사이에서 모델이 "이 도구를 이 인자로 불러 주세요"라고 말하는 구간이 tool calling입니다. 이 형식은 모델 제공사의 API가 정합니다.</p>
+        <p>앱과 도구 사이에서 도구 목록을 얻고 실제로 실행하는 구간이 MCP입니다. 모델은 도구가 MCP 서버에서 왔는지 직접 만든 함수인지 알 필요가 없습니다. 단계를 눌러 어느 구간이 움직이는지 보세요.</p>
+        <div class="mp-ctrl"><div class="mp-seg" role="group" aria-label="단계 고르기"><button type="button" data-mp-ly="list" aria-pressed="true">도구 목록 얻기</button><button type="button" data-mp-ly="call" aria-pressed="false">도구 호출하기</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="mp-scene mp-nar" data-mp-lyv viewBox="0 0 460 560" role="img" aria-label="층 그림. 위에서 아래로 모델, 호스트 앱의 MCP 클라이언트, MCP 서버, 실제 시스템이 놓여 있다. 모델과 앱 사이는 tool calling 구간, 앱과 서버 사이는 MCP 구간이다. 고른 단계에 따라 목록 요청 또는 호출 요청이 두 구간을 차례로 지나간다."></svg>
+        <p class="mp-wnote" data-mp-lynote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap">
+      <div class="mp-head">
+        <h2>2026-07-28 규격에서는 요청이 혼자서도 읽힙니다</h2>
+        <div>
+          <p>현재 최신 규격은 2026-07-28 판입니다. MCP가 무상태(stateless)가 된 것이 가장 큰 변화입니다. 모든 요청이 규격 버전과 클라이언트의 능력을 <code>_meta</code>에 직접 싣기 때문에 서버가 이전 요청을 기억하지 않아도 요청 하나만 읽고 처리할 수 있습니다. 덕분에 서버를 여러 대로 늘리기도 쉬워집니다.</p>
+          <p>서버가 처리 도중 사용자에게 물어야 할 때는 다중 왕복 요청(MRTR, Multi Round-Trip Requests) 방식을 씁니다. 서버가 먼저 사용자에게 묻는 대신 "추가 입력이 필요합니다"라는 결과를 돌려주고 클라이언트가 답을 모아 같은 요청을 다시 보냅니다. 단계를 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="mp-ctrl"><div class="mp-seg" role="group" aria-label="단계 고르기"><button type="button" data-mp-mr="0" aria-pressed="false">① 호출</button><button type="button" data-mp-mr="1" aria-pressed="false">② 입력 필요</button><button type="button" data-mp-mr="2" aria-pressed="false">③ 다시 호출</button><button type="button" data-mp-mr="3" aria-pressed="true">④ 결과</button></div></div>
+        <svg class="mp-scene mp-nar" data-mp-mrv viewBox="0 0 460 560" role="img" aria-label="다중 왕복 요청 그림. 세 줄이 사용자, 클라이언트, 서버이다. 클라이언트가 tools/call을 보내고, 서버가 input_required 결과로 필요한 입력을 알리고, 클라이언트가 사용자에게 묻고 답을 받아 tools/call을 입력과 상태 값과 함께 다시 보내고, 서버가 최종 결과를 돌려준다. 단계마다 화살표가 더해진다."></svg>
+        <p class="mp-verdict" data-mp-mrsay></p>
+      </div>
+      <p style="margin-top:28px">같은 규격은 오래 걸리는 작업을 위한 Tasks 확장도 정의합니다. 서버가 작업을 가리키는 표(handle)를 돌려주면 클라이언트가 나중에 상태를 확인하고 결과를 가져갑니다. 확장은 서버와 클라이언트가 모두 지원할 때만 쓰입니다. 서버가 모델 답변을 대신 요청하던 sampling과 로그 전달은 이번 판에서 폐지 예고(deprecated)되었습니다.</p>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap mp-split rev">
+      <div data-figure>
+        <div class="mp-ctrl" style="margin-bottom:8px"><div class="mp-seg" role="group" aria-label="연결 고르기"><button type="button" data-mp-aa="mcp" aria-pressed="false">MCP만</button><button type="button" data-mp-aa="a2a" aria-pressed="false">A2A만</button><button type="button" data-mp-aa="both" aria-pressed="true">함께</button></div></div>
+        <svg class="mp-scene mp-nar" data-mp-aw viewBox="0 0 460 460" role="img" aria-label="A2A와 MCP 그림. 위쪽에 Agent 두 개가 가로로 놓여 있고 그 사이 가로선이 A2A이다. 각 Agent 아래에 도구 상자가 세로선으로 이어지고 그 세로선이 MCP이다. 고른 항목에 따라 해당하는 선이 강조된다."></svg>
+        <p class="mp-wnote" data-mp-aanote></p>
+      </div>
+      <div>
+        <h2>MCP는 도구와, A2A는 다른 Agent와 잇습니다</h2>
+        <p>A2A(Agent2Agent)는 Agent끼리 일을 주고받는 규격입니다. A2A 공식 사이트는 MCP를 세로, A2A를 가로로 비유합니다. MCP는 Agent 하나를 도구로 깊게 만들고 A2A는 그 경계를 넘어 Agent들을 잇습니다.</p>
+        <p>두 규격은 경쟁하는 사이가 아니라 맡은 역할이 다릅니다. 각 Agent는 자기 도구를 쓸 때 MCP를, 서로 협력할 때 A2A를 함께 씁니다. 다음 글에서는 사내 티켓 시스템을 MCP 서버로 직접 만들어 보겠습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mp-sec">
+    <div class="mp-wrap">
+      <div class="mp-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 5개 펼치기</summary><ul class="mp-refs">
+          <li><a href="https://modelcontextprotocol.io/docs/getting-started/intro">What is MCP?</a>, Model Context Protocol: USB-C 비유와 목적</li>
+          <li><a href="https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture">Architecture overview</a>, MCP 2026-07-28: Host·Client·Server, 계층, 전송, 세 가지 primitive, 무상태와 discover</li>
+          <li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr">Multi Round-Trip Requests</a>, MCP 2026-07-28: input_required와 재시도</li>
+          <li><a href="https://modelcontextprotocol.io/specification/latest">Specification</a>, MCP: 기능·확장(Tasks)·보안 원칙</li>
+          <li><a href="https://a2a-protocol.org/latest/topics/a2a-and-mcp/">A2A and MCP</a>, A2A Protocol: 세로와 가로 비유</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="mp-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-mp-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-mp-out]", btn.closest("[data-mp-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.mpRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-mp-step]", st), fig = $("[data-mp-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--mp-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--mp-model)", code: "var(--mp-code)", human: "var(--mp-human)", bad: "var(--mp-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 연결 가닥 ───── */
+  const hv = $("[data-mp-hv]"), hsum = $("[data-mp-hsum]"); let hm = "mcp", hn = 5;
+  const APPS = ["AI 앱 A", "AI 앱 B", "AI 앱 C", "AI 앱 D", "AI 앱 E"], SYS = ["티켓", "캘린더", "데이터베이스", "메일", "파일"];
+  function drawHero() {
+    hv.innerHTML = ""; const n = hn, direct = hm === "direct", ys = Array.from({ length: n }, (_, i) => 50 + i * (400 / (n - 1)));
+    const hx = 230, hy = 250;
+    if (direct) { for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) mk("path", { d: `M120 ${ys[i]} L340 ${ys[j]}`, stroke: C.bad, "stroke-width": 2, opacity: .55 }, hv); }
+    else { for (let i = 0; i < n; i++) { mk("path", { d: `M120 ${ys[i]} L${hx - 34} ${hy + (ys[i] - hy) * .25}`, stroke: C.code, "stroke-width": 4 }, hv); mk("path", { d: `M340 ${ys[i]} L${hx + 34} ${hy + (ys[i] - hy) * .25}`, stroke: C.code, "stroke-width": 4 }, hv); }
+      box(hv, hx - 40, hy - 56, 80, 112, C.code, { rx: 22, sw: 5, fill: `color-mix(in srgb, ${C.code} 10%, var(--bg-base))` }); mk("rect", { x: hx - 22, y: hy - 12, width: 44, height: 24, rx: 12, fill: "var(--bg-base)", stroke: C.code, "stroke-width": 3.5 }, hv); txt(hv, hx, hy - 66, "MCP", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` }); }
+    for (let i = 0; i < n; i++) { box(hv, 10, ys[i] - 22, 110, 44, C.model, { rx: 10, sw: 3, fill: `color-mix(in srgb, ${C.model} 10%, var(--bg-base))` }); txt(hv, 65, ys[i] + 6, APPS[i], { "font-size": 15, "text-anchor": "middle", class: "t-s" }); box(hv, 340, ys[i] - 22, 110, 44, C.human, { rx: 10, sw: 3, fill: `color-mix(in srgb, ${C.human} 10%, var(--bg-base))` }); txt(hv, 395, ys[i] + 6, SYS[i], { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }
+    const cnt = direct ? n * n : n + n; txt(hv, 230, 556, `연결 부품 ${cnt}개`, { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${direct ? C.bad : C.code}` }); txt(hv, 230, 584, direct ? `${n} × ${n}` : `${n} + ${n}`, { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    hsum.textContent = direct ? `앱 ${n}개와 시스템 ${n}개를 모두 따로 잇으면 ${n * n}개를 만들어야 합니다. 앱이나 시스템이 하나 늘 때마다 ${n}개씩 늘어납니다.` : `모두 MCP를 따르면 앱마다 하나, 시스템마다 하나만 만들면 되니 모두 ${2 * n}개입니다. 새 시스템은 서버 하나만 만들면 모든 앱이 씁니다.`;
+  }
+  $$("[data-mp-mode]").forEach((b) => b.addEventListener("click", () => { hm = b.dataset.mpMode; press("[data-mp-mode]", b); drawHero(); }, { signal }));
+  $$("[data-mp-n]").forEach((b) => b.addEventListener("click", () => { hn = +b.dataset.mpN; press("[data-mp-n]", b); drawHero(); }, { signal })); drawHero();
+
+  /* ───── Host · Client · Server ───── */
+  const hc = $("[data-mp-hc]"); let si = 0;
+  const SRV = [["파일 서버", "내 컴퓨터", "stdio", C.human, "내 컴퓨터에서 앱이 서버를 직접 실행하고 표준 입출력으로 이야기합니다. 보통 클라이언트 하나만 씁니다."], ["데이터베이스 서버", "내 컴퓨터", "stdio", C.human, "역시 내 컴퓨터에서 도는 로컬 서버입니다. 네트워크를 거치지 않아 빠릅니다."], ["원격 오류 추적 서버", "원격", "Streamable HTTP", C.model, "원격에서 돌며 HTTP로 이어져 여러 클라이언트가 함께 씁니다. 인증이 필요하고 OAuth를 권장합니다."]];
+  function drawHc() {
+    hc.innerHTML = ""; box(hc, 8, 10, 220, 500, "var(--fg-strong)", { rx: 16, sw: 3.5, fill: "var(--bg-base)" }); txt(hc, 22, 40, "호스트 (AI 앱)", { "font-size": 17, class: "t-s" });
+    SRV.forEach(([nm, where, tr, col, nt], i) => { const y = 80 + i * 140, on = i === si; box(hc, 28, y, 180, 90, on ? col : "var(--line-strong)", { rx: 12, sw: on ? 4.5 : 2.5, fill: on ? `color-mix(in srgb, ${col} 8%, var(--bg-base))` : "var(--bg-subtle)" }); txt(hc, 42, y + 36, `클라이언트 ${i + 1}`, { "font-size": 17, class: "t-s" }); txt(hc, 42, y + 66, "전용 연결 하나", { "font-size": 15, class: "t-d" });
+      mk("path", { d: `M208 ${y + 45} H300`, stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 3, "stroke-dasharray": tr === "stdio" ? "" : "10 6" }, hc); txt(hc, 254, y + 32, tr === "stdio" ? "stdio" : "HTTP", { "font-size": 15, "text-anchor": "middle", class: "t-s mono", style: on ? `fill:${col}` : "" });
+      box(hc, 300, y, 152, 90, on ? col : "var(--line-strong)", { rx: 12, sw: on ? 4.5 : 2.5, fill: on ? `color-mix(in srgb, ${col} 8%, var(--bg-base))` : "var(--bg-base)" }); txt(hc, 376, y + 36, nm.length > 8 ? nm.slice(0, nm.indexOf(" ") > 0 ? nm.indexOf(" ") : 6) : nm, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(hc, 376, y + 58, nm.length > 8 ? nm.slice(nm.indexOf(" ") > 0 ? nm.indexOf(" ") + 1 : 6) : "서버", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(hc, 376, y + 80, where, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); });
+    $("[data-mp-hcnote]").textContent = SRV[si][4];
+  }
+  $$("[data-mp-sv]").forEach((b) => b.addEventListener("click", () => { si = +b.dataset.mpSv; press("[data-mp-sv]", b); drawHc(); }, { signal })); drawHc();
+
+  /* ───── 서랍 세 개 ───── */
+  const dw = $("[data-mp-dw]"); let di = 0;
+  const DR = [["도구", "query_database", "AI 모델이 실행", C.model, "robot", "SQL을 실행해 결과를 돌려주는 함수입니다. 모델이 필요하다고 판단하면 부릅니다."], ["자료", "db_schema", "사용자나 모델이 읽음", C.code, "paper", "표와 열의 구조를 적은 읽기용 자료입니다. 실행하지 않고 읽어서 맥락으로 씁니다."], ["프롬프트", "few_shot_query", "사용자가 고름", C.human, "mail", "질문 예시가 담긴 틀입니다. 사용자가 골라 대화를 시작하는 데 씁니다."]];
+  function drawDw() {
+    dw.innerHTML = ""; box(dw, 8, 8, 444, 440, "var(--fg-strong)", { rx: 16, sw: 3.5, fill: "var(--bg-base)" }); txt(dw, 24, 40, "데이터베이스 서버", { "font-size": 17, class: "t-s" });
+    DR.forEach(([nm, id, who, col, ic], i) => { const y = 60 + i * 124, on = i === di; box(dw, 24, y, 412, on ? 110 : 96, on ? col : "var(--line-strong)", { rx: 12, sw: on ? 4.5 : 2.5, fill: on ? `color-mix(in srgb, ${col} 8%, var(--bg-base))` : "var(--bg-subtle)" }); mk("use", { href: "#mp-ic-" + ic, x: 40, y: y + 16, width: 44, height: 44, style: `color:${on ? col : "var(--line-strong)"}` }, dw); txt(dw, 100, y + 36, nm, { "font-size": 19, class: "t-s", opacity: on ? 1 : .6 }); txt(dw, 100, y + 62, id, { "font-size": 15, class: "t-s mono", opacity: on ? 1 : .6 }); box(dw, 244, y + 16, 180, 38, col, { rx: 19, sw: 3, fill: on ? `color-mix(in srgb, ${col} 14%, var(--bg-base))` : "var(--bg-base)" }); txt(dw, 334, y + 41, who, { "font-size": 15, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .6 }); });
+    $("[data-mp-dwsay]").textContent = DR[di][5];
+  }
+  $$("[data-mp-dr]").forEach((b) => b.addEventListener("click", () => { di = +b.dataset.mpDr; press("[data-mp-dr]", b); drawDw(); }, { signal })); drawDw();
+
+  /* ───── 메시지 시퀀스 (스크롤) ───── */
+  const sq = $("[data-mp-sq]"), sqstat = $("[data-mp-sqstat]");
+  const MS = [["server/discover", "능력·버전"], ["tools/list", "도구 목록"], ["tools/call", "weather_current"], ["", "content: 결과 글"]];
+  function drawSq(i) {
+    const k = i < 0 ? 3 : i; sq.innerHTML = ""; const L = 70, R = 390;
+    [["클라이언트", L], ["서버", R]].forEach(([nm, x]) => { box(sq, x - 60, 8, 120, 40, "var(--fg-strong)", { rx: 10, sw: 3 }); txt(sq, x, 34, nm, { "font-size": 17, "text-anchor": "middle", class: "t-s" }); mk("path", { d: `M${x} 50 V540`, stroke: "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": "6 6" }, sq); });
+    MS.forEach(([m, sub], n) => { if (n > k) return; const y = 100 + n * 120, cur = n === k, col = n === 3 ? C.code : cur ? C.model : C.human;
+      if (n < 3) { mk("path", { d: `M${L} ${y} H${R - 14}`, stroke: col, "stroke-width": cur ? 6 : 4 }, sq); mk("path", { d: `M${R - 6} ${y} l-14 -9 v18z`, fill: col }, sq); txt(sq, 230, y - 18, m, { "font-size": 17, "text-anchor": "middle", class: "t-s mono", style: `fill:${col}` }); txt(sq, 230, y + 28, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+      else { const y0 = 100 + 2 * 120 + 70; mk("path", { d: `M${R} ${y0} H${L + 14}`, stroke: col, "stroke-width": 6 }, sq); mk("path", { d: `M${L + 6} ${y0} l14 -9 v18z`, fill: col }, sq); txt(sq, 230, y0 - 18, "결과 응답", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${col}` }); txt(sq, 230, y0 + 28, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); } });
+    sqstat.innerHTML = `<b>${["server/discover (선택)", "tools/list", "tools/call", "결과 응답"][k]}</b>`;
+  }
+  story("[data-mp-story]", (i) => drawSq(i)); drawSq(0);
+
+  /* ───── tool calling과 MCP 층 ───── */
+  const ly = $("[data-mp-lyv]"); let lm = "list";
+  function drawLy() {
+    ly.innerHTML = ""; const list = lm === "list";
+    const nodes = [[20, "모델", C.model, "robot"], [150, "호스트 앱 · MCP 클라이언트", C.human, "gear"], [280, "MCP 서버", C.code, "gear"], [410, "실제 시스템(티켓 등)", "var(--fg-strong)", "mail"]];
+    nodes.forEach(([y, lb, col, ic]) => { box(ly, 70, y, 320, 78, col, { rx: 12, sw: 3.5, fill: `color-mix(in srgb, ${col} 8%, var(--bg-base))` }); mk("use", { href: "#mp-ic-" + ic, x: 84, y: y + 18, width: 40, height: 40, style: `color:${col}` }, ly); txt(ly, 136, y + 46, lb, { "font-size": 15, class: "t-s" }); });
+    const seg = [[98, 150, "tool calling", C.model, list ? "앱이 모델에게 도구 목록을 전달" : "모델이 \"이 도구를 이 인자로\" 요청"], [228, 280, "MCP", C.code, list ? "tools/list" : "tools/call"], [358, 410, "서버 내부", "var(--fg-neutral)", list ? "" : "시스템에 실제 요청"]];
+    seg.forEach(([y1, y2, nm, col, lb]) => { mk("path", { d: `M230 ${y1} V${y2 - 14}`, stroke: col, "stroke-width": 6 }, ly); mk("path", { d: list ? `M230 ${y2 - 4} l-9 -14 h18z` : `M230 ${y2 - 4} l-9 -14 h18z`, fill: col }, ly); });
+    txt(ly, 246, 130, "tool calling", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); txt(ly, 246, 258, "MCP", { "font-size": 15, class: "t-s mono", style: `fill:${C.code}` });
+    txt(ly, 20, 540, list ? "모델이 쓸 도구 목록은 서버에서 옵니다" : "모델의 요청이 MCP 호출로 바뀌어 서버에 닿습니다", { "font-size": 15, class: "t-d" });
+    $("[data-mp-lynote]").textContent = list ? "앱이 MCP 서버에 tools/list를 보내 도구를 받고 그 목록을 모델에게 줍니다. 모델 쪽 형식은 모델 제공사가 정합니다." : "모델이 도구를 고르면 앱이 그것을 MCP의 tools/call로 바꿔 서버에 보냅니다. 서버가 시스템에서 실행해 결과를 돌려줍니다.";
+  }
+  $$("[data-mp-ly]").forEach((b) => { if (b.tagName === "BUTTON") b.addEventListener("click", () => { lm = b.dataset.mpLy; press("[data-mp-ly]", b); drawLy(); }, { signal }); }); drawLy();
+
+  /* ───── MRTR ───── */
+  const mr = $("[data-mp-mrv]"); let mk2 = 3;
+  const MSAY = ["클라이언트가 tools/call로 도구를 호출합니다. 서버는 아직 필요한 정보가 모자란다는 것을 압니다.", "서버가 input_required 결과를 돌려주며 필요한 입력과 상태 값(requestState)을 알립니다. 요청은 여기서 끝납니다.", "클라이언트가 사용자에게 물어 받은 답과 requestState를 그대로 실어 tools/call을 다시 보냅니다. 번호(id)는 새로 매깁니다.", "서버가 상태 값으로 상황을 되살려 처리를 마치고 최종 결과를 돌려줍니다. 서버는 중간에 아무것도 기억할 필요가 없었습니다."];
+  function drawMr() {
+    mr.innerHTML = ""; const k = mk2, X = [50, 230, 410];
+    [["사용자", 0], ["클라이언트", 1], ["서버", 2]].forEach(([nm, i]) => { box(mr, X[i] - 55, 8, 110, 40, "var(--fg-strong)", { rx: 10, sw: 3 }); txt(mr, X[i], 34, nm, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); mk("path", { d: `M${X[i]} 50 V545`, stroke: "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": "6 6" }, mr); });
+    const ar = (x1, x2, y, lb, sub, col, on) => { if (!on) return; const dir = x2 > x1 ? 1 : -1; mk("path", { d: `M${x1} ${y} H${x2 - dir * 12}`, stroke: col, "stroke-width": 5 }, mr); mk("path", { d: `M${x2} ${y} l${-dir * 14} -9 v18z`, fill: col }, mr); txt(mr, (x1 + x2) / 2, y - 16, lb, { "font-size": 15, "text-anchor": "middle", class: "t-s mono", style: `fill:${col}` }); if (sub) txt(mr, (x1 + x2) / 2, y + 26, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); };
+    ar(X[1], X[2], 96, "tools/call (id 1)", "", C.human, k >= 0);
+    ar(X[2], X[1], 176, "input_required", "inputRequests + requestState", C.bad, k >= 1);
+    ar(X[1], X[0], 256, "묻기", "", C.model, k >= 2); ar(X[0], X[1], 306, "답하기", "", C.model, k >= 2);
+    ar(X[1], X[2], 396, "tools/call (id 2)", "답 + requestState", C.human, k >= 2);
+    ar(X[2], X[1], 486, "결과", "resultType: complete", C.code, k >= 3);
+    $("[data-mp-mrsay]").textContent = MSAY[k];
+  }
+  $$("[data-mp-mr]").forEach((b) => { if (b.tagName === "BUTTON") b.addEventListener("click", () => { mk2 = +b.dataset.mpMr; press("[data-mp-mr]", b); drawMr(); }, { signal }); }); drawMr();
+
+  /* ───── A2A와 MCP ───── */
+  const aw = $("[data-mp-aw]"); let am = "both";
+  function drawAw() {
+    aw.innerHTML = ""; const m = am !== "a2a", a = am !== "mcp";
+    [[20, "Agent A"], [250, "Agent B"]].forEach(([x, nm], i) => { box(aw, x, 40, 190, 90, C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#mp-ic-robot", x: x + 14, y: 62, width: 46, height: 46, style: `color:${C.model}` }, aw); txt(aw, x + 74, 92, nm, { "font-size": 17, class: "t-s" });
+      mk("path", { d: `M${x + 95} 132 V${m ? 262 : 262}`, stroke: m ? C.code : "var(--line-strong)", "stroke-width": m ? 6 : 3, "stroke-dasharray": m ? "" : "6 5" }, aw); mk("path", { d: `M${x + 95} 270 l-9 -14 h18z`, fill: m ? C.code : "var(--line-strong)" }, aw);
+      box(aw, x, 276, 190, 100, m ? C.human : "var(--line-strong)", { rx: 14, sw: m ? 4 : 2.5, dash: m ? "" : "6 5", fill: "var(--bg-base)" }); txt(aw, x + 95, 318, i === 0 ? "A의 도구들" : "B의 도구들", { "font-size": 17, "text-anchor": "middle", class: "t-s", opacity: m ? 1 : .5 }); txt(aw, x + 95, 346, "티켓 · DB · 파일", { "font-size": 15, "text-anchor": "middle", class: "t-d", opacity: m ? 1 : .5 }); });
+    mk("path", { d: "M210 85 H240", stroke: a ? C.bad : "var(--line-strong)", "stroke-width": a ? 7 : 3, "stroke-dasharray": a ? "" : "6 5" }, aw); mk("path", { d: "M214 85 l12 -8 v16z M236 85 l-12 -8 v16z", fill: a ? C.bad : "var(--line-strong)" }, aw);
+    txt(aw, 225, 28, "A2A (가로)", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${a ? C.bad : "var(--fg-neutral)"}` }); txt(aw, 105, 410, "MCP (세로)", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${m ? C.code : "var(--fg-neutral)"}` }); txt(aw, 345, 410, "MCP (세로)", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${m ? C.code : "var(--fg-neutral)"}` });
+    $("[data-mp-aanote]").textContent = am === "mcp" ? "MCP는 Agent 하나가 자기 도구와 데이터에 닿게 합니다. 세로로 깊어지는 연결입니다." : am === "a2a" ? "A2A는 서로 다른 Agent가 일을 주고받게 합니다. 경계를 넘어 가로로 잇는 연결입니다." : "각 Agent는 MCP로 자기 도구를 쓰고 Agent끼리는 A2A로 협력합니다. 공식 문서도 둘을 함께 쓰라고 말합니다.";
+  }
+  $$("[data-mp-aa]").forEach((b) => b.addEventListener("click", () => { am = b.dataset.mpAa; press("[data-mp-aa]", b); drawAw(); }, { signal })); drawAw();
+})();
+</script>
