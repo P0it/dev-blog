@@ -1,0 +1,421 @@
+---
+title: Agent를 하나 더 두면 정말 나아질까요?
+slug: multi-agent-when-to-split
+excerpt: Agent를 여러 개로 나누면 성능이 오르는 일도 있지만 토큰은 챗의 15배 가까이 듭니다. Anthropic과 LangChain의 공식 자료를 바탕으로 나눌 이유와 나누지 말아야 할 때, Subagents·Handoffs·Skills·Router·Custom 다섯 패턴의 모양과 호출 수 차이, 내 상황에 맞는 패턴을 고르는 기준을 그림으로 정리합니다.
+tags: [AI Agent, Multi-Agent, 컨텍스트 격리, Subagents, Handoffs, LangChain]
+category: ai
+series: ai-agent
+series_order: 17
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/multi-agent-when-to-split-mvb89cb8.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 비용 탑 히어로(챗 1배·Agent 4배·Multi-Agent 15배) + 그림|글(컨텍스트 창이 나뉘는 장면) + 패턴 지도(다섯 모양을 고르며 보기) + 호출 수 막대 비교 + 내 상황 고르기 + 정리 | 글의 성격: 나눌지 말지를 판단하는 글이라 비용이 얼마나 커지는지 먼저 높이로 보이고, 나누면 무엇이 좋아지는지는 창이 쪼개지는 장면으로, 방식 비교는 모양 그림과 막대로 보인다 | 버린 후보: 장단점 비교 표(그림이 아니라 표라서) -->
+<style>
+.post-page .ma {
+  --ma-human: rgb(37, 112, 235); --ma-code: rgb(16, 150, 120); --ma-model: rgb(226, 106, 28); --ma-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ma { --ma-human: rgb(110, 165, 255); --ma-code: rgb(60, 205, 165); --ma-model: rgb(255, 150, 80); --ma-bad: rgb(255, 110, 110); }
+.post-page .ma * { box-sizing: border-box; }
+.post-page .ma-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .ma h1, .post-page .ma h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ma h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .ma h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .ma h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .ma p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .ma b { color: var(--fg-strong); }
+.post-page .ma .nw { white-space: nowrap; }
+.post-page .ma code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ma p.ma-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .ma-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .ma-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .ma-head > h2 { margin: 0; }
+.post-page .ma-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .ma-split.top { align-items: start; }
+.post-page .ma-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .ma-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .ma-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .ma-seg button:hover { color: var(--fg-strong); }
+.post-page .ma-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .ma-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .ma-act::before { content: "▶ "; font-size: 11px; }
+.post-page .ma-act:disabled { opacity: .4; cursor: default; }
+.post-page .ma-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .ma-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .ma-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .ma-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .ma-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .ma-tag.n { --t: var(--fg-strong); } .post-page .ma-tag.m { --t: var(--ma-model); } .post-page .ma-tag.c { --t: var(--ma-code); } .post-page .ma-tag.h { --t: var(--ma-human); } .post-page .ma-tag.x { --t: var(--ma-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .ma-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .ma-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .ma-codepair .pg-code { margin-top: 0; }
+.post-page .ma-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .ma-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .ma-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .ma-codepair.rev > .cp-code, .post-page .ma-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .ma-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .ma .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .ma ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .ma ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .ma-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .ma-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .ma-term-bar .ma-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .ma-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .ma-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-ma-blink 1s steps(1) infinite; }
+@keyframes pg-ma-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .ma-codepair, .post-page .ma-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ma-codepair > .cp-code, .post-page .ma-codepair > .cp-term, .post-page .ma-codepair > .cp-notes,
+  .post-page .ma-codepair.rev > .cp-code, .post-page .ma-codepair.rev > .cp-term, .post-page .ma-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .ma-codepair > .cp-notes, .post-page .ma-codepair.rev > .cp-notes { order: 2; } .post-page .ma-codepair > .cp-term, .post-page .ma-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .ma-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .ma-tbl th, .post-page .ma-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .ma-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .ma-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .ma-tbl code { font-size: 12.5px; }
+.post-page .ma details { margin: 0 0 24px; }
+.post-page .ma summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .ma details > .ma-in-d { padding-top: 14px; }
+.post-page .ma-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ma-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .ma-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .ma-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .ma-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .ma-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .ma-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .ma-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .ma-tbl { font-size: 13.5px; } .post-page .ma-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ma *, .post-page .ma *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .ma-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .ma-wrap { padding: 0 20px; }
+  .post-page .ma-head, .post-page .ma-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ma-split.rev > :first-child { order: 0; }
+  .post-page p.ma-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .ma-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .ma-lab h2 { margin-bottom: 24px; }
+.post-page .ma-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .ma-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .ma-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .ma-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .ma-stack { display: grid; gap: 8px; }
+.post-page .ma-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .ma-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .ma-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .ma-s.m { --k: var(--ma-model); } .post-page .ma-s.c { --k: var(--ma-code); } .post-page .ma-s.x { --k: var(--ma-bad); } .post-page .ma-s.h { --k: var(--ma-human); }
+.post-page .ma-s + .ma-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .ma-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ma-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ma-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .ma-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .ma-hero-top p { margin: 0 0 1.2em; }
+.post-page .ma-hero-top p:last-child { margin-bottom: 0; }
+.post-page .ma-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .ma-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ma [hidden] { display: none !important; }
+
+.post-page .ma-stack { gap: 22px !important; } .post-page .ma-s + .ma-s::before { top: -19px !important; }
+.post-page .ma-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .ma-flow .ma-s { flex: 1 1 0; min-width: 0; } .post-page .ma-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .ma-flow .ma-s + .ma-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .ma-flow .ma-s { flex: 1 1 180px; } .post-page .ma-flow i.ar { display: none; } }
+
+.post-page .ma-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .ma-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .ma-nar { max-width: 520px; }
+.post-page .ma-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .ma-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .ma-scene .t-d { fill: var(--fg-neutral); }
+.post-page .ma-scene .mono { font-family: var(--font-mono); }
+.post-page .ma-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .ma-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .ma-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .ma-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .ma-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .ma-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .ma-steps { padding-bottom: 14vh; }
+.post-page .ma-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .ma-step.on { opacity: 1; }
+.post-page .ma-step h3 { font-size: 20px; }
+.post-page .ma-step p { margin: 0; }
+.post-page .ma-sfig { position: sticky; top: var(--ma-top, 96px); }
+.post-page .ma-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .ma-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .ma-story { grid-template-columns: minmax(0, 1fr); } .post-page .ma-sfig { position: static; order: -1; } .post-page .ma-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .ma-steps { padding-bottom: 0; } }
+
+.post-page .ma-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .ma-stage .ma-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .ma-lede { max-width: 780px; margin-top: 24px; }
+.post-page .ma-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .ma-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ma-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="ma-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="ma-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="ma-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="ma-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="ma-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="ma-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="ma-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="ma-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="ma">
+  <section class="ma-hero">
+    <div class="ma-wrap">
+      <h1>Agent를 하나 더 두면 정말 나아질까요?</h1>
+      <div class="ma-lede">
+        <p>일이 복잡해지면 Agent를 역할별로 나누고 싶어집니다. 검색 담당, 글쓰기 담당, 검토 담당처럼 팀을 꾸리는 그림이 그럴듯해 보이기 때문입니다. 그런데 Agent가 늘면 모델을 부르는 횟수와 토큰(token, 모델이 읽고 쓰는 글자 조각의 단위)도 함께 늘어 비용이 불어납니다.</p>
+        <p>Anthropic은 Agent가 챗보다 약 4배, 여러 Agent가 함께 일하는 Multi-Agent 시스템은 챗보다 약 15배 토큰을 쓴다고 밝혔습니다. 일을 하나 골라 어느 쪽이 맞는지 보세요.</p>
+      </div>
+      <div class="ma-stage" data-figure data-thumb data-ma-hero>
+        <div class="ma-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">일</span>
+          <div class="ma-seg" role="group" aria-label="일 고르기">
+            <button type="button" data-ma-w="0" aria-pressed="false">학교 규정 한 가지 질문</button>
+            <button type="button" data-ma-w="1" aria-pressed="false">자료를 모아 보고서 쓰기</button>
+            <button type="button" data-ma-w="2" aria-pressed="true">수십 곳을 동시에 조사</button>
+          </div>
+        </div>
+        <svg class="ma-scene ma-nar" data-ma-hv viewBox="0 0 460 540" role="img" aria-label="비용 탑 그림. 막대 세 개가 챗은 1배, Agent는 4배, Multi-Agent는 15배 높이로 서 있다. 고른 일에 맞는 막대가 강조되고 깃발이 꽂힌다."></svg>
+        <p class="ma-verdict" data-ma-hsum></p>
+        <p class="ma-cap" style="margin-bottom:0">막대 높이는 Anthropic이 공개한 토큰 사용량 비율(챗 1배, Agent 약 4배, Multi-Agent 약 15배)입니다. 일마다 어느 막대가 맞는지는 이 글이 정리한 판단입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ma-sec">
+    <div class="ma-wrap ma-split rev">
+      <div data-figure>
+        <div class="ma-ctrl" style="margin-bottom:8px"><div class="ma-seg" role="group" aria-label="구조 고르기"><button type="button" data-ma-c="one" aria-pressed="true">Agent 하나가 다 맡음</button><button type="button" data-ma-c="split" aria-pressed="false">역할별로 나눔</button></div></div>
+        <svg class="ma-scene ma-nar" data-ma-cx viewBox="0 0 460 520" role="img" aria-label="컨텍스트 창 그림. 하나가 다 맡으면 메일, 일정, 문서 도구 설명이 한 창에 섞여 있다. 역할별로 나누면 작은 창 세 개에 각자의 도구만 들어 있고 위의 주 창에는 결과 요약만 올라온다."></svg>
+        <p class="ma-wnote" data-ma-cnote></p>
+      </div>
+      <div>
+        <h2>나누면 컨텍스트가 깨끗해집니다</h2>
+        <p>모델은 한 번에 읽을 수 있는 양이 정해져 있고 그 범위를 컨텍스트 창(context window)이라고 부릅니다. 한 Agent가 도구 서른 개의 설명을 모두 들고 있으면 창이 복잡해지고 알맞은 도구를 고르기도 어려워집니다.</p>
+        <p>LangChain은 Multi-Agent를 고려할 이유로 한 창에 다 담기 어려운 전문 지식, 도구가 너무 많아 잘못 고르는 문제, 하위 작업을 동시에 돌릴 수 있는 경우, 팀별 독립 개발, 조건이 맞아야 열리는 기능을 듭니다. 나눈 Agent는 자기 일에 필요한 것만 들고 있다가 결과 요약만 위로 올립니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ma-sec">
+    <div class="ma-wrap">
+      <div class="ma-head">
+        <h2>나누는 방식은 다섯 가지입니다</h2>
+        <div>
+          <p>LangChain은 Multi-Agent 방식을 Subagents, Handoffs, Skills, Router, Custom workflow 다섯 가지로 정리합니다. 이름은 달라도 모두 같은 질문에 답합니다. 누가 제어권을 쥐고 있고 사용자와는 누가 말하느냐입니다.</p>
+          <p>하나씩 눌러 모양과 잘하는 일, 약한 일을 보세요. 약한 점은 공식 문서에 적힌 것만 옮겼습니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="ma-ctrl"><div class="ma-seg" role="group" aria-label="방식 고르기"><button type="button" data-ma-p="0" aria-pressed="true">Subagents</button><button type="button" data-ma-p="1" aria-pressed="false">Handoffs</button><button type="button" data-ma-p="2" aria-pressed="false">Skills</button><button type="button" data-ma-p="3" aria-pressed="false">Router</button><button type="button" data-ma-p="4" aria-pressed="false">Custom</button></div></div>
+        <svg class="ma-scene ma-nar" data-ma-pg viewBox="0 0 460 520" role="img" aria-label="패턴 모양 그림. 고른 방식의 구조가 위쪽에 그려지고 아래에 잘하는 일과 약한 일이 적혀 있다. Subagents는 주 Agent가 하위 Agent를 도구처럼 부르고, Handoffs는 제어권이 Agent 사이를 넘어가고, Skills는 하나의 Agent가 필요한 지식을 불러오고, Router는 분류 뒤 전문 Agent로 나눠 보내고, Custom은 직접 짠 그래프이다."></svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="ma-sec">
+    <div class="ma-wrap ma-split">
+      <div>
+        <h2>방식에 따라 모델을 부르는 횟수가 달라집니다</h2>
+        <p>LangChain은 같은 일을 네 방식으로 돌려 모델 호출 수를 비교한 표를 공개합니다. 한 번만 시킬 때는 Handoffs와 Skills와 Router가 3번으로 적게 들고 Subagents는 4번입니다. 같은 사용자가 이어서 두 번 요청하면 상태를 기억하는 Handoffs와 Skills가 5번으로 가장 적습니다.</p>
+        <p>여러 분야를 한꺼번에 묻는 경우에는 Subagents와 Router가 약 9천 토큰으로 가장 적고 Skills는 약 1만 5천 토큰입니다. 일의 모양에 따라 순위가 바뀝니다. 상황을 눌러 보세요.</p>
+        <div class="ma-ctrl"><div class="ma-seg" role="group" aria-label="상황 고르기"><button type="button" data-ma-s="0" aria-pressed="true">한 번 요청</button><button type="button" data-ma-s="1" aria-pressed="false">같은 사용자가 두 번</button><button type="button" data-ma-s="2" aria-pressed="false">여러 분야를 한꺼번에</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="ma-scene ma-nar" data-ma-ch viewBox="0 0 460 480" role="img" aria-label="호출 수 막대 그래프. 상황에 따라 Subagents, Handoffs, Skills, Router의 모델 호출 수가 막대로 그려지고 가장 짧은 막대가 강조된다. 여러 분야 상황에서는 토큰 수도 함께 적힌다."></svg>
+        <p class="ma-wnote" data-ma-chnote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ma-sec">
+    <div class="ma-wrap">
+      <div class="ma-head">
+        <h2>내 상황에는 어느 방식이 맞을까요</h2>
+        <div>
+          <p>우선 하나로 충분한지 따져 봅니다. LangChain은 도구와 프롬프트를 잘 갖춘 Agent 하나가 비슷한 결과를 내는 경우가 많다고 말합니다. Anthropic은 모든 Agent가 같은 맥락을 나눠 써야 하거나 서로 의존이 많은 일은 지금의 Multi-Agent에 잘 맞지 않는다고 말합니다.</p>
+          <p>그래도 나눠야 한다면 일의 모양으로 고릅니다. 해당하는 것을 켜 보세요. 공식 문서가 적은 강점과 약점을 겹쳐 본 것이라 참고용입니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="ma-ctrl" style="flex-wrap:wrap"><div class="ma-seg" role="group" aria-label="내 상황 켜기"><button type="button" data-ma-q="0" aria-pressed="false">동시에 돌릴 하위 작업이 있음</button><button type="button" data-ma-q="1" aria-pressed="false">여러 단계가 이어짐</button><button type="button" data-ma-q="2" aria-pressed="false">사용자와 직접 대화가 이어짐</button><button type="button" data-ma-q="3" aria-pressed="false">같은 사용자가 여러 번 요청</button><button type="button" data-ma-q="4" aria-pressed="false">모두가 같은 맥락을 나눠 써야 함</button></div></div>
+        <svg class="ma-scene ma-nar" data-ma-pick viewBox="0 0 460 440" role="img" aria-label="방식 고르기 그림. 다섯 방식이 가로 막대로 놓여 있고 켠 상황에 따라 맞는 정도가 막대 길이로 바뀐다. 아무것도 켜지 않았거나 공유 맥락을 켜면 Agent 하나로 충분하다는 표시가 나온다."></svg>
+        <p class="ma-verdict" data-ma-psay></p>
+      </div>
+      <p style="margin-top:36px">다음 글에서는 가장 널리 쓰는 두 방식, 일을 맡기는 Subagents와 제어권을 넘기는 Handoffs를 직접 구현해 보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="ma-sec">
+    <div class="ma-wrap">
+      <div class="ma-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 3개 펼치기</summary><ul class="ma-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langchain/multi-agent">Multi-agent</a>, LangChain: 단일 Agent와 Multi-Agent 선택 기준, 다섯 패턴, 호출 수와 토큰 비교</li>
+          <li><a href="https://www.anthropic.com/engineering/multi-agent-research-system">How we built our multi-agent research system</a>, Anthropic: 토큰 사용량 4배·15배, 내부 평가 90.2%, 맞지 않는 작업</li>
+          <li><a href="https://www.anthropic.com/engineering/building-effective-agents">Building effective agents</a>, Anthropic: 가장 단순한 해법부터</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="ma-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-ma-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-ma-out]", btn.closest("[data-ma-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.maRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-ma-step]", st), fig = $("[data-ma-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--ma-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--ma-model)", code: "var(--ma-code)", human: "var(--ma-human)", bad: "var(--ma-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 비용 탑 ───── */
+  const hv = $("[data-ma-hv]"), hsum = $("[data-ma-hsum]"); let wi = 2;
+  const WK = [[0, "규정 한 줄을 찾는 일은 챗이나 단순한 호출로 충분합니다. Agent를 둘 이유가 없습니다."], [1, "자료를 찾고 읽고 정리하는 일은 Agent 하나가 도구를 써서 하면 됩니다. 토큰은 챗의 약 4배입니다."], [2, "수십 곳을 동시에 조사하는 일은 하위 작업을 나눠 병렬로 돌릴 수 있고 한 창에 담기 어렵습니다. 토큰은 약 15배라 일의 가치가 그만큼 커야 합니다."]];
+  function drawHero() {
+    hv.innerHTML = ""; const base = 450, u = 22, bars = [["챗", 1, "var(--fg-neutral)"], ["Agent", 4, C.model], ["Multi-Agent", 15, C.bad]], sel = WK[wi][0];
+    mk("path", { d: `M20 ${base} H440`, stroke: "var(--fg-neutral)", "stroke-width": 3 }, hv);
+    bars.forEach(([nm, v, col], i) => { const x = 40 + i * 140, w = 100, h = v * u, on = i === sel; mk("rect", { x, y: base - h, width: w, height: h, rx: 8, fill: `color-mix(in srgb, ${col} ${on ? 30 : 12}%, var(--bg-base))`, stroke: col, "stroke-width": on ? 5 : 2.5, opacity: on ? 1 : .55 }, hv);
+      for (let k = 1; k < v; k++) mk("path", { d: `M${x + 6} ${base - k * u} H${x + w - 6}`, stroke: col, "stroke-width": 1.5, opacity: .35 }, hv);
+      txt(hv, x + w / 2, base - h - 12, `${v}배`, { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${col}`, opacity: on ? 1 : .6 }); txt(hv, x + w / 2, base + 30, nm, { "font-size": 17, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .6 });
+      if (on) { mk("path", { d: `M${x + w / 2} ${base - h - 50} v-24`, stroke: "var(--fg-strong)", "stroke-width": 4 }, hv); mk("path", { d: `M${x + w / 2} ${base - h - 74} h34 l-8 10 l8 10 h-34z`, fill: "var(--fg-strong)" }, hv); } });
+    txt(hv, 20, 524, "토큰 사용량(챗을 1배로 놓은 비율)", { "font-size": 15, class: "t-d" });
+    hsum.textContent = WK[wi][1];
+  }
+  $$("[data-ma-w]").forEach((b) => b.addEventListener("click", () => { wi = +b.dataset.maW; press("[data-ma-w]", b); drawHero(); }, { signal })); drawHero();
+
+  /* ───── 컨텍스트 창 ───── */
+  const cx = $("[data-ma-cx]"); let cm = "one";
+  const TEAMS = [["메일", C.human], ["일정", C.code], ["문서", C.model]];
+  function chips(g, x, y, w, rows, cols, colorOf, n) { const cw = (w - 12) / cols; for (let i = 0; i < n; i++) { const r = Math.floor(i / cols), c = i % cols; mk("rect", { x: x + 6 + c * cw + 2, y: y + 6 + r * 22, width: cw - 4, height: 17, rx: 5, fill: colorOf(i) }, g); } }
+  function drawCx() {
+    cx.innerHTML = ""; const one = cm === "one";
+    if (one) {
+      box(cx, 20, 30, 420, 330, C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.bad} 5%, var(--bg-base))` }); txt(cx, 36, 62, "컨텍스트 창 하나에 모두", { "font-size": 17, class: "t-s" });
+      const order = [0, 1, 2, 1, 2, 0, 2, 0, 1, 0, 1, 2, 1, 0, 2, 2, 1, 0, 0, 2, 1, 2, 0, 1, 1, 2, 0, 2, 0, 1];
+      chips(cx, 28, 76, 404, 5, 6, (i) => TEAMS[order[i]][1], 30);
+      TEAMS.forEach(([nm, col], i) => { mk("rect", { x: 40 + i * 120, y: 246, width: 18, height: 14, rx: 4, fill: col }, cx); txt(cx, 64 + i * 120, 259, `${nm} 도구`, { "font-size": 15, class: "t-s" }); });
+      txt(cx, 36, 306, "도구 30개의 설명이 섞여 있어", { "font-size": 15, class: "t-s" }); txt(cx, 36, 332, "필요한 것을 고르기 어렵습니다", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
+      mk("use", { href: "#ma-ic-robot", x: 196, y: 380, width: 66, height: 66, style: `color:${C.model}` }, cx); txt(cx, 230, 478, "Agent 하나", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+    } else {
+      box(cx, 110, 10, 240, 78, C.model, { rx: 12, sw: 4, fill: `color-mix(in srgb, ${C.model} 6%, var(--bg-base))` }); txt(cx, 126, 36, "주 Agent의 창", { "font-size": 15, class: "t-s" });
+      TEAMS.forEach(([nm, col], i) => { const x = 126 + i * 72; box(cx, x, 46, 62, 30, col, { rx: 6, sw: 2.5, fill: `color-mix(in srgb, ${col} 16%, var(--bg-base))` }); txt(cx, x + 31, 66, "요약", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); });
+      TEAMS.forEach(([nm, col], i) => { const x = 14 + i * 150, w = 136; mk("path", { d: `M${x + w / 2} 230 V150`, stroke: col, "stroke-width": 4 }, cx); mk("path", { d: `M${x + w / 2} 140 l-8 14 h16z`, fill: col }, cx); mk("path", { d: `M${230 + (i - 1) * 50} 88 V110 H${x + w / 2} V140`, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2.5, "stroke-dasharray": "5 4" }, cx);
+        box(cx, x, 234, w, 150, col, { rx: 12, sw: 4, fill: `color-mix(in srgb, ${col} 6%, var(--bg-base))` }); txt(cx, x + 12, 262, `${nm} 담당 창`, { "font-size": 15, class: "t-s" }); chips(cx, x, 272, w, 4, 2, () => col, 10);
+        mk("use", { href: "#ma-ic-robot", x: x + w / 2 - 22, y: 398, width: 44, height: 44, style: `color:${col}` }, cx); txt(cx, x + w / 2, 474, `${nm} Agent`, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); });
+      txt(cx, 230, 130, "결과 요약만 올라옵니다", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    }
+    $("[data-ma-cnote]").textContent = one ? "한 창에 서로 다른 팀의 도구 설명이 섞여 있습니다. 창이 커질수록 모델이 필요한 것을 놓치기 쉽습니다." : "각 Agent는 자기 도구만 들고 있습니다. 주 Agent는 긴 중간 과정 대신 결과 요약만 받아 창이 깨끗합니다.";
+  }
+  $$("[data-ma-c]").forEach((b) => b.addEventListener("click", () => { cm = b.dataset.maC; press("[data-ma-c]", b); drawCx(); }, { signal })); drawCx();
+
+  /* ───── 패턴 모양 ───── */
+  const pg = $("[data-ma-pg]"); let pi = 0;
+  const PN = [
+    ["Subagents", "주 Agent가 하위 Agent를 도구처럼 부르고 모든 길을 정합니다", ["병렬 처리", "여러 단계가 이어지는 일", "팀별로 따로 개발"], ["하위 Agent는 사용자와 직접 말하지 못함", "요청마다 같은 흐름을 처음부터 반복"]],
+    ["Handoffs", "도구 호출로 상태를 바꿔 제어권을 다른 Agent에게 넘깁니다", ["사용자와 직접 대화", "여러 단계가 이어지는 일", "같은 사용자의 반복 요청"], ["차례로 실행해서 병렬에는 약함"]],
+    ["Skills", "한 Agent가 필요할 때 전문 프롬프트와 지식을 불러옵니다", ["반복 요청에 효율적", "사용자와 직접 대화"], ["불러온 내용이 쌓여 여러 분야 일에서 토큰 증가"]],
+    ["Router", "입력을 분류해 전문 Agent 하나 이상에 보내고 결과를 합칩니다", ["병렬 처리"], ["요청마다 분류 호출이 필요", "여러 단계가 이어지는 일은 지원하지 않음"]],
+    ["Custom", "LangGraph로 직접 짠 흐름에 고정 로직과 Agent 단계를 섞습니다", ["다른 패턴을 노드로 끼워 넣기", "정해진 틀 없이 설계"], ["문서에 적힌 특정 약점은 없음"]],
+  ];
+  function glyph(k) {
+    const g = pg, node = (x, y, lb, col, w = 90) => { box(g, x, y, w, 46, col, { rx: 10, sw: 3.5, fill: `color-mix(in srgb, ${col} 10%, var(--bg-base))` }); txt(g, x + w / 2, y + 29, lb, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }, ar = (d, col = "var(--fg-neutral)", dash) => mk("path", { d, fill: "none", stroke: col, "stroke-width": 3.5, "stroke-dasharray": dash || "" }, g);
+    if (k === 0) { node(185, 10, "주 Agent", C.model); [[30, "검색"], [185, "글쓰기"], [340, "검토"]].forEach(([x, lb]) => { ar(`M230 56 C230 90 ${x + 45} 80 ${x + 45} 116`, C.model); node(x, 120, lb, C.code); ar(`M${x + 60} 120 C${x + 60} 90 245 90 245 56`, "var(--line-strong)", "5 4"); }); txt(g, 230, 206, "도구처럼 부르고 결과를 돌려받음", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+    else if (k === 1) { node(14, 70, "분류", C.human, 120); node(170, 70, "환불", C.model, 120); node(326, 70, "배송", C.code, 120); ar("M134 93 H166", C.human); ar("M290 93 H322", C.model); mk("path", { d: "M74 66 C74 20 230 20 230 62", fill: "none", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "6 5" }, g); txt(g, 150, 34, "제어권", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); mk("use", { href: "#ma-ic-mail", x: 205, y: 150, width: 50, height: 50, style: `color:${C.model}` }, g); ar("M230 146 V118", "var(--line-strong)", "5 4"); txt(g, 230, 222, "지금 사용자와 말하는 Agent", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+    else if (k === 2) { node(150, 60, "Agent 하나", C.model, 160); [["영업", 4], ["법무", 66], ["재무", 128]].forEach(([lb, dy], i) => { box(g, 346, 10 + dy, 100, 52, C.code, { rx: 8, sw: 3, fill: `color-mix(in srgb, ${C.code} ${i === 1 ? 24 : 8}%, var(--bg-base))`, dash: i === 1 ? "" : "5 4" }); txt(g, 396, 42 + dy, lb + " 스킬", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }); ar("M346 114 C320 114 320 82 312 82", C.code); mk("path", { d: "M312 82 l12 -8 v16z", fill: C.code }, g); txt(g, 230, 156, "필요한 스킬만 불러옴", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+    else if (k === 3) { node(155, 10, "분류", C.human, 150); [[30, "법무"], [185, "재무"], [340, "영업"]].forEach(([x, lb], i) => { const on = i < 2; ar(`M230 56 C230 80 ${x + 45} 76 ${x + 45} 110`, on ? C.code : "var(--line-strong)", on ? "" : "5 4"); node(x, 114, lb, on ? C.code : "var(--line-strong)"); if (on) ar(`M${x + 45} 160 C${x + 45} 186 230 180 230 204`, C.code); }); node(155, 208, "결과 합치기", C.human, 150); }
+    else { [[20, 20, "gear"], [170, 20, "robot"], [320, 20, "gear"], [95, 130, "robot"], [245, 130, "robot"]].forEach(([x, y, ic], i) => { box(g, x, y, 120, 66, ic === "gear" ? C.human : C.model, { rx: 12, sw: 3.5, fill: `color-mix(in srgb, ${ic === "gear" ? C.human : C.model} 9%, var(--bg-base))` }); mk("use", { href: "#ma-ic-" + ic, x: x + 40, y: y + 14, width: 38, height: 38, style: `color:${ic === "gear" ? C.human : C.model}` }, g); }); ar("M140 53 H166"); ar("M290 53 H316"); ar("M230 86 C230 108 155 108 155 126"); ar("M380 86 C380 120 305 108 305 126", C.human, "5 4"); ar("M95 160 C60 160 60 110 70 90", C.bad); txt(g, 230, 236, "고정 로직(톱니)과 Agent 단계(로봇)를 섞음", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+  }
+  function drawPg() {
+    pg.innerHTML = ""; const [nm, desc, ok, no] = PN[pi]; glyph(pi);
+    txt(pg, 14, 262, nm, { "font-size": 19, class: "t-s" });
+    const ds = desc.length > 24 ? [desc.slice(0, desc.lastIndexOf(" ", 24)), desc.slice(desc.lastIndexOf(" ", 24) + 1)] : [desc]; txt(pg, 14, 288, ds[0], { "font-size": 15, class: "t-s" }); if (ds[1]) txt(pg, 14, 310, ds[1], { "font-size": 15, class: "t-s" });
+    let y = 342; ok.forEach((t) => { mk("circle", { cx: 22, cy: y - 5, r: 8, fill: C.code }, pg); txt(pg, 40, y, t, { "font-size": 15, class: "t-s" }); y += 26; }); no.forEach((t) => { mk("circle", { cx: 22, cy: y - 5, r: 8, fill: C.bad }, pg); txt(pg, 40, y, t, { "font-size": 15, class: "t-s" }); y += 26; });
+    mk("circle", { cx: 300, cy: 478, r: 7, fill: C.code }, pg); txt(pg, 314, 484, "잘하는 일", { "font-size": 15, class: "t-d" }); mk("circle", { cx: 300, cy: 504, r: 7, fill: C.bad }, pg); txt(pg, 314, 510, "약한 일", { "font-size": 15, class: "t-d" });
+  }
+  $$("[data-ma-p]").forEach((b) => b.addEventListener("click", () => { pi = +b.dataset.maP; press("[data-ma-p]", b); drawPg(); }, { signal })); drawPg();
+
+  /* ───── 호출 수 막대 ───── */
+  const ch = $("[data-ma-ch]"); let si = 0;
+  const SC = [{ n: "Subagents,Handoffs,Skills,Router", v: [4, 3, 3, 3], l: ["4번", "3번", "3번", "3번"], u: "모델 호출 수", note: "한 번만 시키면 Handoffs·Skills·Router가 3번, Subagents가 4번입니다." }, { n: "", v: [8, 5, 5, 6], l: ["8번", "5번", "5번", "6번"], u: "모델 호출 수(두 번 요청 합계)", note: "같은 사용자가 이어서 두 번 요청하면 상태를 기억하는 Handoffs와 Skills가 5번으로 가장 적습니다." }, { n: "", v: [5, 7, 3, 5], l: ["5번 · 약 9천 토큰", "7번 이상 · 약 1만 4천 토큰 이상", "3번 · 약 1만 5천 토큰", "5번 · 약 9천 토큰"], u: "모델 호출 수", note: "여러 분야를 한꺼번에 물으면 호출은 Skills가 가장 적지만 토큰은 Subagents와 Router가 가장 적습니다." }];
+  const PL = ["Subagents", "Handoffs", "Skills", "Router"];
+  function drawCh() {
+    ch.innerHTML = ""; const s = SC[si], mx = 9, minv = Math.min(...s.v);
+    s.v.forEach((v, i) => { const y = 24 + i * 100, w = 432 * (v / mx), on = v === minv; txt(ch, 14, y + 18, PL[i], { "font-size": 17, class: "t-s" }); txt(ch, 446, y + 18, s.l[i], { "font-size": 15, "text-anchor": "end", class: "t-s", style: on ? `fill:${C.code}` : "" }); mk("rect", { x: 14, y: y + 30, width: w, height: 38, rx: 8, fill: `color-mix(in srgb, ${on ? C.code : C.model} ${on ? 28 : 14}%, var(--bg-base))`, stroke: on ? C.code : C.model, "stroke-width": on ? 4 : 2.5 }, ch); });
+    txt(ch, 14, 460, s.u, { "font-size": 15, class: "t-d" });
+    $("[data-ma-chnote]").textContent = s.note;
+  }
+  $$("[data-ma-s]").forEach((b) => b.addEventListener("click", () => { si = +b.dataset.maS; press("[data-ma-s]", b); drawCh(); }, { signal })); drawCh();
+
+  /* ───── 내 상황 고르기 ───── */
+  const pk = $("[data-ma-pick]"); const on5 = [false, false, false, false, false];
+  const NM = ["Subagents", "Handoffs", "Skills", "Router"], W = [[1, 1, -1, -1], [-1, 1, 1, 1], [0, 0, 1, 1], [1, -1, 0, -1]];
+  function drawPick() {
+    pk.innerHTML = ""; const any = on5.slice(0, 4).some(Boolean), shared = on5[4];
+    const sc = NM.map((_, i) => W[i].reduce((a, w, k) => a + (on5[k] ? w : 0), 0)), top = Math.max(...sc), single = shared || !any;
+    NM.forEach((nm, i) => { const y = 20 + i * 70, v = sc[i], on = !single && v === top && v > 0, w = 12 + (v + 4) * 36; txt(pk, 14, y + 14, nm, { "font-size": 17, class: "t-s", opacity: single ? .45 : 1 }); mk("rect", { x: 14, y: y + 24, width: single ? 12 : Math.max(12, w), height: 30, rx: 8, fill: `color-mix(in srgb, ${on ? C.code : C.model} ${on ? 28 : 12}%, var(--bg-base))`, stroke: on ? C.code : single ? "var(--line-strong)" : C.model, "stroke-width": on ? 4 : 2.5, opacity: single ? .5 : 1 }, pk); });
+    box(pk, 14, 308, 432, 112, single ? C.code : "var(--line-strong)", { rx: 14, sw: single ? 4.5 : 2.5, dash: single ? "" : "7 5", fill: single ? `color-mix(in srgb, ${C.code} 8%, var(--bg-base))` : "var(--bg-base)" }); mk("use", { href: "#ma-ic-robot", x: 30, y: 330, width: 46, height: 46, style: `color:${single ? C.code : "var(--line-strong)"}` }, pk); txt(pk, 92, 354, "Agent 하나로 충분", { "font-size": 19, class: "t-s", opacity: single ? 1 : .5 }); txt(pk, 92, 384, single ? (shared ? "같은 맥락을 나눠 써야 하는 일은 나누면 손해입니다" : "먼저 하나로 만들고 막힐 때 나누세요") : "맞는 방식이 있어 나눌 만합니다", { "font-size": 15, class: "t-d", opacity: single ? 1 : .6 });
+    $("[data-ma-psay]").textContent = shared ? "모두가 같은 맥락을 나눠 써야 하면 Agent를 나눠도 정보를 계속 주고받아야 해서 이득이 줄어듭니다. 하나로 시작합니다." : !any ? "켠 상황이 없습니다. 도구와 프롬프트를 갖춘 Agent 하나로 먼저 만들어 봅니다." : `점수가 가장 높은 방식은 ${NM.filter((_, i) => sc[i] === top).join(", ")}입니다. 이 점수는 공식 문서에 적힌 강점·약점을 겹친 것입니다. 실제로는 직접 돌려 비교해야 합니다.`;
+  }
+  $$("[data-ma-q]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.maQ; on5[i] = !on5[i]; b.setAttribute("aria-pressed", on5[i]); drawPick(); }, { signal })); drawPick();
+})();
+</script>
