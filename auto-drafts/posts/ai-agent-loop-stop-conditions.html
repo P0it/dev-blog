@@ -1,15 +1,15 @@
 ---
 title: Agent의 while 루프는 무엇이 멈추게 할까요?
 slug: ai-agent-loop-stop-conditions
-excerpt: 프레임워크 없이 Agent 루프를 직접 짜면 가장 먼저 부딪히는 질문은 "언제 멈추나"입니다. 모델을 부르고 도구를 실행하고 결과를 붙이는 30줄 루프를 Anthropic SDK로 짜고 stop_reason 갈림길과 바퀴 수 한도, 도구 오류를 결과로 돌려주는 법, ReAct와의 관계까지 그림과 코드로 확인합니다.
+excerpt: 프레임워크 없이 Agent 루프를 직접 짜면 가장 먼저 부딪히는 질문은 "언제 멈추나"입니다. 모델을 부르고 도구를 실행하고 결과를 붙이는 25줄 루프를 Anthropic SDK로 짜고, 탁구 랠리처럼 오가는 호출 횟수, messages 더미가 쌓이는 모양, stop_reason 갈림길, 바퀴 수 한도와 비용 곡선, 도구 오류를 결과로 돌려주는 법, 도구 요청이 둘일 때의 번호표, ReAct와의 관계까지 그림과 코드로 확인합니다.
 tags: [AI Agent, Agent 루프, stop_reason, ReAct, Anthropic API, Python]
 category: ai
 series: ai-agent
 series_order: 3
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-loop-stop-conditions-mvb29nbb.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-loop-stop-conditions-mvb5g31v.jpg
 ---
 <!-- page -->
-<!-- layout: 제목|글 머리 + 전폭 루프 보드 히어로, 그림 고정 스크롤리텔링(messages 카드 더미), 분기기 그림, 실험판 전폭 띠(바퀴 수 한도 비용), 나란히 비교, 지그재그 | 글의 성격: 한 바퀴의 구조와 끝나는 경우의 수가 중심이라 루프를 조작해 보는 보드로 열고 갈림길 하나씩 그림으로 푼다 | 버린 후보: 분할 히어로(앞 편 히어로와 같은 구조), 가로 스크롤 띠(앞 편 본문과 같은 구조) -->
+<!-- layout: 제목|글 머리 + 전폭 루프 트랙 히어로(택배가 도는 컨베이어) + 글|그림 2단(탁구 랠리 순서도) + 그림 고정 스크롤리텔링(messages 더미) + 분기기 철도 + 실험판 전폭 띠(비용 곡선) + 비교 도로(예외 대 결과) + 번호표 실(병렬 도구 요청) + 논문 그림 | 글의 성격: 루프가 한 바퀴씩 돌며 쌓이는 모양과 끝나는 길이 핵심이라 실제로 돌아가는 트랙·철도·곡선 그림으로 원리를 보이고 규칙 하나마다 그림 하나를 둔다 | 버린 후보: 카드·상자 나열(앞 판에서 쓰다 지적받음), 분할 히어로 -->
 <style>
 .post-page .lp {
   --lp-human: rgb(37, 112, 235); --lp-code: rgb(16, 150, 120); --lp-model: rgb(226, 106, 28); --lp-bad: rgb(214, 56, 56);
@@ -51,91 +51,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lp-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
 .post-page .lp-tag.n { --t: var(--fg-strong); } .post-page .lp-tag.m { --t: var(--lp-model); } .post-page .lp-tag.c { --t: var(--lp-code); } .post-page .lp-tag.h { --t: var(--lp-human); } .post-page .lp-tag.x { --t: var(--lp-bad); }
 
-/* 히어로 */
-.post-page .lp-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
-.post-page .lp-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
-.post-page .lp-hero-top p { margin: 0 0 1.2em; font-size: 17px; }
-.post-page .lp-hero-top p:last-child { margin-bottom: 0; }
-.post-page .lp-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
-.post-page .lp-board .lp-ctrl { margin-bottom: 8px; }
-.post-page .lp-board .lp-scdesc { font-size: 14.5px; color: var(--fg-neutral); margin: 12px 0 24px; line-height: 1.6; min-height: 1.6em; }
-.post-page .lp-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 0 8px; align-items: stretch; }
-.post-page .lp-fs { border: 2px solid var(--line-strong); border-radius: 14px; padding: 12px 14px; background: var(--bg-base); font-size: 14.5px; line-height: 1.45; color: var(--fg-neutral); transition: border-color .35s, background .35s, color .35s, transform .35s; }
-.post-page .lp-fs b { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 4px; color: inherit; }
-.post-page .lp-fs b i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--fg-neutral); color: var(--bg-base); font-size: 12.5px; font-weight: 800; flex: none; transition: background .35s; }
-.post-page .lp-fs.on b i { background: var(--k); }
-.post-page .lp-fs.on { border-color: var(--k); background: color-mix(in srgb, var(--k) 14%, var(--bg-base)); color: var(--fg-strong); transform: translateY(-3px); }
-.post-page .lp-fs.m { --k: var(--lp-model); } .post-page .lp-fs.c { --k: var(--lp-code); } .post-page .lp-fs.x { --k: var(--lp-human); }
-.post-page .lp-fa { align-self: center; color: var(--fg-neutral); font-size: 18px; }
-.post-page .lp-exit { grid-column: 3; grid-row: 3; margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.post-page .lp-exit .lp-fa { font-size: 16px; }
-.post-page .lp-exit .lp-fs { width: 100%; text-align: center; }
-.post-page .lp-back { grid-column: 1 / -1; grid-row: 2; margin: 6px 40px 0; padding: 8px 14px 10px; border: 2px dashed var(--line-strong); border-top: 0; border-radius: 0 0 16px 16px; text-align: center; font-size: 14.5px; font-weight: 600; color: var(--fg-strong); }
-.post-page .lp-laps { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; margin-top: 28px; }
-.post-page .lp-lap { min-height: 108px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); padding: 9px 9px 10px; font-size: 12.5px; line-height: 1.45; color: var(--fg-neutral); display: flex; flex-direction: column; gap: 6px; transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .5s cubic-bezier(.2,.7,.2,1), border-color .4s; }
-.post-page .lp-lap > small { font-size: 12px; font-weight: 700; color: var(--fg-neutral); }
-.post-page .lp-lap .lp-tag { align-self: flex-start; }
-.post-page .lp-lap em { font-style: normal; color: var(--fg-strong); font-size: 12.5px; overflow-wrap: anywhere; }
-.post-page .lp-lap.idle { opacity: .35; border-style: dashed; transform: translateY(6px); }
-.post-page .lp-lap.out { opacity: .5; border-style: dashed; background: transparent; }
-.post-page .lp-lap.cut { border-color: var(--lp-bad); }
-.post-page .lp-lap.fin { border-color: var(--fg-strong); }
-.post-page .lp-verdict { margin-top: 20px; font-size: 16px; font-weight: 700; color: var(--fg-strong); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-height: 2em; }
-.post-page .lp-verdict .lp-tag { font-size: 13px; padding: 3px 11px; }
-@media (max-width: 900px) {
-  .post-page .lp-wrap { padding: 0 20px; }
-  .post-page .lp-hero-top, .post-page .lp-head, .post-page .lp-split { grid-template-columns: minmax(0, 1fr); }
-  .post-page .lp-split.rev > :first-child { order: 0; }
-  .post-page .lp-flow { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .post-page .lp-fa { display: none; }
-  .post-page .lp-exit { grid-column: 1 / -1; grid-row: auto; margin-top: 0; }
-  .post-page .lp-back { grid-row: auto; margin: 0; border-top: 2px dashed var(--line-strong); border-radius: 12px; }
-  .post-page .lp-laps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .post-page .lp-lap { padding: 7px 6px 8px; min-height: 96px; }
-  .post-page .lp-lap .lp-tag { font-size: 10.5px; padding: 1px 6px; }
-  .post-page .lp-lap em { font-size: 11.5px; overflow-wrap: break-word; word-break: break-all; }
-}
-
-/* 1. 질문마다 호출 횟수 */
-.post-page .lp-rows { display: grid; gap: 14px; }
-.post-page .lp-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
-.post-page .lp-row > small { font-size: 14px; color: var(--fg-strong); font-weight: 700; }
-.post-page .lp-chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.post-page .lp-chain i { font-style: normal; color: var(--fg-neutral); font-size: 14px; }
-.post-page .lp-chain .dots { font-size: 22px; letter-spacing: 3px; color: var(--lp-bad); font-weight: 800; }
-.post-page .lp-cnt { font-size: 13.5px; color: var(--fg-neutral); }
-
-/* 2. 카드 더미 */
-.post-page .lp-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
-.post-page .lp-steps { padding-bottom: 20vh; }
-.post-page .lp-intro { min-height: 40vh; }
-.post-page .lp-step { min-height: 52vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
-.post-page .lp-step.on { opacity: 1; }
-.post-page .lp-step h3 { font-size: 20px; }
-.post-page .lp-step p { margin: 0; }
-.post-page .lp-sfig { position: sticky; top: var(--lp-top, 96px); }
-.post-page .lp-desk { padding: 20px; border-radius: 18px; background: var(--bg-subtle); }
-.post-page .lp-desk h4 { margin: 0 0 12px; font-size: 14px; color: var(--fg-neutral); }
-.post-page .lp-cards { display: grid; gap: 8px; }
-.post-page .lp-card { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 9%, var(--bg-base)); padding: 8px 12px; display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 2px 12px; align-items: baseline; font-size: 13px; line-height: 1.5; opacity: 0; transform: translateY(14px); transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
-.post-page .lp-card.on { opacity: 1; transform: none; }
-.post-page .lp-card.u { --k: var(--lp-human); } .post-page .lp-card.a { --k: var(--lp-model); } .post-page .lp-card.r { --k: var(--lp-code); }
-.post-page .lp-card b { font-size: 12px; color: var(--k); }
-.post-page .lp-card span { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
-.post-page .lp-card.new { box-shadow: 0 0 0 3px color-mix(in srgb, var(--k) 28%, transparent); }
-.post-page .lp-stat { margin-top: 14px; font-size: 14px; color: var(--fg-neutral); display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; min-height: 2.2em; }
-.post-page .lp-stat b { font-family: var(--font-mono); }
-@media (max-width: 900px) {
-  .post-page .lp-story { grid-template-columns: minmax(0, 1fr); }
-  .post-page .lp-sfig { position: static; order: -1; }
-  .post-page .lp-step { min-height: 0; opacity: 1; margin-top: 28px; }
-  .post-page .lp-intro { min-height: 0; }
-  .post-page .lp-steps { padding-bottom: 0; }
-  .post-page .lp-card { opacity: 1; transform: none; grid-template-columns: 1fr; }
-}
-
-.post-page .lp p.lp-mobhint { display: none; margin: 28px 0 0; }
-@media (max-width: 900px) { .post-page .lp p.lp-mobhint { display: block; } }
 /* 코드 | 해설 짝 + 터미널 */
 .post-page .lp-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
 .post-page .lp-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
@@ -161,75 +76,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .lp-codepair > .cp-notes, .post-page .lp-codepair.rev > .cp-notes { order: 2; } .post-page .lp-codepair > .cp-term, .post-page .lp-codepair.rev > .cp-term { order: 3; }
 }
 
-/* 3. 분기기 */
-.post-page .lp-switch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); gap: 0 clamp(20px, 3vw, 40px); align-items: stretch; margin-top: 8px; }
-.post-page .lp-in { align-self: center; border: 2px solid var(--lp-model); background: color-mix(in srgb, var(--lp-model) 10%, var(--bg-base)); border-radius: 16px; padding: 16px; font-size: 14.5px; line-height: 1.5; position: relative; }
-.post-page .lp-in b { display: block; font-size: 13px; color: var(--lp-model); margin-bottom: 4px; }
-.post-page .lp-in code { background: transparent; padding: 0; color: var(--fg-strong); }
-.post-page .lp-routes { display: grid; gap: 12px; position: relative; }
-.post-page .lp-routes::before { content: ""; position: absolute; left: calc(-1 * clamp(20px, 3vw, 40px) / 2); top: 24px; bottom: 24px; width: 2px; background: var(--line-strong); }
-.post-page .lp-route { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; font: inherit; color: inherit; background: transparent; border: 0; padding: 0; cursor: pointer; position: relative; }
-.post-page .lp-route::before { content: ""; position: absolute; left: calc(-1 * clamp(20px, 3vw, 40px) / 2); top: 50%; width: calc(clamp(20px, 3vw, 40px) / 2 - 2px); border-top: 2px solid var(--line-strong); }
-.post-page .lp-route .rn { font-family: var(--font-mono); font-size: 13px; font-weight: 700; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--k); color: var(--k); text-align: center; background: var(--bg-base); }
-.post-page .lp-route .rd { font-size: 14.5px; line-height: 1.5; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); transition: border-color .3s, background .3s; }
-.post-page .lp-route[aria-pressed="true"] .rn { background: var(--k); color: var(--bg-base); }
-.post-page .lp-route[aria-pressed="true"] .rd { border-color: var(--k); background: color-mix(in srgb, var(--k) 10%, var(--bg-base)); color: var(--fg-strong); }
-.post-page .lp-route.go { --k: var(--lp-model); } .post-page .lp-route.ok { --k: var(--fg-strong); } .post-page .lp-route.cut { --k: var(--lp-bad); } .post-page .lp-route.no { --k: var(--lp-bad); }
-.post-page .lp-peek { margin-top: 26px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 28px; align-items: start; }
-.post-page .lp-peek pre { margin: 0; padding: 14px 16px; border-radius: 12px; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); font-family: var(--font-mono); font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 8.5em; }
-.post-page .lp-peek .lp-do { font-size: 15.5px; line-height: 1.75; }
-.post-page .lp-peek .lp-do .lp-tag { margin-bottom: 8px; }
-@media (max-width: 900px) {
-  .post-page .lp-switch { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .post-page .lp-routes::before, .post-page .lp-route::before { display: none; }
-  .post-page .lp-route { grid-template-columns: 112px minmax(0, 1fr); }
-  .post-page .lp-peek { grid-template-columns: minmax(0, 1fr); }
-}
-
-/* 4. 비용 실험판 */
-.post-page .lp-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
-.post-page .lp-lab .lp-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
-.post-page .lp-lab h2 { margin-bottom: 24px; }
-.post-page .lp-bars { margin-top: 36px; }
-.post-page .lp-bar-area { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: end; height: 220px; }
-.post-page .lp-col { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
-.post-page .lp-col i { display: block; background: var(--lp-model); border-radius: 6px 6px 2px 2px; transition: height .45s cubic-bezier(.2,.7,.2,1), opacity .4s, background .4s; height: 0; }
-.post-page .lp-col.stop i { background: var(--lp-code); }
-.post-page .lp-col.cut i { background: var(--fg-neutral); opacity: .35; }
-.post-page .lp-col.idle i { opacity: .12; }
-.post-page .lp-axis { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; margin-top: 8px; font-size: 12.5px; color: var(--fg-neutral); text-align: center; font-family: var(--font-mono); }
-.post-page .lp-read { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px 36px; font-size: 15px; color: var(--fg-neutral); }
-.post-page .lp-read b { font-family: var(--font-mono); font-size: 22px; display: block; color: var(--fg-strong); }
-.post-page .lp-read .big b { color: var(--lp-bad); }
-.post-page .lp-lab .lp-cwrap { margin-top: 36px; }
-@media (max-width: 900px) { .post-page .lp-lab .lp-labtop { grid-template-columns: minmax(0, 1fr); } .post-page .lp-bar-area, .post-page .lp-axis { gap: 4px; } .post-page .lp-bar-area { height: 160px; } }
-
-/* 5. 예외 vs 결과 */
-.post-page .lp-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
-.post-page .lp-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-.post-page .lp-stack { display: grid; gap: 8px; }
-.post-page .lp-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
-.post-page .lp-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
-.post-page .lp-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
-.post-page .lp-s.m { --k: var(--lp-model); } .post-page .lp-s.c { --k: var(--lp-code); } .post-page .lp-s.x { --k: var(--lp-bad); }
-.post-page .lp-s + .lp-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
-.post-page .lp-s.dead { border-width: 2px; }
-@media (max-width: 900px) { .post-page .lp-vs { grid-template-columns: minmax(0, 1fr); } }
-
-/* 6. ReAct */
-.post-page .lp-map { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); gap: 10px 0; align-items: stretch; margin-top: 8px; }
-.post-page .lp-map h4 { margin: 0 0 4px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
-.post-page .lp-map .hd { align-self: end; }
-.post-page .lp-mc { border-radius: 12px; border: 1.5px solid var(--line-strong); padding: 10px 14px; font-size: 14px; line-height: 1.55; background: var(--bg-base); transition: border-color .4s, background .4s; }
-.post-page .lp-mc small { display: block; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 1px; transition: color .4s; }
-.post-page .lp-mc code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
-.post-page .lp-mid { display: grid; place-items: center; color: var(--fg-neutral); font-size: 18px; }
-.post-page .lp-map[data-paint="1"] .lp-mc.m { border-color: var(--lp-model); background: color-mix(in srgb, var(--lp-model) 9%, var(--bg-base)); }
-.post-page .lp-map[data-paint="1"] .lp-mc.c { border-color: var(--lp-code); background: color-mix(in srgb, var(--lp-code) 9%, var(--bg-base)); }
-.post-page .lp-map[data-paint="1"] .lp-mc.m small { color: var(--lp-model); }
-.post-page .lp-map[data-paint="1"] .lp-mc.c small { color: var(--lp-code); }
-@media (max-width: 900px) { .post-page .lp-map { grid-template-columns: minmax(0, 1fr); } .post-page .lp-mid { transform: rotate(90deg); height: 20px; } .post-page .lp-map .hd.r { margin-top: 18px; } }
-
 /* 7. 표 · 정리 · 참고 */
 .post-page .lp-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
 .post-page .lp-tbl th, .post-page .lp-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
@@ -250,7 +96,149 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (prefers-reduced-motion: reduce) {
   .post-page .lp *, .post-page .lp *::before { transition: none !important; animation: none !important; }
 }
+
+.post-page .lp-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .lp-wrap { padding: 0 20px; }
+  .post-page .lp-head, .post-page .lp-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lp-split.rev > :first-child { order: 0; }
+  .post-page p.lp-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .lp-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .lp-lab h2 { margin-bottom: 24px; }
+.post-page .lp-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .lp-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .lp-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .lp-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .lp-stack { display: grid; gap: 8px; }
+.post-page .lp-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .lp-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .lp-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lp-s.m { --k: var(--lp-model); } .post-page .lp-s.c { --k: var(--lp-code); } .post-page .lp-s.x { --k: var(--lp-bad); } .post-page .lp-s.h { --k: var(--lp-human); }
+.post-page .lp-s + .lp-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .lp-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lp-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .lp-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .lp-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .lp-hero-top p { margin: 0 0 1.2em; }
+.post-page .lp-hero-top p:last-child { margin-bottom: 0; }
+.post-page .lp-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .lp-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lp [hidden] { display: none !important; }
+
+.post-page .lp-stack { gap: 22px !important; } .post-page .lp-s + .lp-s::before { top: -19px !important; }
+.post-page .lp-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .lp-flow .lp-s { flex: 1 1 0; min-width: 0; } .post-page .lp-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .lp-flow .lp-s + .lp-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .lp-flow .lp-s { flex: 1 1 180px; } .post-page .lp-flow i.ar { display: none; } }
+
+.post-page .lp-tag.n { --t: var(--fg-strong); }
+
+.post-page .lp-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .lp-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+@media (max-width: 760px) { .post-page .cp-code pre code { white-space: pre-wrap; overflow-wrap: anywhere; } }
+.post-page .lp-nar { max-width: 520px; }
+.post-page .lp-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .lp-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .lp-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .lp-scene .t-d { fill: var(--fg-neutral); }
+.post-page .lp-scene .mono { font-family: var(--font-mono); }
+.post-page .lp-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .ic { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .lp-svghint { display: none; font-size: 13px; color: var(--fg-neutral); margin: 8px 0 0; }
+@media (max-width: 760px) { .post-page .lp-scwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; } .post-page .lp-scwrap > svg.lp-wide { min-width: 640px; } .post-page .lp-svghint { display: block; } }
+.post-page .lp-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .lp-hero-top p { margin: 0 0 1.2em; } .post-page .lp-hero-top p:last-child { margin-bottom: 0; }
+@media (max-width: 900px) { .post-page .lp-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lp-board .lp-scdesc { font-size: 14.5px; color: var(--fg-neutral); margin: 4px 0 6px; line-height: 1.6; min-height: 1.6em; }
+.post-page .lp-verdict { margin-top: 10px; font-size: 16px; font-weight: 700; color: var(--fg-strong); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-height: 2em; }
+.post-page .lp-verdict .lp-tag { font-size: 13px; padding: 3px 11px; }
+.post-page .lp-trk { fill: none; stroke: var(--line-strong); stroke-width: 18; stroke-linecap: round; }
+[data-theme="dark"] .post-page .lp-trk { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .lp-trk-c { fill: none; stroke: var(--bg-subtle); stroke-width: 4; stroke-dasharray: 3 12; }
+.post-page .lp-st { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 3; transition: stroke .3s, fill .3s; }
+.post-page .lp-st.on { stroke: var(--lp-model); fill: color-mix(in srgb, var(--lp-model) 16%, var(--bg-base)); }
+.post-page .lp-sheet { transition: opacity .4s, transform .4s; }
+.post-page .lp-fill { transition: fill .3s; }
+.post-page .lp-stack-lbl { font-size: 14px; }
+.post-page .lp-pop { animation: pg-lp-pop .5s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: center; }
+@keyframes pg-lp-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+
+/* 랠리 4개 */
+.post-page .lp-rally { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+.post-page .lp-rally figure { margin: 0; }
+.post-page .lp-rally figcaption { font-size: 14px; line-height: 1.5; color: var(--fg-strong); font-weight: 700; margin-bottom: 4px; }
+.post-page .lp-rally figcaption small { display: block; color: var(--lp-model); font-weight: 800; font-size: 15px; margin-top: 4px; }
+@media (max-width: 560px) { .post-page .lp-rally { grid-template-columns: minmax(0, 1fr); } }
+
+/* 스크롤 이야기 */
+.post-page .lp-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .lp-steps { padding-bottom: 14vh; }
+.post-page .lp-intro { min-height: 34vh; }
+.post-page .lp-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .lp-step.on { opacity: 1; }
+.post-page .lp-step h3 { font-size: 20px; }
+.post-page .lp-step p { margin: 0; }
+.post-page .lp-sfig { position: sticky; top: var(--lp-top, 96px); }
+.post-page .lp-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); opacity: 0; }
+.post-page .lp-card.on { opacity: 1; transform: translate(0, 0) !important; }
+.post-page .lp-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .lp-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .lp-story { grid-template-columns: minmax(0, 1fr); } .post-page .lp-sfig { position: static; order: -1; } .post-page .lp-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .lp-intro { min-height: 0; } .post-page .lp-steps { padding-bottom: 0; } .post-page .lp-card { opacity: 1; transform: none !important; } }
+
+/* 철도 */
+.post-page .lp-routes { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+.post-page .lp-route { font: inherit; font-family: var(--font-mono); font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--k); background: var(--bg-base); color: var(--k); cursor: pointer; }
+.post-page .lp-route[aria-pressed="true"] { background: var(--k); color: var(--bg-base); }
+.post-page .lp-route.go { --k: var(--lp-model); } .post-page .lp-route.ok { --k: var(--fg-strong); } .post-page .lp-route.cut { --k: var(--lp-bad); } .post-page .lp-route.no { --k: var(--lp-bad); }
+.post-page .lp-peek { margin-top: 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 28px; align-items: start; }
+.post-page .lp-peek pre { margin: 0; padding: 14px 16px; border-radius: 12px; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); font-family: var(--font-mono); font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 8.5em; }
+.post-page .lp-peek .lp-do { font-size: 15.5px; line-height: 1.75; }
+.post-page .lp-peek .lp-do .lp-tag { margin-bottom: 8px; }
+@media (max-width: 900px) { .post-page .lp-peek { grid-template-columns: minmax(0, 1fr); } }
+
+/* 곡선 실험판 */
+.post-page .lp-chart-wrap { margin-top: 28px; }
+.post-page .lp-read { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 36px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .lp-read b { font-family: var(--font-mono); font-size: 22px; display: block; color: var(--fg-strong); }
+.post-page .lp-read .big b { color: var(--lp-bad); }
+
+/* 병렬 */
+.post-page .lp-api-err { margin-top: 12px; border-radius: 12px; border: 1.5px solid var(--lp-bad); background: color-mix(in srgb, var(--lp-bad) 8%, var(--bg-base)); padding: 10px 14px; font-size: 14px; line-height: 1.6; min-height: 3.2em; }
+.post-page .lp-api-err code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lp-api-err.ok { border-color: var(--lp-code); background: color-mix(in srgb, var(--lp-code) 8%, var(--bg-base)); }
+
+/* 논문 그림 + 대응 */
+.post-page .lp-paper { margin: 0; }
+.post-page .lp-paper img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-subtle); background: #fff; }
+[data-theme="dark"] .post-page .lp-paper img { filter: brightness(.9); }
+.post-page .lp-paper figcaption { font-size: 14px; color: var(--fg-neutral); line-height: 1.7; margin-top: 12px; }
+.post-page .lp-map { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); gap: 10px 0; align-items: stretch; margin-top: 8px; }
+.post-page .lp-map h4 { margin: 0 0 4px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .lp-map .hd { align-self: end; }
+.post-page .lp-mc { border-radius: 12px; border: 1.5px solid var(--line-strong); padding: 10px 14px; font-size: 14px; line-height: 1.55; background: var(--bg-base); transition: border-color .4s, background .4s; }
+.post-page .lp-mc small { display: block; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 1px; transition: color .4s; }
+.post-page .lp-mc code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lp-mid { display: grid; place-items: center; color: var(--fg-neutral); font-size: 18px; }
+.post-page .lp-map[data-paint="1"] .lp-mc.m { border-color: var(--lp-model); background: color-mix(in srgb, var(--lp-model) 9%, var(--bg-base)); }
+.post-page .lp-map[data-paint="1"] .lp-mc.c { border-color: var(--lp-code); background: color-mix(in srgb, var(--lp-code) 9%, var(--bg-base)); }
+.post-page .lp-map[data-paint="1"] .lp-mc.m small { color: var(--lp-model); } .post-page .lp-map[data-paint="1"] .lp-mc.c small { color: var(--lp-code); }
+@media (max-width: 900px) { .post-page .lp-map { grid-template-columns: minmax(0, 1fr); } .post-page .lp-mid { transform: rotate(90deg); height: 20px; } .post-page .lp-map .hd.r { margin-top: 18px; } }
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="lp-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="lp-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="lp-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="lp-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="lp-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="lp-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="lp-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="lp-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="lp-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
 <div class="lp">
   <section class="lp-hero">
     <div class="lp-wrap">
@@ -258,52 +246,39 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <h1>Agent의 while 루프는 무엇이 멈추게 할까요?</h1>
         <div>
           <p>시험 전날 조사 숙제를 한다고 해 봅니다. 책을 찾아 읽고 메모한 뒤 부족하면 다른 책을 찾습니다. 충분해지면 제출하고 시간이 다 되면 거기서 멈춥니다.</p>
-          <p>Agent 프로그램도 같은 일을 합니다. 모델을 부르고 도구(모델이 직접 못 하는 일을 대신 해 주는 우리 쪽 함수)를 실행하고 결과를 넣어 다시 모델을 부르는 과정을 되풀이합니다. 이 되풀이를 루프(loop)라고 부릅니다. 그러면 이 루프는 언제 어떻게 끝날까요?</p>
-          <p>끝나는 경우는 네 가지입니다. 모델이 답을 다 썼을 때, 바퀴 수 한도에 걸렸을 때, 답이 길이 한도에서 잘렸을 때, 모델이 답을 거절했을 때입니다. 아래 보드의 "순조로운 경우"는 답을 다 쓴 종료를, "끝나지 않는 경우"는 한도 종료를 보여 줍니다. "도구 오류 뒤 복구"는 도구가 실패해도 루프가 이어지는 모습입니다. 잘림과 거절은 뒤의 갈림길 그림에서 다룹니다.</p>
+          <p>Agent 프로그램도 같은 일을 합니다. 모델을 부르고 도구(모델이 직접 못 하는 일을 대신 해 주는 우리 쪽 함수)를 실행하고 결과를 넣어 다시 모델을 부르는 과정을 되풀이합니다. 이 되풀이를 루프(loop)라고 부릅니다. 이 루프는 언제 어떻게 끝날까요?</p>
+          <p>아래 트랙에서 주황 택배 상자(모델과 주고받는 messages 묶음)가 루프를 한 바퀴씩 돕니다. 모델이 답을 다 쓰면 오른쪽 길로 빠져나가 끝나고 한도에 걸리면 길이 막힙니다. 상황과 한도를 바꿔 돌려 보세요.</p>
         </div>
       </div>
       <div class="lp-board" data-figure data-thumb data-lp-board>
         <div class="lp-ctrl">
           <div class="lp-seg" role="group" aria-label="상황 고르기">
-            <button type="button" data-lp-sc="ok" aria-pressed="true">순조로운 경우</button>
-            <button type="button" data-lp-sc="err" aria-pressed="false">도구 오류 뒤 복구</button>
-            <button type="button" data-lp-sc="never" aria-pressed="false">끝나지 않는 경우(한도에 걸림)</button>
+            <button type="button" data-lp-sc="ok" aria-pressed="false">순조로움</button>
+            <button type="button" data-lp-sc="err" aria-pressed="false">오류 뒤 복구</button>
+            <button type="button" data-lp-sc="never" aria-pressed="true">끝나지 않음</button>
           </div>
-          <label>바퀴 수 한도 <input type="range" min="2" max="8" value="8" data-lp-max aria-label="바퀴 수 한도"><output data-lp-maxout>8</output></label>
+          <label>바퀴 수 한도 <input type="range" min="2" max="8" value="5" data-lp-max aria-label="바퀴 수 한도"><output data-lp-maxout>5</output></label>
           <button type="button" class="lp-act" data-lp-play>돌려 보기</button>
         </div>
         <p class="lp-scdesc" data-lp-desc></p>
-        <div class="lp-flow" aria-label="루프 한 바퀴의 네 단계">
-          <div class="lp-fs m" data-lp-fs="0"><b><i>1</i>모델 호출</b>messages를 보내 응답을 받습니다</div><span class="lp-fa">→</span>
-          <div class="lp-fs x" data-lp-fs="1"><b><i>2</i>멈춘 이유 확인</b>stop_reason(모델이 멈춘 이유)을 읽습니다</div><span class="lp-fa">→</span>
-          <div class="lp-fs c" data-lp-fs="2"><b><i>3</i>도구 실행</b>요청서대로 코드가 실행합니다</div><span class="lp-fa">→</span>
-          <div class="lp-fs c" data-lp-fs="3"><b><i>4</i>결과 붙이기</b>messages에 결과를 넣습니다</div>
-          <div class="lp-exit"><span class="lp-fa">↓ 도구 요청이 아니면</span><div class="lp-fs x" data-lp-fs="4"><b><i>✓</i>끝</b>답을 돌려주고 루프를 나갑니다</div></div>
-          <div class="lp-back">↺ 4번이 끝나면 다시 1번으로 돌아가 한 바퀴를 더 돕니다</div>
-        </div>
-        <div class="lp-laps" data-lp-laps></div>
+        <svg class="lp-scene" data-lp-hero-svg viewBox="0 0 720 450" role="img" aria-label="루프 트랙. 모델 호출, 멈춘 이유 확인, 도구 실행, 결과 붙이기 네 정거장을 택배 상자가 시계 방향으로 돈다. 모델이 도구를 부르지 않고 답하면 오른쪽 길로 나가 끝난다. 한 바퀴마다 두 장씩 쌓이는 messages 더미와 바퀴 수 점이 함께 보인다."></svg>
         <div class="lp-verdict" data-lp-verdict></div>
+        <p class="lp-legend" aria-label="messages 더미 색 안내"><span><i style="background:var(--lp-human)"></i>처음 질문</span><span><i style="background:var(--lp-model)"></i>모델 응답</span><span><i style="background:var(--lp-code)"></i>도구 결과</span><span><i style="background:var(--lp-bad)"></i>오류 결과</span></p>
+        <p class="lp-cap" style="margin-top:14px">택배 상자가 루프 한 바퀴를 돕니다. 바퀴 수와 상황은 설명을 위한 예시입니다. messages 더미는 한 바퀴에 두 장(모델 응답, 도구 결과)씩 쌓입니다.</p>
       </div>
-      <p class="lp-cap">각 칸은 모델을 한 번 부른 한 바퀴입니다. 바퀴 수는 설명을 위한 예시 값입니다. 실제 바퀴 수는 질문과 모델의 판단이 정합니다. 이 글에서 주황은 모델이 쓴 것, 초록은 코드가 실행한 것, 파랑은 사용자의 질문, 빨강은 실패나 강제 종료를 뜻합니다.</p>
     </div>
   </section>
 
   <section class="lp-sec">
     <div class="lp-wrap lp-split">
       <div>
-        <h2>질문마다 모델을 부르는 횟수가 다릅니다</h2>
-        <p>헬프데스크 Agent에게 질문 세 개를 합니다. 와이파이를 끄고 켜는 법은 도구 없이 한 번에 답합니다. 티켓 상태는 조회를 한 번 하니 모델을 두 번 부릅니다. 티켓 상태와 해결 방법을 함께 물으면 조회와 FAQ 검색을 거쳐 세 번 부릅니다.</p>
-        <p>필요한 횟수는 질문과 모델의 판단이 정합니다. 코드를 쓰는 시점에는 알 수 없으니 호출 코드를 몇 번 복사해 이어 붙일 수 없습니다. 그래서 같은 코드를 알아서 되풀이하는 루프가 필요합니다.</p>
-        <p>조사 숙제와 비슷합니다. 책을 몇 권 읽어야 할지는 숙제를 시작할 때 모릅니다. 다만 사람은 충분하다 싶으면 스스로 그만두지만 모델은 같은 검색을 되풀이할 수도 있어서 코드가 한도를 둬야 합니다.</p>
+        <h2>질문마다 모델과 도구가 주고받는 횟수가 다릅니다</h2>
+        <p>헬프데스크 Agent에게 질문 네 개를 합니다. 와이파이를 끄고 켜는 법은 도구 없이 한 번에 답합니다. 티켓 상태는 조회를 한 번 하니 모델을 두 번 부릅니다. 티켓 상태와 해결 방법을 함께 물으면 조회와 FAQ 검색을 거쳐 세 번 부릅니다. 마지막 질문은 모델이 같은 도구만 계속 부르는 경우입니다.</p>
+        <p>탁구 랠리와 비슷합니다. 모델이 공(도구 요청서)을 치면 코드가 받아 쳐 주고(결과) 모델이 다시 칩니다. 몇 번 오갈지는 시작할 때 모릅니다. 사람은 충분하다 싶으면 스스로 그만두지만 모델은 같은 검색을 되풀이할 수도 있어서 코드가 한도를 둬야 합니다.</p>
       </div>
       <div data-figure>
-        <div class="lp-rows">
-          <div class="lp-row"><small>질문 1. 와이파이 껐다 켜는 법</small><div class="lp-chain"><span class="lp-tag m">호출 · end_turn</span></div><span class="lp-cnt">모델 호출 1번</span></div>
-          <div class="lp-row"><small>질문 2. T-1042 티켓 상태</small><div class="lp-chain"><span class="lp-tag m">호출 · tool_use</span><i>→</i><span class="lp-tag c">도구</span><i>→</i><span class="lp-tag m">호출 · end_turn</span></div><span class="lp-cnt">모델 호출 2번</span></div>
-          <div class="lp-row"><small>질문 3. T-1042 상태와 해결 방법</small><div class="lp-chain"><span class="lp-tag m">호출 · tool_use</span><i>→</i><span class="lp-tag c">도구</span><i>→</i><span class="lp-tag m">호출 · tool_use</span><i>→</i><span class="lp-tag c">도구</span><i>→</i><span class="lp-tag m">호출 · end_turn</span></div><span class="lp-cnt">모델 호출 3번</span></div>
-          <div class="lp-row"><small>질문 4. 모델이 같은 도구만 계속 부르면</small><div class="lp-chain"><span class="lp-tag m">호출 · tool_use</span><i>→</i><span class="lp-tag c">도구</span><i>→</i><span class="lp-tag m">호출 · tool_use</span><i>→</i><span class="lp-tag c">도구</span><i>→</i><span class="dots">…</span></div><span class="lp-cnt">끝이 없습니다</span></div>
-        </div>
-        <p class="lp-cap">설명을 위한 예시 장면입니다. 주황 칸은 모델을 부른 한 번이고 초록 칸은 코드가 도구를 실행한 한 번입니다.</p>
+        <div class="lp-rally" data-lp-rally></div>
+        <p class="lp-cap">설명을 위한 예시 장면입니다. 파란 화살표는 모델이 쓴 도구 요청서, 초록 화살표는 코드가 돌려준 도구 결과이고 깃발은 모델이 답을 다 쓴 때입니다.</p>
       </div>
     </div>
   </section>
@@ -314,8 +289,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="lp-story" data-lp-story>
         <div class="lp-steps">
           <div class="lp-intro">
-            <p>모델은 앞선 호출을 기억하지 못합니다. 호출마다 처음부터 새로 읽는 계산이라서 앞 내용을 알려면 매 바퀴 messages(대화 기록 목록) 전체를 다시 보내야 합니다. 그림에서 카드가 쌓이는 순서를 확인할 수 있습니다.</p>
-            <p>모델의 응답이 카드 한 장(assistant)이 되고 도구 결과가 카드 한 장(user)이 되니 한 바퀴에 두 장이 쌓입니다. 마지막 바퀴만 도구 결과 없이 답 카드 한 장으로 끝납니다.</p>
+            <p>모델은 앞선 호출을 기억하지 못합니다. 호출마다 처음부터 새로 읽는 계산이라서 앞 내용을 알려면 매 바퀴 messages(대화 기록 목록) 전체를 다시 보내야 합니다. 그림에서 카드가 쌓이는 순서를 보세요.</p>
+            <p>모델 응답이 카드 한 장(assistant)이 되고 도구 결과가 카드 한 장(user)이 되니 한 바퀴에 두 장이 쌓입니다. 마지막 바퀴만 도구 결과 없이 답 카드 한 장으로 끝납니다.</p>
           </div>
           <div class="lp-step" data-lp-step><h3>시작: 질문 한 장</h3><p>messages에는 사용자의 질문 카드 한 장뿐입니다. 모델을 부르기 전 상태입니다.</p></div>
           <div class="lp-step" data-lp-step><h3>1번째 호출</h3><p>카드 한 장을 보내자 모델이 티켓 조회 요청서를 씁니다. 모델은 요청서만 쓸 뿐 실행은 코드가 합니다. 이 응답이 assistant 카드로 붙고 stop_reason은 <code>tool_use</code>입니다.</p></div>
@@ -325,22 +300,18 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <div class="lp-step" data-lp-step><h3>3번째 호출</h3><p>카드 다섯 장을 보내자 모델이 도구 없이 글로 답합니다. stop_reason이 <code>end_turn</code>이라 루프가 끝납니다.</p></div>
         </div>
         <div class="lp-sfig" data-lp-sfig data-figure>
-          <div class="lp-desk">
-            <h4>messages 목록 (위에서 아래로 쌓임)</h4>
-            <div class="lp-cards">
-              <div class="lp-card u" data-lp-card><b>user</b><span>T-1042 티켓 상태랑 해결 방법 알려줘</span></div>
-              <div class="lp-card a" data-lp-card><b>assistant</b><span>tool_use · id toolu_01A · get_ticket {"ticket_id": "T-1042"}</span></div>
-              <div class="lp-card r" data-lp-card><b>user</b><span>tool_result · toolu_01A · 부품 대기, 10월 18일</span></div>
-              <div class="lp-card a" data-lp-card><b>assistant</b><span>tool_use · id toolu_02B · search_faq {"query": "무선 랜카드 교체"}</span></div>
-              <div class="lp-card r" data-lp-card><b>user</b><span>tool_result · toolu_02B · 교체 전까지 유선 LAN을 쓰세요.</span></div>
-              <div class="lp-card a" data-lp-card><b>assistant</b><span>text · T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다. 그 전에는 유선 연결을 쓰세요.</span></div>
-            </div>
-            <div class="lp-stat" data-lp-stat></div>
-          </div>
+          <svg class="lp-scene" viewBox="0 0 520 560" style="max-width:520px" role="img" aria-label="messages 더미. 위쪽 왼쪽의 모델과 오른쪽의 도구 사이로 카드가 날아와 가운데에 한 장씩 쌓인다. 카드는 질문, 요청서, 도구 결과, 요청서, 도구 결과, 답 순서이다.">
+            <rect x="20" y="14" width="150" height="86" rx="16" fill="color-mix(in srgb, var(--lp-model) 8%, var(--bg-base))" stroke="var(--lp-model)" stroke-width="2"/>
+            <use href="#lp-ic-robot" x="34" y="30" width="52" height="52" style="color:var(--lp-model)"/><text x="130" y="64" text-anchor="middle" font-size="18" class="t-s">모델</text>
+            <rect x="350" y="14" width="150" height="86" rx="16" fill="color-mix(in srgb, var(--lp-code) 8%, var(--bg-base))" stroke="var(--lp-code)" stroke-width="2"/>
+            <use href="#lp-ic-gear" x="364" y="30" width="52" height="52" style="color:var(--lp-code)"/><text x="460" y="64" text-anchor="middle" font-size="18" class="t-s">코드·도구</text>
+            <text x="260" y="140" text-anchor="middle" font-size="16" class="t-d">messages 목록 (위에서 아래로 쌓임)</text>
+            <g data-lp-cards></g>
+            <g data-lp-brace></g>
+          </svg>
+          <div class="lp-stat" data-lp-stat></div>
         </div>
       </div>
-
-      <p class="lp-cap lp-mobhint">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
       <div class="lp-codepair">
         <div class="cp-code">
 <pre data-title="agent.py" data-hl="4,6,8-9,11-12,14-15"><code class="language-python"># ... import, client, MODEL, tools, run_tool 은 아래에서 본다
@@ -361,7 +332,7 @@ def run_agent(question, max_turns=8):
         </div>
         <div class="cp-notes">
 <ol class="pg-code-notes">
-  <li><b>대화 기록</b>입니다. messages는 역할(<code>role</code>)과 내용(<code>content</code>)을 짝지은 딕셔너리(이름과 값을 짝지어 담는 Python 자료형)를 순서대로 담은 목록입니다. 처음에는 사용자 질문 한 장뿐입니다.</li>
+  <li><b>대화 기록</b>입니다. messages는 역할(<code>role</code>)과 내용(<code>content</code>)을 이름표로 단 묶음(Python에서는 딕셔너리라고 부릅니다)을 순서대로 담은 목록입니다. 처음에는 사용자 질문 한 장뿐입니다.</li>
   <li><b>바퀴 수 한도</b>입니다. <code>while True</code> 대신 <code>for turn in range(max_turns)</code>를 쓰면 최대 8번만 돌고 반드시 끝납니다. 한도를 빼면 모델이 도구를 계속 부르는 한 루프도 끝나지 않습니다.</li>
   <li><b>모델 호출</b>입니다. <code>max_tokens</code>는 이번 답의 길이 한도이며 토큰(모델이 글을 읽고 쓰는 단위) 수로 셉니다. Anthropic API에서는 꼭 넣어야 하는 값입니다.</li>
   <li><b>응답 기록</b>입니다. <code>res.content</code>는 글 조각과 도구 요청 조각이 섞인 목록입니다. 도구 요청 조각의 번호가 남도록 그대로 붙여야 결과 카드와 짝을 맞출 수 있습니다.</li>
@@ -397,7 +368,7 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다. �
         <div class="cp-notes">
 <ol class="pg-code-notes" style="counter-reset: pgc 5">
   <li><b>요청서마다 도구를 실행합니다.</b> 한 응답에 도구 요청이 여러 개 올 수 있어 조각을 하나씩 돌며 글 조각은 건너뜁니다. <code>block.input</code>은 이미 딕셔너리입니다.</li>
-  <li><b>결과를 카드 한 장에 모읍니다.</b> 요청서가 둘이면 결과 둘을 같은 user 카드에 담고 결과마다 <code>tool_use_id</code>로 짝을 적습니다. 하나라도 빠지면 API가 요청을 거절합니다(400 오류).</li>
+  <li><b>결과를 카드 한 장에 모읍니다.</b> 요청서가 둘이면 결과 둘을 같은 user 카드에 담고 결과마다 <code>tool_use_id</code>로 짝을 적습니다. 하나라도 빠지면 API가 요청을 거절합니다(요청 형식이 틀렸다는 400 오류).</li>
 </ol>
         </div>
       </div>
@@ -409,27 +380,41 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다. �
       <div class="lp-head">
         <h2>stop_reason이 루프의 갈림길입니다</h2>
         <div>
-          <p>모델의 응답에는 멈춘 이유를 적은 <code>stop_reason</code>이 붙습니다. 코드는 이 값을 보고 다음에 할 일을 정합니다. 루프를 계속 돌리는 값은 <code>tool_use</code> 하나입니다.</p>
-          <p>나머지는 모두 루프를 나가는 길인데 끝나는 모습이 다릅니다. <code>end_turn</code>만 정상 종료입니다. 잘림이나 거절을 정상 종료처럼 다루면 도중에 끊긴 글을 완성된 답으로 착각합니다.</p>
+          <p>모델의 응답에는 멈춘 이유를 적은 <code>stop_reason</code>이 붙습니다. 코드는 이 값을 보고 다음에 할 일을 정합니다. 기차가 분기기에서 길을 고르는 것과 같습니다. 루프를 계속 돌리는 길은 <code>tool_use</code> 하나입니다.</p>
+          <p>나머지는 모두 루프를 나가는 길인데 끝나는 모습이 다릅니다. <code>end_turn</code>(모델이 할 말을 다 하고 스스로 멈춘 경우)만 정상 종료입니다. 잘림이나 거절을 정상 종료처럼 다루면 도중에 끊긴 글을 완성된 답으로 착각합니다. 길을 눌러 기차를 보내 보세요.</p>
         </div>
       </div>
-      <div style="margin-top:44px" data-figure>
-        <div class="lp-switch" data-lp-switch>
-          <div class="lp-in"><b>응답이 도착했습니다</b><code>res.stop_reason</code>의 값마다 가는 길이 다릅니다. 길을 누르면 응답 모양과 코드가 할 일이 나옵니다.</div>
-          <div class="lp-routes">
-            <button type="button" class="lp-route go" data-lp-route="tool_use" aria-pressed="true"><span class="rn">tool_use</span><span class="rd">도구를 실행하고 한 바퀴 더 돕니다</span></button>
-            <button type="button" class="lp-route ok" data-lp-route="end_turn" aria-pressed="false"><span class="rn">end_turn</span><span class="rd">글을 꺼내 돌려주고 끝냅니다</span></button>
-            <button type="button" class="lp-route cut" data-lp-route="max_tokens" aria-pressed="false"><span class="rn">max_tokens</span><span class="rd">잘린 응답입니다. 그대로 쓰면 안 됩니다</span></button>
-            <button type="button" class="lp-route no" data-lp-route="refusal" aria-pressed="false"><span class="rn">refusal</span><span class="rd">모델이 거절했습니다. 안내하고 끝냅니다</span></button>
-          </div>
+      <div style="margin-top:36px" data-figure data-lp-switch>
+        <svg class="lp-scene lp-nar" viewBox="0 0 480 450" role="img" aria-label="분기기 그림. 왼쪽에서 들어온 선로가 네 갈래로 나뉜다. 위쪽 tool_use는 돌아와서 한 바퀴를 더 돈다. 두 번째 end_turn은 깃발에서 끝난다. 세 번째 max_tokens는 끊어진 선로에서 멈춘다. 맨 아래 refusal은 정지 표지판에서 멈춘다.">
+          <g class="lp-rt" data-lp-rt="tool_use"><path d="M20 190 H150" class="lp-trk" style="stroke-width:12"/><path d="M150 190 C200 190 200 60 250 60 H340" class="lp-trk" style="stroke-width:12;stroke:var(--lp-model)"/></g>
+          <g class="lp-rt" data-lp-rt="end_turn"><path d="M150 190 H316" class="lp-trk" style="stroke-width:12;stroke:var(--lp-code)"/></g>
+          <g class="lp-rt" data-lp-rt="max_tokens"><path d="M150 190 C200 190 200 310 250 310 H296" class="lp-trk" style="stroke-width:12;stroke:var(--lp-bad)"/></g>
+          <g class="lp-rt" data-lp-rt="refusal"><path d="M150 190 C190 190 190 420 250 420 H320" class="lp-trk" style="stroke-width:12;stroke:var(--lp-bad)"/></g>
+          <circle cx="150" cy="190" r="13" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="3"/>
+          <text x="20" y="160" font-size="16" class="t-s">응답 도착</text><text x="20" y="224" font-size="15" class="t-d mono">res.stop_reason</text>
+          <path d="M340 60 C405 60 410 18 350 16 H170" fill="none" stroke="var(--lp-model)" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#lp-arrow)"/>
+          <text x="350" y="98" font-size="16" class="t-s mono" style="fill:var(--lp-model)">tool_use</text><text x="350" y="118" font-size="16" class="t-s" style="fill:var(--lp-model)">한 바퀴 더</text>
+          <use href="#lp-ic-flag" x="318" y="166" width="48" height="48" style="color:var(--lp-code)"/><text x="372" y="186" font-size="16" class="t-s mono" style="fill:var(--lp-code)">end_turn</text><text x="374" y="206" font-size="16" class="t-s" style="fill:var(--lp-code)">정상 종료 · 답</text>
+          <use href="#lp-ic-cut" x="318" y="286" width="48" height="48" style="color:var(--lp-bad)"/><text x="374" y="306" font-size="16" class="t-s mono" style="fill:var(--lp-bad)">max_tokens</text><text x="374" y="326" font-size="16" class="t-s" style="fill:var(--lp-bad)">비정상 · 잘림</text>
+          <use href="#lp-ic-stop" x="322" y="396" width="48" height="48" style="color:var(--lp-bad)"/><text x="378" y="416" font-size="16" class="t-s mono" style="fill:var(--lp-bad)">refusal</text><text x="378" y="436" font-size="16" class="t-s" style="fill:var(--lp-bad)">비정상 · 거절</text>
+          <defs><marker id="lp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--lp-model)"/></marker></defs>
+          <g data-lp-train style="opacity:0"><rect x="-26" y="-14" width="52" height="28" rx="7" fill="var(--fg-strong)"/><circle cx="-14" cy="16" r="5" fill="var(--fg-strong)"/><circle cx="14" cy="16" r="5" fill="var(--fg-strong)"/><text x="0" y="5" text-anchor="middle" font-size="15" fill="var(--bg-base)" style="fill:var(--bg-base)" class="mono">응답</text></g>
+        </svg>
+        <div class="lp-routes" role="group" aria-label="길 고르기">
+          <button type="button" class="lp-route go" data-lp-route="tool_use" aria-pressed="true">tool_use</button>
+          <button type="button" class="lp-route ok" data-lp-route="end_turn" aria-pressed="false">end_turn</button>
+          <button type="button" class="lp-route cut" data-lp-route="max_tokens" aria-pressed="false">max_tokens</button>
+          <button type="button" class="lp-route no" data-lp-route="refusal" aria-pressed="false">refusal</button>
         </div>
         <div class="lp-peek">
           <pre data-lp-peek></pre>
           <div class="lp-do" data-lp-do></div>
         </div>
-        <p class="lp-cap">응답 모양은 설명을 위해 줄인 예시입니다.</p>
+        <p class="lp-cap">응답 모양은 설명을 위해 줄인 예시입니다. <code>max_tokens</code>는 모델이 한 번에 쓸 수 있는 답의 길이 한도이고 앞에서 본 바퀴 수 한도(<code>max_turns</code>)와는 다른 한도입니다.</p>
       </div>
-
+      <details style="margin-top:32px"><summary>그 밖의 stop_reason 값</summary><div class="lp-in-d">
+        <p><code>pause_turn</code>은 웹 검색 같은 서버 도구가 한 번에 끝나지 않아 멈췄다는 뜻으로, 응답을 그대로 messages에 붙여 다시 부르면 이어서 진행합니다. <code>stop_sequence</code>는 우리가 정해 둔 끊는 글자가 나왔다는 뜻이고 <code>model_context_window_exceeded</code>는 모델이 한 번에 볼 수 있는 길이를 다 채웠다는 뜻입니다. 이 글의 도구는 우리 코드가 실행하는 도구라서 이 값들은 나오지 않거나 드뭅니다.</p>
+      </div></details>
       <div class="lp-codepair" style="margin-top:36px">
         <div class="cp-code">
 <pre data-title="agent.py" data-hl="3,5,7,9"><code class="language-python"># ⑧ 멈춘 이유를 값마다 나눈다
@@ -446,46 +431,39 @@ elif reason != "tool_use":
         </div>
         <div class="cp-notes">
 <ol class="pg-code-notes" style="counter-reset: pgc 7">
-  <li><b>값마다 길을 나눕니다.</b> ⑤의 한 줄 조건을 값별로 쪼갠 것입니다. <code>end_turn</code>에서만 답을 돌려주고 <code>max_tokens</code>와 <code>refusal</code>은 사용자에게 상황을 알리고 끝냅니다. 마지막 <code>elif</code>는 처음 보는 값을 잡는 안전장치입니다.</li>
+  <li><b>값마다 길을 나눕니다.</b> 코드 ⑤번 주석 줄의 한 줄 조건을 값별로 쪼갠 것입니다. <code>end_turn</code>에서만 답을 돌려주고 <code>max_tokens</code>와 <code>refusal</code>은 사용자에게 상황을 알리고 끝냅니다. 마지막 <code>elif</code>는 처음 보는 값을 잡는 안전장치입니다.</li>
 </ol>
         </div>
       </div>
-      <details style="margin-top:36px"><summary>그 밖의 stop_reason 값</summary><div class="lp-in-d">
-        <p><code>pause_turn</code>은 웹 검색 같은 서버 도구가 한 번에 끝나지 않아 멈췄다는 뜻으로, 응답을 그대로 messages에 붙여 다시 부르면 이어서 진행합니다. <code>stop_sequence</code>는 우리가 정해 둔 끊는 글자가 나왔다는 뜻이고 <code>model_context_window_exceeded</code>는 모델이 한 번에 볼 수 있는 길이를 다 채웠다는 뜻입니다. 이 글의 도구는 우리 코드가 실행하는 도구라서 이 값들은 나오지 않거나 드뭅니다.</p>
-      </div></details>
     </div>
   </section>
 
-  <div class="lp-lab" data-lp-lab>
+  <section class="lp-lab">
     <div class="lp-wrap">
       <div class="lp-labtop">
-        <h2>바퀴 수 한도가 없으면 비용이 계속 쌓입니다</h2>
+        <h2>바퀴 수 한도가 없으면 비용이 가파르게 쌓입니다</h2>
         <div>
-          <p>모델이 같은 도구만 계속 부르거나 오류를 되풀이하면 루프는 스스로 끝나지 않습니다. 매 바퀴 messages 전체를 다시 보내니 바퀴가 늘수록 한 번에 보내는 양도 늘어납니다.</p>
-          <p>ReAct 논문도 모델이 앞서 쓴 생각과 행동을 되풀이하는 실패를 한계로 적었습니다. Anthropic의 에이전트 글은 통제를 유지하려면 최대 반복 횟수 같은 종료 조건을 두라고 권합니다. 몇 바퀴가 적당한지 정해진 값은 없어서 평소 바퀴 수를 재어 여유 있게 잡습니다.</p>
+          <p>모델이 같은 도구만 계속 부르거나 오류를 되풀이하면 루프는 스스로 끝나지 않습니다. 매 바퀴 messages 전체를 다시 보내니 바퀴가 늘수록 한 번에 보내는 양도 늘어납니다. 그래서 합계는 바퀴마다 짐이 쌓이듯 가파른 곡선으로 치솟습니다.</p>
+          <p>Anthropic의 에이전트 글도 최대 반복 횟수 같은 종료 조건을 두라고 권합니다. 몇 바퀴가 적당한지는 정해진 값이 없어서 평소 바퀴 수를 재어 여유 있게 잡습니다.</p>
         </div>
       </div>
-      <div class="lp-bars" data-figure>
+      <div class="lp-chart-wrap" data-figure>
         <div class="lp-ctrl">
           <div class="lp-seg" role="group" aria-label="모델의 행동 고르기">
             <button type="button" data-lp-b="ok" aria-pressed="false">3번째 호출에서 끝내는 모델</button>
             <button type="button" data-lp-b="never" aria-pressed="true">끝내지 않는 모델</button>
           </div>
-          <label>바퀴 수 한도 <input type="range" min="1" max="12" value="8" data-lp-bmax aria-label="바퀴 수 한도"><output data-lp-bmaxout>8</output></label>
+          <label>바퀴 수 한도 <input type="range" min="1" max="12" value="5" data-lp-bmax aria-label="바퀴 수 한도"><output data-lp-bmaxout>5</output></label>
         </div>
-        <div style="margin-top:28px">
-          <p class="lp-cap" style="margin:0 0 14px;color:var(--fg-strong);font-weight:600">막대 하나는 그 번째 호출 한 번에 보내는 토큰 수입니다. 아래 숫자는 막대를 더한 값입니다.</p>
-          <div class="lp-bar-area" data-lp-bars></div>
-          <div class="lp-axis" data-lp-axis></div>
-        </div>
+        <div><svg class="lp-scene" viewBox="0 0 700 400" style="margin-top:18px" role="img" aria-label="호출 횟수에 따라 지금까지 보낸 토큰 합계가 곡선으로 늘어나는 그래프. 한도 선에서 곡선이 끊긴다." data-lp-chart></svg></div>
         <div class="lp-read">
           <div>마지막 호출 한 번에 보낸 양<b data-lp-last>-</b></div>
-          <div>막대를 모두 더한 합계<b data-lp-sum>-</b></div>
+          <div>지금까지 보낸 합계<b data-lp-sum>-</b></div>
           <div class="big">한도 없이 12번째 호출까지 가면<b data-lp-all>-</b></div>
         </div>
-        <p class="lp-cap">설명을 위한 예시 값입니다. 첫 호출에 1,500토큰(지시문·도구 설명·질문)을 보내고 바퀴마다 500토큰(응답과 도구 결과)이 쌓인다고 가정했습니다. 막대 높이가 그 호출에 보내는 토큰 수입니다. 주황은 실제로 보낸 호출, 회색은 한도 때문에 보내지 않은 호출, 어두운 초록은 모델이 답을 끝낸 호출입니다.</p>
+        <p class="lp-cap">설명을 위한 예시 값입니다. 첫 호출에 1,500토큰(지시문·도구 설명·질문)을 보내고 바퀴마다 500토큰(응답과 도구 결과)이 쌓인다고 가정했습니다. 세로축은 지금까지 보낸 토큰 합계입니다. 실선은 실제로 보낸 구간이고 점선은 한도가 없었다면 이어졌을 구간입니다.</p>
       </div>
-      <div class="lp-cwrap">
+      <div class="lp-cwrap" style="margin-top:36px">
         <div class="lp-codepair" style="margin-top:0">
           <div class="cp-term">
 <div class="lp-term" data-lp-term>
@@ -504,43 +482,43 @@ elif reason != "tool_use":
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <section class="lp-sec">
     <div class="lp-wrap">
       <div class="lp-head">
         <h2>도구가 실패하면 예외 대신 결과로 돌려줍니다</h2>
         <div>
-          <p>모델이 인자를 잘못 쓰는 일이 가끔 있습니다. 예를 들어 <code>T-1042</code> 대신 <code>T1042</code>라고 쓰면 티켓 조회가 실패합니다. 이 예외를 그대로 터뜨리면 프로그램이 멈추고 사용자는 답을 받지 못합니다.</p>
-          <p>Anthropic 문서는 실패를 <code>tool_result</code>의 <code>is_error: true</code>로 돌려주라고 안내합니다. 모델은 오류 문장을 읽고 인자를 고쳐 다시 부릅니다. 오류 문장에는 무엇이 틀렸는지와 어떻게 고치면 되는지를 적어야 합니다. "실패"라고만 적으면 고칠 단서가 없습니다.</p>
+          <p>모델이 인자를 잘못 쓰는 일이 가끔 있습니다. 예를 들어 <code>T-1042</code> 대신 <code>T1042</code>라고 쓰면 티켓 조회가 실패합니다. 이 예외(프로그램이 실행 중에 만난 오류 신호)를 그대로 터뜨리면 프로그램이 멈추고 사용자는 답을 받지 못합니다.</p>
+          <p>Anthropic 문서는 실패를 <code>tool_result</code>의 <code>is_error: true</code>(이 결과는 실패라는 표시)로 돌려주라고 안내합니다. 모델은 오류 문장을 읽고 인자를 고쳐 다시 부릅니다. 오류 문장에는 무엇이 틀렸는지와 어떻게 고치면 되는지를 적어야 합니다. "실패"라고만 적으면 고칠 단서가 없습니다.</p>
         </div>
       </div>
-      <div style="margin-top:44px" data-figure>
-        <div class="lp-vs">
-          <div>
-            <h3><span class="lp-tag x">예외로 터뜨리면</span></h3>
-            <div class="lp-stack">
-              <div class="lp-s m"><small>1번째 호출</small>모델이 <code>get_ticket("T1042")</code> 요청서를 씁니다</div>
-              <div class="lp-s c"><small>도구 실행</small><code>KeyError: 'T1042'</code> (없는 키를 찾을 때 나는 오류)</div>
-              <div class="lp-s x dead"><small>프로그램 중단</small>오류 기록(Traceback)이 찍히고 루프가 끊깁니다. 사용자는 답을 받지 못합니다</div>
-            </div>
-          </div>
-          <div>
-            <h3><span class="lp-tag c">결과로 돌려주면</span></h3>
-            <div class="lp-stack">
-              <div class="lp-s m"><small>1번째 호출</small>모델이 <code>get_ticket("T1042")</code> 요청서를 씁니다</div>
-              <div class="lp-s c"><small>도구 실행 → 오류 결과 (is_error: true)</small>"T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."</div>
-              <div class="lp-s m"><small>2번째 호출</small>모델이 오류 문장을 읽고 <code>get_ticket("T-1042")</code>로 고칩니다</div>
-              <div class="lp-s c"><small>도구 실행</small>부품 대기, 10월 18일</div>
-              <div class="lp-s m"><small>3번째 호출 · end_turn</small>티켓 상태를 답합니다</div>
-            </div>
-          </div>
-        </div>
-        <p class="lp-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 같은 실수를 합니다.</p>
+      <div style="margin-top:40px" data-figure>
+        <svg class="lp-scene lp-nar" viewBox="0 0 460 360" role="img" aria-label="두 갈래 도로. 위쪽 도로는 도구에서 번개가 치고 도로가 끊겨 프로그램이 멈춘다. 아래쪽 도로는 도구의 오류가 편지가 되어 모델에게 돌아가고 모델이 인자를 고쳐 다시 도구를 거쳐 깃발에 도착한다.">
+          <text x="10" y="28" font-size="17" class="t-s" style="fill:var(--lp-bad)">예외로 터뜨리면</text>
+          <path d="M58 80 H286" class="lp-trk" style="stroke-width:12"/>
+          <use href="#lp-ic-robot" x="34" y="56" width="48" height="48" style="color:var(--lp-model)"/><text x="58" y="124" text-anchor="middle" font-size="16" class="t-d">모델</text>
+          <use href="#lp-ic-gear" x="146" y="56" width="48" height="48" style="color:var(--lp-code)"/><text x="170" y="124" text-anchor="middle" font-size="16" class="t-d">도구</text>
+          <use href="#lp-ic-bolt" x="214" y="40" width="40" height="40" style="color:var(--lp-bad)"/>
+          <polygon points="440,48 452,70 476,62 462,82 484,96 458,100 458,124 440,104 422,124 422,100 396,96 418,82 404,62 428,70" fill="var(--lp-bad)" transform="translate(-100 -4)"/>
+          <text x="340" y="152" text-anchor="middle" font-size="16" class="t-s">Traceback · Agent 중단</text>
+          <text x="340" y="172" text-anchor="middle" font-size="15" class="t-d">사용자는 답을 받지 못함</text>
+          <line x1="10" y1="190" x2="450" y2="190" class="ln" stroke-dasharray="4 8"/>
+          <text x="10" y="222" font-size="17" class="t-s" style="fill:var(--lp-code)">결과로 돌려주면</text>
+          <path d="M52 270 H402" class="lp-trk" style="stroke-width:12"/>
+          <use href="#lp-ic-robot" x="30" y="246" width="44" height="44" style="color:var(--lp-model)"/><text x="52" y="312" text-anchor="middle" font-size="15" class="t-d">모델</text>
+          <use href="#lp-ic-gear" x="100" y="246" width="44" height="44" style="color:var(--lp-code)"/><text x="122" y="312" text-anchor="middle" font-size="15" class="t-d">도구</text>
+          <use href="#lp-ic-mail" x="170" y="246" width="44" height="44" style="color:var(--lp-bad)"/><text x="192" y="312" text-anchor="middle" font-size="15" class="t-d">오류 결과</text>
+          <use href="#lp-ic-robot" x="240" y="246" width="44" height="44" style="color:var(--lp-model)"/><text x="262" y="312" text-anchor="middle" font-size="15" class="t-d">인자 수정</text>
+          <use href="#lp-ic-gear" x="310" y="246" width="44" height="44" style="color:var(--lp-code)"/><text x="332" y="312" text-anchor="middle" font-size="15" class="t-d">도구</text>
+          <use href="#lp-ic-flag" x="380" y="246" width="44" height="44" style="color:var(--fg-strong)"/><text x="402" y="312" text-anchor="middle" font-size="15" class="t-s">답</text>
+          <text x="192" y="340" text-anchor="middle" font-size="15" class="t-d">"번호는 T-1042 형식입니다"</text>
+        </svg>
+        <p class="lp-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 같은 실수를 합니다. 위쪽은 도구 안의 예외가 밖으로 나가 길이 끊기고 아래쪽은 오류가 편지(tool_result)로 돌아가 모델이 고칩니다.</p>
       </div>
-      <div class="lp-codepair" style="margin-top:56px">
+      <div class="lp-codepair" style="margin-top:44px">
         <div class="cp-code">
-<pre data-title="agent.py" data-hl="4-6,15"><code class="language-python">def run_tool(name, args):
+<pre data-title="agent.py" data-hl="3-6,13-14"><code class="language-python">def run_tool(name, args):
     if name == "get_ticket":
         # ⑨ 무엇이 틀렸고 어떻게 고칠지 적는다
         ticket = TICKETS.get(args["ticket_id"])
@@ -583,20 +561,62 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
   <section class="lp-sec">
     <div class="lp-wrap lp-split top">
       <div>
-        <h2>ReAct의 생각·행동·관찰과 API 블록은 닮았습니다</h2>
-        <p>ReAct는 Shunyu Yao 등이 2022년 10월에 arXiv에 올린 논문 「ReAct: Synergizing Reasoning and Acting in Language Models」에서 나온 방식입니다. 모델이 생각(Thought)을 쓰고 행동(Action)을 하고 관찰(Observation) 결과를 받는 과정을 되풀이합니다.</p>
-        <p>지금 API에서는 행동이 <code>tool_use</code> 블록으로, 관찰이 <code>tool_result</code>로 구조화돼 옵니다. 생각은 모델이 도구를 부르기 전에 글 블록을 함께 쓸 때만 보입니다. 이 대응은 논문과 문서를 맞춰 본 필자의 해석입니다.</p>
-        <p>누가 쓴 줄인지 칠해 보면 생각과 행동은 모델이 쓰고 관찰은 코드가 가져온 값입니다. 여기서도 모델은 도구를 직접 실행하지 않습니다.</p>
-        <div class="lp-ctrl"><div class="lp-seg" role="group" aria-label="누가 썼는지 칠하기"><button type="button" data-lp-paint="0" aria-pressed="true">칠하지 않기</button><button type="button" data-lp-paint="1" aria-pressed="false">누가 썼는지 칠하기</button></div></div>
+        <h2>도구 요청이 둘이면 결과도 번호를 맞춰 한 장에 담습니다</h2>
+        <p>모델은 한 응답에 도구 요청을 여러 개 쓸 수 있습니다. 티켓 조회와 FAQ 검색을 한꺼번에 시키는 식입니다. 요청마다 번호(<code>tool_use_id</code>)가 붙고 결과 카드에는 같은 번호를 적어 짝을 맞춥니다.</p>
+        <p>결과는 요청 수만큼 한 장의 user 카드에 모아 돌려줍니다. 하나라도 빠지면 API가 요청을 거절합니다. 그림에서 결과를 한 장에 담을 때와 한 개만 돌려줄 때를 비교해 보세요.</p>
+        <div class="lp-ctrl"><div class="lp-seg" role="group" aria-label="결과 담는 법"><button type="button" data-lp-pl="all" aria-pressed="true">결과 둘을 한 장에</button><button type="button" data-lp-pl="one" aria-pressed="false">결과 하나만 돌려줌</button></div></div>
       </div>
       <div data-figure>
-        <div class="lp-map" data-lp-map data-paint="0">
-          <h4 class="hd">ReAct 논문의 예시 (Colorado orogeny)</h4><span></span><h4 class="hd r">같은 장면을 Claude API 블록으로 쓰면</h4>
-          <div class="lp-mc m"><small>Thought 1</small>동쪽 구역이 어디까지 뻗는지 알려면 먼저 이 지명을 검색해야 한다</div><span class="lp-mid">↔</span><div class="lp-mc m"><small>text 블록 (없을 수도 있음)</small>먼저 이 지명을 검색해 보겠습니다.</div>
-          <div class="lp-mc m"><small>Action 1</small><code>Search[Colorado orogeny]</code></div><span class="lp-mid">↔</span><div class="lp-mc m"><small>tool_use 블록</small><code>search {"entity": "Colorado orogeny"}</code></div>
-          <div class="lp-mc c"><small>Observation 1</small>The Colorado orogeny was an episode of mountain building (an orogeny) in Colorado and surrounding areas.</div><span class="lp-mid">↔</span><div class="lp-mc c"><small>tool_result 블록</small>검색 결과 글 (코드가 가져와 user 카드에 담음)</div>
-        </div>
-        <p class="lp-cap">왼쪽 첫 줄은 논문 부록의 첫 생각을 줄여 옮겼고 Action·Observation 줄은 원문 형식 그대로입니다. 오른쪽은 설명을 위한 예시 모양입니다. 논문의 행동 공간에는 <code>search</code>, <code>lookup</code>, <code>finish</code>가 있습니다.</p>
+        <svg class="lp-scene" viewBox="0 0 560 420" style="max-width:560px" role="img" aria-label="번호표 그림. 위의 assistant 카드에 번호가 다른 도구 요청 둘이 있고 각각 도구로 이어져 아래 user 카드의 결과 둘에 같은 번호로 연결된다. 결과 하나가 빠지면 연결이 끊겨 오류가 난다.">
+          <rect x="30" y="14" width="500" height="92" rx="14" fill="color-mix(in srgb, var(--lp-model) 8%, var(--bg-base))" stroke="var(--lp-model)" stroke-width="2"/>
+          <text x="46" y="38" font-size="15" class="t-s" fill="var(--lp-model)" style="fill:var(--lp-model)">assistant 카드 (모델의 응답 한 장)</text>
+          <rect x="52" y="52" width="210" height="40" rx="10" fill="#e8742a" opacity=".92"/><text x="157" y="77" text-anchor="middle" font-size="13" fill="#fff" style="fill:#fff" class="mono">get_ticket · toolu_01A</text>
+          <rect x="298" y="52" width="210" height="40" rx="10" fill="#7a4fe6" opacity=".92"/><text x="403" y="77" text-anchor="middle" font-size="13" fill="#fff" style="fill:#fff" class="mono">search_faq · toolu_02B</text>
+          <path d="M157 92 V150" stroke="#e8742a" stroke-width="4" fill="none"/><path d="M403 92 V150" stroke="#7a4fe6" stroke-width="4" fill="none"/>
+          <use href="#lp-ic-gear" x="131" y="152" width="52" height="52" style="color:var(--lp-code)"/><text x="157" y="222" text-anchor="middle" font-size="14" class="t-d">코드가 실행</text>
+          <use href="#lp-ic-gear" x="377" y="152" width="52" height="52" style="color:var(--lp-code)"/><text x="403" y="222" text-anchor="middle" font-size="14" class="t-d">코드가 실행</text>
+          <path d="M157 238 V292" stroke="#e8742a" stroke-width="4" fill="none"/><path data-lp-pb d="M403 238 V292" stroke="#7a4fe6" stroke-width="4" fill="none" style="transition:opacity .4s"/>
+          <rect x="30" y="296" width="500" height="92" rx="14" fill="color-mix(in srgb, var(--lp-human) 8%, var(--bg-base))" stroke="var(--lp-human)" stroke-width="2"/>
+          <text x="46" y="320" font-size="15" class="t-s" fill="var(--lp-human)" style="fill:var(--lp-human)">user 카드 (결과를 담아 돌려주는 한 장)</text>
+          <rect x="52" y="334" width="210" height="40" rx="10" fill="#e8742a" opacity=".92"/><text x="157" y="359" text-anchor="middle" font-size="13" fill="#fff" style="fill:#fff" class="mono">tool_result · toolu_01A</text>
+          <g data-lp-resB style="transition:opacity .4s"><rect x="298" y="334" width="210" height="40" rx="10" fill="#7a4fe6" opacity=".92"/><text x="403" y="359" text-anchor="middle" font-size="13" fill="#fff" style="fill:#fff" class="mono">tool_result · toolu_02B</text></g>
+          <g data-lp-miss style="opacity:0;transition:opacity .4s"><rect x="298" y="334" width="210" height="40" rx="10" fill="none" stroke="var(--lp-bad)" stroke-width="2.5" stroke-dasharray="6 6"/><text x="403" y="359" text-anchor="middle" font-size="15" fill="var(--lp-bad)" style="fill:var(--lp-bad)" class="mono">toolu_02B 결과 없음</text></g>
+        </svg>
+        <div class="lp-api-err ok" data-lp-api></div>
+        <p class="lp-cap">색이 같은 선이 같은 번호의 요청과 결과입니다. 오류 문구는 Anthropic 문서의 설명을 줄여 옮긴 것입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-sec">
+    <div class="lp-wrap lp-split top">
+      <div>
+        <h2>ReAct의 생각·행동·관찰과 API 블록은 닮았습니다</h2>
+        <p>ReAct는 Shunyu Yao 등이 2022년 10월에 arXiv에 올린 논문 「ReAct: Synergizing Reasoning and Acting in Language Models」에서 나온 방식입니다. 모델이 생각(Thought)을 쓰고 행동(Action)을 하고 관찰(Observation) 결과를 받는 과정을 되풀이합니다.</p>
+        <p>지금 API에서는 행동이 <code>tool_use</code> 블록으로, 관찰이 <code>tool_result</code>로 구조화돼 옵니다. 생각은 모델이 도구를 부르기 전에 글 블록을 함께 쓸 때만 보입니다. 이 대응은 논문과 문서를 맞춰 본 필자의 해석입니다. 그림처럼 생각과 행동은 모델이 쓰고 관찰은 코드가 가져온 값입니다.</p>
+      </div>
+      <div data-figure>
+        <svg class="lp-scene lp-nar" viewBox="0 0 460 290" role="img" aria-label="생각, 행동, 관찰이 한 바퀴 도는 고리. 생각과 행동은 모델이 쓰고 관찰은 코드가 가져온 결과다. 관찰 뒤에 다시 생각으로 돌아간다.">
+          <defs><marker id="lp-ar2" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
+          <path d="M122 70 C180 40 250 40 308 70" fill="none" stroke="var(--fg-neutral)" stroke-width="4" marker-end="url(#lp-ar2)"/>
+          <path d="M350 120 C350 180 300 215 262 232" fill="none" stroke="var(--fg-neutral)" stroke-width="4" marker-end="url(#lp-ar2)"/>
+          <path d="M198 232 C150 215 100 180 100 120" fill="none" stroke="var(--fg-neutral)" stroke-width="4" marker-end="url(#lp-ar2)"/>
+          <circle cx="90" cy="82" r="34" fill="var(--bg-base)" stroke="var(--lp-model)" stroke-width="4"/><use href="#lp-ic-robot" x="70" y="62" width="40" height="40" style="color:var(--lp-model)"/>
+          <circle cx="360" cy="82" r="34" fill="var(--bg-base)" stroke="var(--lp-model)" stroke-width="4"/><use href="#lp-ic-bolt" x="340" y="62" width="40" height="40" style="color:var(--lp-model)"/>
+          <circle cx="230" cy="236" r="34" fill="var(--bg-base)" stroke="var(--lp-code)" stroke-width="4"/><use href="#lp-ic-paper" x="210" y="216" width="40" height="40" style="color:var(--lp-code)"/>
+          <text x="52" y="150" text-anchor="middle" font-size="16" class="t-s">생각</text><text x="52" y="170" text-anchor="middle" font-size="15" class="t-d">Thought</text><text x="52" y="192" text-anchor="middle" font-size="15" class="t-s mono" style="fill:var(--lp-model)">text 블록</text>
+          <text x="408" y="150" text-anchor="middle" font-size="16" class="t-s">행동</text><text x="408" y="170" text-anchor="middle" font-size="15" class="t-d">Action</text><text x="408" y="192" text-anchor="middle" font-size="15" class="t-s mono" style="fill:var(--lp-model)">tool_use</text>
+          <text x="230" y="286" text-anchor="end" font-size="16" class="t-s" transform="translate(-4 0)">관찰</text><text x="230" y="286" font-size="15" class="t-d" transform="translate(4 0)">Observation</text>
+          <text x="225" y="30" text-anchor="middle" font-size="14" class="t-s mono" style="fill:var(--lp-model)">모델이 씀</text>
+          <text x="276" y="250" font-size="15" class="t-s mono" style="fill:var(--lp-code)">tool_result</text><text x="276" y="270" font-size="15" class="t-d">코드가 가져와 붙임</text>
+        </svg>
+        <p class="lp-cap" style="margin-top:12px">ReAct는 이 세 걸음을 한 바퀴씩 되풀이합니다. 주황은 모델이 쓰고 초록은 코드가 가져온 것입니다.</p>
+        <details style="margin-top:14px"><summary>논문 원본 그림 보기</summary><div class="lp-in-d">
+        <figure class="lp-paper" data-figure>
+          <img src="https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/2026-10-16/cf262f3d.webp" alt="ReAct 논문의 비교 그림. 왼쪽은 언어 모델이 생각만 하는 방식, 가운데는 환경에 행동하고 관찰만 하는 방식, 오른쪽은 생각과 행동과 관찰을 모두 되풀이하는 ReAct 방식" loading="lazy">
+          <figcaption>ReAct 논문의 그림입니다. LM은 언어 모델, Env는 환경(우리 쪽에서는 도구), Reasoning Traces는 생각, Actions는 행동, Observations는 관찰입니다. 오른쪽 ReAct는 생각과 행동과 관찰을 한 고리로 되풀이합니다. 출처: Yao 등, ReAct (arXiv 2210.03629).</figcaption>
+        </figure></div></details>
+        
       </div>
     </div>
   </section>
@@ -607,7 +627,6 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
         <h2>다른 SDK와 tool runner</h2>
         <div>
           <p>OpenAI의 Chat Completions API로 같은 루프를 짜면 뼈대는 같고 이름만 달라집니다. 이 글의 루프에서 바뀌는 곳은 표와 코드로 접어 두었습니다.</p>
-
           <details><summary>OpenAI로 짠 같은 루프와 달라지는 곳 보기</summary><div class="lp-in-d">
           <table class="lp-tbl">
             <thead><tr><th></th><th>Anthropic</th><th>OpenAI Chat Completions</th></tr></thead>
@@ -652,6 +671,21 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
           <p>다음 글에서는 Agent 개발 프레임워크인 LangChain의 <code>init_chat_model</code>로 모델을 갈아 끼우는 법을 알아보겠습니다.</p>
         </div>
       </div>
+
+      <div style="margin-top:36px" data-figure>
+        <svg class="lp-scene lp-nar" viewBox="0 0 460 190" role="img" aria-label="루프 길 위에 선 표지판 네 개. 바퀴 수 한도, stop_reason 갈림길, 오류를 결과로 돌려주기, 응답을 그대로 기록하기.">
+          <g style="color:var(--lp-bad)"><use href="#lp-ic-stop" x="35" y="24" width="54" height="54"/></g>
+          <g><use href="#lp-ic-flag" x="143" y="24" width="54" height="54" style="color:var(--lp-code)"/></g>
+          <use href="#lp-ic-mail" x="251" y="24" width="54" height="54" style="color:var(--lp-bad)"/>
+          <use href="#lp-ic-paper" x="359" y="24" width="54" height="54" style="color:var(--lp-model)"/>
+          <g class="t-s" font-size="14" text-anchor="middle">
+            <text x="62" y="104" class="t-s">바퀴 수 한도</text><text x="62" y="124" font-size="12" class="t-d">끝을 보장</text>
+            <text x="170" y="104" class="t-s">stop_reason</text><text x="170" y="124" font-size="12" class="t-d">길을 고름</text>
+            <text x="278" y="104" class="t-s">오류는 결과로</text><text x="278" y="124" font-size="12" class="t-d">모델이 고침</text>
+            <text x="386" y="104" class="t-s">응답 기록</text><text x="386" y="124" font-size="12" class="t-d">그대로 보관</text>
+          </g>
+        </svg>
+      </div>
     </div>
   </section>
 
@@ -659,16 +693,16 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
     <div class="lp-wrap">
       <div class="lp-head">
         <h2>참고 자료</h2>
-        <ul class="lp-refs">
+        <details><summary>출처 8개 펼치기</summary><ul class="lp-refs">
           <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls">Handle tool calls</a>, Anthropic: tool_use·tool_result 모양, tool_result 배치 규칙, is_error와 오류 문장 작성 안내</li>
           <li><a href="https://platform.claude.com/docs/en/api/handling-stop-reasons">Handling stop reasons</a>, Anthropic: stop_reason 값별 의미와 처리</li>
           <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use">Parallel tool use</a>, Anthropic: 한 응답에 tool_use가 여러 개일 때 결과를 한 user 메시지에 담는 규칙</li>
           <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner">Tool runner</a>, Anthropic: 루프를 대신 돌려 주는 베타 기능과 반복 상한</li>
           <li><a href="https://www.anthropic.com/engineering/building-effective-agents">Building effective agents</a>, Anthropic: Agent를 환경의 피드백을 받아 루프 안에서 도구를 쓰는 LLM으로 설명하고 최대 반복 횟수 같은 종료 조건을 권고</li>
-          <li><a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a>, Yao 등 (2022): Thought·Action·Observation 형식과 반복 실패 한계</li>
+          <li><a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a>, Yao 등 (2022): Thought·Action·Observation 형식, 그림, 반복 실패 한계</li>
           <li><a href="https://developers.openai.com/api/docs/api-reference/chat">Chat Completions API reference</a>, OpenAI: finish_reason, role tool, tool_call_id, arguments 검증 주의</li>
           <li><a href="https://pypi.org/project/anthropic/">anthropic (Python SDK) 1.15.0</a>, <a href="https://pypi.org/project/openai/3.31.0/">openai 3.31.0</a>, PyPI</li>
-        </ul>
+        </ul></details>
       </div>
     </div>
   </section>
@@ -676,6 +710,7 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
 </div>
 <script>
 (() => {
+
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
@@ -685,144 +720,9 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
   const timers = new Set();
   const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
   signal.addEventListener("abort", () => timers.forEach(clearTimeout));
-
-  /* 히어로 보드: 한 바퀴씩 돌려 보기 */
-  const board = $("[data-lp-board]");
-  const PLAN = {
-    ok: { d: "조회와 FAQ 검색을 거쳐 3번째 호출에서 답을 씁니다.", laps: [["call", "get_ticket"], ["call", "search_faq"], ["end"]] },
-    err: { d: "첫 조회가 오류 결과로 돌아오지만 모델이 인자를 고쳐 다시 부릅니다.", laps: [["err", "get_ticket"], ["call", "get_ticket"], ["end"]] },
-    never: { d: "모델이 같은 도구만 계속 부릅니다. 스스로 끝낼 기미가 없습니다.", laps: Array.from({ length: 8 }, () => ["err", "get_ticket"]) },
-  };
-  let sc = "ok", busy = false;
-  const maxEl = $("[data-lp-max]"), lapsEl = $("[data-lp-laps]"), verdict = $("[data-lp-verdict]"), fs = $$("[data-lp-fs]", board);
-  const lapHTML = (i, st, kind, tool, lim) => {
-    if (st === "out") return `<div class="lp-lap out"><small>${i + 1}번째</small><em>한도 밖</em></div>`;
-    if (st === "idle") return `<div class="lp-lap idle"><small>${i + 1}번째 호출</small></div>`;
-    const body = kind === "end" ? `<span class="lp-tag m">end_turn</span><em>답을 씀</em>` : `<span class="lp-tag m">tool_use</span><em>${tool}${kind === "err" ? " · 오류 결과" : ""}</em>`;
-    return `<div class="lp-lap ${st}"><small>${i + 1}번째 호출</small>${body}</div>`;
-  };
-  function draw(upTo, finalState) {
-    const lim = +maxEl.value, plan = PLAN[sc].laps;
-    $("[data-lp-maxout]").textContent = lim;
-    lapsEl.innerHTML = Array.from({ length: 8 }, (_, i) => {
-      if (i >= lim) return lapHTML(i, "out");
-      if (i >= plan.length || i >= upTo) return lapHTML(i, "idle");
-      const [kind, tool] = plan[i];
-      const st = kind === "end" ? "fin" : (finalState && i === lim - 1 ? "cut" : "");
-      return lapHTML(i, st, kind, tool, lim);
-    }).join("");
-  }
-  function verdictFor() {
-    const lim = +maxEl.value, plan = PLAN[sc].laps;
-    const endAt = plan.findIndex((p) => p[0] === "end");
-    if (endAt >= 0 && endAt < lim) return `<span class="lp-tag n">정상 종료</span>${endAt + 1}번째 호출에서 end_turn이 와서 답을 돌려주고 끝났습니다.`;
-    return `<span class="lp-tag x">강제 종료</span>바퀴 수 한도 ${lim}에 걸려 코드가 루프를 끊었습니다. 답은 없습니다.`;
-  }
-  const lit = (idx) => fs.forEach((f, i) => f.classList.toggle("on", idx.includes(i)));
-  function settle() { const n = Math.min(+maxEl.value, PLAN[sc].laps.length); draw(n, true); lit([]); verdict.innerHTML = verdictFor(); }
-  async function play() {
-    if (busy) return; busy = true;
-    const lim = +maxEl.value, plan = PLAN[sc].laps, btn = $("[data-lp-play]");
-    btn.disabled = true; verdict.innerHTML = "";
-    draw(0, false);
-    for (let i = 0; i < Math.min(lim, plan.length); i++) {
-      if (signal.aborted) return;
-      const kind = plan[i][0];
-      lit([0]); await later(reduce ? 0 : 420);
-      lit([1]); await later(reduce ? 0 : 420);
-      if (kind === "end") { lit([4]); draw(i + 1, false); await later(reduce ? 0 : 500); break; }
-      lit([2]); draw(i + 1, false); await later(reduce ? 0 : 420);
-      lit([3]); await later(reduce ? 0 : 420);
-    }
-    settle(); busy = false; btn.disabled = false;
-  }
-  const setSc = (k) => { sc = k; $("[data-lp-desc]").textContent = PLAN[k].d; };
-  $$("[data-lp-sc]").forEach((b) => b.addEventListener("click", () => { if (busy) return; press("[data-lp-sc]", b); setSc(b.dataset.lpSc); settle(); }, { signal }));
-  maxEl.addEventListener("input", () => { if (busy) return; settle(); }, { signal });
-  $("[data-lp-play]").addEventListener("click", play, { signal });
-  setSc("ok"); settle();
-
-  /* 카드 더미: 스크롤로 한 장씩 */
-  const story = $("[data-lp-story]"), steps = $$("[data-lp-step]", story), cards = $$("[data-lp-card]", story), sfig = $("[data-lp-sfig]", story), stat = $("[data-lp-stat]", story);
-  const STAT = [
-    ["모델 호출 전", "보낼 카드 1장"],
-    ["1번째 호출", "보낸 카드 1장", "stop_reason: tool_use"],
-    ["1번째 호출 뒤", "카드 3장 쌓임"],
-    ["2번째 호출", "보낸 카드 3장 (앞 카드를 전부 다시 보냄)", "stop_reason: tool_use"],
-    ["2번째 호출 뒤", "카드 5장 쌓임"],
-    ["3번째 호출", "보낸 카드 5장 (앞 카드를 전부 다시 보냄)", "stop_reason: end_turn · 루프 끝"],
-  ];
-  const COUNT = [1, 2, 3, 4, 5, 6];
-  const mq = matchMedia("(min-width: 901px)");
-  function applyStep(idx) {
-    steps.forEach((s, i) => s.classList.toggle("on", i === idx));
-    cards.forEach((c, i) => { c.classList.toggle("on", i < COUNT[idx]); c.classList.toggle("new", i === COUNT[idx] - 1 && idx > 0); });
-    stat.innerHTML = STAT[idx].map((t, i) => (i === 0 ? `<b>${t}</b>` : `<span>${t}</span>`)).join("");
-  }
-  let raf = 0;
-  function onScroll() {
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
-      if (!mq.matches) { cards.forEach((c) => c.classList.add("on")); stat.innerHTML = "<span>모든 카드가 쌓인 마지막 상태입니다.</span>"; steps.forEach((s) => s.classList.add("on")); return; }
-      const top = Math.max(76, (innerHeight - sfig.offsetHeight) / 2);
-      sfig.style.setProperty("--lp-top", top + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9;
-      steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = i; } });
-      const first = steps[0].getBoundingClientRect();
-      applyStep(first.top > innerHeight * 0.85 ? 0 : best);
-    });
-  }
-  addEventListener("scroll", onScroll, { passive: true, signal });
-  addEventListener("resize", onScroll, { passive: true, signal });
-  onScroll();
-
-  /* 분기기 */
-  const SW = {
-    tool_use: { tag: ["m", "계속"], peek: '{\n  "stop_reason": "tool_use",\n  "content": [\n    {"type": "text", "text": "조회해 보겠습니다."},\n    {"type": "tool_use", "id": "toolu_01A",\n     "name": "get_ticket",\n     "input": {"ticket_id": "T-1042"}}\n  ]\n}', do: "모델이 도구 요청서를 쓰고 멈췄습니다. 코드는 <b>도구를 실행하고 결과 카드를 붙인 뒤 한 바퀴 더</b> 돕니다. 이 길만 루프로 되돌아갑니다." },
-    end_turn: { tag: ["n", "정상 종료"], peek: '{\n  "stop_reason": "end_turn",\n  "content": [\n    {"type": "text",\n     "text": "T-1042는 부품 대기 중입니다."}\n  ]\n}', do: "모델이 할 말을 다 하고 멈췄습니다. 코드는 <b>글 블록을 이어 붙여 돌려주고</b> 루프를 나갑니다. 정상 종료는 이 값뿐입니다." },
-    max_tokens: { tag: ["x", "잘림"], peek: '{\n  "stop_reason": "max_tokens",\n  "content": [\n    {"type": "text",\n     "text": "T-1042는 부품 대기 중이고 교체할 무선 랜"}\n  ]\n}', do: "<code>max_tokens</code> 한도에 걸려 <b>글이 중간에 끊겼습니다.</b> 이 글을 답으로 돌려주면 안 됩니다. 한도를 키워 다시 부르거나 실패로 처리합니다. 도구 요청이 반쯤 쓰이다 잘렸다면 실행하지 않습니다." },
-    refusal: { tag: ["x", "거절"], peek: '{\n  "stop_reason": "refusal",\n  "content": []\n}', do: "모델이 이 요청에 답하지 않았습니다. <b>HTTP 200으로 정상 응답처럼 옵니다.</b> 오류 처리에 걸리지 않으니 <code>stop_reason</code>을 직접 확인해야 합니다. 사용자에게 안내하고 끝내거나 다른 모델로 다시 시도합니다." },
-  };
-  const showSw = (k) => { const s = SW[k]; $("[data-lp-peek]").textContent = s.peek; $("[data-lp-do]").innerHTML = `<span class="lp-tag ${s.tag[0]}">${s.tag[1]}</span><br>${s.do}`; };
-  $$("[data-lp-route]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-route]", b); showSw(b.dataset.lpRoute); }, { signal }));
-  showSw("tool_use");
-
-  /* 비용 실험판 */
-  const barsEl = $("[data-lp-bars]"), axisEl = $("[data-lp-axis]");
-  const BASE = 1500, STEP = 500, MAXT = BASE + STEP * 11;
-  let bmode = "never";
-  barsEl.innerHTML = Array.from({ length: 12 }, () => `<div class="lp-col"><i></i></div>`).join("");
-  axisEl.innerHTML = Array.from({ length: 12 }, (_, i) => `<span>${i + 1}</span>`).join("");
   const nf = (n) => n.toLocaleString("ko-KR");
-  function drawBars() {
-    const lim = +$("[data-lp-bmax]").value; $("[data-lp-bmaxout]").textContent = lim;
-    const endAt = bmode === "ok" ? 3 : 99; let sum = 0, last = 0;
-    $$(".lp-col", barsEl).forEach((c, i) => {
-      const n = i + 1, t = BASE + STEP * i;
-      const ran = n <= lim && n <= endAt;
-      c.className = "lp-col" + (n > lim && n <= endAt ? " cut" : "") + (n > endAt ? " idle" : "") + (ran && n === endAt ? " stop" : "");
-      $("i", c).style.height = (t / MAXT * 100) + "%";
-      if (ran) { sum += t; last = t; }
-    });
-    $("[data-lp-last]").textContent = last ? nf(last) + " 토큰" : "-";
-    $("[data-lp-sum]").textContent = nf(sum) + " 토큰";
-    $("[data-lp-all]").textContent = nf(Array.from({ length: 12 }, (_, i) => BASE + STEP * i).reduce((a, b) => a + b, 0)) + " 토큰";
-  }
-  $$("[data-lp-b]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-b]", b); bmode = b.dataset.lpB; drawBars(); }, { signal }));
-  $("[data-lp-bmax]").addEventListener("input", drawBars, { signal });
-  drawBars();
-
-  /* ReAct 칠하기 */
-  const map = $("[data-lp-map]");
-  $$("[data-lp-paint]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-paint]", b); map.dataset.paint = b.dataset.lpPaint; }, { signal }));
-
   /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const RUNS = {
-    ok: [["cmd", "$ python agent.py"], ["wait", 700], ["line", "1번째 호출: tool_use"], ["wait", 500], ["line", "2번째 호출: tool_use"], ["wait", 500], ["line", "3번째 호출: end_turn"], ["type", "T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다. 그 전에는 유선 연결을 쓰세요."]],
-    never: [["cmd", "$ python agent.py"], ["wait", 600], ["line", "1번째 호출: tool_use"], ["wait", 450], ["line", "2번째 호출: tool_use"], ["wait", 450], ["line", "3번째 호출: tool_use"], ["type", "3번 안에 끝내지 못했습니다."]],
-    err: [["cmd", "$ python agent.py"], ["wait", 700], ["line", "1번째 호출: tool_use"], ["line", "  도구 오류 → 결과로 돌려줌: T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."], ["wait", 500], ["line", "2번째 호출: tool_use"], ["wait", 500], ["line", "3번째 호출: end_turn"], ["type", "T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다."]],
-  };
-  $$("[data-lp-run]").forEach((btn) => btn.addEventListener("click", async () => {
+  const initTerms = (RUNS) => $$("[data-lp-run]").forEach((btn) => btn.addEventListener("click", async () => {
     const out = $("[data-lp-out]", btn.closest("[data-lp-term]"));
     btn.disabled = true; out.textContent = "";
     const cur = document.createElement("span"); cur.className = "cur";
@@ -836,5 +736,245 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
     }
     cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
   }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+
+  /* ───── 히어로: 루프 트랙 (데스크톱·모바일 배치를 따로 그린다) ───── */
+  const board = $("[data-lp-board]"), heroSvg = $("[data-lp-hero-svg]");
+  const PLAN = {
+    ok: { d: "조회와 FAQ 검색을 거쳐 3번째 호출에서 답을 씁니다.", laps: [["call", "get_ticket"], ["call", "search_faq"], ["end"]] },
+    err: { d: "첫 조회가 오류 결과로 돌아오지만 모델이 인자를 고쳐 다시 부릅니다.", laps: [["err", "get_ticket"], ["call", "get_ticket"], ["end"]] },
+    never: { d: "모델이 같은 도구만 계속 부릅니다. 스스로 끝낼 기미가 없습니다.", laps: Array.from({ length: 8 }, () => ["err", "get_ticket"]) },
+  };
+  const LAYOUTS = {
+    desk: { vb: [720, 450], path: "M190 110 H430 Q480 110 480 160 V250 Q480 300 430 300 H190 Q140 300 140 250 V160 Q140 110 190 110 Z", st: [[310, 110], [480, 205], [310, 300], [140, 205]], r: 32, ic: 44, exit: [480, 205, 640, 205], flag: [620, 168, 52], flagRun: [588, 205],
+      lbl: [[310, 60, "① 모델 호출", "middle", 18], [560, 176, "② 멈춘 이유?", "middle", 15], [310, 352, "③ 도구 실행", "middle", 18], [104, 150, "④ 결과", "middle", 18], [104, 172, "붙이기", "middle", 18], [646, 160, "끝 · 답", "middle", 16], [560, 236, "도구 요청이 아니면", "middle", 14]],
+      center: [310, 200, 32, 232, 16], barrier: [456, 232, 48, 480, 300], stack: { x: 540, w: 140, base: 406, step: 9.5, line: 416, title: [610, 444] }, dots: { x0: 160, dx: 32, y: 418, lbl: [150, 394, 15] }, start: -70 },
+    mob: { vb: [400, 520], path: "M130 80 H230 Q270 80 270 120 V240 Q270 280 230 280 H130 Q90 280 90 240 V120 Q90 80 130 80 Z", st: [[180, 80], [270, 180], [180, 280], [90, 180]], r: 30, ic: 38, exit: [270, 180, 330, 180], flag: [338, 152, 52], flagRun: [318, 180],
+      lbl: [[180, 36, "① 모델 호출", "middle", 18], [270, 134, "② 멈춘 이유?", "middle", 16], [180, 336, "③ 도구 실행", "middle", 18], [4, 172, "④ 결과", "start", 15], [4, 192, "붙이기", "start", 15], [364, 224, "끝 · 답", "middle", 16]],
+      center: [180, 176, 20, 200, 12], barrier: [244, 232, 44, 266, 292], stack: { x: 110, w: 180, base: 478, step: 9, line: 488, title: [200, 514] }, dots: { x0: 62, dx: 40, y: 392, lbl: [62, 366, 14] }, start: -50 },
+  };
+  let LY = null, C = null, track, runner, L, S, stations, sheetsG, dotsG, barrier, lapTxt, whyTxt;
+  let sc = "ok", busy = false, gen = 0, myGen = 0;
+  const maxEl = $("[data-lp-max]"), verdict = $("[data-lp-verdict]");
+  function buildHero() {
+    const key = matchMedia("(max-width: 760px)").matches ? "mob" : "desk"; if (key === LY) return; LY = key; C = LAYOUTS[key];
+    heroSvg.setAttribute("viewBox", "0 0 " + C.vb.join(" ")); heroSvg.innerHTML = "";
+    track = mk("path", { class: "lp-trk", d: C.path }, heroSvg); mk("path", { class: "lp-trk-c", d: C.path }, heroSvg);
+    mk("path", { class: "lp-trk", d: `M${C.exit[0]} ${C.exit[1]} H${C.exit[2]}`, style: "stroke-width:12" }, heroSvg);
+    const icons = ["robot", null, "gear", "paper"], cols = ["var(--lp-model)", null, "var(--lp-code)", "var(--lp-code)"];
+    stations = C.st.map(([x, y], i) => { const c = mk("circle", { class: "lp-st", cx: x, cy: y, r: C.r }, heroSvg); if (icons[i]) mk("use", { href: `#lp-ic-${icons[i]}`, x: x - C.ic / 2, y: y - C.ic / 2, width: C.ic, height: C.ic, style: `color:${cols[i]}` }, heroSvg); else { const q = mk("text", { x, y: y + C.r * .32, "text-anchor": "middle", "font-size": C.r * .9, "font-weight": 800, class: "t-s" }, heroSvg); q.textContent = "?"; } return c; });
+    mk("use", { href: "#lp-ic-flag", x: C.flag[0], y: C.flag[1], width: C.flag[2], height: C.flag[2], style: "color:var(--fg-strong)" }, heroSvg);
+    C.lbl.forEach(([x, y, t, a, fs]) => { const e = mk("text", { x, y, "text-anchor": a, "font-size": fs, class: fs >= 16 ? "t-s" : "t-d" }, heroSvg); e.textContent = t; });
+    lapTxt = mk("text", { x: C.center[0], y: C.center[1], "text-anchor": "middle", "font-size": C.center[2], "font-weight": 800, class: "t-s" }, heroSvg);
+    whyTxt = mk("text", { x: C.center[0], y: C.center[3], "text-anchor": "middle", "font-size": C.center[4], class: "t-d mono" }, heroSvg);
+    barrier = mk("g", { style: "opacity:0;transition:opacity .4s" }, heroSvg);
+    mk("use", { href: "#lp-ic-stop", x: C.barrier[0], y: C.barrier[1], width: C.barrier[2], height: C.barrier[2], style: "color:var(--lp-bad)" }, barrier);
+    const bt = mk("text", { x: C.barrier[3], y: C.barrier[4] + 18, "text-anchor": "middle", "font-size": 15, "font-weight": 800, style: "fill:var(--lp-bad)" }, barrier); bt.textContent = "한도!";
+    const st = C.stack; mk("line", { x1: st.x - 5, y1: st.line, x2: st.x + st.w + 5, y2: st.line, class: "ln", "stroke-width": 3 }, heroSvg);
+    const stt = mk("text", { x: st.title[0], y: st.title[1], "text-anchor": "middle", "font-size": 16, class: "t-s" }, heroSvg); stt.textContent = "messages 더미";
+    sheetsG = mk("g", {}, heroSvg); dotsG = mk("g", {}, heroSvg);
+    const dl = mk("text", { x: C.dots.lbl[0], y: C.dots.lbl[1], "font-size": C.dots.lbl[2], class: "t-d" }, heroSvg); dl.textContent = "바퀴 수(점선 동그라미가 한도)";
+    runner = mk("g", {}, heroSvg); mk("rect", { x: -17, y: -13, width: 34, height: 26, rx: 6, fill: "var(--lp-model)" }, runner); mk("path", { d: "M-17 -2H17M0 -13V13", stroke: "#fff", "stroke-width": 3, opacity: .7 }, runner);
+    L = track.getTotalLength();
+    const nearest = (x, y) => { let b = 0, bd = 1e9; for (let s = 0; s <= L; s += 2) { const p = track.getPointAtLength(s); const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; b = s; } } return b; };
+    S = C.st.map(([x, y]) => nearest(x, y));
+  }
+  const place = (s) => { const p = track.getPointAtLength(((s % L) + L) % L); runner.setAttribute("transform", `translate(${p.x} ${p.y})`); };
+  const lit = (i) => stations.forEach((c, k) => c.classList.toggle("on", k === i));
+  function drawSheets(list) {
+    sheetsG.innerHTML = ""; const st = C.stack;
+    list.forEach((k, i) => { const y = st.base - i * st.step; const col = k === "q" ? "var(--lp-human)" : k === "a" ? "var(--lp-model)" : k === "r" ? "var(--lp-code)" : "var(--lp-bad)"; mk("rect", { x: st.x, y: y - 8, width: st.w, height: 8, rx: 2.5, fill: col }, sheetsG); });
+  }
+  function drawDots(done, lim, cut) {
+    dotsG.innerHTML = "";
+    for (let i = 0; i < 8; i++) { const cx = C.dots.x0 + i * C.dots.dx, cy = C.dots.y; mk("circle", { cx, cy, r: 9, fill: i < done ? (cut && i === done - 1 ? "var(--lp-bad)" : "var(--lp-model)") : "none", stroke: i < lim ? "var(--line-strong)" : "none", "stroke-width": 2, opacity: i < lim ? 1 : .25 }, dotsG); if (i === lim - 1) mk("circle", { cx, cy, r: 14, fill: "none", stroke: "var(--lp-bad)", "stroke-width": 2, "stroke-dasharray": "3 3" }, dotsG); }
+  }
+  const setTxt = (a, b) => { lapTxt.textContent = a; whyTxt.textContent = b; };
+  function verdictFor(lim) {
+    const plan = PLAN[sc].laps, endAt = plan.findIndex((p) => p[0] === "end");
+    if (endAt >= 0 && endAt < lim) return `<span class="lp-tag n">정상 종료</span>${endAt + 1}번째 호출에서 end_turn이 와서 답을 돌려주고 끝났습니다.`;
+    return `<span class="lp-tag x">강제 종료</span>바퀴 수 한도 ${lim}에 걸려 코드가 루프를 끊었습니다. 답은 없습니다.`;
+  }
+  function settle() {
+    buildHero();
+    const lim = +maxEl.value, plan = PLAN[sc].laps; $("[data-lp-maxout]").textContent = lim;
+    const sheets = ["q"]; let laps = 0, cut = false, ended = false;
+    for (let i = 0; i < Math.min(lim, plan.length); i++) { laps++; const k = plan[i][0]; sheets.push("a"); if (k === "end") { ended = true; break; } if (i === lim - 1) { cut = true; break; } sheets.push(k === "err" ? "e" : "r"); }
+    drawSheets(sheets); drawDots(laps, lim, cut);
+    lit(-1); barrier.style.opacity = cut ? 1 : 0;
+    setTxt(`${laps}번째 호출`, ended ? "end_turn → 끝" : "tool_use → 한도!");
+    if (ended) runner.setAttribute("transform", `translate(${C.flagRun[0]} ${C.flagRun[1]})`); else place(S[1]);
+    verdict.innerHTML = verdictFor(lim);
+  }
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const moveS = (a, b, ms) => new Promise((res) => { if (reduce || ms <= 0) { place(b); return res(); } const t0 = performance.now(); const step = (now) => { if (signal.aborted || gen !== myGen) return res(); const t = Math.min(1, (now - t0) / ms); place(a + (b - a) * ease(t)); if (t < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+  async function play() {
+    if (busy) return; buildHero(); busy = true; myGen = ++gen; const btn = $("[data-lp-play]"); btn.disabled = true;
+    const lim = +maxEl.value, plan = PLAN[sc].laps;
+    const sheets = ["q"]; drawSheets(sheets); drawDots(0, lim, false); barrier.style.opacity = 0; verdict.innerHTML = "";
+    let s = S[0] + C.start; place(s); setTxt("0번째 호출", "출발");
+    for (let i = 0; i < Math.min(lim, plan.length); i++) {
+      const kind = plan[i][0], base = i * L;
+      await moveS(s, S[0] + base, 700); s = S[0] + base; lit(0); setTxt(`${i + 1}번째 호출`, "모델을 부르는 중"); await later(reduce ? 0 : 450);
+      sheets.push("a"); drawSheets(sheets);
+      await moveS(s, S[1] + base, 500); s = S[1] + base; lit(1); drawDots(i + 1, lim, false);
+      if (kind === "end") { setTxt(`${i + 1}번째 호출`, "stop_reason: end_turn"); await later(reduce ? 0 : 500); lit(-1);
+        const t0 = performance.now(), ex = C.exit; await new Promise((res) => { if (reduce) { runner.setAttribute("transform", `translate(${C.flagRun[0]} ${C.flagRun[1]})`); return res(); } const st = (now) => { if (signal.aborted || gen !== myGen) return res(); const t = Math.min(1, (now - t0) / 700); runner.setAttribute("transform", `translate(${ex[0] + (C.flagRun[0] - ex[0]) * ease(t)} ${ex[1]})`); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); }); break; }
+      setTxt(`${i + 1}번째 호출`, "stop_reason: tool_use"); await later(reduce ? 0 : 450);
+      if (i === lim - 1) { barrier.style.opacity = 1; drawDots(i + 1, lim, true); lit(-1); break; }
+      await moveS(s, S[2] + base, 550); s = S[2] + base; lit(2); setTxt(`${i + 1}번째 호출`, kind === "err" ? "도구 실행 → 오류!" : "도구 실행"); await later(reduce ? 0 : 450);
+      await moveS(s, S[3] + base, 550); s = S[3] + base; lit(3); sheets.push(kind === "err" ? "e" : "r"); drawSheets(sheets); await later(reduce ? 0 : 350);
+    }
+    lit(-1); if (gen === myGen) verdict.innerHTML = verdictFor(lim); busy = false; btn.disabled = false;
+  }
+  const setSc = (k) => { sc = k; $("[data-lp-desc]").textContent = PLAN[k].d; };
+  const stopRun = () => { if (busy) { gen++; busy = false; $("[data-lp-play]").disabled = false; } };
+  $$("[data-lp-sc]").forEach((b) => b.addEventListener("click", () => { stopRun(); press("[data-lp-sc]", b); setSc(b.dataset.lpSc); settle(); }, { signal }));
+  maxEl.addEventListener("input", () => { stopRun(); settle(); }, { signal });
+  $("[data-lp-play]").addEventListener("click", play, { signal });
+  addEventListener("resize", () => { if (!busy) { const k = matchMedia("(max-width: 760px)").matches ? "mob" : "desk"; if (k !== LY) settle(); } }, { passive: true, signal });
+  setSc("never"); settle();
+
+  /* ───── 랠리 순서도 ───── */
+  const RALLIES = [
+    { q: "질문 1. 와이파이 껐다 켜는 법", n: "모델 호출 1번", trips: 0 },
+    { q: "질문 2. T-1042 티켓 상태", n: "모델 호출 2번", trips: 1 },
+    { q: "질문 3. T-1042 상태와 해결 방법", n: "모델 호출 3번", trips: 2 },
+    { q: "질문 4. 모델이 같은 도구만 계속 부르면", n: "끝나지 않고 한도에서 끊깁니다", trips: 3, open: true },
+  ];
+  const rallyEl = $("[data-lp-rally]");
+  rallyEl.innerHTML = RALLIES.map((r, i) => `<figure><figcaption>${r.q}<small>${r.n}</small></figcaption><svg class="lp-scene" viewBox="0 0 300 350" role="img" aria-label="${r.q}. ${r.n}" data-lp-rl="${i}"></svg></figure>`).join("");
+  RALLIES.forEach((r, i) => {
+    const svg = $(`[data-lp-rl="${i}"]`);
+    mk("use", { href: "#lp-ic-robot", x: 26, y: 8, width: 40, height: 40, style: "color:var(--lp-model)" }, svg);
+    mk("use", { href: "#lp-ic-gear", x: 234, y: 8, width: 40, height: 40, style: "color:var(--lp-code)" }, svg);
+    const t1 = mk("text", { x: 46, y: 66, "text-anchor": "middle", "font-size": 14, class: "t-s" }, svg); t1.textContent = "모델";
+    const t2 = mk("text", { x: 254, y: 66, "text-anchor": "middle", "font-size": 14, class: "t-s" }, svg); t2.textContent = "도구";
+    mk("line", { x1: 46, y1: 76, x2: 46, y2: 340, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, svg);
+    mk("line", { x1: 254, y1: 76, x2: 254, y2: 340, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, svg);
+    let y = 98; const gap = 40;
+    const arrow = (x1, x2, yy, col, label) => { mk("line", { x1, y1: yy, x2: x2 + (x2 > x1 ? -8 : 8), y2: yy, stroke: col, "stroke-width": 3.5 }, svg); mk("path", { d: x2 > x1 ? `M${x2} ${yy} l-11 -6 v12z` : `M${x2} ${yy} l11 -6 v12z`, fill: col }, svg); const tx = mk("text", { x: 150, y: yy - 6, "text-anchor": "middle", "font-size": 13, class: "mono t-s", style: `fill:${col}` }, svg); tx.textContent = label; };
+    for (let k = 0; k < r.trips; k++) { arrow(46, 254, y, "var(--lp-human)", "도구 요청서"); y += 30; arrow(254, 46, y, "var(--lp-code)", "도구 결과"); y += gap - 6; }
+    if (r.open) { const d = mk("text", { x: 150, y: y + 8, "text-anchor": "middle", "font-size": 30, "font-weight": 800, style: "fill:var(--lp-bad)" }, svg); d.textContent = "⋯"; const d2 = mk("text", { x: 120, y: y + 38, "text-anchor": "middle", "font-size": 16, "font-weight": 700, style: "fill:var(--lp-bad)" }, svg); d2.textContent = "한도에서 끊김"; mk("use", { href: "#lp-ic-stop", x: 196, y: y - 6, width: 40, height: 40, style: "color:var(--lp-bad)" }, svg); }
+    else { mk("use", { href: "#lp-ic-flag", x: 22, y: y - 6, width: 42, height: 42, style: "color:var(--fg-strong)" }, svg); const e = mk("text", { x: 76, y: y + 20, "font-size": 14, class: "t-s mono" }, svg); e.textContent = "end_turn · 답"; }
+  });
+
+  /* ───── messages 더미 (스크롤 이야기) ───── */
+  const story = $("[data-lp-story]"), steps = $$("[data-lp-step]", story), sfig = $("[data-lp-sfig]", story), stat = $("[data-lp-stat]", story);
+  const CARDS = [
+    { k: "u", from: [0, 30], who: "user", body: "T-1042 티켓 상태랑 해결 방법 알려줘", col: "var(--lp-human)" },
+    { k: "a", from: [-110, 0], who: "assistant · tool_use", body: "id toolu_01A · get_ticket", col: "var(--lp-model)" },
+    { k: "r", from: [110, 0], who: "user · tool_result", body: "toolu_01A · 부품 대기, 10월 18일", col: "var(--lp-code)" },
+    { k: "a", from: [-110, 0], who: "assistant · tool_use", body: "id toolu_02B · search_faq", col: "var(--lp-model)" },
+    { k: "r", from: [110, 0], who: "user · tool_result", body: "toolu_02B · 교체 전까지 유선 LAN", col: "var(--lp-code)" },
+    { k: "a", from: [-110, 0], who: "assistant · text", body: "T-1042는 부품 대기 중이고 …", col: "var(--lp-model)" },
+  ];
+  const cardsG = $("[data-lp-cards]", story), braceG = $("[data-lp-brace]", story);
+  const cardEls = CARDS.map((c, i) => {
+    const y = 160 + i * 64;
+    const g = mk("g", { class: "lp-card", style: `transform: translate(${c.from[0]}px, ${80 - (160 + i * 64) + c.from[1]}px)` }, cardsG);
+    mk("rect", { x: 70, y, width: 340, height: 54, rx: 12, fill: `color-mix(in srgb, ${c.col} 10%, var(--bg-base))`, stroke: c.col, "stroke-width": 2.5 }, g);
+    const w = mk("text", { x: 86, y: y + 21, "font-size": 14, "font-weight": 800, style: `fill:${c.col}` }, g); w.textContent = c.who;
+    const b = mk("text", { x: 86, y: y + 42, "font-size": 15, class: "mono t-s" }, g); b.textContent = c.body;
+    return g;
+  });
+  const STAT = [["모델을 부르기 전", "보낼 카드 1장"], ["1번째 호출", "보낸 카드 1장 → 응답 한 장 추가"], ["도구 실행 뒤", "카드 3장"], ["2번째 호출", "카드 3장을 모두 다시 보냄"], ["도구 실행 뒤", "카드 5장"], ["3번째 호출", "카드 5장을 모두 다시 보냄 · end_turn"]];
+  const SENT = [0, 1, 0, 3, 0, 5];
+  const mq = matchMedia("(min-width: 901px)");
+  function applyStep(idx) {
+    steps.forEach((s, i) => s.classList.toggle("on", i === idx));
+    cardEls.forEach((c, i) => c.classList.toggle("on", i <= idx));
+    stat.innerHTML = `<b>${STAT[idx][0]}</b> · ${STAT[idx][1]}`;
+    braceG.innerHTML = "";
+    const sent = SENT[idx];
+    if (sent) { const y1 = 160, y2 = 160 + sent * 64 - 10; mk("path", { d: `M430 ${y1} q14 0 14 14 V${(y1 + y2) / 2 - 8} q0 10 10 10 q-10 0 -10 10 V${y2 - 14} q0 14 -14 14`, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 3 }, braceG); const t = mk("text", { x: 462, y: (y1 + y2) / 2 + 5, "font-size": 15, class: "t-s" }, braceG); t.textContent = `${sent}장 전송`; }
+  }
+  let raf = 0;
+  function onScroll() {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      if (!mq.matches) { cardEls.forEach((c) => c.classList.add("on")); stat.innerHTML = "<b>카드 6장이 모두 쌓인 마지막 상태입니다</b>"; steps.forEach((s) => s.classList.add("on")); return; }
+      const top = Math.max(76, (innerHeight - sfig.offsetHeight) / 2); sfig.style.setProperty("--lp-top", top + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9;
+      steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = i; } });
+      applyStep(steps[0].getBoundingClientRect().top > innerHeight * 0.85 ? 0 : best);
+    });
+  }
+  addEventListener("scroll", onScroll, { passive: true, signal }); addEventListener("resize", onScroll, { passive: true, signal }); onScroll();
+
+  /* ───── 분기기 ───── */
+  const SW = {
+    tool_use: { tag: ["m", "계속"], peek: '{\n  "stop_reason": "tool_use",\n  "content": [\n    {"type": "text", "text": "조회해 보겠습니다."},\n    {"type": "tool_use", "id": "toolu_01A",\n     "name": "get_ticket",\n     "input": {"ticket_id": "T-1042"}}\n  ]\n}', do: "모델이 도구 요청서를 쓰고 멈췄습니다. 코드는 <b>도구를 실행하고 결과 카드를 붙인 뒤 한 바퀴 더</b> 돕니다. 이 길만 루프로 되돌아갑니다." },
+    end_turn: { tag: ["n", "정상 종료"], peek: '{\n  "stop_reason": "end_turn",\n  "content": [\n    {"type": "text",\n     "text": "T-1042는 부품 대기 중입니다."}\n  ]\n}', do: "모델이 할 말을 다 하고 멈췄습니다. 코드는 <b>글 블록을 이어 붙여 돌려주고</b> 루프를 나갑니다. 정상 종료는 이 값뿐입니다." },
+    max_tokens: { tag: ["x", "잘림"], peek: '{\n  "stop_reason": "max_tokens",\n  "content": [\n    {"type": "text",\n     "text": "T-1042는 부품 대기 중이고 교체할 무선 랜"}\n  ]\n}', do: "<code>max_tokens</code> 한도에 걸려 <b>글이 중간에 끊겼습니다.</b> 이 글을 답으로 돌려주면 안 됩니다. 한도를 키워 다시 부르거나 실패로 처리합니다. 도구 요청이 반쯤 쓰이다 잘렸다면 실행하지 않습니다." },
+    refusal: { tag: ["x", "거절"], peek: '{\n  "stop_reason": "refusal",\n  "content": []\n}', do: "모델이 이 요청에 답하지 않았습니다. <b>HTTP 200으로 정상 응답처럼 옵니다.</b> 오류 처리에 걸리지 않으니 <code>stop_reason</code>을 직접 확인해야 합니다. 사용자에게 안내하고 끝내거나 다른 모델로 다시 시도합니다." },
+  };
+  const swSvg = $("[data-lp-switch] svg"), train = $("[data-lp-train]", swSvg);
+  const routes = {}; $$("[data-lp-rt]", swSvg).forEach((g) => { routes[g.dataset.lpRt] = g; });
+  const FULL = { tool_use: "M20 190 H150 C200 190 200 60 250 60 H340", end_turn: "M20 190 H316", max_tokens: "M20 190 H150 C200 190 200 310 250 310 H296", refusal: "M20 190 H150 C190 190 190 420 250 420 H320" };
+  const hidden = mk("path", { d: FULL.end_turn, fill: "none" }, swSvg); hidden.style.visibility = "hidden";
+  let swGen = 0;
+  async function sendTrain(k) {
+    const my = ++swGen; hidden.setAttribute("d", FULL[k]); const len = hidden.getTotalLength();
+    Object.entries(routes).forEach(([n, g]) => { g.style.opacity = n === k ? 1 : .5; });
+    train.style.opacity = 1;
+    const put = (s) => { const p = hidden.getPointAtLength(s), q = hidden.getPointAtLength(Math.min(len, s + 2)); const a = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI; train.setAttribute("transform", `translate(${p.x} ${p.y - 0}) rotate(${a})`); };
+    if (reduce) { put(len); return; }
+    const t0 = performance.now(); await new Promise((res) => { const st = (now) => { if (my !== swGen || signal.aborted) return res(); const t = Math.min(1, (now - t0) / 1900); put(len * ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  }
+  const showSw = (k) => { const s = SW[k]; $("[data-lp-peek]").textContent = s.peek; $("[data-lp-do]").innerHTML = `<span class="lp-tag ${s.tag[0]}">${s.tag[1]}</span><br>${s.do}`; sendTrain(k); };
+  $$("[data-lp-route]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-route]", b); showSw(b.dataset.lpRoute); }, { signal }));
+  showSw("tool_use");
+
+  /* ───── 비용 곡선 ───── */
+  const chart = $("[data-lp-chart]");
+  const BASE = 1500, STEP = 500, cum = (n) => 250 * n * n + 1250 * n, MAXY = 52000;
+  let X0 = 80, X1 = 660, Y0 = 340, Y1 = 28, CM = false;
+  const X = (n) => X0 + (X1 - X0) * n / 12, Y = (v) => Y0 - (Y0 - Y1) * v / MAXY;
+  let bmode = "never";
+  function drawChart() {
+    const lim = +$("[data-lp-bmax]").value; $("[data-lp-bmaxout]").textContent = lim;
+    CM = matchMedia("(max-width: 760px)").matches; if (CM) { X0 = 56; X1 = 396; Y0 = 350; Y1 = 40; chart.setAttribute("viewBox", "0 0 420 420"); } else { X0 = 80; X1 = 660; Y0 = 340; Y1 = 28; chart.setAttribute("viewBox", "0 0 700 400"); }
+    chart.innerHTML = "";
+    for (let v = 0; v <= 50000; v += 10000) { mk("line", { x1: X0, y1: Y(v), x2: X1, y2: Y(v), class: "ln", "stroke-width": 1, opacity: .5 }, chart); const t = mk("text", { x: X0 - 10, y: Y(v) + 5, "text-anchor": "end", "font-size": 14, class: "t-d mono" }, chart); t.textContent = v ? (v / 1000) + "K" : "0"; }
+    for (let n = 0; n <= 12; n++) { if (CM && n % 2 && n !== 12) continue; const t = mk("text", { x: X(n), y: Y0 + 24, "text-anchor": "middle", "font-size": 14, class: "t-d mono" }, chart); t.textContent = n; }
+    const ax = mk("text", { x: (X0 + X1) / 2, y: Y0 + 50, "text-anchor": "middle", "font-size": 15, class: "t-s" }, chart); ax.textContent = "모델을 부른 횟수";
+    const ay = mk("text", { x: 14, y: 20, "font-size": 14, class: "t-s" }, chart); ay.textContent = "지금까지 보낸 토큰 합계";
+    const endAt = bmode === "ok" ? 3 : 12, pts = (a, b) => { const o = []; for (let n = a; n <= b; n++) o.push(`${X(n)},${Y(cum(n))}`); return o.join(" "); };
+    mk("polyline", { points: pts(0, 12), fill: "none", stroke: "var(--fg-neutral)", "stroke-width": 3, "stroke-dasharray": "5 7", opacity: bmode === "ok" ? .15 : .55 }, chart);
+    const run = Math.min(lim, endAt);
+    mk("polygon", { points: `${X(0)},${Y0} ${pts(0, run)} ${X(run)},${Y0}`, fill: "var(--lp-model)", opacity: .16 }, chart);
+    mk("polyline", { points: pts(0, run), fill: "none", stroke: "var(--lp-model)", "stroke-width": 5, "stroke-linejoin": "round" }, chart);
+    for (let n = 1; n <= run; n++) mk("circle", { cx: X(n), cy: Y(cum(n)), r: 5.5, fill: "var(--lp-model)" }, chart);
+    mk("line", { x1: X(lim), y1: Y1 - 4, x2: X(lim), y2: Y0, stroke: "var(--lp-bad)", "stroke-width": 2.5, "stroke-dasharray": "6 5" }, chart);
+    const lb = mk("text", { x: X(lim) + 6, y: Y1 + 8, "font-size": 15, "font-weight": 800, style: "fill:var(--lp-bad)" }, chart); lb.textContent = "한도 " + lim;
+    if (bmode === "ok" && lim >= 3) { mk("use", { href: "#lp-ic-flag", x: X(3) - 4, y: Y(cum(3)) - 56, width: 44, height: 44, style: "color:var(--fg-strong)" }, chart); const t = mk("text", { x: X(3) + 44, y: Y(cum(3)) - 28, "font-size": 15, class: "t-s" }, chart); t.textContent = "3번째에서 끝 · 6,000"; }
+    const sum = cum(run), last = BASE + STEP * (run - 1);
+    $("[data-lp-last]").textContent = nf(last) + " 토큰"; $("[data-lp-sum]").textContent = nf(sum) + " 토큰"; $("[data-lp-all]").textContent = nf(cum(12)) + " 토큰";
+    const v = mk("text", { x: X(run) - 10, y: Y(sum) - 16, "text-anchor": (run > 9 || run >= lim) ? "end" : "start", "font-size": 17, "font-weight": 800, class: "t-s mono" }, chart); v.textContent = nf(sum);
+  }
+  $$("[data-lp-b]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-b]", b); bmode = b.dataset.lpB; drawChart(); }, { signal }));
+  $("[data-lp-bmax]").addEventListener("input", drawChart, { signal });
+  drawChart();
+  addEventListener("resize", () => { if (matchMedia("(max-width: 760px)").matches !== CM) drawChart(); }, { passive: true, signal });
+
+  /* ───── 병렬 번호표 ───── */
+  let pl = "all";
+  const drawPl = () => {
+    const one = pl === "one";
+    $("[data-lp-resB]").style.opacity = one ? 0 : 1; $("[data-lp-miss]").style.opacity = one ? 1 : 0; $("[data-lp-pb]").style.opacity = one ? .25 : 1;
+    const box = $("[data-lp-api]"); box.className = "lp-api-err" + (one ? "" : " ok");
+    box.innerHTML = (one ? "<b>지금 보는 것: 결과 하나만 돌려줌</b><br>" : "<b>지금 보는 것: 결과 둘을 한 장에</b><br>") + (one ? "<b>API가 요청을 거절합니다(400).</b> <code>tool_use ids were found without tool_result blocks immediately after</code> — 번호가 있는 요청마다 결과가 바로 다음 user 카드에 있어야 합니다." : "<b>요청이 받아들여집니다.</b> 요청 번호 둘에 결과 번호 둘이 한 장의 user 카드에 짝으로 들어 있습니다.") + `<br><small>${one ? "결과 둘을 한 장에 담으면 받아들여집니다." : "결과를 하나만 돌려주면 API가 400 오류로 거절합니다."}</small>`;
+  };
+  $$("[data-lp-pl]").forEach((b) => b.addEventListener("click", () => { press("[data-lp-pl]", b); pl = b.dataset.lpPl; drawPl(); }, { signal }));
+  drawPl();
+
+  initTerms({
+    ok: [["cmd", "$ python agent.py"], ["wait", 700], ["line", "1번째 호출: tool_use"], ["wait", 500], ["line", "2번째 호출: tool_use"], ["wait", 500], ["line", "3번째 호출: end_turn"], ["type", "T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다. 그 전에는 유선 연결을 쓰세요."]],
+    never: [["cmd", "$ python agent.py"], ["wait", 600], ["line", "1번째 호출: tool_use"], ["wait", 450], ["line", "2번째 호출: tool_use"], ["wait", 450], ["line", "3번째 호출: tool_use"], ["type", "3번 안에 끝내지 못했습니다."]],
+    err: [["cmd", "$ python agent.py"], ["wait", 700], ["line", "1번째 호출: tool_use"], ["line", "  도구 오류 → 결과로 돌려줌: T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."], ["wait", 500], ["line", "2번째 호출: tool_use"], ["wait", 500], ["line", "3번째 호출: end_turn"], ["type", "T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다."]],
+  });
 })();
 </script>
