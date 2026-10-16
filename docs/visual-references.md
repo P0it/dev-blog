@@ -129,6 +129,7 @@
 | [LangChain, Models](https://docs.langchain.com/oss/python/langchain/models) · [Messages](https://docs.langchain.com/oss/python/langchain/messages) | init_chat_model·invoke·stream·batch 와 AIMessage 필드를 문서 순서대로 쓰되, 실제로 모의 서버에 두 회사 클래스를 붙여 요청 본문과 응답 필드를 관찰한 값으로 "같은 것과 다른 것"을 그린다 | 추상화 계층이 무엇을 맞춰 주고 무엇을 못 맞추는지 보일 때 | 2026-10-16 | langchain-init-chat-model-switch-provider |
 | [LangChain, Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) · [Anthropic, Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) | ToolStrategy/ProviderStrategy 두 길과 거절·길이 한도·숫자 범위 같은 보장 밖 사례를 문서 문장으로 확인하고, 모의 서버에 붙여 요청 본문(tools vs output_config.format)·검증 오류·재시도 메시지를 관찰한 값으로 그림을 그린다 | "양식이 보장하는 것과 못 하는 것"을 겹으로 나눠 보일 때 | 2026-10-16 | llm-structured-output-pydantic-langchain |
 | [Anthropic, Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) · [LangChain, Tools](https://docs.langchain.com/oss/python/langchain/tools) | 도구 설명이 겹치면 고르기 어렵다는 문장을 "설명 범위를 원으로 그려 질문 점이 몇 개 원에 걸리나"로 바꾼다. 함수 코드와 모델이 받는 JSON 설명서를 같은 색 부분끼리 짝짓고, 도구 오류 기본 동작과 ToolRuntime 숨김을 모의 서버로 직접 확인한다 | 설명 품질이 선택에 미치는 영향, 코드와 모델이 보는 것의 대응을 보일 때 | 2026-10-16 | ai-agent-tool-design-description-schema |
+| [LangChain, Agents](https://docs.langchain.com/oss/python/langchain/agents) · [Streaming](https://docs.langchain.com/oss/python/langchain/streaming) · [LangGraph, Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api) | 직접 짠 루프의 줄을 기능별 묶음으로 나눠 create_agent 안의 어디로 옮겨 갔는지 짝짓고(맡길 수 없는 줄 포함), stream_mode 조각·get_graph 노드·recursion_limit 단계를 모의 서버로 실행해 관찰한 값으로 그린다 | 프레임워크가 대신하는 일과 대신하지 않는 일을 가를 때 | 2026-10-16 | langchain-create-agent-loop-anatomy |
 
 ## 미확인
 
@@ -224,6 +225,8 @@
 - **도구 설명 범위를 원으로, 질문 점이 걸치는 원 수를 후보 수로** (ai-agent-tool-design-description-schema) — 설명이 부실하면 원이 커져 겹치고 질문 점이 두 원에 들어가 "후보 2개 → 망설임", 충실하면 원이 줄어 한 원에만 들어간다. 원 크기는 설명 토글만으로 바뀌고 질문 토글 세 개가 점 위치를 옮긴다. 라벨은 원 안이 아니라 아래 줄에 모아 겹침을 피했다(Critic 지적)
 - **코드와 모델이 받는 JSON을 같은 색 부분끼리 짝으로, 기본은 모두 칠하기** (ai-agent-tool-design-description-schema) — 버튼으로 한 부분만 고르게 하면 정적 상태에서 대응이 안 보인다는 지적이 나와 기본을 "모두 보기"(이름 파랑·설명 주황·인자 설명 초록·종류 빨강)로 했다
 - **모델 쪽 | 코드 쪽을 점선 벽으로 가르고 사용자 토글** (ai-agent-tool-design-description-schema) — 같은 모델 요청서(list_my_tickets {})가 사용자(kim/lee)에 따라 다른 결과를 받는 것을 모델이 모르는 값(context)과 함께 보였다
+- **직접 짠 코드 24줄을 칸 24개와 기능 카드 9장으로, 기본은 맡긴 뒤 상태** (langchain-create-agent-loop-anatomy) — 줄마다 "맡기기"를 누르면 칸이 주황에서 초록으로 바뀌고 남는 줄 수가 줄어든다. 도구 오류 처리 카드는 기본값이 예외 전파라 "맡길 수 없음"(빨강)으로 남겨 프레임워크의 한계를 같이 보였다. 정적 상태에서 초록이 하나도 없다는 지적이 나와 기본을 맡긴 뒤로 바꿨다
+- **한도는 칸으로, 정상 실행도 끊기는 한도를 슬라이더로** (langchain-create-agent-loop-anatomy) — 모델·도구가 번갈아 놓이는 단계 칸을 한도 슬라이더로 자르면 도구 두 번 쓰는 작업이 한도 5에서 끊기고 6에서 끝난다. 직접 실행해 얻은 값(한도 5 실패, 6 성공)이다
 
 ## 페이지 레이아웃
 
