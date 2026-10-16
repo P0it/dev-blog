@@ -68,7 +68,7 @@
 | # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
 |---|---|---|---|---|---|---|---|
 | 11 | x (`langgraph-state-node-edge-intro`) | 흐름을 왜 그래프로 그리나? | `create_agent` 도 그래프 · StateGraph · TypedDict 상태 · reducer · START/END | 그래프, State, Node, Edge, reducer | 3노드 그래프 | 7 | 발행 |
-| 12 | Agent 를 그래프로 다시 짓기 | `create_agent` 속을 직접 열면 무엇이 있나? | LLM 노드 + ToolNode · conditional edge · 루프 · `Command` | conditional edge, ToolNode, Command | 그래프판 헬프데스크 Agent | 11 | 계획 |
+| 12 | x (`langgraph-rebuild-agent-graph-by-hand`) | `create_agent` 속을 직접 열면 무엇이 있나? | LLM 노드 + ToolNode · conditional edge · 루프 · `Command` | conditional edge, ToolNode, Command | 그래프판 헬프데스크 Agent | 11 | 발행 |
 | 13 | 워크플로 패턴 ①: 체이닝과 라우팅 | 정해진 순서로 충분한 일에 Agent 가 필요한가? | 워크플로 vs Agent(Anthropic) · 순차 체이닝 · 계정·장비·SW 라우팅 | Prompt Chaining, Routing | 문의 유형별 분기 | 12 | 계획 |
 | 14 | 워크플로 패턴 ②: 병렬·Orchestrator-Worker·Evaluator-Optimizer | 일을 나눠 맡기고 다시 모으려면? | 병렬 분기 · `Send` 로 나눠 주기(map-reduce) · 평가자-생성자 반복과 종료 조건 | Parallelization, Orchestrator-Worker, Evaluator-Optimizer, Send | 여러 문서 병렬 분석 후 통합 | 13 | 계획 |
 | 15 | 멈췄다 다시 이어 가는 Agent | 사람 승인을 기다리는 동안 Agent 는 어디에 있나? | checkpointer · `interrupt`/`Command(resume=)` · 승인 흐름 · state history·time travel · durable execution | Human-in-the-loop, interrupt, time travel, durable execution | 승인 후 처리하는 Agent | 9, 12 | 계획 |
