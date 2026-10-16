@@ -1,0 +1,467 @@
+---
+title: 사람의 승인을 기다리는 동안 Agent는 어디에 머물까요?
+slug: langgraph-interrupt-human-approval-checkpoint
+excerpt: Agent 프로그램이 사람의 승인을 기다리며 멈추면 그 사이 실행 상태는 체크포인터가 만든 저장소에 남습니다. interrupt로 멈추고 Command(resume)로 이어 가는 승인 흐름, 재개하면 노드가 처음부터 다시 실행되는 함정, 저장된 지점으로 돌아가 다시 실행하거나 고쳐서 갈라지는 시간 여행을 langgraph 1.2로 확인한 결과와 함께 그림과 코드로 정리합니다.
+tags: [AI Agent, LangGraph, Human-in-the-loop, interrupt, Checkpointer, Python]
+category: ai
+series: ai-agent
+series_order: 15
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-interrupt-human-approval-checkpoint-mvb7wptb.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 위아래 두 구역 히어로(실행 중인 프로그램과 저장소) + 그림 고정 스크롤리텔링(저장 칸이 한 칸씩 쌓임) + 코드|터미널 + 두 번 실행되는 노드 장면 + 시간 여행 가지 그림 + 정리 | 글의 성격: 멈춘 동안 Agent가 프로그램 밖 저장소에 있다는 사실이 핵심이라 프로그램 구역과 저장소 구역을 위아래로 나누고 저장 칸이 쌓이는 모습을 계속 보여 준다 | 버린 후보: 단계 흐름 상자(앞 시리즈 방식) -->
+<style>
+.post-page .hl {
+  --hl-human: rgb(37, 112, 235); --hl-code: rgb(16, 150, 120); --hl-model: rgb(226, 106, 28); --hl-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .hl { --hl-human: rgb(110, 165, 255); --hl-code: rgb(60, 205, 165); --hl-model: rgb(255, 150, 80); --hl-bad: rgb(255, 110, 110); }
+.post-page .hl * { box-sizing: border-box; }
+.post-page .hl-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .hl h1, .post-page .hl h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .hl h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .hl h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .hl h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .hl p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .hl b { color: var(--fg-strong); }
+.post-page .hl .nw { white-space: nowrap; }
+.post-page .hl code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .hl p.hl-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .hl-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .hl-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .hl-head > h2 { margin: 0; }
+.post-page .hl-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .hl-split.top { align-items: start; }
+.post-page .hl-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .hl-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .hl-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .hl-seg button:hover { color: var(--fg-strong); }
+.post-page .hl-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .hl-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .hl-act::before { content: "▶ "; font-size: 11px; }
+.post-page .hl-act:disabled { opacity: .4; cursor: default; }
+.post-page .hl-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .hl-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .hl-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .hl-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .hl-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .hl-tag.n { --t: var(--fg-strong); } .post-page .hl-tag.m { --t: var(--hl-model); } .post-page .hl-tag.c { --t: var(--hl-code); } .post-page .hl-tag.h { --t: var(--hl-human); } .post-page .hl-tag.x { --t: var(--hl-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .hl-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .hl-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .hl-codepair .pg-code { margin-top: 0; }
+.post-page .hl-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .hl-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .hl-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .hl-codepair.rev > .cp-code, .post-page .hl-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .hl-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .hl .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .hl ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .hl ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .hl-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .hl-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .hl-term-bar .hl-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .hl-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .hl-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-hl-blink 1s steps(1) infinite; }
+@keyframes pg-hl-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .hl-codepair, .post-page .hl-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .hl-codepair > .cp-code, .post-page .hl-codepair > .cp-term, .post-page .hl-codepair > .cp-notes,
+  .post-page .hl-codepair.rev > .cp-code, .post-page .hl-codepair.rev > .cp-term, .post-page .hl-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .hl-codepair > .cp-notes, .post-page .hl-codepair.rev > .cp-notes { order: 2; } .post-page .hl-codepair > .cp-term, .post-page .hl-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .hl-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .hl-tbl th, .post-page .hl-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .hl-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .hl-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .hl-tbl code { font-size: 12.5px; }
+.post-page .hl details { margin: 0 0 24px; }
+.post-page .hl summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .hl details > .hl-in-d { padding-top: 14px; }
+.post-page .hl-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .hl-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .hl-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .hl-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .hl-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .hl-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .hl-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .hl-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .hl-tbl { font-size: 13.5px; } .post-page .hl-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .hl *, .post-page .hl *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .hl-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .hl-wrap { padding: 0 20px; }
+  .post-page .hl-head, .post-page .hl-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .hl-split.rev > :first-child { order: 0; }
+  .post-page p.hl-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .hl-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .hl-lab h2 { margin-bottom: 24px; }
+.post-page .hl-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .hl-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .hl-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .hl-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .hl-stack { display: grid; gap: 8px; }
+.post-page .hl-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .hl-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .hl-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .hl-s.m { --k: var(--hl-model); } .post-page .hl-s.c { --k: var(--hl-code); } .post-page .hl-s.x { --k: var(--hl-bad); } .post-page .hl-s.h { --k: var(--hl-human); }
+.post-page .hl-s + .hl-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .hl-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .hl-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .hl-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .hl-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .hl-hero-top p { margin: 0 0 1.2em; }
+.post-page .hl-hero-top p:last-child { margin-bottom: 0; }
+.post-page .hl-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .hl-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .hl [hidden] { display: none !important; }
+
+.post-page .hl-stack { gap: 22px !important; } .post-page .hl-s + .hl-s::before { top: -19px !important; }
+.post-page .hl-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .hl-flow .hl-s { flex: 1 1 0; min-width: 0; } .post-page .hl-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .hl-flow .hl-s + .hl-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .hl-flow .hl-s { flex: 1 1 180px; } .post-page .hl-flow i.ar { display: none; } }
+
+.post-page .hl-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .hl-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .hl-nar { max-width: 520px; }
+.post-page .hl-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .hl-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .hl-scene .t-d { fill: var(--fg-neutral); }
+.post-page .hl-scene .mono { font-family: var(--font-mono); }
+.post-page .hl-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .hl-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .hl-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .hl-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .hl-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .hl-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .hl-steps { padding-bottom: 14vh; }
+.post-page .hl-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .hl-step.on { opacity: 1; }
+.post-page .hl-step h3 { font-size: 20px; }
+.post-page .hl-step p { margin: 0; }
+.post-page .hl-sfig { position: sticky; top: var(--hl-top, 96px); }
+.post-page .hl-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .hl-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .hl-story { grid-template-columns: minmax(0, 1fr); } .post-page .hl-sfig { position: static; order: -1; } .post-page .hl-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .hl-steps { padding-bottom: 0; } }
+
+.post-page .hl-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .hl-stage .hl-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .hl-lede { max-width: 780px; margin-top: 24px; }
+.post-page .hl-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .hl-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="hl-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="hl-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="hl-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="hl-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="hl-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="hl-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="hl-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="hl-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="hl-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="hl">
+  <section class="hl-hero">
+    <div class="hl-wrap">
+      <h1>사람의 승인을 기다리는 동안 Agent는 어디에 머물까요?</h1>
+      <div class="hl-lede">
+        <p>고객 12명에게 환불 메일을 보내는 Agent 프로그램이 있다고 해 봅니다. 메일은 한 번 나가면 되돌릴 수 없으니 보내기 직전에 사람이 확인하게 하고 싶습니다. 그런데 사람이 답하는 데 몇 분이 걸릴지 몇 시간이 걸릴지 알 수 없습니다.</p>
+        <p>프로그램을 계속 켜 둔 채 기다리면 자원이 낭비되고 서버가 꺼지면 모두 사라집니다. LangGraph는 멈추는 순간의 상태를 저장소에 적어 두고 프로그램을 끕니다. 답이 오면 저장소에서 꺼내 이어 갑니다. 아래 그림에서 답을 고르고 돌려 보세요.</p>
+      </div>
+      <div class="hl-stage" data-figure data-thumb data-hl-hero>
+        <div class="hl-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">사람의 답</span>
+          <div class="hl-seg" role="group" aria-label="사람의 답 고르기">
+            <button type="button" data-hl-a="yes" aria-pressed="true">승인</button>
+            <button type="button" data-hl-a="no" aria-pressed="false">거절</button>
+          </div>
+          <button type="button" class="hl-act" data-hl-go>돌려 보기</button>
+        </div>
+        <svg class="hl-scene hl-nar" data-hl-hv viewBox="0 0 460 620" role="img" aria-label="멈춤과 저장소 그림. 위쪽 프로그램 구역에서 Agent가 propose, approve 노드를 지나 approve에서 사람의 승인을 기다리며 멈춘다. 그때 프로그램은 꺼지고 Agent의 상태는 아래쪽 저장소의 칸에 저장되어 있다. 사람이 답하면 프로그램이 다시 켜지고 저장소의 상태에서 이어 간다."></svg>
+        <p class="hl-verdict" data-hl-hsum></p>
+        <p class="hl-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 저장소는 프로그램 밖에 있는 기록 장소를 그린 것이고 실제 저장 위치는 사용하는 체크포인터에 따라 다릅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-sec">
+    <div class="hl-wrap">
+      <div class="hl-head">
+        <h2>멈출 때마다 저장소에 한 칸이 생깁니다</h2>
+        <div>
+          <p>이 저장소를 만드는 도구가 체크포인터(checkpointer)입니다. 그래프를 <code>compile</code>할 때 붙여 두면 노드가 하나 끝날 때마다 State의 모습이 한 칸씩 저장됩니다. 그 한 칸을 체크포인트(checkpoint)라고 부릅니다. 게임을 하다가 저장 슬롯에 저장해 두는 것과 비슷합니다.</p>
+          <p>저장 칸들은 스레드(thread)라는 이름 아래 묶입니다. 같은 <code>thread_id</code>로 다시 부르면 그 이름의 마지막 칸에서 이어 갑니다. 스크롤하며 칸이 쌓이는 모습을 보세요.</p>
+        </div>
+      </div>
+      <div class="hl-story" style="margin-top:40px" data-hl-story>
+        <div class="hl-steps">
+          <div class="hl-step" data-hl-step><h3>그래프를 부르면 첫 칸이 생김</h3><p><code>graph.invoke({}, config)</code>를 부르면 시작 직후의 모습이 첫 칸에 저장됩니다. 칸 묶음의 이름은 <code>config</code>의 <code>thread_id</code>입니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>propose가 끝나면 두 번째 칸</h3><p>노드가 끝나면 그 결과가 담긴 State가 새 칸으로 저장됩니다. 이제 <code>request</code> 칸에 환불 메일 요청이 적혀 있습니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>approve가 interrupt에서 멈춤</h3><p><code>interrupt</code>를 만나면 그래프는 멈추고 <code>invoke</code>는 돌아옵니다. 결과의 <code>__interrupt__</code> 칸에 사람에게 물을 내용이 담기고 프로그램은 꺼도 됩니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>사람이 답하면 같은 이름으로 이어 감</h3><p>같은 <code>thread_id</code>로 <code>Command(resume=True)</code>를 보내면 마지막 칸에서 이어 갑니다. 승인 뒤 send가 끝나면 마지막 칸이 생깁니다.</p></div>
+        </div>
+        <div class="hl-sfig" data-hl-sfig data-figure>
+          <svg class="hl-scene hl-nar" data-hl-sv viewBox="0 0 460 560" role="img" aria-label="저장 칸 그림. 세로로 놓인 저장 칸이 단계마다 하나씩 채워진다. 첫 칸은 시작, 두 번째는 propose가 끝난 모습, 세 번째는 approve에서 멈춘 모습, 네 번째는 모두 끝난 모습이다. 지금 위치를 가리키는 화살표가 칸을 따라 내려간다."></svg>
+          <p class="hl-stat" data-hl-sstat></p>
+        </div>
+      </div>
+      <div class="hl-codepair" style="margin-top:48px">
+        <div class="cp-code">
+<pre data-title="approval.py" data-hl="1-3,6-7,9-10"><code class="language-python">def approve(s: State) -> Command[Literal["send", "cancel"]]:
+    # ① 여기서 멈추고 물어볼 내용을 밖으로 내보낸다
+    answer = interrupt({"question": "이 작업을 실행할까요?", "action": s["request"]})
+    return Command(update={"decision": "approved" if answer else "rejected"},
+                   goto="send" if answer else "cancel")   # ② 답에 따라 길을 고른다
+
+graph = builder.compile(checkpointer=InMemorySaver())   # ③ 저장소를 붙인다
+config = {"configurable": {"thread_id": "t1"}}          # ④ 칸 묶음의 이름
+
+result = graph.invoke({}, config)                       # 멈춤: result["__interrupt__"]
+graph.invoke(Command(resume=True), config)              # ⑤ 같은 이름으로 이어 가기</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="hl-term" data-hl-term>
+  <div class="hl-term-bar"><span>터미널</span><button type="button" class="hl-act" data-hl-run="a">실행해 보기</button></div>
+  <div class="hl-term-out" data-hl-out aria-live="polite">$ python approval.py
+멈춤 → 물어볼 내용: 고객 12명에게 환불 메일 발송
+다음에 실행할 노드: ('approve',)
+재개 → 결과: 발송 완료</div>
+</div>
+<p class="hl-cap">출력은 예시입니다. 코드는 <code>langgraph</code> 1.2에서 직접 실행해 확인했고 노드 함수는 일부 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>멈추는 줄입니다.</b> <code>interrupt</code>에 넘긴 값은 호출한 쪽의 <code>__interrupt__</code> 칸으로 나옵니다. 사람에게 보여 줄 질문과 대상을 여기에 담습니다.</li>
+  <li><b>답에 따라 갈라집니다.</b> 이어 갈 때 보낸 값이 <code>interrupt</code>의 반환값이 됩니다. 앞에서 배운 <code>Command</code>로 State를 고치고 갈 길을 정합니다.</li>
+  <li><b>저장소가 있어야 합니다.</b> 체크포인터를 붙여야 멈춘 곳에서 이어 갈 수 있습니다. <code>InMemorySaver</code>는 메모리에만 저장해서 프로그램을 끄면 사라집니다. 그래서 실제 서비스에서는 SQLite나 Postgres 같은 데이터베이스용 체크포인터를 씁니다.</li>
+  <li><b>이름이 같아야 이어 갑니다.</b> <code>thread_id</code>가 다르면 새로운 실행으로 취급합니다. 사용자마다 다른 이름을 써서 대화와 승인 흐름이 섞이지 않게 합니다.</li>
+  <li><b>이어 가는 호출입니다.</b> 새 입력 대신 <code>Command(resume=…)</code>를 넘깁니다. 처음 시작할 때도 이어 갈 때도 같은 <code>invoke</code>를 씁니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-sec">
+    <div class="hl-wrap hl-split">
+      <div>
+        <h2>이어 가면 멈춘 노드가 처음부터 다시 실행됩니다</h2>
+        <p>사람이 답하고 이어 가면 <code>interrupt</code> 줄에서 곧바로 이어지는 것처럼 보입니다. 실제로는 approve 노드가 첫 줄부터 다시 실행됩니다. 이번에는 <code>interrupt</code>가 멈추지 않고 사람의 답을 돌려줍니다. 직접 실행해 보니 노드가 두 번 시작됐습니다.</p>
+        <p>그래서 <code>interrupt</code> 앞에 메일 보내기 같은 되돌릴 수 없는 일을 두면 두 번 실행됩니다. 위치를 바꿔 보세요.</p>
+        <div class="hl-ctrl"><div class="hl-seg" role="group" aria-label="메일 보내는 위치 고르기"><button type="button" data-hl-ord="before" aria-pressed="true">메일을 interrupt 앞에</button><button type="button" data-hl-ord="after" aria-pressed="false">메일을 interrupt 뒤에</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="hl-scene hl-nar" data-hl-twice viewBox="0 0 460 440" role="img" aria-label="두 번 실행 그림. 왼쪽 열은 처음 실행, 오른쪽 열은 재개한 뒤의 실행이다. 노드의 줄이 위에서 아래로 놓여 있고 처음 실행은 interrupt 줄에서 멈춘다. 메일 줄이 interrupt 앞에 있으면 두 열에서 모두 실행되어 메일이 두 통 나가고, 뒤에 있으면 오른쪽 열에서만 실행되어 한 통이 나간다."></svg>
+        <p class="hl-wnote" data-hl-tnote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-sec">
+    <div class="hl-wrap">
+      <div class="hl-head">
+        <h2>저장된 칸으로 돌아가 다시 실행하거나 갈라질 수 있습니다</h2>
+        <div>
+          <p>저장 칸이 남아 있으면 과거의 어느 칸으로든 돌아갈 수 있습니다. 이것을 시간 여행(time travel)이라고 합니다. 그 칸에서 그대로 다시 실행해 결과가 같은지 볼 수도 있고 State 값을 고친 뒤 실행해 다른 길로 갈라질 수도 있습니다. 갈라져도 원래 기록은 지워지지 않고 새 가지가 생깁니다.</p>
+          <p>사람이 요청 내용을 보고 "12명이 아니라 3명에게만 보내세요"라고 고칠 때 쓸 수 있습니다. 두 방식을 눌러 가지가 어떻게 달라지는지 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="hl-ctrl"><div class="hl-seg" role="group" aria-label="돌아가는 방식 고르기"><button type="button" data-hl-tt="replay" aria-pressed="true">그대로 다시 실행</button><button type="button" data-hl-tt="fork" aria-pressed="false">고쳐서 갈라지기</button></div></div>
+        <svg class="hl-scene hl-nar" data-hl-tl viewBox="0 0 460 548" role="img" aria-label="저장 칸 가지 그림. 저장 칸들이 세로로 이어진 줄기를 이룬다. 승인을 기다리는 칸에서 되돌아가 그대로 다시 실행하면 같은 칸이 다시 만들어지고, 값을 고쳐 실행하면 줄기 옆으로 새 가지가 생겨 요청 내용이 바뀐다. 원래 줄기는 그대로 남는다."></svg>
+        <p class="hl-verdict" data-hl-ttsay></p>
+      </div>
+      <div class="hl-codepair" style="margin-top:44px">
+        <div class="cp-code">
+<pre data-title="travel.py" data-hl="1-2,4,6-7"><code class="language-python">history = list(graph.get_state_history(config))        # ① 저장된 칸 목록(최근 것이 앞)
+old = [h for h in history if h.next == ("approve",)][0]  # ② approve 직전 칸
+
+graph.invoke(None, old.config)                          # ③ 그 칸에서 다시 실행
+
+new = graph.update_state(old.config, {"request": "고객 3명에게만 환불 메일 발송"})
+graph.invoke(None, new)                                 # ④ 고친 값으로 갈라져 실행</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="hl-term" data-hl-term>
+  <div class="hl-term-bar"><span>터미널</span><button type="button" class="hl-act" data-hl-run="t">실행해 보기</button></div>
+  <div class="hl-term-out" data-hl-out aria-live="polite">$ python travel.py
+저장된 칸: 4개
+그 칸에서 다시 실행 → 다시 승인 대기
+고쳐서 갈라지기 → 고객 3명에게만 환불 메일 발송</div>
+</div>
+<p class="hl-cap">출력은 예시입니다. 칸의 개수와 값은 그래프에 따라 달라집니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 0">
+  <li><b>칸 목록과 지점 고르기입니다.</b> 목록의 칸마다 다음에 실행할 노드(<code>next</code>)와 그 칸을 가리키는 <code>config</code>가 들어 있습니다. <code>next</code>가 <code>("approve",)</code>인 칸이 멈추기 직전입니다.</li>
+  <li><b>입력을 비워 이어 갑니다.</b> 입력에 <code>None</code>과 과거 칸의 <code>config</code>를 주면 그 칸에서 다시 실행합니다. 이번에도 approve에서 멈추니 다시 승인을 기다립니다.</li>
+  <li><b>고쳐서 갈라집니다.</b> <code>update_state</code>는 그 칸에서 갈라진 새 칸을 만들어 돌려줍니다. 새 칸으로 실행하면 승인 질문에 고친 요청이 담겨 나옵니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-sec">
+    <div class="hl-wrap">
+      <div class="hl-head">
+        <h2>create_agent에서는 승인 미들웨어가 같은 일을 합니다</h2>
+        <div>
+          <p>그래프를 직접 짜지 않아도 됩니다. LangChain의 <code>HumanInTheLoopMiddleware</code>에 승인이 필요한 도구를 적어 주면 그 도구를 부르기 직전에 멈춥니다. 이 미들웨어도 안에서 같은 <code>interrupt</code>를 쓰므로 체크포인터가 필요하고 <code>Command(resume=…)</code>로 이어 갑니다.</p>
+          <p>사람은 승인, 수정, 거절, 직접 답변 네 가지로 답할 수 있습니다. 메일 보내기나 결제처럼 되돌릴 수 없는 도구에만 걸어 두면 됩니다. 다음 글에서는 이 그래프에 실패에 강한 장치를 달고 실무형으로 다듬어 보겠습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-sec">
+    <div class="hl-wrap">
+      <div class="hl-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="hl-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/interrupts">Interrupts</a>, LangGraph: interrupt와 Command(resume), 재개 시 노드가 다시 실행되는 동작</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/persistence">Persistence</a>, LangGraph: 체크포인터·스레드·체크포인트·상태 기록</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/use-time-travel">Use time-travel</a>, LangGraph: 과거 칸에서 다시 실행하기와 갈라지기</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/human-in-the-loop">Human-in-the-loop</a>, LangChain: HumanInTheLoopMiddleware</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="hl-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-hl-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-hl-out]", btn.closest("[data-hl-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.hlRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-hl-step]", st), fig = $("[data-hl-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--hl-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--hl-model)", code: "var(--hl-code)", human: "var(--hl-human)", bad: "var(--hl-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 프로그램과 저장소 ───── */
+  const hv = $("[data-hl-hv]"), hsum = $("[data-hl-hsum]"); let ans = "yes", hGen = 0;
+  const HS = ["시작합니다. 프로그램이 켜져 있습니다.", "propose가 끝나 저장소에 한 칸이 생겼습니다.", "approve에서 멈췄습니다. 프로그램은 꺼졌고 Agent는 저장소의 칸에 남아 있습니다.", "사람이 답했습니다.", "프로그램이 다시 켜지고 저장소의 칸에서 이어 갑니다.", ""];
+  function drawHero(s) {
+    hv.innerHTML = ""; const on = s <= 1 || s >= 4, saved = [s >= 1, s >= 2];
+    mk("rect", { x: 8, y: 6, width: 444, height: 270, rx: 16, fill: on ? `color-mix(in srgb, ${C.code} 8%, var(--bg-base))` : "var(--bg-subtle)", stroke: on ? C.code : "var(--line-strong)", "stroke-width": 3.5, "stroke-dasharray": on ? "" : "8 6" }, hv);
+    mk("circle", { cx: 34, cy: 34, r: 8, fill: on ? C.code : "var(--line-strong)" }, hv); txt(hv, 50, 40, on ? "프로그램 실행 중" : "프로그램 꺼짐", { "font-size": 17, class: "t-s" });
+    const nodes = [["propose", 22], ["approve", 168], [ans === "yes" ? "send" : "cancel", 314]];
+    nodes.forEach(([nm, x], i) => { const reached = (i === 0) || (i === 1 && s >= 2 && s !== 5) || (i === 1 && s >= 4) || (i === 2 && s >= 5 && false); const act = (i === 0 && s === 0) || (i === 1 && s >= 1 && s <= 2) || (i === 2 && s >= 5); box(hv, x, 112, 124, 62, act ? C.model : "var(--line-strong)", { rx: 12, sw: act ? 4 : 2.5, fill: act ? `color-mix(in srgb, ${C.model} 10%, var(--bg-base))` : "var(--bg-base)", dash: (i === 2 && s < 4) ? "6 5" : "" }); txt(hv, x + 62, 150, nm, { "font-size": 17, "text-anchor": "middle", class: "t-s mono", opacity: (i === 2 && s < 4) ? .5 : 1 }); if (i < 2) { mk("path", { d: `M${x + 126} 143 H${x + 144}`, stroke: "var(--fg-neutral)", "stroke-width": 3 }, hv); } });
+    mk("path", { d: "M292 143 H312", stroke: s >= 4 ? C.code : "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": s >= 4 ? "" : "5 4" }, hv);
+    const tokenAt = s === 0 ? 84 : s === 1 ? 230 : s === 2 ? 230 : s === 3 ? 230 : s === 4 ? 230 : 376, hid = s === 2 || s === 3;
+    if (!hid) { mk("circle", { cx: tokenAt, cy: 92, r: 20, fill: C.model }, hv); mk("use", { href: "#hl-ic-robot", x: tokenAt - 13, y: 79, width: 26, height: 26, style: "color:#fff" }, hv); }
+    if (s >= 2 && s <= 3) { mk("rect", { x: 100, y: 196, width: 260, height: 62, rx: 12, fill: "var(--bg-base)", stroke: C.bad, "stroke-width": 3.5 }, hv); mk("use", { href: "#hl-ic-mail", x: 110, y: 208, width: 36, height: 36, style: `color:${C.bad}` }, hv); txt(hv, 154, 222, "고객 12명에게 환불 메일", { "font-size": 15, class: "t-s" }); txt(hv, 154, 244, s === 3 ? (ans === "yes" ? "답: 승인" : "답: 거절") : "실행할까요?", { "font-size": 15, class: "t-s", style: `fill:${s === 3 ? (ans === "yes" ? C.code : C.bad) : C.bad}` }); }
+    if (s >= 4) txt(hv, 230, 238, s === 4 ? "저장소에서 꺼내 이어 가는 중" : ans === "yes" ? "메일을 보냅니다" : "취소합니다", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${ans === "yes" || s === 4 ? C.code : C.bad}` });
+    /* 저장소 */
+    mk("rect", { x: 8, y: 308, width: 444, height: 300, rx: 16, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 3.5 }, hv); txt(hv, 28, 340, "저장소 (체크포인터)", { "font-size": 17, class: "t-s" });
+    const slots = [["① 시작", "State 비어 있음"], ["② propose 끝", "request 칸이 채워짐"], ["③ approve에서 멈춤", "승인 대기 중"]];
+    slots.forEach(([a, b], i) => { const y = 360 + i * 78, has = i === 0 || saved[i - 1], cur = (i === 2 && s >= 2 && s <= 3); box(hv, 28, y, 404, 64, has ? (cur ? C.bad : C.code) : "var(--line-strong)", { rx: 10, sw: cur ? 4.5 : has ? 3 : 2, dash: has ? "" : "6 5", fill: has ? `color-mix(in srgb, ${cur ? C.bad : C.code} 8%, var(--bg-base))` : "var(--bg-base)" }); if (has) { txt(hv, 44, y + 26, a, { "font-size": 17, class: "t-s" }); txt(hv, 44, y + 50, b, { "font-size": 15, class: "t-d" }); } if (cur) { mk("circle", { cx: 396, cy: y + 32, r: 20, fill: C.model }, hv); mk("use", { href: "#hl-ic-robot", x: 383, y: y + 19, width: 26, height: 26, style: "color:#fff" }, hv); } });
+    if (s === 2) { mk("path", { d: "M230 176 V196", stroke: C.bad, "stroke-width": 3 }, hv); }
+    hsum.textContent = HS[s] || (ans === "yes" ? "승인을 받아 메일 발송이 끝났습니다. 멈춘 동안 Agent는 저장소의 칸에 있었습니다." : "거절을 받아 작업을 취소했습니다. 멈춘 동안 Agent는 저장소의 칸에 있었습니다.");
+  }
+  let busy = false;
+  $$("[data-hl-a]").forEach((b) => b.addEventListener("click", () => { if (busy) return; ans = b.dataset.hlA; press("[data-hl-a]", b); drawHero(2); }, { signal }));
+  $("[data-hl-go]").addEventListener("click", async () => { if (busy) return; busy = true; $("[data-hl-go]").disabled = true; const gen = ++hGen; for (let s = 0; s <= 5; s++) { if (gen !== hGen) return; drawHero(s); await later(reduce ? 200 : 1300); } $("[data-hl-go]").disabled = false; busy = false; }, { signal });
+  drawHero(2);
+
+  /* ───── 저장 칸이 쌓임 (스크롤 이야기) ───── */
+  const sv = $("[data-hl-sv]"), sstat = $("[data-hl-sstat]");
+  const SL = [["① 시작", "{ }"], ["② propose 끝", "request: 환불 메일 12명"], ["③ approve에서 멈춤", "__interrupt__ 질문 대기"], ["④ 모두 끝", "decision: approved · result: 발송 완료"]];
+  function drawSlots(i) {
+    const k = i < 0 ? 3 : i; sv.innerHTML = ""; mk("path", { d: "M44 40 V500", class: "hl-rail", opacity: .4 }, sv);
+    SL.forEach(([a, b], n) => { const y = 14 + n * 130, has = n <= k + (k >= 2 && n === 3 ? -1 : 0) && !(n === 3 && k < 3), cur = n === k; const on = n <= k; box(sv, 74, y, 372, 104, on ? (cur ? C.model : C.code) : "var(--line-strong)", { rx: 12, sw: cur ? 4.5 : on ? 3 : 2, dash: on ? "" : "6 5", fill: on ? `color-mix(in srgb, ${cur ? C.model : C.code} 8%, var(--bg-base))` : "var(--bg-base)" }); mk("circle", { cx: 44, cy: y + 52, r: 15, fill: on ? (cur ? C.model : C.code) : "var(--bg-base)", stroke: on ? "none" : "var(--line-strong)", "stroke-width": 2.5 }, sv); if (on) { txt(sv, 90, y + 38, a, { "font-size": 17, class: "t-s" }); txt(sv, 90, y + 70, b, { "font-size": 15, class: "t-d" }); if (n === 2) txt(sv, 90, y + 94, "next = ('approve',)", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` }); } else { txt(sv, 90, y + 58, "아직 없음", { "font-size": 15, class: "t-d", opacity: .6 }); } });
+    sstat.innerHTML = `<b>${["칸 1개", "칸 2개", "칸 3개 · 프로그램은 꺼도 됨", "칸 4개 · 끝"][k]}</b>`;
+  }
+  story("[data-hl-story]", (i) => drawSlots(i)); drawSlots(0);
+
+  /* ───── 두 번 실행되는 노드 ───── */
+  const tw = $("[data-hl-twice]"); let ord = "before";
+  function drawTwice() {
+    tw.innerHTML = ""; const before = ord === "before";
+    const lines = before ? [["메일 보내기", "mail"], ["interrupt", "stop"], ["결과 정리", "check"]] : [["interrupt", "stop"], ["메일 보내기", "mail"], ["결과 정리", "check"]];
+    [["처음 실행", 14, 0], ["이어 가며 다시 실행", 244, 1]].forEach(([hd, x, col]) => {
+      txt(tw, x + 98, 24, hd, { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+      lines.forEach(([lb, ic], n) => { const y = 44 + n * 92; const isI = ic === "stop", ran = col === 0 ? n <= lines.findIndex((l) => l[1] === "stop") : true; const colr = ic === "mail" && ran ? C.bad : isI ? (col === 0 ? C.bad : C.code) : C.model; const dim = !ran; box(tw, x, y, 196, 72, dim ? "var(--line-strong)" : colr, { rx: 12, sw: dim ? 2 : 3.5, dash: dim ? "6 5" : "", fill: dim ? "var(--bg-base)" : `color-mix(in srgb, ${colr} 9%, var(--bg-base))` }); mk("use", { href: "#hl-ic-" + (isI ? (col === 0 ? "stop" : "check") : ic), x: x + 12, y: y + 18, width: 36, height: 36, style: `color:${dim ? "var(--line-strong)" : colr}` }, tw); txt(tw, x + 58, y + 36, lb, { "font-size": 17, class: "t-s", opacity: dim ? .5 : 1 }); txt(tw, x + 58, y + 58, dim ? "실행 안 됨" : isI ? (col === 0 ? "여기서 멈춤" : "답을 돌려줌") : "실행됨", { "font-size": 15, class: "t-d", opacity: dim ? .6 : 1 }); });
+    });
+    const cnt = before ? 2 : 1; box(tw, 14, 332, 432, 92, cnt === 2 ? C.bad : C.code, { rx: 12, sw: 4, fill: `color-mix(in srgb, ${cnt === 2 ? C.bad : C.code} 8%, var(--bg-base))` }); mk("use", { href: "#hl-ic-mail", x: 30, y: 358, width: 40, height: 40, style: `color:${cnt === 2 ? C.bad : C.code}` }, tw); txt(tw, 84, 372, `나간 메일 ${cnt}통`, { "font-size": 19, class: "t-s", style: `fill:${cnt === 2 ? C.bad : C.code}` }); txt(tw, 84, 400, cnt === 2 ? "같은 메일이 두 번 나갔습니다" : "한 번만 나갔습니다", { "font-size": 15, class: "t-s" });
+    $("[data-hl-tnote]").textContent = before ? "메일 보내기가 interrupt 앞에 있어서 처음 실행에서 한 번, 이어 가며 다시 실행할 때 또 한 번 나갑니다." : "메일 보내기를 interrupt 뒤에 두면 처음 실행은 멈추기 전에 끝나고 이어 갈 때만 한 번 나갑니다.";
+  }
+  $$("[data-hl-ord]").forEach((b) => b.addEventListener("click", () => { ord = b.dataset.hlOrd; press("[data-hl-ord]", b); drawTwice(); }, { signal })); drawTwice();
+
+  /* ───── 시간 여행 ───── */
+  const tl = $("[data-hl-tl]"); let tt = "replay";
+  function drawTravel() {
+    tl.innerHTML = ""; const fork = tt === "fork"; const cps = [["시작", "next: propose"], ["propose 끝", "request: 12명"], ["승인 대기", "next: approve"], ["끝", "result: 발송 완료"]];
+    mk("path", { d: "M70 40 V420", stroke: "var(--line-strong)", "stroke-width": 5 }, tl);
+    cps.forEach(([a, b], n) => { const y = 40 + n * 126, back = n === 2; mk("circle", { cx: 70, cy: y, r: 17, fill: back ? C.model : "var(--bg-base)", stroke: back ? C.model : "var(--fg-neutral)", "stroke-width": 3.5 }, tl); txt(tl, 100, y - 4, a, { "font-size": 17, class: "t-s" }); txt(tl, 100, y + 20, b, { "font-size": 15, class: "t-d" }); });
+    mk("path", { d: "M70 292 C150 292 168 322 200 336", fill: "none", stroke: "none" }, tl);
+    txt(tl, 20, 528, "원래 기록은 그대로 남습니다", { "font-size": 15, class: "t-d" });
+    if (fork) { mk("path", { d: "M87 292 C220 292 330 300 330 332 V372", fill: "none", stroke: C.bad, "stroke-width": 5 }, tl); mk("circle", { cx: 330, cy: 392, r: 17, fill: C.bad }, tl); txt(tl, 296, 340, "값을 고침", { "font-size": 15, "text-anchor": "end", class: "t-s", style: `fill:${C.bad}` }); box(tl, 234, 418, 216, 68, C.bad, { rx: 10, fill: `color-mix(in srgb, ${C.bad} 8%, var(--bg-base))` }); txt(tl, 246, 442, "새 가지", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(tl, 246, 468, "request: 3명", { "font-size": 17, class: "t-s" }); }
+    else { mk("path", { d: "M87 292 C200 292 330 270 330 320 V350", fill: "none", stroke: C.model, "stroke-width": 5 }, tl); mk("circle", { cx: 330, cy: 372, r: 17, fill: "var(--bg-base)", stroke: C.model, "stroke-width": 3.5 }, tl); box(tl, 234, 400, 216, 68, C.model, { rx: 10, fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); txt(tl, 246, 424, "다시 만든 칸", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); txt(tl, 246, 452, "다시 승인 대기", { "font-size": 17, class: "t-s" }); }
+    $("[data-hl-ttsay]").textContent = fork ? "승인 대기 칸의 값을 고쳐 실행하면 줄기 옆에 새 가지가 생기고 질문에 고친 요청이 담깁니다." : "승인 대기 칸으로 돌아가 그대로 실행하면 같은 자리에서 다시 승인을 기다립니다.";
+  }
+  $$("[data-hl-tt]").forEach((b) => b.addEventListener("click", () => { tt = b.dataset.hlTt; press("[data-hl-tt]", b); drawTravel(); }, { signal })); drawTravel();
+
+  initTerms({
+    a: [["cmd", "$ python approval.py"], ["wait", 700], ["line", "멈춤 → 물어볼 내용: 고객 12명에게 환불 메일 발송"], ["line", "다음에 실행할 노드: ('approve',)"], ["type", "재개 → 결과: 발송 완료"]],
+    t: [["cmd", "$ python travel.py"], ["wait", 700], ["line", "저장된 칸: 4개"], ["line", "그 칸에서 다시 실행 → 다시 승인 대기"], ["type", "고쳐서 갈라지기 → 고객 3명에게만 환불 메일 발송"]],
+  });
+})();
+</script>
