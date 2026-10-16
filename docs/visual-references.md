@@ -128,6 +128,7 @@
 | [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
 | [LangChain, Models](https://docs.langchain.com/oss/python/langchain/models) · [Messages](https://docs.langchain.com/oss/python/langchain/messages) | init_chat_model·invoke·stream·batch 와 AIMessage 필드를 문서 순서대로 쓰되, 실제로 모의 서버에 두 회사 클래스를 붙여 요청 본문과 응답 필드를 관찰한 값으로 "같은 것과 다른 것"을 그린다 | 추상화 계층이 무엇을 맞춰 주고 무엇을 못 맞추는지 보일 때 | 2026-10-16 | langchain-init-chat-model-switch-provider |
 | [LangChain, Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) · [Anthropic, Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) | ToolStrategy/ProviderStrategy 두 길과 거절·길이 한도·숫자 범위 같은 보장 밖 사례를 문서 문장으로 확인하고, 모의 서버에 붙여 요청 본문(tools vs output_config.format)·검증 오류·재시도 메시지를 관찰한 값으로 그림을 그린다 | "양식이 보장하는 것과 못 하는 것"을 겹으로 나눠 보일 때 | 2026-10-16 | llm-structured-output-pydantic-langchain |
+| [Anthropic, Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) · [LangChain, Tools](https://docs.langchain.com/oss/python/langchain/tools) | 도구 설명이 겹치면 고르기 어렵다는 문장을 "설명 범위를 원으로 그려 질문 점이 몇 개 원에 걸리나"로 바꾼다. 함수 코드와 모델이 받는 JSON 설명서를 같은 색 부분끼리 짝짓고, 도구 오류 기본 동작과 ToolRuntime 숨김을 모의 서버로 직접 확인한다 | 설명 품질이 선택에 미치는 영향, 코드와 모델이 보는 것의 대응을 보일 때 | 2026-10-16 | ai-agent-tool-design-description-schema |
 
 ## 미확인
 
@@ -220,6 +221,9 @@
 - **같은 질문 3번 대 3번을 한 보드에 두고 질문만 바꾸게** (llm-structured-output-pydantic-langchain) — 양식 없는 쪽은 매번 다른 이유로 읽기에 실패하고 양식 있는 쪽은 세 번 모두 같은 모양으로 담당 큐에 들어간다. 질문 토글 세 개만 조작한다. 읽는 코드를 칸 위에 두어 왜 실패하는지 보이게 했다
 - **보기 선택 칸(Literal)과 자유 입력 칸(str)을 양식 그림으로** (llm-structured-output-pydantic-langchain) — 종이 양식에서 객관식 보기와 빈 줄로 그려 "닫힌 선택지"를 눈으로 구분하게 했다. 칸 설명 토글은 모델이 읽는 안내문이라는 점을 힌트 문구로 보였다
 - **검문 두 겹은 문제 답 네 개를 고르면 걸리는 칸이 켜지게** (llm-structured-output-pydantic-langchain) — 보기 밖 값·범위 밖 숫자·거절·길이 한도마다 어느 겹에서 걸리는지가 달라 "모양은 지켜도 내용은 따로 검사한다"가 직접 보인다. Critic이 모델 선택이 정적 캡처에서 안 보인다고 해서 자동 선택 토글을 길 카드 위에 두었다
+- **도구 설명 범위를 원으로, 질문 점이 걸치는 원 수를 후보 수로** (ai-agent-tool-design-description-schema) — 설명이 부실하면 원이 커져 겹치고 질문 점이 두 원에 들어가 "후보 2개 → 망설임", 충실하면 원이 줄어 한 원에만 들어간다. 원 크기는 설명 토글만으로 바뀌고 질문 토글 세 개가 점 위치를 옮긴다. 라벨은 원 안이 아니라 아래 줄에 모아 겹침을 피했다(Critic 지적)
+- **코드와 모델이 받는 JSON을 같은 색 부분끼리 짝으로, 기본은 모두 칠하기** (ai-agent-tool-design-description-schema) — 버튼으로 한 부분만 고르게 하면 정적 상태에서 대응이 안 보인다는 지적이 나와 기본을 "모두 보기"(이름 파랑·설명 주황·인자 설명 초록·종류 빨강)로 했다
+- **모델 쪽 | 코드 쪽을 점선 벽으로 가르고 사용자 토글** (ai-agent-tool-design-description-schema) — 같은 모델 요청서(list_my_tickets {})가 사용자(kim/lee)에 따라 다른 결과를 받는 것을 모델이 모르는 값(context)과 함께 보였다
 
 ## 페이지 레이아웃
 
