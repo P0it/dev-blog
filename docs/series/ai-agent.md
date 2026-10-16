@@ -49,7 +49,7 @@
 |---|---|---|---|---|---|---|---|
 | 1 | AI Agent는 더 똑똑한 챗봇이 아니다 (`ai-agent-vs-chatbot`) | 질문에 답하는 프로그램과 일을 해 주는 프로그램은 어디서 갈리나? | 챗봇→워크플로→Agent 스펙트럼 · 4요소(모델·지시·도구·상태) · LLM 은 글만 낸다 · 헬프데스크 실습 소개 | LLM, 프롬프트, 메시지(role), 토큰, 컨텍스트, Agent, 워크플로 | SDK 로 LLM 한 번 호출(`model`·`messages`·`temperature` 해설) | — | 초안 |
 | 2 | Tool Calling에서 함수는 누가 실행할까? (`llm-tool-calling-json-schema`) | 글만 쓰는 모델이 어떻게 티켓을 조회하나? | 모델은 실행을 요청만 한다 · JSON Schema 는 메뉴판 · 요청서도 글(채팅 템플릿 → API 서버가 `tool_calls` 로 정리) · 메뉴판도 토큰 · `tool_choice` · 두 번 호출 · `tool_call_id` 번호표(parallel) · 요청서 확인과 strict | Tool Calling(Function Calling), JSON Schema, API 서버, 도구 결과 메시지, tool_choice, parallel tool calls | raw SDK 로 티켓 조회 도구 1개(`ask_tool.py`·`run_tool.py`, openai 3.31) | 1 | 초안 |
-| 3 | 프레임워크 없이 Agent 루프 짜기 | Agent 는 언제 멈추나? | while 루프와 종료 조건 · 최대 반복 · 에러를 결과로 돌려주기 · ReAct(생각→행동→관찰) · 다른 provider 는 어떻게 다른가(접힘) | Agent 루프, ReAct, 종료 조건 | 50줄 루프(도구 2개) | 2 | 계획 |
+| 3 | Agent의 while 루프는 무엇이 멈추게 할까요? (`ai-agent-loop-stop-conditions`) | Agent 는 언제 멈추나? | 호출 횟수를 코드가 모른다 · messages 카드가 바퀴마다 두 장씩 쌓인다 · stop_reason 갈림길(tool_use·end_turn·max_tokens·refusal) · 바퀴 수 한도와 비용 · 도구 오류는 is_error 결과로 · ReAct 대응 · OpenAI 와 tool runner(접힘) | Agent 루프, stop_reason, ReAct, 종료 조건 | 25줄 루프(도구 2개, `agent.py`, anthropic 1.15) | 2 | 발행 |
 
 ### Part 2. LangChain v1 으로 Single Agent
 

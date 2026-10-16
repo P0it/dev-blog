@@ -124,6 +124,8 @@
 | [Hugging Face Transformers, Tool use](https://huggingface.co/docs/transformers/main/en/chat_extras) · [Qwen2.5 chat_template](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/tokenizer_config.json) | 모델이 실제로 읽고 쓰는 글(&lt;tools&gt; 블록, &lt;tool_call&gt; 표시)을 그대로 보여 "도구 호출도 결국 글"을 드러낸다 | "글만 쓰는 모델이 어떻게 tool_calls 를 내나"를 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (읽는 글 → 이어 쓰는 글 → 응답 세 칸, 질문 토글) |
 | [Anthropic, Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) | 서버별 도구 수와 토큰(GitHub 35개 ~26K, 5개 서버 58개 ~55K, 사내 134K)을 나열 | 도구 정의가 context window 를 먹는 양을 실제 값으로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (20만 토큰 막대) |
 | [LangChain, INVALID_TOOL_RESULTS](https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS) | tool_call_id 짝이 빠졌을 때 OpenAI 가 내는 400 문장을 그대로 싣는다 | 번호표가 빠지면 요청 전체가 거절된다는 것을 실제 오류로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
+| [Anthropic, Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) · [Handling stop reasons](https://platform.claude.com/docs/en/api/handling-stop-reasons) | stop_reason 값마다 "루프가 할 일"을 표로 나눈 것을 갈림길 그림으로 바꾼다. tool_use·tool_result JSON 예시를 그림 속 카드 문구로 쓴다 | 루프의 분기를 값별로 보일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
+| [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
 
 ## 미확인
 
@@ -206,6 +208,10 @@
 - **두 번의 호출을 호출별 두 줄로, 카드는 고정** (llm-tool-calling-json-schema) — 8단계를 한 줄 가로 띠로 흘리면 카드가 미끄러져 "아까 그 카드"를 놓친다는 지적이 반복됐다. 1번째 호출 줄 / 2번째 호출 줄로 나눠 카드 자리를 고정하고(데스크톱은 그림 고정 + 스크롤 비율로 1→8), 모바일은 두 칸 지그재그로 다 펼쳐 화면 중간을 지난 카드까지 켠다. 가로 슬라이드·가까운 카드 켜기(같은 높이 카드가 순서 없이 켜짐)는 접었다
 - **번호표 선은 실제 상자 가운데에서 계산** (llm-tool-calling-json-schema) — 고정 viewBox 좌표로 선을 그리면 칸 높이가 바뀔 때 선이 빈 곳을 가리킨다. 왼쪽 상자의 실제 가운데 y 를 재서 그리고, 두 열 높이를 같게(flex + 1fr 행) 맞춘다
 - **긴 코드는 둘로 쪼개 해설을 바로 아래에** (llm-tool-calling-json-schema) — 38줄 코드 뒤에 해설 7개를 몰면 모바일에서 해설과 코드가 한 화면 넘게 떨어진다. 같은 파일을 data-start 로 이어 두 블록으로 나누고 해설 목록은 counter-reset 으로 번호를 이었다. 모바일 줄바꿈(pre-wrap)은 Python 들여쓰기를 망가뜨려 접고 가로 스크롤 + 안내 문구로 돌아갔다
+- **루프 한 바퀴를 네 칸 + 호출 칸 여덟 개로** (ai-agent-loop-stop-conditions) — ①호출 ②멈춘 이유 ③도구 ④결과 붙이기 네 칸이 한 바퀴를 켜고 아래 여덟 칸이 호출마다 채워진다. 상황 토글(순조로움·오류 복구·끝나지 않음)과 바퀴 수 한도 슬라이더만 바꿔 "한도가 낮으면 정상 실행도 끊긴다"를 겪게 했다. 4번 아래에 되돌림 점선 띠를 그려 루프임을 눈으로 보이게 했다(글 한 줄은 약하다는 지적). Critic 4/4
+- **스크롤로 쌓이는 messages 카드 더미** (ai-agent-loop-stop-conditions) — 고정 그림 칸에 user·assistant·tool_result 카드를 미리 만들어 두고 스크롤로 한 장씩 켠다. 모바일은 마지막 상태로 다 펼치고 고정하지 않는다
+- **막대 높이와 합계는 다른 양이라고 글로 먼저 밝힌다** (ai-agent-loop-stop-conditions) — 호출별 토큰 막대와 막대 합계가 한 화면에 있으면 높이와 숫자가 어긋나 보인다는 지적이 나왔다. 막대 바로 위에 "막대 하나는 한 호출에 보낸 양, 숫자는 더한 값"을 쓴다
+- **모바일 코드 | 해설 짝은 선택자 우선순위를 맞춘다** (ai-agent-loop-stop-conditions) — 데스크톱용 `.rev > .cp-code{grid-column:2}` 가 모바일 `> *{grid-column:1}` 보다 우선해 해설 열이 한 글자 폭으로 무너졌다. 모바일 규칙도 같은 선택자 수로 쓴다
 
 ## 페이지 레이아웃
 
