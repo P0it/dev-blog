@@ -120,6 +120,10 @@
 | [Murphy-Hill 외, Microsoft CLI 에이전트 배포 연구(arXiv 2607.01418)](https://arxiv.org/abs/2607.01418) | 동료를 리뷰 동료·스킵 레벨 동료·직속 팀장 세 묶음으로 나눠 "써 본 비율 0% 대비 25%+"의 오즈 상승을 행마다 막대로(+54/+216/+82%) | 도입이 공지보다 관계를 타고 퍼지는 것을 실제 수치로 보일 때 | 2026-10-15 | ai-native-team-capabilities-developer-skills (예시 조직도 + 실제 오즈 막대) |
 | [Nicky Case, The Wisdom and/or Madness of Crowds](https://ncase.me/crowds/) | (다른 분야·사회 연결망) 문턱·결속·다리로 퍼지다 멈추는 확산 | 확산 시뮬레이션 — 실제 확률이 없으면 지어내게 되므로 이번엔 접음 | 2026-10-15 | |
 | [Karpathy, Sequoia Ascent 2026](https://karpathy.bearblog.dev/sequoia-ascent-2026/) | MenuGen 결제 사례: "그럴듯한 코드지만 나쁜 시스템 설계" — 이메일로 짝짓기 vs 영구 사용자 ID | 이해를 맡길 수 없는 이유를 버그 하나로 보일 때 | 2026-10-15 | ai-native-team-capabilities-developer-skills (이메일/ID 토글 그림) |
+| [OpenAI, Function calling](https://developers.openai.com/api/docs/guides/function-calling) | 왕복을 요청 → 호출 받기 → 내 코드 실행 → 두 번째 요청 → 최종 답 다섯 걸음으로 쪼개고, 도구 정의가 system 메시지에 들어가 입력 토큰이 된다고 적는다(20개 미만 권고, strict 규칙) | Tool Calling 왕복과 메뉴판 비용을 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
+| [Hugging Face Transformers, Tool use](https://huggingface.co/docs/transformers/main/en/chat_extras) · [Qwen2.5 chat_template](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/tokenizer_config.json) | 모델이 실제로 읽고 쓰는 글(&lt;tools&gt; 블록, &lt;tool_call&gt; 표시)을 그대로 보여 "도구 호출도 결국 글"을 드러낸다 | "글만 쓰는 모델이 어떻게 tool_calls 를 내나"를 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (읽는 글 → 이어 쓰는 글 → 응답 세 칸, 질문 토글) |
+| [Anthropic, Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) | 서버별 도구 수와 토큰(GitHub 35개 ~26K, 5개 서버 58개 ~55K, 사내 134K)을 나열 | 도구 정의가 context window 를 먹는 양을 실제 값으로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (20만 토큰 막대) |
+| [LangChain, INVALID_TOOL_RESULTS](https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS) | tool_call_id 짝이 빠졌을 때 OpenAI 가 내는 400 문장을 그대로 싣는다 | 번호표가 빠지면 요청 전체가 거절된다는 것을 실제 오류로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
 
 ## 미확인
 
@@ -198,6 +202,11 @@
 
 - **같은 크레인을 두 공사장에 주기** (ai-native-team-capabilities-developer-skills, Critic 전) — 기초 일곱 겹(역량, 이름째 보임)을 다르게 채운 두 건물에 "AI 도구" 토글 하나로 층(처리량)과 금 간 층(재작업)이 같이 쌓인다. B팀은 층 3개를 더 쌓고 금 간 층도 3개 늘어 남은 층 8 → 8. 기초 겹을 눌러 채우면 다시 계산된다. 기본 상태는 AI 없이(두 팀 10층)로 칠하지 않는다. 같은 건물을 글 끝 시리즈 지도(기초 = 이 글, 층 = 앞 열 편)로 다시 썼다
 
+- **도구 목록 토글 하나로 지어낸 답 vs 확인한 답** (llm-tool-calling-json-schema) — 모델 쪽 | 내 코드 쪽을 점선 벽으로 가르고 "도구 목록 보냄/안 보냄"만 바꾸게 했다. 안 보냄이면 모델이 상태를 지어내고(빨간 꼬리표) 조회 0번, 보냄이면 요청서 → 실행 → 결과 → 두 번째 답 1~4가 채워지고 "모델 호출 2번 · 조회 1번". Critic 이 13번 모두 가장 강한 그림으로 꼽았다
+- **두 번의 호출을 호출별 두 줄로, 카드는 고정** (llm-tool-calling-json-schema) — 8단계를 한 줄 가로 띠로 흘리면 카드가 미끄러져 "아까 그 카드"를 놓친다는 지적이 반복됐다. 1번째 호출 줄 / 2번째 호출 줄로 나눠 카드 자리를 고정하고(데스크톱은 그림 고정 + 스크롤 비율로 1→8), 모바일은 두 칸 지그재그로 다 펼쳐 화면 중간을 지난 카드까지 켠다. 가로 슬라이드·가까운 카드 켜기(같은 높이 카드가 순서 없이 켜짐)는 접었다
+- **번호표 선은 실제 상자 가운데에서 계산** (llm-tool-calling-json-schema) — 고정 viewBox 좌표로 선을 그리면 칸 높이가 바뀔 때 선이 빈 곳을 가리킨다. 왼쪽 상자의 실제 가운데 y 를 재서 그리고, 두 열 높이를 같게(flex + 1fr 행) 맞춘다
+- **긴 코드는 둘로 쪼개 해설을 바로 아래에** (llm-tool-calling-json-schema) — 38줄 코드 뒤에 해설 7개를 몰면 모바일에서 해설과 코드가 한 화면 넘게 떨어진다. 같은 파일을 data-start 로 이어 두 블록으로 나누고 해설 목록은 counter-reset 으로 번호를 이었다. 모바일 줄바꿈(pre-wrap)은 Python 들여쓰기를 망가뜨려 접고 가로 스크롤 + 안내 문구로 돌아갔다
+
 ## 페이지 레이아웃
 
 그림 하나가 아니라 **페이지 구조**를 고를 때 본다. `/study` 3단계 스토리보드에서 글마다 하나를 고르고,
@@ -224,7 +233,7 @@
 
 | 패턴 | 데스크톱 / 모바일 | 맞는 개념 | 쓴 글 |
 |---|---|---|---|
-| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래), mcp-model-context-protocol-usb-c(제목·첫 문단 옆 배선 지도) |
+| 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | llm-tool-calling-json-schema(모바일은 제목 → 그림 → 글), self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래), mcp-model-context-protocol-usb-c(제목·첫 문단 옆 배선 지도) |
 | 옆에 붙어 다니는 조작판 | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 변수 하나가 모든 그림을 움직일 때 | llm-temperature-sampling |
 | 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스), coding-agent-security-prompt-injection-owasp(스위스 치즈 네 층), sllm-self-hosted-coding-agent-2026(고르는 순서도), ai-pr-review-bottleneck-verification(정거장 위 PR 한 장, 모바일은 정거장만 고정) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |

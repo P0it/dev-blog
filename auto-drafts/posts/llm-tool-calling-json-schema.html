@@ -1,0 +1,1220 @@
+---
+title: Tool Calling에서 함수는 누가 실행할까?
+slug: llm-tool-calling-json-schema
+excerpt: Tool Calling을 쓰면 LLM이 티켓 시스템을 직접 조회하는 것처럼 보입니다. 실제로 모델이 쓰는 건 도구 이름과 값을 적은 요청서 한 장입니다. JSON Schema 메뉴판부터 tool_calls, tool_call_id, 결과를 실어 보내는 두 번째 호출까지 그림과 Python 코드로 확인합니다.
+tags: [AI Agent, Tool Calling, Function Calling, JSON Schema, OpenAI API, Python]
+category: ai
+series: ai-agent
+series_order: 2
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-tool-calling-json-schema-mvah00tb.jpg
+---
+<!-- page -->
+<!-- layout: 분할 히어로 + 가로 스크롤 띠(요청서 한 장이 모델 줄과 코드 줄을 오가는 여정) | 글의 성격: 메시지 몇 장이 모델 쪽과 코드 쪽을 오가는 왕복이 중심이고, 앞뒤로 짧은 개념(메뉴판·tool_choice·번호표·확인)이 붙는다 | 버린 후보: 그림 고정 스크롤리텔링(앞 편 루프와 같은 구조), 비교 나란히(앞 편 히어로와 같은 구조) -->
+<style>
+.post-page .tc {
+  --tc-human: rgb(37, 112, 235); --tc-code: rgb(16, 150, 120); --tc-model: rgb(226, 106, 28); --tc-bad: rgb(214, 56, 56);
+  --tc-a: rgb(124, 77, 230); --tc-b: rgb(214, 51, 132);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .tc-st { opacity: .88; }
+[data-theme="dark"] .post-page .tc-path .seg { stroke: var(--fg-neutral); }
+[data-theme="dark"] .post-page .tc-st.done, [data-theme="dark"] .post-page .tc-st.on { opacity: 1; }
+[data-theme="dark"] .post-page .tc-ghost { color: var(--fg-normal); }
+[data-theme="dark"] .post-page .tc { --tc-human: rgb(110, 165, 255); --tc-code: rgb(60, 205, 165); --tc-model: rgb(255, 150, 80); --tc-bad: rgb(255, 110, 110); --tc-a: rgb(170, 140, 255); --tc-b: rgb(255, 120, 185); }
+.post-page .tc * { box-sizing: border-box; }
+.post-page .tc-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .tc h1, .post-page .tc h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .tc h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .tc h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .tc p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .tc b { color: var(--fg-strong); }
+.post-page .tc .nw { white-space: nowrap; }
+.post-page .tc code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .tc p.tc-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .tc-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .tc svg text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .tc svg .t-strong { fill: var(--fg-strong); font-weight: 700; }
+.post-page .tc svg .t-dim { fill: var(--fg-neutral); }
+.post-page .tc svg .ln { stroke: var(--line-strong); fill: none; }
+.post-page .tc svg .bx { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.5; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .tc-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .tc-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .tc-seg button:hover { color: var(--fg-strong); }
+.post-page .tc-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .tc-act { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .tc-act::before { content: "▶ "; font-size: 11px; }
+.post-page .tc-act:disabled { opacity: .4; cursor: default; }
+.post-page .tc-ctrl { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.post-page .tc-ctrl > span { font-size: 14px; color: var(--fg-neutral); }
+
+/* 이 글의 시각 언어: 요청서(주황, 모델이 씀) · 결과표(초록, 코드가 씀) · 번호표(id) */
+.post-page .tc-slip { position: relative; border-radius: 6px 6px 12px 12px; padding: 10px 12px 10px; font-size: 14px; line-height: 1.5; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 9%, var(--bg-base)); }
+.post-page .tc-slip.req { --k: var(--tc-model); }
+.post-page .tc-slip.res { --k: var(--tc-code); }
+.post-page .tc-slip h5 { margin: 0 0 4px; font-size: 12.5px; font-weight: 700; color: var(--k); letter-spacing: .01em; }
+.post-page .tc-slip .mono { font-family: var(--font-mono); font-size: 13px; overflow-wrap: break-word; color: var(--fg-strong); }
+.post-page .tc-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 8px 1px 6px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-strong)); white-space: nowrap; }
+.post-page .tc-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--bg-base); }
+.post-page .tc-tag.a { --t: var(--tc-a); } .post-page .tc-tag.b { --t: var(--tc-b); }
+
+/* 히어로: 분할 — 왼쪽 제목·리드, 오른쪽 살아 있는 그림 */
+.post-page .tc-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .tc-hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; column-gap: clamp(36px, 5vw, 72px); align-items: start; }
+.post-page .tc-h1 { grid-column: 1; grid-row: 1; }
+.post-page .tc-lede { grid-column: 1; grid-row: 2; }
+.post-page .tc-hero-fig { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .tc-lede p { font-size: 17.5px; color: var(--fg-normal); }
+.post-page .tc-lede p:first-of-type { margin-top: 32px; }
+@media (max-width: 900px) { .post-page .tc-h1, .post-page .tc-lede, .post-page .tc-hero-fig { grid-column: 1; grid-row: auto; } .post-page .tc-hero-fig { margin-top: 28px; order: 1; } .post-page .tc-lede { margin-top: 36px; order: 2; } .post-page .tc-lede p:first-of-type { margin-top: 0; } }
+.post-page .tc-hero .tc-ctrl { margin: 8px 0 0; }
+.post-page .tc p.tc-mobintro { display: none; font-size: 15px; color: var(--fg-strong); font-weight: 600; margin: 0 0 14px; }
+@media (max-width: 900px) { .post-page .tc p.tc-mobintro { display: block; } }
+.post-page .tc-ctrl > .tc-hint { font-size: 13px; color: var(--tc-model); font-weight: 600; }
+.post-page .tc-world { display: grid; grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); row-gap: 14px; position: relative; }
+.post-page .tc-zl { font-size: 13px; font-weight: 700; color: var(--fg-neutral); padding-bottom: 8px; border-bottom: 2px solid var(--zc); }
+.post-page .tc-zl.m { --zc: var(--tc-model); grid-column: 1; }
+.post-page .tc-zl.c { --zc: var(--tc-code); grid-column: 3; }
+.post-page .tc-wall { grid-column: 2; justify-self: center; width: 0; border-left: 2px dashed var(--line-strong); }
+.post-page .tc-wl { grid-column: 2; grid-row: 1; justify-self: center; align-self: end; white-space: nowrap; font-size: 13px; font-weight: 700; color: var(--fg-neutral); background: var(--bg-base); padding: 0 4px; text-align: center; line-height: 1.3; position: relative; z-index: 1; }
+.post-page .tc-w-c1 { grid-column: 1; } .post-page .tc-w-c3 { grid-column: 3; }
+.post-page .tc-bub { padding: 10px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.55; border: 1.5px solid var(--k); }
+.post-page .tc-bub.usr { --k: var(--tc-human); border-radius: 16px 16px 16px 4px; }
+.post-page .tc-bub.ans { --k: var(--tc-model); border-radius: 16px 16px 4px 16px; }
+.post-page .tc-bub small { display: block; font-size: 12px; color: var(--fg-neutral); font-weight: 700; margin-bottom: 2px; }
+.post-page .tc-mbox { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .tc-mbox b { display: grid; place-items: center; width: 64px; height: 40px; border-radius: 12px; border: 2.5px solid var(--tc-model); color: var(--tc-model); font-family: var(--font-display); font-size: 16px; }
+.post-page .tc-menu { font-size: 13px; padding: 6px 10px; border-radius: 10px; border: 1.5px dashed var(--line-strong); color: var(--fg-neutral); }
+.post-page .tc-menu.on { border-style: solid; border-color: var(--fg-strong); color: var(--fg-strong); }
+.post-page .tc-db { border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; font-size: 13.5px; }
+.post-page .tc-db-h { padding: 6px 10px; font-weight: 700; font-size: 12.5px; color: var(--fg-neutral); border-bottom: 1px solid var(--line-subtle); }
+.post-page .tc-db-r { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line-subtle); transition: background .5s; }
+.post-page .tc-db-r:first-of-type { border-top: 0; }
+.post-page .tc-db-r span:first-child { font-family: var(--font-mono); font-size: 12.5px; }
+.post-page .tc-db-r.hit { background: color-mix(in srgb, var(--tc-code) 18%, var(--bg-base)); font-weight: 700; }
+.post-page .tc-arr { grid-column: 2; align-self: center; justify-self: center; font-size: 22px; line-height: 1; color: var(--k); background: var(--bg-base); position: relative; z-index: 1; padding: 4px 0; }
+.post-page .tc-arr.r { --k: var(--tc-model); } .post-page .tc-arr.l { --k: var(--tc-code); }
+.post-page .tc-num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; font-size: 11.5px; font-weight: 800; color: var(--bg-base); background: var(--fg-strong); margin-right: 6px; vertical-align: 1px; flex: none; }
+.post-page .tc-ghost { font-size: 14px; color: var(--fg-normal); padding: 10px 12px; border: 1.5px dashed var(--line-strong); border-radius: 10px; line-height: 1.5; }
+.post-page .tc-run { font-size: 13.5px; color: var(--fg-neutral); line-height: 1.5; }
+.post-page .tc-run code { font-size: 12.5px; }
+.post-page .tc-flag { display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 700; padding: 2px 8px; border-radius: 6px; color: var(--k); border: 1.5px solid var(--k); }
+.post-page .tc-flag.bad { --k: var(--tc-bad); } .post-page .tc-flag.ok { --k: var(--tc-code); }
+.post-page .tc-read { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--fg-neutral); padding-top: 12px; border-top: 1px solid var(--line-subtle); }
+.post-page .tc-read b { font-family: var(--font-mono); font-size: 16px; }
+/* 모드 전환: 두 상태의 칸을 다 만들어 두고 투명도·이동으로 바꾼다 */
+.post-page .tc-world [data-in] { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0ms); }
+.post-page .tc-world[data-mode="off"] [data-in="on"], .post-page .tc-world[data-mode="on"] [data-in="off"] { opacity: 0; transform: translateY(12px); pointer-events: none; transition-delay: 0ms; }
+.post-page .tc-stack { display: grid; }
+.post-page .tc-stack > * { grid-area: 1 / 1; }
+
+/* 1. 식당 비유 */
+.post-page .tc-split { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .tc-split.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.post-page .tc-split.wide { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .tc-split.top { align-items: start; }
+.post-page .tc-split.s3 { grid-template-rows: auto 1fr; row-gap: 0; }
+.post-page .tc-split.s3 > .ta { grid-column: 1; grid-row: 1; }
+.post-page .tc-split.s3 > .tb { grid-column: 1; grid-row: 2; }
+.post-page .tc-split.s3 > .fg { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .tc-split.rev > :first-child { order: 2; }
+.post-page .tc-split.figl { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .tc-split.figl > .tc-fig { order: -1; }
+.post-page .tc-diner { width: 100%; max-width: 660px; height: auto; display: block; margin: 0 auto; }
+.post-page .tc-diner.mob { display: none; max-width: 340px; }
+
+/* 2. 함수 ↔ 메뉴판 */
+.post-page .tc-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .tc-head > h2 { margin: 0; }
+.post-page .tc-map { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; margin: 20px 0 0; }
+.post-page .tc-pane { border-radius: 14px; padding: 16px 18px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; }
+.post-page .tc-pane h4 { font-family: var(--font-sans); margin: 0 0 10px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .tc-pane.fn { background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .tc-pane.fn h4 { color: var(--code-comment, #7f848e); }
+.post-page .tc-pane.menu { border: 2px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); }
+.post-page .tc-ln { display: block; white-space: pre-wrap; overflow-wrap: break-word; transition: filter .5s, opacity .5s; }
+.post-page .tc-ln.i1 { padding-left: 2ch; } .post-page .tc-ln.i2 { padding-left: 4ch; } .post-page .tc-ln.i3 { padding-left: 6ch; }
+.post-page .tc-hl { border-radius: 4px; padding: 0 3px; background: color-mix(in srgb, var(--k) 30%, transparent); box-shadow: 0 0 0 1.5px var(--k); }
+.post-page .tc-pane.fn .tc-hl { color: #fff; }
+.post-page .tc-hl.k1 { --k: var(--tc-model); } .post-page .tc-hl.k2 { --k: var(--tc-human); } .post-page .tc-hl.k3 { --k: var(--tc-a); }
+.post-page .tc-pin { display: inline-block; padding: 0 6px; border-radius: 4px; font-family: var(--font-sans); font-size: 11px; font-weight: 800; line-height: 1.6; color: #fff; background: var(--k); margin-right: 5px; vertical-align: 1px; }
+.post-page .tc-pin.k1 { --k: var(--tc-model); } .post-page .tc-pin.k2 { --k: var(--tc-human); } .post-page .tc-pin.k3 { --k: var(--tc-a); }
+.post-page .tc-map-mid { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 8px; padding: 10px 0; font-size: 12px; color: var(--fg-neutral); text-align: center; }
+.post-page .tc-map-mid span { font-size: 22px; color: var(--fg-strong); line-height: 1; transform: rotate(90deg); }
+.post-page .tc-map[data-eye="on"] .tc-ln.body { filter: blur(4px); opacity: .45; }
+.post-page .tc-ann { font-family: var(--font-sans); font-size: 12.5px; color: var(--tc-model); font-weight: 600; white-space: nowrap; }
+.post-page .tc-hidden-note { font-family: var(--font-sans); font-size: 13px; color: var(--tc-bad); font-weight: 700; margin-top: 8px; opacity: 0; transition: opacity .5s; }
+.post-page .tc-map[data-eye="on"] .tc-hidden-note { opacity: 1; }
+.post-page .tc-map-after { margin-top: 28px; align-items: center; }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .tc-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .tc-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .tc-codepair.rev > :first-child { order: 2; }
+.post-page .tc-codepair .pg-code { margin-top: 0; }
+.post-page .tc .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .tc-codepair { row-gap: 10px; }
+.post-page .tc-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .tc-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .tc-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .tc ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .tc ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .tc-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .tc-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .tc-term-bar .tc-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .tc-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .tc-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-tc-blink 1s steps(1) infinite; }
+@keyframes pg-tc-blink { 50% { opacity: 0; } }
+
+/* 요청서도 글: 모델이 읽는 글 → 이어 쓰는 글 → 응답 */
+.post-page .tc-raw-wrap { margin-top: clamp(48px, 6vw, 64px); }
+.post-page .tc-raw { display: grid; grid-template-columns: minmax(0, 1.15fr) 64px minmax(0, 1fr) 64px minmax(0, 1fr); align-items: start; margin-top: 24px; }
+.post-page .tc-raw-col h4 { margin: 0 0 10px; font-size: 14px; color: var(--fg-strong); display: flex; align-items: center; }
+.post-page .tc-tape { word-break: keep-all; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: break-word; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); min-height: 200px; }
+.post-page .tc-tape .dim { color: var(--fg-alternative); }
+.post-page .tc-tape.res b { color: var(--fg-strong); }
+.post-page .tc-mark { border-radius: 4px; padding: 0 2px; }
+.post-page .tc-mark.menu { display: inline-block; width: 100%; background: color-mix(in srgb, var(--tc-model) 14%, var(--bg-base)); }
+.post-page .tc-mark.call { background: color-mix(in srgb, var(--tc-model) 26%, var(--bg-base)); color: var(--fg-strong); font-weight: 700; }
+.post-page .tc-raw-arr { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding-top: 130px; font-size: 12.5px; color: var(--fg-neutral); text-align: center; line-height: 1.35; }
+.post-page .tc-raw-arr span { font-size: 22px; color: var(--fg-strong); line-height: 1; }
+.post-page .tc p.tc-raw-note { font-size: 13.5px; color: var(--fg-neutral); margin: 10px 0 0; line-height: 1.55; }
+.post-page .tc-raw[data-q="wifi"] .tc-sw[data-in="ticket"], .post-page .tc-raw[data-q="ticket"] .tc-sw[data-in="wifi"] { display: none; }
+.post-page .tc-ctx { margin-top: clamp(56px, 7vw, 80px); }
+.post-page .tc-ctxfig h4 { margin: 0 0 16px; font-size: 14px; color: var(--fg-strong); }
+.post-page .tc-bar { display: grid; grid-template-columns: 190px minmax(0, 1fr) 92px; gap: 12px; align-items: center; margin: 10px 0; font-size: 13.5px; }
+.post-page .tc-bar-t { height: 18px; border-radius: 4px; background: var(--bg-muted); overflow: hidden; }
+.post-page .tc-bar-t i { display: block; height: 100%; background: var(--tc-model); }
+.post-page .tc-bar b { font-size: 13.5px; text-align: right; }
+
+.post-page .tc-one { max-width: 700px; }
+.post-page .tc-two { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 4vw, 56px); margin-top: clamp(40px, 6vw, 56px); }
+.post-page .tc p.tc-sub-lede { margin: 12px 0 0; color: var(--fg-neutral); }
+.post-page .tc h3.tc-sub { font-family: var(--font-display); font-size: clamp(21px, 2.6vw, 26px); color: var(--fg-strong); margin: clamp(56px, 7vw, 80px) 0 0; }
+
+/* 3. tool_choice 격자 */
+.post-page .tc-grid { display: grid; grid-template-columns: 92px repeat(3, minmax(0, 1fr)); gap: 8px; }
+.post-page .tc-gh { font-size: 13px; line-height: 1.45; color: var(--fg-neutral); padding: 4px 2px 6px; align-self: start; }
+.post-page .tc-gh b { display: block; color: var(--tc-human); font-weight: 700; }
+.post-page .tc-gr { font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; color: var(--fg-strong); align-self: center; }
+.post-page .tc-gr small { display: block; font-family: var(--font-sans); font-weight: 400; font-size: 12px; color: var(--fg-neutral); line-height: 1.35; margin-top: 2px; }
+.post-page .tc-cell { font: inherit; text-align: left; cursor: pointer; min-height: 86px; padding: 8px 10px; font-size: 12.5px; line-height: 1.45; color: var(--fg-normal); background: var(--bg-base); border: 1.5px solid var(--k); border-radius: 10px; transition: box-shadow .2s, transform .2s; }
+.post-page .tc-cell[data-kind="text"] { --k: var(--line-strong); border-radius: 14px 14px 4px 14px; }
+.post-page .tc-cell[data-kind="call"] { --k: var(--tc-model); background: color-mix(in srgb, var(--tc-model) 9%, var(--bg-base)); border-radius: 4px 4px 10px 10px; }
+.post-page .tc-cell[data-bad] { --k: var(--tc-bad); border-style: dashed; border-width: 2px; background: color-mix(in srgb, var(--tc-bad) 8%, var(--bg-base)); }
+.post-page .tc-cell em { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--k); margin-bottom: 2px; }
+.post-page .tc-cell[data-kind="text"] em { color: var(--fg-neutral); }
+.post-page .tc-cell .mono { font-family: var(--font-mono); font-size: 12px; overflow-wrap: break-word; }
+.post-page .tc-cell[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--fg-strong); }
+.post-page .tc-grid-row-hl { background: var(--bg-subtle); }
+.post-page .tc p.tc-fighint { font-size: 14px; font-weight: 600; color: var(--tc-model); margin: 0 0 14px; }
+.post-page .tc-detail { margin-top: 20px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; line-height: 1.6; }
+.post-page .tc-detail dt { color: var(--fg-neutral); font-size: 13px; padding-top: 2px; }
+.post-page .tc-detail dd { margin: 0; font-family: var(--font-mono); font-size: 13px; overflow-wrap: break-word; color: var(--fg-strong); }
+.post-page .tc-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .tc-legend i { display: inline-block; width: 14px; height: 11px; border: 1.5px solid var(--k); border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: color-mix(in srgb, var(--k) 10%, var(--bg-base)); }
+
+/* 4. 두 번의 호출을 두 줄로 펼친 흐름: 카드 자리는 고정, 화면 가운데 온 단계만 켠다 */
+.post-page .tc-band { background: var(--bg-subtle); margin: clamp(48px, 7vw, 80px) 0 0; padding: clamp(40px, 5vw, 56px) 0 0; }
+.post-page .tc-flow { position: relative; }
+.post-page .tc-flow-space { height: 240vh; }
+.post-page .tc-flowkey { display: none; }
+.post-page .tc-flownote { order: 9; font-size: 12.5px; color: var(--fg-neutral); }
+@media (max-width: 640px) { .post-page .tc-flownote { display: none; } }
+@media (min-width: 641px) {
+  .post-page .tc-flow-stick { position: sticky; top: 66px; background: var(--bg-subtle); z-index: 3; padding-top: 4px; }
+  .post-page .tc-flow-stick .tc-flowbar { position: static; }
+}
+.post-page .tc-track-win { position: relative; }
+.post-page .tc-lane-fix { display: none; }
+.post-page .tc-track { position: relative; width: 998px; height: 726px; }
+.post-page .tc-lane { position: absolute; left: 0; right: 0; border-radius: 14px; }
+.post-page .tc-lane.top { background: color-mix(in srgb, var(--tc-model) 7%, var(--bg-subtle)); }
+.post-page .tc-lane.bot { background: color-mix(in srgb, var(--tc-code) 7%, var(--bg-subtle)); }
+.post-page .tc-lane-l { display: inline-block; margin: 8px 0 0 12px; font-size: 12.5px; font-weight: 700; color: var(--k); }
+.post-page .tc-lane.top .tc-lane-l { --k: var(--tc-model); } .post-page .tc-lane.bot .tc-lane-l { --k: var(--tc-code); }
+.post-page .tc-st { position: absolute; width: 176px; height: 128px; overflow: hidden; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; line-height: 1.5; background: var(--bg-base); border: 1.5px solid var(--line-strong); color: var(--fg-normal); opacity: .45; word-break: keep-all; transition: opacity .5s, border-color .5s, box-shadow .5s; }
+.post-page .tc-st b { display: flex; align-items: center; font-size: 13px; margin-bottom: 4px; color: var(--fg-strong); }
+.post-page .tc-st small { font-size: 11.5px; color: var(--fg-neutral); }
+.post-page .tc-st .tc-num { width: 18px; height: 18px; font-size: 11px; background: var(--fg-alternative); }
+.post-page .tc-st .mono { font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
+.post-page .tc-st.done { opacity: .9; }
+.post-page .tc-st.req.done, .post-page .tc-st.req.on { border-color: var(--tc-model); } .post-page .tc-st.res.done, .post-page .tc-st.res.on { border-color: var(--tc-code); }
+.post-page .tc-st.on { opacity: 1; box-shadow: 0 0 0 3px var(--fg-strong); }
+.post-page .tc-st.on .tc-num { background: var(--fg-strong); }
+.post-page .tc-path { position: absolute; left: 0; top: 0; width: 998px; height: 726px; pointer-events: none; overflow: visible; }
+.post-page .tc-path .seg { fill: none; stroke: var(--fg-alternative); stroke-width: 2; stroke-dasharray: 5 5; }
+.post-page .tc-path .seg.done { stroke: var(--fg-strong); stroke-dasharray: none; stroke-width: 2.5; }
+.post-page .tc-path .lbl { font-size: 12.5px; fill: var(--fg-neutral); }
+.post-page .tc-path .rowh { font-size: 14px; font-weight: 700; fill: var(--fg-strong); }
+.post-page .tc-path.mob { display: none; }
+.post-page .tc-flowbar { position: sticky; bottom: 0; z-index: 4; margin: 0 0 16px; padding: 12px 0 14px; background: var(--bg-subtle); border-top: 1px solid var(--line-subtle); display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+.post-page .tc-hs-cap { font-size: 14.5px; font-weight: 700; color: var(--fg-strong); display: flex; align-items: center; }
+.post-page .tc-hs-cap .tc-num { background: var(--fg-strong); }
+.post-page .tc-msgs { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.post-page .tc-msgs > span:first-child { font-size: 13px; color: var(--fg-neutral); font-weight: 700; margin-right: 2px; }
+.post-page .tc-m { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border-radius: 999px; font-size: 12.5px; white-space: nowrap; background: color-mix(in srgb, var(--c) 12%, var(--bg-base)); transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .tc-m > b { padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.7; color: var(--bg-base); background: var(--c); }
+.post-page .tc-m.sys { --c: var(--fg-alternative); } .post-page .tc-m.usr { --c: var(--tc-human); } .post-page .tc-m.ast { --c: var(--tc-model); } .post-page .tc-m.tool { --c: var(--tc-code); }
+.post-page .tc-m.hide { opacity: 0; transform: translateY(8px); }
+.post-page .tc-calls-n { font-size: 13.5px; color: var(--fg-strong); font-weight: 600; white-space: nowrap; margin-left: 6px; }
+.post-page .tc-calls-n b { font-family: var(--font-mono); font-size: 15px; }
+.post-page .tc-flow { padding-bottom: clamp(40px, 5vw, 56px); }
+@media (min-width: 641px) and (max-width: 1100px) { .post-page .tc-track { zoom: .78; max-width: none; } }
+@media (max-width: 640px) {
+  .post-page .tc-flow-space { display: none; }
+  .post-page .tc-flowkey { display: none; }
+  .post-page .tc-msgs > span:first-child { display: none; }
+  .post-page .tc-msgs .tc-m { font-size: 11px; padding: 2px 6px 2px 2px; gap: 4px; }
+  .post-page .tc-msgs .tc-m > b { font-size: 10.5px; padding: 0 5px; }
+  .post-page .tc-calls-n { margin-left: 2px; font-size: 12px; }
+  .post-page .tc-flowbar { padding: 8px 0 10px; order: 9; margin: 12px 0 0; }
+  .post-page .tc-flow-stick { display: flex; flex-direction: column; }
+  .post-page .tc-msgs { flex-wrap: nowrap; overflow-x: auto; }
+  .post-page .tc-track-win { padding-bottom: 24px; }
+  .post-page .tc-st[data-st="1"]::before, .post-page .tc-st[data-st="5"]::before { position: absolute; left: 0; top: -26px; font-size: 12.5px; font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+  .post-page .tc-st[data-st="1"]::before { content: "▼ 1번째 호출"; }
+  .post-page .tc-st[data-st="5"]::before { content: "▼ 2번째 호출"; }
+  .post-page .tc-st { overflow: visible; }
+  .post-page .tc-st::after { content: attr(data-lane); position: absolute; right: 8px; bottom: 6px; font-size: 11px; font-weight: 700; color: var(--tc-code); }
+  .post-page .tc-st[data-lane="모델"]::after { color: var(--tc-model); }
+  .post-page .tc-track { width: 350px; height: 990px; margin: 0 auto; }
+  .post-page .tc-lane.rb { display: none; }
+  .post-page .tc-lane { top: 0 !important; bottom: 0; height: auto !important; width: 168px; }
+  .post-page .tc-lane .tc-lane-l { display: none; }
+  .post-page .tc-lane.top { left: -4px; right: auto; } .post-page .tc-lane.bot { left: 186px; right: auto; }
+  .post-page .tc-path.desk { display: none; }
+  .post-page .tc-path.mob .lbl { display: none; }
+  .post-page .tc-path.mob { display: block; width: 350px; height: 990px; }
+  .post-page .tc-st { left: calc(var(--mx) * 190px) !important; top: var(--my) !important; width: 160px; height: 150px; font-size: 12px; padding: 8px 9px; }
+  .post-page .tc-lane-fix { display: inline-block; font-size: 12.5px; font-weight: 700; margin: 0 0 8px; color: var(--k); }
+  .post-page .tc-lane-fix.top { --k: var(--tc-model); width: 190px; } .post-page .tc-lane-fix.bot { --k: var(--tc-code); }
+  .post-page .tc-flowbar { gap: 6px; }
+  .post-page .tc-hs-cap { display: none; }
+  .post-page .tc-m { font-size: 12px; }
+}
+/* 5. 번호표 실험판 */
+.post-page .tc-labh { font-family: var(--font-display); font-size: 20px; color: var(--fg-strong); margin: 0 0 16px; }
+.post-page .tc-order { margin: 24px 0 0; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 13px; }
+.post-page .tc-order > span:first-child { color: var(--fg-neutral); font-weight: 700; margin-right: 4px; }
+.post-page .tc-order .tc-m.miss { --c: var(--tc-bad); outline: 1.5px dashed var(--tc-bad); }
+.post-page .tc-lab { background: var(--bg-subtle); padding: clamp(48px, 6vw, 72px) 0; margin-top: clamp(48px, 7vw, 80px); }
+.post-page .tc-pair { display: grid; grid-template-columns: minmax(0, 1fr) clamp(56px, 12vw, 160px) minmax(0, 1fr); align-items: stretch; margin-top: 28px; }
+.post-page .tc-col h4 { margin: 0 0 10px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .tc-col { display: flex; flex-direction: column; }
+.post-page .tc-col h4 { min-height: 2.9em; }
+.post-page .tc-rows { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; flex: 1; }
+.post-page .tc-rows .tc-slip { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 64px; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .tc-rows .tc-slip .tc-tag { align-self: flex-start; }
+.post-page .tc-notag { align-self: flex-start; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1.5px dashed var(--tc-bad); color: var(--tc-bad); }
+.post-page .tc-wirebox { position: relative; }
+.post-page .tc-wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.post-page .tc-wires path { fill: none; stroke-width: 3; vector-effect: non-scaling-stroke; transition: d .6s cubic-bezier(.2,.7,.2,1), opacity .4s; }
+.post-page .tc-wires .wa { stroke: var(--tc-a); } .post-page .tc-wires .wb { stroke: var(--tc-b); }
+.post-page .tc-wires .gone { opacity: 0; }
+.post-page .tc p.tc-verdict-ko { margin: 20px 0 0; font-size: 15px; font-weight: 600; color: var(--tc-bad); }
+.post-page .tc p.tc-verdict-ko:empty { display: none; }
+.post-page .tc-verdict { margin-top: 24px; border-radius: 12px; padding: 12px 16px; font-size: 14px; line-height: 1.6; }
+.post-page .tc-verdict.ok { background: color-mix(in srgb, var(--tc-code) 12%, var(--bg-base)); color: var(--fg-strong); }
+.post-page .tc-verdict.err { background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); font-family: var(--font-mono); font-size: 13px; }
+.post-page .tc-verdict.err b { color: #ff7a7a; }
+
+/* 6. 확인 관문 */
+.post-page .tc-gates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 22px; }
+.post-page .tc-gate { position: relative; padding: 46px 6px 0; text-align: center; font-size: 13px; line-height: 1.45; color: var(--fg-neutral); }
+.post-page .tc-gate::before { content: ""; position: absolute; top: 16px; left: 0; right: 0; height: 3px; background: var(--g, var(--line-subtle)); transition: background .4s; }
+.post-page .tc-gate:first-child::before { left: 50%; } .post-page .tc-gate:last-child::before { right: 50%; }
+.post-page .tc-gate i { position: absolute; top: 2px; left: 50%; margin-left: -16px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 15px; background: var(--bg-base); border: 2.5px solid var(--g, var(--line-strong)); color: var(--g, var(--fg-alternative)); transition: border-color .4s, color .4s, background .4s; z-index: 1; }
+.post-page .tc-gate b { display: block; font-size: 13.5px; color: var(--fg-strong); margin-bottom: 2px; }
+.post-page .tc-gate[data-s="pass"] { --g: var(--tc-code); }
+.post-page .tc-gate[data-s="fail"] { --g: var(--tc-bad); }
+.post-page .tc-gate[data-s="fail"] i { background: var(--tc-bad); color: #fff; }
+.post-page .tc-gate[data-s="skip"] { opacity: .45; }
+.post-page .tc-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.post-page .tc-pick button { font: inherit; text-align: left; cursor: pointer; padding: 0; border: 0; background: none; border-radius: 6px 6px 12px 12px; transition: box-shadow .2s, opacity .2s; opacity: .62; }
+.post-page .tc-pick button[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 3px var(--fg-strong); }
+.post-page .tc-pick .tc-slip { height: 100%; }
+.post-page .tc-cut { font-family: var(--font-sans); font-size: 12px; font-weight: 700; color: var(--tc-bad); }
+.post-page .tc-back { margin-top: 26px; display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: start; }
+.post-page .tc-back > span { font-size: 13px; color: var(--fg-neutral); padding-top: 9px; white-space: nowrap; }
+
+.post-page .tc details { margin: 6px 0 14px; }
+.post-page .tc details[open] { margin-bottom: 22px; }
+.post-page .tc summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
+.post-page .tc details p { font-size: 16px; margin-top: 10px; }
+.post-page .tc-pull { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 26px) !important; line-height: 1.6 !important; color: var(--fg-strong); max-width: 880px; margin: clamp(64px, 8vw, 96px) auto 0 !important; text-align: center; }
+.post-page .tc-refs { padding-left: 1.2em; font-size: 15px; margin: 0; }
+.post-page .tc-refs li { margin: 8px 0; line-height: 1.6; }
+.post-page .tc-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .tc-end-pad { height: clamp(48px, 8vw, 96px); }
+
+@media (max-width: 900px) {
+  .post-page .tc-hero-grid, .post-page .tc-split, .post-page .tc-split.rev, .post-page .tc-split.wide, .post-page .tc-head, .post-page .tc-codepair, .post-page .tc-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .tc-split.rev > :first-child, .post-page .tc-codepair.rev > :first-child, .post-page .tc-split.figl > .tc-fig { order: 0; }
+  .post-page .tc-split.s3 > .ta, .post-page .tc-split.s3 > .tb, .post-page .tc-split.s3 > .fg { grid-column: 1; grid-row: auto; }
+  .post-page .tc-split.s3 > .fg { margin: 8px 0 40px; }
+  .post-page .tc-codepair > .cp-code, .post-page .tc-codepair > .cp-term, .post-page .tc-codepair > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .tc-codepair > .cp-notes { order: 2; } .post-page .tc-codepair > .cp-term { order: 3; }
+  .post-page .tc-codepair { row-gap: 8px; }
+  .post-page .tc-term-out { white-space: pre-wrap; }
+  .post-page .tc .tc-codepair[style*="24px"] .cp-code::before { content: "코드는 옆으로 밀어 끝까지 볼 수 있습니다 →"; display: block; font-size: 13px; color: var(--fg-neutral); margin: 0 0 8px; }
+  .post-page .tc-head > h2 { margin-bottom: 4px; }
+  .post-page .tc-map { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .post-page .tc-map-mid { flex-direction: row; padding: 8px 0; }
+  .post-page .tc-map-mid span { transform: rotate(90deg); }
+  .post-page .tc-raw { grid-template-columns: minmax(0, 1fr); }
+  .post-page .tc-raw-arr { flex-direction: row; padding: 10px 0; }
+  .post-page .tc-raw-arr span { transform: rotate(90deg); }
+  .post-page .tc-raw-arr br { display: none; }
+  .post-page .tc-tape { min-height: 0; }
+  .post-page .tc-two { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .tc-pull { text-align: left; }
+}
+@media (max-width: 640px) {
+  .post-page .tc-wrap { padding: 0 20px; }
+  .post-page .tc-hero { padding-top: 24px; }
+  .post-page .tc h1 { font-size: 28px; }
+  .post-page .tc-hero-fig .tc-ctrl { margin-bottom: 16px !important; }
+  .post-page .tc-world { row-gap: 8px; }
+  .post-page .tc-world .tc-zl { padding-bottom: 4px; font-size: 12px; }
+  .post-page .tc-world .tc-db-r { padding: 3px 7px; }
+  .post-page .tc-world .tc-ghost { padding: 6px 8px; font-size: 12.5px; }
+  .post-page .tc-bar { grid-template-columns: minmax(0, 1fr) 84px; gap: 4px 8px; }
+  .post-page .tc-bar-l { grid-column: 1 / -1; }
+  .post-page .tc p { font-size: 16px; }
+  .post-page .tc-lede p { font-size: 16.5px; }
+  .post-page .tc-world { grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr); row-gap: 12px; }
+  .post-page .tc-wl { display: none; }
+  .post-page .tc-bub { font-size: 13px; padding: 8px 10px; }
+  .post-page .tc-slip { font-size: 12.5px; padding: 8px 9px; }
+  .post-page .tc-slip .mono { font-size: 11.5px; }
+  .post-page .tc-mbox b { width: 52px; height: 34px; font-size: 14px; }
+  .post-page .tc-mbox { font-size: 12.5px; }
+  .post-page .tc-db { font-size: 12px; }
+  .post-page .tc-db-r { padding: 5px 7px; gap: 5px; }
+  .post-page .tc-run { font-size: 12.5px; }
+  .post-page .tc-diner.desk { display: none; }
+  .post-page .tc-diner.mob { display: block; }
+  .post-page .tc-grid { grid-template-columns: 64px repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .post-page .tc-cell { padding: 6px 6px; font-size: 11.5px; min-height: 92px; }
+  .post-page .tc-cell .mono { font-size: 10.5px; }
+  .post-page .tc-gh { font-size: 11.5px; }
+  .post-page .tc-gr { font-size: 12px; }
+  .post-page .tc-detail { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .tc-detail dt { padding-top: 8px; }
+  .post-page .tc-pair { grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr); }
+  .post-page .tc-gate { font-size: 12px; }
+  .post-page .tc-gate b { font-size: 12.5px; }
+  .post-page .tc-pick .tc-slip { font-size: 12px; }
+  .post-page .tc-back { grid-template-columns: 1fr; }
+  .post-page .tc-back > span { padding-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .tc * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="tc" data-tc>
+
+  <header class="tc-hero">
+    <div class="tc-wrap tc-hero-grid">
+      <h1 class="tc-h1">Tool Calling에서 함수는 누가 실행할까?</h1>
+      <div class="tc-lede">
+        <p>ChatGPT에 오늘 날씨를 물으면 검색을 해서 답하고 코딩 Agent는 파일을 열고 테스트를 돌립니다. 그런데 이런 일을 하는 Agent 속의 LLM(Large Language Model)은 받은 글 뒤에 올 말을 이어 쓰는 프로그램입니다. 스스로 할 수 있는 일은 글을 쓰는 것뿐입니다. 그럼 검색이나 티켓 조회는 누가 하는 걸까요?</p>
+        <p>답은 <b>내 코드</b>입니다. 내 코드는 모델을 운영하는 회사의 API(프로그램끼리 일을 주고받는 창구)로 모델을 부르면서 모델이 쓸 수 있는 함수 목록을 함께 보냅니다. 이 함수를 <b>도구(tool)</b>라고 합니다. 모델은 "이 도구를 이 값으로 실행해 달라"는 <b>요청서</b>만 쓰고 실행은 모델을 부른 쪽의 코드가 합니다. 이 방식을 <b>Tool Calling</b>이라고 부릅니다. Function Calling이라고도 합니다.</p>
+        <p>그림에서 직원이 묻는 티켓의 실제 상태는 <b>부품 대기</b>입니다. 도구 목록을 보내기 전과 후에 모델의 답이 어떻게 달라지는지 견주어 보세요. 이 글은 그 요청서가 실제로 어떤 모양인지, 내 코드와 모델 사이에 어떤 메시지가 오가는지 Python 코드까지 열어 봅니다.</p>
+      </div>
+      <div class="tc-hero-fig" data-figure data-thumb data-thumb-act="el.querySelector('[data-tc-world]').dataset.mode='on'; el.querySelector('.tc-ctrl').style.visibility='hidden'; el.querySelector('.tc-cap').style.display='none'">
+        <p class="tc-mobintro">모델이 쓸 수 있는 함수 목록(도구 목록)을 함께 보내면 답이 어떻게 달라질까요?</p>
+        <div class="tc-ctrl" style="margin-bottom:28px">
+          <span>모델에게 도구 목록을</span>
+          <div class="tc-seg" role="group" aria-label="도구 목록 보내기">
+            <button type="button" data-tc-mode="off" aria-pressed="true">안 보냄</button>
+            <button type="button" data-tc-mode="on" aria-pressed="false">보냄</button>
+          </div>
+          <span class="tc-hint" data-tc-hint>"보냄"을 누르면 빈 칸에 1~4 단계가 채워집니다</span>
+        </div>
+        <div class="tc-world" data-tc-world data-mode="off" aria-live="polite">
+          <div class="tc-zl m">모델 쪽 · 글만 씁니다</div>
+          <div class="tc-wl">글만 오감</div>
+          <div class="tc-zl c">내 코드 쪽 · 실제로 실행합니다</div>
+          <div class="tc-wall" aria-hidden="true" style="grid-row:1 / span 6"></div>
+
+          <div class="tc-w-c1" style="grid-row:2"><div class="tc-bub usr"><small>직원</small><span class="nw">T-1042</span> 티켓 어떻게 됐어요?</div></div>
+          <div class="tc-w-c3" style="grid-row:2 / span 2">
+            <div class="tc-db">
+              <div class="tc-db-h">티켓 시스템</div>
+              <div class="tc-db-r"><span><span class="nw">T-1041</span></span><span>완료</span></div>
+              <div class="tc-db-r" data-tc-hit><span><span class="nw">T-1042</span></span><span>부품 대기</span></div>
+              <div class="tc-db-r"><span><span class="nw">T-1043</span></span><span>처리 중</span></div>
+            </div>
+          </div>
+
+          <div class="tc-w-c1" style="grid-row:3">
+            <div class="tc-mbox"><b>모델</b>
+              <div class="tc-stack">
+                <span class="tc-menu" data-in="off">받은 도구 목록 없음</span>
+                <span class="tc-menu on" data-in="on">받은 도구 목록: get_ticket</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tc-w-c1 tc-stack" style="grid-row:4">
+            <div class="tc-ghost" data-in="off">도구가 있는 줄 모르니 요청서를 쓰지 않습니다</div>
+            <div class="tc-slip req" data-in="on" style="--d:90ms"><h5><span class="tc-num">1</span>요청서 (모델이 씀)</h5><span class="mono">get_ticket<br>{"ticket_id": "<span class="nw">T-1042</span>"}</span></div>
+          </div>
+          <div class="tc-arr r" style="grid-row:4" data-in="on" aria-hidden="true">→</div>
+          <div class="tc-w-c3 tc-stack" style="grid-row:4">
+            <div class="tc-ghost" data-in="off">조회 요청이 오지 않았습니다</div>
+            <div class="tc-run" data-in="on" style="--d:180ms"><span class="tc-num">2</span>코드가 <code>get_ticket("<span class="nw">T-1042</span>")</code>를 실행해 티켓 시스템을 조회합니다</div>
+          </div>
+
+          <div class="tc-w-c1 tc-stack" style="grid-row:5">
+            <div class="tc-ghost" data-in="off">모델은 한 번만 불리고 바로 답을 씁니다</div>
+            <div class="tc-run" data-in="on" style="--d:330ms">모델이 결과 글을 읽습니다</div>
+          </div>
+          <div class="tc-arr l" style="grid-row:5" data-in="on" aria-hidden="true">←</div>
+          <div class="tc-w-c3 tc-stack" style="grid-row:5">
+            <div class="tc-ghost" data-in="off">돌려줄 결과도 없습니다</div>
+            <div class="tc-slip res" data-in="on" style="--d:270ms"><h5><span class="tc-num">3</span>결과 (코드가 씀)</h5><span class="mono">{"status": "부품 대기", …}</span></div>
+          </div>
+
+          <div class="tc-w-c1 tc-stack" style="grid-row:6">
+            <div class="tc-bub ans" data-in="off"><small>모델의 답</small><span class="nw">T-1042</span> 티켓은 현재 처리 중입니다. 곧 담당자가 연락드릴 예정입니다.<br><span class="tc-flag bad">실제 상태와 다름: 지어낸 답</span></div>
+            <div class="tc-bub ans" data-in="on" style="--d:400ms"><small><span class="tc-num">4</span>모델을 한 번 더 불러 받은 답</small><span class="nw">T-1042</span> 티켓은 지금 부품 대기 중입니다.<br><span class="tc-flag ok">티켓 시스템에서 확인한 답</span></div>
+          </div>
+
+          <div class="tc-read tc-stack" style="grid-row:7">
+            <div data-in="off">모델 호출 <b>1</b>번 · 티켓 시스템 조회 <b>0</b>번</div>
+            <div data-in="on">모델 호출 <b>2</b>번 · 티켓 시스템 조회 <b>1</b>번</div>
+          </div>
+        </div>
+        <p class="tc-cap">설명을 위해 만든 예시입니다. 도구 목록이 없을 때 모델이 늘 상태를 지어내지는 않습니다. "확인할 수 없다"고 답할 때도 많습니다. 다만 어느 쪽이든 실제 티켓 시스템에는 닿지 않습니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="tc-sec">
+    <div class="tc-wrap tc-split wide s3">
+      <div class="ta">
+        <h2>모델은 주문서를 쓰고 요리는 주방이 합니다</h2>
+        <p>Tool Calling은 식당과 비슷합니다. 웨이터는 손님 말을 듣고 메뉴판에 있는 요리를 주문서에 적어 주방에 넘깁니다. 요리는 주방이 합니다. 요리가 나오면 다시 웨이터 차례입니다. 웨이터가 요리를 받아 손님에게 설명하며 가져다줍니다.</p>
+      </div>
+      <div class="tc-fig fg" data-figure>
+        <svg class="tc-diner desk" viewBox="0 0 620 330" role="img" aria-label="식당 비유. 손님이 웨이터에게 주문하면 웨이터는 메뉴판을 보고 주문서를 써서 주방 벽 너머로 넘긴다. 주방에서 요리하고 요리는 다시 웨이터를 거쳐 손님에게 간다. 손님은 사용자, 웨이터는 모델, 주문서는 tool call, 주방은 내 코드, 메뉴판은 도구 목록에 해당한다. 판단은 웨이터(모델)가, 실행은 주방(내 코드)이 한다">
+          <defs><marker id="tc-ar1" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
+          <rect x="384" y="10" width="226" height="230" rx="16" fill="color-mix(in srgb, var(--tc-code) 8%, var(--bg-base))"/>
+          <line x1="372" y1="10" x2="372" y2="240" stroke="var(--line-strong)" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="497" y="34" text-anchor="middle" class="t-strong" font-size="15" style="fill:var(--tc-code)">주방</text>
+          <circle cx="60" cy="96" r="20" class="bx" style="stroke:var(--tc-human);stroke-width:2.5"/>
+          <path d="M28 168c0-28 14-44 32-44s32 16 32 44z" class="bx" style="stroke:var(--tc-human);stroke-width:2.5"/>
+          <text x="60" y="196" text-anchor="middle" class="t-strong" font-size="15">손님</text>
+          <circle cx="226" cy="96" r="20" class="bx" style="stroke:var(--tc-model);stroke-width:2.5"/>
+          <path d="M194 168c0-28 14-44 32-44s32 16 32 44z" class="bx" style="stroke:var(--tc-model);stroke-width:2.5"/>
+          <text x="226" y="196" text-anchor="middle" class="t-strong" font-size="15">웨이터</text>
+          <rect x="180" y="20" width="92" height="40" rx="6" class="bx" style="stroke:var(--fg-neutral);stroke-width:2"/>
+          <text x="226" y="45" text-anchor="middle" font-size="14">메뉴판</text>
+          <rect x="282" y="112" width="74" height="54" rx="4" fill="color-mix(in srgb, var(--tc-model) 12%, var(--bg-base))" stroke="var(--tc-model)" stroke-width="2"/>
+          <text x="319" y="135" text-anchor="middle" font-size="13" style="fill:var(--tc-model)" font-weight="700">주문서</text>
+          <text x="319" y="156" text-anchor="middle" font-size="13" class="t-dim">볶음밥 1</text>
+          <circle cx="497" cy="96" r="20" class="bx" style="stroke:var(--tc-code);stroke-width:2.5"/>
+          <path d="M465 168c0-28 14-44 32-44s32 16 32 44z" class="bx" style="stroke:var(--tc-code);stroke-width:2.5"/>
+          <rect x="481" y="64" width="32" height="14" rx="4" class="bx"/>
+          <text x="497" y="196" text-anchor="middle" class="t-strong" font-size="15">주방 직원</text>
+          <path d="M92 110h88" class="ln" stroke-width="2" marker-end="url(#tc-ar1)"/>
+          <text x="136" y="100" text-anchor="middle" class="t-dim" font-size="14">주문</text>
+          <path d="M360 139h82" stroke="var(--tc-model)" stroke-width="2.5" fill="none" marker-end="url(#tc-ar1)"/>
+          <path d="M452 222 C 400 236, 300 236, 252 206" stroke="var(--tc-code)" stroke-width="2.5" fill="none" marker-end="url(#tc-ar1)"/>
+          <text x="352" y="256" text-anchor="middle" font-size="14" style="fill:var(--tc-code)">요리는 웨이터를 거쳐 손님에게</text>
+          <path d="M196 208 C 160 226, 110 226, 84 206" class="ln" stroke-width="2" marker-end="url(#tc-ar1)"/>
+          <text x="140" y="244" text-anchor="middle" class="t-dim" font-size="14">설명하며 전달</text>
+          <path d="M226 64v8" class="ln" stroke-width="2" stroke-dasharray="3 3"/><text x="280" y="84" class="t-dim" font-size="13">보고 고름</text>
+          <g font-size="14">
+            <text x="60" y="292" text-anchor="middle" style="fill:var(--tc-human)" font-weight="700">사용자</text>
+            <text x="226" y="292" text-anchor="middle" style="fill:var(--tc-model)" font-weight="700">모델</text>
+            <text x="319" y="292" text-anchor="middle" style="fill:var(--tc-model)" font-weight="700">tool call</text>
+            <text x="497" y="292" text-anchor="middle" style="fill:var(--tc-code)" font-weight="700">내 코드</text>
+            <text x="226" y="314" text-anchor="middle" class="t-dim">메뉴판 = 도구 목록</text>
+          </g>
+          <line x1="20" y1="268" x2="600" y2="268" stroke="var(--line-subtle)" stroke-width="1.5"/>
+        </svg>
+        <svg class="tc-diner mob" viewBox="0 0 340 470" role="img" aria-label="식당 비유(세로). 손님이 웨이터에게 주문하고 웨이터가 주문서를 주방으로 넘기면 주방에서 요리하고 요리는 웨이터를 거쳐 손님에게 간다">
+          <defs><marker id="tc-ar1m" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
+          <g font-size="15">
+            <rect x="10" y="10" width="150" height="64" rx="12" class="bx" style="stroke:var(--tc-human);stroke-width:2.5"/>
+            <text x="100" y="38" text-anchor="middle" class="t-strong">손님</text><text x="100" y="60" text-anchor="middle" font-size="13" style="fill:var(--tc-human)" font-weight="700">= 사용자</text>
+            <path d="M85 80v28" class="ln" stroke-width="2" marker-end="url(#tc-ar1m)"/><text x="96" y="100" class="t-dim" font-size="13">주문</text>
+            <rect x="10" y="114" width="150" height="64" rx="12" class="bx" style="stroke:var(--tc-model);stroke-width:2.5"/>
+            <text x="85" y="142" text-anchor="middle" class="t-strong">웨이터</text><text x="85" y="164" text-anchor="middle" font-size="13" style="fill:var(--tc-model)" font-weight="700">= 모델</text>
+            <rect x="180" y="114" width="150" height="64" rx="10" class="bx" style="stroke:var(--fg-neutral);stroke-width:2"/>
+            <path d="M180 128h-14" class="ln" stroke-width="2" stroke-dasharray="3 3"/><text x="255" y="142" text-anchor="middle" font-size="14">메뉴판</text><text x="255" y="164" text-anchor="middle" font-size="13">= 도구 목록</text><path d="M34 110v-28" class="ln" stroke-width="2" marker-end="url(#tc-ar1m)"/><text x="40" y="100" class="t-dim" font-size="12">전달</text>
+            <path d="M85 184v28" stroke="var(--tc-model)" stroke-width="2.5" marker-end="url(#tc-ar1m)"/>
+            <rect x="10" y="218" width="150" height="64" rx="4" fill="color-mix(in srgb, var(--tc-model) 12%, var(--bg-base))" stroke="var(--tc-model)" stroke-width="2"/>
+            <text x="85" y="246" text-anchor="middle" font-size="14" style="fill:var(--tc-model)" font-weight="700">주문서</text><text x="85" y="268" text-anchor="middle" font-size="13" style="fill:var(--tc-model)">= tool call</text>
+            <line x1="10" y1="304" x2="330" y2="304" stroke="var(--line-strong)" stroke-width="2" stroke-dasharray="6 5"/><text x="330" y="322" text-anchor="end" font-size="13" style="fill:var(--tc-code)" font-weight="700">↓ 주방</text>
+            <path d="M85 288v40" stroke="var(--tc-model)" stroke-width="2.5" marker-end="url(#tc-ar1m)"/>
+            <rect x="10" y="334" width="150" height="64" rx="12" fill="color-mix(in srgb, var(--tc-code) 10%, var(--bg-base))" stroke="var(--tc-code)" stroke-width="2.5"/>
+            <text x="85" y="362" text-anchor="middle" class="t-strong">주방</text><text x="85" y="384" text-anchor="middle" font-size="13" style="fill:var(--tc-code)" font-weight="700">= 내 코드</text>
+            <path d="M166 366 C 250 366, 268 270, 166 168" stroke="var(--tc-code)" stroke-width="2.5" fill="none" marker-end="url(#tc-ar1m)"/>
+            <text x="200" y="430" font-size="13" style="fill:var(--tc-code)">요리는 웨이터를 거쳐</text><text x="200" y="450" font-size="13" style="fill:var(--tc-code)">손님에게 갑니다</text>
+          </g>
+        </svg>
+        <p class="tc-cap">점선이 주방 벽입니다. 웨이터는 벽을 넘어가 요리하지 않고 주문서만 넘깁니다. 그림은 단순하게 그렸습니다. 실제로는 손님과 웨이터 사이에서도 내 코드가 말을 전합니다.</p>
+      </div>
+      <div class="tb">
+        <p>여기서 판단하는 쪽은 웨이터이고 주방은 시킨 대로 만들기만 합니다. 웨이터가 <b>모델</b>, 주문서가 <b>요청서</b>(tool call), 주방이 <b>내 코드</b>입니다. 메뉴판은 개발자가 보내는 도구 목록입니다. 웨이터가 메뉴판을 보고 고르듯 모델도 도구 목록 안에서 고릅니다. 주문서에는 도구 이름과 그 도구에 넘길 값이 적힙니다. 도구에 넘기는 값을 <b>인자(argument)</b>라고 합니다.</p>
+        <p>식당과 다른 점도 있습니다. 웨이터는 메뉴에 없는 요리를 적지 않지만 모델은 없는 도구 이름이나 엉뚱한 값을 적을 수 있습니다. 그래서 주문서를 받은 코드가 내용을 확인한 다음에 실행합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap tc-split top menu s3">
+      <div class="ta">
+        <h2>모델에게는 함수 대신 메뉴판을 보냅니다</h2>
+        <p>모델은 내 코드를 읽지 못합니다. 개발자가 보내는 건 도구마다 이름, 설명, 받는 인자의 모양을 적은 글뿐입니다. 인자의 모양은 <b>JSON Schema</b>라는 형식으로 적습니다.</p>
+        <p><b>JSON</b>은 <code>{"키": 값}</code> 꼴로 데이터를 적는 글 형식입니다. JSON Schema는 그 JSON이 어떤 모양이어야 하는지 적은 규칙표입니다. "ticket_id는 글자(string)이고 꼭 있어야 한다"처럼 값의 종류와 꼭 필요한지를 적습니다. 그림에서 같은 색 이름표끼리 짝입니다.</p>
+      </div>
+      <div class="tc-fig fg">
+        <p class="tc-fighint">"모델 눈으로"를 눌러 모델이 받는 것만 남겨 보세요.</p>
+        <div class="tc-ctrl">
+          <span>보기</span>
+          <div class="tc-seg" role="group" aria-label="보는 쪽 고르기">
+            <button type="button" data-tc-eye="off" aria-pressed="true">개발자 눈으로</button>
+            <button type="button" data-tc-eye="on" aria-pressed="false">모델 눈으로</button>
+          </div>
+        </div>
+        <div class="tc-map" data-tc-map data-eye="off" data-figure>
+        <div class="tc-pane fn">
+          <h4>내 코드의 함수</h4>
+          <span class="tc-ln">def <span class="tc-hl k1"><span class="tc-pin k1">이름</span>get_ticket</span>(<span class="tc-hl k3"><span class="tc-pin k3">인자</span>ticket_id: str</span>):</span>
+          <span class="tc-ln i1"><span class="tc-hl k2"><span class="tc-pin k2">설명</span>"""티켓 번호로 처리 상태와 담당자를 조회한다."""</span></span>
+          <span class="tc-ln i1 body">return TICKETS.get(ticket_id,</span>
+          <span class="tc-ln i3 body">{"error": "없는 티켓입니다"})</span>
+          <div class="tc-hidden-note">흐린 줄은 모델에게 가지 않습니다</div>
+        </div>
+        <div class="tc-map-mid" aria-hidden="true"><span>→</span>개발자가 이름·설명·인자 모양만 JSON으로 옮겨 적음</div>
+        <div class="tc-pane menu">
+          <h4>모델에게 가는 메뉴판</h4>
+          <span class="tc-ln">"name": <span class="tc-hl k1"><span class="tc-pin k1">이름</span>"get_ticket"</span>,</span>
+          <span class="tc-ln">"description": <span class="tc-hl k2"><span class="tc-pin k2">설명</span>"티켓 번호로 처리 상태와 담당자를 조회한다."</span>,</span>
+          <span class="tc-ln">"parameters": {</span>
+          <span class="tc-ln i1">"type": "object", <span class="tc-ann">← 이름 붙은 칸들의 묶음</span></span>
+          <span class="tc-ln i1">"properties": { <span class="tc-hl k3"><span class="tc-pin k3">인자</span>"ticket_id": {"type": "string"}</span> },</span>
+          <span class="tc-ln i1">"required": ["ticket_id"] <span class="tc-ann">← 꼭 채울 칸</span></span>
+          <span class="tc-ln">}</span>
+        </div>
+      </div>
+        <p class="tc-cap">메뉴판은 함수와 따로 개발자가 적습니다. 함수를 읽어 메뉴판을 만들어 주는 라이브러리(남이 만들어 둔 코드 묶음)도 있습니다. 코드로 보낼 때는 이 메뉴판을 <code>{"type": "function", "function": {…}}</code>으로 한 번 감싸 보냅니다.</p>
+      </div>
+      <div class="tb">
+        <p>"모델 눈으로"를 고르면 함수 본문이 흐려집니다. 모델은 <code>get_ticket</code> 안에서 어떤 데이터베이스를 어떻게 조회하는지 모릅니다. 이름과 설명만 보고 이 도구를 언제 쓸지 고릅니다. 설명이 엉성하면 엉뚱한 때 부르거나 필요할 때 부르지 않습니다.</p>
+        <p>규칙표를 보냈다고 모델이 꼭 지키지는 않습니다. 대개 이 모양대로 인자를 쓰지만 늘 그렇지는 않습니다. 그래서 받은 요청서를 확인하는 단계가 따로 필요합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap">
+      <div class="tc-head">
+        <h2>모델이 쓰는 요청서도 결국 글입니다</h2>
+        <div>
+          <p>모델이 글만 쓴다면 요청서는 어떻게 응답의 <code>tool_calls</code> 칸에 담겨 올까요? 요청서도 모델이 쓴 글입니다. system 글에 "이 표시 안에 적어라"라는 안내가 함께 들어가고 모델은 많은 예시로 그 표시를 쓰도록 학습되어(길러져) 있습니다.</p>
+          <p>모델을 돌리는 회사 쪽 컴퓨터를 <b>API 서버</b>라고 합니다. 모델이 닫는 표시(&lt;/tool_call&gt;)까지 쓰면 API 서버는 거기서 쓰기를 멈추게 합니다. 그리고 표시 안의 JSON을 떼어 내 <code>tool_calls</code> 칸에 담아 돌려줍니다. 그림의 "정리"가 이 일입니다.</p>
+        </div>
+      </div>
+      <div class="tc-raw-wrap" data-figure>
+        <div class="tc-ctrl">
+          <span>질문을 바꿔 보세요</span>
+          <div class="tc-seg" role="group" aria-label="질문 고르기">
+            <button type="button" data-tc-q="wifi" aria-pressed="false">와이파이 껐다 켜는 법</button>
+            <button type="button" data-tc-q="ticket" aria-pressed="true"><span class="nw">T-1042</span> 어떻게 됐어요?</button>
+          </div>
+        </div>
+        <div class="tc-raw" data-tc-raw data-q="ticket">
+          <div class="tc-raw-col">
+            <h4><span class="tc-num">1</span>모델이 실제로 읽는 글</h4>
+            <div class="tc-tape"><span class="dim">&lt;|im_start|&gt;system</span>
+너는 IT 헬프데스크 상담원이다.
+<span class="tc-mark menu">&lt;tools&gt;
+{"name": "get_ticket",
+ "description": "티켓 번호로 …조회한다.",
+ "parameters": {…}}
+&lt;/tools&gt;
+도구를 쓰려면 &lt;tool_call&gt; 안에
+JSON으로 적어라.</span>
+<span class="dim">&lt;|im_end|&gt;
+&lt;|im_start|&gt;user</span>
+<span class="tc-sw" data-in="wifi">와이파이 껐다 켜는 법 알려 주세요</span><span class="tc-sw" data-in="ticket"><span class="nw">T-1042</span> 티켓 어떻게 됐어요?</span>
+<span class="dim">&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant</span></div>
+            <p class="tc-raw-note">회색 표시는 누가 하는 말인지(role) 가르는 칸막이입니다. 모델은 이 칸막이로 말한 사람을 구분합니다. system은 개발자의 지시, user는 사람의 말, assistant는 모델의 말입니다. 주황 바탕이 메뉴판이 글로 들어간 곳입니다</p>
+          </div>
+          <div class="tc-raw-arr" aria-hidden="true"><span>→</span>이어서 씀</div>
+          <div class="tc-raw-col">
+            <h4><span class="tc-num">2</span>모델이 이어 쓰는 글</h4>
+            <div class="tc-tape out"><span class="tc-sw" data-in="wifi">설정에서 Wi-Fi를 껐다가
+다시 켜 보세요.</span><span class="tc-sw" data-in="ticket"><span class="tc-mark call">&lt;tool_call&gt;</span>
+{"name": "get_ticket",
+ "arguments":
+   {"ticket_id": "<span class="nw">T-1042</span>"}}
+<span class="tc-mark call">&lt;/tool_call&gt;</span></span></div>
+            <p class="tc-raw-note"><span class="tc-sw" data-in="wifi">표시가 없는 보통 글입니다</span><span class="tc-sw" data-in="ticket">1번 칸 마지막 두 줄의 안내대로 표시 안에 요청서를 적었습니다</span></p>
+          </div>
+          <div class="tc-raw-arr" aria-hidden="true"><span>→</span>API 서버가 <br>정리</div>
+          <div class="tc-raw-col">
+            <h4><span class="tc-num">3</span>내 코드가 받는 응답</h4>
+            <div class="tc-tape res"><span class="tc-sw" data-in="wifi">finish_reason: <b>"stop"</b>
+message:
+  content: "설정에서 Wi-Fi를
+    껐다가 다시 켜 보세요."
+  tool_calls: 없음</span><span class="tc-sw" data-in="ticket">finish_reason: <b>"tool_calls"</b>
+message:
+  content: null (비어 있음)
+  tool_calls[0]:
+    id: "call_Qd7w"
+    name: "get_ticket"
+    arguments:
+      <b>'{"ticket_id": "<span class="nw">T-1042</span>"}'</b></span></div>
+            <p class="tc-raw-note"><span class="tc-sw" data-in="wifi">finish_reason은 모델이 쓰기를 멈춘 이유, content는 답 글이 들어가는 칸입니다. 글이 content 칸에 그대로 담겼습니다</span><span class="tc-sw" data-in="ticket">finish_reason은 모델이 쓰기를 멈춘 이유, content는 답 글이 들어가는 칸입니다. 표시를 떼어 내 tool_calls 칸에 담았고 번호(id)도 이때 붙습니다</span></p>
+          </div>
+        </div>
+        <p class="tc-cap">1·2번 칸은 공개 모델 Qwen2.5의 채팅 템플릿을 본떴습니다. 채팅 템플릿은 대화를 긴 글 하나로 이어 붙이는 규칙입니다. 길이는 줄이고 지시 문장은 우리말로 옮겼습니다. 이 글의 코드가 API로 부르는 GPT 모델이 안에서 쓰는 형식은 공개되지 않았습니다. 다만 도구 정의가 system 메시지 안에 글로 들어간다는 점은 OpenAI 문서에도 적혀 있습니다.</p>
+      </div>
+      <h3 class="tc-sub">메뉴판도 토큰을 씁니다</h3>
+      <div class="tc-split top tc-ctx" style="margin-top:24px">
+        <div>
+          <p>메뉴판이 글로 들어가니 공짜가 아닙니다. 모델이 한 번에 읽을 수 있는 글에는 한도가 있는데, 이 한도를 <b>context window</b>라고 합니다. 도구 정의도 이 한도를 함께 쓰고 모델이 글을 세는 단위인 <b>토큰</b> 수만큼 요금도 매겨집니다.</p>
+          <p>도구 하나는 작아도 여럿이 모이면 커집니다. 그래서 OpenAI 문서는 한 번에 열어 두는 도구를 20개보다 적게 두라고 권합니다.</p>
+        </div>
+        <div class="tc-ctxfig" data-figure>
+          <h4>도구 정의가 차지하는 토큰 (막대 전체 = context window 20만 토큰인 모델 기준)</h4>
+          <div class="tc-bar"><span class="tc-bar-l">이 글의 get_ticket 1개 (너무 작아 점으로)</span><span class="tc-bar-t"><i style="width:max(3px, 0.0325%)"></i></span><b>약 65</b></div>
+          <div class="tc-bar"><span class="tc-bar-l">GitHub 도구 묶음 35개</span><span class="tc-bar-t"><i style="width:13%"></i></span><b>약 2만 6천</b></div>
+          <div class="tc-bar"><span class="tc-bar-l">서비스 5곳(GitHub·Slack 등)의 도구 58개</span><span class="tc-bar-t"><i style="width:27.5%"></i></span><b>약 5만 5천</b></div>
+          <div class="tc-bar"><span class="tc-bar-l">Anthropic 사내, 도구 정의를 정리하기 전</span><span class="tc-bar-t"><i style="width:67%"></i></span><b>약 13만 4천</b></div>
+          <p class="tc-cap">도구 묶음(MCP 서버)은 여러 도구를 한데 모아 Agent에 꽂아 쓰게 해 주는 프로그램입니다. 첫 줄은 이 글의 메뉴판을 토큰으로 센 값입니다. 나머지는 Anthropic이 2025년 11월 24일에 공개한 값입니다(참고 자료). 20만 토큰은 비교용 기준입니다.</p>
+        </div>
+      </div>
+      <h3 class="tc-sub">코드로는 이렇게 보내고 받습니다</h3>
+      <div class="tc-codepair" style="margin-top:24px">
+        <div class="cp-code">
+<pre data-title="ask_tool.py" data-hl="3,9"><code class="language-python"># ... client = OpenAI(...), MODEL = "gpt-5.5" 준비는 생략
+# ① 메뉴판: 도구 하나를 설명한다
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_ticket",
+        "description": "티켓 번호로 처리 상태와 담당자를 조회한다.",
+        # ② 인자의 모양(JSON Schema)
+        "parameters": {
+            "type": "object",
+            "properties": {"ticket_id": {"type": "string"}},
+            "required": ["ticket_id"],
+        },
+    },
+}]</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>메뉴판</b>입니다. 도구 하나는 <code>"type": "function"</code>에 이름과 설명을 붙여 적습니다. 모델은 이 설명을 읽고 언제 이 도구를 쓸지 정하므로 사람에게 설명하듯 구체적으로 씁니다.</li>
+  <li><b>인자의 모양</b>입니다. <code>"type": "object"</code>는 이름 붙은 칸 여러 개를 묶은 덩어리라는 뜻입니다. <code>properties</code>에 칸마다 이름과 타입(값의 종류)을, <code>required</code>에 꼭 넣어야 할 인자를 적습니다. required에서 빼면 모델이 ticket_id 없이 요청서를 쓸 수도 있습니다.</li>
+</ol>
+        </div>
+      </div>
+      <div class="tc-codepair" style="margin-top:20px">
+        <div class="cp-code">
+<pre data-title="ask_tool.py" data-start="16" data-hl="6,9,11"><code class="language-python">messages = [
+    {"role": "system", "content": "너는 IT 헬프데스크 상담원이다."},
+    {"role": "user", "content": "T-1042 티켓 어떻게 됐어요?"},
+]
+# ③ 메뉴판을 메시지와 함께 보낸다
+res = client.chat.completions.create(
+    model=MODEL, messages=messages, tools=tools)
+# ④ 모델이 왜 멈췄나
+print(res.choices[0].finish_reason)
+# ⑤ 답 대신 온 요청서
+for call in res.choices[0].message.tool_calls:
+    print(call.id, call.function.name, call.function.arguments)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="tc-term" data-tc-term>
+  <div class="tc-term-bar"><span>터미널</span><button type="button" class="tc-act" data-tc-run="ask">실행해 보기</button></div>
+  <div class="tc-term-out" data-tc-out aria-live="polite">$ python ask_tool.py
+tool_calls
+call_Qd7w get_ticket {"ticket_id": "<span class="nw">T-1042</span>"}</div>
+</div>
+<p class="tc-cap">출력은 예시입니다. 실제 id는 이보다 긴 무작위 글자입니다. 코드는 <code>openai</code> 패키지 3.31 기준입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 2">
+  <li><b>메뉴판을 메시지와 함께 보냅니다.</b> <code>tools=</code>를 빼면 모델은 도구가 있는 줄 모르고 글로만 답합니다. 맨 위 그림에서 "안 보냄"을 고른 것과 같습니다.</li>
+  <li><b>모델이 쓰기를 멈춘 이유</b>입니다. <code>"stop"</code>은 답을 다 썼다는 뜻이고 <code>"tool_calls"</code>는 요청서를 쓰고 멈췄다는 뜻입니다. <code>"length"</code>는 길이 한도에 걸려 잘렸다는 뜻입니다.</li>
+  <li><b>요청서 목록</b>입니다. <code>choices[0]</code>은 목록의 첫 번째 칸이라는 뜻입니다. 한 장마다 번호(<code>id</code>), 도구 이름, 인자가 들어 있습니다. 인자(<code>arguments</code>)는 딕셔너리(이름과 값을 짝지어 담는 Python 자료형)가 아니라 JSON 글자 그대로 옵니다. 그래서 쓰려면 먼저 바꿔야 합니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap tc-split top wide s3">
+      <div class="ta">
+        <h2>도구를 쓸지 말지는 모델이 고릅니다</h2>
+        <p>메뉴판을 보냈다고 모델이 늘 요청서를 쓰지는 않습니다. 질문을 읽고 도구가 필요하면 요청서를, 아니면 보통 답을 씁니다. 이 선택을 개발자가 미리 정해 두는 옵션이 <code>tool_choice</code>입니다.</p>
+        <p><code>auto</code>는 모델이 고르게 둡니다. 메뉴판을 보내면 기본값이 auto입니다. <code>none</code>은 도구를 쓰지 못하게 하고 <code>required</code>는 하나 이상 꼭 쓰게 합니다. 도구 이름을 콕 집어 그 도구만 쓰게 할 수도 있습니다.</p>
+      </div>
+      <div class="fg" data-figure>
+        <p class="tc-fighint">칸을 눌러 보세요. 빨간 점선 칸이 눈여겨볼 곳입니다.</p>
+        <div class="tc-legend" style="margin:0 0 14px"><span><i style="--k:var(--line-strong)"></i>글로 답함 (stop)</span><span><i style="--k:var(--tc-model)"></i>요청서를 씀 (tool_calls)</span><span><i style="--k:var(--tc-bad);border-style:dashed"></i>✕ 값을 지어낸 요청서</span></div>
+        <div class="tc-grid" data-tc-grid></div>
+        <dl class="tc-detail" data-tc-detail aria-live="polite"></dl>
+        <p class="tc-cap">예시 응답입니다. 실제 모델의 판단은 질문 문장과 도구 설명에 따라 달라집니다.</p>
+      </div>
+      <div class="tb">
+        <p>required로 강제하면 모델은 어떻게든 요청서를 써야 합니다. 도구가 필요 없는 질문 1에서는 T-1000이라는 번호를 지어냈습니다. 번호를 모르는 질문 3에서는 T-1043을 지어냈는데, 실제로 있는 다른 직원의 티켓이라 확인 없이 실행하면 남의 티켓을 보여 주게 됩니다. 그래서 보통은 auto로 두고 꼭 도구를 거쳐야 하는 단계에서만 강제합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap">
+      <div class="tc-stackhead">
+        <h2>요청서 한 장이 답이 되려면 모델을 두 번 부릅니다</h2>
+        <div class="tc-one">
+          <p>도구를 한 번만 쓰는 질문도 API 호출은 두 번입니다. 첫 호출에서 요청서를 받고 실행 결과를 실어 다시 불러야 사람에게 줄 답이 나옵니다. API는 앞선 호출을 기억하지 못해서 두 번째 호출에도 처음부터의 메시지를 전부 실어 보냅니다.</p>
+          <p>메시지마다 누가 한 말인지 role을 붙입니다. 모델이 쓴 메시지는 <code>assistant</code>, 도구 결과를 담은 메시지는 <code>tool</code>입니다. 아래 그림은 두 번의 호출을 두 줄로 펼쳤습니다. 스크롤하면 1번부터 한 단계씩 켜지고 막대의 messages에 대화 기록이 쌓입니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="tc-band">
+      <div class="tc-wrap tc-flow" data-tc-hs>
+        <div class="tc-flow-stick">
+        <div class="tc-flowbar" aria-live="polite">
+          <span class="tc-flownote">내 코드와 모델 사이로는 JSON 글만 오갑니다</span>
+          <span class="tc-hs-cap" data-tc-hcap></span>
+          <div class="tc-msgs" data-tc-msgs>
+            <span>messages</span>
+            <span class="tc-m sys" data-at="0"><b>system</b>지시</span>
+            <span class="tc-m usr" data-at="0"><b>user</b>질문</span>
+            <span class="tc-m ast" data-at="3"><b>assistant</b>요청서 Qd7w</span>
+            <span class="tc-m tool" data-at="4"><b>tool</b>결과 Qd7w</span>
+            <span class="tc-calls-n">모델 호출 <b data-tc-ncall>0</b>번</span>
+          </div>
+          
+        </div>
+        <div class="tc-track-win" data-figure>
+          <span class="tc-lane-fix top">모델 (API 서버)</span>
+          <span class="tc-lane-fix bot">내 코드</span>
+          <div class="tc-track-clip">
+              <div class="tc-track" data-tc-track>
+                <div class="tc-lane bot" style="top:26px;height:158px"><span class="tc-lane-l">내 코드</span></div>
+                <div class="tc-lane top" style="top:196px;height:158px"><span class="tc-lane-l">모델 (API 서버)</span></div>
+                <div class="tc-lane bot rb" style="top:570px;height:158px"><span class="tc-lane-l">내 코드</span></div>
+                <div class="tc-lane top rb" style="top:400px;height:158px"><span class="tc-lane-l">모델 (API 서버)</span></div>
+                <svg class="tc-path mob" viewBox="0 0 350 990" aria-hidden="true">
+                  <defs><marker id="tc-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-strong)"/></marker></defs>
+                  <path class="seg cross" data-seg="1" d="M188 100 L 164 114" marker-end="url(#tc-ar3)"/><text class="lbl" x="175" y="93" text-anchor="middle" font-size="11">1번째 호출</text><text class="lbl" x="175" y="345" text-anchor="middle" font-size="11">요청서</text><text class="lbl" x="175" y="597" text-anchor="middle" font-size="11">2번째 호출</text><text class="lbl" x="175" y="849" text-anchor="middle" font-size="11">답</text><path class="seg" data-seg="2" d="M80 224 L 80 246" marker-end="url(#tc-ar3)"/><path class="seg cross" data-seg="3" d="M162 352 L 186 366" marker-end="url(#tc-ar3)"/><path class="seg" data-seg="4" d="M270 476 L 270 498" marker-end="url(#tc-ar3)"/><path class="seg cross" data-seg="5" d="M188 604 L 164 618" marker-end="url(#tc-ar3)"/><path class="seg" data-seg="6" d="M80 728 L 80 750" marker-end="url(#tc-ar3)"/><path class="seg cross" data-seg="7" d="M162 856 L 186 870" marker-end="url(#tc-ar3)"/>
+                </svg>
+                <svg class="tc-path desk" viewBox="0 0 998 726" aria-hidden="true">
+                  <defs><marker id="tc-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-strong)"/></marker></defs>
+                  <text class="rowh" x="0" y="16">1번째 호출: 요청서를 받기까지</text>
+                  <text class="rowh" x="300" y="390">2번째 호출: 결과를 실어 답을 받기까지</text>
+                  <path class="seg cross" data-seg="1" d="M174 186 L 240 218" marker-end="url(#tc-ar2)"/>
+                  <path class="seg" data-seg="2" d="M393 288 L 398 288" marker-end="url(#tc-ar2)"/>
+                  <path class="seg cross" data-seg="3" d="M554 218 L 620 186" marker-end="url(#tc-ar2)"/>
+                  <path class="seg" data-seg="4" d="M773 118 L 778 118" marker-end="url(#tc-ar2)"/>
+                  <path class="seg cross" data-seg="5" d="M872 186 L 872 370 L 112 370 L 112 422" marker-end="url(#tc-ar2)"/>
+                  <path class="seg" data-seg="6" d="M203 492 L 208 492" marker-end="url(#tc-ar2)"/>
+                  <path class="seg cross" data-seg="7" d="M364 560 L 430 592" marker-end="url(#tc-ar2)"/>
+                  <text class="lbl" x="217" y="206">1번째 호출</text>
+                  <text class="lbl" x="597" y="206">요청서</text>
+                  <text class="lbl" x="407" y="580">답</text>
+                </svg>
+                <div class="tc-st" data-st="0" data-lane="내 코드" style="--mx:1;--my:0px;left:24px;top:54px"><b><span class="tc-num">1</span>질문을 목록에 넣음</b>직원 메시지를 <span class="mono">messages</span>에 더합니다</div>
+                <div class="tc-st" data-st="1" data-lane="모델" style="--mx:0;--my:84px;left:214px;top:224px"><b><span class="tc-num">2</span>1번째 호출을 받음</b>메시지 2개와 도구 목록 <span class="mono">get_ticket</span>을 읽습니다</div>
+                <div class="tc-st req" data-st="2" data-lane="모델" style="--mx:0;--my:252px;left:404px;top:224px"><b style="color:var(--tc-model)"><span class="tc-num">3</span>답 대신 요청서를 씀</b><span class="mono">get_ticket<br>{"ticket_id": "<span class="nw">T-1042</span>"}</span><br><small>API 서버가 표시를 떼고 번호 call_Qd7w를 붙임</small></div>
+                <div class="tc-st" data-st="3" data-lane="내 코드" style="--mx:1;--my:336px;left:594px;top:54px"><b><span class="tc-num">4</span>요청서를 받아 실행</b>요청서 call_Qd7w를 기록에 넣고 <span class="mono">get_ticket("<span class="nw">T-1042</span>")</span>을 실행합니다</div>
+                <div class="tc-st res" data-st="4" data-lane="내 코드" style="--mx:1;--my:504px;left:784px;top:54px"><b style="color:var(--tc-code)"><span class="tc-num">5</span>결과를 번호표와 함께</b><span class="mono">role: "tool"<br>tool_call_id: call_Qd7w<br>{"status": "부품 대기", …}</span></div>
+                <div class="tc-st" data-st="5" data-lane="모델" style="--mx:0;--my:588px;left:24px;top:428px"><b><span class="tc-num">6</span>2번째 호출을 받음</b>메시지 4개를 처음부터 다시 읽습니다</div>
+                <div class="tc-st" data-st="6" data-lane="모델" style="--mx:0;--my:756px;left:214px;top:428px"><b><span class="tc-num">7</span>결과를 읽고 답을 씀</b><span class="mono">finish_reason: "stop"</span><br>"<span class="nw">T-1042</span>는 부품 대기 중입니다"</div>
+                <div class="tc-st" data-st="7" data-lane="내 코드" style="--mx:1;--my:840px;left:404px;top:598px"><b><span class="tc-num">8</span>답을 직원에게 보여 줌</b><span class="mono">content</span>를 화면에 띄웁니다. 대화가 끝납니다</div>
+              </div>
+          </div>
+        </div>
+        </div>
+        <div class="tc-flow-space"></div>
+        
+      </div>
+    </div>
+    <div class="tc-wrap">
+      <h3 class="tc-sub">두 번 부르는 코드</h3>
+      <p class="tc-sub-lede">앞의 코드에 실행과 두 번째 호출을 더했습니다.</p>
+      <div class="tc-codepair" style="margin-top:24px">
+        <div class="cp-code">
+<pre data-title="run_tool.py" data-hl="19,22,24,26"><code class="language-python"># ... import json, client, MODEL, tools, messages 는 위와 같다
+TICKETS = {
+    "T-1042": {"status": "부품 대기", "owner": "김하늘",
+               "note": "랜카드 10/18 도착"},
+    "T-1043": {"status": "처리 중", "owner": "박서준",
+               "note": "원격 점검 예정"},
+}
+
+def get_ticket(ticket_id: str):
+    """티켓 번호로 처리 상태와 담당자를 조회한다."""
+    return TICKETS.get(ticket_id, {"error": "없는 티켓입니다"})
+
+TOOLS = {"get_ticket": get_ticket}  # 이름 → 실제 함수
+
+first = client.chat.completions.create(
+    model=MODEL, messages=messages, tools=tools)
+reply = first.choices[0].message
+# ① 모델이 쓴 요청서도 대화 기록에 넣는다
+messages.append(reply)
+for call in reply.tool_calls:
+    # ② 이름으로 실행할 함수를 고른다
+    fn = TOOLS[call.function.name]
+    # ③ 글자로 온 인자를 딕셔너리로 바꾼다
+    args = json.loads(call.function.arguments)
+    # ④ 실제 실행은 내 코드가 한다
+    result = fn(**args)</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>요청서 메시지도 기록에 넣습니다.</b> 그림의 4단계입니다. 이 줄을 빼고 결과만 보내면 API가 오류로 거절합니다. 결과(tool 메시지)는 그걸 요청한 모델의 메시지(assistant 메시지) 바로 뒤에 와야 하기 때문입니다.</li>
+  <li><b>이름으로 실행할 함수를 고릅니다.</b> 요청서의 도구 이름을 <code>TOOLS</code>에서 찾아 실제 함수를 꺼냅니다. 도구가 여러 개여도 이 한 줄로 갈라집니다. 메뉴에 없는 이름이면 여기서 KeyError(딕셔너리에 없는 이름을 찾을 때 나는 오류)가 나므로 아래 확인 단계가 필요합니다.</li>
+  <li><b>인자를 딕셔너리로 바꿉니다.</b> <code>json.loads</code>는 JSON 글자를 딕셔너리로 읽어 들입니다. 모델이 JSON 모양을 틀리게 쓰면 여기서 오류가 납니다.</li>
+  <li><b>실제 실행은 이 줄에서 일어납니다.</b> 회사 데이터베이스에 접속하는 것도, 오래 걸리는 것도 이 줄입니다. <code>**args</code>는 딕셔너리를 이름 붙은 인자로 풀어 넘기는 Python 문법이라서 <code>fn(ticket_id="T-1042")</code>와 같습니다.</li>
+</ol>
+        </div>
+      </div>
+      <div class="tc-codepair" style="margin-top:20px">
+        <div class="cp-code">
+<pre data-title="run_tool.py" data-start="27" data-hl="4,6,9"><code class="language-python">    messages.append({
+        "role": "tool",
+        # ⑤ 요청서의 번호표를 그대로 적는다
+        "tool_call_id": call.id,
+        # ⑥ 결과는 글자로 바꿔 담는다
+        "content": json.dumps(result, ensure_ascii=False),
+    })
+# ⑦ 결과를 실은 목록으로 한 번 더 부른다
+second = client.chat.completions.create(
+    model=MODEL, messages=messages, tools=tools)
+print(second.choices[0].finish_reason)
+print(second.choices[0].message.content)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="tc-term" data-tc-term>
+  <div class="tc-term-bar"><span>터미널</span><button type="button" class="tc-act" data-tc-run="run">실행해 보기</button></div>
+  <div class="tc-term-out" data-tc-out aria-live="polite">$ python run_tool.py
+stop
+<span class="nw">T-1042</span> 티켓은 지금 부품 대기 중입니다. 교체할 무선 랜카드가 10월 18일에 도착할 예정입니다.</div>
+</div>
+<p class="tc-cap">출력은 예시 답입니다. 모델이 결과의 note까지 읽고 날짜를 풀어 썼습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 4">
+  <li><b>요청서의 번호표를 그대로 적습니다.</b> 그림의 5단계입니다. role이 <code>"tool"</code>인 메시지에 요청서의 id를 적어야 API가 어느 요청서의 결과인지 압니다.</li>
+  <li><b>결과는 글자로 바꿔 담습니다.</b> content에는 글자만 들어가서 <code>json.dumps</code>로 딕셔너리를 JSON 글자로 바꿉니다. <code>ensure_ascii=False</code>는 한글을 그대로 두라는 옵션입니다.</li>
+  <li><b>한 번 더 부릅니다.</b> 그림의 6단계입니다. 이번 목록에는 메시지가 4개 실립니다. tools를 다시 넣는 이유는 모델이 결과를 보고 다른 도구를 더 부를 수도 있어서입니다.</li>
+</ol>
+        <details>
+          <summary>Claude API는 형식이 어떻게 다른가요?</summary>
+          <p>흐름은 같고 이름이 다릅니다. Anthropic Messages API는 도구 정의에 <code>input_schema</code>를 쓰고 요청서를 <code>tool_use</code> 블록으로 보냅니다. 이때 <code>stop_reason</code>은 <code>"tool_use"</code>입니다. 인자(<code>input</code>)는 JSON 글자로 오지 않고 처음부터 객체로 옵니다.</p>
+          <p>결과를 담는 tool role은 따로 없습니다. user 메시지 안에 <code>tool_result</code> 블록을 넣고 <code>tool_use_id</code>로 짝을 맞춥니다. OpenAI의 Responses API도 <code>function_call</code>과 <code>function_call_output</code>을 <code>call_id</code>로 잇습니다.</p>
+        </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap">
+      <div class="tc-head">
+        <h2>tool_call_id는 결과를 요청서에 붙이는 번호표입니다</h2>
+        <div>
+          <p>모델은 한 응답에 요청서를 여러 장 쓸 수 있습니다. 직원이 티켓 두 개를 한꺼번에 물으면 조회 요청서도 두 장이 옵니다. 이렇게 한 번에 여러 장 쓰는 걸 <b>parallel tool calls</b>라고 하고 OpenAI API는 이 기능을 기본으로 켜 둡니다.</p>
+          <p>세탁소 번호표와 비슷합니다. 옷을 맡기면 번호표를 받고 찾을 때는 맡긴 순서가 아니라 번호로 내 옷을 찾습니다. 요청서마다 붙은 <code>id</code>가 번호표이고 결과 메시지의 <code>tool_call_id</code>에 같은 번호를 적어 돌려줍니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="tc-lab">
+      <div class="tc-wrap">
+        <h3 class="tc-labh">요청서 두 장, 결과 두 개</h3>
+        <div class="tc-ctrl">
+          <span>결과가 돌아오는 순서</span>
+          <div class="tc-seg" role="group" aria-label="결과 순서">
+            <button type="button" data-tc-order="same" aria-pressed="false">요청한 순서</button>
+            <button type="button" data-tc-order="swap" aria-pressed="true">먼저 끝난 순서</button>
+          </div>
+        </div>
+        <div class="tc-ctrl" style="margin-top:10px">
+          <span>결과에 번호표를</span>
+          <div class="tc-seg" role="group" aria-label="번호표">
+            <button type="button" data-tc-tag="all" aria-pressed="true">다 붙임</button>
+            <button type="button" data-tc-tag="miss" aria-pressed="false">하나 빠뜨림</button>
+          </div>
+        </div>
+        <div class="tc-pair" data-tc-pair data-order="swap" data-tag="all" data-figure>
+          <div class="tc-col">
+            <h4>assistant 메시지 한 장 속 요청서</h4>
+            <div class="tc-rows">
+              <div class="tc-slip req"><span class="tc-tag a">call_Qd7w</span><span class="mono">get_ticket {"ticket_id": "<span class="nw">T-1042</span>"}</span></div>
+              <div class="tc-slip req"><span class="tc-tag b">call_Jm2x</span><span class="mono">get_ticket {"ticket_id": "<span class="nw">T-1043</span>"}</span></div>
+            </div>
+          </div>
+          <div class="tc-wirebox">
+          <svg class="tc-wires" viewBox="0 0 100 200" preserveAspectRatio="none" aria-hidden="true">
+            <path class="wa" data-w="a" d="M0 50 C 50 50, 50 50, 100 50"/>
+            <path class="wb" data-w="b" d="M0 150 C 50 150, 50 150, 100 150"/>
+          </svg>
+          </div>
+          <div class="tc-col">
+            <h4>내 코드가 붙이는 tool 메시지</h4>
+            <div class="tc-rows" data-tc-results>
+              <div class="tc-slip res" data-r="a"><span class="tc-tag a">call_Qd7w</span><span class="mono">{"status": "부품 대기", …}</span></div>
+              <div class="tc-slip res" data-r="b"><span class="tc-tag b" data-tc-btag>call_Jm2x</span><span class="tc-notag" data-tc-notag hidden>번호 없음</span><span class="mono">{"status": "처리 중", …}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="tc-order" data-tc-order-strip aria-hidden="true"></div>
+        <p class="tc-verdict-ko" data-tc-verdict-ko></p>
+        <div class="tc-verdict ok" data-tc-verdict aria-live="polite"></div>
+        <p class="tc-cap" data-tc-paircap></p>
+      </div>
+    </div>
+    <div class="tc-wrap">
+      <div class="tc-one" style="margin-top:clamp(40px,6vw,56px)">
+          <p>선이 엇갈려도 번호를 따라가서 짝이 맞습니다. 두 조회를 동시에 돌리면 어느 쪽이 먼저 끝날지 모릅니다. 결과를 번호로 잇기 때문에 먼저 끝난 것부터 붙여도 됩니다. 다만 결과 메시지들은 요청서를 담은 assistant 메시지 바로 다음에 모여 있어야 합니다.</p>
+          <p>세탁소와 다른 점도 하나 있습니다. 세탁소에서는 옷 한 벌을 안 찾아가도 다른 옷은 찾을 수 있습니다. API는 번호표가 하나라도 빠지면 요청 전체를 받지 않습니다. 대신 오류 문장에 어느 번호의 결과가 없는지 적어 줍니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap tc-split top s3">
+      <div class="ta">
+        <h2>요청서는 확인한 뒤에 실행합니다</h2>
+        <p>요청서도 모델이 쓴 글이라 틀릴 수 있습니다. OpenAI Python 라이브러리의 <code>arguments</code> 설명에도 모델이 늘 올바른 JSON을 쓰지는 않고 JSON Schema에 없는 인자를 지어낼 수 있으니 함수를 부르기 전에 코드에서 확인하라고 적혀 있습니다.</p>
+      </div>
+      <div class="fg" data-figure>
+        <p class="tc-fighint">모델이 쓴 요청서를 하나 골라 보세요.</p>
+        <div class="tc-pick" role="group" aria-label="요청서 고르기" data-tc-pick>
+          <button type="button" data-k="ok" aria-pressed="true"><div class="tc-slip req"><h5>A. 정상</h5><span class="mono">get_ticket<br>{"ticket_id": "<span class="nw">T-1042</span>"}</span></div></button>
+          <button type="button" data-k="json" aria-pressed="false"><div class="tc-slip req"><h5>B. 중간에 잘림</h5><span class="mono">get_ticket<br>{"ticket_id": "T-10</span><br><span class="tc-cut">✂ 여기서 끊김</span></div></button>
+          <button type="button" data-k="name" aria-pressed="false"><div class="tc-slip req"><h5>C. 메뉴에 없는 도구</h5><span class="mono">close_ticket<br>{"ticket_id": "<span class="nw">T-1042</span>"}</span></div></button>
+          <button type="button" data-k="arg" aria-pressed="false"><div class="tc-slip req"><h5>D. 인자 이름이 다름</h5><span class="mono">get_ticket<br>{"ticket": 1042}</span></div></button>
+        </div>
+        <div class="tc-gates" data-tc-gates>
+          <div class="tc-gate" data-g="0"><i>1</i><b>JSON인가</b>json.loads</div>
+          <div class="tc-gate" data-g="1"><i>2</i><b>메뉴에 있나</b>도구 이름 확인</div>
+          <div class="tc-gate" data-g="2"><i>3</i><b>JSON Schema와 맞나</b>인자 이름·타입 확인</div>
+          <div class="tc-gate" data-g="3"><i>4</i><b>실행</b>get_ticket(...)</div>
+        </div>
+        <div class="tc-back">
+          <span>모델에게 돌려줄 결과</span>
+          <div class="tc-slip res"><span class="mono" data-tc-back></span></div>
+        </div>
+        <p class="tc-cap">확인 단계는 이 글에서 정한 순서입니다. 실제로는 이 직원이 그 티켓을 볼 수 있는지 같은 권한 확인이 더 붙습니다.</p>
+      </div>
+      <div class="tb">
+        <p>확인에 걸리면 실행하지 않습니다. 무엇이 틀렸는지를 결과 메시지에 적어 돌려주면 모델이 읽고 다시 쓸 수 있습니다. 이 되풀이는 다음 글에서 루프를 직접 짜며 알아보겠습니다.</p>
+        <p>형식 실수를 막으려면 도구 정의에 <code>"strict": true</code>를 넣습니다. 다만 strict가 지켜 주는 건 모양까지입니다. <span class="nw">T-1042</span>가 정말 이 직원의 티켓인지, 실행해도 되는 작업인지는 여전히 내 코드가 확인해야 합니다.</p>
+        <details>
+          <summary>strict를 켜려면 무엇을 바꾸나요?</summary>
+          <p>strict를 켜면 API가 인자를 스키마 모양에 맞춰 만들어 줍니다. 대신 스키마에 두 가지를 지켜야 합니다. <code>"type": "object"</code>인 칸마다 <code>"additionalProperties": false</code>를 넣어 정해 둔 인자 말고는 받지 않게 하고 모든 인자를 required에 넣습니다. 빼도 되는 인자는 타입에 <code>null</code>을 함께 적어 표시합니다.</p>
+        </details>
+      </div>
+    </div>
+    <div class="tc-wrap">
+      <p class="tc-pull">Tool Calling에서 모델은 요청서를 쓰고 실행은 내 코드가 합니다. 메뉴판(JSON Schema)이 모델이 고를 수 있는 도구와 인자의 범위를 정하고 번호표(tool_call_id)가 요청서와 결과를 잇습니다.</p>
+    </div>
+  </section>
+
+  <section class="tc-sec">
+    <div class="tc-wrap">
+      <div class="tc-head">
+        <h2>참고 자료</h2>
+        <ul class="tc-refs">
+          <li><a href="https://developers.openai.com/api/docs/guides/function-calling">Function calling</a>, OpenAI: 도구 정의가 시스템 메시지에 들어가 입력 토큰으로 계산된다는 설명, 20개 권고, strict 모드 규칙, tool_choice</li>
+          <li><a href="https://github.com/openai/openai-python/blob/main/src/openai/types/chat/chat_completion_message_function_tool_call.py">openai-python, ChatCompletionMessageFunctionToolCall</a>: arguments가 JSON 문자열이고 실행 전에 확인하라는 설명</li>
+          <li><a href="https://github.com/openai/openai-openapi">OpenAI OpenAPI 스펙</a>: parallel_tool_calls 기본값 true</li>
+          <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview">Tool use with Claude</a>, <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls">Handle tool calls</a>, Anthropic: tool_use·tool_result 형식</li>
+          <li><a href="https://www.anthropic.com/engineering/advanced-tool-use">Introducing advanced tool use</a>, Anthropic (2025-11-24): 도구 정의가 차지하는 토큰 수(GitHub 35개 약 26K, 서버 5개에 도구 58개 약 55K, 사내 134K)</li>
+          <li><a href="https://huggingface.co/docs/transformers/main/en/chat_extras">Tool use</a>, Hugging Face Transformers: "모델은 도구를 직접 호출할 수 없다"는 설명과 모델이 실제로 쓰는 요청 글</li>
+          <li><a href="https://json-schema.org/understanding-json-schema/reference/object">Understanding JSON Schema: object</a>: properties·required·additionalProperties</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS">INVALID_TOOL_RESULTS</a>, LangChain: tool_call_id 짝이 안 맞을 때 나는 400 오류</li>
+          <li><a href="https://pypi.org/project/openai/3.31.0/">openai (Python SDK) 3.31.0</a>, PyPI (2026-10-14)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="tc-end-pad"></div>
+</div>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+
+  /* 히어로: 도구 목록 보냄 / 안 보냄 */
+  const world = $("[data-tc-world]");
+  const drawWorld = () => { $("[data-tc-hit]").classList.toggle("hit", world.dataset.mode === "on"); $("[data-tc-hint]").textContent = world.dataset.mode === "on" ? "도구 목록을 빼면 1~4 단계가 사라집니다" : "\"보냄\"을 누르면 빈 칸에 1~4 단계가 채워집니다"; };
+  $$("[data-tc-mode]").forEach((b) => b.addEventListener("click", () => { world.dataset.mode = b.dataset.tcMode; press("[data-tc-mode]", b); drawWorld(); }, { signal }));
+  new MutationObserver(drawWorld).observe(world, { attributes: true, attributeFilter: ["data-mode"] });
+
+  /* 함수 ↔ 메뉴판: 모델 눈으로 */
+  const map = $("[data-tc-map]");
+  $$("[data-tc-eye]").forEach((b) => b.addEventListener("click", () => { map.dataset.eye = b.dataset.tcEye; press("[data-tc-eye]", b); }, { signal }));
+
+  /* 요청서도 글: 질문 바꾸기 */
+  const raw = $("[data-tc-raw]");
+  $$("[data-tc-q]").forEach((b) => b.addEventListener("click", () => { raw.dataset.q = b.dataset.tcQ; press("[data-tc-q]", b); }, { signal }));
+
+  /* tool_choice 격자 */
+  const QS = ["와이파이 껐다 켜는 법", "T-1042 상태", "어제 연 내 티켓"];
+  const ROWS = [["auto", "모델이 고름"], ["none", "도구 금지"], ["required", "꼭 하나 이상"]];
+  const T = (t) => ({ kind: "text", t });
+  const C = (arg, bad) => ({ kind: "call", arg, bad });
+  const CELLS = {
+    auto: [T("설정에서 Wi-Fi를 껐다 켜 보세요."), C("T-1042"), T("티켓 번호를 알려 주시겠어요?")],
+    none: [T("설정에서 Wi-Fi를 껐다 켜 보세요."), T("티켓 상태는 제가 직접 확인할 수 없습니다."), T("티켓 번호를 알려 주시겠어요?")],
+    required: [C("T-1000", "티켓을 묻지 않았는데 번호를 지어냈습니다"), C("T-1042"), C("T-1043", "번호를 모르는데 T-1043을 지어냈습니다")],
+  };
+  const grid = $("[data-tc-grid]"), det = $("[data-tc-detail]");
+  grid.innerHTML = `<span></span>` + QS.map((q, i) => `<div class="tc-gh"><b>질문 ${i + 1}</b>${esc(q)}</div>`).join("") +
+    ROWS.map(([r, d]) => `<div class="tc-gr">${r}<small>${d}</small></div>` + CELLS[r].map((c, i) => {
+      const nwt = (t) => esc(t).replace(/Wi-Fi|T-10\d\d/g, (m) => `<span class="nw">${m}</span>`);
+      const body = c.kind === "text" ? `<em>답</em>${nwt(c.t)}` : `<em>${c.bad ? "✕ 지어낸 요청서" : "요청서"}</em><span class="mono">get_ticket<br>"${esc(c.arg)}"</span>`;
+      return `<button type="button" class="tc-cell" data-kind="${c.kind}" ${c.bad ? "data-bad" : ""} data-r="${r}" data-i="${i}" aria-pressed="false" aria-label="${r}, 질문 ${i + 1}">${body}</button>`;
+    }).join("")).join("");
+  function showCell(btn) {
+    press(".tc-cell", btn);
+    const c = CELLS[btn.dataset.r][btn.dataset.i];
+    const rows = [["tool_choice", `"${btn.dataset.r}"`], ["질문", QS[btn.dataset.i]], ["finish_reason", c.kind === "text" ? '"stop"' : '"tool_calls"']];
+    if (c.kind === "text") rows.push(["content", `"${c.t}"`]);
+    else rows.push(["tool_calls[0]", `get_ticket, arguments: '{"ticket_id": "${c.arg}"}'`]);
+    if (c.bad) rows.push(["문제", c.bad]);
+    const nw = (t) => esc(t).replace(/T-10\d\d/g, (m) => `<span class="nw">${m}</span>`);
+    det.innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === "문제" ? ' style="color:var(--tc-bad);font-family:var(--font-sans)"' : k === "질문" ? ' style="font-family:var(--font-sans)"' : ""}>${nw(v)}</dd>`).join("");
+  }
+  $$(".tc-cell", grid).forEach((b) => b.addEventListener("click", () => showCell(b), { signal }));
+  showCell($('.tc-cell[data-r="required"][data-i="2"]', grid));
+
+  /* 두 번의 호출 흐름 — 카드 자리는 고정, 화면 가운데에 가장 가까운 카드를 켠다 */
+  const hs = $("[data-tc-hs]"), track = $("[data-tc-track]");
+  const CAPS = ["내 코드가 질문을 메시지 목록에 넣습니다", "1번째 호출: 메시지와 메뉴판을 함께 보냅니다", "모델이 답 대신 요청서를 쓰고 멈춥니다", "내 코드가 요청서를 기록에 넣고 도구를 실행합니다", "내 코드가 결과를 tool 메시지로 목록에 더합니다", "2번째 호출: 결과까지 실어 다시 보냅니다", "모델이 결과를 읽고 사람에게 줄 답을 씁니다", "내 코드가 답을 받아 직원에게 보여 줍니다"];
+  const NCALL = [0, 1, 1, 1, 1, 2, 2, 2];
+  const cards = $$(".tc-st", track);
+  let hk = -1;
+  function drawHS(k) {
+    hk = k;
+    cards.forEach((c, i) => { c.classList.toggle("on", i === k); c.classList.toggle("done", i < k); });
+    $$(".seg", track).forEach((g) => g.classList.toggle("done", Number(g.dataset.seg) <= k));
+    $$(".tc-msgs .tc-m", hs).forEach((m) => m.classList.toggle("hide", Number(m.dataset.at) > k));
+    $("[data-tc-hcap]").innerHTML = `<span class="tc-num">${k + 1}</span>${esc(CAPS[k])}`;
+    $("[data-tc-ncall]").textContent = NCALL[k];
+  }
+  let raf = 0;
+  const stickEl = $(".tc-flow-stick", hs);
+  const tick = () => {
+    raf = 0;
+    if (!matchMedia("(max-width: 640px)").matches) {
+      // 데스크톱: 그림은 고정, 바깥 틀을 지나간 비율만큼 1→8 단계로 진행한다
+      const r = hs.getBoundingClientRect(), sh = stickEl.offsetHeight;
+      const top = parseFloat(getComputedStyle(stickEl).top) || 0;
+      const p = Math.min(1, Math.max(0, (top - r.top) / Math.max(1, r.height - sh - 80)));
+      const k = Math.min(7, Math.floor(p * 8));
+      if (k !== hk) drawHS(k);
+      return;
+    }
+    let best = 0;
+    cards.forEach((c, i) => { const r = c.getBoundingClientRect(); if ((r.top + r.bottom) / 2 < innerHeight * 0.55) best = i; });
+    if (best !== hk) drawHS(best);
+  };
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  addEventListener("scroll", onScroll, { passive: true, signal });
+  addEventListener("resize", onScroll, { signal });
+  tick();
+
+  /* 번호표 실험판 */
+  const pair = $("[data-tc-pair]"), res = $("[data-tc-results]"), verdict = $("[data-tc-verdict]");
+  function drawPair() {
+    const swap = pair.dataset.order === "swap", miss = pair.dataset.tag === "miss";
+    const ra = $('[data-r="a"]', res), rb = $('[data-r="b"]', res);
+    const h = ra.offsetHeight + 16;
+    ra.style.transform = swap ? `translateY(${h}px)` : "";
+    rb.style.transform = swap ? `translateY(${-h}px)` : "";
+    // 선 끝을 실제 상자 가운데에 맞춘다(그림 높이가 바뀌어도 어긋나지 않게)
+    const svg = $(".tc-wires", pair), sr = svg.getBoundingClientRect();
+    const reqs = $$(".tc-col:first-child .tc-slip", pair);
+    const cy = (el) => ((el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2 - sr.top) / Math.max(1, sr.height) * 200;
+    const la = cy(reqs[0]), lb = cy(reqs[1]);
+    const endA = swap ? lb : la, rbY = swap ? la : lb;
+    $('[data-w="a"]', pair).setAttribute("d", `M0 ${la} C 50 ${la}, 50 ${endA}, 100 ${endA}`);
+    $('[data-w="b"]', pair).setAttribute("d", `M0 ${lb} C 50 ${lb}, 50 ${rbY}, 100 ${rbY}`);
+    $('[data-w="b"]', pair).classList.toggle("gone", miss);
+    $("[data-tc-btag]").hidden = miss; $("[data-tc-notag]").hidden = !miss;
+    const tchip = (id, t) => miss && id === "Jm2x" ? `<span class="tc-m tool miss"><b>tool</b>번호 없음</span>` : `<span class="tc-m tool"><b>tool</b>call_${id}의 결과</span>`;
+    $("[data-tc-order-strip]").innerHTML = `<span>messages 순서</span><span class="tc-m ast"><b>assistant</b>요청서 2장</span>` + (swap ? tchip("Jm2x") + tchip("Qd7w") : tchip("Qd7w") + tchip("Jm2x")) + `<span style="color:var(--fg-neutral)">결과는 요청서 바로 뒤에 모입니다</span>`;
+    $("[data-tc-paircap]").textContent = miss ? "번호표 하나를 빠뜨린 상황입니다." : swap ? "T-1043 조회가 먼저 끝나 결과가 먼저 붙은 상황입니다." : "결과를 요청한 순서대로 붙인 상황입니다.";
+    if (miss) {
+      verdict.className = "tc-verdict err";
+      $("[data-tc-verdict-ko]").textContent = "API가 요청 전체를 거절합니다. 400은 보낸 요청이 잘못됐다는 뜻의 오류 번호입니다. 아래 문장은 call_Jm2x 요청서에 대한 결과 메시지가 없다는 뜻입니다.";
+      verdict.innerHTML = `<b>BadRequestError: Error code 400</b><br>An assistant message with 'tool_calls' must be followed by tool messages responding to each 'tool_call_id'. The following tool_call_ids did not have response messages: call_Jm2x`;
+    } else {
+      $("[data-tc-verdict-ko]").textContent = "";
+      verdict.className = "tc-verdict ok";
+      verdict.textContent = swap ? "순서가 바뀌어도 번호로 짝을 찾습니다. 모델은 T-1042는 부품 대기, T-1043은 처리 중이라고 바르게 답합니다." : "두 요청서에 결과가 하나씩 번호로 이어졌습니다. API가 두 번째 호출을 받아 줍니다.";
+    }
+  }
+  $$("[data-tc-order]").forEach((b) => b.addEventListener("click", () => { pair.dataset.order = b.dataset.tcOrder; press("[data-tc-order]", b); drawPair(); }, { signal }));
+  $$("[data-tc-tag]").forEach((b) => b.addEventListener("click", () => { pair.dataset.tag = b.dataset.tcTag; press("[data-tc-tag]", b); drawPair(); }, { signal }));
+  addEventListener("resize", drawPair, { signal });
+  drawPair();
+
+  /* 확인 관문 */
+  const GATES = {
+    ok: [["pass", "pass", "pass", "pass"], '{"status": "부품 대기", "owner": "김하늘", "note": "무선 랜카드 10/18 도착 예정"}'],
+    json: [["fail", "skip", "skip", "skip"], '{"error": "인자가 올바른 JSON이 아닙니다. 다시 써 주세요."}'],
+    name: [["pass", "fail", "skip", "skip"], '{"error": "close_ticket이라는 도구는 없습니다. 쓸 수 있는 도구: get_ticket"}'],
+    arg: [["pass", "pass", "fail", "skip"], '{"error": "ticket_id(글자)가 필요합니다. 받은 인자: ticket"}'],
+  };
+  const gates = $$(".tc-gate", $("[data-tc-gates]"));
+  function drawGate(k) {
+    const [st, back] = GATES[k];
+    gates.forEach((g, i) => { g.dataset.s = st[i]; $("i", g).textContent = st[i] === "pass" ? "✓" : st[i] === "fail" ? "✕" : String(i + 1); });
+    $("[data-tc-back]").textContent = back;
+    $("[data-tc-back]").closest(".tc-slip").style.setProperty("--k", k === "ok" ? "var(--tc-code)" : "var(--tc-bad)");
+  }
+  $$("[data-tc-pick] button").forEach((b) => b.addEventListener("click", () => { press("[data-tc-pick] button", b); drawGate(b.dataset.k); }, { signal }));
+  drawGate("ok");
+
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const RUNS = {
+    ask: [["cmd", "$ python ask_tool.py"], ["wait", 800], ["line", "tool_calls"], ["type", 'call_Qd7w get_ticket {"ticket_id": "T-1042"}']],
+    run: [["cmd", "$ python run_tool.py"], ["wait", 1400], ["line", "stop"], ["type", "T-1042 티켓은 지금 부품 대기 중입니다. 교체할 무선 랜카드가 10월 18일에 도착할 예정입니다."]],
+  };
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  $$("[data-tc-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-tc-out]", btn.closest("[data-tc-term]"));
+    const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.tcRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!fast) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !fast) { for (const ch of v) { add(ch); await later(24); } }
+      else { add(v); if (!fast) await later(kind === "cmd" ? 400 : 250); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+})();
+</script>
