@@ -1,0 +1,529 @@
+---
+title: 책상 위와 서랍 속, Agent의 단기 기억과 장기 기억
+slug: langchain-agent-memory-context-engineering
+excerpt: Agent는 호출이 끝나면 아무것도 기억하지 못하고 대화가 길어지면 컨텍스트 창이 차서 정확도가 떨어집니다. thread_id와 checkpointer로 대화를 이어 가는 단기 기억, Store로 사용자 정보를 서랍에 넣어 두는 장기 기억, 요약으로 책상을 비우는 SummarizationMiddleware, Context Engineering의 네 전략(write·select·compress·isolate)을 그림과 코드로 확인합니다.
+tags: [AI Agent, 기억, Context Engineering, checkpointer, LangChain, Python]
+category: ai
+series: ai-agent
+series_order: 9
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-agent-memory-context-engineering-mvb418d7.jpg
+---
+<!-- page -->
+<!-- layout: 분할 히어로(글 | 책상 용량 보드) + 글|그림 2단(thread 두 개) + 제목|글 머리 + 서랍 그림 전폭 + 실험판 전폭 띠(요약 전후 메시지 수) + 지그재그(네 전략 도식) | 글의 성격: 한정된 책상(컨텍스트 창)에 무엇을 올리고 무엇을 서랍에 넣을지를 가르는 글이라 용량을 조작하는 보드로 열고 기억의 두 종류와 줄이는 법을 차례로 그림으로 푼다 | 버린 후보: 그림 고정 스크롤리텔링, 위아래 쌓은 히어로(앞 편들에서 쓴 구조) -->
+<style>
+.post-page .mem {
+  --mem-human: rgb(37, 112, 235); --mem-code: rgb(16, 150, 120); --mem-model: rgb(226, 106, 28); --mem-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .mem { --mem-human: rgb(110, 165, 255); --mem-code: rgb(60, 205, 165); --mem-model: rgb(255, 150, 80); --mem-bad: rgb(255, 110, 110); }
+.post-page .mem * { box-sizing: border-box; }
+.post-page .mem-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .mem h1, .post-page .mem h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .mem h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .mem h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .mem h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .mem p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .mem b { color: var(--fg-strong); }
+.post-page .mem .nw { white-space: nowrap; }
+.post-page .mem code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .mem p.mem-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .mem-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .mem-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .mem-head > h2 { margin: 0; }
+.post-page .mem-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .mem-split.top { align-items: start; }
+.post-page .mem-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .mem-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .mem-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .mem-seg button:hover { color: var(--fg-strong); }
+.post-page .mem-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .mem-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .mem-act::before { content: "▶ "; font-size: 11px; }
+.post-page .mem-act:disabled { opacity: .4; cursor: default; }
+.post-page .mem-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .mem-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .mem-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .mem-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .mem-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .mem-tag.n { --t: var(--fg-strong); } .post-page .mem-tag.m { --t: var(--mem-model); } .post-page .mem-tag.c { --t: var(--mem-code); } .post-page .mem-tag.h { --t: var(--mem-human); } .post-page .mem-tag.x { --t: var(--mem-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .mem-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .mem-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .mem-codepair .pg-code { margin-top: 0; }
+.post-page .mem-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .mem-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .mem-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .mem-codepair.rev > .cp-code, .post-page .mem-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .mem-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .mem .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .mem ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .mem ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .mem-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .mem-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .mem-term-bar .mem-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .mem-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .mem-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-mem-blink 1s steps(1) infinite; }
+@keyframes pg-mem-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .mem-codepair, .post-page .mem-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .mem-codepair > .cp-code, .post-page .mem-codepair > .cp-term, .post-page .mem-codepair > .cp-notes,
+  .post-page .mem-codepair.rev > .cp-code, .post-page .mem-codepair.rev > .cp-term, .post-page .mem-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .mem-codepair > .cp-notes, .post-page .mem-codepair.rev > .cp-notes { order: 2; } .post-page .mem-codepair > .cp-term, .post-page .mem-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .mem-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .mem-tbl th, .post-page .mem-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .mem-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .mem-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .mem-tbl code { font-size: 12.5px; }
+.post-page .mem details { margin: 0 0 24px; }
+.post-page .mem summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .mem details > .mem-in-d { padding-top: 14px; }
+.post-page .mem-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .mem-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .mem-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .mem-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .mem-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .mem-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .mem-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .mem-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .mem-tbl { font-size: 13.5px; } .post-page .mem-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .mem *, .post-page .mem *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .mem-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .mem-wrap { padding: 0 20px; }
+  .post-page .mem-head, .post-page .mem-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .mem-split.rev > :first-child { order: 0; }
+  .post-page p.mem-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .mem-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .mem-lab h2 { margin-bottom: 24px; }
+.post-page .mem-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .mem-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .mem-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .mem-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .mem-stack { display: grid; gap: 8px; }
+.post-page .mem-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .mem-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .mem-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .mem-s.m { --k: var(--mem-model); } .post-page .mem-s.c { --k: var(--mem-code); } .post-page .mem-s.x { --k: var(--mem-bad); } .post-page .mem-s.h { --k: var(--mem-human); }
+.post-page .mem-s + .mem-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .mem-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .mem-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .mem-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .mem-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .mem-hero-top p { margin: 0 0 1.2em; }
+.post-page .mem-hero-top p:last-child { margin-bottom: 0; }
+.post-page .mem-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .mem-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .mem [hidden] { display: none !important; }
+
+.post-page .mem-stack { gap: 22px !important; } .post-page .mem-s + .mem-s::before { top: -19px !important; }
+.post-page .mem-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .mem-flow .mem-s { flex: 1 1 0; min-width: 0; } .post-page .mem-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .mem-flow .mem-s + .mem-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .mem-flow .mem-s { flex: 1 1 180px; } .post-page .mem-flow i.ar { display: none; } }
+
+.post-page .mem-tag.n { --t: var(--fg-strong); }
+
+.post-page .mem-h-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; column-gap: clamp(36px, 5vw, 72px); align-items: start; }
+.post-page .mem-h-title { grid-column: 1; grid-row: 1; } .post-page .mem-h-lede { grid-column: 1; grid-row: 2; margin-top: 30px; } .post-page .mem-h-fig { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .mem-h-lede p { font-size: 17px; }
+@media (max-width: 900px) { .post-page .mem-h-grid { grid-template-columns: minmax(0, 1fr); } .post-page .mem-h-title, .post-page .mem-h-lede, .post-page .mem-h-fig { grid-column: 1; grid-row: auto; } .post-page .mem-h-fig { order: 1; margin-top: 24px; } .post-page .mem-h-lede { order: 2; margin-top: 32px; } }
+
+/* 책상 보드 */
+.post-page .mem-desk { border-radius: 20px; background: var(--bg-subtle); padding: clamp(18px, 2.4vw, 26px); }
+.post-page .mem-desk .mem-ctrl { margin-bottom: 14px; gap: 10px 14px; }
+.post-page .mem-desk .mem-ctrl > span { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .mem-top { position: relative; border-radius: 14px; border: 2px solid var(--fg-strong); background: var(--bg-base); height: 120px; margin-top: 8px; overflow: hidden; }
+.post-page .mem-top i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mem-model); width: 0; transition: width .5s cubic-bezier(.2,.7,.2,1), background .4s; opacity: .9; }
+.post-page .mem-top i.over { background: var(--mem-bad); }
+.post-page .mem-top b { position: absolute; left: 12px; top: 10px; font-size: 14px; color: var(--fg-strong); background: color-mix(in srgb, var(--bg-base) 82%, transparent); padding: 2px 8px; border-radius: 8px; }
+.post-page .mem-top span { position: absolute; left: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); background: color-mix(in srgb, var(--bg-base) 82%, transparent); padding: 2px 8px; border-radius: 8px; }
+.post-page .mem-drawer { margin-top: 14px; border-radius: 14px; border: 2px dashed var(--mem-code); background: color-mix(in srgb, var(--mem-code) 7%, var(--bg-base)); padding: 12px 14px; min-height: 64px; }
+.post-page .mem-drawer b { font-size: 14px; color: var(--mem-code); display: block; margin-bottom: 8px; }
+.post-page .mem-notes { display: flex; flex-wrap: wrap; gap: 5px; }
+.post-page .mem-notes i { width: 18px; height: 22px; border-radius: 3px; background: var(--mem-code); opacity: .75; }
+.post-page .mem-say { margin: 14px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-strong); min-height: 3.4em; }
+.post-page .mem-say b { font-family: var(--font-mono); }
+
+/* 스레드 */
+.post-page .mem-th { display: grid; gap: 14px; }
+.post-page .mem-tr { border-radius: 14px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 6%, var(--bg-base)); padding: 12px 14px; }
+.post-page .mem-tr.a { --k: var(--mem-human); } .post-page .mem-tr.b { --k: var(--mem-code); }
+.post-page .mem-tr h4 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 13.5px; color: var(--k); }
+.post-page .mem-chips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 28px; }
+.post-page .mem-chips span { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--k); color: var(--bg-base); font-weight: 700; }
+.post-page .mem-chips span.m { background: var(--mem-model); }
+.post-page .mem-tr p { margin: 8px 0 0; font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .mem-tr p b { font-family: var(--font-mono); color: var(--fg-strong); }
+
+/* 서랍 */
+.post-page .mem-shelf { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.post-page .mem-drw { border-radius: 14px; border: 2px solid var(--line-strong); background: var(--bg-base); padding: 12px 14px; min-height: 108px; transition: border-color .4s, background .4s; }
+.post-page .mem-drw h4 { margin: 0 0 6px; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .mem-drw code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; white-space: pre-wrap; display: block; }
+.post-page .mem-drw.open { border-color: var(--mem-code); background: color-mix(in srgb, var(--mem-code) 9%, var(--bg-base)); }
+.post-page .mem-drw.none { border-style: dashed; opacity: .6; }
+@media (max-width: 900px) { .post-page .mem-shelf { grid-template-columns: minmax(0, 1fr); } }
+
+/* 요약 전후 막대 */
+.post-page .mem-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; height: 200px; margin-top: 8px; }
+.post-page .mem-bc { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 3px; }
+.post-page .mem-bc i { display: block; border-radius: 6px 6px 2px 2px; background: var(--mem-model); transition: height .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .mem-bc i.s { background: var(--mem-code); }
+.post-page .mem-bc em { font-style: normal; font-family: var(--font-mono); font-size: 12.5px; text-align: center; color: var(--fg-strong); }
+.post-page .mem-bx { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--fg-neutral); text-align: center; }
+@media (max-width: 900px) { .post-page .mem-bars, .post-page .mem-bx { gap: 5px; } .post-page .mem-bars { height: 160px; } }
+
+/* 네 전략 */
+.post-page .mem-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); }
+.post-page .mem-st4 { border-radius: 16px; border: 1.5px solid var(--k); background: var(--bg-base); padding: 14px 16px 16px; transition: box-shadow .4s, opacity .4s; }
+.post-page .mem-st4.dim { opacity: .5; } .post-page .mem-st4.sel { box-shadow: 0 0 0 4px color-mix(in srgb, var(--k) 22%, transparent); }
+.post-page .mem-st4 h4 { margin: 0 0 4px; font-size: 15px; color: var(--k); font-family: var(--font-mono); }
+.post-page .mem-st4 > small { display: block; font-size: 13px; color: var(--fg-neutral); margin-bottom: 12px; line-height: 1.5; }
+.post-page .mem-st4 .mini { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.post-page .mem-st4 .box { border-radius: 8px; border: 1.5px solid var(--line-strong); padding: 6px 10px; font-size: 12.5px; line-height: 1.4; background: var(--bg-subtle); text-align: center; }
+.post-page .mem-st4 .box.big { padding: 12px 14px; } .post-page .mem-st4 .box.dr { border-style: dashed; border-color: var(--mem-code); } .post-page .mem-st4 .box.on { border-color: var(--k); background: color-mix(in srgb, var(--k) 12%, var(--bg-base)); }
+.post-page .mem-st4 .ar { font-size: 18px; color: var(--k); font-weight: 800; }
+.post-page .mem-st4.w { --k: var(--mem-code); } .post-page .mem-st4.s { --k: var(--mem-human); } .post-page .mem-st4.c { --k: var(--mem-model); } .post-page .mem-st4.i { --k: var(--mem-bad); }
+@media (max-width: 900px) { .post-page .mem-four { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<div class="mem">
+  <section class="mem-hero">
+    <div class="mem-wrap">
+      <div class="mem-h-grid">
+        <h1 class="mem-h-title">책상 위와 서랍 속, Agent의 단기 기억과 장기 기억</h1>
+        <div class="mem-h-lede">
+          <p>시험 공부를 할 때 책상 위에는 지금 풀고 있는 문제집과 노트만 펼쳐 둡니다. 지난 학기 자료는 서랍에 넣어 두었다가 필요할 때 꺼냅니다. 책상이 좁은데 자료를 전부 올리면 어느 것이 어디 있는지 몰라 오히려 느려집니다.</p>
+          <p>Agent도 마찬가지입니다. 모델이 한 번에 읽을 수 있는 글의 양인 컨텍스트 창(context window)이 책상이고 호출이 끝나면 책상 위는 치워집니다. 그래서 어제 한 대화를 기억하게 하려면 서랍을 따로 만들어야 합니다. 대화가 길어지면 책상 위 글이 늘어나 정확도가 떨어지기도 합니다. 그림에서 책상을 비우는 방법을 하나씩 바꿔 봅니다.</p>
+        </div>
+        <div class="mem-h-fig" data-figure data-thumb data-mem-desk>
+          <div class="mem-desk">
+            <div class="mem-ctrl"><span>책상을 비우는 방법</span>
+              <div class="mem-seg" role="group" aria-label="전략 고르기">
+                <button type="button" data-mem-s="none" aria-pressed="true">그대로 두기</button>
+                <button type="button" data-mem-s="compress" aria-pressed="false">요약하기</button>
+                <button type="button" data-mem-s="write" aria-pressed="false">서랍에 쓰고 꺼내기</button>
+                <button type="button" data-mem-s="isolate" aria-pressed="false">따로 맡기기</button>
+              </div></div>
+            <div class="mem-ctrl"><label>대화 횟수 <input type="range" min="1" max="30" value="18" data-mem-turn aria-label="대화 횟수"><output data-mem-tout>18</output></label></div>
+            <div class="mem-top"><i data-mem-fill></i><b>책상 위(컨텍스트 창)</b><span data-mem-use></span></div>
+            <div class="mem-drawer"><b>서랍 속(장기 기억)</b><div class="mem-notes" data-mem-notes></div></div>
+            <p class="mem-say" data-mem-say></p>
+          </div>
+          <p class="mem-cap">설명을 위한 예시 값입니다. 칸은 설명용 단위(실제로는 토큰)이고 한 번 오갈 때마다 책상에 6칸이 늘며 책상은 100칸이라고 가정했습니다. 실제 창은 훨씬 커서 Claude Sonnet 5.5는 100만 토큰입니다. 다만 창이 커도 글이 길어질수록 정확도가 떨어집니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-sec">
+    <div class="mem-wrap mem-split">
+      <div>
+        <h2>같은 thread_id로 부르면 대화가 이어집니다</h2>
+        <p><code>create_agent</code>는 호출이 끝나면 대화를 저장하지 않습니다. 대화를 이어 가려면 저장소인 checkpointer(상태를 저장해 두는 장치)를 붙이고 호출할 때 <code>thread_id</code>를 줍니다. LangChain 문서는 checkpointer를 써서 상태를 저장하면 스레드를 언제든 다시 이어 갈 수 있다고 설명합니다.</p>
+        <p>thread는 대화 하나를 가리키는 이름표입니다. 같은 이름표로 부르면 이전 메시지가 앞에 붙어 모델에게 갑니다. 다른 이름표면 새 책상입니다. 그림에서 어느 thread에 질문하는지 고르면 모델이 받는 메시지 수가 어떻게 달라지는지 확인할 수 있습니다.</p>
+      </div>
+      <div data-figure>
+        <div class="mem-ctrl" style="margin-bottom:16px"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">다음 질문을 보낼 thread</span>
+          <div class="mem-seg" role="group" aria-label="thread 고르기"><button type="button" data-mem-th="A" aria-pressed="true">thread_id "A"</button><button type="button" data-mem-th="B" aria-pressed="false">thread_id "B"</button></div>
+          <button type="button" class="mem-act" data-mem-send>질문 보내기</button><button type="button" class="mem-act" data-mem-reset>처음으로</button></div>
+        <div class="mem-th">
+          <div class="mem-tr a"><h4>thread "A"</h4><div class="mem-chips" data-mem-chA></div><p data-mem-pA></p></div>
+          <div class="mem-tr b"><h4>thread "B"</h4><div class="mem-chips" data-mem-chB></div><p data-mem-pB></p></div>
+        </div>
+        <p class="mem-cap">설명을 위한 예시입니다. 질문과 답이 한 번 오가면 저장된 메시지가 두 개 늘고 모델에게는 그때까지 저장된 메시지에 새 질문을 더해 보냅니다.</p>
+      </div>
+    </div>
+    <div class="mem-wrap">
+      <p class="mem-cap mem-mobhint">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
+      <div class="mem-codepair">
+        <div class="cp-code">
+<pre data-title="memory.py" data-hl="4,6-8,10-11"><code class="language-python">from langgraph.checkpoint.memory import InMemorySaver
+
+# ① 대화를 저장할 곳을 붙인다
+agent = create_agent(model, tools=[], checkpointer=InMemorySaver())
+# ② 같은 thread_id면 앞 대화가 이어진다
+cfg = {"configurable": {"thread_id": "A"}}
+agent.invoke({"messages": [{"role": "user", "content": "와이파이가 안 돼요"}]}, config=cfg)
+agent.invoke({"messages": [{"role": "user", "content": "아까 말한 문제 기억나요?"}]}, config=cfg)
+# ③ 저장된 상태를 열어 본다
+state = agent.get_state(cfg)
+print(len(state.values["messages"]))</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="mem-term" data-mem-term>
+  <div class="mem-term-bar"><span>터미널</span><button type="button" class="mem-act" data-mem-run="th">실행해 보기</button></div>
+  <div class="mem-term-out" data-mem-out aria-live="polite">$ python memory.py
+4</div>
+</div>
+<p class="mem-cap">출력은 예시입니다. 질문 두 번과 답 두 번이 저장돼 메시지 4개가 됩니다. 코드는 <code>langchain</code> 1.4와 <code>langgraph</code> 1.2 기준입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>저장소를 붙입니다.</b> <code>InMemorySaver</code>는 프로그램 메모리에 저장하므로 프로그램을 끄면 사라집니다. 서비스에서는 Postgres 같은 데이터베이스 기반 checkpointer로 바꿉니다.</li>
+  <li><b>이름표를 줍니다.</b> <code>config</code>의 <code>thread_id</code>가 대화 하나의 이름표입니다. 이 값이 같으면 저장된 메시지를 불러와 이어 쓰고 다르면 새 대화입니다. 이름표를 주지 않으면 checkpointer가 대화를 구분하지 못합니다.</li>
+  <li><b>저장된 모습을 확인합니다.</b> <code>get_state</code>가 돌려주는 스냅샷(그 순간의 상태를 찍어 둔 것)의 <code>values["messages"]</code>에 지금까지의 메시지가 들어 있습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-sec">
+    <div class="mem-wrap">
+      <div class="mem-head">
+        <h2>서랍은 thread와 상관없이 사용자 정보를 보관합니다</h2>
+        <div>
+          <p>단기 기억은 한 대화 안에서만 이어집니다. 대화가 끝난 뒤에도 "kim은 macOS를 쓰고 회사 VPN을 쓴다" 같은 정보를 기억하려면 장기 기억이 필요합니다. LangChain 문서는 장기 기억이 단기 기억과 달리 한 스레드에 묶이지 않고 여러 스레드에 걸쳐 남는다고 설명합니다.</p>
+          <p>장기 기억은 Store(저장소)에 넣습니다. 서랍 이름표인 namespace(이름 묶음)와 항목 이름 key로 값을 넣고 꺼냅니다. 아래 그림에서 사용자를 고르면 같은 코드가 사용자마다 다른 서랍을 엽니다. 없는 서랍을 열면 빈손으로 돌아옵니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="mem-ctrl"><div class="mem-seg" role="group" aria-label="사용자 고르기"><button type="button" data-mem-su="kim" aria-pressed="true">kim</button><button type="button" data-mem-su="lee" aria-pressed="false">lee</button></div></div>
+        <div class="mem-shelf" data-mem-shelf></div>
+        <p class="mem-cap">설명을 위한 예시 데이터입니다. 서랍 이름은 namespace인 <code>("users", "kim")</code> 같은 묶음 이름이고 그 안에서 key로 항목을 찾습니다.</p>
+      </div>
+      <div class="mem-codepair">
+        <div class="cp-code">
+<pre data-title="store.py" data-hl="5-6,8,11"><code class="language-python">from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+# ④ 서랍에 넣는다: 이름 묶음, 항목 이름, 값
+store.put(("users", "kim"), "prefs", {"os": "macOS", "vpn": "회사 VPN"})
+print(store.get(("users", "kim"), "prefs").value)
+# ⑤ 없는 서랍은 None이 돌아온다
+print(store.get(("users", "lee"), "prefs"))
+
+# ⑥ Agent에게 서랍을 연결한다
+agent = create_agent(model, tools=tools, store=store, context_schema=UserContext)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="mem-term" data-mem-term>
+  <div class="mem-term-bar"><span>터미널</span><button type="button" class="mem-act" data-mem-run="st">실행해 보기</button></div>
+  <div class="mem-term-out" data-mem-out aria-live="polite">$ python store.py
+{'os': 'macOS', 'vpn': '회사 VPN'}
+None</div>
+</div>
+<p class="mem-cap">출력은 예시입니다. <code>InMemoryStore</code>도 개발용이라 서비스에서는 데이터베이스 기반 Store를 씁니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 3">
+  <li><b>넣고 꺼냅니다.</b> <code>put</code>에는 이름 묶음(튜플), 항목 이름, 값을 줍니다. <code>get</code>이 돌려주는 항목의 <code>.value</code>가 넣은 값입니다. 이름 묶음을 사용자별로 나누면 서랍이 사용자마다 갈라집니다.</li>
+  <li><b>없는 서랍</b>은 오류가 아니라 <code>None</code>입니다. 도구 안에서는 <code>None</code>일 때 "저장된 정보 없음" 같은 글을 돌려주면 모델이 이어서 처리합니다.</li>
+  <li><b>Agent에 연결합니다.</b> <code>store=</code>를 주면 도구 안에서 <code>runtime.store</code>로 서랍을 열 수 있습니다. 사용자 번호는 모델에게 묻지 않고 <code>runtime.context</code>에서 꺼내 이름 묶음을 만듭니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-lab">
+    <div class="mem-wrap">
+      <div class="mem-labtop">
+        <h2>요약하면 책상 위 메시지가 줄어듭니다</h2>
+        <div>
+          <p>대화가 길어지는 것을 그냥 두면 모델이 받는 메시지가 한 번 오갈 때마다 두 개씩 늘어납니다. <code>SummarizationMiddleware</code>(루프에 코드를 끼우는 Middleware의 하나)를 달면 메시지가 정한 수를 넘을 때 오래된 부분을 요약 메시지 하나로 바꾸고 최근 메시지만 그대로 남깁니다.</p>
+          <p>아래는 질문 다섯 개를 이어서 보낼 때 모델이 받은 메시지 수입니다. 요약 없이는 1, 3, 5, 7, 9로 늘고 요약을 켜면 네 번째에서 줄어드는 것을 직접 실행해 확인했습니다.</p>
+          <div class="mem-ctrl"><div class="mem-seg" role="group" aria-label="요약 켜기"><button type="button" data-mem-sm="off" aria-pressed="true">요약 없음</button><button type="button" data-mem-sm="on" aria-pressed="false">요약 켬(6개 넘으면)</button></div></div>
+        </div>
+      </div>
+      <div style="margin-top:40px" data-figure>
+        <div class="mem-bars" data-mem-bars></div>
+        <div class="mem-bx" data-mem-bx></div>
+        <p class="mem-cap" style="margin-top:14px">막대 높이는 그 질문 때 모델이 받은 메시지 수입니다. 요약을 켠 경우는 직접 실행한 값이고 요약이 없는 경우는 한 번 오갈 때마다 두 개씩 늘어난 값입니다. 초록 칸은 요약 메시지가 들어 있다는 표시입니다.</p>
+      </div>
+      <div class="mem-cwrap" style="margin-top:36px">
+        <p class="mem-cap mem-mobhint" style="margin-top:0">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
+        <div class="mem-codepair" style="margin-top:0">
+          <div class="cp-code">
+<pre data-title="summary.py" data-hl="2-6"><code class="language-python"># ⑦ 메시지가 6개를 넘으면 요약하고 최근 2개만 남긴다
+agent = create_agent(
+    model, tools=[], checkpointer=InMemorySaver(),
+    middleware=[SummarizationMiddleware(
+        model=model, trigger=("messages", 6),
+        keep=("messages", 2))])
+for q in questions:
+    r = agent.invoke({"messages": [{"role": "user", "content": q}]}, config=cfg)
+    print(len(r["messages"]))</code></pre>
+          </div>
+          <div class="cp-term">
+<div class="mem-term" data-mem-term>
+  <div class="mem-term-bar"><span>터미널</span><button type="button" class="mem-act" data-mem-run="sm">실행해 보기</button></div>
+  <div class="mem-term-out" data-mem-out aria-live="polite">$ python summary.py
+2
+4
+6
+4
+6</div>
+</div>
+<p class="mem-cap">출력은 질문 다섯 개를 보낸 뒤 저장된 메시지 수입니다. 네 번째에서 6개가 4개로 줄었습니다.</p>
+          </div>
+          <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 6">
+  <li><b>요약 규칙을 정합니다.</b> <code>trigger</code>는 요약을 시작하는 조건으로 메시지 수나 토큰 수로 줄 수 있습니다. <code>keep</code>은 요약하지 않고 그대로 남길 최근 분량입니다. <code>trigger</code>를 주지 않으면 요약하지 않습니다. 요약은 모델을 한 번 더 부르므로 비용이 듭니다.</li>
+</ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-sec">
+    <div class="mem-wrap mem-split rev">
+      <div data-figure>
+        <div class="mem-ctrl" style="margin-bottom:16px"><div class="mem-seg" role="group" aria-label="전략 고르기"><button type="button" data-mem-f="all" aria-pressed="true">모두 보기</button><button type="button" data-mem-f="w" aria-pressed="false">write</button><button type="button" data-mem-f="s" aria-pressed="false">select</button><button type="button" data-mem-f="c" aria-pressed="false">compress</button><button type="button" data-mem-f="i" aria-pressed="false">isolate</button></div></div>
+        <div class="mem-four" data-mem-four>
+          <div class="mem-st4 w" data-mem-k="w"><h4>write</h4><small>책상 밖에 적어 둔다</small><div class="mini"><span class="box big">책상</span><span class="ar">→</span><span class="box dr">서랍(메모)</span></div></div>
+          <div class="mem-st4 s" data-mem-k="s"><h4>select</h4><small>필요한 것만 꺼내 온다</small><div class="mini"><span class="box dr">서랍(메모)</span><span class="ar">→</span><span class="box big on">책상</span></div></div>
+          <div class="mem-st4 c" data-mem-k="c"><h4>compress</h4><small>글을 줄여 쓴다</small><div class="mini"><span class="box big">책상(긴 글)</span><span class="ar">→</span><span class="box on">책상(요약)</span></div></div>
+          <div class="mem-st4 i" data-mem-k="i"><h4>isolate</h4><small>다른 책상에서 일하고 결과만 받는다</small><div class="mini"><span class="box big">책상</span><span class="ar">⇄</span><span class="box dr">하위 Agent의 책상</span></div></div>
+        </div>
+        <p class="mem-cap">LangChain의 Context Engineering 글이 나눈 네 가지 전략을 책상과 서랍으로 그린 것입니다.</p>
+      </div>
+      <div>
+        <h2>책상을 관리하는 방법은 네 가지로 묶입니다</h2>
+        <p>Context Engineering은 Andrej Karpathy의 표현을 빌리면 모델이 다음 단계에서 쓸 컨텍스트 창을 꼭 맞는 정보로 채우는 일입니다. LangChain은 그 방법을 네 가지로 나눕니다. write는 책상 밖에 적어 두고 select는 필요한 것만 책상으로 가져옵니다. compress는 필요한 토큰만 남기고 isolate는 일을 쪼개 다른 책상에 맡깁니다.</p>
+        <details><summary>Anthropic은 어떻게 설명하나</summary><div class="mem-in-d">        <p>Anthropic도 비슷하게 설명합니다. 모델에게는 주의력 예산(attention budget)이 있어서 글이 길어질수록 정확하게 떠올리는 능력이 떨어집니다. 그래서 오래 도는 Agent는 메모를 밖에 적어 두고 하위 Agent에게 깨끗한 컨텍스트로 일을 맡깁니다. 이 글에서 본 checkpointer와 Store와 요약이 이 네 가지에 하나씩 대응합니다.</p></div></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-sec">
+    <div class="mem-wrap">
+      <div class="mem-head">
+        <h2>기억은 저장보다 무엇을 책상에 올리느냐가 중요합니다</h2>
+        <div>
+          <p class="mem-big">단기 기억은 thread로 잇고 장기 기억은 Store에 넣고 책상은 요약으로 비웁니다.</p>
+          <div data-figure style="margin:8px 0 26px"><div class="mem-flow">
+            <div class="mem-s h"><small>책상 위 (단기)</small><code>checkpointer</code> + <code>thread_id</code>: 한 대화를 이어 감</div>
+            <div class="mem-s c"><small>서랍 속 (장기)</small><code>store</code>: 대화가 끝나도 사용자 정보가 남음</div>
+            <div class="mem-s m"><small>책상 비우기</small><code>SummarizationMiddleware</code>: 오래된 대화를 요약</div>
+          </div></div>
+          <p>저장해 두는 일은 어렵지 않습니다. 서랍의 어느 메모를 책상에 올릴지, 오래된 대화를 어떻게 줄일지가 어렵습니다. 요약은 정보를 잃을 수 있으므로 꼭 남겨야 하는 사실은 서랍에 따로 적어 두는 편이 안전합니다. 다음 글에서는 서랍의 메모를 검색해서 꺼내는 Agentic RAG를 알아보겠습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mem-sec">
+    <div class="mem-wrap">
+      <div class="mem-head">
+        <h2>참고 자료</h2>
+        <ul class="mem-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langchain/short-term-memory">Short-term memory</a>, LangChain: checkpointer와 thread_id, 운영용 저장소</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/long-term-memory">Long-term memory</a>, LangChain: Store, namespace, put·get·search, 단기·장기 기억의 차이</li>
+          <li><a href="https://www.langchain.com/blog/context-engineering-for-agents">Context Engineering for Agents</a>, LangChain: write·select·compress·isolate 네 전략</li>
+          <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a>, Anthropic: attention budget, context rot, compaction, 메모 남기기, 하위 Agent</li>
+          <li><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Context windows</a>, Anthropic: 컨텍스트 창 크기와 context rot 설명</li>
+          <li><a href="https://pypi.org/project/langchain/">langchain 1.4.6</a>, <a href="https://pypi.org/project/langgraph/">langgraph 1.2.15</a>, PyPI</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="mem-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-mem-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-mem-out]", btn.closest("[data-mem-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.memRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  /* 히어로: 책상 용량 */
+  const CAP = 100, PER = 6;
+  let strat = "none";
+  function sim(turns, s) {
+    let desk = 0, notes = 0;
+    if (s === "none") desk = turns * PER;
+    else if (s === "compress") { let items = []; for (let t = 0; t < turns; t++) { items.push(PER); const sum = items.reduce((a, b) => a + b, 0); if (sum > 60) { const keep = items.slice(-2); items = [10, ...keep]; } } desk = items.reduce((a, b) => a + b, 0); }
+    else if (s === "write") { desk = Math.min(turns, 2) * PER + Math.min(turns, 3) * 2; notes = turns; }
+    else if (s === "isolate") { desk = turns * 2; notes = 0; }
+    return { desk, notes };
+  }
+  const SAY = { none: (d) => d > CAP ? "책상이 넘쳤습니다. 오래된 글을 잘라 내거나 정확도가 떨어집니다." : "아직 책상에 다 올라갑니다. 대화가 더 길어지면 넘칩니다.", compress: () => "오래된 대화를 요약 한 장으로 바꿔 책상이 일정하게 유지됩니다. 요약에서 빠진 정보는 사라집니다.", write: () => "중요한 사실은 서랍에 메모로 쌓고 책상에는 최근 대화와 필요한 메모만 올립니다.", isolate: () => "하위 Agent가 긴 작업을 자기 책상에서 하고 결과만 보내서 책상에는 결과만 쌓입니다." };
+  function drawDesk() {
+    const t = +$("[data-mem-turn]").value; $("[data-mem-tout]").textContent = t;
+    const { desk, notes } = sim(t, strat);
+    const f = $("[data-mem-fill]"); f.style.width = Math.min(100, desk / CAP * 100) + "%"; f.classList.toggle("over", desk > CAP);
+    $("[data-mem-use]").textContent = `${desk} / ${CAP}칸` + (desk > CAP ? " 넘침" : "");
+    $("[data-mem-notes]").innerHTML = notes ? Array.from({ length: Math.min(notes, 40) }, () => "<i></i>").join("") : '<span style="font-size:13px;color:var(--fg-neutral)">서랍에 넣은 메모가 없습니다</span>';
+    $("[data-mem-say]").textContent = SAY[strat](desk);
+  }
+  $$("[data-mem-s]").forEach((b) => b.addEventListener("click", () => { strat = b.dataset.memS; press("[data-mem-s]", b); drawDesk(); }, { signal }));
+  $("[data-mem-turn]").addEventListener("input", drawDesk, { signal });
+  drawDesk();
+
+  /* thread */
+  let th = "A", seq = { A: 0, B: 0 };
+  const chip = (n) => Array.from({ length: n }, (_, i) => `<span class="${i % 2 ? "m" : ""}">${i % 2 ? "답" : "질문"}</span>`).join("");
+  function drawTh() {
+    ["A", "B"].forEach((k) => {
+      const n = seq[k] * 2; $(`[data-mem-ch${k}]`).innerHTML = n ? chip(n) : '<span style="background:transparent;color:var(--fg-neutral)">아직 저장된 메시지가 없습니다</span>';
+      $(`[data-mem-p${k}]`).innerHTML = seq[k] ? `마지막 호출에서 모델이 받은 메시지: <b>${(seq[k] - 1) * 2 + 1}개</b>` : "";
+    });
+  }
+  $$("[data-mem-th]").forEach((b) => b.addEventListener("click", () => { th = b.dataset.memTh; press("[data-mem-th]", b); }, { signal }));
+  $("[data-mem-send]").addEventListener("click", () => { if (seq[th] < 4) seq[th]++; drawTh(); }, { signal });
+  $("[data-mem-reset]").addEventListener("click", () => { seq = { A: 0, B: 0 }; drawTh(); }, { signal });
+  seq = { A: 2, B: 1 }; drawTh();
+
+  /* 서랍 */
+  const SH = { kim: [["users/kim · prefs", '{"os": "macOS", "vpn": "회사 VPN"}', "open"], ["users/kim · tickets", "(비어 있음)", "none"], ["users/lee · prefs", "열지 않은 서랍", "none"]], lee: [["users/lee · prefs", "None  → 저장된 정보 없음", "none"], ["users/kim · prefs", "열지 않은 서랍", "none"], ["users/kim · tickets", "열지 않은 서랍", "none"]] };
+  const drawShelf = (u) => { $("[data-mem-shelf]").innerHTML = SH[u].map(([t, v, c]) => `<div class="mem-drw ${c}"><h4>${t}</h4><code>${esc(v)}</code></div>`).join(""); };
+  $$("[data-mem-su]").forEach((b) => b.addEventListener("click", () => { press("[data-mem-su]", b); drawShelf(b.dataset.memSu); }, { signal }));
+  drawShelf("kim");
+
+  /* 요약 전후 */
+  const OFF = [1, 3, 5, 7, 9], ON = [1, 3, 5, 3, 5];
+  let sm = "off";
+  function drawBars() {
+    const vals = sm === "off" ? OFF : ON;
+    $("[data-mem-bars]").innerHTML = Array.from({ length: 7 }, (_, i) => i < 5 ? `<div class="mem-bc"><em>${vals[i]}</em><i class="${sm === "on" && i >= 3 ? "s" : ""}" style="height:${vals[i] / 10 * 100}%"></i></div>` : `<div class="mem-bc"></div>`).join("");
+    $("[data-mem-bx]").innerHTML = Array.from({ length: 7 }, (_, i) => i < 5 ? `<span>${i + 1}번째 질문</span>` : "<span></span>").join("");
+  }
+  $$("[data-mem-sm]").forEach((b) => b.addEventListener("click", () => { sm = b.dataset.memSm; press("[data-mem-sm]", b); drawBars(); }, { signal }));
+  drawBars();
+
+  /* 네 전략 */
+  $$("[data-mem-f]").forEach((b) => b.addEventListener("click", () => { press("[data-mem-f]", b); const k = b.dataset.memF; $$("[data-mem-k]").forEach((e) => { const on = k === "all" || e.dataset.memK === k; e.classList.toggle("dim", !on); e.classList.toggle("sel", k !== "all" && on); }); }, { signal }));
+
+  initTerms({
+    th: [["cmd", "$ python memory.py"], ["wait", 900], ["type", "4"]],
+    st: [["cmd", "$ python store.py"], ["wait", 500], ["line", "{'os': 'macOS', 'vpn': '회사 VPN'}"], ["type", "None"]],
+    sm: [["cmd", "$ python summary.py"], ["wait", 900], ["line", "2"], ["line", "4"], ["line", "6"], ["wait", 500], ["line", "4"], ["type", "6"]],
+  });
+})();
+</script>
