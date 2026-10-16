@@ -7,3 +7,5 @@ for p in '죠[.?]' '고,' '며,' '지만,' '면서,' '서,' '아니라' '아닌'
   [ "$n" -gt 0 ] && echo "$p: $n"
 done
 echo "lines: $(wc -l < "$f")"
+# 왼쪽 테두리만 색칠한 강조 금지(POSTING 5-2). 화살촉(transparent 와 같이 쓰는 줄)은 제외.
+n=$(grep -E 'border-left: *[2-9](\.[0-9])?px solid' "$f" | grep -vc transparent); [ "$n" -gt 0 ] && echo "border-left 색 띠(금지): $n"
