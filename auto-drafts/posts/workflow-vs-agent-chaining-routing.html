@@ -1,0 +1,501 @@
+---
+title: 정해진 순서로 충분한 일에 Agent가 꼭 필요할까요?
+slug: workflow-vs-agent-chaining-routing
+excerpt: 길이 미리 정해진 일은 워크플로로, 길을 모델이 정해야 하는 일은 Agent로 짭니다. Anthropic이 나눈 워크플로와 Agent의 차이, 앞 단계의 결과를 다음 단계로 넘기며 중간에 검사하는 프롬프트 체이닝, 입력을 분류해 전문 처리로 보내는 라우팅을 문의 처리 그래프로 직접 짜 langgraph 1.2로 확인한 결과와 함께 그림과 코드로 정리합니다.
+tags: [AI Agent, LangGraph, 워크플로, Prompt Chaining, Routing, Python]
+category: ai
+series: ai-agent
+series_order: 13
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-vs-agent-chaining-routing-mvb7ip79.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 노선도 히어로(노선버스와 택시) + 그림|글(조립 라인 검문) + 코드|해설 + 그림 고정 스크롤리텔링(우체국 분류) + 코드|해설 + 판단 트리 + 정리 | 글의 성격: 길을 코드가 정하느냐 모델이 정하느냐를 가르는 글이라 정해진 노선과 자유 이동을 나란히 놓고 체이닝은 조립 라인으로 라우팅은 우체국 분류로 장면 하나씩 보인다 | 버린 후보: 비교 카드와 흐름 박스(앞 시리즈 방식) -->
+<style>
+.post-page .wf {
+  --wf-human: rgb(37, 112, 235); --wf-code: rgb(16, 150, 120); --wf-model: rgb(226, 106, 28); --wf-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .wf { --wf-human: rgb(110, 165, 255); --wf-code: rgb(60, 205, 165); --wf-model: rgb(255, 150, 80); --wf-bad: rgb(255, 110, 110); }
+.post-page .wf * { box-sizing: border-box; }
+.post-page .wf-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .wf h1, .post-page .wf h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .wf h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .wf h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .wf h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .wf p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .wf b { color: var(--fg-strong); }
+.post-page .wf .nw { white-space: nowrap; }
+.post-page .wf code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .wf p.wf-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .wf-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .wf-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .wf-head > h2 { margin: 0; }
+.post-page .wf-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .wf-split.top { align-items: start; }
+.post-page .wf-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .wf-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .wf-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .wf-seg button:hover { color: var(--fg-strong); }
+.post-page .wf-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .wf-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .wf-act::before { content: "▶ "; font-size: 11px; }
+.post-page .wf-act:disabled { opacity: .4; cursor: default; }
+.post-page .wf-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .wf-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .wf-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .wf-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .wf-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .wf-tag.n { --t: var(--fg-strong); } .post-page .wf-tag.m { --t: var(--wf-model); } .post-page .wf-tag.c { --t: var(--wf-code); } .post-page .wf-tag.h { --t: var(--wf-human); } .post-page .wf-tag.x { --t: var(--wf-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .wf-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .wf-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .wf-codepair .pg-code { margin-top: 0; }
+.post-page .wf-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .wf-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .wf-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .wf-codepair.rev > .cp-code, .post-page .wf-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .wf-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .wf .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .wf ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .wf ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .wf-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .wf-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .wf-term-bar .wf-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .wf-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .wf-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-wf-blink 1s steps(1) infinite; }
+@keyframes pg-wf-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .wf-codepair, .post-page .wf-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .wf-codepair > .cp-code, .post-page .wf-codepair > .cp-term, .post-page .wf-codepair > .cp-notes,
+  .post-page .wf-codepair.rev > .cp-code, .post-page .wf-codepair.rev > .cp-term, .post-page .wf-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .wf-codepair > .cp-notes, .post-page .wf-codepair.rev > .cp-notes { order: 2; } .post-page .wf-codepair > .cp-term, .post-page .wf-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .wf-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .wf-tbl th, .post-page .wf-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .wf-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .wf-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .wf-tbl code { font-size: 12.5px; }
+.post-page .wf details { margin: 0 0 24px; }
+.post-page .wf summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .wf details > .wf-in-d { padding-top: 14px; }
+.post-page .wf-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .wf-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .wf-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .wf-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .wf-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .wf-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .wf-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .wf-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .wf-tbl { font-size: 13.5px; } .post-page .wf-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .wf *, .post-page .wf *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .wf-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .wf-wrap { padding: 0 20px; }
+  .post-page .wf-head, .post-page .wf-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .wf-split.rev > :first-child { order: 0; }
+  .post-page p.wf-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .wf-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .wf-lab h2 { margin-bottom: 24px; }
+.post-page .wf-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .wf-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .wf-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .wf-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .wf-stack { display: grid; gap: 8px; }
+.post-page .wf-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .wf-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .wf-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .wf-s.m { --k: var(--wf-model); } .post-page .wf-s.c { --k: var(--wf-code); } .post-page .wf-s.x { --k: var(--wf-bad); } .post-page .wf-s.h { --k: var(--wf-human); }
+.post-page .wf-s + .wf-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .wf-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .wf-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .wf-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .wf-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .wf-hero-top p { margin: 0 0 1.2em; }
+.post-page .wf-hero-top p:last-child { margin-bottom: 0; }
+.post-page .wf-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .wf-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .wf [hidden] { display: none !important; }
+
+.post-page .wf-stack { gap: 22px !important; } .post-page .wf-s + .wf-s::before { top: -19px !important; }
+.post-page .wf-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .wf-flow .wf-s { flex: 1 1 0; min-width: 0; } .post-page .wf-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .wf-flow .wf-s + .wf-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .wf-flow .wf-s { flex: 1 1 180px; } .post-page .wf-flow i.ar { display: none; } }
+
+.post-page .wf-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .wf-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .wf-nar { max-width: 520px; }
+.post-page .wf-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .wf-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .wf-scene .t-d { fill: var(--fg-neutral); }
+.post-page .wf-scene .mono { font-family: var(--font-mono); }
+.post-page .wf-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .wf-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .wf-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .wf-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .wf-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .wf-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .wf-steps { padding-bottom: 14vh; }
+.post-page .wf-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .wf-step.on { opacity: 1; }
+.post-page .wf-step h3 { font-size: 20px; }
+.post-page .wf-step p { margin: 0; }
+.post-page .wf-sfig { position: sticky; top: var(--wf-top, 96px); }
+.post-page .wf-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .wf-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .wf-story { grid-template-columns: minmax(0, 1fr); } .post-page .wf-sfig { position: static; order: -1; } .post-page .wf-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .wf-steps { padding-bottom: 0; } }
+
+.post-page .wf-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .wf-stage .wf-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .wf-lede { max-width: 780px; margin-top: 24px; }
+.post-page .wf-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .wf-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+.post-page .wf-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="wf-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="wf-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="wf-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="wf-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="wf-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="wf-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="wf-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="wf-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="wf-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="wf">
+  <section class="wf-hero">
+    <div class="wf-wrap">
+      <h1>정해진 순서로 충분한 일에 Agent가 꼭 필요할까요?</h1>
+      <div class="wf-lede">
+        <p>학교에 갈 때 정해진 노선버스를 탈 수도 있고 택시를 불러 목적지를 말할 수도 있습니다. 노선버스는 길이 정해져 있어 시간을 예측할 수 있고 택시는 길을 기사가 정해서 유연합니다. 일의 순서를 미리 알면 노선버스가 싸고 확실합니다.</p>
+        <p>Anthropic은 이 둘을 워크플로(workflow)와 Agent로 나눕니다. 워크플로는 LLM과 도구가 미리 정해진 코드 경로를 따라 움직이는 시스템이고 Agent는 LLM이 스스로 진행 과정과 도구 사용을 정하는 시스템입니다. 같은 문의를 두 방식으로 처리해 보면 차이가 보입니다.</p>
+      </div>
+      <div class="wf-stage" data-figure data-thumb data-wf-bus>
+        <div class="wf-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">문의</span>
+          <div class="wf-seg" role="group" aria-label="문의 고르기">
+            <button type="button" data-wf-q="0" aria-pressed="true">비밀번호를 잊어버렸어요</button>
+            <button type="button" data-wf-q="1" aria-pressed="false">회사 메일이 가끔 안 와요</button>
+          </div>
+          <button type="button" class="wf-act" data-wf-go>두 방식으로 보내기</button>
+        </div>
+        <svg class="wf-scene wf-nar" data-wf-busv viewBox="0 0 460 780" role="img" aria-label="두 길 비교 그림. 왼쪽 워크플로는 분류, 초안, 다듬기 정거장을 늘 같은 순서로 지나가는 노선버스이고 오른쪽 Agent는 모델이 다음 행동을 그때그때 정해 문의에 따라 정거장 수가 달라진다."></svg>
+        <p class="wf-verdict" data-wf-bsum></p>
+        <p class="wf-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 같은 문의라도 Agent가 거치는 단계와 횟수는 모델과 상황에 따라 다릅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wf-sec">
+    <div class="wf-wrap wf-split rev">
+      <div data-figure>
+        <div class="wf-ctrl" style="margin-bottom:8px"><div class="wf-seg" role="group" aria-label="검사 결과"><button type="button" data-wf-gt="pass" aria-pressed="true">검사 통과</button><button type="button" data-wf-gt="fail" aria-pressed="false">검사 실패</button></div></div>
+        <svg class="wf-scene wf-nar" data-wf-line viewBox="0 0 460 560" role="img" aria-label="조립 라인 그림. 문의가 초안 만들기 칸을 지나 검사 문에 이르면, 통과하면 바로 끝으로 가고 실패하면 다듬기 칸을 한 번 더 거친다. 모델 호출 횟수가 통과일 때와 실패일 때 다르게 표시된다."></svg>
+        <p class="wf-wnote" data-wf-lnote></p>
+      </div>
+      <div>
+        <h2>체이닝은 앞 단계의 결과를 다음 단계로 넘깁니다</h2>
+        <p>프롬프트 체이닝(prompt chaining)은 일을 순서대로 나눠 앞 호출의 출력을 다음 호출의 입력으로 넘기는 방식입니다. Anthropic은 일을 고정된 하위 작업으로 깔끔하게 나눌 수 있을 때 쓰라고 하고 각 호출을 쉬운 과제로 만들어 지연이 늘더라도 정확도를 높이려는 것이라고 설명합니다.</p>
+        <p>중간에 코드로 하는 검사(gate)를 넣을 수 있습니다. 초안이 너무 짧으면 다듬기 단계를 한 번 더 거치고 충분하면 건너뜁니다. 검사가 코드라서 모델을 부르지 않고 싸게 판단합니다. 그림에서 검사 결과를 바꿔 모델 호출 횟수가 어떻게 달라지는지 보세요.</p>
+      </div>
+    </div>
+    <div class="wf-wrap">
+      <div class="wf-codepair">
+        <div class="cp-code">
+<pre data-title="chain.py" data-hl="2-4,7-9"><code class="language-python"># ① 초안을 쓰고 길이 검사로 길을 가른다(코드가 정함)
+def too_short(s: State) -> Literal["polish", "__end__"]:
+    return "polish" if len(s["draft"]) >= 20 else "__end__"
+
+c = StateGraph(State)
+c.add_node("draft", draft); c.add_node("polish", polish)
+# ② 조건부 엣지가 검사 문 역할을 한다
+c.add_edge(START, "draft")
+c.add_conditional_edges("draft", too_short)
+c.add_edge("polish", END)
+chain = c.compile()</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>검사 함수입니다.</b> 모델을 부르지 않고 글자 수만 셉니다. 반환값이 다음 노드의 이름이라 조건부 엣지가 그 길로 보냅니다. 이 예시는 글자 수만 세는 단순한 규칙이고 실제 서비스에서는 개인정보 포함 여부나 금칙어 같은 검사를 넣습니다.</li>
+  <li><b>길을 이어 줍니다.</b> <code>draft</code>에서 검사를 거쳐 <code>polish</code>로 가거나 곧바로 끝으로 갑니다. 어느 길이든 코드가 정해 둔 길입니다. 모델은 각 칸 안에서 글만 씁니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wf-sec">
+    <div class="wf-wrap">
+      <div class="wf-head">
+        <h2>라우팅은 입력을 분류해 알맞은 전문 처리로 보냅니다</h2>
+        <div>
+          <p>라우팅(routing)은 입력을 먼저 분류하고 그 결과에 맞는 전문 처리로 보내는 방식입니다. Anthropic은 별도로 처리하는 편이 나은 뚜렷한 범주가 있고 분류를 정확히 할 수 있을 때 쓰라고 합니다. 고객 문의를 일반 질문과 환불과 기술 지원으로 나눠 각각 다른 프롬프트와 도구로 처리하는 것이 예입니다.</p>
+          <p>분류에는 앞서 배운 구조화 출력(Structured Output)이 잘 맞습니다. 분류 결과를 <code>Literal["계정", "장비", "소프트웨어"]</code>처럼 정해진 값 중 하나로만 받으면 길 고르기 함수가 안전하게 노드를 고릅니다. 스크롤하며 문의가 우체국 분류기를 지나는 모습을 보세요.</p>
+        </div>
+      </div>
+      <div class="wf-story" style="margin-top:44px" data-wf-story>
+        <div class="wf-steps">
+          <div class="wf-step" data-wf-step><h3>문의가 도착</h3><p>"비밀번호를 잊어버렸어요" 같은 문의가 State의 <code>inquiry</code> 칸에 들어옵니다. 아직 어느 팀 일인지 모릅니다.</p></div>
+          <div class="wf-step" data-wf-step><h3>분류 노드가 이름표를 붙임</h3><p>모델이 구조화 출력으로 <code>"계정"</code>이라는 값 하나를 돌려줍니다. 정해진 보기 안의 값이라 오타가 날 일이 없습니다.</p></div>
+          <div class="wf-step" data-wf-step><h3>길 고르기 함수가 팀 줄로 보냄</h3><p>이름표를 읽어 계정 팀 노드로 문의를 보냅니다. 장비와 소프트웨어 팀의 줄은 이번에는 쓰이지 않습니다.</p></div>
+          <div class="wf-step" data-wf-step><h3>팀 노드가 초안을 쓰고 다듬기로</h3><p>계정 팀 노드가 자기 전문 프롬프트로 초안을 쓰고 모든 팀이 공통으로 쓰는 다듬기 노드에서 만납니다.</p></div>
+        </div>
+        <div class="wf-sfig" data-wf-sfig data-figure>
+          <svg class="wf-scene wf-nar" data-wf-post viewBox="0 0 460 560" role="img" aria-label="우체국 분류 그림. 위에서 들어온 문의 소포가 분류 노드에서 계정 장비 소프트웨어 이름표 중 하나를 받고, 이름표에 맞는 팀 줄로 가서 초안이 쓰인 뒤 공통 다듬기 노드에서 합쳐진다."></svg>
+          <p class="wf-stat" data-wf-stat></p>
+        </div>
+      </div>
+      <div class="wf-codepair" style="margin-top:48px">
+        <div class="cp-code">
+<pre data-title="router.py" data-hl="1-3,6-8,11-14"><code class="language-python"># ③ 분류 결과는 정해진 보기 중 하나로만 받는다
+class Route(BaseModel):
+    category: Literal["계정", "장비", "소프트웨어"]
+router = model.with_structured_output(Route, method="json_schema")
+
+# ④ 이름표를 읽어 갈 노드를 고르는 함수
+def by_category(s: State) -> Literal["account", "device", "software"]:
+    return {"계정": "account", "장비": "device", "소프트웨어": "software"}[s["category"]]
+
+b.add_edge(START, "classify")
+b.add_conditional_edges("classify", by_category)
+for n in ["account", "device", "software"]:
+    b.add_edge(n, "polish")      # ⑤ 모든 팀이 다듬기에서 만난다</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="wf-term" data-wf-term>
+  <div class="wf-term-bar"><span>터미널</span><button type="button" class="wf-act" data-wf-run="r">실행해 보기</button></div>
+  <div class="wf-term-out" data-wf-out aria-live="polite">$ python router.py
+비밀번호를 잊어버렸어요 → 계정
+노트북 화면이 깜빡여요 → 장비
+엑셀을 설치하고 싶어요 → 소프트웨어</div>
+</div>
+<p class="wf-cap">출력은 예시입니다. 분류 결과는 모의 서버로 확인했고 실제 모델의 분류는 달라질 수 있습니다. 코드는 <code>langgraph</code> 1.2 기준이고 노드 함수는 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 2">
+  <li><b>분류 모양을 정합니다.</b> 앞 글에서 본 Pydantic 양식입니다. <code>Literal</code>로 보기를 닫아 두면 모델이 다른 값을 내놓을 수 없습니다. <code>method="json_schema"</code>는 모델 회사의 구조화 출력 기능을 쓰라는 뜻입니다.</li>
+  <li><b>길 고르기 함수입니다.</b> State의 <code>category</code>를 읽어 노드 이름으로 바꿔 줍니다. 한글 이름표와 노드 이름을 짝짓는 표를 함수 안에 두었습니다.</li>
+  <li><b>다시 모읍니다.</b> 세 팀 노드 모두 같은 <code>polish</code> 노드로 이어서 공통 처리를 한 곳에 둡니다.</li>
+</ol>
+        </div>
+      </div>
+      <details style="margin-top:28px"><summary>이 그래프가 그려 내는 Mermaid 코드 보기</summary><div class="wf-in-d">
+<pre data-title="router.mmd" data-hl="7-12"><code class="language-text">graph TD;
+    __start__ --> classify;
+    account --> polish;
+    classify -.-> account;
+    classify -.-> device;
+    classify -.-> software;
+    device --> polish;
+    software --> polish;
+    polish --> __end__;</code></pre>
+        <p class="wf-cap"><code>graph.get_graph().draw_mermaid()</code>의 화살표만 줄여 옮긴 것입니다. 점선은 조건부 엣지입니다.</p>
+      </div></details>
+    </div>
+  </section>
+
+  <section class="wf-sec">
+    <div class="wf-wrap wf-split">
+      <div>
+        <h2>분류가 애매한 문의를 받을 길도 만들어 둡니다</h2>
+        <p>라우팅은 분류가 맞아야 의미가 있습니다. 모델이 분류를 틀릴 수 있어서 어느 보기에도 딱 맞지 않는 문의를 위한 길을 함께 만들어 두는 편이 안전합니다. 보기에 "기타"를 넣고 그 길 끝에 사람이 확인하는 칸을 두는 식입니다.</p>
+        <p>이렇게 하면 억지로 가까운 팀에 보내 엉뚱한 답이 나가는 일을 줄일 수 있습니다. 어느 정도로 애매할 때 기타로 보낼지는 분류 결과를 모아 평가하며 정합니다. 평가는 이 시리즈 뒤쪽에서 다룹니다.</p>
+        <div class="wf-ctrl"><div class="wf-seg" role="group" aria-label="문의 고르기"><button type="button" data-wf-ob="a" aria-pressed="true">비밀번호 문의</button><button type="button" data-wf-ob="b" aria-pressed="false">뭔가 이상한데 말로 설명하기 어려워요</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="wf-scene wf-nar" data-wf-other viewBox="0 0 460 460" role="img" aria-label="기타 길 그림. 분류 노드 아래에 계정 장비 소프트웨어 팀 길과 사람이 확인하는 기타 길이 있다. 뚜렷한 문의는 해당 팀으로, 애매한 문의는 기타 길로 가서 사람이 확인한다."></svg>
+        <p class="wf-wnote" data-wf-onote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wf-sec">
+    <div class="wf-wrap">
+      <div class="wf-head">
+        <h2>길을 미리 알면 워크플로로 충분합니다</h2>
+        <div>
+          <p>Anthropic은 LLM 애플리케이션을 만들 때 가능한 가장 단순한 해법을 찾고 필요할 때만 복잡도를 높이라고 권합니다. 성능이 나아지는 게 확인될 때 복잡도를 더하라는 뜻입니다. 순서가 정해진 일을 Agent로 만들면 호출 횟수가 들쭉날쭉하고 같은 입력의 결과도 달라질 수 있습니다.</p>
+          <p>그래서 일을 만나면 먼저 순서를 미리 알 수 있는지 묻습니다. 알 수 있으면 체이닝이나 라우팅 같은 워크플로로 짜고 순서를 모르거나 도구를 몇 번 부를지 모델이 판단해야 하면 Agent로 짭니다. 일을 하나 골라 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="wf-ctrl"><div class="wf-seg" role="group" aria-label="일 고르기"><button type="button" data-wf-t="0" aria-pressed="true">문의를 유형별로 접수</button><button type="button" data-wf-t="1" aria-pressed="false">장애 원인 조사</button><button type="button" data-wf-t="2" aria-pressed="false">초안 쓰고 다듬기</button></div></div>
+        <svg class="wf-scene wf-nar" data-wf-tree viewBox="0 0 460 520" role="img" aria-label="판단 그림. 질문 하나로 갈리는 갈림길이다. 순서를 미리 알 수 있으면 워크플로 쪽 길로, 알 수 없으면 Agent 쪽 길로 간다. 고른 일이 어느 길 끝에 놓이는지 표시된다."></svg>
+        <p class="wf-verdict" data-wf-tsay></p>
+      </div>
+      <p style="margin-top:36px">다음 글에서는 일을 여러 갈래로 나눠 동시에 맡기고 다시 모으는 병렬 처리, 그리고 Orchestrator-Worker와 Evaluator-Optimizer를 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="wf-sec">
+    <div class="wf-wrap">
+      <div class="wf-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="wf-refs">
+          <li><a href="https://www.anthropic.com/engineering/building-effective-agents">Building effective agents</a>, Anthropic: 워크플로와 Agent의 정의, Prompt chaining·Routing의 정의와 쓰는 때, 가장 단순한 해법부터</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents">Workflows and agents</a>, LangGraph: 체이닝·라우팅 예제와 조건부 엣지</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/graph-api">Graph API</a>, LangGraph: add_conditional_edges</li>
+          <li><a href="https://pypi.org/project/langgraph/">langgraph 1.2.15</a>, PyPI</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="wf-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-wf-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-wf-out]", btn.closest("[data-wf-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.wfRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-wf-step]", st), fig = $("[data-wf-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--wf-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--wf-model)", code: "var(--wf-code)", human: "var(--wf-human)", bad: "var(--wf-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 노선버스와 택시 ───── */
+  const bv = $("[data-wf-busv]"), bsum = $("[data-wf-bsum]"); let qi = 0, bGen = 0;
+  const WF = ["문의 접수", "분류", "초안", "다듬기", "답"];
+  const AG = [
+    [["문의 접수", C.human], ["모델이 판단", C.model], ["도구: 계정 조회", C.code], ["모델이 판단", C.model], ["도구: 초기화 요청", C.code], ["모델이 판단", C.model], ["초안", C.model], ["답", "var(--fg-strong)"]],
+    [["문의 접수", C.human], ["모델이 판단", C.model], ["도구: 계정 조회", C.code], ["모델이 판단", C.model], ["도구: 로그 검색", C.code], ["모델이 판단", C.model], ["초안", C.model], ["답", "var(--fg-strong)"]],
+  ];
+  async function drawBus(animate) {
+    const my = ++bGen; bv.innerHTML = ""; const ag = AG[qi];
+    txt(bv, 100, 30, "워크플로", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` }); txt(bv, 100, 52, "코드가 길을 정함", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(bv, 350, 30, "Agent", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` }); txt(bv, 350, 52, "모델이 길을 정함", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    mk("path", { d: "M100 84 V412", class: "wf-rail", opacity: .5 }, bv); mk("path", { d: `M350 84 V${84 + (ag.length - 1) * 82}`, class: "wf-rail", opacity: .5 }, bv); box(bv, 40, 676, 380, 92, "var(--line-strong)", { dash: "7 5", fill: "var(--bg-base)", rx: 12 }); [[C.human, "코드가 정한 단계"], [C.model, "모델을 부르는 단계"], [C.code, "도구를 실행하는 단계"]].forEach(([c2, t2], n) => { mk("circle", { cx: 66, cy: 702 + n * 26, r: 7, fill: c2 }, bv); txt(bv, 84, 708 + n * 26, t2, { "font-size": 15, class: "t-s" }); }); 
+    const els = [];
+    WF.forEach((t, i) => { const y = 84 + i * 82, g = mk("g", { opacity: animate ? .15 : 1 }, bv); mk("circle", { cx: 100, cy: y, r: 22, fill: "var(--bg-base)", stroke: C.human, "stroke-width": 3.5 }, g); txt(g, 100, y + 6, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: "t-s" }); txt(g, 134, y + 6, t, { "font-size": 16, class: "t-s" }); els.push([g, i]); });
+    ag.forEach(([t, c], i) => { const y = 84 + i * 82, g = mk("g", { opacity: animate ? .15 : 1 }, bv); mk("circle", { cx: 350, cy: y, r: 22, fill: "var(--bg-base)", stroke: c, "stroke-width": 3.5 }, g); txt(g, 350, y + 6, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: "t-s" }); txt(g, 316, y + 6, t, { "font-size": 15, "text-anchor": "end", class: "t-s" }); els.push([g, i]); });
+    const agCalls = ag.filter(([t]) => t === "모델이 판단" || t === "초안").length;
+    bsum.innerHTML = `워크플로: 단계 5개 · 모델 호출 3번(항상 같음)<br>Agent: 단계 ${ag.length}개 · 모델 호출 ${agCalls}번(문의마다 달라지고 미리 알 수 없음)`;
+    if (animate && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) { for (let i = 0; i < 8; i++) { if (my !== bGen) return; els.filter(([, k]) => k === i).forEach(([g]) => g.setAttribute("opacity", 1)); await new Promise((r) => setTimeout(r, 480)); } }
+    $("[data-wf-go]").disabled = false;
+  }
+  $$("[data-wf-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.wfQ; press("[data-wf-q]", b); bGen++; drawBus(false); }, { signal }));
+  $("[data-wf-go]").addEventListener("click", () => { $("[data-wf-go]").disabled = true; drawBus(true); }, { signal }); drawBus(false);
+
+  /* ───── 조립 라인 ───── */
+  const ln = $("[data-wf-line]"); let gt = "pass";
+  const LN = { pass: "초안이 충분해서 검사를 통과했습니다. 다듬기 단계를 건너뛰니 모델 호출은 1번입니다.", fail: "초안이 너무 짧아 검사에서 걸렸습니다. 다듬기 단계를 한 번 더 거쳐 모델 호출은 2번입니다." };
+  function drawLine() {
+    ln.innerHTML = ""; const pass = gt === "pass";
+    mk("path", { d: "M80 40 V440", class: "wf-rail" }, ln);
+    const st = (y, lb, sub, col, on, ic) => { box(ln, 22, y - 34, 250, 68, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 12%, var(--bg-base))` : "var(--bg-base)", dash: on ? "" : "6 5", sw: on ? 3.5 : 2.5, rx: 14 }); mk("use", { href: "#wf-ic-" + ic, x: 34, y: y - 20, width: 36, height: 36, style: `color:${on ? col : "var(--line-strong)"}` }, ln); txt(ln, 80, y - 2, lb, { "font-size": 17, class: "t-s", opacity: on ? 1 : .5 }); txt(ln, 80, y + 20, sub, { "font-size": 15, class: "t-d", opacity: on ? 1 : .5 }); };
+    mk("circle", { cx: 300, cy: 40, r: 0 }, ln);
+    st(70, "초안 쓰기", "모델 호출 1번", C.model, true, "robot");
+    arrowDown(ln, 147, 106, 150);
+    mk("path", { d: "M70 190 L100 160 H194 L224 190 L194 220 H100 Z", fill: `color-mix(in srgb, ${C.bad} 10%, var(--bg-base))`, stroke: C.bad, "stroke-width": 3.5, "stroke-linejoin": "round" }, ln); txt(ln, 147, 196, "검사 문", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` });
+    txt(ln, 286, 186, "글자 수 20자", { "font-size": 15, class: "t-s" }); txt(ln, 286, 208, "이상인가?", { "font-size": 15, class: "t-s" });
+    if (pass) { mk("path", { d: "M147 222 V250 H340 V420", fill: "none", stroke: C.code, "stroke-width": 5 }, ln); arrowDown(ln, 340, 400, 440, C.code); txt(ln, 354, 270, "통과 → 바로 끝", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); st(330, "다듬기", "건너뜀", C.model, false, "robot"); }
+    else { arrowDown(ln, 147, 222, 290, C.bad); txt(ln, 160, 262, "실패", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); st(330, "다듬기", "모델 호출 1번 더", C.model, true, "robot"); arrowDown(ln, 147, 366, 440, C.bad); }
+    mk("use", { href: "#wf-ic-flag", x: pass ? 318 : 126, y: 442, width: 44, height: 44, style: "color:var(--fg-strong)" }, ln); txt(ln, pass ? 372 : 180, 470, "끝", { "font-size": 17, class: "t-s" });
+    txt(ln, 22, 530, pass ? "모델 호출 합계: 1번" : "모델 호출 합계: 2번", { "font-size": 17, class: "t-s", style: `fill:${pass ? C.code : C.bad}` });
+    $("[data-wf-lnote]").textContent = LN[gt];
+  }
+  $$("[data-wf-gt]").forEach((b) => b.addEventListener("click", () => { gt = b.dataset.wfGt; press("[data-wf-gt]", b); drawLine(); }, { signal })); drawLine();
+
+  /* ───── 우체국 분류 (스크롤 이야기) ───── */
+  const ps = $("[data-wf-post]"), stat = $("[data-wf-stat]");
+  function drawPost(i) {
+    const k = i < 0 ? 3 : i; ps.innerHTML = "";
+    const parcel = (x, y) => { box(ps, x, y, 150, 44, C.human, { rx: 8, fill: `color-mix(in srgb, ${C.human} 16%, var(--bg-base))` }); txt(ps, x + 75, y + 28, "비밀번호 문의", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); };
+    parcel(155, 10);
+    arrowDown(ps, 230, 58, 98, k >= 1 ? C.human : "var(--line-strong)");
+    box(ps, 80, 102, 300, 84, k >= 1 ? C.model : "var(--line-strong)", { fill: k >= 1 ? `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` : "var(--bg-base)", sw: k >= 1 ? 4 : 2.5 }); mk("use", { href: "#wf-ic-robot", x: 94, y: 118, width: 40, height: 40, style: `color:${k >= 1 ? C.model : "var(--line-strong)"}` }, ps); txt(ps, 148, 136, "classify 노드", { "font-size": 17, class: "t-s mono" }); txt(ps, 148, 162, k >= 1 ? "이름표: 계정" : "이름표를 붙이는 중", { "font-size": 15.5, class: "t-s", style: k >= 1 ? `fill:${C.model}` : "" });
+    const teams = [["account", "계정 팀", 20], ["device", "장비 팀", 166], ["software", "소프트웨어 팀", 312]];
+    teams.forEach(([nm, lb, x], n) => { const on = k >= 2 && n === 0; mk("path", { d: `M230 188 C230 226 ${x + 60} 210 ${x + 60} 250`, fill: "none", stroke: on ? C.code : "var(--line-strong)", "stroke-width": on ? 5 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ps); box(ps, x, 252, 128, 70, on ? C.code : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${C.code} 14%, var(--bg-base))` : "var(--bg-base)", sw: on ? 4 : 2.5, rx: 12 }); txt(ps, x + 64, 282, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .5 }); txt(ps, x + 64, 306, nm, { "font-size": 15, "text-anchor": "middle", class: "t-d mono", opacity: on ? 1 : .5 }); });
+    if (k >= 3) { box(ps, 20, 346, 128, 44, C.code, { rx: 8, sw: 2.5 }); txt(ps, 84, 374, "초안 작성", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); mk("path", { d: "M84 322 V346", stroke: C.code, "stroke-width": 4 }, ps); }
+    [0, 1, 2].forEach((n) => { const x = 84 + n * 146, on = k >= 3 && n === 0; mk("path", { d: `M${x} ${n === 0 && k >= 3 ? 390 : 322} C${x} 430 230 420 230 450`, fill: "none", stroke: on ? C.code : "var(--line-strong)", "stroke-width": on ? 5 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ps); });
+    box(ps, 130, 454, 200, 70, k >= 3 ? C.model : "var(--line-strong)", { fill: "var(--bg-base)", sw: k >= 3 ? 4 : 2.5 }); txt(ps, 230, 484, "polish 노드", { "font-size": 17, "text-anchor": "middle", class: "t-s mono" }); txt(ps, 230, 508, "모두 여기서 만남", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    stat.innerHTML = i < 0 ? "<b>분류부터 다듬기까지 모두 지난 모습입니다</b>" : `<b>${["문의 도착", "이름표 붙임", "계정 팀 줄로", "초안 → 다듬기"][k]}</b>`;
+  }
+  story("[data-wf-story]", (i) => drawPost(i)); drawPost(0);
+
+  /* ───── 기타 길 ───── */
+  const ot = $("[data-wf-other]"); let ob = "a";
+  function drawOther() {
+    ot.innerHTML = ""; const sel = ob === "a" ? 0 : 3;
+    box(ot, 130, 14, 200, 70, C.model, { fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#wf-ic-robot", x: 142, y: 28, width: 36, height: 36, style: `color:${C.model}` }, ot); txt(ot, 192, 46, "classify", { "font-size": 17, class: "t-s mono" }); txt(ot, 192, 70, ob === "a" ? "이름표: 계정" : "이름표: 기타", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
+    const lanes = [["계정 팀", 14, C.code, "account"], ["장비 팀", 124, C.code, "device"], ["소프트웨어", 234, C.code, "software"], ["기타", 344, C.bad, "other"]];
+    lanes.forEach(([lb, x, col, nm], n) => { const on = n === sel; mk("path", { d: `M230 86 C230 130 ${x + 51} 120 ${x + 51} 170`, fill: "none", stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ot); box(ot, x, 174, 102, 78, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 14%, var(--bg-base))` : "var(--bg-base)", sw: on ? 4.5 : 2.5, rx: 12 }); txt(ot, x + 51, 206, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .5 }); txt(ot, x + 51, 232, nm, { "font-size": 15, "text-anchor": "middle", class: "t-d mono", opacity: on ? 1 : .5 }); });
+    if (sel === 3) { mk("path", { d: "M395 254 V312", stroke: C.bad, "stroke-width": 5 }, ot); mk("path", { d: "M395 322 l-9 -14 h18z", fill: C.bad }, ot); mk("use", { href: "#wf-ic-mail", x: 360, y: 326, width: 70, height: 70, style: `color:${C.bad}` }, ot); txt(ot, 395, 418, "사람이 확인", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); txt(ot, 40, 340, "억지로 가까운 팀에", { "font-size": 15, class: "t-d" }); txt(ot, 40, 362, "보내지 않고 사람에게", { "font-size": 15, class: "t-d" }); }
+    else { mk("path", { d: "M65 254 V312", stroke: C.code, "stroke-width": 5 }, ot); mk("path", { d: "M65 322 l-9 -14 h18z", fill: C.code }, ot); mk("use", { href: "#wf-ic-paper", x: 30, y: 326, width: 70, height: 70, style: `color:${C.code}` }, ot); txt(ot, 65, 418, "팀 초안", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` }); }
+    $("[data-wf-onote]").textContent = ob === "a" ? "뚜렷한 문의는 해당 팀의 노드로 가서 초안이 쓰입니다." : "어느 보기에도 맞지 않는 문의는 기타로 분류돼 사람이 확인하는 칸으로 갑니다.";
+  }
+  $$("[data-wf-ob]").forEach((b) => b.addEventListener("click", () => { ob = b.dataset.wfOb; press("[data-wf-ob]", b); drawOther(); }, { signal })); drawOther();
+
+  /* ───── 판단 트리 ───── */
+  const tr = $("[data-wf-tree]"); let ti = 0;
+  const TS = [["문의를 유형별로 접수", 0, "순서를 미리 압니다. 분류한 뒤 팀별로 처리하는 길이 늘 같아 라우팅 워크플로로 충분합니다."], ["장애 원인 조사", 1, "무엇을 몇 번 확인해야 할지 미리 모릅니다. 로그를 보고 다음 확인을 정해야 해서 Agent가 맞습니다."], ["초안 쓰고 다듬기", 0, "단계가 고정돼 있습니다. 체이닝 워크플로로 짜고 중간에 검사만 넣으면 됩니다."]];
+  function drawTree() {
+    tr.innerHTML = ""; const [lb, side, say] = TS[ti];
+    box(tr, 90, 14, 280, 70, "var(--fg-strong)", { fill: "var(--bg-base)", sw: 3.5 }); txt(tr, 230, 42, "순서를 미리 알 수 있나요?", { "font-size": 17, "text-anchor": "middle", class: "t-s" }); txt(tr, 230, 68, `고른 일: ${lb}`, { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    [[0, 100, C.human, "예 · 압니다", "워크플로", "체이닝 · 라우팅"], [1, 360, C.model, "아니요 · 모릅니다", "Agent", "모델이 판단하며 반복"]].forEach(([s, x, col, ans, nm, sub]) => {
+      const on = s === side; mk("path", { d: `M230 86 C230 126 ${x} 120 ${x} 160`, fill: "none", stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 3, "stroke-dasharray": on ? "" : "6 5" }, tr); txt(tr, x < 230 ? 190 : 270, 124, ans, { "font-size": 15, "text-anchor": x < 230 ? "end" : "start", class: "t-s", style: `fill:${on ? col : "var(--fg-neutral)"}` });
+      box(tr, x - 90, 168, 180, 150, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 12%, var(--bg-base))` : "var(--bg-subtle)", sw: on ? 4.5 : 2.5, dash: on ? "" : "6 5" }); mk("use", { href: "#wf-ic-" + (s === 0 ? "gear" : "robot"), x: x - 20, y: 182, width: 40, height: 40, style: `color:${on ? col : "var(--line-strong)"}` }, tr); txt(tr, x, 252, nm, { "font-size": 19, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .55 }); txt(tr, x, 280, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d", opacity: on ? 1 : .55 }); if (on) { mk("use", { href: "#wf-ic-check", x: x - 18, y: 288, width: 36, height: 28, style: `color:${col}` }, tr); }
+    });
+    box(tr, 14, 350, 432, 150, "var(--line-strong)", { dash: "7 5", fill: "var(--bg-subtle)" }); txt(tr, 30, 380, "Anthropic의 권고", { "font-size": 16, class: "t-s" }); txt(tr, 30, 408, "가능한 가장 단순한 해법을 찾고", { "font-size": 16, class: "t-s" }); txt(tr, 30, 434, "필요할 때만 복잡도를 높이세요.", { "font-size": 16, class: "t-s" }); txt(tr, 30, 470, "성능이 나아지는 게 확인될 때 더합니다", { "font-size": 15, class: "t-d" });
+    $("[data-wf-tsay]").textContent = say;
+  }
+  $$("[data-wf-t]").forEach((b) => b.addEventListener("click", () => { ti = +b.dataset.wfT; press("[data-wf-t]", b); drawTree(); }, { signal })); drawTree();
+
+  initTerms({
+    r: [["cmd", "$ python router.py"], ["wait", 700], ["line", "비밀번호를 잊어버렸어요 → 계정"], ["line", "노트북 화면이 깜빡여요 → 장비"], ["type", "엑셀을 설치하고 싶어요 → 소프트웨어"]],
+  });
+})();
+</script>
