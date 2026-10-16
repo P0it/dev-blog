@@ -1,0 +1,454 @@
+---
+title: 만든 Agent를 남에게 넘기려면 무엇이 더 필요할까요?
+slug: agent-service-docker-eval-adr
+excerpt: 내 컴퓨터에서 돌던 Agent 서비스를 남에게 넘기려면 실행 환경, 사용 설명서 평가 결과, 설계 결정 기록 네 가지가 더 필요합니다. 의존성이 부딪쳐 서버를 둘로 나눈 컨테이너 구성, 서비스를 대상으로 돌린 평가가 승인 뒤 이벤트가 두 번 나가는 결함을 잡은 과정, 이를 ADR과 README로 남기는 법을 직접 실행한 결과와 함께 정리합니다.
+tags: [AI Agent, Docker, 평가, ADR, README, 배포, 헬프데스크]
+category: ai
+series: ai-agent
+series_order: 26
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-service-docker-eval-adr-mvb9mmm2.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 인수인계 벽 히어로(네 가지를 갖출 때마다 막힌 벽이 열림) + 그림|글(한 컨테이너와 두 컨테이너) + 평가 고치기 전·후 격자 + 문서 세 종 카드 + 코드|터미널 둘 + 정리 | 글의 성격: 만든 것을 넘기는 글이라 받는 사람이 첫날 어디서 막히는지를 벽으로 먼저 보이고 각 벽을 여는 물건(환경, 설명서, 평가, 결정 기록)을 하나씩 만든다 | 버린 후보: 체크리스트 나열(그림이 아니라 목록이라서) -->
+<style>
+.post-page .dl {
+  --dl-human: rgb(37, 112, 235); --dl-code: rgb(16, 150, 120); --dl-model: rgb(226, 106, 28); --dl-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .dl { --dl-human: rgb(110, 165, 255); --dl-code: rgb(60, 205, 165); --dl-model: rgb(255, 150, 80); --dl-bad: rgb(255, 110, 110); }
+.post-page .dl * { box-sizing: border-box; }
+.post-page .dl-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .dl h1, .post-page .dl h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .dl h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .dl h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .dl h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .dl p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .dl b { color: var(--fg-strong); }
+.post-page .dl .nw { white-space: nowrap; }
+.post-page .dl code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .dl p.dl-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .dl-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .dl-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .dl-head > h2 { margin: 0; }
+.post-page .dl-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .dl-split.top { align-items: start; }
+.post-page .dl-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .dl-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .dl-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .dl-seg button:hover { color: var(--fg-strong); }
+.post-page .dl-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .dl-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .dl-act::before { content: "▶ "; font-size: 11px; }
+.post-page .dl-act:disabled { opacity: .4; cursor: default; }
+.post-page .dl-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .dl-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .dl-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .dl-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .dl-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .dl-tag.n { --t: var(--fg-strong); } .post-page .dl-tag.m { --t: var(--dl-model); } .post-page .dl-tag.c { --t: var(--dl-code); } .post-page .dl-tag.h { --t: var(--dl-human); } .post-page .dl-tag.x { --t: var(--dl-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .dl-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .dl-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .dl-codepair .pg-code { margin-top: 0; }
+.post-page .dl-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .dl-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .dl-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .dl-codepair.rev > .cp-code, .post-page .dl-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .dl-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .dl .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .dl ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .dl ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .dl-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .dl-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .dl-term-bar .dl-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .dl-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .dl-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-dl-blink 1s steps(1) infinite; }
+@keyframes pg-dl-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .dl-codepair, .post-page .dl-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-codepair > .cp-code, .post-page .dl-codepair > .cp-term, .post-page .dl-codepair > .cp-notes,
+  .post-page .dl-codepair.rev > .cp-code, .post-page .dl-codepair.rev > .cp-term, .post-page .dl-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .dl-codepair > .cp-notes, .post-page .dl-codepair.rev > .cp-notes { order: 2; } .post-page .dl-codepair > .cp-term, .post-page .dl-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .dl-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .dl-tbl th, .post-page .dl-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .dl-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .dl-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .dl-tbl code { font-size: 12.5px; }
+.post-page .dl details { margin: 0 0 24px; }
+.post-page .dl summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .dl details > .dl-in-d { padding-top: 14px; }
+.post-page .dl-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .dl-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .dl-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .dl-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .dl-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .dl-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .dl-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .dl-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .dl-tbl { font-size: 13.5px; } .post-page .dl-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .dl *, .post-page .dl *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .dl-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .dl-wrap { padding: 0 20px; }
+  .post-page .dl-head, .post-page .dl-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dl-split.rev > :first-child { order: 0; }
+  .post-page p.dl-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .dl-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .dl-lab h2 { margin-bottom: 24px; }
+.post-page .dl-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .dl-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .dl-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .dl-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .dl-stack { display: grid; gap: 8px; }
+.post-page .dl-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .dl-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .dl-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .dl-s.m { --k: var(--dl-model); } .post-page .dl-s.c { --k: var(--dl-code); } .post-page .dl-s.x { --k: var(--dl-bad); } .post-page .dl-s.h { --k: var(--dl-human); }
+.post-page .dl-s + .dl-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .dl-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .dl-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .dl-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .dl-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .dl-hero-top p { margin: 0 0 1.2em; }
+.post-page .dl-hero-top p:last-child { margin-bottom: 0; }
+.post-page .dl-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .dl-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .dl [hidden] { display: none !important; }
+
+.post-page .dl-stack { gap: 22px !important; } .post-page .dl-s + .dl-s::before { top: -19px !important; }
+.post-page .dl-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .dl-flow .dl-s { flex: 1 1 0; min-width: 0; } .post-page .dl-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .dl-flow .dl-s + .dl-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .dl-flow .dl-s { flex: 1 1 180px; } .post-page .dl-flow i.ar { display: none; } }
+
+.post-page .dl-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .dl-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .dl-nar { max-width: 520px; }
+.post-page .dl-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .dl-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .dl-scene .t-d { fill: var(--fg-neutral); }
+.post-page .dl-scene .mono { font-family: var(--font-mono); }
+.post-page .dl-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .dl-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .dl-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .dl-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .dl-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .dl-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dl-steps { padding-bottom: 14vh; }
+.post-page .dl-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .dl-step.on { opacity: 1; }
+.post-page .dl-step h3 { font-size: 20px; }
+.post-page .dl-step p { margin: 0; }
+.post-page .dl-sfig { position: sticky; top: var(--dl-top, 96px); }
+.post-page .dl-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .dl-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .dl-story { grid-template-columns: minmax(0, 1fr); } .post-page .dl-sfig { position: static; order: -1; } .post-page .dl-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .dl-steps { padding-bottom: 0; } }
+
+.post-page .dl-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .dl-stage .dl-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .dl-lede { max-width: 780px; margin-top: 24px; }
+.post-page .dl-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .dl-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="dl-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="dl-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="dl-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="dl-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="dl-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="dl-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="dl-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="dl-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="dl-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="dl">
+  <section class="dl-hero">
+    <div class="dl-wrap">
+      <h1>만든 Agent를 남에게 넘기려면 무엇이 더 필요할까요?</h1>
+      <div class="dl-lede">
+        <p>내 컴퓨터에서 잘 돌던 서비스를 동료에게 넘기면 첫날 어디선가 막힙니다. 내 컴퓨터에만 있던 설치 버전, 켜는 명령을 아는 사람은 나뿐이라는 점, 고쳤을 때 나아졌는지 확인할 방법이 없다는 점, 왜 이렇게 만들었는지 아무도 모른다는 점입니다.</p>
+        <p>그래서 코드 말고 네 가지를 더 넘깁니다. 실행 환경, 사용 설명서(README), 평가 결과, 설계 결정 기록(ADR)입니다. 아래에서 하나씩 갖춰 가며 받는 사람이 어디까지 가는지 보세요.</p>
+      </div>
+      <div class="dl-stage" data-figure data-thumb data-dl-hero>
+        <div class="dl-ctrl" style="flex-wrap:wrap"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">갖춘 것</span>
+          <div class="dl-seg" role="group" aria-label="갖춘 것 고르기">
+            <button type="button" data-dl-w="0" aria-pressed="true">실행 환경</button>
+            <button type="button" data-dl-w="1" aria-pressed="true">README</button>
+            <button type="button" data-dl-w="2" aria-pressed="false">평가 결과</button>
+            <button type="button" data-dl-w="3" aria-pressed="false">설계 결정 기록</button>
+          </div>
+        </div>
+        <svg class="dl-scene dl-nar" data-dl-hv viewBox="0 0 460 620" role="img" aria-label="인수인계 벽 그림. 위에서 아래로 받는 사람이 길을 따라 내려오고 길에 벽 네 개가 있다. 실행 환경, README, 평가 결과, 설계 결정 기록을 갖출 때마다 해당 벽이 문으로 바뀌어 열린다. 받는 사람은 가장 위의 닫힌 벽 앞에서 멈추고 그 벽이 무엇 때문에 막는지 설명이 나온다. 네 가지를 모두 갖추면 끝까지 내려온다."></svg>
+        <p class="dl-verdict" data-dl-hsum></p>
+        <p class="dl-cap" style="margin-bottom:0">막히는 이유는 이 글의 서비스에서 실제로 겪었거나 확인한 것입니다. 받는 사람의 첫날을 단순하게 그린 그림입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap dl-split rev">
+      <div data-figure>
+        <div class="dl-ctrl" style="margin-bottom:8px"><div class="dl-seg" role="group" aria-label="구성 고르기"><button type="button" data-dl-ct="one" aria-pressed="false">한 환경에 모두</button><button type="button" data-dl-ct="two" aria-pressed="true">둘로 나눔</button></div></div>
+        <svg class="dl-scene dl-nar" data-dl-ctv viewBox="0 0 460 520" role="img" aria-label="컨테이너 구성 그림. 한 환경에 모두 설치하면 어댑터가 MCP 1점대를 끌고 와서 티켓 서버가 필요로 하는 2점대 SDK와 부딪쳐 서버가 시작하지 못한다. 둘로 나누면 티켓 서버 컨테이너가 2점대 SDK로 돌고 API 컨테이너가 어댑터와 1점대로 돌며 두 컨테이너가 주소로 이어진다."></svg>
+        <p class="dl-wnote" data-dl-ctnote></p>
+      </div>
+      <div>
+        <h2>서버를 둘로 나누면 의존성이 부딪치지 않습니다</h2>
+        <p>이 서비스에는 의존성이 서로 부딪치는 곳이 있었습니다. MCP 서버를 만든 파이썬 SDK는 2점대이고 MCP 서버에 연결하는 <code>langchain-mcp-adapters</code> 0.3.2는 설치할 때 SDK 1점대를 끌고 옵니다. 한 환경에 둘을 설치하면 서버 코드의 <code>MCPServer</code>를 불러올 수 없었습니다.</p>
+        <p>컨테이너(container)는 프로그램과 필요한 라이브러리를 한 상자에 담아 어디서나 같게 실행하는 기술입니다. 티켓 서버와 API를 상자 둘로 나누고 주소(<code>TICKETS_URL</code>)로 이으면 각자 필요한 버전을 씁니다. 두 구성을 눌러 보세요.</p>
+      </div>
+    </div>
+    <div class="dl-wrap" style="margin-top:44px">
+      <div class="dl-codepair">
+        <div class="cp-code">
+<pre data-title="compose.yml (두 컨테이너)" data-hl="1-2,4-7"><code class="language-yaml">services:
+  tickets:                          # ① MCP 2점대 SDK로 도는 티켓 서버
+    build: { context: ., dockerfile: Dockerfile.tickets }
+  api:
+    build: { context: ., dockerfile: Dockerfile.api }
+    environment:
+      TICKETS_URL: http://tickets:8000/mcp    # ② 컨테이너 이름이 주소가 된다
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY} # ③ 키는 이미지에 굽지 않는다
+    ports: ["8010:8010"]
+    depends_on: [tickets]</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="dl-term" data-dl-term>
+  <div class="dl-term-bar"><span>터미널</span><button type="button" class="dl-act" data-dl-run="c">실행해 보기</button></div>
+  <div class="dl-term-out" data-dl-out aria-live="polite">$ python ticket_server.py --http      # 티켓 MCP 서버, 포트 8000
+$ TICKETS_URL=http://127.0.0.1:8000/mcp uvicorn helpdesk:app --port 8010
+$ curl -N -X POST localhost:8010/chat -d '{"thread_id":"z","message":"T-1042 상태 알려 줘"}'
+event: tool_call
+event: tool_result
+event: answer
+data: {"text": "T-1042는 부품 대기 중이고 담당은 kim입니다."}</div>
+</div>
+<p class="dl-cap">출력은 예시입니다. 이 환경은 Docker 데몬이 꺼져 있어 이미지 빌드는 해 보지 못했습니다. 컨테이너 대신 두 프로세스를 따로 띄워 같은 구성(서버 하나, API 하나, 주소로 연결)이 동작하는 것을 확인했습니다. 모델은 모의 서버입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>서버를 따로 둡니다.</b> 티켓 서버는 SDK 2점대만 설치한 이미지에서 <code>--http</code> 옵션으로 켭니다. 다른 서비스도 같은 서버를 주소로 쓸 수 있어 재사용에 좋습니다.</li>
+  <li><b>컨테이너 이름이 주소입니다.</b> 같은 compose 안에서는 서비스 이름(<code>tickets</code>)으로 서로를 찾습니다. 다른 컴퓨터에서 접속하는 주소 이름(<code>Host</code>)이 바뀌어도 서버가 거절하지 않는 것을 확인했습니다.</li>
+  <li><b>비밀은 환경 변수로 넣습니다.</b> API 키를 이미지 안에 굽지 않고 실행할 때 넘깁니다. 이미지를 공유해도 키가 새지 않습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <div class="dl-head">
+        <h2>서비스 자체를 평가하면 서비스의 결함이 나옵니다</h2>
+        <div>
+          <p>앞에서 Agent 하나를 평가했다면 이번에는 만든 서비스를 바깥에서 평가합니다. 서비스 주소로 질문을 보내 스트림 이벤트를 모아 기대한 도구 경로와 답이 나왔는지 봅니다. 사례는 지식 질문, 조회, 승인을 받는 생성, 거절하는 생성, 지식 질문 하나 더, 다섯 가지입니다.</p>
+          <p>처음 돌린 결과는 5건 중 2건 통과였습니다. 승인 사례 둘의 도구 경로가 어긋나 있었습니다. 원인은 평가가 아닌 서비스에 있었습니다. 승인 뒤 이어 가는 스트림이 이미 보낸 <code>tool_call</code> 이벤트를 한 번 더 내보냈습니다. 고치기 전과 고친 뒤를 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="dl-ctrl"><div class="dl-seg" role="group" aria-label="시점 고르기"><button type="button" data-dl-ev="before" aria-pressed="false">고치기 전</button><button type="button" data-dl-ev="after" aria-pressed="true">고친 뒤</button></div></div>
+        <svg class="dl-scene dl-nar" data-dl-evv viewBox="0 0 460 440" role="img" aria-label="평가 결과 격자 그림. 다섯 사례가 행이고 도구 경로와 답이 열이다. 고치기 전에는 승인을 받는 두 사례의 경로가 틀렸고 지식 질문 하나는 경로와 답이 모두 틀려 통과가 두 건이다. 고친 뒤에는 승인 사례가 모두 맞아 통과가 네 건이고 지식 질문 하나만 남아 틀린다."></svg>
+        <p class="dl-verdict" data-dl-evsay></p>
+      </div>
+      <div class="dl-codepair" style="margin-top:44px">
+        <div class="cp-code">
+<pre data-title="eval_service.py" data-hl="2,6-7,8,10"><code class="language-python">CASES = [{"id": "faq-vpn", "msg": "VPN이 안 돼요", "path": ["search_kb"], "answer": "kb-vpn-01"}, ...]
+async def stream(client, url, body):                       # ① SSE를 이벤트 목록으로 모은다
+    ...
+for cs in CASES:
+    ev = await stream(c, "/chat", {"thread_id": tid, "message": cs["msg"]})
+    if any(n == "approval_required" for n, _ in ev):        # ② 승인 요청이 오면 답을 보낸다
+        ev += await stream(c, "/approve", {"thread_id": tid, "approve": cs["approve"]})
+    path = [d["name"] for n, d in ev if n == "tool_call"]    # ③ 부른 도구 순서
+    answer = next((d["text"] for n, d in ev if n == "answer"), "")
+    ok = path == cs["path"] and cs["answer"] in answer       # ④ 경로와 답</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="dl-term" data-dl-term>
+  <div class="dl-term-bar"><span>터미널</span><button type="button" class="dl-act" data-dl-run="e">실행해 보기</button></div>
+  <div class="dl-term-out" data-dl-out aria-live="polite">$ python eval_service.py        # 고친 뒤
+| 사례 | 경로 | 답 | 승인 요청 |
+| faq-vpn | ✓ | ✓ | - |
+| ticket-get | ✓ | ✓ | - |
+| ticket-create-ok | ✓ | ✓ | 있음 |
+| ticket-create-no | ✓ | ✓ | 있음 |
+| faq-paper | ✗ | ✗ | - |
+통과 4/5 (고치기 전 2/5)</div>
+</div>
+<p class="dl-cap">출력은 예시입니다. 모의 모델 서버로 실제 서비스를 평가한 결과를 줄였고 마지막 사례의 실패는 모의 서버가 문서 질문에 티켓 도구를 고르게 만든 것입니다. 실제 모델의 점수가 아닙니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>스트림을 모읍니다.</b> 서비스를 사용자처럼 부르고 이벤트 이름과 내용을 목록으로 만듭니다. 서비스 내부를 몰라도 평가할 수 있습니다.</li>
+  <li><b>승인 요청에 답합니다.</b> 승인이 필요한 사례는 요청이 오면 미리 정한 답(승인 또는 거절)을 보내 이어 갑니다.</li>
+  <li><b>경로와 답을 봅니다.</b> 부른 도구의 순서가 기대와 같은지, 답에 핵심 말이 있는지를 봅니다. 평가를 돌릴 때마다 대화 번호는 새로 만들고 티켓 서버의 데이터는 처음 상태로 돌려야 결과가 흔들리지 않습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <div class="dl-head">
+        <h2>설명서와 결정 기록과 평가 결과를 문서로 남깁니다</h2>
+        <div>
+          <p>README는 처음 온 사람이 십 분 안에 서비스를 켜 보게 하는 문서입니다. 무엇을 하는 서비스인지, 준비물, 켜는 명령, 시험해 보는 방법, 알려진 한계를 적습니다. 알려진 한계는 꼭 적습니다. 메모리 저장소라 서버를 다시 켜면 대화가 사라진다는 사실이 대표적입니다.</p>
+          <p>ADR(Architecture Decision Record, 설계 의사결정 기록)은 왜 그렇게 만들었는지를 한 장씩 남기는 문서입니다. 코드를 읽어서는 알 수 없는 이유를 남겨 나중에 같은 논쟁을 되풀이하지 않게 합니다. 세 문서를 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="dl-ctrl"><div class="dl-seg" role="group" aria-label="문서 고르기"><button type="button" data-dl-dc="0" aria-pressed="true">README</button><button type="button" data-dl-dc="1" aria-pressed="false">ADR</button><button type="button" data-dl-dc="2" aria-pressed="false">평가 리포트</button></div></div>
+        <svg class="dl-scene dl-nar" data-dl-dcv viewBox="0 0 460 540" role="img" aria-label="문서 카드 그림. 한 장의 문서가 세로로 놓여 있고 고른 문서에 따라 칸이 바뀐다. README는 무엇을 하나, 준비물, 켜는 법, 시험, 알려진 한계의 다섯 칸이고, ADR은 상태, 맥락, 결정, 결과, 대안의 다섯 칸이며, 평가 리포트는 사례 표, 통과 수, 고친 점, 남은 실패, 한계의 다섯 칸이다."></svg>
+        <p class="dl-verdict" data-dl-dcsay></p>
+      </div>
+      <p style="margin-top:36px">이 시리즈는 Agent가 무엇인지에서 시작해 직접 만든 루프, LangChain과 LangGraph, 여러 Agent, MCP, 평가와 보안을 거쳐 서비스까지 왔습니다. 마지막에는 코드보다 이 네 가지를 갖춰 남에게 넘길 수 있는 상태가 남습니다. 만든 Agent가 믿을 만한지는 점수, 기록, 이유로 설명할 수 있어야 합니다.</p>
+    </div>
+  </section>
+
+  <section class="dl-sec">
+    <div class="dl-wrap">
+      <div class="dl-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="dl-refs">
+          <li><a href="https://docs.docker.com/compose/">Docker Compose</a>, Docker: 서비스 여럿을 한 파일로 정의</li>
+          <li><a href="https://adr.github.io/">Architectural Decision Records</a>: ADR이 무엇이고 어떻게 쓰는지</li>
+          <li><a href="https://pypi.org/project/langchain-mcp-adapters/">langchain-mcp-adapters 0.3.2</a>, PyPI</li>
+          <li><a href="https://pypi.org/project/mcp/">mcp 2.3.0</a>, PyPI: Python MCP SDK</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="dl-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-dl-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-dl-out]", btn.closest("[data-dl-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.dlRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-dl-step]", st), fig = $("[data-dl-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--dl-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--dl-model)", code: "var(--dl-code)", human: "var(--dl-human)", bad: "var(--dl-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 인수인계 벽 ───── */
+  const hv = $("[data-dl-hv]"), hsum = $("[data-dl-hsum]"); const have = [true, true, false, false];
+  const WL = [["실행 환경", "버전이 부딪쳐 티켓 서버가 시작하지 못합니다", C.bad], ["README", "어떤 명령으로 켜는지 아는 사람이 나뿐입니다", C.bad], ["평가 결과", "고쳤을 때 나아졌는지 확인할 방법이 없습니다", C.bad], ["설계 결정 기록", "왜 서버를 둘로 나눴는지 아무도 모릅니다", C.bad]];
+  function drawHero() {
+    hv.innerHTML = ""; const firstClosed = have.findIndex((h) => !h), py = firstClosed < 0 ? 560 : 84 + firstClosed * 124 + 20;
+    mk("path", { d: "M70 40 V590", stroke: "var(--line-strong)", "stroke-width": 5, "stroke-dasharray": "8 6" }, hv);
+    WL.forEach(([nm, why, col], i) => { const y = 84 + i * 124, open = have[i], passed = firstClosed < 0 || i < firstClosed;
+      box(hv, 130, y, 320, 78, open ? C.code : col, { rx: 12, sw: open ? 3.5 : 4.5, dash: open ? "7 5" : "", fill: open ? `color-mix(in srgb, ${C.code} 6%, var(--bg-base))` : `color-mix(in srgb, ${col} 10%, var(--bg-base))` });
+      mk("use", { href: "#dl-ic-" + (open ? "check" : "stop"), x: 142, y: y + 20, width: 38, height: open ? 30 : 38, style: `color:${open ? C.code : col}` }, hv); txt(hv, 192, y + 34, nm, { "font-size": 17, class: "t-s", style: open ? `fill:${C.code}` : "" }); txt(hv, 192, y + 60, open ? "갖춤" : "없음", { "font-size": 15, class: "t-d" });
+      mk("path", { d: `M70 ${y + 39} H126`, stroke: open ? C.code : col, "stroke-width": 4, "stroke-dasharray": open ? "" : "5 5" }, hv); });
+    mk("circle", { cx: 70, cy: py, r: 22, fill: C.human }, hv); mk("use", { href: "#dl-ic-mail", x: 56, y: py - 14, width: 28, height: 28, style: "color:#fff" }, hv); txt(hv, 70, 24, "받는 사람", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+    hsum.textContent = firstClosed < 0 ? "네 가지를 모두 갖췄습니다. 받는 사람이 혼자 켜고 시험하고 이유까지 이해할 수 있습니다." : `${WL[firstClosed][0]} 앞에서 막힙니다. ${WL[firstClosed][1]}.`;
+  }
+  $$("[data-dl-w]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.dlW; have[i] = !have[i]; b.setAttribute("aria-pressed", have[i]); drawHero(); }, { signal })); drawHero();
+
+  /* ───── 컨테이너 구성 ───── */
+  const ct = $("[data-dl-ctv]"); let cm = "two";
+  function drawCt() {
+    ct.innerHTML = ""; const two = cm === "two";
+    if (!two) {
+      box(ct, 20, 20, 420, 330, C.bad, { rx: 16, sw: 4.5, fill: `color-mix(in srgb, ${C.bad} 5%, var(--bg-base))` }); txt(ct, 36, 54, "한 환경", { "font-size": 17, class: "t-s" });
+      box(ct, 40, 80, 180, 90, C.human, { rx: 10, sw: 3.5, fill: "var(--bg-base)" }); txt(ct, 130, 116, "티켓 서버 코드", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(ct, 130, 144, "MCP SDK 2점대 필요", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+      box(ct, 240, 80, 180, 90, C.model, { rx: 10, sw: 3.5, fill: "var(--bg-base)" }); txt(ct, 330, 116, "어댑터 0.3.2", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(ct, 330, 144, "MCP SDK 1점대를 설치", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+      mk("path", { d: "M220 125 H240", stroke: C.bad, "stroke-width": 6 }, ct); mk("path", { d: "M214 100 l32 50 m0 -50 l-32 50", stroke: C.bad, "stroke-width": 6 }, ct);
+      box(ct, 40, 200, 380, 120, C.bad, { rx: 12, sw: 3.5, fill: "var(--bg-base)" }); txt(ct, 54, 232, "설치된 SDK는 하나뿐", { "font-size": 17, class: "t-s" }); txt(ct, 54, 262, "ImportError: cannot import", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` }); txt(ct, 54, 288, "name 'MCPServer' from 'mcp.server'", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` });
+    } else {
+      [[14, "티켓 서버 컨테이너", C.human, "MCP SDK 2점대", "ticket_server.py"], [246, "API 컨테이너", C.model, "어댑터 · SDK 1점대", "helpdesk.py"]].forEach(([x, nm, col, sub, f]) => { box(ct, x, 20, 200, 270, col, { rx: 16, sw: 4.5, fill: `color-mix(in srgb, ${col} 5%, var(--bg-base))` }); txt(ct, x + 14, 54, nm, { "font-size": 17, class: "t-s" }); box(ct, x + 16, 80, 168, 70, col, { rx: 10, sw: 3, fill: "var(--bg-base)" }); txt(ct, x + 100, 110, f, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); txt(ct, x + 100, 136, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); mk("use", { href: "#dl-ic-check", x: x + 150, y: 200, width: 34, height: 28, style: `color:${C.code}` }, ct); txt(ct, x + 14, 220, "각자 필요한 버전", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); });
+      mk("path", { d: "M246 160 H214", stroke: C.code, "stroke-width": 6 }, ct); mk("path", { d: "M210 160 l14 -9 v18z", fill: C.code }, ct); txt(ct, 230, 140, "주소", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` });
+      box(ct, 20, 320, 420, 70, "var(--fg-strong)", { rx: 12, sw: 3, fill: "var(--bg-base)" }); txt(ct, 34, 350, "TICKETS_URL", { "font-size": 15, class: "t-s mono" }); txt(ct, 34, 376, "http://tickets:8000/mcp", { "font-size": 15, class: "t-s mono", style: `fill:${C.code}` });
+    }
+    txt(ct, 20, 430, two ? "서버 하나가 여러 서비스에서 쓰일 수도 있음" : "한 환경에 모두 설치하면 부딪침", { "font-size": 15, class: "t-s", style: `fill:${two ? C.code : C.bad}` });
+    $("[data-dl-ctnote]").textContent = two ? "컨테이너를 둘로 나누고 주소로 이으면 각자 필요한 버전을 씁니다. 티켓 서버는 다른 서비스도 같은 주소로 쓸 수 있습니다." : "어댑터가 SDK 1점대를 설치해 티켓 서버에 필요한 2점대 SDK 대신 1점대가 쓰입니다. 그래서 서버 코드를 불러올 수 없었습니다.";
+  }
+  $$("[data-dl-ct]").forEach((b) => b.addEventListener("click", () => { cm = b.dataset.dlCt; press("[data-dl-ct]", b); drawCt(); }, { signal })); drawCt();
+
+  /* ───── 평가 격자 ───── */
+  const ev = $("[data-dl-evv]"); let em = "after";
+  const CS = ["faq-vpn", "ticket-get", "ticket-create-ok", "ticket-create-no", "faq-paper"], BEF = [[1, 1], [1, 1], [0, 1], [0, 1], [0, 0]], AFT = [[1, 1], [1, 1], [1, 1], [1, 1], [0, 0]];
+  function drawEv() {
+    ev.innerHTML = ""; const R = em === "after" ? AFT : BEF, pass = R.filter((r) => r[0] && r[1]).length;
+    txt(ev, 214, 28, "경로", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(ev, 304, 28, "답", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(ev, 394, 28, "통과", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+    CS.forEach((nm, i) => { const y = 44 + i * 64, ok = R[i][0] && R[i][1]; box(ev, 6, y, 448, 54, ok ? "var(--line-strong)" : C.bad, { rx: 10, sw: ok ? 1.5 : 3, fill: ok ? "var(--bg-subtle)" : `color-mix(in srgb, ${C.bad} 6%, var(--bg-base))` }); txt(ev, 16, y + 33, nm, { "font-size": 15, class: "t-s mono" });
+      [R[i][0], R[i][1], ok ? 1 : 0].forEach((v, k) => { const cx = 214 + k * 90, col = v ? C.code : C.bad; mk("circle", { cx, cy: y + 27, r: 16, fill: `color-mix(in srgb, ${col} 14%, var(--bg-base))`, stroke: col, "stroke-width": 3 }, ev); if (v) mk("path", { d: `M${cx - 7} ${y + 27} l5 6 l10 -13`, fill: "none", stroke: col, "stroke-width": 3.5 }, ev); else mk("path", { d: `M${cx - 6} ${y + 21} l12 12 m0 -12 l-12 12`, stroke: col, "stroke-width": 3.5 }, ev); }); });
+    txt(ev, 14, 400, `통과 ${pass}/5`, { "font-size": 19, class: "t-s", style: `fill:${pass === 5 ? C.code : C.bad}` }); txt(ev, 14, 426, em === "after" ? "승인 뒤 tool_call을 다시 내보내지 않도록 고침" : "승인 뒤 tool_call이 한 번 더 나가 경로가 어긋남", { "font-size": 15, class: "t-d" });
+    $("[data-dl-evsay]").textContent = em === "after" ? "고친 뒤 승인 사례가 모두 맞아 통과가 4건입니다. 남은 실패는 문서 질문에 티켓 도구를 고른 경우입니다. 도구 설명과 지시문을 손봐야 합니다." : "처음에는 승인 사례 둘의 경로가 틀려 통과가 2건이었습니다. 서비스가 이벤트를 두 번 내보낸 결함 때문이었습니다.";
+  }
+  $$("[data-dl-ev]").forEach((b) => b.addEventListener("click", () => { em = b.dataset.dlEv; press("[data-dl-ev]", b); drawEv(); }, { signal })); drawEv();
+
+  /* ───── 문서 세 종 ───── */
+  const dc = $("[data-dl-dcv]"); let di = 0;
+  const DOCS = [["README", C.human, [["무엇을 하나", "IT 질문에 답하고 티켓을 다루는 서비스"], ["준비물", "Docker, 모델 API 키"], ["켜는 법", "docker compose up"], ["시험해 보기", "curl 예시와 평가 명령"], ["알려진 한계", "메모리 저장소 · 인증 없음"]], "처음 온 사람이 십 분 안에 켜 보게 하는 문서입니다. 한계를 솔직히 적을수록 믿음이 갑니다."], ["ADR", C.model, [["상태", "채택"], ["맥락", "어댑터와 서버 SDK 버전이 부딪침"], ["결정", "티켓 서버를 별도 서비스로 분리"], ["결과", "버전 분리·재사용 / 운영 둘·연결 실패 대비"], ["대안", "한 컨테이너에 환경 둘 · SDK 직접 사용"]], "왜 그렇게 정했는지와 포기한 길을 남깁니다. 한 결정이 한 장입니다."], ["평가 리포트", C.code, [["사례", "다섯 건(지식 둘·조회·승인·거절)"], ["통과", "2/5 → 4/5"], ["고친 점", "승인 뒤 이벤트 중복 제거"], ["남은 실패", "문서 질문에 티켓 도구 선택"], ["한계", "모의 모델로 잰 점수"]], "점수만이 아니라 무엇을 고쳤고 무엇이 남았는지를 적습니다. 어떤 모델로 쟀는지도 밝힙니다."]];
+  function drawDc() {
+    dc.innerHTML = ""; const [ttl, col, rows, say] = DOCS[di];
+    box(dc, 40, 10, 380, 516, col, { rx: 14, sw: 4, fill: "var(--bg-base)" }); mk("use", { href: "#dl-ic-paper", x: 54, y: 24, width: 38, height: 38, style: `color:${col}` }, dc); txt(dc, 104, 52, ttl, { "font-size": 19, class: "t-s", style: `fill:${col}` });
+    rows.forEach(([h, b], i) => { const y = 84 + i * 86; box(dc, 56, y, 348, 74, col, { rx: 8, sw: 2.5, fill: `color-mix(in srgb, ${col} 6%, var(--bg-base))` }); txt(dc, 68, y + 28, h, { "font-size": 15, class: "t-d" }); const w = b.length > 18 ? [b.slice(0, b.lastIndexOf(" ", 18) > 0 ? b.lastIndexOf(" ", 18) : 18), b.slice(b.lastIndexOf(" ", 18) > 0 ? b.lastIndexOf(" ", 18) + 1 : 18)] : [b, ""]; txt(dc, 68, y + 52, w[0], { "font-size": 15, class: "t-s" }); if (w[1]) txt(dc, 68, y + 70, w[1], { "font-size": 15, class: "t-s" }); });
+    $("[data-dl-dcsay]").textContent = say;
+  }
+  $$("[data-dl-dc]").forEach((b) => b.addEventListener("click", () => { di = +b.dataset.dlDc; press("[data-dl-dc]", b); drawDc(); }, { signal })); drawDc();
+
+  initTerms({
+    c: [["cmd", "$ python ticket_server.py --http      # 티켓 MCP 서버, 포트 8000"], ["cmd", "$ TICKETS_URL=http://127.0.0.1:8000/mcp uvicorn helpdesk:app --port 8010"], ["cmd", "$ curl -N -X POST localhost:8010/chat -d '{\"thread_id\":\"z\",\"message\":\"T-1042 상태 알려 줘\"}'"], ["wait", 600], ["line", "event: tool_call"], ["line", "event: tool_result"], ["line", "event: answer"], ["type", "data: {\"text\": \"T-1042는 부품 대기 중이고 담당은 kim입니다.\"}"]],
+    e: [["cmd", "$ python eval_service.py        # 고친 뒤"], ["wait", 600], ["line", "| 사례 | 경로 | 답 | 승인 요청 |"], ["line", "| faq-vpn | ✓ | ✓ | - |"], ["line", "| ticket-get | ✓ | ✓ | - |"], ["line", "| ticket-create-ok | ✓ | ✓ | 있음 |"], ["line", "| ticket-create-no | ✓ | ✓ | 있음 |"], ["line", "| faq-paper | ✗ | ✗ | - |"], ["type", "통과 4/5 (고치기 전 2/5)"]],
+  });
+})();
+</script>

@@ -97,4 +97,4 @@
 | 23 | x (`agent-evaluation-tracing-trajectory`) | Agent 가 "잘한다"는 걸 어떻게 숫자로 보이나? | 트레이싱(LangSmith·OTel GenAI) · 데이터셋 · 최종 답 vs 궤적 평가 · LLM-as-judge · `LLMToolEmulator` 로 도구 흉내 내 테스트 · 비용·지연 | trace, span, eval, 궤적(trajectory), LLM-as-judge | 평가 데이터셋 + 실행 기록 | 16 | 발행 |
 | 24 | x (`agent-security-prompt-injection-trifecta`) | 문서 한 장이 Agent 를 조종할 수 있나? | Prompt Injection · lethal trifecta · 최소 권한·승인·샌드박스 · PII · MCP 서버 신뢰 | Prompt Injection, 최소 권한, 샌드박스 | 위험 도구 승인·권한 통제 | 22, 23 | 발행 |
 | 25 | x (`helpdesk-agent-service-fastapi-sse`) | 지금까지의 부품은 한 서비스에서 어떻게 맞물리나? | 요구사항 → 아키텍처 · 부품 조립(RAG·그래프·MCP·HITL) · FastAPI 스트리밍 API | API, SSE | 헬프데스크 서비스 API | 1~24 | 발행 |
-| 26 | 최종 프로젝트 ②: 배포·평가·회고 | 만든 Agent 를 남에게 넘기려면 무엇이 더 필요한가? | Docker · 평가 결과 · 설계 의사결정 기록(ADR) · README | Docker, ADR | 실행 환경 + 평가 리포트 | 25 | 계획 |
+| 26 | x (`agent-service-docker-eval-adr`) | 만든 Agent 를 남에게 넘기려면 무엇이 더 필요한가? | Docker · 평가 결과 · 설계 의사결정 기록(ADR) · README | Docker, ADR | 실행 환경 + 평가 리포트 | 25 | 발행 |
