@@ -1,0 +1,455 @@
+---
+title: 사내 티켓 시스템을 어떤 Agent든 쓰게 하려면 어떻게 만들까요?
+slug: python-mcp-server-ticket-desk
+excerpt: 티켓을 조회하는 파이썬 함수 두 개를 MCP 서버로 내놓으면 어떤 Agent 앱이든 같은 방식으로 씁니다. 함수의 이름과 설명과 타입 힌트가 도구 정의로 바뀌는 과정, 예상한 실패와 코드 실수의 차이, stdio와 Streamable HTTP 전송, Inspector로 시험하는 방법을 Python MCP SDK 2.3과 Inspector 2.11로 직접 실행한 결과와 함께 정리합니다.
+tags: [AI Agent, MCP, Python, MCP Server, Inspector, stdio, Streamable HTTP]
+category: ai
+series: ai-agent
+series_order: 21
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/python-mcp-server-ticket-desk-mvb8uxy9.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 변환 그림 히어로(함수의 이름·설명·타입 힌트가 도구 정의의 어느 칸이 되는지 짝짓기) + 코드|터미널 + 그림|글(예상한 실패와 코드 실수가 모델에게 보이는 모습) + 전송 방식 세 장면(stdio·print 사고·HTTP) + Inspector 시험 터미널 + 정리 | 글의 성격: 서버를 만드는 글이라 함수가 도구 정의로 바뀌는 대응을 먼저 눈으로 보이고 두 가지 사고(실패 처리, stdout 오염)를 그림으로 겪게 한다 | 버린 후보: 단계별 설치 나열(그림이 없는 목록이라서) -->
+<style>
+.post-page .ts {
+  --ts-human: rgb(37, 112, 235); --ts-code: rgb(16, 150, 120); --ts-model: rgb(226, 106, 28); --ts-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ts { --ts-human: rgb(110, 165, 255); --ts-code: rgb(60, 205, 165); --ts-model: rgb(255, 150, 80); --ts-bad: rgb(255, 110, 110); }
+.post-page .ts * { box-sizing: border-box; }
+.post-page .ts-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .ts h1, .post-page .ts h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ts h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .ts h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .ts h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .ts p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .ts b { color: var(--fg-strong); }
+.post-page .ts .nw { white-space: nowrap; }
+.post-page .ts code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ts p.ts-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .ts-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .ts-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .ts-head > h2 { margin: 0; }
+.post-page .ts-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .ts-split.top { align-items: start; }
+.post-page .ts-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .ts-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .ts-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .ts-seg button:hover { color: var(--fg-strong); }
+.post-page .ts-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .ts-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .ts-act::before { content: "▶ "; font-size: 11px; }
+.post-page .ts-act:disabled { opacity: .4; cursor: default; }
+.post-page .ts-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .ts-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .ts-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .ts-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .ts-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .ts-tag.n { --t: var(--fg-strong); } .post-page .ts-tag.m { --t: var(--ts-model); } .post-page .ts-tag.c { --t: var(--ts-code); } .post-page .ts-tag.h { --t: var(--ts-human); } .post-page .ts-tag.x { --t: var(--ts-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .ts-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .ts-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .ts-codepair .pg-code { margin-top: 0; }
+.post-page .ts-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .ts-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .ts-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .ts-codepair.rev > .cp-code, .post-page .ts-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .ts-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .ts .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .ts ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .ts ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .ts-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .ts-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .ts-term-bar .ts-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .ts-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .ts-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-ts-blink 1s steps(1) infinite; }
+@keyframes pg-ts-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .ts-codepair, .post-page .ts-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ts-codepair > .cp-code, .post-page .ts-codepair > .cp-term, .post-page .ts-codepair > .cp-notes,
+  .post-page .ts-codepair.rev > .cp-code, .post-page .ts-codepair.rev > .cp-term, .post-page .ts-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .ts-codepair > .cp-notes, .post-page .ts-codepair.rev > .cp-notes { order: 2; } .post-page .ts-codepair > .cp-term, .post-page .ts-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .ts-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .ts-tbl th, .post-page .ts-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .ts-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .ts-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .ts-tbl code { font-size: 12.5px; }
+.post-page .ts details { margin: 0 0 24px; }
+.post-page .ts summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .ts details > .ts-in-d { padding-top: 14px; }
+.post-page .ts-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ts-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .ts-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .ts-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .ts-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .ts-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .ts-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .ts-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .ts-tbl { font-size: 13.5px; } .post-page .ts-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ts *, .post-page .ts *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .ts-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .ts-wrap { padding: 0 20px; }
+  .post-page .ts-head, .post-page .ts-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ts-split.rev > :first-child { order: 0; }
+  .post-page p.ts-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .ts-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .ts-lab h2 { margin-bottom: 24px; }
+.post-page .ts-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .ts-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .ts-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .ts-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .ts-stack { display: grid; gap: 8px; }
+.post-page .ts-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .ts-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .ts-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .ts-s.m { --k: var(--ts-model); } .post-page .ts-s.c { --k: var(--ts-code); } .post-page .ts-s.x { --k: var(--ts-bad); } .post-page .ts-s.h { --k: var(--ts-human); }
+.post-page .ts-s + .ts-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .ts-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ts-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ts-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .ts-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .ts-hero-top p { margin: 0 0 1.2em; }
+.post-page .ts-hero-top p:last-child { margin-bottom: 0; }
+.post-page .ts-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .ts-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ts [hidden] { display: none !important; }
+
+.post-page .ts-stack { gap: 22px !important; } .post-page .ts-s + .ts-s::before { top: -19px !important; }
+.post-page .ts-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .ts-flow .ts-s { flex: 1 1 0; min-width: 0; } .post-page .ts-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .ts-flow .ts-s + .ts-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .ts-flow .ts-s { flex: 1 1 180px; } .post-page .ts-flow i.ar { display: none; } }
+
+.post-page .ts-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .ts-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .ts-nar { max-width: 520px; }
+.post-page .ts-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .ts-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .ts-scene .t-d { fill: var(--fg-neutral); }
+.post-page .ts-scene .mono { font-family: var(--font-mono); }
+.post-page .ts-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .ts-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .ts-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .ts-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .ts-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .ts-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .ts-steps { padding-bottom: 14vh; }
+.post-page .ts-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .ts-step.on { opacity: 1; }
+.post-page .ts-step h3 { font-size: 20px; }
+.post-page .ts-step p { margin: 0; }
+.post-page .ts-sfig { position: sticky; top: var(--ts-top, 96px); }
+.post-page .ts-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .ts-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .ts-story { grid-template-columns: minmax(0, 1fr); } .post-page .ts-sfig { position: static; order: -1; } .post-page .ts-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .ts-steps { padding-bottom: 0; } }
+
+.post-page .ts-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .ts-stage .ts-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .ts-lede { max-width: 780px; margin-top: 24px; }
+.post-page .ts-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .ts-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ts-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="ts-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="ts-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="ts-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="ts-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="ts-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="ts-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="ts-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="ts-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="ts">
+  <section class="ts-hero">
+    <div class="ts-wrap">
+      <h1>사내 티켓 시스템을 어떤 Agent든 쓰게 하려면 어떻게 만들까요?</h1>
+      <div class="ts-lede">
+        <p>사내 티켓 시스템에서 티켓을 조회하는 파이썬 함수가 있다고 해 봅니다. 이 함수를 MCP 서버로 내놓으면 Claude Code든 VS Code든 직접 만든 Agent든 MCP를 지원하는 앱은 같은 방식으로 이 함수를 도구로 씁니다. 앱마다 따로 연결할 필요가 없습니다.</p>
+        <p>서버를 만드는 일은 생각보다 간단합니다. 파이썬 SDK가 함수의 이름, 설명, 타입 힌트를 읽어 도구 정의를 자동으로 만들어 줍니다. 아래에서 함수의 어느 부분이 도구 정의의 어느 칸이 되는지 짝을 눌러 보세요.</p>
+      </div>
+      <div class="ts-stage" data-figure data-thumb data-ts-hero>
+        <div class="ts-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">짝</span>
+          <div class="ts-seg" role="group" aria-label="짝 고르기">
+            <button type="button" data-ts-pr="0" aria-pressed="false">함수 이름</button>
+            <button type="button" data-ts-pr="1" aria-pressed="false">독스트링</button>
+            <button type="button" data-ts-pr="2" aria-pressed="true">타입 힌트</button>
+            <button type="button" data-ts-pr="3" aria-pressed="false">Literal과 기본값</button>
+          </div>
+        </div>
+        <svg class="ts-scene ts-nar" data-ts-hv viewBox="0 0 460 560" role="img" aria-label="변환 그림. 왼쪽 상자는 파이썬 함수의 함수 이름, 독스트링, 타입 힌트 세 줄이고 오른쪽 상자는 tools/list로 나가는 도구 정의의 name, description, inputSchema 세 줄이다. 가운데 변환기를 지나며 같은 줄끼리 짝지어진다. 고른 짝이 강조되고 Literal과 기본값을 고르면 타입 힌트 줄이 enum과 default로 바뀐다."></svg>
+        <p class="ts-verdict" data-ts-hsum></p>
+        <p class="ts-cap" style="margin-bottom:0">이 글의 서버 코드와 변환 결과는 Python MCP SDK 2.3.0으로 직접 실행해 확인했습니다. 도구 정의는 설명하기 쉽게 줄여 보였습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ts-sec">
+    <div class="ts-wrap">
+      <div class="ts-head">
+        <h2>함수에 데코레이터를 붙이면 도구가 됩니다</h2>
+        <div>
+          <p>MCP 공식 튜토리얼은 파이썬 SDK 2.0 이상을 쓰라고 안내합니다. 서버 클래스는 <code>MCPServer</code>입니다. 서버 객체를 하나 만들고 함수에 <code>@mcp.tool()</code>을 붙이면 등록이 끝납니다. 함수의 타입 힌트와 독스트링(함수 설명 글)이 도구의 입력 모양과 설명이 됩니다.</p>
+          <p>그래서 설명을 대충 쓰면 모델이 도구를 잘못 고릅니다. 앞서 도구를 설계할 때 배운 대로 이름은 하는 일이 드러나게, 설명은 언제 쓰는지 구체적으로 적습니다.</p>
+        </div>
+      </div>
+      <div class="ts-codepair" style="margin-top:36px">
+        <div class="cp-code">
+<pre data-title="ticket_server.py" data-hl="1,3,10,18"><code class="language-python">mcp = MCPServer("ticket-desk")                    # ① 서버 이름
+
+@mcp.tool()                                       # ② 함수를 도구로 등록
+def get_ticket(ticket_id: str) -> dict:
+    """티켓 번호로 티켓 한 건을 조회한다.
+
+    Args:
+        ticket_id: 티켓 번호 (예: T-1042)
+    """
+    if ticket_id not in TICKETS:
+        raise ToolError(f"없는 티켓: {ticket_id}")  # ③ 예상한 실패
+    return {"id": ticket_id, **TICKETS[ticket_id]}
+
+@mcp.tool()
+def list_tickets(status: Literal["open", "waiting_parts", "closed"] = "open",
+                 owner: str | None = None) -> list[dict]:
+    """상태(와 담당자)로 티켓 목록을 조회한다."""
+    ...
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")                    # ④ 전송 방식</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ts-term" data-ts-term>
+  <div class="ts-term-bar"><span>터미널</span><button type="button" class="ts-act" data-ts-run="c">실행해 보기</button></div>
+  <div class="ts-term-out" data-ts-out aria-live="polite">$ python client_test.py
+도구: get_ticket | 티켓 번호로 티켓 한 건을 조회한다. | ['ticket_id']
+도구: list_tickets | 상태(와 담당자)로 티켓 목록을 조회한다. | None
+호출: {"id": "T-1042", "title": "VPN 접속 오류", "status": "waiting_parts", ...}
+없는 티켓: Error executing tool get_ticket: 없는 티켓: T-9999 | isError: True</div>
+</div>
+<p class="ts-cap">출력은 예시입니다. SDK의 클라이언트로 서버를 띄워 목록과 호출을 확인했고 티켓 데이터는 가짜입니다. 코드는 설명하기 쉽게 줄였습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>서버 객체입니다.</b> <code>MCPServer</code>는 도구, 자료, 프롬프트를 모아 두는 상자입니다. 이름은 앱이 서버를 구분할 때 보입니다.</li>
+  <li><b>데코레이터가 등록합니다.</b> <code>@mcp.tool()</code>을 붙인 함수가 도구가 됩니다. 인자의 타입과 기본값이 입력 스키마가 되고 <code>Literal</code>로 보기를 닫아 두면 <code>enum</code>이 됩니다.</li>
+  <li><b>예상한 실패는 ToolError입니다.</b> 없는 티켓처럼 일어날 줄 아는 실패는 <code>ToolError</code>로 던집니다. 메시지가 모델에게 그대로 전해지니 모델이 그걸 보고 다음 행동을 정할 수 있습니다.</li>
+  <li><b>전송 방식을 고릅니다.</b> <code>stdio</code>는 앱이 서버를 직접 실행해 쓸 때, <code>streamable-http</code>는 서버를 따로 켜 두고 여러 앱이 쓸 때입니다. 차이는 아래에서 봅니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ts-sec">
+    <div class="ts-wrap ts-split rev">
+      <div data-figure>
+        <div class="ts-ctrl" style="margin-bottom:8px"><div class="ts-seg" role="group" aria-label="던지는 방식 고르기"><button type="button" data-ts-er="tool" aria-pressed="true">ToolError로 던짐</button><button type="button" data-ts-er="crash" aria-pressed="false">그냥 ValueError로 던짐</button></div></div>
+        <svg class="ts-scene ts-nar" data-ts-ev viewBox="0 0 460 500" role="img" aria-label="실패 전달 그림. 위쪽에 서버의 도구 코드가 있고 아래쪽에 모델이 읽는 말풍선이 있다. ToolError로 던지면 서버 로그는 가벼운 정보 수준이고 모델은 없는 티켓이라는 원인이 담긴 메시지를 읽는다. 일반 예외로 던지면 서버 로그에 오류와 추적 기록이 남고 모델은 도구 이름만 있는 메시지를 읽는다."></svg>
+        <p class="ts-wnote" data-ts-ernote></p>
+      </div>
+      <div>
+        <h2>모델이 읽을 실패는 ToolError로 알려 줍니다</h2>
+        <p>티켓이 없는 것은 오류가 아니라 일어날 수 있는 일입니다. 이 실패를 <code>ToolError</code>로 던지면 서버는 도구 호출 결과에 오류 표시(<code>is_error</code>)를 켜고 내 메시지를 담아 돌려줍니다. 모델은 "T-9999는 없으니 번호를 다시 확인해야겠다"고 판단할 수 있습니다.</p>
+        <p>다른 예외를 그냥 던지면 SDK가 코드 실수로 보고 모델에게 도구 이름만 알립니다. 원인은 개발자가 서버 로그의 추적 기록으로 찾습니다. 잘못된 인자는 SDK가 스키마로 먼저 걸러 오류로 돌려주므로 따로 검사하지 않아도 됩니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ts-sec">
+    <div class="ts-wrap">
+      <div class="ts-head">
+        <h2>전송 방식에 따라 서버가 사는 곳이 달라집니다</h2>
+        <div>
+          <p>stdio 전송에서는 앱이 서버를 직접 실행하고 표준 입력과 표준 출력으로 메시지를 주고받습니다. 그래서 서버 코드가 표준 출력에 아무 글이나 쓰면 안 됩니다. 공식 문서도 stdio 서버에서 <code>print()</code>를 쓰지 말고 로그는 표준 오류(stderr)로 보내라고 경고합니다.</p>
+          <p>Streamable HTTP는 서버를 따로 켜 두고 주소로 접속합니다. 여러 앱이 같은 서버를 쓸 수 있어 원격 서버에 맞습니다. 세 장면을 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="ts-ctrl"><div class="ts-seg" role="group" aria-label="전송 장면 고르기"><button type="button" data-ts-tr="stdio" aria-pressed="true">stdio</button><button type="button" data-ts-tr="print" aria-pressed="false">stdio에서 print()</button><button type="button" data-ts-tr="http" aria-pressed="false">Streamable HTTP</button></div></div>
+        <svg class="ts-scene ts-nar" data-ts-tv viewBox="0 0 460 480" role="img" aria-label="전송 그림. stdio에서는 호스트가 서버 프로세스를 직접 실행하고 표준 입력과 표준 출력 두 관으로 메시지 조각이 오간다. print를 쓰면 출력 관에 메시지가 아닌 글자 조각이 섞여 호스트가 읽지 못한다. Streamable HTTP에서는 서버가 따로 켜져 있고 주소가 있으며 여러 클라이언트가 접속한다."></svg>
+        <p class="ts-verdict" data-ts-trsay></p>
+      </div>
+      <div class="ts-codepair" style="margin-top:44px">
+        <div class="cp-code">
+<pre data-title="셸" data-hl="1-2,4-5"><code class="language-bash"># Inspector의 CLI 모드로 서버를 직접 시험한다
+npx @modelcontextprotocol/inspector --cli python ticket_server.py \
+    --method tools/list
+
+npx @modelcontextprotocol/inspector --cli python ticket_server.py \
+    --method tools/call --tool-name get_ticket --tool-arg ticket_id=T-1042</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ts-term" data-ts-term>
+  <div class="ts-term-bar"><span>터미널</span><button type="button" class="ts-act" data-ts-run="i">실행해 보기</button></div>
+  <div class="ts-term-out" data-ts-out aria-live="polite">$ npx @modelcontextprotocol/inspector --cli python ticket_server.py --method tools/call ...
+get_ticket T-1042
+{
+  "content": [{ "type": "text", "text": "{ ... \"status\": \"waiting_parts\" ... }" }],
+  "isError": false
+}</div>
+</div>
+<p class="ts-cap">출력은 예시입니다. Inspector 2.11.0의 CLI 모드로 목록과 호출을 직접 실행해 확인했습니다. 화면에서 눌러 보는 모드도 있습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 0">
+  <li><b>목록부터 확인합니다.</b> <code>tools/list</code> 결과에 도구 두 개와 입력 모양이 나오는지 봅니다. 앱이 모델에게 넘길 정의가 바로 이것입니다.</li>
+  <li><b>호출도 확인합니다.</b> 인자를 주고 실제로 실행해 <code>isError</code>가 꺼져 있는지 봅니다. 없는 번호나 빈 인자를 넣어 오류가 어떻게 돌아오는지도 시험해 두면 좋습니다.</li>
+</ol>
+        </div>
+      </div>
+      <p style="margin-top:36px">이렇게 시험한 서버는 어떤 MCP 앱에든 붙을 수 있습니다. 다음 글에서는 남이 만든 서버를 내 Agent에 꽂을 때 조심할 점을 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="ts-sec">
+    <div class="ts-wrap">
+      <div class="ts-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="ts-refs">
+          <li><a href="https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server">Build an MCP server</a>, MCP: 파이썬 서버 만들기, stdout 로그 경고, 필요한 SDK 버전</li>
+          <li><a href="https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture">Architecture overview</a>, MCP: stdio와 Streamable HTTP 전송</li>
+          <li><a href="https://github.com/modelcontextprotocol/inspector">MCP Inspector</a>: 서버 시험 도구</li>
+          <li><a href="https://pypi.org/project/mcp/">mcp 2.3.0</a>, PyPI: Python MCP SDK</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="ts-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-ts-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-ts-out]", btn.closest("[data-ts-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.tsRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-ts-step]", st), fig = $("[data-ts-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--ts-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--ts-model)", code: "var(--ts-code)", human: "var(--ts-human)", bad: "var(--ts-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 함수 → 도구 정의 ───── */
+  const hv = $("[data-ts-hv]"), hsum = $("[data-ts-hsum]"); let pr = 2;
+  const ROWS = [
+    ["함수 이름", "get_ticket", "name", '"get_ticket"', C.model],
+    ["독스트링", "티켓 한 건을 조회한다", "description", '"티켓 한 건을 조회한다"', C.code],
+    ["타입 힌트", "ticket_id: str", "inputSchema", "ticket_id|type: string", C.human],
+  ];
+  const HS = ["함수 이름이 도구의 name이 됩니다. 앱은 이 이름으로 도구를 부릅니다.", "독스트링 첫 줄이 description이 되어 모델이 도구를 고르는 단서로 쓰입니다.", "인자의 타입 힌트가 inputSchema가 됩니다. 필수 인자는 required에 들어갑니다.", "Literal은 enum이 되어 모델이 고를 수 있는 값이 닫히고 기본값은 default가 됩니다. 인자 오류는 SDK가 스키마로 먼저 걸러 줍니다."];
+  function drawHero() {
+    hv.innerHTML = ""; const sel = pr === 3 ? 2 : pr;
+    box(hv, 6, 8, 200, 540, "var(--fg-strong)", { rx: 14, sw: 3.5, fill: "var(--bg-base)" }); txt(hv, 22, 40, "파이썬 함수", { "font-size": 17, class: "t-s" });
+    box(hv, 254, 8, 200, 540, "var(--fg-strong)", { rx: 14, sw: 3.5, fill: "var(--bg-base)" }); txt(hv, 270, 40, "tools/list 정의", { "font-size": 17, class: "t-s" });
+    ROWS.forEach(([lt, lv, rt, rv, col], i) => { const y = 66 + i * 156, on = i === sel;
+      let L = lv, R = rv, LT = lt, RT = rt; if (i === 2 && pr === 3) { L = 'status: Literal[|"open","waiting_parts",|"closed"] = "open"'; R = 'status|enum 3개|default "open"'; LT = "Literal과 기본값"; RT = "inputSchema"; }
+      box(hv, 16, y, 180, 130, on ? col : "var(--line-strong)", { rx: 12, sw: on ? 4.5 : 2.5, fill: on ? `color-mix(in srgb, ${col} 9%, var(--bg-base))` : "var(--bg-subtle)" }); txt(hv, 28, y + 30, LT, { "font-size": 15, class: "t-d", opacity: on ? 1 : .6 });
+      const lines = (t) => t.includes("|") ? t.split("|") : [t];
+      lines(L).forEach((p2, k) => txt(hv, 28, y + 62 + k * 24, p2, { "font-size": 15, class: "t-s mono", opacity: on ? 1 : .6 }));
+      box(hv, 264, y, 180, 130, on ? col : "var(--line-strong)", { rx: 12, sw: on ? 4.5 : 2.5, fill: on ? `color-mix(in srgb, ${col} 9%, var(--bg-base))` : "var(--bg-subtle)" }); txt(hv, 276, y + 30, RT, { "font-size": 15, class: "t-s mono", opacity: on ? 1 : .6, style: on ? `fill:${col}` : "" });
+      lines(R).forEach((p2, k) => txt(hv, 276, y + 62 + k * 24, p2, { "font-size": 15, class: "t-s mono", opacity: on ? 1 : .6 }));
+      mk("path", { d: `M196 ${y + 65} H250`, stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 3 }, hv); if (on) mk("path", { d: `M254 ${y + 65} l-14 -9 v18z`, fill: col }, hv); });
+    hsum.textContent = HS[pr];
+  }
+  $$("[data-ts-pr]").forEach((b) => b.addEventListener("click", () => { pr = +b.dataset.tsPr; press("[data-ts-pr]", b); drawHero(); }, { signal })); drawHero();
+
+  /* ───── 실패 전달 ───── */
+  const ev = $("[data-ts-ev]"); let em = "tool";
+  function drawEv() {
+    ev.innerHTML = ""; const tool = em === "tool", col = tool ? C.code : C.bad;
+    box(ev, 10, 10, 440, 120, "var(--fg-strong)", { rx: 14, sw: 3.5, fill: "var(--bg-base)" }); txt(ev, 26, 40, "서버의 get_ticket", { "font-size": 15, class: "t-d" }); txt(ev, 26, 74, tool ? 'raise ToolError("없는 티켓: T-9999")' : 'raise ValueError("없는 티켓: T-9999")', { "font-size": 15, class: "t-s mono", style: `fill:${col}` }); txt(ev, 26, 104, tool ? "일어날 줄 아는 실패" : "코드 실수로 취급", { "font-size": 15, class: "t-s" });
+    box(ev, 10, 160, 210, 120, col, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${col} 7%, var(--bg-base))` }); txt(ev, 24, 190, "서버 로그", { "font-size": 15, class: "t-d" }); txt(ev, 24, 222, tool ? "INFO" : "ERROR", { "font-size": 19, class: "t-s mono", style: `fill:${col}` }); txt(ev, 24, 252, tool ? "추적 기록 없음" : "추적 기록 남음", { "font-size": 15, class: "t-s" });
+    mk("path", { d: "M230 70 V160", stroke: "none" }, ev);
+    mk("path", { d: "M115 132 V156", stroke: col, "stroke-width": 4.5 }, ev); mk("path", { d: "M115 160 l-8 -13 h16z", fill: col }, ev);
+    mk("path", { d: "M345 132 V306", stroke: col, "stroke-width": 4.5 }, ev); mk("path", { d: "M345 316 l-9 -14 h18z", fill: col }, ev);
+    box(ev, 20, 322, 420, 150, col, { rx: 14, sw: 4.5, fill: `color-mix(in srgb, ${col} 8%, var(--bg-base))` }); mk("use", { href: "#ts-ic-robot", x: 34, y: 338, width: 40, height: 40, style: `color:${C.model}` }, ev); txt(ev, 84, 366, "모델이 읽는 도구 결과 (is_error)", { "font-size": 15, class: "t-d" });
+    txt(ev, 34, 410, tool ? "Error executing tool get_ticket:" : "Error executing tool get_ticket", { "font-size": 15, class: "t-s mono" }); txt(ev, 34, 440, tool ? "없는 티켓: T-9999" : "(원인은 보이지 않음)", { "font-size": 17, class: "t-s", style: `fill:${col}` });
+    $("[data-ts-ernote]").textContent = tool ? "모델은 원인이 담긴 메시지를 읽고 번호를 다시 확인하거나 사용자에게 물어볼 수 있습니다." : "모델은 실패했다는 사실만 알고 이유를 모릅니다. 개발자가 서버 로그를 열어야 원인을 압니다.";
+  }
+  $$("[data-ts-er]").forEach((b) => b.addEventListener("click", () => { em = b.dataset.tsEr; press("[data-ts-er]", b); drawEv(); }, { signal })); drawEv();
+
+  /* ───── 전송 방식 ───── */
+  const tv = $("[data-ts-tv]"); let tm = "stdio";
+  function drawTv() {
+    tv.innerHTML = ""; const http = tm === "http", bad = tm === "print";
+    box(tv, 10, 30, 150, 200, C.human, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.human} 7%, var(--bg-base))` }); mk("use", { href: "#ts-ic-gear", x: 30, y: 46, width: 38, height: 38, style: `color:${C.human}` }, tv); txt(tv, 80, 72, "호스트 앱", { "font-size": 17, class: "t-s" });
+    if (!http) {
+      box(tv, 300, 30, 150, 200, C.code, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.code} 7%, var(--bg-base))` }); mk("use", { href: "#ts-ic-robot", x: 316, y: 46, width: 38, height: 38, style: `color:${C.code}` }, tv); txt(tv, 362, 72, "서버", { "font-size": 17, class: "t-s" }); txt(tv, 316, 104, "앱이 직접 실행한", { "font-size": 15, class: "t-d" }); txt(tv, 316, 126, "프로세스", { "font-size": 15, class: "t-d" });
+      mk("path", { d: "M160 70 C200 20 260 20 300 70", fill: "none", stroke: C.human, "stroke-width": 3.5, "stroke-dasharray": "6 5" }, tv); txt(tv, 230, 24, "프로세스로 실행", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` });
+      mk("path", { d: "M160 150 H296", stroke: C.human, "stroke-width": 5 }, tv); mk("path", { d: "M300 150 l-14 -9 v18z", fill: C.human }, tv); txt(tv, 230, 140, "표준 입력", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+      mk("path", { d: "M300 200 H164", stroke: bad ? C.bad : C.code, "stroke-width": 5 }, tv); mk("path", { d: "M160 200 l14 -9 v18z", fill: bad ? C.bad : C.code }, tv); txt(tv, 230, 190, "표준 출력", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+      const chips = bad ? [["{\"result\"…}", C.code], ["Processing request", C.bad], ["{\"id\"…}", C.code]] : [["{\"result\"…}", C.code], ["{\"id\"…}", C.code]];
+      chips.forEach(([t, c], i) => { const x = 20 + i * (bad ? 142 : 210), w = bad ? 134 : 200; box(tv, x, 270, w, 44, c, { rx: 8, sw: 3, fill: `color-mix(in srgb, ${c} 10%, var(--bg-base))` }); txt(tv, x + w / 2, 298, t, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); });
+      txt(tv, 20, 346, "표준 출력 관을 지나는 조각", { "font-size": 15, class: "t-d" });
+      if (bad) { mk("path", { d: "M170 262 l22 -22 m0 22 l-22 -22", stroke: C.bad, "stroke-width": 5 }, tv); txt(tv, 20, 400, "JSON이 아닌 글자가 끼어", { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); txt(tv, 20, 430, "호스트가 메시지를 읽지 못함", { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); }
+      else { txt(tv, 20, 400, "메시지만 흐르는 관", { "font-size": 17, class: "t-s", style: `fill:${C.code}` }); txt(tv, 20, 430, "로그는 표준 오류(stderr)로", { "font-size": 15, class: "t-d" }); }
+    } else {
+      box(tv, 300, 30, 150, 200, C.code, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.code} 7%, var(--bg-base))` }); mk("use", { href: "#ts-ic-robot", x: 316, y: 46, width: 38, height: 38, style: `color:${C.code}` }, tv); txt(tv, 362, 72, "서버", { "font-size": 17, class: "t-s" }); txt(tv, 316, 104, "따로 켜져 있음", { "font-size": 15, class: "t-d" });
+      box(tv, 10, 250, 150, 70, C.model, { rx: 14, sw: 3.5, fill: `color-mix(in srgb, ${C.model} 7%, var(--bg-base))` }); txt(tv, 85, 292, "다른 앱", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+      mk("path", { d: "M160 130 H296", stroke: C.code, "stroke-width": 5 }, tv); mk("path", { d: "M300 130 l-14 -9 v18z", fill: C.code }, tv); mk("path", { d: "M160 285 C230 285 260 200 340 232", fill: "none", stroke: C.model, "stroke-width": 5 }, tv); mk("path", { d: "M344 232 l-16 -2 l6 12z", fill: C.model }, tv);
+      box(tv, 40, 372, 380, 56, "var(--fg-strong)", { rx: 12, sw: 3, fill: "var(--bg-base)" }); txt(tv, 56, 408, "http://127.0.0.1:8000/mcp", { "font-size": 17, class: "t-s mono" }); txt(tv, 40, 456, "주소로 접속 · 여러 앱이 함께 사용", { "font-size": 15, class: "t-d" });
+    }
+    $("[data-ts-trsay]").textContent = tm === "stdio" ? "앱이 서버를 프로세스로 띄우고 두 관으로 메시지를 주고받습니다. 내 컴퓨터에서 쓰는 도구에 맞습니다." : bad ? "표준 출력에 print()로 쓴 글이 JSON 메시지 사이에 끼면 호스트가 읽지 못합니다. 로그는 logging으로 표준 오류에 남깁니다." : "서버가 따로 켜져 있고 주소로 접속합니다. 여러 앱이 같은 서버를 쓰고 인증도 붙일 수 있어 원격 서버에 맞습니다.";
+  }
+  $$("[data-ts-tr]").forEach((b) => b.addEventListener("click", () => { tm = b.dataset.tsTr; press("[data-ts-tr]", b); drawTv(); }, { signal })); drawTv();
+
+  initTerms({
+    c: [["cmd", "$ python client_test.py"], ["wait", 700], ["line", "도구: get_ticket | 티켓 번호로 티켓 한 건을 조회한다. | ['ticket_id']"], ["line", "도구: list_tickets | 상태(와 담당자)로 티켓 목록을 조회한다. | None"], ["line", "호출: {\"id\": \"T-1042\", \"title\": \"VPN 접속 오류\", \"status\": \"waiting_parts\", ...}"], ["type", "없는 티켓: Error executing tool get_ticket: 없는 티켓: T-9999 | isError: True"]],
+    i: [["cmd", "$ npx @modelcontextprotocol/inspector --cli python ticket_server.py --method tools/call ..."], ["wait", 800], ["line", "get_ticket T-1042"], ["line", "{"], ["line", "  \"content\": [{ \"type\": \"text\", \"text\": \"{ ... \\\"status\\\": \\\"waiting_parts\\\" ... }\" }],"], ["line", "  \"isError\": false"], ["type", "}"]],
+  });
+})();
+</script>
