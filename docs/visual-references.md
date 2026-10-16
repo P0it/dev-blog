@@ -127,6 +127,7 @@
 | [Anthropic, Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) · [Handling stop reasons](https://platform.claude.com/docs/en/api/handling-stop-reasons) | stop_reason 값마다 "루프가 할 일"을 표로 나눈 것을 갈림길 그림으로 바꾼다. tool_use·tool_result JSON 예시를 그림 속 카드 문구로 쓴다 | 루프의 분기를 값별로 보일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
 | [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
 | [LangChain, Models](https://docs.langchain.com/oss/python/langchain/models) · [Messages](https://docs.langchain.com/oss/python/langchain/messages) | init_chat_model·invoke·stream·batch 와 AIMessage 필드를 문서 순서대로 쓰되, 실제로 모의 서버에 두 회사 클래스를 붙여 요청 본문과 응답 필드를 관찰한 값으로 "같은 것과 다른 것"을 그린다 | 추상화 계층이 무엇을 맞춰 주고 무엇을 못 맞추는지 보일 때 | 2026-10-16 | langchain-init-chat-model-switch-provider |
+| [LangChain, Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) · [Anthropic, Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) | ToolStrategy/ProviderStrategy 두 길과 거절·길이 한도·숫자 범위 같은 보장 밖 사례를 문서 문장으로 확인하고, 모의 서버에 붙여 요청 본문(tools vs output_config.format)·검증 오류·재시도 메시지를 관찰한 값으로 그림을 그린다 | "양식이 보장하는 것과 못 하는 것"을 겹으로 나눠 보일 때 | 2026-10-16 | llm-structured-output-pydantic-langchain |
 
 ## 미확인
 
@@ -216,6 +217,9 @@
 - **바꾸는 곳과 그대로인 곳을 세로로 쌓은 교체 보드** (langchain-init-chat-model-switch-provider) — ①바꾸는 코드 ②그대로인 코드 ③실제로 나가는 요청 ④결과 네 칸을 세로로 쌓고 회사·temperature 토글 두 개만 바꾸게 했다. 바뀌는 칸만 주황으로 켜지고 Anthropic + temperature 값 조합에서는 요청 칸이 꺼지고 결과 칸이 오류로 바뀐다. "한 줄이면 된다"는 말의 예외를 겪게 하는 장치. Critic 4/4
 - **같은 호출을 직접 두 회사 클래스에 붙여 관찰한 값으로 그린다** (langchain-init-chat-model-switch-provider) — 공식 문서만으로는 system 위치·max_tokens 자동 채움·response_metadata 키 이름 차이를 알 수 없어 모의 서버로 요청 본문을 찍어 그림 값으로 썼다
 - **시간 줄에 첫 글자 표시를 찍는다** (langchain-init-chat-model-switch-provider) — invoke·stream·batch 막대가 똑같이 차면 차이가 안 보인다는 지적. 전체 줄을 4.8초로 잡고 완료선(2.4초)과 첫 글자 표시를 정지 상태에서도 보이게 했다
+- **같은 질문 3번 대 3번을 한 보드에 두고 질문만 바꾸게** (llm-structured-output-pydantic-langchain) — 양식 없는 쪽은 매번 다른 이유로 읽기에 실패하고 양식 있는 쪽은 세 번 모두 같은 모양으로 담당 큐에 들어간다. 질문 토글 세 개만 조작한다. 읽는 코드를 칸 위에 두어 왜 실패하는지 보이게 했다
+- **보기 선택 칸(Literal)과 자유 입력 칸(str)을 양식 그림으로** (llm-structured-output-pydantic-langchain) — 종이 양식에서 객관식 보기와 빈 줄로 그려 "닫힌 선택지"를 눈으로 구분하게 했다. 칸 설명 토글은 모델이 읽는 안내문이라는 점을 힌트 문구로 보였다
+- **검문 두 겹은 문제 답 네 개를 고르면 걸리는 칸이 켜지게** (llm-structured-output-pydantic-langchain) — 보기 밖 값·범위 밖 숫자·거절·길이 한도마다 어느 겹에서 걸리는지가 달라 "모양은 지켜도 내용은 따로 검사한다"가 직접 보인다. Critic이 모델 선택이 정적 캡처에서 안 보인다고 해서 자동 선택 토글을 길 카드 위에 두었다
 
 ## 페이지 레이아웃
 

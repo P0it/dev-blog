@@ -1,0 +1,543 @@
+---
+title: 모델 답을 프로그램이 믿고 쓰려면 어떤 양식이 필요할까요?
+slug: llm-structured-output-pydantic-langchain
+excerpt: LLM의 자유로운 글 답은 프로그램이 읽기 어렵습니다. Pydantic 클래스를 양식으로 건네 문의 분류 결과를 항상 같은 모양으로 받는 법을 다룹니다. 양식을 모델에게 넘기는 두 가지 길(ToolStrategy, ProviderStrategy), 모양은 지켜도 범위와 내용은 따로 검사해야 하는 이유, 검증에 실패하면 에러를 모델에게 돌려 다시 시키는 재시도까지 그림과 코드로 확인합니다.
+tags: [AI Agent, Structured Output, Pydantic, LangChain, Claude, Python]
+category: ai
+series: ai-agent
+series_order: 5
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-structured-output-pydantic-langchain-mvb3381d.jpg
+---
+<!-- page -->
+<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 전폭 비교 보드 아래) + 지그재그(양식 그림|글) + 장 표지 띠(두 가지 길) + 실험판 전폭 띠(검문 두 겹) + 그림|글 뒤집기(재시도 단계) | 글의 성격: 같은 질문에서 양식이 있을 때와 없을 때의 결과를 대조하고 그 뒤로 길·검문·재시도로 이어지는 흐름이라 전폭 비교 보드로 열고 한 단계씩 풀어 간다 | 버린 후보: 분할 히어로(앞 편 히어로와 같은 구조), 그림 고정 스크롤리텔링(앞 편에서 이미 쓴 구조), 제목|글 머리 히어로 -->
+<style>
+.post-page .so {
+  --so-human: rgb(37, 112, 235); --so-code: rgb(16, 150, 120); --so-model: rgb(226, 106, 28); --so-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .so { --so-human: rgb(110, 165, 255); --so-code: rgb(60, 205, 165); --so-model: rgb(255, 150, 80); --so-bad: rgb(255, 110, 110); }
+.post-page .so * { box-sizing: border-box; }
+.post-page .so-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .so h1, .post-page .so h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .so h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .so h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .so h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .so p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .so b { color: var(--fg-strong); }
+.post-page .so .nw { white-space: nowrap; }
+.post-page .so code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .so p.so-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .so-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .so-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .so-head > h2 { margin: 0; }
+.post-page .so-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .so-split.top { align-items: start; }
+.post-page .so-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .so-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .so-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .so-seg button:hover { color: var(--fg-strong); }
+.post-page .so-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .so-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .so-act::before { content: "▶ "; font-size: 11px; }
+.post-page .so-act:disabled { opacity: .4; cursor: default; }
+.post-page .so-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .so-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .so-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .so-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .so-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .so-tag.n { --t: var(--fg-strong); } .post-page .so-tag.m { --t: var(--so-model); } .post-page .so-tag.c { --t: var(--so-code); } .post-page .so-tag.h { --t: var(--so-human); } .post-page .so-tag.x { --t: var(--so-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .so-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .so-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .so-codepair .pg-code { margin-top: 0; }
+.post-page .so-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .so-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .so-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .so-codepair.rev > .cp-code, .post-page .so-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .so-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .so .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .so ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .so ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .so-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .so-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .so-term-bar .so-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .so-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .so-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-so-blink 1s steps(1) infinite; }
+@keyframes pg-so-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .so-codepair, .post-page .so-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .so-codepair > .cp-code, .post-page .so-codepair > .cp-term, .post-page .so-codepair > .cp-notes,
+  .post-page .so-codepair.rev > .cp-code, .post-page .so-codepair.rev > .cp-term, .post-page .so-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .so-codepair > .cp-notes, .post-page .so-codepair.rev > .cp-notes { order: 2; } .post-page .so-codepair > .cp-term, .post-page .so-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .so-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .so-tbl th, .post-page .so-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .so-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .so-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .so-tbl code { font-size: 12.5px; }
+.post-page .so details { margin: 0 0 24px; }
+.post-page .so summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .so details > .so-in-d { padding-top: 14px; }
+.post-page .so-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .so-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .so-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .so-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .so-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .so-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .so-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .so-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .so-tbl { font-size: 13.5px; } .post-page .so-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .so *, .post-page .so *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .so-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .so-wrap { padding: 0 20px; }
+  .post-page .so-head, .post-page .so-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .so-split.rev > :first-child { order: 0; }
+  .post-page p.so-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .so-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .so-lab h2 { margin-bottom: 24px; }
+.post-page .so-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .so-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .so-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .so-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .so-stack { display: grid; gap: 8px; }
+.post-page .so-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .so-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .so-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .so-s.m { --k: var(--so-model); } .post-page .so-s.c { --k: var(--so-code); } .post-page .so-s.x { --k: var(--so-bad); } .post-page .so-s.h { --k: var(--so-human); }
+.post-page .so-s + .so-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .so-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .so-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .so-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .so-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .so-hero-top p { margin: 0 0 1.2em; }
+.post-page .so-hero-top p:last-child { margin-bottom: 0; }
+.post-page .so-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .so-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .so [hidden] { display: none !important; }
+
+.post-page .so-tag.n { --t: var(--fg-strong); }
+
+.post-page .so-hero-lede { max-width: 760px; margin-top: 28px; }
+.post-page .so-hero-lede p { font-size: 17.5px; }
+.post-page .so-cmp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); margin-top: 24px; }
+.post-page .so-col { border-radius: 16px; border: 1.5px solid var(--line-strong); background: var(--bg-base); padding: 16px 18px 18px; }
+.post-page .so-col > h3 { font-size: 16px; margin: 0 0 4px; }
+.post-page .so-col > small { display: block; font-size: 13px; color: var(--fg-neutral); margin-bottom: 14px; }
+.post-page .so-col.no > h3 { color: var(--so-bad); } .post-page .so-col.yes > h3 { color: var(--so-code); }
+.post-page .so-run { display: grid; gap: 8px; }
+.post-page .so-r { border-radius: 12px; border: 1.5px solid var(--k, var(--line-strong)); padding: 9px 12px; font-size: 14px; line-height: 1.55; background: color-mix(in srgb, var(--k, transparent) 7%, var(--bg-base)); }
+.post-page .so-r small { display: block; font-size: 12px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .so-r .a { font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .so-r .res { margin-top: 5px; font-size: 13px; font-weight: 700; color: var(--k); }
+.post-page .so-r.bad { --k: var(--so-bad); } .post-page .so-r.ok { --k: var(--so-code); }
+.post-page .so p.so-code1 { margin: 0 0 10px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; color: var(--fg-neutral); white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .so-q { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.post-page .so-q > span { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+
+/* 양식 */
+.post-page .so-form { border-radius: 16px; border: 2px solid var(--fg-strong); background: var(--bg-base); padding: 20px 22px 22px; }
+.post-page .so-form h4 { margin: 0 0 14px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .so-f { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 6px 14px; padding: 12px 0; border-top: 1px solid var(--line-subtle); align-items: start; }
+.post-page .so-f > b { font-size: 14px; color: var(--fg-strong); padding-top: 6px; }
+.post-page .so-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.post-page .so-opt { font-size: 13.5px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid var(--line-strong); color: var(--fg-normal); transition: background .3s, border-color .3s; }
+.post-page .so-opt.pick { border-color: var(--so-code); background: color-mix(in srgb, var(--so-code) 14%, var(--bg-base)); color: var(--fg-strong); font-weight: 700; }
+.post-page .so-line { min-height: 34px; border-bottom: 2px dashed var(--line-strong); font-size: 14px; color: var(--fg-strong); padding: 4px 2px 2px; }
+.post-page .so-line.wild { border-bottom-color: var(--so-bad); color: var(--so-bad); }
+.post-page .so-hint { grid-column: 2; font-size: 12.5px; color: var(--so-model); font-weight: 600; min-height: 1.4em; transition: opacity .4s; }
+.post-page .so-hint.off { opacity: 0; }
+
+/* 두 길 */
+.post-page .so-band { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: color-mix(in srgb, var(--so-model) 7%, var(--bg-base)); }
+.post-page .so-band h2 { margin-bottom: 20px; }
+.post-page .so-roads { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); margin-top: 32px; }
+.post-page .so-road { border-radius: 16px; border: 2px solid var(--k); background: var(--bg-base); padding: 16px 18px 18px; }
+.post-page .so-road.t { --k: var(--so-human); } .post-page .so-road.p { --k: var(--so-code); }
+.post-page .so-road h3 { color: var(--k); margin: 0 0 4px; font-size: 17px; }
+.post-page .so-road > small { display: block; font-size: 13.5px; color: var(--fg-neutral); margin-bottom: 14px; line-height: 1.55; }
+.post-page .so-road .so-s + .so-s { margin-top: 18px; }
+.post-page .so-road .so-s + .so-s::before { top: -17px; }
+.post-page .so-road pre.m { margin: 6px 0 0; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--fg-strong); white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .so-road { transition: opacity .4s, box-shadow .4s; } .post-page .so-road.dim { opacity: .68; } .post-page .so-road.pick { box-shadow: 0 0 0 4px color-mix(in srgb, var(--k) 22%, transparent); }
+.post-page .so-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; } .post-page .so-flow .so-s { flex: 1 1 0; min-width: 0; } .post-page .so-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .so-flow .so-s + .so-s::before { content: none; }
+@media (max-width: 900px) { .post-page .so-flow .so-s { flex: 1 1 180px; } .post-page .so-flow i.ar { display: none; } }
+@media (max-width: 900px) { .post-page .so-roads, .post-page .so-cmp { grid-template-columns: minmax(0, 1fr); } }
+
+/* 검문 두 겹 */
+.post-page .so-gates { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(20px, 3vw, 44px); margin-top: 24px; align-items: start; }
+.post-page .so-cases { display: grid; gap: 8px; }
+.post-page .so-cases button { text-align: left; font: inherit; font-size: 14.5px; padding: 11px 14px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; line-height: 1.5; transition: border-color .3s, background .3s; }
+.post-page .so-cases button b { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .so-cases button[aria-pressed="true"] { border-color: var(--fg-strong); background: color-mix(in srgb, var(--fg-strong) 6%, var(--bg-base)); color: var(--fg-strong); }
+.post-page .so-pipe { display: grid; gap: 0; }
+.post-page .so-gt1 { border-radius: 14px; border: 2px solid var(--line-strong); background: var(--bg-base); padding: 12px 16px; font-size: 14.5px; line-height: 1.55; position: relative; transition: border-color .4s, background .4s, opacity .4s; }
+.post-page .so-gt1 + .so-gt1 { margin-top: 28px; }
+.post-page .so-gt1 + .so-gt1::before { content: "↓"; position: absolute; top: -26px; left: 22px; font-size: 18px; color: var(--fg-neutral); }
+.post-page .so-gt1 > b { display: block; font-size: 13px; color: var(--fg-neutral); margin-bottom: 3px; }
+.post-page .so-gt1 .v { font-weight: 700; color: var(--fg-strong); }
+.post-page .so-gt1.stop { border-color: var(--so-bad); background: color-mix(in srgb, var(--so-bad) 8%, var(--bg-base)); }
+.post-page .so-gt1.stop .v { color: var(--so-bad); }
+.post-page .so-gt1.pass { border-color: var(--so-code); }
+.post-page .so-gt1.skip { opacity: .4; border-style: dashed; }
+@media (max-width: 900px) { .post-page .so-gates { grid-template-columns: minmax(0, 1fr); } }
+
+/* 재시도 단계 */
+.post-page .so-ret { display: grid; gap: 22px; }
+.post-page .so-ret .so-s { padding: 10px 14px; }
+.post-page .so-ret .so-s + .so-s::before { top: -18px; }
+.post-page .so-ret .so-s .err { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--so-bad); margin-top: 4px; line-height: 1.55; overflow-wrap: anywhere; }
+</style>
+<div class="so">
+  <section class="so-hero">
+    <div class="so-wrap">
+      <h1>모델 답을 프로그램이 믿고 쓰려면 어떤 양식이 필요할까요?</h1>
+      <div class="so-hero-lede">
+        <p>은행에서 서류를 쓸 때 백지를 받는 경우는 없습니다. 이름과 계좌 번호와 날짜 칸이 나뉜 양식을 받습니다. 창구 직원이 양식이 같은 서류만 처리할 수 있기 때문입니다.</p>
+        <p>프로그램도 마찬가지입니다. 문의 내용을 분류해서 담당 큐(대기열)로 보내는 프로그램은 모델의 답에서 "장비"라는 단어를 정확히 읽어야 합니다. 그런데 모델에게 그냥 물으면 답의 모양이 매번 달라집니다. 같은 질문을 세 번 물은 결과가 아래에 있습니다.</p>
+      </div>
+      <div class="so-board" data-figure data-thumb data-so-hero>
+        <div class="so-q"><span>문의</span>
+          <div class="so-seg" role="group" aria-label="문의 고르기">
+            <button type="button" data-so-q="0" aria-pressed="true">노트북 화면 깜빡임</button>
+            <button type="button" data-so-q="1" aria-pressed="false">비밀번호 분실</button>
+            <button type="button" data-so-q="2" aria-pressed="false">프린터 용지 걸림</button>
+          </div>
+        </div>
+        <div class="so-cmp">
+          <div class="so-col no"><h3>양식 없이 물을 때</h3><small>같은 질문을 3번 보낸 답</small><p class="so-code1">ticket = json.loads(answer)
+queue = QUEUES[ticket["category"]]</p><div class="so-run" data-so-no></div></div>
+          <div class="so-col yes"><h3>양식(스키마)을 주고 물을 때</h3><small>같은 질문을 3번 보낸 답</small><p class="so-code1">ticket = result["structured_response"]
+queue = QUEUES[ticket.category]</p><div class="so-run" data-so-yes></div></div>
+        </div>
+        <p class="so-cap" style="margin-bottom:0">양식 없는 쪽의 답은 설명을 위한 예시입니다. 실제 모양은 모델과 질문마다 다릅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="so-sec">
+    <div class="so-wrap so-split">
+      <div data-figure>
+        <div class="so-ctrl" style="margin-bottom:18px">
+          <div class="so-seg" role="group" aria-label="분야 칸의 종류">
+            <button type="button" data-so-kind="str" aria-pressed="false">str (아무 글)</button>
+            <button type="button" data-so-kind="lit" aria-pressed="true">Literal (보기 고르기)</button>
+          </div>
+          <div class="so-seg" role="group" aria-label="설명 쓰기">
+            <button type="button" data-so-desc="1" aria-pressed="true">칸 설명 있음</button>
+            <button type="button" data-so-desc="0" aria-pressed="false">칸 설명 없음</button>
+          </div>
+        </div>
+        <div class="so-form">
+          <h4>TicketInfo 양식</h4>
+          <div class="so-f"><b>분야</b><div data-so-cat></div><span class="so-hint" data-so-h1></span></div>
+          <div class="so-f"><b>긴급도</b><div class="so-opts"><span class="so-opt">낮음</span><span class="so-opt pick">보통</span><span class="so-opt">높음</span></div><span class="so-hint" data-so-h2></span></div>
+          <div class="so-f"><b>요약</b><div class="so-line">노트북 화면이 깜빡여 회의를 못 하고 있음</div><span class="so-hint" data-so-h3></span></div>
+        </div>
+        <p class="so-cap">양식 그림은 TicketInfo 클래스의 칸을 종이 양식처럼 그린 것입니다. 칸 설명은 모델이 읽는 안내문이고 사람 눈에 보이는 서류와는 다릅니다.</p>
+      </div>
+      <div>
+        <h2>Pydantic 클래스는 빈칸이 있는 양식입니다</h2>
+        <p>Pydantic은 Python 클래스로 데이터의 모양을 적어 두고 값이 그 모양에 맞는지 검사해 주는 패키지입니다. 클래스의 칸마다 이름과 종류(타입)를 적으면 양식이 됩니다. 이 글에서는 문의 하나를 분야와 긴급도와 요약 세 칸으로 나눕니다.</p>
+        <p>분야 칸의 종류를 <code>str</code>로 두면 "장비"도 "하드웨어"도 "컴퓨터 고장"도 들어갈 수 있어서 읽는 쪽이 곤란해집니다. <code>Literal</code>로 보기를 정해 두면 객관식 문제처럼 그중 하나만 고르게 됩니다. 칸에 붙인 설명(<code>description</code>)도 모델에게 전달되어 칸을 채우는 단서가 됩니다.</p>
+      </div>
+    </div>
+    <div class="so-wrap">
+      <p class="so-cap so-mobhint">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
+      <div class="so-codepair">
+        <div class="cp-code">
+<pre data-title="schema.py" data-hl="5,7,9,10"><code class="language-python">from typing import Literal
+from pydantic import BaseModel, Field
+
+# ① 양식: 칸 이름과 칸의 종류를 적는다
+class TicketInfo(BaseModel):
+    # ② 보기에서 하나만 고르는 칸
+    category: Literal["계정", "장비", "소프트웨어", "네트워크", "기타"] = Field(
+        description="문의 분야")
+    # ③ 칸 설명은 모델에게 전달된다
+    urgency: Literal["낮음", "보통", "높음"] = Field(description="급한 정도")
+    summary: str = Field(description="한 문장 요약")</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>클래스가 양식입니다.</b> <code>BaseModel</code>을 이어받은 클래스에 <code>칸이름: 종류</code>를 적으면 됩니다. 이 클래스 하나로 모델에게 보낼 요청도 만들고 돌아온 값도 검사합니다.</li>
+  <li><b>선택지를 닫아 둡니다.</b> <code>Literal[...]</code>은 괄호 안의 값만 허용한다는 뜻입니다. 보기에 없는 값이 오면 검사에서 걸립니다. 보기를 늘리려면 이 목록만 고칩니다.</li>
+  <li><b>칸 설명을 적습니다.</b> <code>Field(description=...)</code>의 글은 양식과 함께 모델에게 전달됩니다. "급한 정도"처럼 짧게 적어도 칸의 뜻이 분명해집니다. 설명을 빼도 동작은 하지만 모델이 칸을 헷갈릴 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="so-band">
+    <div class="so-wrap">
+      <h2>양식을 모델에게 건네는 길은 두 가지입니다</h2>
+      <p>양식을 만들었으면 모델에게 넘겨야 합니다. LangChain이 쓰는 방법은 두 가지입니다. 하나는 ToolStrategy입니다. 양식을 도구처럼 위장해서 건네면 모델이 도구를 호출하듯 칸을 채웁니다. 다른 하나는 ProviderStrategy로, 모델 회사가 직접 제공하는 구조화 출력 기능에 양식을 맡깁니다.</p>
+      <p>양식 클래스를 그대로 <code>response_format</code>(응답 모양을 정하는 설정)에 넘기면 LangChain이 모델 정보를 보고 둘 중 하나를 자동으로 고릅니다. 아래에서 모델을 바꿔 가며 어느 길이 선택되는지 볼 수 있습니다.</p>
+      <div class="so-ctrl" style="margin-top:20px"><span style="font-size:14px;color:var(--fg-neutral);font-weight:700">모델</span><div class="so-seg" role="group" aria-label="모델 고르기"><button type="button" data-so-auto="p" aria-pressed="true">회사의 구조화 출력을 지원하는 모델</button><button type="button" data-so-auto="t" aria-pressed="false">지원하지 않는 모델</button></div></div>
+      <div class="so-roads" data-figure>
+        <div class="so-road t" data-so-road="t">
+          <h3>ToolStrategy <span class="so-tag h" data-so-pick="t" hidden>자동으로 고름</span></h3><small>양식을 도구로 건넵니다. 모델이 도구를 호출하듯 칸을 채웁니다.</small>
+          <div class="so-s h"><small>요청에 실리는 것</small><pre class="m">"tools": [{"name": "TicketInfo",
+  "input_schema": {칸과 보기들}}],
+"tool_choice": {"type": "any"}</pre></div>
+          <div class="so-s m"><small>모델의 응답</small>도구 요청 조각(tool_use)의 input에 칸이 채워져 옵니다</div>
+          <div class="so-s c"><small>라이브러리가 하는 일</small>Pydantic으로 검사하고 실패하면 재시도</div>
+        </div>
+        <div class="so-road p" data-so-road="p">
+          <h3>ProviderStrategy <span class="so-tag c" data-so-pick="p">자동으로 고름</span></h3><small>모델 회사의 구조화 출력 기능에 양식을 맡깁니다.</small>
+          <div class="so-s h"><small>요청에 실리는 것</small><pre class="m">"output_config": {"format": {
+  "type": "json_schema",
+  "schema": {칸과 보기들}}}</pre></div>
+          <div class="so-s m"><small>모델의 응답</small>양식에 맞는 JSON 글이 옵니다. 회사 서버가 모양을 맞춥니다</div>
+          <div class="so-s c"><small>라이브러리가 하는 일</small>JSON을 Pydantic 객체로 바꿉니다</div>
+        </div>
+      </div>
+      <p class="so-cap">요청 조각은 같은 양식을 두 방식으로 보낼 때 실제로 나가는 요청을 줄여 옮긴 것입니다(langchain-anthropic 1.7, 모의 서버에서 확인). 칸 정의는 생략했습니다.</p>
+      <p>ToolStrategy는 요청에 <code>tool_choice</code>의 <code>any</code>를 실어 보냅니다. 모델에게 도구를 반드시 쓰게 하는 설정입니다. 그런데 Anthropic 문서에 따르면 Claude Sonnet 5.5와 Opus 5.5는 이 설정을 받지 않습니다.</p>
+      <div data-figure style="margin-top:20px"><div class="so-flow">
+        <div class="so-s h"><small>모델</small>Claude Sonnet 5.5 · Opus 5.5</div><i class="ar">→</i>
+        <div class="so-s x"><small>ToolStrategy 요청</small><code>tool_choice: any</code> 포함 → 받지 않는 설정</div><i class="ar">→</i>
+        <div class="so-s c"><small>자동 선택</small>ProviderStrategy가 되어 문제없이 동작</div>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="so-sec">
+    <div class="so-wrap">
+      <div class="so-codepair" style="margin-top:0">
+        <div class="cp-code">
+<pre data-title="classify.py" data-hl="4,6,8"><code class="language-python"># ... model = init_chat_model("anthropic:claude-sonnet-5-5")
+# ④ 양식을 건네면 알맞은 길을 자동으로 고른다
+agent = create_agent(model, tools=[], response_format=TicketInfo)
+result = agent.invoke({"messages": [
+    {"role": "user", "content": "노트북 화면이 계속 깜빡여서 회의를 못 하고 있어요"}]})
+# ⑤ 양식에 맞게 채워진 객체
+ticket = result["structured_response"]
+print(ticket.category, ticket.urgency)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="so-term" data-so-term>
+  <div class="so-term-bar"><span>터미널</span><button type="button" class="so-act" data-so-run="auto">실행해 보기</button></div>
+  <div class="so-term-out" data-so-out aria-live="polite">$ python classify.py
+장비 높음</div>
+</div>
+<p class="so-cap">출력은 예시 답입니다. 코드는 <code>langchain</code> 1.4와 <code>pydantic</code> 2.14 기준입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 3">
+  <li><b>양식을 넘기는 한 줄입니다.</b> <code>response_format</code>에 클래스를 그대로 주면 모델에 맞는 길을 LangChain이 고릅니다. 모델이 이미 있다면 앞 글에서 만든 <code>init_chat_model</code> 결과를 그대로 씁니다. <code>create_agent</code>는 모델과 도구를 묶어 Agent를 만드는 LangChain 함수이고 <code>tools=[]</code>는 이번에는 도구 없이 분류만 한다는 뜻입니다.</li>
+  <li><b>결과는 따로 담깁니다.</b> 채워진 양식은 <code>result["structured_response"]</code>에 TicketInfo 객체로 들어 있어서 <code>ticket.category</code>처럼 점으로 칸을 읽습니다. 글 답이 아니라 객체라서 프로그램이 바로 씁니다.</li>
+</ol>
+        </div>
+      </div>
+      <details style="margin-top:28px"><summary>Agent 없이 모델에 양식만 건네는 방법</summary><div class="so-in-d">
+<pre data-title="classify.py" data-hl="2"><code class="language-python">structured = model.with_structured_output(
+    TicketInfo, method="json_schema")
+ticket = structured.invoke("노트북 화면이 계속 깜빡여서 회의를 못 하고 있어요")</code></pre>
+        <p>모델 객체의 <code>with_structured_output</code>은 양식을 건 새 모델을 만듭니다. Anthropic 모델에서는 <code>method="json_schema"</code>를 직접 지정하는 편이 안전합니다. 기본 방식은 도구를 강제로 호출시키는 방법이라서 Sonnet 5.5에서는 지원하지 않는다는 경고가 나옵니다(langchain-anthropic 1.7.6에서 확인). Pydantic 클래스를 주면 객체가 돌아옵니다. TypedDict나 JSON Schema를 주면 dict가 돌아오고 검사는 직접 해야 합니다.</p>
+      </div></details>
+    </div>
+  </section>
+
+  <div class="so-lab">
+    <div class="so-wrap">
+      <div class="so-labtop">
+        <h2>양식이 모양을 지켜도 범위와 내용은 따로 검사합니다</h2>
+        <div>
+          <p>구조화 출력을 켜면 칸이 모두 채워지고 종류가 맞는 답이 옵니다. 그래도 걸러야 할 일이 남습니다. Anthropic 문서에 따르면 숫자의 최소·최대와 문자열 길이 같은 제약은 양식에 넣을 수 없습니다. 모델이 답을 거절하거나(refusal) 길이 한도에 걸려 답이 잘리면(max_tokens) 양식을 못 따르기도 합니다.</p>
+          <p>실제로 <code>confidence: float = Field(ge=0, le=1)</code>처럼 범위를 적으면 LangChain은 그 범위를 양식 규칙이 아니라 칸 설명 글에 덧붙여 보냅니다(요청을 직접 확인했습니다). 범위 검사는 받은 뒤 Pydantic이 합니다. 아래에서 문제 있는 답을 하나 골라 보면 어느 검문에서 걸리는지 보입니다.</p>
+        </div>
+      </div>
+      <div class="so-gates" data-figure>
+        <div class="so-cases" role="group" aria-label="문제 있는 답 고르기"><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:var(--fg-strong)">문제 있는 답을 고르면 걸리는 검문이 켜집니다</p>
+          <button type="button" data-so-case="0" aria-pressed="true"><b>urgency: "매우급함"</b>보기에 없는 값</button>
+          <button type="button" data-so-case="1" aria-pressed="false"><b>confidence: 1.4</b>0~1 범위를 벗어난 숫자</button>
+          <button type="button" data-so-case="2" aria-pressed="false"><b>stop_reason: "refusal"</b>모델이 답을 거절</button>
+          <button type="button" data-so-case="3" aria-pressed="false"><b>stop_reason: "max_tokens"</b>답이 길이 한도에서 잘림</button>
+        </div>
+        <div class="so-pipe">
+          <div class="so-gt1" data-so-g="0"><b>1겹 · 모델 회사의 양식 검사(ProviderStrategy)</b><span class="v" data-so-v0></span></div>
+          <div class="so-gt1" data-so-g="1"><b>2겹 · Pydantic 검사(받은 뒤 LangChain이 실행)</b><span class="v" data-so-v1></span></div>
+          <div class="so-gt1" data-so-g="2"><b>프로그램</b><span class="v" data-so-v2></span></div>
+        </div>
+      </div>
+      <p class="so-cap" style="margin-top:18px">검문 결과는 Anthropic 구조화 출력 문서와 Pydantic 검사 결과를 정리한 예시입니다. ToolStrategy를 쓰면 1겹이 없어서 보기에 없는 값도 2겹에서 걸립니다.</p>
+    </div>
+  </div>
+
+  <section class="so-sec">
+    <div class="so-wrap so-split rev">
+      <div data-figure>
+        <div class="so-ret">
+          <div class="so-s m"><small>1번째 호출</small>모델이 urgency에 <code>"매우급함"</code>을 채워 옵니다</div>
+          <div class="so-s x"><small>Pydantic 검사 실패</small>보기에 없는 값입니다<span class="err">Input should be '낮음', '보통' or '높음' [type=literal_error, input_value='매우급함']</span></div>
+          <div class="so-s c"><small>ToolMessage로 모델에 돌려줌</small>"Error: Failed to parse structured output for tool 'TicketInfo' … Please fix your mistakes."</div>
+          <div class="so-s m"><small>2번째 호출</small>모델이 urgency를 <code>"높음"</code>으로 고쳐 옵니다</div>
+          <div class="so-s c"><small>검사 통과</small>result["structured_response"]에 TicketInfo 객체가 담깁니다</div>
+        </div>
+        <p class="so-cap">ToolStrategy를 쓸 때의 흐름입니다. 에러 문구는 실제로 만들어지는 메시지를 줄여 옮긴 것입니다.</p>
+      </div>
+      <div>
+        <h2>검증에 실패하면 에러를 모델에게 돌려주고 다시 시킵니다</h2>
+        <p>ToolStrategy에는 <code>handle_errors</code> 옵션이 있습니다. 기본값 <code>True</code>에서는 검사에 실패하면 에러 내용을 ToolMessage(도구 결과를 담는 메시지)에 담아 모델에게 돌려주고 다시 채우게 합니다. 도구가 실패했을 때 오류를 결과로 돌려주던 방식과 같습니다.</p>
+        <p>에러 문장에 무엇이 틀렸는지 들어 있어서 모델이 대개 한 번에 고칩니다. 값을 문자열이나 예외 종류로 바꾸면 재시도 문구와 대상을 정할 수 있습니다. <code>False</code>면 재시도 없이 에러를 그대로 던집니다. 몇 번까지 재시도하는지는 확인하지 못했습니다. 한도가 필요하면 Agent의 반복 한도로 막습니다.</p>
+      </div>
+    </div>
+    <div class="so-wrap">
+      <div class="so-codepair">
+        <div class="cp-code">
+<pre data-title="retry.py" data-hl="5-6"><code class="language-python">from langchain.agents.structured_output import ToolStrategy
+
+# ⑥ 검사에 실패하면 에러를 돌려주고 다시 시킨다
+agent = create_agent(
+    model, tools=[],
+    response_format=ToolStrategy(TicketInfo, handle_errors=True))
+result = agent.invoke({"messages": [
+    {"role": "user", "content": "노트북 화면이 계속 깜빡여서 회의를 못 하고 있어요"}]})
+print(result["structured_response"])
+print("모델 호출", sum(m.type == "ai" for m in result["messages"]), "번")</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="so-term" data-so-term>
+  <div class="so-term-bar"><span>터미널</span><button type="button" class="so-act" data-so-run="retry">실행해 보기</button></div>
+  <div class="so-term-out" data-so-out aria-live="polite">$ python retry.py
+category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
+모델 호출 2 번</div>
+</div>
+<p class="so-cap">출력은 예시입니다. 첫 응답이 보기에 없는 값이었던 경우를 가정했습니다. ToolStrategy가 자동으로 고르는 길이 아닌 모델에서 보이도록 모델을 <code>openai:gpt-5.5</code>로 바꿨습니다. 코드는 <code>langchain</code> 1.4 기준입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 5">
+  <li><b>ToolStrategy로 직접 지정합니다.</b> 클래스를 그대로 넘겼을 때 자동으로 고르는 방식 대신 도구 방식을 고르는 한 줄입니다. <code>handle_errors=True</code>는 기본값이라 적지 않아도 같습니다. 검사에 실패한 첫 호출과 고쳐 낸 두 번째 호출이 모두 <code>result["messages"]</code>에 남아서 호출 횟수를 셀 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="so-sec">
+    <div class="so-wrap">
+      <div class="so-head">
+        <h2>양식은 한 번 정해서 계속 씁니다</h2>
+        <div>
+          <p class="so-big">양식은 모양을 지켜 줍니다. 값이 옳은지는 검사가 지킵니다.</p>
+          <p>Pydantic 클래스를 양식으로 쓰면 보내는 요청과 받은 값의 검사가 한 곳에 모입니다. 보기를 늘리거나 칸을 더할 때도 클래스만 고치면 됩니다. 다만 모델이 틀린 분류를 자신 있게 내놓는 일은 양식으로 막을 수 없어서 평가가 따로 필요합니다. 다음 글에서는 모델이 쓸 도구를 잘 설계하는 법을 알아보겠습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="so-sec">
+    <div class="so-wrap">
+      <div class="so-head">
+        <h2>참고 자료</h2>
+        <ul class="so-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langchain/structured-output">Structured output</a>, LangChain: response_format, ToolStrategy와 ProviderStrategy, handle_errors, structured_response</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/models">Models</a>, LangChain: with_structured_output, 스키마 종류와 반환 타입, include_raw</li>
+          <li><a href="https://reference.langchain.com/python/langchain/agents/structured_output/ToolStrategy">ToolStrategy</a>, LangChain 레퍼런스: 시그니처와 handle_errors</li>
+          <li><a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">Structured outputs</a>, Anthropic: output_config.format, 지원 모델, 지원하지 않는 JSON Schema 기능, refusal과 max_tokens 예외</li>
+          <li><a href="https://developers.openai.com/api/docs/guides/structured-outputs">Structured Outputs</a>, OpenAI: strict 스키마 준수와 refusal 필드</li>
+          <li><a href="https://pydantic.dev/docs/validation/latest/errors/validation_errors/">Validation errors</a>, Pydantic: literal_error와 enum 에러</li>
+          <li><a href="https://pypi.org/project/pydantic/">pydantic 2.14.1</a>, <a href="https://pypi.org/project/langchain/">langchain 1.4.6</a>, PyPI</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="so-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-so-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-so-out]", btn.closest("[data-so-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.soRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  /* 히어로: 양식 없이 vs 양식을 주고 */
+  const QS = [
+    { no: [["JSON이 아닌 글", "장비 문제 같아요^^ 급해 보여요!", "bad", "✕ JSONDecodeError: 읽을 수 없는 글"], ["다른 모양의 글", "분야: 장비 / 긴급도: 높음", "bad", "✕ JSONDecodeError: 이것도 JSON이 아님"], ["JSON이지만 값이 다름", "{\"category\": \"hardware\", \"urgent\": true}", "bad", "✕ KeyError: 'hardware' 칸이 없음"]], yes: "{\"category\": \"장비\", \"urgency\": \"높음\", \"summary\": \"노트북 화면 깜빡임\"}", q: "장비" },
+    { no: [["JSON이 아닌 글", "계정 문의로 보입니다. 오늘 안에 처리가 필요해 보이네요.", "bad", "✕ JSONDecodeError: 읽을 수 없는 글"], ["JSON이지만 값이 다름", "{\"category\": \"account\", \"priority\": \"high\"}", "bad", "✕ KeyError: 'account' 칸이 없음"], ["JSON, 값은 맞음, 모양이 다름", "{\"분야\": \"계정\", \"긴급\": true}", "bad", "✕ KeyError: 'category' 키가 없음"]], yes: "{\"category\": \"계정\", \"urgency\": \"높음\", \"summary\": \"비밀번호 분실\"}", q: "계정" },
+    { no: [["JSON이 아닌 글", "프린터 용지 걸림은 장비 쪽 문제예요. 급하진 않아요.", "bad", "✕ JSONDecodeError: 읽을 수 없는 글"], ["JSON 앞에 말이 붙음", "분류 결과입니다: {\"category\": \"장비\"}", "bad", "✕ JSONDecodeError: 앞에 글이 붙어 있음"], ["JSON이지만 값이 다름", "{\"category\": \"Hardware\", \"urgency\": \"low\"}", "bad", "✕ KeyError: 'Hardware' 칸이 없음"]], yes: "{\"category\": \"장비\", \"urgency\": \"낮음\", \"summary\": \"프린터 용지 걸림\"}", q: "장비" },
+  ];
+  const drawHero = (i) => {
+    const d = QS[i];
+    $("[data-so-no]").innerHTML = d.no.map(([t, a, c, r], k) => `<div class="so-r ${c}"><small>${k + 1}번째 · ${esc(t)}</small><div class="a">${esc(a)}</div><div class="res">${esc(r)}</div></div>`).join("");
+    $("[data-so-yes]").innerHTML = [1, 2, 3].map((k) => `<div class="so-r ok"><small>${k}번째 · 같은 모양</small><div class="a">${esc(d.yes)}</div><div class="res">✓ QUEUES["${d.q}"] → ${d.q} 담당 큐</div></div>`).join("");
+  };
+  $$("[data-so-q]").forEach((b) => b.addEventListener("click", () => { press("[data-so-q]", b); drawHero(+b.dataset.soQ); }, { signal }));
+  drawHero(0);
+
+  /* 양식: str vs Literal, 설명 */
+  let kind = "lit", desc = true;
+  const OPTS = ["계정", "장비", "소프트웨어", "네트워크", "기타"];
+  const drawForm = () => {
+    const cat = $("[data-so-cat]");
+    cat.innerHTML = kind === "lit" ? `<div class="so-opts">${OPTS.map((o) => `<span class="so-opt${o === "장비" ? " pick" : ""}">${o}</span>`).join("")}</div>` : `<div class="so-line wild">하드웨어 / 컴퓨터 고장 / 장비 …<br>(아무 글이나 들어갑니다)</div>`;
+    $("[data-so-h1]").textContent = kind === "lit" ? "보기 밖의 값은 검사에서 걸립니다" : "같은 뜻이 여러 표기로 섞입니다";
+    $("[data-so-h2]").textContent = desc ? "칸 설명 \"급한 정도\"를 모델이 읽습니다" : "설명이 없어 모델이 칸의 뜻을 짐작해야 합니다";
+    $("[data-so-h3]").textContent = desc ? "칸 설명 \"한 문장 요약\"을 모델이 읽습니다" : "설명이 없어 요약 길이도 모델 마음입니다";
+    $("[data-so-h1]").classList.remove("off"); [2, 3].forEach((n) => $(`[data-so-h${n}]`).classList.remove("off"));
+  };
+  $$("[data-so-kind]").forEach((b) => b.addEventListener("click", () => { kind = b.dataset.soKind; press("[data-so-kind]", b); drawForm(); }, { signal }));
+  $$("[data-so-desc]").forEach((b) => b.addEventListener("click", () => { desc = b.dataset.soDesc === "1"; press("[data-so-desc]", b); drawForm(); }, { signal }));
+  drawForm();
+
+  /* 검문 두 겹 */
+  const CASES = [
+    { g: ["stop", "stop", "pass"], v: ["ProviderStrategy: 보기에 없는 값은 아예 만들어지지 않게 막습니다", "ToolStrategy: 이 값이 2겹까지 와서 literal_error로 걸립니다", ""], end: "어느 쪽이든 프로그램에는 보기 안의 값만 도착합니다" },
+    { g: ["pass", "stop", "skip"], v: ["숫자 범위는 양식 규칙에 없어서 통과합니다", "less_than_equal: Input should be less than or equal to 1 (input 1.4)", ""], end: "" },
+    { g: ["stop", "skip", "skip"], v: ["stop_reason이 refusal이면 답이 양식을 따르지 않을 수 있습니다", "", ""], end: "프로그램이 stop_reason을 확인하고 안내 문구로 대신합니다" },
+    { g: ["stop", "skip", "skip"], v: ["stop_reason이 max_tokens면 JSON이 중간에 끊긴 채로 옵니다", "", ""], end: "max_tokens를 올려 다시 부르거나 실패로 처리합니다" },
+  ];
+  const drawCase = (i) => {
+    const c = CASES[i];
+    [0, 1, 2].forEach((k) => $(`[data-so-g="${k}"]`).className = "so-gt1 " + c.g[k]);
+    $("[data-so-v0]").textContent = c.v[0];
+    $("[data-so-v1]").textContent = c.v[1] || (c.g[1] === "skip" ? "여기까지 오지 못했습니다" : "통과");
+    $("[data-so-v2]").textContent = c.end || (c.g[1] === "stop" ? "에러를 모델에게 돌려주고 다시 시키거나 직접 처리합니다" : "도착하지 않았습니다");
+  };
+  $$("[data-so-case]").forEach((b) => b.addEventListener("click", () => { press("[data-so-case]", b); drawCase(+b.dataset.soCase); }, { signal }));
+  drawCase(0);
+
+  $$("[data-so-auto]").forEach((b) => b.addEventListener("click", () => { press("[data-so-auto]", b); const k = b.dataset.soAuto; $$("[data-so-road]").forEach((r) => { const on = r.dataset.soRoad === k; r.classList.toggle("pick", on); r.classList.toggle("dim", !on); }); $$("[data-so-pick]").forEach((t) => { t.hidden = t.dataset.soPick !== k; }); }, { signal }));
+  $("[data-so-road=\"p\"]").classList.add("pick"); $("[data-so-road=\"t\"]").classList.add("dim");
+  initTerms({
+    auto: [["cmd", "$ python classify.py"], ["wait", 900], ["type", "장비 높음"]],
+    retry: [["cmd", "$ python retry.py"], ["wait", 1100], ["line", "category='장비' urgency='높음' summary='노트북 화면이 깜빡임'"], ["type", "모델 호출 2 번"]],
+  });
+})();
+</script>
