@@ -80,7 +80,7 @@
 |---|---|---|---|---|---|---|---|
 | 17 | x (`multi-agent-when-to-split`) | Agent 를 하나 더 두면 정말 나아지나? | 싱글로 충분한 경우 · 비용·지연 · 컨텍스트 격리 · 공식 5패턴 지도(Subagents·Handoffs·Skills·Router·Custom) | Multi-Agent, 컨텍스트 격리 | 역할 분리 설계도 | 16 | 발행 |
 | 18 | x (`subagent-vs-handoff-langchain`) | 일을 맡길 때와 넘길 때는 무엇이 다른가? | 하위 Agent 를 도구로(supervisor) · 제어권 넘기기(handoff) · 공유 상태·메시지 전달 · supervisor 라이브러리가 접힌 이유 | Subagent, Supervisor, Handoff | 분류 Agent + 해결 Agent | 17 | 발행 |
-| 19 | Deep Agents: 계획하고 파일에 적는 Agent | 긴 일을 하는 Agent 는 어떻게 길을 잃지 않나? | `write_todos` 계획 · filesystem 오프로딩 · 서브에이전트 격리 · Agent Skills(SKILL.md)와 단계적 공개 | Deep Agent, Agent Skills, progressive disclosure | 계획 세우는 장애 조사 Agent | 18 | 계획 |
+| 19 | x (`deep-agents-plan-files-skills`) | 긴 일을 하는 Agent 는 어떻게 길을 잃지 않나? | `write_todos` 계획 · filesystem 오프로딩 · 서브에이전트 격리 · Agent Skills(SKILL.md)와 단계적 공개 | Deep Agent, Agent Skills, progressive disclosure | 계획 세우는 장애 조사 Agent | 18 | 발행 |
 
 ### Part 5. MCP 로 바깥 세상과 연결
 

@@ -1,0 +1,462 @@
+---
+title: 긴 일을 하는 Agent는 어떻게 길을 잃지 않을까요?
+slug: deep-agents-plan-files-skills
+excerpt: 긴 일을 하는 Agent는 계획표에 할 일을 적고 큰 결과는 파일에 내보내 대화에는 경로만 남기고 곁가지 조사는 하위 Agent에게 맡겨 요약만 받고 필요한 지식은 스킬로 단계적으로 불러옵니다. Deep Agents 0.7로 이 네 가지를 직접 실행해 확인한 결과를 그림과 코드로 정리합니다.
+tags: [AI Agent, Deep Agents, write_todos, Agent Skills, 컨텍스트, LangChain, Python]
+category: ai
+series: ai-agent
+series_order: 19
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/deep-agents-plan-files-skills-mvb8jv5m.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 세 구역 히어로(컨텍스트 창·계획표·파일함, 일반 Agent와 Deep Agent 토글) + 계획표 상태 장면 + 파일 경로 장면 + 하위 일꾼 창 장면(격리·복제 토글) + 스킬 세 단계 장면 + 코드|터미널 + 정리 | 글의 성격: 긴 일에서 컨텍스트가 터지지 않게 하는 장치 네 가지를 다루는 글이라 한정된 창에 무엇이 남고 무엇이 밖으로 나가는지를 장면마다 같은 창 그림으로 비교한다 | 버린 후보: 기능 네 개를 카드로 나열(그림이 아니라 목록이라서) -->
+<style>
+.post-page .dp {
+  --dp-human: rgb(37, 112, 235); --dp-code: rgb(16, 150, 120); --dp-model: rgb(226, 106, 28); --dp-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .dp { --dp-human: rgb(110, 165, 255); --dp-code: rgb(60, 205, 165); --dp-model: rgb(255, 150, 80); --dp-bad: rgb(255, 110, 110); }
+.post-page .dp * { box-sizing: border-box; }
+.post-page .dp-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .dp h1, .post-page .dp h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .dp h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .dp h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .dp h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .dp p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .dp b { color: var(--fg-strong); }
+.post-page .dp .nw { white-space: nowrap; }
+.post-page .dp code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .dp p.dp-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .dp-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .dp-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .dp-head > h2 { margin: 0; }
+.post-page .dp-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .dp-split.top { align-items: start; }
+.post-page .dp-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .dp-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .dp-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .dp-seg button:hover { color: var(--fg-strong); }
+.post-page .dp-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .dp-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .dp-act::before { content: "▶ "; font-size: 11px; }
+.post-page .dp-act:disabled { opacity: .4; cursor: default; }
+.post-page .dp-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .dp-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .dp-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .dp-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .dp-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .dp-tag.n { --t: var(--fg-strong); } .post-page .dp-tag.m { --t: var(--dp-model); } .post-page .dp-tag.c { --t: var(--dp-code); } .post-page .dp-tag.h { --t: var(--dp-human); } .post-page .dp-tag.x { --t: var(--dp-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .dp-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .dp-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .dp-codepair .pg-code { margin-top: 0; }
+.post-page .dp-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .dp-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .dp-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .dp-codepair.rev > .cp-code, .post-page .dp-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .dp-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .dp .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .dp ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .dp ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .dp-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .dp-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .dp-term-bar .dp-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .dp-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .dp-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-dp-blink 1s steps(1) infinite; }
+@keyframes pg-dp-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .dp-codepair, .post-page .dp-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dp-codepair > .cp-code, .post-page .dp-codepair > .cp-term, .post-page .dp-codepair > .cp-notes,
+  .post-page .dp-codepair.rev > .cp-code, .post-page .dp-codepair.rev > .cp-term, .post-page .dp-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .dp-codepair > .cp-notes, .post-page .dp-codepair.rev > .cp-notes { order: 2; } .post-page .dp-codepair > .cp-term, .post-page .dp-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .dp-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .dp-tbl th, .post-page .dp-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .dp-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .dp-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .dp-tbl code { font-size: 12.5px; }
+.post-page .dp details { margin: 0 0 24px; }
+.post-page .dp summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .dp details > .dp-in-d { padding-top: 14px; }
+.post-page .dp-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .dp-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .dp-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .dp-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .dp-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .dp-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .dp-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .dp-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .dp-tbl { font-size: 13.5px; } .post-page .dp-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .dp *, .post-page .dp *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .dp-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .dp-wrap { padding: 0 20px; }
+  .post-page .dp-head, .post-page .dp-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .dp-split.rev > :first-child { order: 0; }
+  .post-page p.dp-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .dp-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .dp-lab h2 { margin-bottom: 24px; }
+.post-page .dp-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .dp-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .dp-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .dp-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .dp-stack { display: grid; gap: 8px; }
+.post-page .dp-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .dp-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .dp-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .dp-s.m { --k: var(--dp-model); } .post-page .dp-s.c { --k: var(--dp-code); } .post-page .dp-s.x { --k: var(--dp-bad); } .post-page .dp-s.h { --k: var(--dp-human); }
+.post-page .dp-s + .dp-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .dp-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .dp-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .dp-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .dp-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .dp-hero-top p { margin: 0 0 1.2em; }
+.post-page .dp-hero-top p:last-child { margin-bottom: 0; }
+.post-page .dp-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .dp-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .dp [hidden] { display: none !important; }
+
+.post-page .dp-stack { gap: 22px !important; } .post-page .dp-s + .dp-s::before { top: -19px !important; }
+.post-page .dp-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .dp-flow .dp-s { flex: 1 1 0; min-width: 0; } .post-page .dp-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .dp-flow .dp-s + .dp-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .dp-flow .dp-s { flex: 1 1 180px; } .post-page .dp-flow i.ar { display: none; } }
+
+.post-page .dp-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .dp-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .dp-nar { max-width: 520px; }
+.post-page .dp-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .dp-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .dp-scene .t-d { fill: var(--fg-neutral); }
+.post-page .dp-scene .mono { font-family: var(--font-mono); }
+.post-page .dp-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .dp-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .dp-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .dp-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .dp-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .dp-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .dp-steps { padding-bottom: 14vh; }
+.post-page .dp-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .dp-step.on { opacity: 1; }
+.post-page .dp-step h3 { font-size: 20px; }
+.post-page .dp-step p { margin: 0; }
+.post-page .dp-sfig { position: sticky; top: var(--dp-top, 96px); }
+.post-page .dp-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .dp-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .dp-story { grid-template-columns: minmax(0, 1fr); } .post-page .dp-sfig { position: static; order: -1; } .post-page .dp-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .dp-steps { padding-bottom: 0; } }
+
+.post-page .dp-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .dp-stage .dp-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .dp-lede { max-width: 780px; margin-top: 24px; }
+.post-page .dp-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .dp-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="dp-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="dp-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="dp-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="dp-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="dp-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="dp-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="dp-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="dp-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="dp-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="dp">
+  <section class="dp-hero">
+    <div class="dp-wrap">
+      <h1>긴 일을 하는 Agent는 어떻게 길을 잃지 않을까요?</h1>
+      <div class="dp-lede">
+        <p>새벽에 서비스가 멈춘 원인을 찾는 일을 Agent에게 시켰다고 해 봅니다. 로그를 읽고 변경 이력을 보고 원인을 정리하려면 몇십 번 도구를 부르게 되고 그때마다 결과가 대화에 쌓입니다. 모델이 한 번에 읽는 범위인 컨텍스트 창(context window)은 한정되어 있어서 결과가 쌓이면 처음 계획을 잊거나 창이 가득 찹니다.</p>
+        <p>Deep Agents는 이런 긴 일에 쓰려고 계획표, 파일함, 하위 일꾼, 스킬을 처음부터 갖춘 Agent입니다. 아래에서 일반 Agent와 Deep Agent가 같은 일을 할 때 창이 어떻게 달라지는지 보세요.</p>
+      </div>
+      <div class="dp-stage" data-figure data-thumb data-dp-hero>
+        <div class="dp-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">Agent</span>
+          <div class="dp-seg" role="group" aria-label="Agent 종류 고르기">
+            <button type="button" data-dp-m="plain" aria-pressed="false">그냥 Agent</button>
+            <button type="button" data-dp-m="deep" aria-pressed="true">Deep Agent</button>
+          </div>
+          <button type="button" class="dp-act" data-dp-go>처음부터 보기</button>
+        </div>
+        <svg class="dp-scene dp-nar" data-dp-hv viewBox="0 0 460 620" role="img" aria-label="세 구역 그림. 왼쪽은 컨텍스트 창이고 오른쪽 위는 계획표, 오른쪽 아래는 파일함과 하위 일꾼이다. 그냥 Agent는 로그 결과가 창을 가득 채워 넘치고, Deep Agent는 큰 결과를 파일로 내보내 창에는 경로만 남기고 계획표에 할 일이 체크되며 하위 일꾼은 요약만 돌려준다."></svg>
+        <p class="dp-verdict" data-dp-hsum></p>
+        <p class="dp-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 칩의 크기는 차지하는 공간을 대략 나타낸 것이고 실제 토큰 수가 아닙니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dp-sec">
+    <div class="dp-wrap dp-split rev">
+      <div data-figure>
+        <div class="dp-ctrl" style="margin-bottom:8px"><div class="dp-seg" role="group" aria-label="진행 고르기"><button type="button" data-dp-pl="0" aria-pressed="false">시작</button><button type="button" data-dp-pl="1" aria-pressed="true">한 단계 뒤</button><button type="button" data-dp-pl="2" aria-pressed="false">거의 끝</button></div></div>
+        <svg class="dp-scene dp-nar" data-dp-plv viewBox="0 0 460 440" role="img" aria-label="계획표 그림. 할 일 네 줄이 있고 각 줄 앞에 상태 표시가 있다. 비어 있는 동그라미는 대기, 반쯤 채운 동그라미는 진행 중, 체크된 동그라미는 완료이다. 진행에 따라 윗줄부터 완료로 바뀐다."></svg>
+        <p class="dp-wnote" data-dp-plnote></p>
+      </div>
+      <div>
+        <h2>계획표에 적어 두면 길을 잃지 않습니다</h2>
+        <p>긴 일을 시작할 때 Agent는 <code>write_todos</code> 도구로 할 일 목록을 적습니다. 각 항목에는 대기(pending), 진행 중(in_progress), 완료(completed) 중 하나의 상태가 붙습니다. 목록은 State의 <code>todos</code> 칸에 저장되고 일이 끝날 때마다 고쳐집니다.</p>
+        <p>대화가 길어져 처음 지시가 멀리 밀려나도 계획표는 State에 남아 있습니다. 그래서 지금 어디까지 했고 무엇이 남았는지 다시 확인할 수 있습니다. Deep Agents 0.7부터 이 도구는 기본으로 꺼져 있어서 <code>TodoListMiddleware</code>를 넣어야 합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dp-sec">
+    <div class="dp-wrap">
+      <div class="dp-head">
+        <h2>큰 결과는 파일에 적고 대화에는 경로만 남깁니다</h2>
+        <div>
+          <p>Deep Agent는 파일을 다루는 도구를 기본으로 갖고 있습니다. 목록 보기(<code>ls</code>), 읽기(<code>read_file</code>), 쓰기(<code>write_file</code>), 고치기(<code>edit_file</code>), 지우기(<code>delete</code>), 이름으로 찾기(<code>glob</code>), 내용으로 찾기(<code>grep</code>)입니다. 직접 실행해 보니 이 일곱 가지가 기본 목록에 들어 있었습니다.</p>
+          <p>기본 설정에서 파일은 State의 <code>files</code> 칸에 저장됩니다. 로그 3천 줄 같은 큰 결과를 대화에 그대로 두는 대신 파일에 적고 경로만 들고 있으면 창이 가벼워집니다. 필요할 때 <code>grep</code>이나 <code>read_file</code>로 다시 꺼내 읽습니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="dp-ctrl"><div class="dp-seg" role="group" aria-label="보관 방식 고르기"><button type="button" data-dp-f="chat" aria-pressed="false">내용을 대화에 그대로</button><button type="button" data-dp-f="file" aria-pressed="true">파일에 적고 경로만</button></div></div>
+        <svg class="dp-scene dp-nar" data-dp-fv viewBox="0 0 460 420" role="img" aria-label="파일 경로 그림. 왼쪽 컨텍스트 창이 있고 오른쪽에 파일함이 있다. 내용을 대화에 그대로 두면 큰 덩어리가 창을 거의 채우고, 파일에 적으면 파일함에 파일이 들어가고 창에는 작은 경로 칩만 남는다."></svg>
+        <p class="dp-verdict" data-dp-fsay></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dp-sec">
+    <div class="dp-wrap dp-split">
+      <div>
+        <h2>곁가지 조사는 하위 일꾼에게 맡깁니다</h2>
+        <p><code>task</code> 도구는 하위 Agent를 하나 만들어 일을 맡기고 보고서 하나만 돌려받습니다. 하위 Agent가 읽은 자료와 중간 과정은 그 안에 남으니 주 Agent의 창은 깨끗합니다. 앞에서 본 Subagent 방식을 Deep Agents가 기본으로 넣어 둔 것입니다.</p>
+        <p>하위 Agent는 기본으로 격리(isolated) 모드라 새 창에서 시작합니다. 복제(fork) 모드로 바꾸면 주 Agent의 대화 기록을 물려받습니다. 어떤 정보를 넘길지에 따라 고릅니다.</p>
+        <div class="dp-ctrl"><div class="dp-seg" role="group" aria-label="하위 일꾼 모드 고르기"><button type="button" data-dp-sm="isolated" aria-pressed="true">격리(isolated)</button><button type="button" data-dp-sm="fork" aria-pressed="false">복제(fork)</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="dp-scene dp-nar" data-dp-sa viewBox="0 0 460 500" role="img" aria-label="하위 일꾼 그림. 위쪽 주 Agent 창에는 대화 칩이 여러 개 있다. 격리 모드에서는 아래 하위 Agent 창에 맡긴 일 설명 하나만 들어가고, 복제 모드에서는 주 Agent의 대화 칩이 복사되어 들어간다. 하위 Agent가 끝나면 보고서 하나만 위로 올라온다."></svg>
+        <p class="dp-wnote" data-dp-sanote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dp-sec">
+    <div class="dp-wrap">
+      <div class="dp-head">
+        <h2>스킬은 필요할 때 단계적으로 읽습니다</h2>
+        <div>
+          <p>스킬(skill)은 특정 일을 하는 방법을 적어 둔 폴더입니다. 폴더 안의 <code>SKILL.md</code> 파일 맨 위에 이름과 설명을 적고 그 아래에 자세한 절차를 씁니다. 지식을 전부 프롬프트에 넣으면 창이 무거워지므로 필요한 만큼만 단계적으로 읽습니다. 이를 단계적 공개(progressive disclosure)라고 합니다.</p>
+          <p>시작할 때는 스킬의 이름과 설명만 시스템 프롬프트에 들어갑니다. 일이 스킬과 맞으면 그제야 <code>read_file</code>로 본문을 읽습니다. 본문이 가리키는 참고 파일은 더 필요할 때 읽습니다. 단계를 눌러 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="dp-ctrl"><div class="dp-seg" role="group" aria-label="단계 고르기"><button type="button" data-dp-k="0" aria-pressed="true">시작할 때</button><button type="button" data-dp-k="1" aria-pressed="false">일이 맞을 때</button><button type="button" data-dp-k="2" aria-pressed="false">더 필요할 때</button></div></div>
+        <svg class="dp-scene dp-nar" data-dp-sk viewBox="0 0 460 540" role="img" aria-label="스킬 단계 그림. 시스템 프롬프트 창 안에 스킬 세 개가 있다. 시작할 때는 이름과 설명 한 줄씩만 보이고, 일이 맞으면 해당 스킬의 본문이 펼쳐져 창이 길어지고, 더 필요하면 참고 파일까지 붙어 창이 더 길어진다. 오른쪽 막대가 창이 차지하는 길이를 나타낸다."></svg>
+        <p class="dp-verdict" data-dp-ksay></p>
+      </div>
+      <div class="dp-codepair" style="margin-top:44px">
+        <div class="cp-code">
+<pre data-title="deep.py" data-hl="8-9,11"><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model=model,
+    system_prompt="장애 조사 담당이다. 긴 내용은 파일에 적는다.",
+    middleware=[TodoListMiddleware()],         # ① 계획 도구 켜기
+    backend=StateBackend(), skills=["/skills/"],   # ② 스킬 폴더 지정
+)
+r = agent.invoke({"messages": [...], "files": {...}})   # ③ 스킬 파일을 State로 넘김
+print(r["todos"], list(r["files"]))</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="dp-term" data-dp-term>
+  <div class="dp-term-bar"><span>터미널</span><button type="button" class="dp-act" data-dp-run="d">실행해 보기</button></div>
+  <div class="dp-term-out" data-dp-out aria-live="polite">$ python deep.py
+기본 도구: ls read_file write_file edit_file delete glob grep task
+계획 도구를 켜면 write_todos가 더해짐
+todos: [{'content': '로그 확인', 'status': 'in_progress'}, ...]
+files: ['/notes/log_findings.md']
+시스템 프롬프트에 스킬 설명: 있음 · 스킬 본문: 없음</div>
+</div>
+<p class="dp-cap">출력은 예시입니다. <code>deepagents</code> 0.7.26을 모의 서버에 붙여 도구 목록과 State 칸을 직접 확인했습니다. <code>files</code> 칸에 넘기는 값은 <code>create_file_data()</code>로 만드는데 여기서는 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>계획 도구를 켭니다.</b> <code>create_deep_agent</code>는 파일 도구와 <code>task</code> 도구를 기본으로 갖습니다. <code>write_todos</code>는 <code>TodoListMiddleware</code>를 넣어야 생깁니다.</li>
+  <li><b>스킬이 있는 곳을 알려 줍니다.</b> <code>skills</code>에는 스킬 폴더들이 모인 상위 폴더 경로를 줍니다. 기본 저장소(<code>StateBackend</code>)를 쓰면 파일이 State 안에 있습니다.</li>
+  <li><b>스킬 파일을 넘깁니다.</b> 호출할 때 <code>files</code> 칸에 <code>/skills/incident-triage/SKILL.md</code> 같은 파일을 담아 보냅니다. 이름은 폴더 이름과 같아야 하고 설명은 1,024자 안으로 씁니다.</li>
+</ol>
+        </div>
+      </div>
+      <p style="margin-top:36px">다음 글에서는 Agent가 쓰는 도구를 표준 방식으로 이어 주는 MCP가 무엇인지 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="dp-sec">
+    <div class="dp-wrap">
+      <div class="dp-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="dp-refs">
+          <li><a href="https://docs.langchain.com/oss/python/deepagents/overview">Deep Agents overview</a>, LangChain: 기본 도구, 계획, 하위 Agent, 컨텍스트 관리</li>
+          <li><a href="https://docs.langchain.com/oss/python/deepagents/skills">Skills</a>, Deep Agents: SKILL.md 형식, 단계적 공개, 제한</li>
+          <li><a href="https://agentskills.io/">Agent Skills</a>: 스킬 표준</li>
+          <li><a href="https://pypi.org/project/deepagents/">deepagents 0.7.26</a>, PyPI</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="dp-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-dp-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-dp-out]", btn.closest("[data-dp-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.dpRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-dp-step]", st), fig = $("[data-dp-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--dp-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--dp-model)", code: "var(--dp-code)", human: "var(--dp-human)", bad: "var(--dp-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 창 · 계획표 · 파일함 ───── */
+  const hv = $("[data-dp-hv]"), hsum = $("[data-dp-hsum]"); let hm = "deep", hs = 4, hGen = 0;
+  const HD = ["질문이 들어옵니다. 창에는 질문 하나뿐입니다.", "먼저 계획표에 할 일을 적습니다. 계획은 창 밖에 있습니다.", "큰 로그 결과는 파일에 적고 창에는 경로만 남깁니다.", "곁가지 조사는 하위 일꾼에게 맡기고 요약만 받습니다.", "일이 끝날 때마다 계획표에 체크합니다. 창은 여전히 여유가 있습니다."];
+  function drawHero() {
+    hv.innerHTML = ""; const deep = hm === "deep", s = hs;
+    box(hv, 8, 10, 170, 590, deep ? C.code : C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${deep ? C.code : C.bad} 5%, var(--bg-base))` }); txt(hv, 22, 40, "컨텍스트 창", { "font-size": 17, class: "t-s" });
+    const chip = (y, h, lb, col) => { box(hv, 20, y, 146, h, col, { rx: 8, sw: 2.5, fill: `color-mix(in srgb, ${col} 14%, var(--bg-base))` }); if (lb) txt(hv, 30, y + Math.min(h / 2 + 5, 30), lb, { "font-size": 15, class: "t-s" }); };
+    chip(54, 40, "질문", C.human);
+    if (!deep) { chip(102, 36, "도구 호출", C.model); chip(146, 400, "로그 3천 줄 …", C.bad); txt(hv, 24, 580, "창이 가득 참", { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); }
+    else {
+      if (s >= 1) chip(102, 36, "계획 적기", C.model);
+      if (s >= 2) { chip(146, 36, "도구 호출", C.model); chip(190, 40, "/notes/log.md", C.code); }
+      if (s >= 3) { chip(238, 36, "task 호출", C.model); chip(282, 40, "요약 보고서", C.code); }
+      if (s >= 4) chip(330, 36, "완료 정리", C.human);
+      txt(hv, 24, 580, "창에 여유가 있음", { "font-size": 17, class: "t-s", style: `fill:${C.code}` });
+    }
+    const todo = ["로그 확인", "변경 이력 조사", "원인 정리"], on1 = deep && s >= 1;
+    box(hv, 196, 10, 256, 220, on1 ? C.model : "var(--line-strong)", { rx: 14, sw: on1 ? 4 : 2.5, dash: on1 ? "" : "6 5", fill: "var(--bg-base)" }); txt(hv, 210, 40, "계획표", { "font-size": 17, class: "t-s", opacity: on1 ? 1 : .5 });
+    if (on1) todo.forEach((t, i) => { const y = 76 + i * 48, done = s >= 4 || (s === 3 && i === 0) || (s === 2 && false), cur = !done && ((s === 3 && i === 1) || (s <= 2 && i === 0)); mk("circle", { cx: 222, cy: y + 8, r: 13, fill: done ? C.code : "var(--bg-base)", stroke: done ? C.code : cur ? C.model : "var(--fg-neutral)", "stroke-width": 3.5 }, hv); if (done) mk("path", { d: `M216 ${y + 8} l5 6 l9 -11`, fill: "none", stroke: "#fff", "stroke-width": 3.5 }, hv); else if (cur) mk("path", { d: `M222 ${y - 5} a13 13 0 0 1 0 26z`, fill: C.model }, hv); txt(hv, 246, y + 14, t, { "font-size": 16, class: "t-s" }); });
+    else if (!deep) txt(hv, 210, 100, "계획표 없음", { "font-size": 15, class: "t-d" });
+    const on2 = deep && s >= 2;
+    box(hv, 196, 250, 256, 150, on2 ? C.code : "var(--line-strong)", { rx: 14, sw: on2 ? 4 : 2.5, dash: on2 ? "" : "6 5", fill: "var(--bg-base)" }); txt(hv, 210, 280, "파일함", { "font-size": 17, class: "t-s", opacity: on2 ? 1 : .5 });
+    if (on2) { mk("use", { href: "#dp-ic-paper", x: 212, y: 296, width: 44, height: 44, style: `color:${C.code}` }, hv); txt(hv, 266, 322, "/notes/log.md", { "font-size": 15, class: "t-s mono" }); txt(hv, 212, 376, "로그 3천 줄은 여기에", { "font-size": 15, class: "t-d" }); }
+    const on3 = deep && s >= 3;
+    box(hv, 196, 420, 256, 180, on3 ? C.model : "var(--line-strong)", { rx: 14, sw: on3 ? 4 : 2.5, dash: on3 ? "" : "6 5", fill: "var(--bg-base)" }); txt(hv, 210, 450, "하위 일꾼", { "font-size": 17, class: "t-s", opacity: on3 ? 1 : .5 });
+    if (on3) { mk("use", { href: "#dp-ic-robot", x: 212, y: 466, width: 44, height: 44, style: `color:${C.model}` }, hv); txt(hv, 266, 486, "설정 이력 조사", { "font-size": 15, class: "t-s" }); txt(hv, 266, 508, "(자기 창에서)", { "font-size": 15, class: "t-d" }); mk("path", { d: "M300 540 H196 H180", fill: "none", stroke: C.code, "stroke-width": 4 }, hv); txt(hv, 212, 576, "요약만 돌려줌", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); }
+    hsum.textContent = !deep ? "그냥 Agent는 큰 로그 결과가 대화에 그대로 쌓여 창이 가득 찹니다. 계획도 창 안에만 있어서 밀려나면 잊습니다." : HD[s];
+  }
+  $$("[data-dp-m]").forEach((b) => b.addEventListener("click", () => { hm = b.dataset.dpM; press("[data-dp-m]", b); hGen++; hs = 4; $("[data-dp-go]").disabled = false; drawHero(); }, { signal }));
+  $("[data-dp-go]").addEventListener("click", async () => { if (hm !== "deep") { hm = "deep"; press("[data-dp-m]", $("[data-dp-m='deep']")); } const g = ++hGen; $("[data-dp-go]").disabled = true; for (let s = 0; s <= 4; s++) { if (g !== hGen) return; hs = s; drawHero(); await later(reduce ? 200 : 1300); } $("[data-dp-go]").disabled = false; }, { signal });
+  drawHero();
+
+  /* ───── 계획표 상태 ───── */
+  const pl = $("[data-dp-plv]"); let pi = 1;
+  const PT = ["로그 확인", "변경 이력 조사", "원인 정리", "보고서 쓰기"], PS = [["in_progress", "pending", "pending", "pending"], ["completed", "in_progress", "pending", "pending"], ["completed", "completed", "completed", "in_progress"]];
+  const PN = ["일을 시작하며 네 줄을 적었습니다. 첫 줄만 진행 중입니다.", "첫 줄이 끝나 완료로 바뀌고 두 번째 줄이 진행 중입니다. 대화가 길어져도 남은 일은 여기서 확인합니다.", "세 줄이 끝났고 마지막 줄만 남았습니다. 상태 값은 pending, in_progress, completed 셋 중 하나입니다."];
+  function drawPl() {
+    pl.innerHTML = ""; const st = PS[pi];
+    box(pl, 8, 8, 444, 330, "var(--fg-strong)", { rx: 14, sw: 3.5, fill: "var(--bg-base)" }); txt(pl, 24, 40, "todos 칸", { "font-size": 17, class: "t-s mono" });
+    PT.forEach((t, i) => { const y = 76 + i * 62, s = st[i]; mk("circle", { cx: 44, cy: y, r: 17, fill: s === "completed" ? C.code : "var(--bg-base)", stroke: s === "completed" ? C.code : s === "in_progress" ? C.model : "var(--fg-neutral)", "stroke-width": 4 }, pl); if (s === "completed") mk("path", { d: `M36 ${y} l6 7 l11 -14`, fill: "none", stroke: "#fff", "stroke-width": 4 }, pl); else if (s === "in_progress") mk("path", { d: `M44 ${y - 17} a17 17 0 0 1 0 34z`, fill: C.model }, pl); txt(pl, 76, y + 6, t, { "font-size": 17, class: "t-s", opacity: s === "pending" ? .6 : 1 }); txt(pl, 440, y + 6, s, { "font-size": 15, "text-anchor": "end", class: "t-d mono", style: s === "in_progress" ? `fill:${C.model}` : s === "completed" ? `fill:${C.code}` : "" }); });
+    txt(pl, 24, 372, "대화가 길어져도 이 칸은 State에 남아 있습니다", { "font-size": 15, class: "t-d" }); txt(pl, 24, 400, "진행 상황이 창 밖에 적혀 있는 셈입니다", { "font-size": 15, class: "t-d" });
+    $("[data-dp-plnote]").textContent = PN[pi];
+  }
+  $$("[data-dp-pl]").forEach((b) => b.addEventListener("click", () => { pi = +b.dataset.dpPl; press("[data-dp-pl]", b); drawPl(); }, { signal })); drawPl();
+
+  /* ───── 파일 경로 ───── */
+  const fv = $("[data-dp-fv]"); let fm = "file";
+  function drawFv() {
+    fv.innerHTML = ""; const file = fm === "file";
+    box(fv, 8, 8, 230, 400, file ? C.code : C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${file ? C.code : C.bad} 5%, var(--bg-base))` }); txt(fv, 22, 38, "컨텍스트 창", { "font-size": 17, class: "t-s" });
+    const chip = (y, h, lb, col) => { box(fv, 20, y, 206, h, col, { rx: 8, sw: 2.5, fill: `color-mix(in srgb, ${col} 14%, var(--bg-base))` }); txt(fv, 32, y + Math.min(h / 2 + 5, 28), lb, { "font-size": 15, class: "t-s" }); };
+    chip(52, 36, "질문", C.human); chip(96, 36, "도구 호출", C.model);
+    if (file) { chip(140, 40, "/notes/log.md", C.code); chip(188, 36, "결과를 파일에 적음", C.model); txt(fv, 22, 392, "창이 가벼움", { "font-size": 17, class: "t-s", style: `fill:${C.code}` }); }
+    else { chip(140, 230, "로그 3천 줄 …", C.bad); txt(fv, 22, 396, "창을 크게 차지함", { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); }
+    box(fv, 262, 90, 190, 240, file ? C.code : "var(--line-strong)", { rx: 14, sw: file ? 4 : 2.5, dash: file ? "" : "6 5", fill: "var(--bg-base)" }); txt(fv, 276, 120, "파일함", { "font-size": 17, class: "t-s", opacity: file ? 1 : .5 });
+    if (file) { mk("use", { href: "#dp-ic-paper", x: 296, y: 150, width: 90, height: 90, style: `color:${C.code}` }, fv); txt(fv, 276, 272, "log.md", { "font-size": 17, class: "t-s mono" }); txt(fv, 276, 300, "필요하면 grep으로 찾음", { "font-size": 15, class: "t-d" }); mk("path", { d: "M226 160 H262", stroke: C.code, "stroke-width": 4 }, fv); }
+    $("[data-dp-fsay]").textContent = file ? "내용은 파일함으로 가고 창에는 경로 한 줄만 남습니다. 필요할 때 다시 읽으면 됩니다." : "큰 결과를 그대로 두면 창이 가득 차서 이후 도구 결과가 들어갈 자리가 줄어듭니다.";
+  }
+  $$("[data-dp-f]").forEach((b) => b.addEventListener("click", () => { fm = b.dataset.dpF; press("[data-dp-f]", b); drawFv(); }, { signal })); drawFv();
+
+  /* ───── 하위 일꾼 ───── */
+  const sa = $("[data-dp-sa]"); let sm = "isolated";
+  function drawSa() {
+    sa.innerHTML = ""; const fork = sm === "fork";
+    box(sa, 8, 8, 444, 200, C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.model} 5%, var(--bg-base))` }); txt(sa, 22, 38, "주 Agent의 창", { "font-size": 17, class: "t-s" });
+    ["질문", "계획 적기", "로그 요약", "task 호출"].forEach((t, i) => { const x = 22 + (i % 2) * 212, y = 54 + Math.floor(i / 2) * 50; box(sa, x, y, 200, 40, i === 3 ? C.bad : C.model, { rx: 8, sw: 2.5, fill: `color-mix(in srgb, ${i === 3 ? C.bad : C.model} 12%, var(--bg-base))` }); txt(sa, x + 12, y + 26, t, { "font-size": 15, class: "t-s" }); });
+    txt(sa, 22, 184, "task로 하위 일꾼을 부름", { "font-size": 15, class: "t-d" });
+    mk("path", { d: "M130 208 V258", stroke: C.bad, "stroke-width": 4.5 }, sa); mk("path", { d: "M130 268 l-9 -14 h18z", fill: C.bad }, sa);
+    box(sa, 8, 272, 444, fork ? 150 : 150, C.code, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.code} 5%, var(--bg-base))` }); txt(sa, 22, 302, "하위 일꾼의 새 창", { "font-size": 17, class: "t-s" });
+    if (fork) { ["질문", "계획 적기", "로그 요약"].forEach((t, i) => { box(sa, 22 + i * 140, 316, 130, 36, C.model, { rx: 8, sw: 2, dash: "5 4", fill: "var(--bg-base)" }); txt(sa, 30 + i * 140, 340, t, { "font-size": 15, class: "t-d" }); }); }
+    box(sa, 22, 366, 420, 44, C.bad, { rx: 8, sw: 2.5, fill: `color-mix(in srgb, ${C.bad} 12%, var(--bg-base))` }); txt(sa, 34, 394, "맡긴 일: 설정 변경 이력 조사", { "font-size": 15, class: "t-s" });
+    mk("path", { d: "M400 272 V220", stroke: C.code, "stroke-width": 4.5 }, sa); mk("path", { d: "M400 210 l-9 14 h18z", fill: C.code }, sa); txt(sa, 408, 250, "보고서", { "font-size": 15, class: "t-s", style: `fill:${C.code}` });
+    txt(sa, 8, 460, fork ? "복제: 주 Agent의 대화 기록(점선)을 물려받음" : "격리: 맡긴 일 설명 하나만 들고 새로 시작", { "font-size": 15, class: "t-s" });
+    $("[data-dp-sanote]").textContent = fork ? "복제 모드는 앞의 맥락이 필요한 일에 맞지만 창이 더 커집니다." : "격리 모드는 창이 가볍고 하위 일꾼의 중간 과정이 주 창에 섞이지 않습니다.";
+  }
+  $$("[data-dp-sm]").forEach((b) => b.addEventListener("click", () => { sm = b.dataset.dpSm; press("[data-dp-sm]", b); drawSa(); }, { signal })); drawSa();
+
+  /* ───── 스킬 세 단계 ───── */
+  const sk = $("[data-dp-sk]"); let kk = 0;
+  const KS = ["시작할 때는 스킬마다 이름과 설명 한 줄만 시스템 프롬프트에 들어갑니다. 창은 거의 차지 않습니다.", "일이 incident-triage와 맞으면 그 스킬의 본문만 read_file로 읽어 펼칩니다. 다른 스킬은 접힌 채로 둡니다.", "본문이 참고 파일을 가리키면 그 파일도 필요할 때만 읽습니다. 쓰지 않는 자료는 창에 들어오지 않습니다."];
+  function drawSk() {
+    sk.innerHTML = ""; const SKL = [["incident-triage", "장애 로그를 읽고 원인을 정리할 때"], ["report-writer", "조사 결과를 보고서로 쓸 때"], ["data-cleaner", "표 데이터를 정리할 때"]];
+    box(sk, 8, 8, 330, 520, C.human, { rx: 14, sw: 3.5, fill: "var(--bg-base)" }); txt(sk, 22, 38, "시스템 프롬프트", { "font-size": 17, class: "t-s" });
+    let y = 56; SKL.forEach(([nm, ds], i) => { const open = kk >= 1 && i === 0; box(sk, 20, y, 306, 62, open ? C.code : "var(--line-strong)", { rx: 10, sw: open ? 4 : 2.5, fill: open ? `color-mix(in srgb, ${C.code} 8%, var(--bg-base))` : "var(--bg-subtle)" }); txt(sk, 32, y + 26, nm, { "font-size": 15, class: "t-s mono" }); txt(sk, 32, y + 50, ds, { "font-size": 15, class: "t-d" }); y += 70;
+      if (open) { box(sk, 32, y, 282, 110, C.code, { rx: 8, sw: 2.5, fill: "var(--bg-base)" }); ["1. 오류가 처음 난 시각을 찾는다", "2. 그 전후 변경 이력을 본다", "3. 원인을 한 줄로 정리한다"].forEach((l, n) => txt(sk, 44, y + 30 + n * 30, l, { "font-size": 15, class: "t-s" })); y += 120; if (kk >= 2) { box(sk, 32, y, 282, 44, C.model, { rx: 8, sw: 3, fill: `color-mix(in srgb, ${C.model} 10%, var(--bg-base))` }); txt(sk, 44, y + 28, "references/log-format.md", { "font-size": 15, class: "t-s mono" }); y += 54; } } });
+    const used = 56 + 70 * 3 + (kk >= 1 ? 120 : 0) + (kk >= 2 ? 54 : 0), full = 520; mk("rect", { x: 366, y: 8, width: 70, height: full, rx: 10, fill: "var(--bg-subtle)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, sk); const h = (used - 56) / 420 * 330; mk("rect", { x: 370, y: 8 + full - 4 - h, width: 62, height: h, rx: 8, fill: kk === 0 ? C.code : kk === 1 ? C.model : C.bad }, sk); txt(sk, 401, 548, "창 길이", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    $("[data-dp-ksay]").textContent = KS[kk];
+  }
+  $$("[data-dp-k]").forEach((b) => b.addEventListener("click", () => { kk = +b.dataset.dpK; press("[data-dp-k]", b); drawSk(); }, { signal })); drawSk();
+
+  initTerms({
+    d: [["cmd", "$ python deep.py"], ["wait", 700], ["line", "기본 도구: ls read_file write_file edit_file delete glob grep task"], ["line", "계획 도구를 켜면 write_todos가 더해짐"], ["line", "todos: [{'content': '로그 확인', 'status': 'in_progress'}, ...]"], ["line", "files: ['/notes/log_findings.md']"], ["type", "시스템 프롬프트에 스킬 설명: 있음 · 스킬 본문: 없음"]],
+  });
+})();
+</script>
