@@ -46,6 +46,10 @@ const STYLE = `<style data-pg-code>
 @media (max-width: 640px) {
   .post-page .pg-code pre { font-size: 12.5px; }
 }
+/* 좁은 화면에서는 가로로 밀지 않고 줄을 접는다. 이어지는 줄은 번호 칸 옆에 들여써서 한 줄이 둘로 쪼개져 보이지 않게 한다 */
+@media (max-width: 760px) {
+  .post-page .pg-code .line { display: block; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px + 4ch); text-indent: -4ch; }
+}
 /* 해설 표지 ①② — 코드 안 배지와 해설 목록(ol.pg-code-notes)이 같은 모양 */
 .post-page .pg-code .pg-code-mark, .post-page ol.pg-code-notes > li::before {
   display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; border-radius: 50%;
