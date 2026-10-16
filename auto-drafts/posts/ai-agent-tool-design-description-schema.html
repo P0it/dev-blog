@@ -6,10 +6,10 @@ tags: [AI Agent, Tool Calling, LangChain, @tool, ToolRuntime, Python]
 category: ai
 series: ai-agent
 series_order: 6
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-tool-design-description-schema-mvb3bn10.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-tool-design-description-schema-mvb6bg92.jpg
 ---
 <!-- page -->
-<!-- layout: 그림 왼쪽 벤토 히어로(설명 범위 원 + 도구 카드) + 짝짓기 그림 전폭 + 실험판 전폭 띠(반환 크기) + 비교 나란히(예외 대 결과) + 지그재그(사용자 토글) | 글의 성격: 모델이 읽는 설명서가 중심이라 같은 함수를 모델 눈으로 번역해 보여 주는 대응 그림과, 설명이 겹치는 정도를 원으로 보이는 그림으로 풀고 설계 규칙마다 조작판을 둔다 | 버린 후보: 분할 히어로(앞 편들과 같은 구조), 그림 고정 스크롤리텔링(앞 편에서 쓴 구조) -->
+<!-- layout: 분할 히어로(글 | 설명 범위 벤 다이어그램) + 위아래 짝(코드와 설명서를 색 줄로 잇는 그림) + 실험판 전폭 띠(컨텍스트 창 눈금) + 비교 도로(예외 대 방패) + 그림|글 뒤집기(벽 너머 사용자 정보) + 이름 합치기 + 정리 | 글의 성격: 모델이 읽는 설명서가 중심이라 같은 함수를 모델 눈으로 번역해 보여 주는 대응 그림과 설명 범위가 겹치는 정도를 원으로 보이는 그림으로 풀고 규칙마다 장면 하나를 둔다 | 버린 후보: 라벨 상자 비교 보드(앞 버전) -->
 <style>
 .post-page .td {
   --td-human: rgb(37, 112, 235); --td-code: rgb(16, 150, 120); --td-model: rgb(226, 106, 28); --td-bad: rgb(214, 56, 56);
@@ -128,100 +128,90 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (max-width: 900px) { .post-page .td-hero-top { grid-template-columns: minmax(0, 1fr); } }
 .post-page .td [hidden] { display: none !important; }
 
+.post-page .td-stack { gap: 22px !important; } .post-page .td-s + .td-s::before { top: -19px !important; }
+.post-page .td-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .td-flow .td-s { flex: 1 1 0; min-width: 0; } .post-page .td-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .td-flow .td-s + .td-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .td-flow .td-s { flex: 1 1 180px; } .post-page .td-flow i.ar { display: none; } }
+
 .post-page .td-tag.n { --t: var(--fg-strong); }
 
-.post-page .td-h-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-template-rows: auto 1fr; column-gap: clamp(32px, 4.5vw, 64px); align-items: start; }
-.post-page .td-h-title { grid-column: 2; grid-row: 1; }
-.post-page .td-h-lede { grid-column: 2; grid-row: 2; margin-top: 28px; }
-.post-page .td-h-fig { grid-column: 1; grid-row: 1 / span 2; }
-.post-page .td-h-lede p { font-size: 17px; }
-@media (max-width: 900px) { .post-page .td-h-grid { grid-template-columns: minmax(0, 1fr); } .post-page .td-h-title, .post-page .td-h-lede, .post-page .td-h-fig { grid-column: 1; grid-row: auto; } .post-page .td-h-fig { order: 1; margin-top: 24px; } .post-page .td-h-lede { order: 2; margin-top: 32px; } }
 
-/* 설명 범위 원 */
-.post-page .td-venn { border-radius: 20px; background: var(--bg-subtle); padding: clamp(16px, 2.2vw, 24px); }
-.post-page .td-venn .td-ctrl { margin-bottom: 12px; gap: 10px 14px; }
-.post-page .td-venn .td-ctrl > span { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
-.post-page .td-vstage { position: relative; height: 330px; margin-top: 10px; overflow: hidden; border-radius: 14px; background: var(--bg-base); }
-.post-page .td-vc { position: absolute; border-radius: 50%; border: 2px solid var(--k); background: color-mix(in srgb, var(--k) 12%, transparent); transform: translate(-50%, -50%); transition: width .6s cubic-bezier(.2,.7,.2,1), height .6s cubic-bezier(.2,.7,.2,1), left .6s, top .6s, opacity .4s; }
-.post-page .td-vc.off { opacity: .25; }
-.post-page .td-vl { position: absolute; transform: translate(-50%, 0); font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--k); background: var(--bg-base); padding: 1px 8px; border-radius: 999px; border: 1.5px solid var(--k); white-space: nowrap; transition: left .6s, top .6s; }
-.post-page .td-vd { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); display: grid; place-items: center; font-size: 13px; font-weight: 800; box-shadow: 0 0 0 4px var(--bg-base); transition: left .6s, top .6s; z-index: 2; }
-.post-page .td-tc1 { --k: var(--td-human); } .post-page .td-tc2 { --k: var(--td-model); } .post-page .td-tc3 { --k: var(--td-code); }
-.post-page .td-verdict { margin: 14px 0 0; font-size: 15px; font-weight: 700; color: var(--fg-strong); min-height: 1.6em; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
-.post-page .td-tcards { display: grid; gap: 8px; margin-top: 14px; }
+.post-page .td-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .td-nar { max-width: 520px; }
+.post-page .td-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .td-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .td-scene .t-d { fill: var(--fg-neutral); }
+.post-page .td-scene .mono { font-family: var(--font-mono); }
+.post-page .td-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .td-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .td-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .td-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .td-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .td-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .td-steps { padding-bottom: 14vh; }
+.post-page .td-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .td-step.on { opacity: 1; }
+.post-page .td-step h3 { font-size: 20px; }
+.post-page .td-step p { margin: 0; }
+.post-page .td-sfig { position: sticky; top: var(--td-top, 96px); }
+.post-page .td-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .td-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .td-story { grid-template-columns: minmax(0, 1fr); } .post-page .td-sfig { position: static; order: -1; } .post-page .td-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .td-steps { padding-bottom: 0; } }
+
+.post-page .td-h-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: clamp(36px, 5vw, 72px); align-items: start; }
+.post-page .td-h-lede p { font-size: 17.5px; }
+.post-page .td-h-lede h1 { margin-bottom: 28px; }
+@media (max-width: 900px) { .post-page .td-h-grid { grid-template-columns: minmax(0, 1fr); } .post-page .td-h-fig { margin-top: 28px; } }
+.post-page .td-h-fig { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 22px); }
+.post-page .td-h-fig .td-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .td-h-fig .td-ctrl > span, .post-page .td-ctrl > span.td-lbl { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .td-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.4em; }
+.post-page .td-tcards { display: grid; gap: 8px; margin-top: 12px; }
 .post-page .td-tcard { border-radius: 12px; border: 1.5px solid var(--k); background: var(--bg-base); padding: 8px 12px; font-size: 13.5px; line-height: 1.5; }
 .post-page .td-tcard b { font-family: var(--font-mono); font-size: 12.5px; color: var(--k); display: block; }
-@media (max-width: 900px) { .post-page .td-vstage { height: 480px; } }
-
-/* 대응 그림 */
-.post-page .td-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); margin-top: 20px; }
-.post-page .td-pane { border-radius: 14px; padding: 16px 18px; font-family: var(--font-mono); font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
-.post-page .td-pane.fn { background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
-.post-page .td-pane.menu { border: 2px solid var(--fg-strong); background: var(--bg-base); color: var(--fg-strong); }
-.post-page .td-pane h5 { font-family: var(--font-sans); font-size: 13px; margin: 0 0 8px; color: var(--fg-neutral); font-weight: 700; }
-.post-page .td-pane.fn h5 { color: var(--code-comment, #7f848e); }
-.post-page .td-pane [data-m] { border-radius: 4px; padding: 0 2px; transition: background .4s, box-shadow .4s, opacity .4s; }
-.post-page .td-pair[data-sel="name"] [data-m="name"], .post-page .td-pair[data-sel="desc"] [data-m="desc"], .post-page .td-pair[data-sel="arg"] [data-m="arg"], .post-page .td-pair[data-sel="type"] [data-m="type"] { background: color-mix(in srgb, var(--k) 32%, transparent); box-shadow: 0 0 0 1.5px var(--k); }
-.post-page .td-pair[data-sel="name"] { --k: var(--td-human); } .post-page .td-pair[data-sel="desc"] { --k: var(--td-model); } .post-page .td-pair[data-sel="arg"] { --k: var(--td-code); } .post-page .td-pair[data-sel="type"] { --k: var(--td-bad); }
-.post-page .td-pair[data-sel="all"] [data-m="name"] { background: color-mix(in srgb, var(--td-human) 30%, transparent); box-shadow: 0 0 0 1.5px var(--td-human); }
-.post-page .td-pair[data-sel="all"] [data-m="desc"] { background: color-mix(in srgb, var(--td-model) 30%, transparent); box-shadow: 0 0 0 1.5px var(--td-model); }
-.post-page .td-pair[data-sel="all"] [data-m="arg"] { background: color-mix(in srgb, var(--td-code) 30%, transparent); box-shadow: 0 0 0 1.5px var(--td-code); }
-.post-page .td-pair[data-sel="all"] [data-m="type"] { background: color-mix(in srgb, var(--td-bad) 30%, transparent); box-shadow: 0 0 0 1.5px var(--td-bad); }
-.post-page .td-pair[data-sel="hid"] [data-m="hid"] { box-shadow: 0 0 0 1.5px var(--fg-neutral); background: color-mix(in srgb, var(--fg-neutral) 18%, transparent); }
-.post-page .td-pair[data-sel] .td-pane.fn [data-m="gone"] { opacity: 1; }
-.post-page .td-pair[data-sel="hid"] [data-m="gone"] { opacity: .35; text-decoration: line-through; }
-.post-page .td-note { margin: 14px 0 0; font-size: 14px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
-@media (max-width: 900px) { .post-page .td-pair { grid-template-columns: minmax(0, 1fr); } }
-
-/* 반환 크기 */
-.post-page .td-win { margin-top: 28px; }
-.post-page .td-wbar { position: relative; height: 40px; border-radius: 10px; background: var(--bg-base); border: 1.5px solid var(--line-strong); overflow: hidden; }
-.post-page .td-wbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--td-model); width: 0; transition: width .5s cubic-bezier(.2,.7,.2,1), background .4s; }
-.post-page .td-wbar i.over { background: var(--td-bad); }
-.post-page .td-wbar .lim { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg-strong); }
-.post-page .td-wl { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--fg-neutral); margin-top: 6px; }
-.post-page .td-rows { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 24px; }
-.post-page .td-ex { border-radius: 12px; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); padding: 12px 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; max-height: 240px; overflow: hidden; }
-@media (max-width: 900px) { .post-page .td-rows { grid-template-columns: minmax(0, 1fr); } }
-
-/* 사용자 토글 */
-.post-page .td-checks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; } .post-page .td-checks .td-s + .td-s::before { content: none; } @media (max-width: 900px) { .post-page .td-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.post-page .td-run3 { display: grid; gap: 22px; }
-.post-page .td-run3 .td-s { padding: 10px 14px; }
-.post-page .td-run3 .td-s + .td-s::before { top: -18px; }
-.post-page .td-sides { display: grid; grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr); gap: 0 16px; }
-.post-page .td-sd h5 { margin: 0 0 12px; font-size: 13px; color: var(--fg-neutral); }
-.post-page .td-sd .td-s + .td-s { margin-top: 18px; } .post-page .td-sd .td-s + .td-s::before { top: -17px; }
-.post-page .td-wall { background: repeating-linear-gradient(180deg, var(--line-strong) 0 6px, transparent 6px 11px); }
-@media (max-width: 900px) { .post-page .td-sides { grid-template-columns: minmax(0, 1fr); gap: 20px; } .post-page .td-wall { height: 2px; background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 11px); } }
+.post-page .td-tc1 { --k: var(--td-human); } .post-page .td-tc2 { --k: var(--td-model); } .post-page .td-tc3 { --k: var(--td-code); }
+.post-page .td-note { margin: 12px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .td-pre { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; color: var(--fg-strong); background: var(--bg-subtle); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; white-space: pre-wrap; margin: 10px 0 0; }
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="td-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="td-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="td-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="td-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="td-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="td-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="td-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="td-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="td-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
 <div class="td">
   <section class="td-hero">
     <div class="td-wrap">
       <div class="td-h-grid">
-        <h1 class="td-h-title">모델이 도구를 잘못 고르는 이유는 설명서에 있다</h1>
         <div class="td-h-lede">
+          <h1>모델이 도구를 잘못 고르는 이유는 설명서에 있다</h1>
           <p>식당 키오스크에서 메뉴 이름만 "세트"라고 적혀 있고 설명이 없으면 무엇을 눌러야 할지 모릅니다. 사진과 구성 설명이 있어야 원하는 메뉴를 고릅니다.</p>
-          <p>모델이 도구를 고를 때도 같은 일이 생깁니다. 모델은 함수 코드를 볼 수 없고 도구의 이름과 설명과 인자 설명만 읽고 고릅니다. 모델이 엉뚱한 도구를 부르면 모델의 성능을 의심하기 쉽지만 먼저 확인할 곳은 도구의 설명서입니다.</p>
-          <p>그림에서는 도구마다 설명이 얼마나 넓은 범위를 차지하는지 원으로 그렸습니다. 질문(Q)이 원 두 개 안에 들어가면 그 둘이 후보(질문에 쓸 수 있어 보이는 도구)가 되어 모델은 둘 사이에서 망설입니다.</p>
+          <p>모델이 도구를 고를 때도 같은 일이 생깁니다. 모델은 함수 코드를 볼 수 없고 도구의 이름과 설명과 인자 설명만 읽고 고릅니다. 모델이 엉뚱한 도구를 부르면 모델의 성능부터 의심하기 쉽지만 먼저 도구의 설명서를 확인해야 합니다.</p>
+          <p>그림은 도구마다 설명이 차지하는 범위를 원으로 그렸습니다. 질문(Q)이 원 두 개 안에 들어가면 그 둘이 후보(질문에 쓸 수 있어 보이는 도구)가 되어 모델은 둘 사이에서 망설입니다.</p>
         </div>
         <div class="td-h-fig" data-figure data-thumb data-td-venn>
-          <div class="td-venn">
-            <div class="td-ctrl"><span>설명</span>
-              <div class="td-seg" role="group" aria-label="설명 상태">
-                <button type="button" data-td-d="vague" aria-pressed="true">부실한 설명</button>
-                <button type="button" data-td-d="good" aria-pressed="false">충실한 설명</button>
-              </div></div>
-            <div class="td-ctrl"><span>질문</span>
-              <div class="td-seg" role="group" aria-label="질문 고르기">
-                <button type="button" data-td-qq="0" aria-pressed="true">VPN이 안 붙어요</button>
-                <button type="button" data-td-qq="1" aria-pressed="false">T-1042 어떻게 됐어요?</button>
-                <button type="button" data-td-qq="2" aria-pressed="false">내가 연 티켓 보여 줘</button>
-              </div></div>
-            <div class="td-vstage" data-td-stage></div>
-            <p class="td-verdict" data-td-verdict></p>
-            <div class="td-tcards" data-td-cards></div>
-          </div>
+          <div class="td-ctrl"><span>설명</span>
+            <div class="td-seg" role="group" aria-label="설명 상태">
+              <button type="button" data-td-d="vague" aria-pressed="true">부실한 설명</button>
+              <button type="button" data-td-d="good" aria-pressed="false">충실한 설명</button>
+            </div></div>
+          <div class="td-ctrl"><span>질문</span>
+            <div class="td-seg" role="group" aria-label="질문 고르기">
+              <button type="button" data-td-qq="0" aria-pressed="true">VPN이 안 붙어요</button>
+              <button type="button" data-td-qq="1" aria-pressed="false">T-1042 어떻게 됐어요?</button>
+              <button type="button" data-td-qq="2" aria-pressed="false">내가 연 티켓 보여 줘</button>
+            </div></div>
+          <svg class="td-scene td-nar" data-td-vsvg viewBox="0 0 460 430" role="img" aria-label="설명 범위 원 그림. 도구 세 개의 설명이 차지하는 범위가 원으로 그려져 있다. 설명이 부실하면 원이 커서 서로 겹치고 질문 Q가 원 여러 개 안에 들어가 모델이 망설인다. 설명이 충실하면 원이 작아져 Q가 한 원에만 들어간다."></svg>
+          <p class="td-verdict" data-td-verdict></p>
+          <p class="td-lbl" style="margin:14px 0 0;font-size:13.5px;font-weight:700;color:var(--fg-neutral)">도구 설명서에 적힌 설명(모델이 읽는 글)</p>
+          <div class="td-tcards" data-td-cards></div>
         </div>
       </div>
     </div>
@@ -232,8 +222,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="td-head">
         <h2>함수 하나가 설명서 한 장이 됩니다</h2>
         <div>
-          <p>LangChain에서는 함수 위에 <code>@tool</code>을 붙이면 도구가 됩니다. 이때 모델에게는 도구의 설명서가 갑니다. 이름과 설명과 인자 설명을 JSON으로 적은 도구 정의입니다. 함수의 어느 부분이 설명서의 어느 칸이 되는지는 정해져 있습니다. 함수 이름은 도구 이름이 되고 docstring(함수 맨 위의 설명 글)은 도구 설명이 되며 타입 힌트(<code>ticket_id: str</code> 같은 변수 종류 표시)는 인자의 종류가 됩니다.</p>
-          <p>아래에서 같은 색 부분끼리 짝입니다. 설명서의 <code>input_schema</code>는 인자의 모양을 적는 칸이고 <code>required</code>는 꼭 넣어야 하는 인자 목록입니다. 설명서는 요청에 실제로 실리는 도구 정의를 줄여 옮긴 것입니다.</p>
+          <p>LangChain에서는 함수 위에 <code>@tool</code>을 붙이면 도구가 됩니다. 이때 모델에게는 도구의 설명서가 갑니다. 이름과 설명과 인자 설명을 JSON으로 적은 도구 정의입니다. 함수 이름은 도구 이름이 되고 docstring(함수 맨 위의 설명 글)은 도구 설명이 되며 타입 힌트(<code>ticket_id: str</code> 같은 변수 종류 표시)는 인자의 종류가 됩니다.</p>
+          <p>그림에서 같은 색 부분끼리 짝입니다. 설명서의 <code>input_schema</code>는 인자의 모양을 적는 칸이고 <code>required</code>는 꼭 넣어야 하는 인자 목록입니다. 설명서는 요청에 실제로 실리는 도구 정의를 줄여 옮긴 것입니다.</p>
         </div>
       </div>
       <div style="margin-top:40px" data-figure>
@@ -247,35 +237,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <button type="button" data-td-sel="hid" aria-pressed="false">runtime 인자</button>
           </div>
         </div>
-        <div class="td-pair" data-td-pair data-sel="all">
-          <pre class="td-pane fn"><h5>코드</h5>@tool(parse_docstring=True)
-def <span data-m="name">get_ticket</span>(ticket_id: <span data-m="type">str</span>, <span data-m="gone">runtime: ToolRuntime</span>) -> str:
-    """<span data-m="desc">티켓 번호로 처리 상태와 도착 예정일을 조회한다.
-    번호를 알 때만 쓴다. 번호를 모르면 list_my_tickets를 먼저 쓴다.</span>
-
-    Args:
-        ticket_id: <span data-m="arg">T-1042 같은 티켓 번호.</span>
-    """</pre>
-          <pre class="td-pane menu"><h5>모델이 받는 설명서 (요청의 tools 칸)</h5>{
-  "name": "<span data-m="name">get_ticket</span>",
-  "description": "<span data-m="desc">티켓 번호로 처리 상태와 도착 예정일을 조회한다. 번호를 알 때만 쓴다. 번호를 모르면 list_my_tickets를 먼저 쓴다.</span>",
-  "input_schema": {
-    "properties": {
-      "ticket_id": {
-        "type": "<span data-m="type">string</span>",
-        "description": "<span data-m="arg">T-1042 같은 티켓 번호.</span>"
-      }
-    },
-    "required": ["ticket_id"]
-  }
-  <span data-m="hid">(runtime 인자는 여기에 없음)</span>
-}</pre>
-        </div>
+        <svg class="td-scene td-nar" data-td-pair viewBox="0 0 460 680" role="img" aria-label="대응 그림. 위의 함수 코드에서 이름과 설명과 인자 설명과 타입 힌트가 색 줄을 타고 아래의 모델이 받는 설명서로 옮겨 간다. runtime 인자는 설명서에 옮겨지지 않고 벽에 막힌다."></svg>
         <p class="td-note" data-td-pnote></p>
         <p class="td-cap">설명서는 langchain 1.4와 langchain-anthropic 1.7로 실제 요청을 확인해 줄여 옮긴 것입니다. docstring의 <code>Args</code> 칸은 <code>parse_docstring=True</code>를 줄 때 인자 설명으로 읽힙니다.</p>
       </div>
-      <p class="td-cap td-mobhint">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
-      <div class="td-codepair">
+      <div class="td-codepair" style="margin-top:40px">
         <div class="cp-code">
 <pre data-title="tools.py" data-hl="7-8,9-10,13"><code class="language-python">from langchain.tools import tool
 
@@ -295,7 +261,7 @@ def get_ticket(ticket_id: str) -> str:
         </div>
         <div class="cp-notes">
 <ol class="pg-code-notes">
-  <li><b>이름</b>은 함수 이름을 그대로 가져와 도구 이름으로 씁니다. <code>get_ticket</code>처럼 동사로 시작하고 영문 소문자와 밑줄로 쓰면 회사마다 호환이 잘 된다며 LangChain 문서가 이 방식을 권합니다. 다른 이름을 쓰고 싶으면 <code>@tool("이름")</code>으로 바꿉니다.</li>
+  <li><b>이름</b>은 함수 이름을 그대로 씁니다. <code>get_ticket</code>처럼 동사로 시작하고 영문 소문자와 밑줄로 쓰면 회사마다 호환이 잘 된다고 LangChain 문서가 권합니다. 다른 이름을 쓰고 싶으면 <code>@tool("이름")</code>으로 바꿉니다.</li>
   <li><b>설명</b>은 모델이 이 도구를 언제 쓸지 고르는 가장 큰 단서입니다. 하는 일뿐 아니라 쓸 때와 쓰지 않을 때를 함께 적습니다. 위 예시는 번호를 모를 때 다른 도구로 보냅니다.</li>
   <li><b>인자 설명</b>은 <code>Args:</code> 칸에 적으면 인자마다 붙습니다. 값의 예시(<code>T-1042</code>)를 함께 적으면 모델이 형식을 맞춰 씁니다.</li>
   <li><b>타입 힌트</b>가 인자의 종류를 정합니다. LangChain 문서는 타입 힌트가 필수라고 안내합니다. 힌트가 없으면 어떤 값을 넣을지 모델에게 알려 줄 수 없습니다.</li>
@@ -305,16 +271,36 @@ def get_ticket(ticket_id: str) -> str:
     </div>
   </section>
 
-  <div class="td-lab">
+  <section class="td-sec">
     <div class="td-wrap">
-      <div class="td-labtop">
+      <div class="td-head">
+        <h2>도구 이름이 비슷하면 합치거나 서비스 이름을 붙입니다</h2>
+        <div>
+          <p>설명이 겹치는 도구가 여럿이면 모델은 어느 것을 불러야 할지 헷갈립니다. Anthropic은 도구를 만들 때 겹치는 도구를 합치거나 이름 앞에 서비스 이름을 붙여 구분하라고 권합니다. 버튼으로 두 방법을 비교해 보세요.</p>
+          <div class="td-ctrl"><div class="td-seg" role="group" aria-label="정리 방법">
+            <button type="button" data-td-mg="before" aria-pressed="true">그대로 두기</button>
+            <button type="button" data-td-mg="merge" aria-pressed="false">하나로 합치기</button>
+            <button type="button" data-td-mg="prefix" aria-pressed="false">서비스 이름 붙이기</button>
+          </div></div>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <svg class="td-scene td-nar" data-td-mgsvg viewBox="0 0 460 380" role="img" aria-label="도구 이름 정리 그림. 비슷한 도구 이름 세 개가 겹쳐 있어 질문이 어디로 갈지 모른다. 하나로 합치면 질문이 한 도구로 간다. 서비스 이름을 붙이면 세 도구가 서로 다른 칸으로 갈린다."></svg>
+        <p class="td-verdict" data-td-mgv style="text-align:center"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="td-sec">
+    <div class="td-wrap">
+      <div class="td-head">
         <h2>도구가 돌려주는 글은 필요한 만큼만 돌려줍니다</h2>
         <div>
           <p>도구가 돌려준 결과는 모델이 다음 호출 때 읽는 글입니다. 데이터베이스 한 줄을 통째로 돌려주면 모델이 쓰지 않을 칸까지 읽을 글이 되어 컨텍스트(모델이 한 번에 볼 수 있는 글의 양)를 차지합니다.</p>
-          <p>Anthropic은 도구가 모델에게 꼭 필요한 정보만 돌려주라고 권하고 Claude Code에서는 도구 응답을 기본 25,000토큰으로 제한한다고 밝혔습니다. 아래에서 티켓을 여러 개 조회할 때 응답 방식에 따라 컨텍스트가 얼마나 차는지 확인합니다.</p>
+          <p>Anthropic은 도구가 모델에게 꼭 필요한 정보만 돌려주라고 권하고 Claude Code에서는 도구 응답을 기본 25,000토큰으로 제한한다고 밝혔습니다. 티켓을 여러 개 조회할 때 응답 방식에 따라 컨텍스트가 얼마나 차는지 확인해 보세요.</p>
         </div>
       </div>
-      <div class="td-win" data-figure>
+      <div style="margin-top:40px" data-figure>
         <div class="td-ctrl">
           <div class="td-seg" role="group" aria-label="응답 방식">
             <button type="button" data-td-resp="full" aria-pressed="true">티켓 한 줄을 통째로</button>
@@ -322,42 +308,45 @@ def get_ticket(ticket_id: str) -> str:
           </div>
           <label>티켓 수 <input type="range" min="1" max="100" value="60" data-td-n aria-label="티켓 수"><output data-td-nout>60</output></label>
         </div>
-        <div class="td-rows">
-          <pre class="td-ex" data-td-ex></pre>
-          <div>
-            <div class="td-wbar"><i data-td-bar></i><b class="lim" style="left:12.5%"></b></div>
-            <div class="td-wl"><span>0</span><span>검은 선: 25,000토큰</span><span>20만 토큰</span></div>
-            <p style="margin:18px 0 0;font-size:15px;color:var(--fg-strong);font-weight:700" data-td-sum></p>
-          </div>
-        </div>
-        <p class="td-cap">설명을 위한 예시 값입니다. 통째로 돌려주면 티켓 한 줄에 600토큰, 필요한 칸만 돌려주면 40토큰이라고 가정했고 막대는 20만 토큰 창 기준입니다.</p>
+        <svg class="td-scene td-nar" data-td-win viewBox="0 0 460 470" role="img" aria-label="컨텍스트 창 그림. 오른쪽의 높은 유리 상자가 모델이 한 번에 볼 수 있는 글의 양이고 도구 결과가 물처럼 차오른다. 검은 선이 25,000토큰 한도다. 티켓 한 줄을 통째로 돌려주면 금방 한도를 넘고 필요한 칸만 돌려주면 한참 낮은 높이에 머문다."></svg>
+        <pre class="td-pre" data-td-ex></pre>
+        <p class="td-cap">설명을 위한 예시 값입니다. 통째로 돌려주면 티켓 한 줄에 600토큰, 필요한 칸만 돌려주면 40토큰이라고 가정했고 유리 상자는 20만 토큰 창 기준입니다.</p>
       </div>
     </div>
-  </div>
+  </section>
 
   <section class="td-sec">
     <div class="td-wrap">
       <div class="td-head">
         <h2>도구가 실패하면 기본 설정은 예외를 던집니다</h2>
         <div>
-          <p>직접 짠 루프에서는 도구 오류를 결과로 돌려주는 코드를 우리가 넣었습니다. <code>create_agent</code>에서는 기본 설정이 다릅니다. 모델이 인자를 잘못 써서 도구 함수 안에서 오류가 나면 그 예외가 그대로 밖으로 나가 Agent가 멈춥니다. 직접 돌려 보며 확인했습니다.</p>
+          <p>직접 짠 루프에서는 도구 오류를 결과로 돌려주는 코드를 우리가 넣었습니다. <code>create_agent</code>는 기본 설정이 다릅니다. 모델이 인자를 잘못 써서 도구 함수 안에서 오류가 나면 그 예외가 그대로 밖으로 나가 Agent가 멈춥니다. 직접 확인했습니다.</p>
           <p>오류를 모델에게 돌려주려면 도구 호출을 감싸는 훅(hook, 중간에 끼워 넣는 코드)을 하나 답니다. <code>@wrap_tool_call</code>로 예외를 잡아 오류 표시가 붙은 ToolMessage(도구 결과를 담는 메시지)를 만들어 돌려주면 모델이 오류 문장을 읽고 인자를 고칩니다. 오류 문장에는 무엇이 틀렸고 어떻게 고치는지 적어야 합니다.</p>
         </div>
       </div>
       <div style="margin-top:40px" data-figure>
-        <div class="td-vs">
-          <div><h3><span class="td-tag x">기본 설정</span></h3><div class="td-stack">
-            <div class="td-s m"><small>1번째 호출</small>모델이 <code>get_ticket("T1042")</code>를 요청합니다</div>
-            <div class="td-s c"><small>도구 실행</small><code>ValueError: T1042 티켓이 없습니다…</code></div>
-            <div class="td-s x"><small>Agent 중단</small>예외가 밖으로 나가고 사용자는 답을 받지 못합니다</div></div></div>
-          <div><h3><span class="td-tag c">wrap_tool_call로 감싸면</span></h3><div class="td-stack">
-            <div class="td-s m"><small>1번째 호출</small>모델이 <code>get_ticket("T1042")</code>를 요청합니다</div>
-            <div class="td-s c"><small>도구 실행 → 오류 결과(status: error)</small>"T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."</div>
-            <div class="td-s m"><small>2번째 호출</small>모델이 인자를 <code>"T-1042"</code>로 고칩니다</div>
-            <div class="td-s c"><small>도구 실행</small>T-1042: 부품 대기, 도착 예정 10월 18일</div></div></div>
-        </div>
+        <svg class="td-scene td-nar" viewBox="0 0 460 400" role="img" aria-label="두 도로 비교. 위쪽 기본 설정 도로는 도구 안의 오류가 밖으로 나가 Agent가 멈춘다. 아래쪽은 도구를 방패인 wrap_tool_call이 감싸서 오류를 쪽지로 바꿔 모델에게 돌려주고 모델이 인자를 고쳐 다시 도구를 거쳐 깃발에 도착한다.">
+          <text x="10" y="26" font-size="17" class="t-s" style="fill:var(--td-bad)">기본 설정</text>
+          <path d="M50 76 H270" class="td-rail"/>
+          <use href="#td-ic-robot" x="26" y="52" width="48" height="48" style="color:var(--td-model)"/><text x="50" y="120" text-anchor="middle" font-size="15" class="t-d">모델</text>
+          <use href="#td-ic-gear" x="140" y="52" width="48" height="48" style="color:var(--td-code)"/><text x="164" y="120" text-anchor="middle" font-size="15" class="t-d">도구</text>
+          <use href="#td-ic-bolt" x="206" y="30" width="38" height="38" style="color:var(--td-bad)"/>
+          <polygon points="440,48 452,70 476,62 462,82 484,96 458,100 458,124 440,104 422,124 422,100 396,96 418,82 404,62 428,70" fill="var(--td-bad)" transform="translate(-122 -4)"/>
+          <text x="326" y="150" text-anchor="middle" font-size="15" class="t-s">Agent 중단</text><text x="326" y="170" text-anchor="middle" font-size="15" class="t-d">사용자는 답을 못 받음</text>
+          <line x1="10" y1="190" x2="450" y2="190" class="ln" stroke-dasharray="4 8"/>
+          <text x="10" y="220" font-size="17" class="t-s" style="fill:var(--td-code)">wrap_tool_call로 감싸면</text>
+          <path d="M44 276 H410" class="td-rail"/>
+          <use href="#td-ic-robot" x="22" y="252" width="44" height="44" style="color:var(--td-model)"/><text x="44" y="318" text-anchor="middle" font-size="15" class="t-d">모델</text>
+          <circle cx="120" cy="274" r="38" fill="color-mix(in srgb, var(--td-code) 10%, var(--bg-base))" stroke="var(--td-code)" stroke-width="3" stroke-dasharray="6 4"/>
+          <use href="#td-ic-gear" x="100" y="254" width="40" height="40" style="color:var(--td-code)"/><text x="120" y="332" text-anchor="middle" font-size="15" class="t-d">도구 + 방패</text>
+          <use href="#td-ic-mail" x="190" y="252" width="44" height="44" style="color:var(--td-bad)"/><text x="212" y="318" text-anchor="middle" font-size="15" class="t-d">오류 쪽지</text>
+          <use href="#td-ic-robot" x="270" y="252" width="44" height="44" style="color:var(--td-model)"/><text x="292" y="318" text-anchor="middle" font-size="15" class="t-d">인자 수정</text>
+          <use href="#td-ic-flag" x="372" y="252" width="44" height="44" style="color:var(--fg-strong)"/><text x="394" y="318" text-anchor="middle" font-size="15" class="t-s">답</text>
+          <text x="230" y="362" text-anchor="middle" font-size="15" class="t-d">"T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."</text>
+        </svg>
+        <p class="td-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 get_ticket("T1042")처럼 틀린 번호를 씁니다.</p>
       </div>
-      <div class="td-codepair">
+      <div class="td-codepair" style="margin-top:44px">
         <div class="cp-code">
 <pre data-title="agent.py" data-hl="4-9,12-13,15-19"><code class="language-python"># ⑤ 도구가 실패하면 예외 대신 오류 결과로 바꾼다
 @wrap_tool_call
@@ -393,7 +382,7 @@ T-1042는 부품 대기 중입니다.</div>
 <ol class="pg-code-notes" style="counter-reset: pgc 4">
   <li><b>예외를 결과로 바꿉니다.</b> <code>handler(request)</code>가 도구를 실제로 실행합니다. 그 안에서 예외가 나면 <code>except</code>가 받아 오류 문장을 담은 ToolMessage를 대신 돌려줍니다. <code>status="error"</code>는 이 결과가 실패라는 표시입니다.</li>
   <li><b>에이전트에 달아 줍니다.</b> <code>middleware</code>는 에이전트가 도는 중간에 끼워 넣는 코드 목록입니다. 도구 호출 앞뒤를 감싸는 훅은 이 목록에 넣습니다. 훅을 더 자세히 쓰는 법은 이후 글에서 다룹니다.</li>
-  <li><b>결과를 확인합니다.</b> <code>result["messages"]</code>에는 주고받은 메시지가 순서대로 들어 있습니다. 도구 결과 메시지의 <code>status</code>가 <code>error</code>인지 <code>success</code>인지 찍어서 오류가 한 번 났다가 고쳐진 것을 확인합니다.</li>
+  <li><b>결과를 확인합니다.</b> <code>result["messages"]</code>에는 주고받은 메시지가 순서대로 들어 있습니다. 도구 결과 메시지의 <code>status</code>가 <code>error</code>인지 <code>success</code>인지 찍어 보면 오류가 한 번 났다가 고쳐진 것이 보입니다.</li>
 </ol>
         </div>
       </div>
@@ -403,26 +392,18 @@ T-1042는 부품 대기 중입니다.</div>
   <section class="td-sec">
     <div class="td-wrap td-split rev">
       <div data-figure>
-        <div class="td-ctrl" style="margin-bottom:18px"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">로그인한 사용자</span>
+        <div class="td-ctrl" style="margin-bottom:12px"><span class="td-lbl">로그인한 사용자</span>
           <div class="td-seg" role="group" aria-label="사용자 고르기">
             <button type="button" data-td-u="kim" aria-pressed="true">kim</button>
             <button type="button" data-td-u="lee" aria-pressed="false">lee</button>
           </div></div>
-        <div class="td-sides">
-          <div class="td-sd"><h5>모델 쪽 (모델이 보는 것)</h5>
-            <div class="td-s m"><small>모델이 쓴 요청서</small><code>list_my_tickets {}</code> (넘길 인자가 없음)</div>
-            <div class="td-s c"><small>모델이 받는 결과</small><code data-td-res></code></div></div>
-          <i class="td-wall" aria-hidden="true"></i>
-          <div class="td-sd"><h5>코드 쪽 (모델이 모르는 것)</h5>
-            <div class="td-s h"><small>호출할 때 코드가 넘긴 값</small><code data-td-ctx></code></div>
-            <div class="td-s h"><small>도구 안에서 꺼낸 값</small><code data-td-who></code></div></div>
-        </div>
+        <svg class="td-scene td-nar" data-td-wall viewBox="0 0 460 500" role="img" aria-label="벽 그림. 왼쪽 방의 모델은 list_my_tickets라는 요청서를 인자 없이 벽의 창구에 넣는다. 벽 너머 코드 쪽 방에서 로그인한 사용자 이름표를 붙여 티켓 목록을 찾고 결과만 창구로 돌려준다. 모델은 사용자 이름표를 볼 수 없다."></svg>
         <p class="td-cap">설명을 위한 예시 데이터입니다. 모델이 쓴 요청서는 사용자가 바뀌어도 같고 결과만 달라집니다.</p>
       </div>
       <div>
         <h2>사용자 정보는 모델에게 묻지 않고 런타임에서 꺼냅니다</h2>
-        <p>"내 티켓 목록"을 보려면 도구가 로그인한 사용자를 알아야 합니다. 이 값을 모델이 인자로 채우게 하면 모델이 다른 사람의 이름을 쓸 수도 있습니다. 모델이 쓴 값은 틀릴 수 있어서 권한이 걸린 정보는 모델 밖에서 받는 편이 안전합니다.</p>
-        <p>도구 함수에 <code>runtime: ToolRuntime</code> 인자를 달면 호출할 때 코드가 넘긴 <code>context</code>를 꺼낼 수 있습니다. LangChain 문서에 따르면 이 인자는 모델에게 숨겨집니다. 위 설명서 그림에서 <code>runtime</code>이 빠진 것과 같습니다.</p>
+        <p>"내 티켓 목록"을 보려면 도구가 로그인한 사용자를 알아야 합니다. 이 값을 모델이 인자로 채우게 하면 모델이 다른 사람의 이름을 쓸 수도 있습니다. 모델이 쓴 값은 틀릴 수 있으니 권한이 걸린 정보는 모델 밖에서 받는 편이 안전합니다.</p>
+        <p>도구 함수에 <code>runtime: ToolRuntime</code> 인자를 달면 호출할 때 코드가 넘긴 <code>context</code>를 꺼낼 수 있습니다. LangChain 문서에 따르면 이 인자는 모델에게 숨겨집니다. 위 설명서 그림에서 <code>runtime</code>이 벽에 막힌 것과 같습니다.</p>
       </div>
     </div>
     <div class="td-wrap">
@@ -473,15 +454,20 @@ T-1042가 열려 있습니다.</div>
         <h2>도구를 만들 때 확인할 것</h2>
         <div>
           <p class="td-big">모델은 코드가 아니라 설명서를 읽고 도구를 고릅니다.</p>
-          <div data-figure style="margin:8px 0 26px"><div class="td-checks">
-            <div class="td-s h"><small>이름</small>하는 일이 보이게</div>
-            <div class="td-s m"><small>설명</small>쓸 때와 쓰지 않을 때까지</div>
-            <div class="td-s c"><small>결과</small>필요한 만큼만</div>
-            <div class="td-s x"><small>오류</small>고치는 방법까지</div>
-            <div class="td-s h"><small>사용자 정보</small>runtime으로 받기</div>
-          </div></div>
-          <p>비슷한 도구는 합치거나 이름 앞에 서비스 이름을 붙여 구분합니다. 다음 글에서는 이 도구를 Agent에 연결해 루프를 맡기는 <code>create_agent</code>를 알아보겠습니다.</p>
+          <p>이름, 설명, 결과, 오류, 사용자 정보까지 다섯 곳이 모두 설명서의 일부입니다. 다음 글에서는 이 도구를 Agent에 연결해 루프를 맡기는 <code>create_agent</code>를 알아보겠습니다.</p>
         </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <svg class="td-scene td-nar" viewBox="0 0 460 420" role="img" aria-label="점검표 그림. 이름은 하는 일이 보이게, 설명은 쓸 때와 쓰지 않을 때까지, 결과는 필요한 만큼만, 오류는 고치는 방법까지, 사용자 정보는 runtime으로 받는다.">
+          <path d="M50 40 V380" class="td-rail"/>
+          <g font-size="18" class="t-s">
+            <circle cx="50" cy="40" r="26" fill="var(--bg-base)" stroke="var(--td-human)" stroke-width="4"/><use href="#td-ic-paper" x="34" y="24" width="32" height="32" style="color:var(--td-human)"/><text x="100" y="36">이름</text><text x="100" y="60" font-size="15" class="t-d">하는 일이 보이게</text>
+            <circle cx="50" cy="120" r="26" fill="var(--bg-base)" stroke="var(--td-model)" stroke-width="4"/><use href="#td-ic-robot" x="34" y="104" width="32" height="32" style="color:var(--td-model)"/><text x="100" y="116">설명</text><text x="100" y="140" font-size="15" class="t-d">쓸 때와 쓰지 않을 때까지</text>
+            <circle cx="50" cy="200" r="26" fill="var(--bg-base)" stroke="var(--td-code)" stroke-width="4"/><use href="#td-ic-gear" x="34" y="184" width="32" height="32" style="color:var(--td-code)"/><text x="100" y="196">결과</text><text x="100" y="220" font-size="15" class="t-d">필요한 만큼만</text>
+            <circle cx="50" cy="280" r="26" fill="var(--bg-base)" stroke="var(--td-bad)" stroke-width="4"/><use href="#td-ic-mail" x="34" y="264" width="32" height="32" style="color:var(--td-bad)"/><text x="100" y="276">오류</text><text x="100" y="300" font-size="15" class="t-d">고치는 방법까지</text>
+            <circle cx="50" cy="360" r="26" fill="var(--bg-base)" stroke="var(--td-human)" stroke-width="4"/><use href="#td-ic-check" x="34" y="344" width="32" height="32" style="color:var(--td-human)"/><text x="100" y="356">사용자 정보</text><text x="100" y="380" font-size="15" class="t-d">runtime으로 받기</text>
+          </g>
+        </svg>
       </div>
     </div>
   </section>
@@ -490,13 +476,13 @@ T-1042가 열려 있습니다.</div>
     <div class="td-wrap">
       <div class="td-head">
         <h2>참고 자료</h2>
-        <ul class="td-refs">
+        <details><summary>출처 5개 펼치기</summary><ul class="td-refs">
           <li><a href="https://docs.langchain.com/oss/python/langchain/tools">Tools</a>, LangChain: @tool, docstring과 타입 힌트, args_schema, ToolRuntime, runtime 인자가 모델에게 숨겨진다는 설명</li>
           <li><a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in">Built-in middleware</a>, LangChain: 도구 오류를 ToolMessage로 돌려주는 미들웨어 설명</li>
           <li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for agents</a>, Anthropic: 도구 수·겹침, 높은 정보량의 응답, 오류 메시지, 설명 작성법</li>
           <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Define tools</a>, Anthropic: 도구 설명을 상세히 쓰라는 안내와 이름 규칙</li>
           <li><a href="https://pypi.org/project/langchain/">langchain 1.4.6</a>, <a href="https://pypi.org/project/langchain-core/">langchain-core 1.6.11</a>, PyPI</li>
-        </ul>
+        </ul></details>
       </div>
     </div>
   </section>
@@ -531,37 +517,52 @@ T-1042가 열려 있습니다.</div>
     cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
   }, { signal }));
 
-  /* 히어로: 설명 범위 원 */
-  const stage = $("[data-td-stage]"), verdict = $("[data-td-verdict]"), cards = $("[data-td-cards]");
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-td-step]", st), fig = $("[data-td-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--td-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--td-model)", code: "var(--td-code)", human: "var(--td-human)", bad: "var(--td-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 설명 범위 벤 다이어그램 ───── */
+  const vs = $("[data-td-vsvg]"), verdict = $("[data-td-verdict]"), cards = $("[data-td-cards]");
   const TOOLS = [
-    { n: "search_faq", cls: "td-tc1", vague: "검색", good: "자주 묻는 문제(와이파이·VPN·프린터)의 해결법을 찾는다. 티켓 조회에는 쓰지 않는다." },
-    { n: "get_ticket", cls: "td-tc2", vague: "조회", good: "티켓 번호로 처리 상태를 조회한다. 번호를 알 때만 쓴다." },
-    { n: "list_my_tickets", cls: "td-tc3", vague: "목록", good: "로그인한 사용자가 연 티켓 번호 목록을 돌려준다." },
+    { n: "search_faq", col: C.human, cls: "td-tc1", c: [140, 150], vague: "검색한다", good: "자주 묻는 문제(와이파이·VPN·프린터)의 해결법을 찾는다. 티켓 조회에는 쓰지 않는다." },
+    { n: "get_ticket", col: C.model, cls: "td-tc2", c: [320, 150], vague: "조회한다", good: "티켓 번호로 처리 상태를 조회한다. 번호를 알 때만 쓴다." },
+    { n: "list_my_tickets", col: C.code, cls: "td-tc3", c: [230, 290], vague: "목록을 본다", good: "로그인한 사용자가 연 티켓 번호 목록을 돌려준다." },
   ];
-  const QUES = [{ t: 0, label: "VPN이 안 붙어요" }, { t: 1, label: "T-1042 어떻게 됐어요?" }, { t: 2, label: "내가 연 티켓 보여 줘" }];
-  let dmode = "vague", qi = 0;
-  const stageEls = TOOLS.map((t) => { const c = document.createElement("div"); c.className = "td-vc " + t.cls; const l = document.createElement("span"); l.className = "td-vl " + t.cls; l.textContent = t.n; stage.append(c, l); return { c, l }; });
-  const dot = document.createElement("div"); dot.className = "td-vd"; dot.textContent = "Q"; stage.append(dot);
-  function layout() {
-    const W = stage.clientWidth, H = stage.clientHeight, narrow = W < 520;
-    const d = narrow ? H * 0.3 : W * 0.26;
-    const cs = TOOLS.map((_, i) => narrow ? { x: W / 2, y: H * (0.2 + 0.3 * i) } : { x: W * (0.24 + 0.26 * i), y: H / 2 });
-    const r = dmode === "vague" ? d * 1.0 : d * 0.38;
-    stageEls.forEach((e, i) => { e.c.style.width = e.c.style.height = r * 2 + "px"; e.c.style.left = cs[i].x + "px"; e.c.style.top = cs[i].y + "px"; e.l.style.left = (narrow ? 78 : cs[i].x) + "px"; e.l.style.top = (narrow ? cs[i].y - 10 : H - 30) + "px"; });
-    const q = QUES[qi].t, dir = q === 2 ? -1 : 1, p = narrow ? { x: cs[q].x - 24, y: cs[q].y + dir * d * 0.1 } : { x: cs[q].x + dir * d * 0.1, y: cs[q].y - 16 };
-    dot.style.left = p.x + "px"; dot.style.top = p.y + "px";
-    const hit = cs.map((c) => Math.hypot(c.x - p.x, c.y - p.y) < r);
-    stageEls.forEach((e, i) => { e.c.classList.toggle("off", !hit[i]); e.c.style.borderWidth = hit[i] ? "3px" : "2px"; });
+  const QUES = [{ p: [200, 165], t: "VPN이 안 붙어요" }, { p: [260, 165], t: "T-1042 어떻게 됐어요?" }, { p: [230, 235], t: "내가 연 티켓 보여 줘" }];
+  let dmode = "vague", qi = 0, curR = 125, rGen = 0;
+  function drawVenn(r) {
+    vs.innerHTML = ""; const q = QUES[qi].p; const hit = TOOLS.map((t) => Math.hypot(t.c[0] - q[0], t.c[1] - q[1]) < r);
+    TOOLS.forEach((t, i) => { mk("circle", { cx: t.c[0], cy: t.c[1], r, fill: t.col, "fill-opacity": hit[i] ? .22 : .08, stroke: t.col, "stroke-width": hit[i] ? 4 : 2.5, "stroke-opacity": hit[i] ? 1 : .55 }, vs); });
+    TOOLS.forEach((t, i) => { const ty = t.c[1] + (i === 2 ? 56 : -(Math.min(r, 70)) - 10); txt(vs, t.c[0], i === 2 ? t.c[1] + 4 : t.c[1] + 4, t.n, { "font-size": 15, "text-anchor": "middle", class: "t-s mono", style: `fill:${t.col}` }); });
+    mk("circle", { cx: q[0], cy: q[1], r: 13, fill: "var(--fg-strong)", stroke: "var(--bg-base)", "stroke-width": 3 }, vs); txt(vs, q[0], q[1] + 5, "Q", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" });
     const names = TOOLS.filter((_, i) => hit[i]).map((t) => t.n);
-    verdict.innerHTML = names.length === 1 ? `<span class="td-tag c">후보 1개</span>${names[0]}만 해당하니 고르기 쉽습니다.` : `<span class="td-tag x">후보 ${names.length}개</span>${names.join(" · ")} 모두 질문에 쓸 수 있어 보여서 모델이 망설입니다.`;
+    verdict.innerHTML = names.length === 1 ? `<span class="td-tag c">후보 1개</span> ${names[0]}만 해당하니 고르기 쉽습니다.` : `<span class="td-tag x">후보 ${names.length}개</span> ${names.join(" · ")} 모두 질문에 쓸 수 있어 보여서 모델이 망설입니다.`;
     cards.innerHTML = TOOLS.map((t) => `<div class="td-tcard ${t.cls}"><b>${t.n}</b>${esc(dmode === "vague" ? t.vague : t.good)}</div>`).join("");
   }
-  $$("[data-td-d]").forEach((b) => b.addEventListener("click", () => { dmode = b.dataset.tdD; press("[data-td-d]", b); layout(); }, { signal }));
-  $$("[data-td-qq]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.tdQq; press("[data-td-qq]", b); layout(); }, { signal }));
-  addEventListener("resize", layout, { passive: true, signal });
-  layout();
+  async function setVenn() { const my = ++rGen, from = curR, to = dmode === "vague" ? 125 : 62; await tween(500, (t) => { if (my === rGen) { curR = from + (to - from) * t; drawVenn(curR); } }); curR = to; }
+  $$("[data-td-d]").forEach((b) => b.addEventListener("click", () => { dmode = b.dataset.tdD; press("[data-td-d]", b); setVenn(); }, { signal }));
+  $$("[data-td-qq]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.tdQq; press("[data-td-qq]", b); drawVenn(curR); }, { signal }));
+  drawVenn(curR);
 
-  /* 대응 그림 */
+  /* ───── 코드와 설명서 대응 ───── */
+  const pair = $("[data-td-pair]"), PC = { name: C.human, desc: C.model, arg: C.code, type: C.bad, hid: "var(--fg-neutral)" };
   const NOTES = {
     all: "같은 색 부분끼리 짝입니다. 파랑은 이름, 주황은 설명, 초록은 인자 설명, 빨강은 인자 종류입니다. 위 버튼으로 한 가지씩 볼 수 있습니다.",
     name: "함수 이름 get_ticket이 도구 이름이 됩니다. 모델은 이 이름과 설명으로 도구를 부릅니다.",
@@ -570,31 +571,98 @@ T-1042가 열려 있습니다.</div>
     type: "타입 힌트 str이 인자의 종류(string)가 됩니다.",
     hid: "runtime 인자는 모델에게 보이는 설명서에 없습니다. 코드가 채워 주는 인자라 모델이 알 필요가 없습니다.",
   };
-  const pair = $("[data-td-pair]");
-  const selPair = (k) => { pair.dataset.sel = k; $("[data-td-pnote]").textContent = NOTES[k]; };
-  $$("[data-td-sel]").forEach((b) => b.addEventListener("click", () => { press("[data-td-sel]", b); selPair(b.dataset.tdSel); }, { signal }));
-  selPair("all");
+  function drawPair(sel) {
+    pair.innerHTML = ""; const on = (k) => sel === "all" || sel === k, op = (k) => on(k) ? 1 : .22;
+    const chip = (p, x, y, w, k, str) => { const g = mk("g", { opacity: op(k) }, p); mk("rect", { x, y: y - 16, width: w, height: 24, rx: 6, fill: `color-mix(in srgb, ${PC[k]} 22%, var(--bg-base))`, stroke: PC[k], "stroke-width": on(k) ? 2.5 : 1 }, g); txt(g, x + 6, y + 1, str, { "font-size": 15, class: "t-s mono" }); };
+    const dim = (x, y, str) => txt(pair, x, y, str, { "font-size": 15, class: "t-d mono" });
+    box(pair, 10, 8, 440, 300, "var(--fg-neutral)", { fill: "var(--bg-subtle)", sw: 2, rx: 14 }); txt(pair, 24, 32, "내가 쓴 코드", { "font-size": 15, class: "t-s" });
+    dim(24, 60, "@tool(parse_docstring=True)");
+    dim(24, 88, "def"); chip(pair, 56, 88, 106, "name", "get_ticket"); dim(166, 88, "(");
+    dim(40, 116, "ticket_id:"); chip(pair, 138, 116, 44, "type", "str"); dim(184, 116, ",");
+    chip(pair, 40, 144, 190, "hid", "runtime: ToolRuntime"); dim(234, 144, "):");
+    dim(24, 176, "\"\"\""); chip(pair, 52, 176, 384, "desc", "티켓 번호로 처리 상태와 도착 예정일을 조회한다.");
+    chip(pair, 52, 204, 384, "desc", "번호를 알 때만 쓴다. 모르면 list_my_tickets 먼저.");
+    dim(24, 236, "Args:"); dim(40, 262, "ticket_id:"); chip(pair, 140, 262, 220, "arg", "T-1042 같은 티켓 번호."); dim(24, 292, "\"\"\"");
+    // 가운데 화살표
+    mk("path", { d: "M230 316 V344", stroke: "var(--fg-neutral)", "stroke-width": 5, "stroke-linecap": "round" }, pair); mk("path", { d: "M230 356 l-12 -14 h24z", fill: "var(--fg-neutral)" }, pair);
+    txt(pair, 250, 342, "@tool이 옮겨 적음", { "font-size": 15, class: "t-s" });
+    const y0 = 372; box(pair, 10, y0, 440, 292, C.model, { fill: "color-mix(in srgb, var(--td-model) 5%, var(--bg-base))", sw: 2.5, rx: 14 }); txt(pair, 24, y0 + 26, "모델이 받는 설명서 (요청의 tools 칸)", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
+    dim(24, y0 + 56, "{ \"name\":"); chip(pair, 112, y0 + 56, 106, "name", "get_ticket");
+    dim(40, y0 + 86, "\"description\":"); chip(pair, 150, y0 + 86, 288, "desc", "티켓 번호로 처리 상태와 …(위 두 줄)");
+    dim(40, y0 + 116, "\"input_schema\": { \"properties\": {");
+    dim(56, y0 + 146, "\"ticket_id\": { \"type\":"); chip(pair, 236, y0 + 146, 78, "type", "string");
+    dim(72, y0 + 176, "\"description\":"); chip(pair, 184, y0 + 176, 236, "arg", "T-1042 같은 티켓 번호.");
+    dim(40, y0 + 206, "}}, \"required\": [\"ticket_id\"] }");
+    const hg = mk("g", { opacity: op("hid") }, pair); mk("rect", { x: 24, y: y0 + 226, width: 412, height: 50, rx: 10, fill: "none", stroke: C.bad, "stroke-width": sel === "hid" || sel === "all" ? 2.5 : 1, "stroke-dasharray": "6 5" }, hg); txt(hg, 38, y0 + 257, "runtime 인자는 설명서에 없음 (모델에게 숨김)", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
+    $("[data-td-pnote]").textContent = NOTES[sel];
+  }
+  $$("[data-td-sel]").forEach((b) => b.addEventListener("click", () => { press("[data-td-sel]", b); drawPair(b.dataset.tdSel); }, { signal }));
+  drawPair("all");
 
-  /* 반환 크기 */
-  const FULL = '{"id": "T-1042", "title": "노트북 화면 깜빡임", "status": "부품 대기", "owner_id": 4412, "owner_name": "kim", "created_at": "2026-10-02T09:14:00Z", "updated_at": "2026-10-15T17:40:12Z", "priority": 3, "labels": ["hw", "laptop"], "asset": {"tag": "NB-2291", "model": "…", "warranty": "…"}, "history": [ … 12건 …], "internal_notes": "…"}';
+  /* ───── 이름 정리 ───── */
+  const mg = $("[data-td-mgsvg]"), MGV = { before: "세 도구가 같은 일을 하는 것처럼 보여 질문이 어디로 갈지 모릅니다.", merge: "하나로 합치면 질문이 갈 곳이 하나뿐입니다.", prefix: "서비스 이름을 앞에 붙이면 같은 일이라도 어느 서비스 소속인지 갈립니다." };
+  function drawMg(k) {
+    mg.innerHTML = "";
+    mk("circle", { cx: 230, cy: 40, r: 22, fill: "var(--fg-strong)" }, mg); txt(mg, 230, 47, "Q", { "font-size": 19, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" });
+    txt(mg, 262, 46, "티켓 상태 알려줘", { "font-size": 15, class: "t-s" });
+    const set = k === "before" ? [["get_ticket", 80, 170, C.model], ["fetch_ticket", 230, 170, C.model], ["ticket_info", 380, 170, C.model]] : k === "merge" ? [["get_ticket", 230, 170, C.code]] : [["helpdesk_get_ticket", 80, 190, C.code], ["wiki_get_page", 230, 190, C.human], ["hr_get_leave", 380, 190, C.bad]];
+    set.forEach(([n, x, y, col], i) => {
+      const w = k === "prefix" ? 140 : k === "merge" ? 190 : 138; const g = mk("g", {}, mg);
+      box(g, x - w / 2, y - 22, w, 44, col, { rx: 12 }); txt(g, x, y + 5, n, { "font-size": k === "prefix" ? 15 : 15, "text-anchor": "middle", class: "t-s mono" });
+      mk("path", { d: `M230 64 C230 100 ${x} 100 ${x} ${y - 24}`, fill: "none", stroke: col, "stroke-width": 3, "stroke-dasharray": k === "before" ? "6 5" : "" }, g);
+    });
+    if (k === "before") { txt(mg, 230, 290, "?", { "font-size": 44, "text-anchor": "middle", "font-weight": 800, style: `fill:${C.bad}` }); txt(mg, 230, 320, "어느 도구가 맞는지 설명이 거의 같음", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); }
+    if (k === "merge") { txt(mg, 230, 250, "한 도구 안에서 id나 이름으로 조회", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); mk("use", { href: "#td-ic-check", x: 206, y: 270, width: 48, height: 48, style: `color:${C.code}` }, mg); }
+    if (k === "prefix") { txt(mg, 230, 270, "이름만 봐도 어느 서비스의 도구인지 갈립니다", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); mk("use", { href: "#td-ic-check", x: 206, y: 290, width: 48, height: 48, style: `color:${C.code}` }, mg); }
+    $("[data-td-mgv]").textContent = MGV[k];
+  }
+  $$("[data-td-mg]").forEach((b) => b.addEventListener("click", () => { press("[data-td-mg]", b); drawMg(b.dataset.tdMg); }, { signal }));
+  drawMg("before");
+
+  /* ───── 컨텍스트 창 ───── */
+  const win = $("[data-td-win]"); let resp = "full";
+  const FULL = '{"id": "T-1042", "title": "노트북 화면 깜빡임", "status": "부품 대기", "owner_id": 4412, "owner_name": "kim", "created_at": "2026-10-02T09:14:00Z", "updated_at": "2026-10-15T17:40:12Z", "priority": 3, "labels": ["hw", "laptop"], "asset": {"tag": "NB-2291", …}, "history": [ … 12건 …], "internal_notes": "…"}';
   const LEAN = '{"id": "T-1042", "status": "부품 대기", "eta": "10월 18일"}';
-  let resp = "full";
-  const drawWin = () => {
+  function drawWin() {
     const n = +$("[data-td-n]").value; $("[data-td-nout]").textContent = n;
-    const per = resp === "full" ? 600 : 40, total = per * n;
+    const per = resp === "full" ? 600 : 40, total = per * n; win.innerHTML = "";
+    const wx = 300, wy = 24, ww = 130, wh = 380, fillH = Math.min(1, total / 200000) * wh;
+    mk("rect", { x: wx, y: wy, width: ww, height: wh, rx: 14, fill: "var(--bg-base)", stroke: "var(--fg-neutral)", "stroke-width": 3 }, win);
+    mk("rect", { x: wx + 2, y: wy + wh - fillH, width: ww - 4, height: Math.max(0, fillH), rx: 10, fill: total > 25000 ? C.bad : C.human, opacity: .75 }, win);
+    const ly = wy + wh - wh * 25000 / 200000; mk("line", { x1: wx - 14, y1: ly, x2: wx + ww + 14, y2: ly, stroke: "var(--fg-strong)", "stroke-width": 3 }, win); txt(win, wx + 8, ly - 8, "25,000토큰 한도", { "font-size": 15, class: "t-s" });
+    txt(win, wx + ww / 2, wy + wh + 22, "모델이 한 번에 보는 창 (20만 토큰)", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    const cardsN = Math.min(n, 14), ch = resp === "full" ? 22 : 7;
+    for (let i = 0; i < cardsN; i++) { const y = 40 + i * (ch + 4); mk("rect", { x: 24, y, width: resp === "full" ? 190 : 80, height: ch, rx: 4, fill: C.model, opacity: .8 }, win); }
+    mk("path", { d: "M222 210 H284", stroke: "var(--fg-neutral)", "stroke-width": 4, "stroke-linecap": "round" }, win); mk("path", { d: "M292 210 l-14 -8 v16z", fill: "var(--fg-neutral)" }, win); txt(win, 226, 196, "쏟아짐", { "font-size": 15, class: "t-d" });
+    txt(win, 24, 24, `도구 결과 ${n}개${n > 14 ? " (14개만 그림)" : ""}`, { "font-size": 15, class: "t-s" });
+    txt(win, 24, 452, `차지하는 양: ${nf(total)}토큰` + (total > 25000 ? " · 25,000토큰 선 넘음" : ""), { "font-size": 15, class: "t-s", style: total > 25000 ? `fill:${C.bad}` : "" });
     $("[data-td-ex]").textContent = (resp === "full" ? FULL : LEAN) + `\n… 이런 줄이 ${n}개`;
-    const bar = $("[data-td-bar]"); bar.style.width = Math.min(100, total / 200000 * 100) + "%"; bar.classList.toggle("over", total > 25000);
-    $("[data-td-sum]").textContent = `도구 결과가 차지하는 양: ${nf(total)}토큰` + (total > 25000 ? " (25,000토큰 선을 넘었습니다)" : "");
-  };
+  }
   $$("[data-td-resp]").forEach((b) => b.addEventListener("click", () => { resp = b.dataset.tdResp; press("[data-td-resp]", b); drawWin(); }, { signal }));
   $("[data-td-n]").addEventListener("input", drawWin, { signal });
   drawWin();
 
-  /* 사용자 토글 */
-  const USERS = { kim: ["T-1042"], lee: ["T-1043"] };
-  const drawUser = (u) => { $("[data-td-ctx]").textContent = `context=UserContext(user_id="${u}")`; $("[data-td-who]").textContent = `runtime.context.user_id → "${u}"`; $("[data-td-res]").textContent = USERS[u].join(", "); };
-  $$("[data-td-u]").forEach((b) => b.addEventListener("click", () => { press("[data-td-u]", b); drawUser(b.dataset.tdU); }, { signal }));
-  drawUser("kim");
+  /* ───── 벽 너머 사용자 ───── */
+  const wl = $("[data-td-wall]"), USERS = { kim: "T-1042", lee: "T-1043" };
+  function drawWall(u) {
+    wl.innerHTML = "";
+    box(wl, 8, 10, 190, 470, C.model, { fill: "color-mix(in srgb, var(--td-model) 5%, var(--bg-base))", sw: 2.5, rx: 16 }); txt(wl, 103, 36, "모델 쪽", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` }); txt(wl, 103, 56, "모델이 보는 것", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    mk("use", { href: "#td-ic-robot", x: 77, y: 76, width: 52, height: 52, style: `color:${C.model}` }, wl);
+    box(wl, 22, 150, 162, 66, C.model, { rx: 12 }); txt(wl, 103, 176, "요청서", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(wl, 103, 200, "list_my_tickets {}", { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
+    txt(wl, 103, 236, "넘길 인자가 없음", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    box(wl, 22, 380, 162, 66, C.code, { rx: 12 }); txt(wl, 103, 406, "받은 결과", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(wl, 103, 430, USERS[u], { "font-size": 17, "text-anchor": "middle", class: "t-s mono" });
+    mk("rect", { x: 198, y: 10, width: 28, height: 470, rx: 6, fill: "var(--fg-strong)" }, wl); mk("rect", { x: 198, y: 170, width: 28, height: 40, fill: "var(--bg-base)" }, wl); mk("rect", { x: 198, y: 390, width: 28, height: 40, fill: "var(--bg-base)" }, wl);
+    mk("path", { d: "M184 190 H236", stroke: C.model, "stroke-width": 4, "stroke-linecap": "round" }, wl); mk("path", { d: "M236 190 l-12 -7 v14z", fill: C.model, transform: "rotate(180 236 190) translate(-24 0)" }, wl);
+    mk("path", { d: "M236 410 H184", stroke: C.code, "stroke-width": 4, "stroke-linecap": "round" }, wl); mk("path", { d: "M184 410 l12 -7 v14z", fill: C.code }, wl);
+    box(wl, 240, 10, 212, 470, C.human, { fill: "color-mix(in srgb, var(--td-human) 5%, var(--bg-base))", sw: 2.5, rx: 16 }); txt(wl, 346, 36, "코드 쪽", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` }); txt(wl, 346, 56, "모델이 모르는 것", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    box(wl, 256, 76, 180, 70, C.human, { rx: 12 }); mk("use", { href: "#td-ic-check", x: 266, y: 92, width: 30, height: 30, style: `color:${C.human}` }, wl); txt(wl, 304, 98, "호출할 때 넘긴 값", { "font-size": 15, class: "t-d" }); txt(wl, 304, 122, `user_id="${u}"`, { "font-size": 15, class: "t-s mono" });
+    box(wl, 256, 240, 180, 80, C.human, { rx: 12, dash: "6 4" }); txt(wl, 346, 266, "도구 안에서 꺼냄", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(wl, 346, 290, "runtime.context", { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); txt(wl, 346, 308, `.user_id → "${u}"`, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
+    mk("path", { d: "M346 148 V238", stroke: C.human, "stroke-width": 3, "stroke-dasharray": "5 5" }, wl);
+    mk("path", { d: "M346 322 V380 H236", fill: "none", stroke: C.human, "stroke-width": 3 }, wl);
+    txt(wl, 346, 440, `${u}가 연 티켓 찾기`, { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+  }
+  $$("[data-td-u]").forEach((b) => b.addEventListener("click", () => { press("[data-td-u]", b); drawWall(b.dataset.tdU); }, { signal }));
+  drawWall("kim");
 
   initTerms({
     err: [["cmd", "$ python agent.py"], ["wait", 800], ["line", "error T1042 티켓이 없습니다. 번호는 T-1042 같은 형식입니다."], ["wait", 400], ["line", "success T-1042: 부품 대기, 도착 예정 10월 18일"], ["type", "T-1042는 부품 대기 중입니다."]],

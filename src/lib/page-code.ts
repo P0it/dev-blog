@@ -48,7 +48,8 @@ const STYLE = `<style data-pg-code>
 }
 /* 좁은 화면에서는 가로로 밀지 않고 줄을 접는다. 이어지는 줄은 번호 칸 옆에 들여써서 한 줄이 둘로 쪼개져 보이지 않게 한다 */
 @media (max-width: 760px) {
-  .post-page .pg-code .line { display: block; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px + 4ch); text-indent: -4ch; }
+  .post-page .pg-code .line { display: inline-block; vertical-align: top; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px); text-indent: calc(-3ch - 28px); }
+  .post-page .pg-code .line::before { text-indent: 0; }
 }
 /* 해설 표지 ①② — 코드 안 배지와 해설 목록(ol.pg-code-notes)이 같은 모양 */
 .post-page .pg-code .pg-code-mark, .post-page ol.pg-code-notes > li::before {
