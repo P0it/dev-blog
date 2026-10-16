@@ -1,0 +1,469 @@
+---
+title: 일을 맡길 때와 제어권을 넘길 때는 무엇이 다를까요?
+slug: subagent-vs-handoff-langchain
+excerpt: Subagent는 총괄 Agent가 하위 Agent를 도구처럼 불러 최종 답만 돌려받고 Handoff는 상태의 단계 값을 바꿔 사용자와 말하는 Agent 자체를 바꿉니다. 두 방식을 langchain 1.4로 직접 짜서 하위 Agent의 중간 과정이 총괄에게 보이지 않는 모습과 도구 목록이 단계마다 바뀌는 모습을 그림과 코드로 확인하고 어느 쪽을 고를지 정리합니다.
+tags: [AI Agent, Multi-Agent, Subagents, Handoffs, LangChain, Python]
+category: ai
+series: ai-agent
+series_order: 18
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/subagent-vs-handoff-langchain-mvb8ep80.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 두 방식 대화 흐름 히어로(맡기기와 넘기기를 토글) + 그림|글(하위 Agent 메시지 vs 총괄이 받는 것) + 코드|터미널 + 그림 고정 스크롤리텔링(단계 값에 따라 모델 호출 틀이 바뀜) + 코드|터미널 + 고르기 장면 + 정리 | 글의 성격: 같은 전문가 분업이지만 누가 사용자와 말하느냐가 갈리는 글이라 대화선이 어디로 이어지는지 먼저 보이고, 안에서 오가는 메시지와 단계에 따라 바뀌는 호출 틀을 하나씩 겪게 한다 | 버린 후보: 두 방식의 장단점 표(그림이 아니라 표라서) -->
+<style>
+.post-page .sh {
+  --sh-human: rgb(37, 112, 235); --sh-code: rgb(16, 150, 120); --sh-model: rgb(226, 106, 28); --sh-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .sh { --sh-human: rgb(110, 165, 255); --sh-code: rgb(60, 205, 165); --sh-model: rgb(255, 150, 80); --sh-bad: rgb(255, 110, 110); }
+.post-page .sh * { box-sizing: border-box; }
+.post-page .sh-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .sh h1, .post-page .sh h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .sh h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .sh h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .sh h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .sh p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .sh b { color: var(--fg-strong); }
+.post-page .sh .nw { white-space: nowrap; }
+.post-page .sh code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .sh p.sh-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .sh-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .sh-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .sh-head > h2 { margin: 0; }
+.post-page .sh-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .sh-split.top { align-items: start; }
+.post-page .sh-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .sh-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .sh-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .sh-seg button:hover { color: var(--fg-strong); }
+.post-page .sh-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .sh-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .sh-act::before { content: "▶ "; font-size: 11px; }
+.post-page .sh-act:disabled { opacity: .4; cursor: default; }
+.post-page .sh-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .sh-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .sh-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .sh-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .sh-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .sh-tag.n { --t: var(--fg-strong); } .post-page .sh-tag.m { --t: var(--sh-model); } .post-page .sh-tag.c { --t: var(--sh-code); } .post-page .sh-tag.h { --t: var(--sh-human); } .post-page .sh-tag.x { --t: var(--sh-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .sh-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .sh-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .sh-codepair .pg-code { margin-top: 0; }
+.post-page .sh-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .sh-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .sh-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .sh-codepair.rev > .cp-code, .post-page .sh-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .sh-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .sh .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .sh ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .sh ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .sh-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .sh-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .sh-term-bar .sh-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .sh-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .sh-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-sh-blink 1s steps(1) infinite; }
+@keyframes pg-sh-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .sh-codepair, .post-page .sh-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sh-codepair > .cp-code, .post-page .sh-codepair > .cp-term, .post-page .sh-codepair > .cp-notes,
+  .post-page .sh-codepair.rev > .cp-code, .post-page .sh-codepair.rev > .cp-term, .post-page .sh-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .sh-codepair > .cp-notes, .post-page .sh-codepair.rev > .cp-notes { order: 2; } .post-page .sh-codepair > .cp-term, .post-page .sh-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .sh-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .sh-tbl th, .post-page .sh-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .sh-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .sh-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .sh-tbl code { font-size: 12.5px; }
+.post-page .sh details { margin: 0 0 24px; }
+.post-page .sh summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .sh details > .sh-in-d { padding-top: 14px; }
+.post-page .sh-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .sh-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .sh-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .sh-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .sh-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .sh-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .sh-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .sh-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .sh-tbl { font-size: 13.5px; } .post-page .sh-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .sh *, .post-page .sh *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .sh-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .sh-wrap { padding: 0 20px; }
+  .post-page .sh-head, .post-page .sh-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sh-split.rev > :first-child { order: 0; }
+  .post-page p.sh-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .sh-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .sh-lab h2 { margin-bottom: 24px; }
+.post-page .sh-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .sh-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .sh-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .sh-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .sh-stack { display: grid; gap: 8px; }
+.post-page .sh-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .sh-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .sh-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .sh-s.m { --k: var(--sh-model); } .post-page .sh-s.c { --k: var(--sh-code); } .post-page .sh-s.x { --k: var(--sh-bad); } .post-page .sh-s.h { --k: var(--sh-human); }
+.post-page .sh-s + .sh-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .sh-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .sh-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .sh-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .sh-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .sh-hero-top p { margin: 0 0 1.2em; }
+.post-page .sh-hero-top p:last-child { margin-bottom: 0; }
+.post-page .sh-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .sh-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .sh [hidden] { display: none !important; }
+
+.post-page .sh-stack { gap: 22px !important; } .post-page .sh-s + .sh-s::before { top: -19px !important; }
+.post-page .sh-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .sh-flow .sh-s { flex: 1 1 0; min-width: 0; } .post-page .sh-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .sh-flow .sh-s + .sh-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .sh-flow .sh-s { flex: 1 1 180px; } .post-page .sh-flow i.ar { display: none; } }
+
+.post-page .sh-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .sh-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .sh-nar { max-width: 520px; }
+.post-page .sh-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .sh-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .sh-scene .t-d { fill: var(--fg-neutral); }
+.post-page .sh-scene .mono { font-family: var(--font-mono); }
+.post-page .sh-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .sh-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .sh-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .sh-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .sh-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .sh-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .sh-steps { padding-bottom: 14vh; }
+.post-page .sh-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .sh-step.on { opacity: 1; }
+.post-page .sh-step h3 { font-size: 20px; }
+.post-page .sh-step p { margin: 0; }
+.post-page .sh-sfig { position: sticky; top: var(--sh-top, 96px); }
+.post-page .sh-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .sh-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .sh-story { grid-template-columns: minmax(0, 1fr); } .post-page .sh-sfig { position: static; order: -1; } .post-page .sh-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .sh-steps { padding-bottom: 0; } }
+
+.post-page .sh-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .sh-stage .sh-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .sh-lede { max-width: 780px; margin-top: 24px; }
+.post-page .sh-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .sh-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="sh-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="sh-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="sh-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="sh-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="sh-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="sh-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="sh-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="sh-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="sh-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="sh">
+  <section class="sh-hero">
+    <div class="sh-wrap">
+      <h1>일을 맡길 때와 제어권을 넘길 때는 무엇이 다를까요?</h1>
+      <div class="sh-lede">
+        <p>고객 센터에서 상담원이 환불 문의를 받았다고 해 봅니다. 상담원이 환불 담당 직원에게 물어보고 답을 전해 줄 수도 있고, 전화를 환불 담당 직원에게 돌려 고객이 직접 이야기하게 할 수도 있습니다. 앞의 것을 맡기기, 뒤의 것을 넘기기라고 합니다.</p>
+        <p>Agent 프로그램에서는 이 둘이 Subagent와 Handoff입니다. 둘 다 전문 Agent를 쓰지만 고객이 누구와 말하는지가 다릅니다. 방식을 바꿔 가며 단계를 눌러 보세요.</p>
+      </div>
+      <div class="sh-stage" data-figure data-thumb data-sh-hero>
+        <div class="sh-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">방식</span>
+          <div class="sh-seg" role="group" aria-label="방식 고르기">
+            <button type="button" data-sh-m="sub" aria-pressed="true">맡기기 (Subagent)</button>
+            <button type="button" data-sh-m="hand" aria-pressed="false">넘기기 (Handoff)</button>
+          </div>
+          <button type="button" class="sh-act" data-sh-go>처음부터 보기</button>
+        </div>
+        <svg class="sh-scene sh-nar" data-sh-hv viewBox="0 0 460 560" role="img" aria-label="대화선 그림. 맡기기에서는 사용자가 총괄 Agent하고만 말하고 총괄 Agent가 하위 Agent에게 쪽지를 보내 최종 답만 돌려받아 사용자에게 전한다. 넘기기에서는 접수 Agent가 제어권을 청구 Agent에게 넘긴 뒤 사용자가 청구 Agent와 직접 말한다."></svg>
+        <p class="sh-verdict" data-sh-hsum></p>
+        <p class="sh-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 이름과 문구는 이 글의 예제에서 따왔습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sh-sec">
+    <div class="sh-wrap sh-split rev">
+      <div data-figure>
+        <div class="sh-ctrl" style="margin-bottom:8px"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">하위 Agent가 도구를 쓴 횟수</span><div class="sh-seg" role="group" aria-label="도구 사용 횟수 고르기"><button type="button" data-sh-n="0" aria-pressed="false">0회</button><button type="button" data-sh-n="1" aria-pressed="false">1회</button><button type="button" data-sh-n="3" aria-pressed="true">3회</button></div></div>
+        <svg class="sh-scene sh-nar" data-sh-ms viewBox="0 0 460 500" role="img" aria-label="메시지 그림. 왼쪽 상자는 하위 Agent 안의 메시지 목록이고 도구를 쓸 때마다 카드가 두 장씩 늘어난다. 오른쪽 상자는 총괄 Agent가 받는 메시지로 늘 네 장이며, 하위 Agent의 최종 답 하나만 화살표로 건너온다."></svg>
+        <p class="sh-wnote" data-sh-msg></p>
+      </div>
+      <div>
+        <h2>맡기면 중간 과정은 하위 Agent 안에 남습니다</h2>
+        <p>Subagent 방식은 하위 Agent를 도구로 감싸서 총괄 Agent에게 줍니다. 총괄 Agent가 그 도구를 부르면 하위 Agent가 자기 창에서 일하고 마지막 메시지만 돌려줍니다. 중간에 어떤 도구를 몇 번 썼는지는 총괄에게 보이지 않습니다.</p>
+        <p>덕분에 총괄의 대화가 길어지지 않습니다. 대신 하위 Agent는 사용자와 직접 말하지 못하고 기본적으로 이전 호출을 기억하지 못합니다. 그래서 하위 Agent의 프롬프트에 결과를 마지막 메시지에 쓰라고 적어 두어야 합니다.</p>
+      </div>
+    </div>
+    <div class="sh-wrap" style="margin-top:44px">
+      <div class="sh-codepair">
+        <div class="cp-code">
+<pre data-title="subagent.py" data-hl="1-2,4-5,9"><code class="language-python">billing = create_agent(model, tools=[lookup_refund],
+    system_prompt="청구 전문 담당이다. 결과를 마지막 메시지에 쓴다.")  # ①
+
+@tool("billing_agent",
+      description="환불·결제 문의를 청구 전문 Agent에게 맡긴다")   # ②
+def call_billing(query: str) -> str:
+    msg = {"role": "user", "content": query}
+    r = billing.invoke({"messages": [msg]})
+    return r["messages"][-1].content               # ③ 마지막만 돌려줌
+
+main = create_agent(model, tools=[call_billing],
+    system_prompt="지원 총괄이다. 전문 Agent에게 맡긴다.")</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="sh-term" data-sh-term>
+  <div class="sh-term-bar"><span>터미널</span><button type="button" class="sh-act" data-sh-run="s">실행해 보기</button></div>
+  <div class="sh-term-out" data-sh-out aria-live="polite">$ python subagent.py
+총괄 메시지 4개: Human → AI(도구 호출) → Tool → AI
+답: 청구 담당 확인: 환불은 영업일 3일 안에 처리됩니다.</div>
+</div>
+<p class="sh-cap">출력은 예시입니다. 모의 서버로 확인한 결과이고 실제 모델의 답은 다릅니다. 코드는 <code>langchain</code> 1.4 기준이며 <code>lookup_refund</code> 도구 정의는 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>하위 Agent를 만듭니다.</b> 앞에서 배운 <code>create_agent</code>로 청구 전담 Agent를 만들었습니다. 프롬프트에 결과를 마지막 메시지에 쓰라고 적었습니다. 총괄은 그 메시지만 받기 때문입니다.</li>
+  <li><b>도구로 감쌉니다.</b> 총괄이 어느 하위 Agent를 부를지는 도구의 이름과 설명을 단서로 정합니다. 이름은 하는 일이 드러나게, 설명은 언제 쓰는지 구체적으로 적습니다.</li>
+  <li><b>마지막 메시지만 돌려줍니다.</b> <code>result["messages"][-1].content</code>가 총괄이 받는 전부입니다. 하위 Agent의 도구 호출과 생각은 여기서 끊깁니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sh-sec">
+    <div class="sh-wrap">
+      <div class="sh-head">
+        <h2>넘기면 같은 Agent의 모습이 단계에 따라 바뀝니다</h2>
+        <div>
+          <p>LangChain이 권하는 Handoff는 Agent를 여러 개 만드는 대신 Agent 하나에 단계 값을 두는 방식입니다. State에 <code>current_step</code> 칸을 두고 도구가 이 값을 바꿉니다. 미들웨어는 모델을 부르기 직전에 이 값을 읽어 시스템 프롬프트와 쓸 수 있는 도구를 갈아 끼웁니다.</p>
+          <p>사용자 눈에는 담당 직원이 바뀐 것처럼 보여도 코드에서는 같은 Agent가 옷만 바꿔 입었을 뿐입니다. 단계 값은 체크포인터에 저장되어 다음 대화에서도 이어집니다. 스크롤하며 모델 호출 틀이 바뀌는 순간을 보세요.</p>
+        </div>
+      </div>
+      <div class="sh-story" style="margin-top:40px" data-sh-story>
+        <div class="sh-steps">
+          <div class="sh-step" data-sh-step><h3>접수 단계로 모델을 부름</h3><p><code>current_step</code>이 <code>triage</code>이니 미들웨어가 접수용 프롬프트와 <code>record_issue_type</code> 도구 하나만 모델에 줍니다.</p></div>
+          <div class="sh-step" data-sh-step><h3>모델이 도구를 부름</h3><p>모델이 "청구 문제"라고 판단해 <code>record_issue_type("billing")</code>을 부릅니다. 이 도구가 단계를 바꾸는 열쇠입니다.</p></div>
+          <div class="sh-step" data-sh-step><h3>도구가 State를 바꿈</h3><p>도구는 <code>Command</code>로 <code>current_step</code>을 <code>billing</code>으로 고치고 모델이 부른 도구에 답이 있도록 <code>ToolMessage</code>도 함께 돌려줍니다.</p></div>
+          <div class="sh-step" data-sh-step><h3>다음 호출은 청구 단계 틀</h3><p>같은 Agent가 다시 모델을 부를 때 미들웨어가 청구용 프롬프트와 <code>refund_status</code> 도구로 틀을 갈아 끼웁니다.</p></div>
+        </div>
+        <div class="sh-sfig" data-sh-sfig data-figure>
+          <svg class="sh-scene sh-nar" data-sh-sv viewBox="0 0 460 580" role="img" aria-label="호출 틀 그림. 위에 State 카드가 있고 current_step 값이 triage에서 billing으로 바뀐다. 가운데 모델 호출 틀에는 시스템 프롬프트와 쓸 수 있는 도구 칸이 있는데 단계에 따라 내용이 접수용에서 청구용으로 바뀐다. 아래에는 모델이 부르는 도구가 있고 화살표가 State를 고친다."></svg>
+          <p class="sh-stat" data-sh-sstat></p>
+        </div>
+      </div>
+      <div class="sh-codepair" style="margin-top:48px">
+        <div class="cp-code">
+<pre data-title="handoff.py" data-hl="1-3,5-10,12-15"><code class="language-python">class SupportState(AgentState):                   # ① 단계를 담는 칸
+    current_step: str
+    issue_type: str
+
+@tool
+def record_issue_type(issue_type: str, runtime: ToolRuntime) -> Command:
+    return Command(update={                       # ② 도구가 State를 고친다
+        "messages": [ToolMessage(content=f"기록: {issue_type}",
+                                 tool_call_id=runtime.tool_call_id)],
+        "issue_type": issue_type, "current_step": "billing"})
+
+@wrap_model_call
+def by_step(request, handler):                    # ③ 모델 호출 직전에 갈아 끼움
+    prompt, tools = STEPS[request.state.get("current_step", "triage")]
+    return handler(request.override(
+        system_prompt=prompt.format(**request.state), tools=tools))</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="sh-term" data-sh-term>
+  <div class="sh-term-bar"><span>터미널</span><button type="button" class="sh-act" data-sh-run="h">실행해 보기</button></div>
+  <div class="sh-term-out" data-sh-out aria-live="polite">$ python handoff.py
+1턴 처음 모델이 본 도구: ['record_issue_type']
+1턴 끝: current_step = billing · issue_type = billing
+그다음 모델이 본 도구: ['refund_status']</div>
+</div>
+<p class="sh-cap">출력은 예시입니다. 모의 서버가 받은 요청에서 도구 목록을 읽어 확인했습니다. <code>STEPS</code>는 단계별 프롬프트와 도구를 묶은 사전이며 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 0">
+  <li><b>단계를 State에 둡니다.</b> <code>AgentState</code>를 이어받아 <code>current_step</code>을 더했습니다. 값이 바뀌면 다음 모델 호출의 모습이 달라집니다.</li>
+  <li><b>도구가 단계를 바꿉니다.</b> 도구가 <code>Command(update=…)</code>를 돌려주면 State가 고쳐집니다. 모델이 도구를 불렀으니 그 호출의 답으로 <code>ToolMessage</code>를 꼭 함께 넣고 <code>tool_call_id</code>를 맞춥니다. 빠지면 대화 기록이 어긋납니다.</li>
+  <li><b>미들웨어가 틀을 갈아 끼웁니다.</b> <code>wrap_model_call</code>은 모델을 부르기 직전에 실행됩니다. 단계에 맞는 프롬프트와 도구로 요청을 덮어쓰므로 모델은 그 단계에서 허용된 도구만 봅니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sh-sec">
+    <div class="sh-wrap">
+      <div class="sh-head">
+        <h2>어느 쪽을 쓸지는 사용자가 누구와 말하느냐로 정합니다</h2>
+        <div>
+          <p>여러 전문가의 결과를 모아 한 번에 답하거나 전문가를 동시에 돌려야 하면 Subagent입니다. 사용자가 접수, 청구, 배송처럼 단계를 따라 한 전문가와 이어서 대화하면 Handoff입니다. 일을 하나 골라 보세요.</p>
+          <p>예전에는 <code>langgraph-supervisor</code> 라이브러리로 총괄 Agent를 만들었습니다. LangChain의 이전 안내서는 이 패키지가 더 이상 적극적으로 관리되지 않는다고 밝히고 대신 Subagents 패턴을 권합니다. 총괄 Agent가 전문 일꾼을 도구로 부르는 방식입니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="sh-ctrl"><div class="sh-seg" role="group" aria-label="일 고르기"><button type="button" data-sh-t="0" aria-pressed="true">전문가 의견을 모아 한 번에 답</button><button type="button" data-sh-t="1" aria-pressed="false">고객이 단계를 따라 진행</button><button type="button" data-sh-t="2" aria-pressed="false">전문가 셋을 동시에 돌리기</button></div></div>
+        <svg class="sh-scene sh-nar" data-sh-pk viewBox="0 0 460 420" role="img" aria-label="고르기 그림. 왼쪽 길은 맡기기, 오른쪽 길은 넘기기이다. 고른 일에 맞는 길이 강조되고 각 길에서 사용자가 누구와 말하는지와 병렬 가능 여부가 표시된다."></svg>
+        <p class="sh-verdict" data-sh-tsay></p>
+      </div>
+      <p style="margin-top:36px">다음 글에서는 긴 일을 하는 Agent가 길을 잃지 않도록 계획을 적고 파일에 정리하는 Deep Agents를 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="sh-sec">
+    <div class="sh-wrap">
+      <div class="sh-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="sh-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langchain/multi-agent/subagents">Subagents</a>, LangChain: 하위 Agent를 도구로 감싸기, 마지막 메시지만 돌려받는 동작</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/multi-agent/handoffs">Handoffs</a>, LangChain: 단계 값, Command, ToolMessage, 미들웨어</li>
+          <li><a href="https://docs.langchain.com/oss/python/migrate/langgraph-supervisor">Migrate langgraph-supervisor</a>, LangChain: supervisor 패키지 이전 안내</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/multi-agent">Multi-agent</a>, LangChain</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="sh-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-sh-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-sh-out]", btn.closest("[data-sh-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.shRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-sh-step]", st), fig = $("[data-sh-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--sh-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--sh-model)", code: "var(--sh-code)", human: "var(--sh-human)", bad: "var(--sh-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 맡기기 vs 넘기기 ───── */
+  const hv = $("[data-sh-hv]"), hsum = $("[data-sh-hsum]"); let hm = "sub", hs = 3, hGen = 0;
+  const HSUB = ["고객이 총괄 Agent에게 환불을 묻습니다.", "총괄이 청구 하위 Agent에게 쪽지(도구 호출)로 맡깁니다.", "하위 Agent가 자기 창에서 일하고 최종 답만 돌려줍니다.", "총괄이 그 답을 고객에게 전합니다. 고객은 하위 Agent와 한 번도 말하지 않았습니다."];
+  const HHAND = ["고객이 접수 Agent에게 환불을 묻습니다.", "접수 Agent가 도구로 단계를 청구로 바꿔 제어권을 넘깁니다.", "이제 같은 Agent가 청구 모습으로 고객의 다음 말을 받습니다.", "고객이 청구 담당과 직접 대화를 이어 갑니다."];
+  function arrow(g, d, col, dash, head) { mk("path", { d, fill: "none", stroke: col, "stroke-width": 4.5, "stroke-dasharray": dash || "" }, g); if (head) mk("path", { d: head, fill: col }, g); }
+  function drawHero() {
+    hv.innerHTML = ""; const s = hs, sub = hm === "sub";
+    mk("circle", { cx: 60, cy: 280, r: 36, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 4 }, hv); mk("use", { href: "#sh-ic-mail", x: 40, y: 260, width: 40, height: 40, style: "color:var(--fg-strong)" }, hv); txt(hv, 60, 340, "고객", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+    const boxA = (y, lb, col, on) => { box(hv, 230, y, 210, 76, on ? col : "var(--line-strong)", { rx: 14, sw: on ? 4 : 2.5, dash: on ? "" : "6 5", fill: on ? `color-mix(in srgb, ${col} 10%, var(--bg-base))` : "var(--bg-base)" }); mk("use", { href: "#sh-ic-robot", x: 244, y: y + 18, width: 40, height: 40, style: `color:${on ? col : "var(--line-strong)"}` }, hv); txt(hv, 296, y + 46, lb, { "font-size": 17, class: "t-s", opacity: on ? 1 : .5 }); };
+    if (sub) {
+      boxA(60, "총괄 Agent", C.model, true); boxA(420, "청구 하위 Agent", C.code, s >= 1);
+      arrow(hv, "M100 252 C152 192 182 112 224 98", C.human, "", "M230 96 l-14 -2 l8 -12z"); txt(hv, 90, 180, "질문", { "font-size": 15, class: "t-s", style: `fill:${C.human}` });
+      if (s >= 1) { arrow(hv, "M300 140 V210", C.model, "", "M300 222 l-9 -14 h18z"); box(hv, 244, 228, 122, 46, C.model, { rx: 8, sw: 3, fill: "var(--bg-base)" }); txt(hv, 305, 258, "쪽지(query)", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); arrow(hv, "M300 276 V346", C.model, "", "M300 358 l-9 -14 h18z"); txt(hv, 316, 176, "맡김", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); }
+      if (s >= 2) { arrow(hv, "M392 420 V190", C.code, "", "M392 178 l-9 14 h18z"); txt(hv, 400, 330, "최종 답만", { "font-size": 15, class: "t-s", style: `fill:${C.code}`, transform: "rotate(90 400 330)" }); }
+      if (s >= 3) { arrow(hv, "M224 126 C178 164 156 236 106 272", C.model, "", "M100 276 l8 -13 l10 8z"); txt(hv, 176, 236, "답", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); }
+      mk("path", { d: "M96 300 C140 360 180 430 224 458", fill: "none", stroke: C.bad, "stroke-width": 3.5, "stroke-dasharray": "6 6" }, hv); mk("path", { d: "M130 346 l20 20 m0 -20 l-20 20", stroke: C.bad, "stroke-width": 5 }, hv); txt(hv, 20, 420, "직접 말할 수 없음", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
+    } else {
+      const after = s >= 2; boxA(60, "접수 모습", C.model, !after); boxA(420, "청구 모습", C.code, after);
+      arrow(hv, "M100 252 C152 192 182 112 224 98", C.human, "", "M230 96 l-14 -2 l8 -12z"); txt(hv, 90, 180, "질문", { "font-size": 15, class: "t-s", style: `fill:${C.human}` });
+      if (s >= 1) { arrow(hv, "M440 98 C470 200 470 330 440 440", C.bad, "7 6", "M436 446 l-4 -16 l-12 6z"); box(hv, 246, 224, 196, 62, C.bad, { rx: 10, sw: 3.5, fill: `color-mix(in srgb, ${C.bad} 8%, var(--bg-base))` }); txt(hv, 344, 250, "current_step", { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); txt(hv, 344, 274, "triage → billing", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }
+      if (s >= 3) { arrow(hv, "M96 300 C150 380 180 440 224 458", C.human, "", "M230 460 l-14 2 l8 12z"); arrow(hv, "M224 480 C170 470 130 400 90 316", C.code, "", "M86 310 l14 4 l-12 8z"); txt(hv, 40, 440, "직접 대화", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); }
+    }
+    hsum.textContent = (sub ? HSUB : HHAND)[s];
+  }
+  $$("[data-sh-m]").forEach((b) => b.addEventListener("click", () => { hm = b.dataset.shM; press("[data-sh-m]", b); hGen++; hs = 3; $("[data-sh-go]").disabled = false; drawHero(); }, { signal }));
+  $("[data-sh-go]").addEventListener("click", async () => { const gen = ++hGen; $("[data-sh-go]").disabled = true; for (let s = 0; s <= 3; s++) { if (gen !== hGen) return; hs = s; drawHero(); await later(reduce ? 200 : 1400); } $("[data-sh-go]").disabled = false; }, { signal });
+  drawHero();
+
+  /* ───── 메시지: 하위 Agent 안 vs 총괄이 받는 것 ───── */
+  const ms = $("[data-sh-ms]"); let nt = 3;
+  function drawMs() {
+    ms.innerHTML = ""; const cards = ["질문"]; for (let i = 0; i < nt; i++) { cards.push("도구 호출", "도구 결과"); } cards.push("최종 답");
+    box(ms, 6, 10, 206, 480, C.code, { rx: 14, sw: 3.5, fill: `color-mix(in srgb, ${C.code} 4%, var(--bg-base))` }); txt(ms, 20, 38, "하위 Agent 안", { "font-size": 17, class: "t-s" });
+    cards.forEach((c, i) => { const y = 54 + i * 52, last = i === cards.length - 1, tool = c.startsWith("도구"); box(ms, 18, y, 182, 42, last ? C.code : tool ? C.model : C.human, { rx: 8, sw: last ? 4 : 2.5, fill: `color-mix(in srgb, ${last ? C.code : tool ? C.model : C.human} 10%, var(--bg-base))` }); txt(ms, 30, y + 27, `${i + 1}  ${c}`, { "font-size": 15, class: "t-s" }); });
+    box(ms, 250, 10, 204, 480, C.model, { rx: 14, sw: 3.5, fill: `color-mix(in srgb, ${C.model} 4%, var(--bg-base))` }); txt(ms, 264, 38, "총괄이 받는 것", { "font-size": 17, class: "t-s" });
+    ["사용자 질문", "하위 Agent 부름", "도구 결과", "최종 답"].forEach((c, i) => { const y = 54 + i * 52, hi = i === 2; box(ms, 262, y, 180, 42, hi ? C.code : C.model, { rx: 8, sw: hi ? 4 : 2.5, fill: `color-mix(in srgb, ${hi ? C.code : C.model} 10%, var(--bg-base))` }); txt(ms, 274, y + 27, `${i + 1}  ${c}`, { "font-size": 15, class: "t-s" }); });
+    const ly = 54 + (cards.length - 1) * 52 + 21; mk("path", { d: `M200 ${ly} H236 V${54 + 2 * 52 + 21} H258`, fill: "none", stroke: C.code, "stroke-width": 4.5 }, ms); mk("path", { d: `M260 ${54 + 2 * 52 + 21} l-12 -8 v16z`, fill: C.code }, ms);
+    txt(ms, 264, 300, `하위 안 카드 ${cards.length}장`, { "font-size": 15, class: "t-s" }); txt(ms, 264, 326, "총괄이 받는 카드 4장", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
+    $("[data-sh-msg]").textContent = nt === 0 ? "도구를 쓰지 않아도 총괄은 최종 답 하나만 도구 결과로 받습니다." : `하위 Agent가 도구를 ${nt}번 써서 카드가 ${cards.length}장이 되어도 총괄이 받는 것은 그대로 4장입니다.`;
+  }
+  $$("[data-sh-n]").forEach((b) => b.addEventListener("click", () => { nt = +b.dataset.shN; press("[data-sh-n]", b); drawMs(); }, { signal })); drawMs();
+
+  /* ───── 호출 틀이 바뀜 (스크롤 이야기) ───── */
+  const sv = $("[data-sh-sv]"), sstat = $("[data-sh-sstat]");
+  function drawFrame(i) {
+    const k = i < 0 ? 3 : i; sv.innerHTML = ""; const bill = k >= 3, upd = k >= 2;
+    box(sv, 10, 8, 440, 84, upd ? C.bad : "var(--line-strong)", { rx: 12, sw: upd ? 4 : 2.5, fill: upd ? `color-mix(in srgb, ${C.bad} 6%, var(--bg-base))` : "var(--bg-base)" }); txt(sv, 26, 36, "State", { "font-size": 15, class: "t-d" }); txt(sv, 26, 62, "current_step", { "font-size": 17, class: "t-s mono" }); txt(sv, 190, 62, upd ? "billing" : "triage", { "font-size": 19, class: "t-s mono", style: `fill:${upd ? C.bad : "var(--fg-strong)"}` }); txt(sv, 26, 84, upd ? "issue_type: billing" : "issue_type: (비어 있음)", { "font-size": 15, class: "t-d" });
+    box(sv, 10, 120, 440, 270, bill ? C.code : C.human, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${bill ? C.code : C.human} 5%, var(--bg-base))` }); txt(sv, 26, 150, "모델 호출 틀", { "font-size": 17, class: "t-s" });
+    txt(sv, 26, 184, "시스템 프롬프트", { "font-size": 15, class: "t-d" }); box(sv, 22, 192, 416, 52, bill ? C.code : C.human, { rx: 8, sw: 2.5, fill: "var(--bg-base)" }); txt(sv, 36, 225, bill ? "청구 단계: billing 문의를 처리한다." : "접수 단계: 문의 종류를 기록한다.", { "font-size": 15, class: "t-s" });
+    txt(sv, 26, 276, "쓸 수 있는 도구", { "font-size": 15, class: "t-d" }); box(sv, 22, 284, 416, 62, bill ? C.code : C.human, { rx: 8, sw: 2.5, fill: "var(--bg-base)" }); box(sv, 36, 296, 220, 38, bill ? C.code : C.human, { rx: 8, sw: 3, fill: `color-mix(in srgb, ${bill ? C.code : C.human} 12%, var(--bg-base))` }); txt(sv, 46, 321, bill ? "refund_status" : "record_issue_type", { "font-size": 15, class: "t-s mono" });
+    if (k >= 1 && k <= 2) { box(sv, 22, 410, 416, 60, C.model, { rx: 10, sw: 4, fill: `color-mix(in srgb, ${C.model} 10%, var(--bg-base))` }); mk("use", { href: "#sh-ic-gear", x: 34, y: 422, width: 34, height: 34, style: `color:${C.model}` }, sv); txt(sv, 78, 438, "모델이 도구를 부름", { "font-size": 15, class: "t-d" }); txt(sv, 78, 460, 'record_issue_type("billing")', { "font-size": 15, class: "t-s mono" }); mk("path", { d: "M430 410 C470 380 470 130 440 70", fill: "none", stroke: C.model, "stroke-width": 4.5 }, sv); if (k === 2) { box(sv, 22, 490, 416, 46, C.code, { rx: 10, sw: 3, fill: `color-mix(in srgb, ${C.code} 10%, var(--bg-base))` }); txt(sv, 36, 520, "ToolMessage: 문의 종류 기록 (호출에 대한 답)", { "font-size": 15, class: "t-s" }); } }
+    if (k === 3) { txt(sv, 26, 440, "다음 모델 호출부터 청구용 틀이 적용됩니다", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); }
+    sstat.innerHTML = `<b>${["접수 단계", "도구 호출", "State가 바뀜", "청구 단계"][k]}</b>`;
+  }
+  story("[data-sh-story]", (i) => drawFrame(i)); drawFrame(0);
+
+  /* ───── 고르기 ───── */
+  const pk = $("[data-sh-pk]"); let ti = 0;
+  const TS = [["전문가 의견을 모아 한 번에 답", 0, "총괄이 전문가 결과를 모아 한 번에 답해야 하니 맡기기입니다. 고객은 총괄하고만 말합니다."], ["고객이 단계를 따라 진행", 1, "접수에서 청구로 이어지며 고객이 같은 전문가와 계속 말해야 하니 넘기기입니다. 단계 값이 대화 사이에도 이어집니다."], ["전문가 셋을 동시에 돌리기", 0, "하위 Agent는 동시에 부를 수 있어 맡기기가 맞습니다. 넘기기는 한 번에 한 모습만 켜져 차례로 일합니다."]];
+  const ROWS = [["고객이 말하는 상대", "총괄 Agent뿐", "지금 단계의 담당"], ["동시에 돌리기", "가능", "어려움"], ["기억하는 것", "총괄이 모두", "State의 단계 값"]];
+  function drawPick() {
+    pk.innerHTML = ""; const sel = TS[ti][1];
+    [["맡기기", C.model, 14], ["넘기기", C.code, 238]].forEach(([nm, col, x], s) => { const on = s === sel; box(pk, x, 10, 208, 396, on ? col : "var(--line-strong)", { rx: 14, sw: on ? 5 : 2.5, dash: on ? "" : "7 5", fill: on ? `color-mix(in srgb, ${col} 7%, var(--bg-base))` : "var(--bg-base)" }); mk("use", { href: "#sh-ic-" + (s === 0 ? "robot" : "flag"), x: x + 14, y: 24, width: 40, height: 40, style: `color:${on ? col : "var(--line-strong)"}` }, pk); txt(pk, x + 64, 54, nm, { "font-size": 19, class: "t-s", opacity: on ? 1 : .55 }); if (on) mk("use", { href: "#sh-ic-check", x: x + 160, y: 24, width: 34, height: 28, style: `color:${col}` }, pk);
+      ROWS.forEach((r, n) => { const y = 100 + n * 100; txt(pk, x + 14, y, r[0], { "font-size": 15, class: "t-d", opacity: on ? 1 : .55 }); txt(pk, x + 14, y + 30, r[s + 1], { "font-size": 17, class: "t-s", opacity: on ? 1 : .55, style: on ? `fill:${col}` : "" }); }); });
+    $("[data-sh-tsay]").textContent = TS[ti][2];
+  }
+  $$("[data-sh-t]").forEach((b) => b.addEventListener("click", () => { ti = +b.dataset.shT; press("[data-sh-t]", b); drawPick(); }, { signal })); drawPick();
+
+  initTerms({
+    s: [["cmd", "$ python subagent.py"], ["wait", 700], ["line", "총괄 메시지 4개: Human → AI(도구 호출) → Tool → AI"], ["type", "답: 청구 담당 확인: 환불은 영업일 3일 안에 처리됩니다."]],
+    h: [["cmd", "$ python handoff.py"], ["wait", 700], ["line", "1턴 처음 모델이 본 도구: ['record_issue_type']"], ["line", "1턴 끝: current_step = billing · issue_type = billing"], ["type", "그다음 모델이 본 도구: ['refund_status']"]],
+  });
+})();
+</script>
