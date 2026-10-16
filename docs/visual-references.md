@@ -130,6 +130,7 @@
 | [LangChain, Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) · [Anthropic, Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) | ToolStrategy/ProviderStrategy 두 길과 거절·길이 한도·숫자 범위 같은 보장 밖 사례를 문서 문장으로 확인하고, 모의 서버에 붙여 요청 본문(tools vs output_config.format)·검증 오류·재시도 메시지를 관찰한 값으로 그림을 그린다 | "양식이 보장하는 것과 못 하는 것"을 겹으로 나눠 보일 때 | 2026-10-16 | llm-structured-output-pydantic-langchain |
 | [Anthropic, Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) · [LangChain, Tools](https://docs.langchain.com/oss/python/langchain/tools) | 도구 설명이 겹치면 고르기 어렵다는 문장을 "설명 범위를 원으로 그려 질문 점이 몇 개 원에 걸리나"로 바꾼다. 함수 코드와 모델이 받는 JSON 설명서를 같은 색 부분끼리 짝짓고, 도구 오류 기본 동작과 ToolRuntime 숨김을 모의 서버로 직접 확인한다 | 설명 품질이 선택에 미치는 영향, 코드와 모델이 보는 것의 대응을 보일 때 | 2026-10-16 | ai-agent-tool-design-description-schema |
 | [LangChain, Agents](https://docs.langchain.com/oss/python/langchain/agents) · [Streaming](https://docs.langchain.com/oss/python/langchain/streaming) · [LangGraph, Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api) | 직접 짠 루프의 줄을 기능별 묶음으로 나눠 create_agent 안의 어디로 옮겨 갔는지 짝짓고(맡길 수 없는 줄 포함), stream_mode 조각·get_graph 노드·recursion_limit 단계를 모의 서버로 실행해 관찰한 값으로 그린다 | 프레임워크가 대신하는 일과 대신하지 않는 일을 가를 때 | 2026-10-16 | langchain-create-agent-loop-anatomy |
+| [LangChain, Middleware](https://docs.langchain.com/oss/python/langchain/middleware/custom) · [Guardrails](https://docs.langchain.com/oss/python/langchain/guardrails) | 훅 여섯 곳을 한 번의 실행을 편 시간 줄 위 깃발로 두고 끼운 코드를 바꿔 어느 깃발이 켜지는지 본다. before/after(지나가며 확인)와 wrap(호출을 감쌈)을 안팎 상자로 구분하고, 실행 순서(A·B)는 모의 서버 로그 순서를 양파 그림으로 옮긴다 | 코드를 끼워 넣는 지점과 순서를 보일 때 | 2026-10-17 | langchain-middleware-hooks-guardrails |
 
 ## 미확인
 
@@ -227,6 +228,9 @@
 - **모델 쪽 | 코드 쪽을 점선 벽으로 가르고 사용자 토글** (ai-agent-tool-design-description-schema) — 같은 모델 요청서(list_my_tickets {})가 사용자(kim/lee)에 따라 다른 결과를 받는 것을 모델이 모르는 값(context)과 함께 보였다
 - **직접 짠 코드 24줄을 칸 24개와 기능 카드 9장으로, 기본은 맡긴 뒤 상태** (langchain-create-agent-loop-anatomy) — 줄마다 "맡기기"를 누르면 칸이 주황에서 초록으로 바뀌고 남는 줄 수가 줄어든다. 도구 오류 처리 카드는 기본값이 예외 전파라 "맡길 수 없음"(빨강)으로 남겨 프레임워크의 한계를 같이 보였다. 정적 상태에서 초록이 하나도 없다는 지적이 나와 기본을 맡긴 뒤로 바꿨다
 - **한도는 칸으로, 정상 실행도 끊기는 한도를 슬라이더로** (langchain-create-agent-loop-anatomy) — 모델·도구가 번갈아 놓이는 단계 칸을 한도 슬라이더로 자르면 도구 두 번 쓰는 작업이 한도 5에서 끊기고 6에서 끝난다. 직접 실행해 얻은 값(한도 5 실패, 6 성공)이다
+- **한 번의 실행을 시간 줄로 펴고 끼울 곳을 깃발로** (langchain-middleware-hooks-guardrails) — before_agent·before_model·wrap_model_call·모델·after_model·wrap_tool_call·after_agent 일곱 칸을 가로로 놓고 "끼울 코드" 토글(입력 검사·개인정보 가리기·호출 제한·도구 오류·답 검사)에 따라 해당 칸에 이름표가 붙게 했다. 도구를 쓰면 before_model로 돌아가는 점선 띠를 아래에 둬 루프임을 보였다
+- **wrap 훅은 안쪽 상자를 감싼 바깥 상자로** (langchain-middleware-hooks-guardrails) — before/after(양옆 태그)와 wrap(바깥 상자가 handler 상자를 감쌈)이 정지 상태에서 같아 보인다는 Critic 지적으로 모양을 갈랐다. handler를 한 번 부름·다시 부름·부르지 않음 토글로 안쪽 상자가 변한다
+- **규칙 기반 vs 모델 기반 Guardrail은 같은 입력 세 개로 대조** (langchain-middleware-hooks-guardrails) — "해킹"이라는 낱말이 든 입력은 둘 다 막고 돌려 쓴 입력은 규칙 기반만 놓친다. 상자 나열이 표 같다는 지적을 입력 → 검문 → 결과 흐름으로 바꾼 것
 
 ## 페이지 레이아웃
 
