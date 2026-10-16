@@ -429,7 +429,7 @@ print(response.usage.total_tokens)</code></pre>
         </div>
         <div class="ag-codepair-side">
 <ol class="pg-code-notes">
-  <li><b>요청을 보낼 주소</b>입니다. 비워 두면 OpenAI로 갑니다. 같은 주문서 양식을 받는 다른 회사 API나 내 컴퓨터에 띄운 모델 서버 주소를 넣으면, 코드를 고치지 않고 모델을 바꿀 수 있습니다.</li>
+  <li><b>요청을 보낼 주소</b>입니다. 비워 두면 OpenAI로 갑니다. 같은 주문서 양식을 받는 다른 회사 API(Anthropic의 Claude 등)나 내 컴퓨터에 띄운 모델 서버 주소를 넣으면 코드를 고치지 않고 모델을 바꿀 수 있습니다.</li>
   <li><b>어떤 모델에게 시킬지</b>입니다. 코드 밖 운영체제에 저장해 두는 설정값인 <b>환경 변수</b>로 빼 두면, 코드를 고치지 않고 실행할 때 바꿀 수 있습니다. 모델마다 받는 옵션이 조금씩 다르니, 바꾼 뒤에는 한 번 돌려 봐야 합니다.</li>
   <li><b>대화 목록</b>입니다. 이 목록이 모델이 이번에 볼 수 있는 전부입니다. system 메시지를 빼면 모델은 자기가 헬프데스크 상담원인지 모른 채 답합니다.</li>
   <li><b>모델이 쓴 답</b>입니다. <code>choices</code>가 목록인 이유는 한 번에 답을 여러 개 받을 수도 있어서입니다. 보통은 첫 번째 하나만 씁니다. Python 목록은 0번부터 세서 <code>[0]</code>이 첫 번째입니다.</li>
@@ -442,6 +442,10 @@ print(response.usage.total_tokens)</code></pre>
         <details>
           <summary>OpenAI에는 Responses API도 있지 않나요?</summary>
           <p>있습니다. OpenAI는 새 프로젝트에 Responses API를 권하면서도 위에서 쓴 Chat Completions도 계속 지원합니다. 이 글은 메시지 목록을 그대로 주고받는 Chat Completions로 설명합니다. 다른 회사 모델과 로컬 모델 서버도 대부분 이 양식을 받기 때문입니다.</p>
+        </details>
+        <details>
+          <summary>Claude 모델로 부르려면?</summary>
+          <p>① 주소를 <code>https://api.anthropic.com/v1/</code>로, ② 모델을 <code>claude-opus-5-5</code> 같은 Claude 모델 이름으로 바꾸고 키를 Claude API 키로 넣으면 같은 코드로 Claude를 부를 수 있습니다. Anthropic은 이 호환 기능을 시험과 비교용으로 안내하고, 실제 서비스에는 Anthropic SDK(Messages API)를 권합니다. 이 시리즈는 다음 글부터 두 SDK를 번갈아 씁니다.</p>
         </details>
         </div>
       </div>
@@ -481,7 +485,7 @@ print(response.usage.total_tokens)</code></pre>
     <div class="ag-wrap">
       <div class="ag-two">
         <p>대화 전체를 보내면 묶음이 매번 길어지고 토큰도 늘어납니다. 대화가 길어질수록 요금이 오르고 답도 느려집니다. 모델이 한 번에 받을 수 있는 양에도 한도가 있는데, 이 한도를 <b>context window</b>라고 합니다. 한도를 넘으면 요청이 거절되므로, 오래된 대화를 지우거나 줄여서 보내야 합니다.</p>
-        <p>이번 질문만 보내면 모델은 앞에서 와이파이 이야기를 했다는 것도, 재부팅을 해 봤다는 것도 모릅니다. 대화를 기억하는 쪽은 모델이 아니라 메시지 목록을 들고 있는 <b>내 코드</b>입니다. 코드로는 목록에 한 줄씩 더해 가며 보내면 됩니다.</p>
+        <p>이번 질문만 보내면 모델은 앞에서 와이파이 이야기를 했다는 것도, 재부팅을 해 봤다는 것도 모릅니다. 대화를 기억하는 쪽은 모델이 아니라 메시지 목록을 들고 있는 <b>우리가 짠 프로그램</b>입니다. 코드로는 목록에 한 줄씩 더해 가며 보내면 됩니다.</p>
       </div>
       <div class="ag-codepair rev">
         <div>
@@ -592,7 +596,7 @@ while True:
         <ol class="ag-loop-steps">
           <li data-ag-li="0">시작: 직원의 메시지가 목록에 들어왔습니다. 모델을 부릅니다.</li>
           <li data-ag-li="1">모델이 답 대신 도구 요청서를 썼습니다. 아직 아무것도 실행되지 않았습니다.</li>
-          <li data-ag-li="2">내 코드가 요청서를 읽고 티켓 시스템을 실제로 조회해, 결과를 목록에 더했습니다.</li>
+          <li data-ag-li="2">Agent 프로그램이 요청서를 읽고 티켓 시스템을 실제로 조회해 결과를 목록에 더했습니다.</li>
           <li data-ag-li="3">목록 전체를 들고 모델을 다시 부릅니다. 한 바퀴를 돌았습니다.</li>
           <li data-ag-li="4">모델이 결과를 보고 새 티켓 대신 기존 티켓에 덧붙이기로 했습니다.</li>
           <li data-ag-li="5">코드가 메모를 실제로 추가하고 결과를 목록에 더했습니다.</li>
@@ -614,7 +618,7 @@ while True:
             <text x="95" y="288" text-anchor="middle" class="t-dim" font-size="16">"티켓 조회해 줘"</text>
             <text x="95" y="312" text-anchor="middle" class="t-dim" font-size="16">글일 뿐, 실행 전</text>
             <rect class="nd" data-nd="code" x="298" y="228" width="174" height="108" rx="14"/>
-            <text x="385" y="262" text-anchor="middle" class="t-strong" font-size="17" style="fill:var(--ag-code)">내 코드</text>
+            <text x="385" y="262" text-anchor="middle" class="t-strong" font-size="17" style="fill:var(--ag-code)">Agent 프로그램</text>
             <text x="385" y="288" text-anchor="middle" class="t-dim" font-size="16">도구를 실제로 실행</text>
             <text x="385" y="312" text-anchor="middle" class="t-dim" font-size="16">결과를 목록에 더함</text>
             <text x="240" y="178" text-anchor="middle" class="t-dim" font-size="16">바퀴마다 지시·도구 목록·</text>
@@ -630,7 +634,7 @@ while True:
       </div>
       <div class="ag-zig ag-zig-b">
         <div>
-        <p>왼쪽 아래 칸을 눈여겨보세요. 모델이 쓰는 것은 "티켓을 조회해 달라"는 <b>요청서</b>까지입니다. 이 요청서를 읽고 진짜 티켓 시스템에 접속하는 건 내 코드입니다. 이렇게 모델이 도구 사용을 요청하게 하는 기능을 <b>Tool Calling</b>이라고 합니다.</p>
+        <p>왼쪽 아래 칸을 눈여겨보세요. 모델이 쓰는 것은 "티켓을 조회해 달라"는 <b>요청서</b>까지입니다. 이 요청서를 읽고 진짜 티켓 시스템에 접속하는 건 Agent 프로그램입니다. 이렇게 모델이 도구 사용을 요청하게 하는 기능을 <b>Tool Calling</b>이라고 합니다.</p>
         <p>모델이 어떤 도구를 쓸 수 있는지 아는 것도 코드 덕분입니다. 코드가 바퀴마다 도구 이름과 설명을 적은 목록을 메시지와 함께 보내면 모델은 그 목록 안에서 고릅니다.</p>
         <p>루프는 모델이 요청서 대신 사람에게 줄 답을 쓰면 끝납니다. 끝나지 않을 때를 대비해 최대 반복 횟수도 정해 둡니다. 다음 글에서는 Tool Calling 요청서가 실제로 어떻게 생겼고 코드가 그걸 어떻게 실행하는지 알아보겠습니다.</p>
         </div>
@@ -928,7 +932,7 @@ while True:
   const LOOP = [
     { arc: null, nd: "model", add: null, note: "시작: 직원의 메시지가 목록에 들어왔습니다. 모델을 부릅니다." },
     { arc: 0, nd: "req", add: ["ast", "assistant", "요청서: search_tickets(직원=김민지)"], note: "모델이 답 대신 도구 요청서를 썼습니다. 아직 아무것도 실행되지 않았습니다." },
-    { arc: 1, nd: "code", add: ["tool", "tool", "결과: #1042, 지난주, 같은 증상"], note: "내 코드가 요청서를 읽고 티켓 시스템을 실제로 조회해, 결과를 목록에 더했습니다." },
+    { arc: 1, nd: "code", add: ["tool", "tool", "결과: #1042, 지난주, 같은 증상"], note: "Agent 프로그램이 요청서를 읽고 티켓 시스템을 실제로 조회해 결과를 목록에 더했습니다." },
     { arc: 2, nd: "model", add: null, note: "목록 전체를 들고 모델을 다시 부릅니다. 한 바퀴를 돌았습니다." },
     { arc: 0, nd: "req", add: ["ast", "assistant", "요청서: add_note(#1042, 오늘 증상)"], note: "모델이 결과를 보고 새 티켓 대신 기존 티켓에 덧붙이기로 했습니다." },
     { arc: 1, nd: "code", add: ["tool", "tool", "결과: 메모 추가됨"], note: "코드가 메모를 실제로 추가하고 결과를 목록에 더했습니다." },
