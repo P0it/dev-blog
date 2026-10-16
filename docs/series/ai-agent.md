@@ -55,7 +55,7 @@
 
 | # | 제목(가안) | 이 편의 한 질문 | 소주제 | 처음 나오는 용어 | 코드 결과물 | 선행 | 상태 |
 |---|---|---|---|---|---|---|---|
-| 4 | LangChain 첫걸음, 모델을 갈아 끼우기 | 모델을 바꿀 때마다 코드를 다 고쳐야 하나? | `init_chat_model` · Message 종류 · `ChatPromptTemplate`(짧게) · `invoke`/`stream`/`batch` · `content_blocks` · provider 교체 · LCEL 은 예전 방식(한 줄) | 프레임워크, provider, 스트리밍 | 모델 선택 가능한 호출 모듈 | 3 | 계획 |
+| 4 | GPT를 Claude로 바꾸는 데 필요한 코드 한 줄, LangChain 첫걸음 (`langchain-init-chat-model-switch-provider`) | 모델을 바꿀 때마다 코드를 다 고쳐야 하나? | `init_chat_model` · Message 종류 · `ChatPromptTemplate`(짧게) · `invoke`/`stream`/`batch` · `content_blocks` · provider 교체 · LCEL 은 예전 방식(한 줄) | 프레임워크, provider, 스트리밍 | 모델 선택 가능한 호출 모듈 | 3 | 발행 |
 | 5 | LLM 답을 정해진 모양으로 받기 | 자유로운 글을 어떻게 프로그램이 믿고 쓰는 데이터로 받나? | Pydantic 모델 · `response_format` · ToolStrategy vs ProviderStrategy · 실패와 재시도 | Structured Output, Pydantic, 스키마 검증 | 요청 의도 분류기 | 4 | 계획 |
 | 6 | 좋은 도구 만드는 법 | 모델이 도구를 잘못 고르는 건 누구 탓인가? | `@tool` · docstring=설명서, 타입힌트=스키마 · 이름·설명·반환 크기·에러 메시지 설계 · ToolRuntime·`context_schema` 로 사용자 정보 받기 | 도구 설명(description), 인자 스키마 | FAQ 검색·계산·티켓 조회 3도구 | 5 | 계획 |
 | 7 | `create_agent` 해부 | 3편의 50줄은 한 줄로 어떻게 줄어드나? | 루프를 맡기기 · `system_prompt` · 스트리밍으로 단계 보기 · recursion limit · 속은 그래프(11편 예고) | system prompt, recursion limit | 3도구 헬프데스크 Agent | 3, 6 | 계획 |

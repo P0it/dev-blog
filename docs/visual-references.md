@@ -126,6 +126,7 @@
 | [LangChain, INVALID_TOOL_RESULTS](https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS) | tool_call_id 짝이 빠졌을 때 OpenAI 가 내는 400 문장을 그대로 싣는다 | 번호표가 빠지면 요청 전체가 거절된다는 것을 실제 오류로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
 | [Anthropic, Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) · [Handling stop reasons](https://platform.claude.com/docs/en/api/handling-stop-reasons) | stop_reason 값마다 "루프가 할 일"을 표로 나눈 것을 갈림길 그림으로 바꾼다. tool_use·tool_result JSON 예시를 그림 속 카드 문구로 쓴다 | 루프의 분기를 값별로 보일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
 | [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
+| [LangChain, Models](https://docs.langchain.com/oss/python/langchain/models) · [Messages](https://docs.langchain.com/oss/python/langchain/messages) | init_chat_model·invoke·stream·batch 와 AIMessage 필드를 문서 순서대로 쓰되, 실제로 모의 서버에 두 회사 클래스를 붙여 요청 본문과 응답 필드를 관찰한 값으로 "같은 것과 다른 것"을 그린다 | 추상화 계층이 무엇을 맞춰 주고 무엇을 못 맞추는지 보일 때 | 2026-10-16 | langchain-init-chat-model-switch-provider |
 
 ## 미확인
 
@@ -212,6 +213,9 @@
 - **스크롤로 쌓이는 messages 카드 더미** (ai-agent-loop-stop-conditions) — 고정 그림 칸에 user·assistant·tool_result 카드를 미리 만들어 두고 스크롤로 한 장씩 켠다. 모바일은 마지막 상태로 다 펼치고 고정하지 않는다
 - **막대 높이와 합계는 다른 양이라고 글로 먼저 밝힌다** (ai-agent-loop-stop-conditions) — 호출별 토큰 막대와 막대 합계가 한 화면에 있으면 높이와 숫자가 어긋나 보인다는 지적이 나왔다. 막대 바로 위에 "막대 하나는 한 호출에 보낸 양, 숫자는 더한 값"을 쓴다
 - **모바일 코드 | 해설 짝은 선택자 우선순위를 맞춘다** (ai-agent-loop-stop-conditions) — 데스크톱용 `.rev > .cp-code{grid-column:2}` 가 모바일 `> *{grid-column:1}` 보다 우선해 해설 열이 한 글자 폭으로 무너졌다. 모바일 규칙도 같은 선택자 수로 쓴다
+- **바꾸는 곳과 그대로인 곳을 세로로 쌓은 교체 보드** (langchain-init-chat-model-switch-provider) — ①바꾸는 코드 ②그대로인 코드 ③실제로 나가는 요청 ④결과 네 칸을 세로로 쌓고 회사·temperature 토글 두 개만 바꾸게 했다. 바뀌는 칸만 주황으로 켜지고 Anthropic + temperature 값 조합에서는 요청 칸이 꺼지고 결과 칸이 오류로 바뀐다. "한 줄이면 된다"는 말의 예외를 겪게 하는 장치. Critic 4/4
+- **같은 호출을 직접 두 회사 클래스에 붙여 관찰한 값으로 그린다** (langchain-init-chat-model-switch-provider) — 공식 문서만으로는 system 위치·max_tokens 자동 채움·response_metadata 키 이름 차이를 알 수 없어 모의 서버로 요청 본문을 찍어 그림 값으로 썼다
+- **시간 줄에 첫 글자 표시를 찍는다** (langchain-init-chat-model-switch-provider) — invoke·stream·batch 막대가 똑같이 차면 차이가 안 보인다는 지적. 전체 줄을 4.8초로 잡고 완료선(2.4초)과 첫 글자 표시를 정지 상태에서도 보이게 했다
 
 ## 페이지 레이아웃
 
