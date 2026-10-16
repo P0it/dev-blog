@@ -72,7 +72,7 @@
 | 13 | x (`workflow-vs-agent-chaining-routing`) | 정해진 순서로 충분한 일에 Agent 가 필요한가? | 워크플로 vs Agent(Anthropic) · 순차 체이닝 · 계정·장비·SW 라우팅 | Prompt Chaining, Routing | 문의 유형별 분기 | 12 | 발행 |
 | 14 | x (`workflow-parallel-orchestrator-evaluator`) | 일을 나눠 맡기고 다시 모으려면? | 병렬 분기 · `Send` 로 나눠 주기(map-reduce) · 평가자-생성자 반복과 종료 조건 | Parallelization, Orchestrator-Worker, Evaluator-Optimizer, Send | 여러 문서 병렬 분석 후 통합 | 13 | 발행 |
 | 15 | x (`langgraph-interrupt-human-approval-checkpoint`) | 사람 승인을 기다리는 동안 Agent 는 어디에 있나? | checkpointer · `interrupt`/`Command(resume=)` · 승인 흐름 · state history·time travel · durable execution | Human-in-the-loop, interrupt, time travel, durable execution | 승인 후 처리하는 Agent | 9, 12 | 발행 |
-| 16 | 실무형 그래프: 실패에 강하게, 고치기 쉽게 | 요구사항 문장을 어떻게 노드와 상태로 바꾸나? | 상태 설계 · RetryPolicy·에러 경로 · Studio·스트리밍 디버깅 · 미니 프로젝트 | RetryPolicy, 상태 스키마 | 이메일 문의 분류·검색·답변 초안 | 15 | 계획 |
+| 16 | x (`langgraph-state-design-retry-error-path`) | 요구사항 문장을 어떻게 노드와 상태로 바꾸나? | 상태 설계 · RetryPolicy·에러 경로 · Studio·스트리밍 디버깅 · 미니 프로젝트 | RetryPolicy, 상태 스키마 | 이메일 문의 분류·검색·답변 초안 | 15 | 발행 |
 
 ### Part 4. Multi-Agent
 
