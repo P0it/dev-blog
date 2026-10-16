@@ -1,0 +1,456 @@
+---
+title: Agent가 잘한다는 것을 어떻게 숫자로 보일 수 있을까요?
+slug: agent-evaluation-tracing-trajectory
+excerpt: Agent의 실행 한 번을 모델 호출과 도구 호출의 나무(trace)로 기록하고 질문과 기대 답과 기대 경로를 담은 데이터셋으로 최종 답과 경로와 심판 모델(LLM-as-judge)이 매긴 점수를 냅니다. 진짜 도구 대신 모델이 흉내 내는 LLMToolEmulator로 시험하는 방법과 호출 수·토큰으로 비용을 보는 법을 langchain 1.4로 직접 실행해 확인한 결과와 함께 정리합니다.
+tags: [AI Agent, 평가, 트레이싱, LLM-as-judge, LangSmith, 궤적 평가, Python]
+category: ai
+series: ai-agent
+series_order: 23
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-evaluation-tracing-trajectory-mvb96uad.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 실행 기록 폭포 히어로(질문을 고르면 모델 호출과 도구 호출 막대가 쌓이고 점수판이 뜸) + 코드|터미널(기록기) + 그림|글(정답만 볼 때와 경로까지 볼 때) + 코드|터미널(채점) + 흉내 도구 장면 + 비용 막대 장면 + 정리 | 글의 성격: 숫자로 말하는 글이라 실행 한 번이 어떤 구간들로 이뤄지는지 먼저 보이고 채점표와 비용 막대로 숫자를 눈에 띄게 한다 | 버린 후보: 평가 방법 비교 표(그림이 아니라 표라서) -->
+<style>
+.post-page .ev {
+  --ev-human: rgb(37, 112, 235); --ev-code: rgb(16, 150, 120); --ev-model: rgb(226, 106, 28); --ev-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ev { --ev-human: rgb(110, 165, 255); --ev-code: rgb(60, 205, 165); --ev-model: rgb(255, 150, 80); --ev-bad: rgb(255, 110, 110); }
+.post-page .ev * { box-sizing: border-box; }
+.post-page .ev-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .ev h1, .post-page .ev h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ev h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .ev h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .ev h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .ev p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .ev b { color: var(--fg-strong); }
+.post-page .ev .nw { white-space: nowrap; }
+.post-page .ev code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ev p.ev-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .ev-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .ev-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .ev-head > h2 { margin: 0; }
+.post-page .ev-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .ev-split.top { align-items: start; }
+.post-page .ev-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .ev-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .ev-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .ev-seg button:hover { color: var(--fg-strong); }
+.post-page .ev-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .ev-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .ev-act::before { content: "▶ "; font-size: 11px; }
+.post-page .ev-act:disabled { opacity: .4; cursor: default; }
+.post-page .ev-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .ev-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .ev-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .ev-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .ev-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .ev-tag.n { --t: var(--fg-strong); } .post-page .ev-tag.m { --t: var(--ev-model); } .post-page .ev-tag.c { --t: var(--ev-code); } .post-page .ev-tag.h { --t: var(--ev-human); } .post-page .ev-tag.x { --t: var(--ev-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .ev-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .ev-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .ev-codepair .pg-code { margin-top: 0; }
+.post-page .ev-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .ev-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .ev-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .ev-codepair.rev > .cp-code, .post-page .ev-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .ev-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .ev .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .ev ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .ev ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .ev-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .ev-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .ev-term-bar .ev-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .ev-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .ev-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-ev-blink 1s steps(1) infinite; }
+@keyframes pg-ev-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .ev-codepair, .post-page .ev-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ev-codepair > .cp-code, .post-page .ev-codepair > .cp-term, .post-page .ev-codepair > .cp-notes,
+  .post-page .ev-codepair.rev > .cp-code, .post-page .ev-codepair.rev > .cp-term, .post-page .ev-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .ev-codepair > .cp-notes, .post-page .ev-codepair.rev > .cp-notes { order: 2; } .post-page .ev-codepair > .cp-term, .post-page .ev-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .ev-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .ev-tbl th, .post-page .ev-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .ev-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .ev-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .ev-tbl code { font-size: 12.5px; }
+.post-page .ev details { margin: 0 0 24px; }
+.post-page .ev summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .ev details > .ev-in-d { padding-top: 14px; }
+.post-page .ev-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ev-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .ev-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .ev-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .ev-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .ev-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .ev-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .ev-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .ev-tbl { font-size: 13.5px; } .post-page .ev-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ev *, .post-page .ev *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .ev-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .ev-wrap { padding: 0 20px; }
+  .post-page .ev-head, .post-page .ev-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ev-split.rev > :first-child { order: 0; }
+  .post-page p.ev-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .ev-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .ev-lab h2 { margin-bottom: 24px; }
+.post-page .ev-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .ev-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .ev-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .ev-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .ev-stack { display: grid; gap: 8px; }
+.post-page .ev-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .ev-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .ev-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .ev-s.m { --k: var(--ev-model); } .post-page .ev-s.c { --k: var(--ev-code); } .post-page .ev-s.x { --k: var(--ev-bad); } .post-page .ev-s.h { --k: var(--ev-human); }
+.post-page .ev-s + .ev-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .ev-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ev-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .ev-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .ev-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .ev-hero-top p { margin: 0 0 1.2em; }
+.post-page .ev-hero-top p:last-child { margin-bottom: 0; }
+.post-page .ev-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .ev-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ev [hidden] { display: none !important; }
+
+.post-page .ev-stack { gap: 22px !important; } .post-page .ev-s + .ev-s::before { top: -19px !important; }
+.post-page .ev-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .ev-flow .ev-s { flex: 1 1 0; min-width: 0; } .post-page .ev-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .ev-flow .ev-s + .ev-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .ev-flow .ev-s { flex: 1 1 180px; } .post-page .ev-flow i.ar { display: none; } }
+
+.post-page .ev-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .ev-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .ev-nar { max-width: 520px; }
+.post-page .ev-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .ev-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .ev-scene .t-d { fill: var(--fg-neutral); }
+.post-page .ev-scene .mono { font-family: var(--font-mono); }
+.post-page .ev-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .ev-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .ev-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .ev-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .ev-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .ev-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .ev-steps { padding-bottom: 14vh; }
+.post-page .ev-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .ev-step.on { opacity: 1; }
+.post-page .ev-step h3 { font-size: 20px; }
+.post-page .ev-step p { margin: 0; }
+.post-page .ev-sfig { position: sticky; top: var(--ev-top, 96px); }
+.post-page .ev-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .ev-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .ev-story { grid-template-columns: minmax(0, 1fr); } .post-page .ev-sfig { position: static; order: -1; } .post-page .ev-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .ev-steps { padding-bottom: 0; } }
+
+.post-page .ev-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .ev-stage .ev-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .ev-lede { max-width: 780px; margin-top: 24px; }
+.post-page .ev-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .ev-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ev-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="ev-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="ev-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="ev-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="ev-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="ev-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="ev-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="ev-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="ev-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="ev">
+  <section class="ev-hero">
+    <div class="ev-wrap">
+      <h1>Agent가 잘한다는 것을 어떻게 숫자로 보일 수 있을까요?</h1>
+      <div class="ev-lede">
+        <p>Agent를 몇 번 써 보고 잘 되는 것 같다고 느끼는 것과 잘한다고 말할 수 있는 것은 다릅니다. 같은 질문을 열 번, 질문을 바꿔 백 번 돌려 몇 번 맞았는지 세어야 하고 틀린 때는 어디서 틀렸는지 들여다봐야 합니다. 그러려면 먼저 실행 한 번을 기록으로 남겨야 합니다.</p>
+        <p>이 기록을 트레이스(trace)라고 부르고 그 안의 모델 호출 하나, 도구 호출 하나를 스팬(span)이라고 부릅니다. 아래에서 질문을 골라 Agent가 어떤 스팬을 거쳤는지 보세요.</p>
+      </div>
+      <div class="ev-stage" data-figure data-thumb data-ev-hero>
+        <div class="ev-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">질문</span>
+          <div class="ev-seg" role="group" aria-label="질문 고르기">
+            <button type="button" data-ev-q="0" aria-pressed="false">T-1042 상태 알려 줘</button>
+            <button type="button" data-ev-q="1" aria-pressed="false">kim 담당 열린 티켓</button>
+            <button type="button" data-ev-q="2" aria-pressed="true">T-1043 담당자가 누구야</button>
+          </div>
+        </div>
+        <svg class="ev-scene ev-nar" data-ev-hv viewBox="0 0 460 660" role="img" aria-label="실행 기록 폭포 그림. 위에서 아래로 모델 호출과 도구 호출이 한 줄씩 쌓이고 각 줄의 막대가 오른쪽으로 이어진다. 모델 호출 줄에는 입력과 출력 토큰 수가 적혀 있다. 맨 아래에는 정답, 경로, 모델 호출 횟수, 토큰 합계가 점수판으로 놓인다. 세 번째 질문은 같은 도구를 세 번 불러 호출이 네 번이 되고 정답과 경로가 틀렸다고 표시된다."></svg>
+        <p class="ev-verdict" data-ev-hsum></p>
+        <p class="ev-cap" style="margin-bottom:0">모의 모델 서버로 실제 실행해 얻은 호출 횟수와 토큰입니다. 막대 길이는 구간을 구분하려고 그린 것이고 걸린 시간이 아닙니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap">
+      <div class="ev-head">
+        <h2>실행 기록은 콜백으로 모읍니다</h2>
+        <div>
+          <p>LangSmith 같은 서비스는 환경 변수만 켜면 LangChain 코드를 고치지 않고도 트레이스를 모아 줍니다. 공식 문서의 설정은 <code>LANGSMITH_TRACING=true</code>와 <code>LANGSMITH_API_KEY</code>이고 프로젝트 이름은 <code>LANGSMITH_PROJECT</code>로 정합니다. 이 글에서는 계정 없이 구조를 보려고 같은 정보를 직접 모았습니다.</p>
+          <p>LangChain은 모델과 도구가 시작하고 끝날 때마다 콜백(callback)이라는 함수를 불러 줍니다. 그 안에서 시작 시각과 끝 시각, 토큰 수를 적어 두면 트레이스가 됩니다. 업계 공통 규약을 만드는 OpenTelemetry 프로젝트에도 GenAI 전용 규약 저장소가 따로 있는데 안정 상태인지는 확인하지 못했습니다.</p>
+        </div>
+      </div>
+      <div class="ev-codepair" style="margin-top:36px">
+        <div class="cp-code">
+<pre data-title="trace.py" data-hl="1,3-4,6-7"><code class="language-python">class Trace(BaseCallbackHandler):                   # ① 스팬을 모으는 기록기
+    def __init__(self): self.spans, self.t0 = {}, time.time()
+    def on_chat_model_start(self, s, m, *, run_id, **kw):     # ② 모델 호출 시작
+        self.spans[run_id] = {"kind": "llm", "start": time.time() - self.t0}
+    def on_llm_end(self, r, *, run_id, **kw):
+        u = r.generations[0][0].message.usage_metadata        # ③ 토큰 수 적기
+        self.spans[run_id].update(end=time.time() - self.t0, tokens=(u["input_tokens"], u["output_tokens"]))
+    # on_tool_start / on_tool_end 도 같은 식으로 도구 스팬을 적고
+    # tool_names()가 부른 도구 이름을 순서대로 돌려준다</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>기록기를 만듭니다.</b> <code>BaseCallbackHandler</code>를 이어받아 필요한 시점의 메서드만 고칩니다. 스팬을 <code>run_id</code>로 구분해 사전에 모읍니다.</li>
+  <li><b>시작할 때 적습니다.</b> 모델이나 도구가 시작할 때 종류와 시작 시각을 적습니다. 도구 스팬은 <code>on_tool_start</code>에서 도구 이름도 함께 적습니다.</li>
+  <li><b>끝날 때 마무리합니다.</b> 끝 시각과 응답에 붙은 토큰 수(<code>usage_metadata</code>)를 적습니다. 호출할 때 <code>config={"callbacks": [Trace()]}</code>로 넘기면 실행이 기록됩니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap ev-split rev">
+      <div data-figure>
+        <div class="ev-ctrl" style="margin-bottom:8px"><div class="ev-seg" role="group" aria-label="채점 범위 고르기"><button type="button" data-ev-sv="final" aria-pressed="false">정답만 보기</button><button type="button" data-ev-sv="path" aria-pressed="false">경로까지 보기</button><button type="button" data-ev-sv="all" aria-pressed="true">심판까지 보기</button></div></div>
+        <svg class="ev-scene ev-nar" data-ev-sb viewBox="0 0 460 470" role="img" aria-label="채점표 그림. 세 질문이 행이고 최종 답, 경로, 심판이 열이다. 앞 두 질문은 모든 칸이 통과이고 세 번째 질문은 모든 칸이 실패이다. 경로까지 보기를 고르면 세 번째 질문 아래에 같은 도구를 세 번 불렀다는 설명이 나타난다."></svg>
+        <p class="ev-wnote" data-ev-sbnote></p>
+      </div>
+      <div>
+        <h2>정답만 보면 왜 틀렸는지 알 수 없습니다</h2>
+        <p>Agent를 평가하려면 두 가지 눈이 필요합니다. 최종 답이 맞았는지 보는 눈과 답에 이르기까지 거친 도구 호출의 순서, 곧 궤적(trajectory)을 보는 눈입니다. LangSmith 평가 문서도 Agent는 올바른 도구를 골랐는지와 거친 궤적으로 평가할 수 있다고 설명합니다.</p>
+        <p>세 번째 질문은 정답이 틀렸다는 점만 보면 원인을 알 수 없습니다. 경로를 보면 한 번 조회로 끝날 일을 목록 조회로 세 번 돌았다는 것이 드러납니다. 보기 범위를 바꿔 보세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap">
+      <div class="ev-head">
+        <h2>데이터셋을 정하고 규칙과 심판으로 채점합니다</h2>
+        <div>
+          <p>평가는 데이터셋(dataset)에서 시작합니다. 질문과 함께 기대하는 정답과 기대하는 도구 경로를 적어 둔 예시 모음입니다. 기대 정답은 Agent에게 보여 주지 않고 채점할 때만 씁니다. Agent를 고칠 때마다 같은 데이터셋으로 다시 돌려 점수가 오르내리는 것을 봅니다.</p>
+          <p>채점 방법은 두 가지입니다. 코드로 정해진 규칙을 검사하는 방법은 빠르고 확실하지만 정해진 표현만 인정합니다. 심판 모델(LLM-as-judge)이 답을 읽고 합격인지 판단하는 방법은 표현이 달라도 뜻을 보지만 심판도 틀릴 수 있어 일부는 사람이 확인해야 합니다.</p>
+        </div>
+      </div>
+      <div class="ev-codepair" style="margin-top:36px">
+        <div class="cp-code">
+<pre data-title="eval.py" data-hl="1-2,6-7,8,9-10"><code class="language-python">DATA = [{"q": "T-1042 상태 알려 줘", "expect": "부품 대기", "path": ["get_ticket"]},
+        ...]                                                     # ① 질문 + 기대 답 + 기대 경로
+for ex in DATA:
+    tr = Trace()
+    r = agent.invoke({"messages": [{"role": "user", "content": ex["q"]}]},
+                     config={"callbacks": [tr]})                  # ② 기록하며 실행
+    ans = r["messages"][-1].content
+    final_ok = ex["expect"] in ans                                # ③ 규칙: 최종 답
+    path_ok = tr.tool_names() == ex["path"]                       # ④ 규칙: 경로
+    v = judge.invoke([("system", "답변을 채점한다."), ("user", f"질문: {ex['q']}\n답변: {ans}")])  # ⑤ 심판</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ev-term" data-ev-term>
+  <div class="ev-term-bar"><span>터미널</span><button type="button" class="ev-act" data-ev-run="e">실행해 보기</button></div>
+  <div class="ev-term-out" data-ev-out aria-live="polite">$ python eval.py
+T-1042 상태    | 정답 ✓ | 경로 ✓ | 심판 pass | 호출 2 | 토큰 280/60
+kim 담당 티켓  | 정답 ✓ | 경로 ✓ | 심판 pass | 호출 2 | 토큰 280/60
+T-1043 담당자  | 정답 ✗ | 경로 ✗ | 심판 fail | 호출 4 | 토큰 720/120
+정답률 2/3 · 경로 일치 2/3 · 심판 통과 2/3</div>
+</div>
+<p class="ev-cap">출력은 예시입니다. 모의 모델 서버로 직접 실행한 결과이고 심판도 모의 서버라 실제 모델의 채점과 다릅니다. 도구는 가짜 티켓 데이터를 돌려줍니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>데이터셋입니다.</b> 질문과 기대하는 정답 조각, 기대하는 도구 순서를 함께 적습니다. 정답은 통째가 아니라 꼭 들어가야 할 핵심 말로 적어 두면 규칙으로 검사하기 편합니다.</li>
+  <li><b>기록하며 실행합니다.</b> 앞에서 만든 기록기를 콜백으로 넘기면 실행마다 스팬이 모입니다.</li>
+  <li><b>규칙으로 채점합니다.</b> 최종 답에 핵심 말이 들었는지, 부른 도구가 기대한 순서와 같은지 코드로 검사합니다. 경로가 정답이 하나뿐인 일에만 이 검사가 어울립니다.</li>
+  <li><b>심판이 채점합니다.</b> 구조화 출력으로 합격과 불합격 중 하나만 받습니다. 심판 프롬프트의 기준이 모호하면 점수도 흔들립니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap ev-split">
+      <div>
+        <h2>진짜 도구 대신 모델에게 흉내 내게 합니다</h2>
+        <p>평가를 자주 돌리려면 도구를 진짜로 부르기가 부담스럽습니다. 메일을 보내거나 데이터를 바꾸는 도구라면 시험하다가 실제 일이 벌어집니다. LangChain의 <code>LLMToolEmulator</code> 미들웨어는 도구를 실행하는 대신 모델이 그럴듯한 응답을 만들어 돌려줍니다.</p>
+        <p>직접 실행해 진짜 도구가 한 번도 불리지 않는 것을 확인했습니다. 다만 흉내 낸 응답은 진짜가 아닙니다. 그래서 도구를 고르고 부르는 흐름을 시험하는 데 쓰고 답의 정확성은 진짜 도구로 따로 확인합니다.</p>
+        <div class="ev-ctrl"><div class="ev-seg" role="group" aria-label="도구 종류 고르기"><button type="button" data-ev-em="real" aria-pressed="false">진짜 도구</button><button type="button" data-ev-em="fake" aria-pressed="true">흉내 도구</button></div></div>
+      </div>
+      <div data-figure>
+        <svg class="ev-scene ev-nar" data-ev-emv viewBox="0 0 460 440" role="img" aria-label="도구 흉내 그림. 왼쪽 Agent가 도구를 부른다. 진짜 도구를 고르면 호출이 오른쪽 실제 티켓 시스템에 닿고 진짜 호출 횟수가 올라간다. 흉내 도구를 고르면 호출이 흉내 모델에게 가서 그럴듯한 응답을 만들고 실제 시스템은 건드리지 않아 진짜 호출 횟수가 영이다."></svg>
+        <p class="ev-wnote" data-ev-emnote></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap">
+      <div class="ev-head">
+        <h2>호출이 늘면 토큰도 늘어 비용이 커집니다</h2>
+        <div>
+          <p>평가표에는 점수 말고 비용도 함께 적어 둡니다. 모델을 부를 때마다 지금까지의 대화를 다시 보내므로 호출이 하나 늘 때마다 입력 토큰이 쌓입니다. 같은 도구를 되풀이한 세 번째 질문은 호출이 네 번이라 입력 토큰이 앞의 두 질문의 2.5배가 넘었습니다.</p>
+          <p>점수가 같다면 호출이 적고 토큰이 적은 쪽이 낫습니다. 보고 싶은 값을 골라 보세요.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="ev-ctrl"><div class="ev-seg" role="group" aria-label="값 고르기"><button type="button" data-ev-mt="calls" aria-pressed="true">모델 호출 횟수</button><button type="button" data-ev-mt="in" aria-pressed="false">입력 토큰</button><button type="button" data-ev-mt="out" aria-pressed="false">출력 토큰</button></div></div>
+        <svg class="ev-scene ev-nar" data-ev-cv viewBox="0 0 460 420" role="img" aria-label="비용 막대 그림. 세 질문의 막대가 가로로 놓여 있고 고른 값에 따라 길이가 바뀐다. 세 번째 질문의 막대가 가장 길게 강조된다."></svg>
+        <p class="ev-verdict" data-ev-cvsay></p>
+      </div>
+      <p style="margin-top:36px">다음 글에서는 문서 한 장이 Agent를 조종하는 프롬프트 인젝션을 포함해 Agent의 보안을 알아보겠습니다.</p>
+    </div>
+  </section>
+
+  <section class="ev-sec">
+    <div class="ev-wrap">
+      <div class="ev-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="ev-refs">
+          <li><a href="https://docs.langchain.com/langsmith/evaluation-concepts">Evaluation concepts</a>, LangSmith: 데이터셋, 평가자 종류, 오프라인과 온라인 평가, 궤적</li>
+          <li><a href="https://docs.langchain.com/langsmith/trace-with-langchain">Trace with LangChain</a>, LangSmith: 환경 변수로 트레이싱 켜기</li>
+          <li><a href="https://github.com/open-telemetry/semantic-conventions-genai">semantic-conventions-genai</a>, OpenTelemetry: GenAI 규약 저장소</li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in">Built-in middleware</a>, LangChain: LLMToolEmulator</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="ev-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-ev-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-ev-out]", btn.closest("[data-ev-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.evRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-ev-step]", st), fig = $("[data-ev-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--ev-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--ev-model)", code: "var(--ev-code)", human: "var(--ev-human)", bad: "var(--ev-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* ───── 히어로: 폭포 ───── */
+  const hv = $("[data-ev-hv]"), hsum = $("[data-ev-hsum]"); let qi = 2;
+  const QS = [
+    { tools: ["get_ticket"], ok: [1, 1], calls: 2, tok: "280 / 60", say: "모델이 도구를 한 번 부르고 결과를 받아 바로 답했습니다. 호출 2번으로 정답입니다." },
+    { tools: ["list_tickets"], ok: [1, 1], calls: 2, tok: "280 / 60", say: "목록 조회 한 번으로 끝났고 기대한 경로와 같습니다." },
+    { tools: ["list_tickets", "list_tickets", "list_tickets"], ok: [0, 0], calls: 4, tok: "720 / 120", say: "같은 목록 조회를 세 번 되풀이하고 담당자를 못 찾았습니다. 호출이 4번으로 늘고 정답도 경로도 틀렸습니다." },
+  ];
+  function drawHero() {
+    hv.innerHTML = ""; const q = QS[qi], rows = []; for (let i = 0; i <= q.tools.length; i++) { rows.push(["llm", i]); if (i < q.tools.length) rows.push(["tool", i]); }
+    const rh = 56, W = { llm: 46, tool: 28 }; let x = 150;
+    rows.forEach(([k, i], r) => { const y = 14 + r * rh, isL = k === "llm", col = isL ? C.model : C.code, w = W[k];
+      box(hv, 6, y, 444, rh - 10, "var(--line-strong)", { rx: 8, sw: 1.5, fill: "var(--bg-subtle)" }); txt(hv, 16, y + 22, isL ? `모델 호출 ${i + 1}` : `도구 ${q.tools[i]}`, { "font-size": 15, class: "t-s" + (isL ? "" : " mono") });
+      if (isL) txt(hv, 16, y + 40, `입력 ${120 + i * 40} · 출력 30`, { "font-size": 15, class: "t-d" });
+      mk("rect", { x, y: y + 8, width: w, height: rh - 26, rx: 6, fill: col }, hv); x += w; });
+    const by = 14 + rows.length * rh + 14; const cells = [["정답", q.ok[0] ? "✓" : "✗", q.ok[0] ? C.code : C.bad], ["경로", q.ok[1] ? "✓" : "✗", q.ok[1] ? C.code : C.bad], ["호출", `${q.calls}번`, "var(--fg-strong)"], ["토큰", q.tok, "var(--fg-strong)"]];
+    cells.forEach(([lb, v, col], i) => { const cx = 6 + i * 112; box(hv, cx, by, 104, 84, col, { rx: 12, sw: 3.5, fill: `color-mix(in srgb, ${col} 7%, var(--bg-base))` }); txt(hv, cx + 52, by + 28, lb, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(hv, cx + 52, by + 64, v, { "font-size": v.length > 6 ? 15 : 19, "text-anchor": "middle", class: "t-s", style: `fill:${col}` }); });
+    hv.setAttribute("viewBox", `0 0 460 ${by + 100}`);
+    hsum.textContent = q.say;
+  }
+  $$("[data-ev-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.evQ; press("[data-ev-q]", b); drawHero(); }, { signal })); drawHero();
+
+  /* ───── 채점표 ───── */
+  const sb = $("[data-ev-sb]"); let sm = "all";
+  const NMS = ["T-1042 상태", "kim 담당 티켓", "T-1043 담당자"], RES = [[1, 1, 1], [1, 1, 1], [0, 0, 0]];
+  function drawSb() {
+    sb.innerHTML = ""; const cols = sm === "final" ? ["최종 답"] : sm === "path" ? ["최종 답", "경로"] : ["최종 답", "경로", "심판"], cw = 84, x0 = 150;
+    cols.forEach((c, i) => txt(sb, x0 + i * cw + cw / 2 + 20, 34, c, { "font-size": 15, "text-anchor": "middle", class: "t-s" }));
+    NMS.forEach((nm, r) => { const y = 54 + r * 100; box(sb, 6, y, 444, 82, "var(--line-strong)", { rx: 10, sw: 1.5, fill: "var(--bg-subtle)" }); txt(sb, 18, y + 48, nm, { "font-size": 15, class: "t-s" });
+      cols.forEach((c, i) => { const ok = RES[r][i], col = ok ? C.code : C.bad, cx = x0 + i * cw + cw / 2 + 20; mk("circle", { cx, cy: y + 41, r: 20, fill: `color-mix(in srgb, ${col} 14%, var(--bg-base))`, stroke: col, "stroke-width": 3.5 }, sb); if (ok) mk("path", { d: `M${cx - 9} ${y + 41} l7 8 l12 -17`, fill: "none", stroke: col, "stroke-width": 4 }, sb); else mk("path", { d: `M${cx - 8} ${y + 33} l16 16 m0 -16 l-16 16`, stroke: col, "stroke-width": 4 }, sb); });
+      if (r === 2 && sm !== "final") { txt(sb, 18, y + 72, "list_tickets ×3 (기대: get_ticket ×1)", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` }); } });
+    $("[data-ev-sbnote]").textContent = sm === "final" ? "정답만 보면 세 번째 질문이 틀렸다는 사실만 알 수 있습니다." : sm === "path" ? "경로를 보면 세 번째 질문이 기대와 달리 목록 조회를 세 번 되풀이했다는 것까지 드러나서 고칠 곳이 보입니다." : "심판 모델도 같은 결론입니다. 규칙과 심판이 함께 틀렸다고 하면 믿을 만합니다.";
+  }
+  $$("[data-ev-sv]").forEach((b) => b.addEventListener("click", () => { sm = b.dataset.evSv; press("[data-ev-sv]", b); drawSb(); }, { signal })); drawSb();
+
+  /* ───── 도구 흉내 ───── */
+  const em = $("[data-ev-emv]"); let emm = "fake";
+  function drawEm() {
+    em.innerHTML = ""; const fake = emm === "fake";
+    box(em, 10, 150, 130, 100, C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#ev-ic-robot", x: 24, y: 168, width: 42, height: 42, style: `color:${C.model}` }, em); txt(em, 75, 232, "Agent", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+    mk("path", { d: "M140 200 H196", stroke: C.model, "stroke-width": 5 }, em); mk("path", { d: "M200 200 l-14 -9 v18z", fill: C.model }, em); txt(em, 168, 186, "도구 호출", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    box(em, 200, 150, 120, 100, fake ? C.human : C.code, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${fake ? C.human : C.code} 8%, var(--bg-base))` }); txt(em, 260, 190, "get_ticket", { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); txt(em, 260, 218, fake ? "흉내 모델" : "진짜 함수", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+    box(em, 350, 150, 100, 100, fake ? "var(--line-strong)" : C.code, { rx: 14, sw: fake ? 2.5 : 4, dash: fake ? "6 5" : "", fill: "var(--bg-base)" }); mk("use", { href: "#ev-ic-gear", x: 380, y: 164, width: 40, height: 40, style: `color:${fake ? "var(--line-strong)" : C.code}` }, em); txt(em, 400, 232, "티켓 시스템", { "font-size": 15, "text-anchor": "middle", class: "t-s", opacity: fake ? .5 : 1 });
+    if (!fake) { mk("path", { d: "M320 200 H346", stroke: C.code, "stroke-width": 5 }, em); mk("path", { d: "M350 200 l-14 -9 v18z", fill: C.code }, em); } else { mk("path", { d: "M320 200 H346", stroke: "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": "5 5" }, em); mk("path", { d: "M330 186 l16 28 m0 -28 l-16 28", stroke: C.bad, "stroke-width": 5 }, em); }
+    box(em, 10, 300, 440, 110, fake ? C.code : C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${fake ? C.code : C.bad} 7%, var(--bg-base))` }); txt(em, 28, 336, "실제 시스템에 간 호출", { "font-size": 15, class: "t-d" }); txt(em, 28, 380, fake ? "0번" : "호출할 때마다 +1", { "font-size": 19, class: "t-s", style: `fill:${fake ? C.code : C.bad}` });
+    $("[data-ev-emnote]").textContent = fake ? "흉내 모델이 그럴듯한 응답을 만들어 Agent에게 줍니다. 실제 시스템은 건드리지 않아 마음껏 반복해서 시험할 수 있습니다." : "진짜 함수가 실제 시스템에 닿습니다. 쓰기나 삭제 도구라면 시험하는 동안 실제로 데이터가 바뀝니다.";
+  }
+  $$("[data-ev-em]").forEach((b) => b.addEventListener("click", () => { emm = b.dataset.evEm; press("[data-ev-em]", b); drawEm(); }, { signal })); drawEm();
+
+  /* ───── 비용 막대 ───── */
+  const cv = $("[data-ev-cv]"); let mt = "calls";
+  const MV = { calls: [[2, 2, 4], "모델 호출 횟수", "번"], in: [[280, 280, 720], "입력 토큰 합계", ""], out: [[60, 60, 120], "출력 토큰 합계", ""] };
+  function drawCv() {
+    cv.innerHTML = ""; const [vals, ttl, unit] = MV[mt], mx = Math.max(...vals);
+    txt(cv, 14, 28, ttl, { "font-size": 17, class: "t-s" });
+    ["T-1042 상태", "kim 담당 티켓", "T-1043 담당자"].forEach((nm, i) => { const y = 54 + i * 112, w = 330 * vals[i] / mx, hi = vals[i] === mx; txt(cv, 14, y + 18, nm, { "font-size": 15, class: "t-s" }); mk("rect", { x: 14, y: y + 30, width: w, height: 44, rx: 8, fill: `color-mix(in srgb, ${hi ? C.bad : C.model} ${hi ? 24 : 14}%, var(--bg-base))`, stroke: hi ? C.bad : C.model, "stroke-width": hi ? 4 : 2.5 }, cv); txt(cv, 14 + w + 10, y + 60, `${vals[i]}${unit}`, { "font-size": 17, class: "t-s", style: hi ? `fill:${C.bad}` : "" }); });
+    $("[data-ev-cvsay]").textContent = mt === "in" ? "입력 토큰은 호출마다 앞의 대화를 다시 보내면서 쌓입니다. 그래서 호출이 4번인 질문은 280의 2배를 훌쩍 넘는 720이 됩니다." : mt === "calls" ? "같은 도구를 되풀이한 질문만 호출이 2배입니다." : "출력 토큰도 호출 수에 비례해 늘었습니다.";
+  }
+  $$("[data-ev-mt]").forEach((b) => b.addEventListener("click", () => { mt = b.dataset.evMt; press("[data-ev-mt]", b); drawCv(); }, { signal })); drawCv();
+
+  initTerms({
+    e: [["cmd", "$ python eval.py"], ["wait", 700], ["line", "T-1042 상태    | 정답 ✓ | 경로 ✓ | 심판 pass | 호출 2 | 토큰 280/60"], ["line", "kim 담당 티켓  | 정답 ✓ | 경로 ✓ | 심판 pass | 호출 2 | 토큰 280/60"], ["line", "T-1043 담당자  | 정답 ✗ | 경로 ✗ | 심판 fail | 호출 4 | 토큰 720/120"], ["type", "정답률 2/3 · 경로 일치 2/3 · 심판 통과 2/3"]],
+  });
+})();
+</script>
