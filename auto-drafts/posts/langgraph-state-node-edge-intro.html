@@ -1,0 +1,543 @@
+---
+title: LangGraph의 State·Node·Edge, 흐름을 그래프로 그리는 이유
+slug: langgraph-state-node-edge-intro
+excerpt: LangGraph는 일의 흐름을 State(공유 서류), Node(할 일 한 칸), Edge(다음에 갈 곳)로 그리는 도구입니다. 문의 분류·조회·답변 세 노드를 가진 그래프를 직접 짜서 실행하고 노드가 바뀐 칸만 돌려주는 부분 업데이트, reducer로 덮어쓰기와 이어 붙이기가 갈리는 방식, 흔한 실수와 오류 메시지를 langgraph 1.2로 확인한 결과와 함께 그림과 코드로 정리합니다.
+tags: [AI Agent, LangGraph, State, Node, Edge, Python]
+category: ai
+series: ai-agent
+series_order: 11
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-state-node-edge-intro-mvb769lz.jpg
+---
+<!-- page -->
+<!-- layout: 제목 위 + 전폭 창구 장면 히어로(서류가 창구 셋을 지남) + 글|그림(노드 기계) + 코드|해설 두 쌍 + 그림 고정 스크롤리텔링(reducer 서류 칸) + 그림|글 뒤집기(순서와 루프) + 제목|글 머리(실수 장면) | 글의 성격: 서류 한 장이 창구를 차례로 지나는 모습이 그래프의 전부라서 서류의 칸이 채워지는 과정을 먼저 보이고 그 뒤에 코드·덮어쓰기 규칙·실수를 장면으로 한 겹씩 푼다 | 버린 후보: 창구 상자와 서류 칸 목록(앞 버전) -->
+<style>
+.post-page .lg {
+  --lg-human: rgb(37, 112, 235); --lg-code: rgb(16, 150, 120); --lg-model: rgb(226, 106, 28); --lg-bad: rgb(214, 56, 56);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .lg { --lg-human: rgb(110, 165, 255); --lg-code: rgb(60, 205, 165); --lg-model: rgb(255, 150, 80); --lg-bad: rgb(255, 110, 110); }
+.post-page .lg * { box-sizing: border-box; }
+.post-page .lg-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .lg h1, .post-page .lg h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .lg h1 { font-size: clamp(32px, 4.6vw, 50px); line-height: 1.2; }
+.post-page .lg h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 28px; }
+.post-page .lg h3 { font-size: 19px; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .lg p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; word-break: keep-all; }
+.post-page .lg b { color: var(--fg-strong); }
+.post-page .lg .nw { white-space: nowrap; }
+.post-page .lg code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .lg p.lg-cap { font-size: 15px; color: var(--fg-neutral); margin-top: 18px; line-height: 1.7; }
+.post-page .lg-sec { padding: clamp(96px, 12vw, 160px) 0 0; }
+.post-page .lg-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .lg-head > h2 { margin: 0; }
+.post-page .lg-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .lg-split.top { align-items: start; }
+.post-page .lg-split.rev > :first-child { order: 2; }
+
+/* 고르기 = 토글, 실행 = 테두리 버튼 */
+.post-page .lg-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
+.post-page .lg-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
+.post-page .lg-seg button:hover { color: var(--fg-strong); }
+.post-page .lg-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
+.post-page .lg-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
+.post-page .lg-act::before { content: "▶ "; font-size: 11px; }
+.post-page .lg-act:disabled { opacity: .4; cursor: default; }
+.post-page .lg-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.post-page .lg-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
+.post-page .lg-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
+.post-page .lg-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
+
+/* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
+.post-page .lg-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
+.post-page .lg-tag.n { --t: var(--fg-strong); } .post-page .lg-tag.m { --t: var(--lg-model); } .post-page .lg-tag.c { --t: var(--lg-code); } .post-page .lg-tag.h { --t: var(--lg-human); } .post-page .lg-tag.x { --t: var(--lg-bad); }
+
+/* 코드 | 해설 짝 + 터미널 */
+.post-page .lg-codepair { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(48px, 6vw, 64px) 0 0; }
+.post-page .lg-codepair.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .lg-codepair .pg-code { margin-top: 0; }
+.post-page .lg-codepair > .cp-code { grid-column: 1; grid-row: 1; }
+.post-page .lg-codepair > .cp-term { grid-column: 1; grid-row: 2; }
+.post-page .lg-codepair > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .lg-codepair.rev > .cp-code, .post-page .lg-codepair.rev > .cp-term { grid-column: 2; }
+.post-page .lg-codepair.rev > .cp-notes { grid-column: 1; }
+.post-page .lg .pg-code .line:has(.pg-code-mark) span { color: #c8ced8 !important; }
+.post-page .lg ol.pg-code-notes { margin: 0 0 24px; }
+.post-page .lg ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .lg-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .lg-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .lg-term-bar .lg-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
+.post-page .lg-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .lg-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-lg-blink 1s steps(1) infinite; }
+@keyframes pg-lg-blink { 50% { opacity: 0; } }
+@media (max-width: 900px) {
+  .post-page .lg-codepair, .post-page .lg-codepair.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lg-codepair > .cp-code, .post-page .lg-codepair > .cp-term, .post-page .lg-codepair > .cp-notes,
+  .post-page .lg-codepair.rev > .cp-code, .post-page .lg-codepair.rev > .cp-term, .post-page .lg-codepair.rev > .cp-notes { grid-column: 1; grid-row: auto; }
+  .post-page .lg-codepair > .cp-notes, .post-page .lg-codepair.rev > .cp-notes { order: 2; } .post-page .lg-codepair > .cp-term, .post-page .lg-codepair.rev > .cp-term { order: 3; }
+}
+
+/* 7. 표 · 정리 · 참고 */
+.post-page .lg-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0 28px; }
+.post-page .lg-tbl th, .post-page .lg-tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .lg-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .lg-tbl td:first-child { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .lg-tbl code { font-size: 12.5px; }
+.post-page .lg details { margin: 0 0 24px; }
+.post-page .lg summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .lg details > .lg-in-d { padding-top: 14px; }
+.post-page .lg-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .lg-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
+.post-page .lg-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
+.post-page .lg-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
+.post-page .lg-four li strong { display: block; font-size: clamp(20px, 2.4vw, 26px); color: var(--fg-strong); line-height: 1.4; font-family: var(--font-display); letter-spacing: -.01em; }
+.post-page .lg-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .lg-end-pad { height: clamp(80px, 10vw, 140px); }
+@media (max-width: 900px) { .post-page .lg-four li { grid-template-columns: 40px minmax(0, 1fr); } .post-page .lg-tbl { font-size: 13.5px; } .post-page .lg-tbl td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: reduce) {
+  .post-page .lg *, .post-page .lg *::before { transition: none !important; animation: none !important; }
+}
+
+.post-page .lg-mobhint { display: none; margin: 28px 0 0; }
+@media (max-width: 900px) {
+  .post-page .lg-wrap { padding: 0 20px; }
+  .post-page .lg-head, .post-page .lg-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lg-split.rev > :first-child { order: 0; }
+  .post-page p.lg-mobhint { display: block; }
+}
+/* 실험판 전폭 띠 */
+.post-page .lg-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
+.post-page .lg-lab h2 { margin-bottom: 24px; }
+.post-page .lg-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .post-page .lg-labtop { grid-template-columns: minmax(0, 1fr); } }
+/* 비교 두 칸 + 세로 카드 */
+.post-page .lg-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
+.post-page .lg-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.post-page .lg-stack { display: grid; gap: 8px; }
+.post-page .lg-s { border-radius: 12px; border: 1.5px solid var(--k); background: color-mix(in srgb, var(--k) 8%, var(--bg-base)); padding: 9px 12px; font-size: 14px; line-height: 1.5; position: relative; }
+.post-page .lg-s small { display: block; font-size: 12px; font-weight: 700; color: var(--k); margin-bottom: 1px; }
+.post-page .lg-s code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lg-s.m { --k: var(--lg-model); } .post-page .lg-s.c { --k: var(--lg-code); } .post-page .lg-s.x { --k: var(--lg-bad); } .post-page .lg-s.h { --k: var(--lg-human); }
+.post-page .lg-s + .lg-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
+@media (max-width: 900px) { .post-page .lg-vs { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lg-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .lg-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
+.post-page .lg-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .lg-hero-top p { margin: 0 0 1.2em; }
+.post-page .lg-hero-top p:last-child { margin-bottom: 0; }
+.post-page .lg-board { margin-top: clamp(40px, 5vw, 56px); padding: clamp(20px, 3vw, 32px); border-radius: 20px; background: var(--bg-subtle); }
+@media (max-width: 900px) { .post-page .lg-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lg [hidden] { display: none !important; }
+
+.post-page .lg-stack { gap: 22px !important; } .post-page .lg-s + .lg-s::before { top: -19px !important; }
+.post-page .lg-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; }
+.post-page .lg-flow .lg-s { flex: 1 1 0; min-width: 0; } .post-page .lg-flow i.ar { align-self: center; font-style: normal; color: var(--fg-neutral); font-size: 18px; } .post-page .lg-flow .lg-s + .lg-s::before { content: none !important; }
+@media (max-width: 900px) { .post-page .lg-flow .lg-s { flex: 1 1 180px; } .post-page .lg-flow i.ar { display: none; } }
+
+.post-page .lg-tag.n { --t: var(--fg-strong); }
+
+
+.post-page .lg-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .lg-nar { max-width: 520px; }
+.post-page .lg-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .lg-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .lg-scene .t-d { fill: var(--fg-neutral); }
+.post-page .lg-scene .mono { font-family: var(--font-mono); }
+.post-page .lg-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .lg-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .lg-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .lg-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .lg-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .lg-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .lg-steps { padding-bottom: 14vh; }
+.post-page .lg-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .lg-step.on { opacity: 1; }
+.post-page .lg-step h3 { font-size: 20px; }
+.post-page .lg-step p { margin: 0; }
+.post-page .lg-sfig { position: sticky; top: var(--lg-top, 96px); }
+.post-page .lg-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .lg-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .lg-story { grid-template-columns: minmax(0, 1fr); } .post-page .lg-sfig { position: static; order: -1; } .post-page .lg-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .lg-steps { padding-bottom: 0; } }
+
+.post-page .lg-twocol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; margin-top: 32px; }
+@media (max-width: 900px) { .post-page .lg-twocol { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.post-page .lg-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
+.post-page .lg-stage .lg-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .lg-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .lg-mres { margin-top: 10px; font-size: 14.5px; line-height: 1.7; }
+.post-page .lg-mres small { display: block; font-weight: 700; color: var(--fg-strong); font-size: 14px; }
+.post-page .lg-mres code { overflow-wrap: anywhere; }
+.post-page .lg-mcode { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.65; background: var(--bg-subtle); padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0 0; color: var(--fg-strong); }
+.post-page .lg-mb { display: flex; flex-wrap: wrap; gap: 8px; }
+.post-page .lg-mb button { font: inherit; font-size: 14px; text-align: left; padding: 8px 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; }
+.post-page .lg-mb button b { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); }
+.post-page .lg-mb button[aria-pressed="true"] { border-color: var(--fg-strong); background: var(--bg-muted); }
+.post-page .lg-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="lg-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="lg-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="lg-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="lg-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="lg-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="lg-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="lg-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="lg-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="lg-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-wrap">
+      <h1>LangGraph의 State·Node·Edge, 흐름을 그래프로 그리는 이유</h1>
+      <div class="lg-stage" data-figure data-thumb data-lg-flow>
+        <div class="lg-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">문의</span>
+          <div class="lg-seg" role="group" aria-label="문의 고르기"><button type="button" data-lg-q="vpn" aria-pressed="true">VPN이 안 붙어요</button><button type="button" data-lg-q="print" aria-pressed="false">프린터 용지가 걸렸어요</button></div>
+          <button type="button" class="lg-act" data-lg-next>다음 창구로</button><button type="button" class="lg-act" data-lg-all>끝까지 실행</button><button type="button" class="lg-act" data-lg-reset>처음으로</button></div>
+        <svg class="lg-scene lg-nar" data-lg-bank viewBox="0 0 460 660" role="img" aria-label="은행 창구 그림. 왼쪽 세로 길 위에 시작, classify, lookup, reply 세 창구, 끝이 이어진다. 오른쪽에는 서류 한 장 State가 있고 창구를 하나 지날 때마다 category, queue, reply 칸이 차례로 채워진다."></svg>
+        <p class="lg-cap" style="margin-bottom:0">설명을 위한 예시 문의입니다. 칸이 채워지는 순서는 아래 코드를 langgraph 1.2로 직접 실행해 확인한 결과와 같습니다.</p>
+      </div>
+      <div class="lg-twocol">
+        <p>은행 창구를 생각해 봅니다. 서류 한 장을 들고 접수 창구에서 이름을 적고 확인 창구에서 담당자를 정하고 마지막 창구에서 안내문을 받습니다. 창구마다 하는 일은 달라도 서류는 한 장이라서 앞 창구가 적은 칸을 뒤 창구가 읽습니다.</p>
+        <p>LangGraph는 이 구조를 그대로 코드로 옮깁니다. 서류는 State(상태), 창구는 Node(노드), 창구 사이의 길은 Edge(엣지)입니다. 이렇게 그린 흐름을 그래프(graph)라고 부릅니다. 순서가 눈에 보이면 고치기도 쉽고 중간에 길을 갈라 놓기도 쉽습니다. 모델을 부르는 노드는 없어도 됩니다. 위의 세 노드도 평범한 Python 함수입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg-sec">
+    <div class="lg-wrap lg-split rev">
+      <div data-figure>
+        <div class="lg-ctrl" style="margin-bottom:8px;justify-content:center"><button type="button" class="lg-act" data-lg-mach>노드 돌려 보기</button></div>
+        <svg class="lg-scene lg-nar" data-lg-node viewBox="0 0 460 600" role="img" aria-label="노드 기계 그림. 서류 전체가 노드 함수에 들어가면 기계는 바꿀 칸 하나만 적은 쪽지를 내놓고, 그 쪽지가 서류의 해당 칸에 붙는다. 나머지 칸은 그대로 남는다."></svg>
+      </div>
+      <div>
+        <h2>노드는 바꿀 칸만 돌려줍니다</h2>
+        <p>State는 칸 이름과 종류를 적은 클래스로 만듭니다. 여기서는 <code>TypedDict</code>(칸 이름과 종류를 정해 둔 딕셔너리)를 씁니다. 노드는 State를 받아서 바꿀 칸만 딕셔너리로 돌려주는 함수입니다. LangGraph 문서는 노드가 State 전체가 아니라 업데이트만 돌려주면 된다고 설명합니다.</p>
+        <p>돌려준 칸은 State에 반영되고 나머지 칸은 그대로 남습니다. 그림에서 <code>classify</code>가 <code>category</code>만 채우고 <code>text</code>는 건드리지 않는 것이 이 규칙입니다. 반환값이 없는 노드(<code>None</code>)도 오류를 내지 않습니다. State가 바뀌지 않을 뿐입니다.</p>
+      </div>
+    </div>
+    <div class="lg-wrap">
+      <div class="lg-codepair">
+        <div class="cp-code">
+<pre data-title="nodes.py" data-hl="2-6,9-11,13-15"><code class="language-python"># ① State: 모든 노드가 같이 보는 서류의 칸
+class Ticket(TypedDict):
+    text: str
+    category: str
+    queue: str
+    reply: str
+
+# ② Node: state를 받아 바꿀 칸만 돌려주는 함수
+def classify(state: Ticket) -> dict:
+    net = "VPN" in state["text"] or "와이파이" in state["text"]
+    return {"category": "네트워크" if net else "기타"}
+
+def lookup(state: Ticket) -> dict:
+    queues = {"네트워크": "네트워크 팀 큐", "기타": "일반 큐"}
+    return {"queue": queues[state["category"]]}</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><b>서류의 칸</b>입니다. 칸 이름과 종류를 적은 클래스가 State의 모양이 됩니다. 처음 실행할 때는 <code>text</code>만 채워서 넣고 나머지 칸은 노드가 채웁니다.</li>
+  <li><b>노드는 함수입니다.</b> State를 받아 읽고 바꿀 칸만 딕셔너리로 돌려줍니다. <code>lookup</code>은 앞 노드가 채운 <code>category</code>를 읽어 <code>queue</code> 칸만 돌려줍니다. <code>reply</code> 노드도 같은 방식이라 생략했습니다.</li>
+</ol>
+        </div>
+      </div>
+      <div class="lg-codepair" style="margin-top:28px">
+        <div class="cp-code">
+<pre data-title="graph.py" data-hl="2-9,11,13,15-16"><code class="language-python"># ③ 노드와 화살표를 등록한다
+builder = StateGraph(Ticket)
+builder.add_node("classify", classify)
+builder.add_node("lookup", lookup)
+builder.add_node("reply", reply)
+builder.add_edge(START, "classify")
+builder.add_edge("classify", "lookup")
+builder.add_edge("lookup", "reply")
+builder.add_edge("reply", END)
+# ④ 컴파일한 뒤에야 실행할 수 있다
+graph = builder.compile()
+# ⑤ 실행하면 마지막 State가 돌아온다
+print(graph.invoke({"text": "VPN이 안 붙어요"}))
+# ⑥ 단계마다 바뀐 칸만 본다
+for step in graph.stream({"text": "VPN이 안 붙어요"}, stream_mode="updates"):
+    print(step)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lg-term" data-lg-term>
+  <div class="lg-term-bar"><span>터미널</span><button type="button" class="lg-act" data-lg-run="g">실행해 보기</button></div>
+  <div class="lg-term-out" data-lg-out aria-live="polite">$ python graph.py
+{'text': 'VPN이 안 붙어요', 'category': '네트워크', 'queue': '네트워크 팀 큐', 'reply': "'네트워크' 문의로 접수해 네트워크 팀 큐에 전달했습니다."}
+{'classify': {'category': '네트워크'}}
+{'lookup': {'queue': '네트워크 팀 큐'}}
+{'reply': {'reply': "'네트워크' 문의로 접수해 네트워크 팀 큐에 전달했습니다."}}</div>
+</div>
+<p class="lg-cap">출력은 예시 답입니다. 코드는 <code>langgraph</code> 1.2 기준이고 <code>reply</code> 노드와 import는 생략했습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 2">
+  <li><b>등록합니다.</b> <code>add_node</code>에는 노드 이름과 함수를, <code>add_edge</code>에는 출발 노드와 도착 노드를 줍니다. <code>START</code>는 입력이 들어오는 곳이고 <code>END</code>는 끝입니다. 화살표를 하나도 안 이으면 그래프가 어디서 시작하는지 몰라서 컴파일에서 오류가 납니다.</li>
+  <li><b>컴파일합니다.</b> <code>compile()</code>이 구조를 점검하고 실행할 수 있는 그래프를 만듭니다. 문서도 컴파일 전에는 쓸 수 없다고 안내합니다.</li>
+  <li><b>실행합니다.</b> <code>invoke</code>는 모든 노드를 지난 뒤의 마지막 State를 돌려주고 <code>stream</code>은 노드가 끝날 때마다 그 노드가 바꾼 칸을 줍니다. 위 그림에서 칸이 채워지던 순서가 바로 이 출력입니다.</li>
+</ol>
+        </div>
+      </div>
+      <details style="margin-top:28px"><summary>이 그래프가 그려 내는 Mermaid 코드 보기</summary><div class="lg-in-d">
+<pre data-title="graph.mmd" data-hl="5-8"><code class="language-text">graph TD;
+    __start__ --> classify;
+    classify --> lookup;
+    lookup --> reply;
+    reply --> __end__;</code></pre>
+        <p class="lg-cap"><code>graph.get_graph().draw_mermaid()</code>가 내놓는 글에서 화살표만 줄여 옮겼습니다. 이 글을 Mermaid 도구에 넣으면 같은 그림이 그려집니다.</p>
+      </div></details>
+    </div>
+  </section>
+
+  <section class="lg-sec">
+    <div class="lg-wrap">
+      <div class="lg-head">
+        <h2>같은 칸에 또 쓰면 덮어쓰거나 이어 붙입니다</h2>
+        <div>
+          <p>노드 둘이 같은 칸을 바꾸면 어떻게 될까요? LangGraph는 칸마다 업데이트를 합치는 규칙인 reducer(리듀서)를 둡니다. 따로 정하지 않으면 새 값이 이전 값을 덮어씁니다. 문서도 기본 reducer는 이전 값을 무시하고 새 값으로 바꾼다고 설명합니다.</p>
+          <p>목록 칸에 이어 붙이게 하려면 칸의 종류를 <code>Annotated[list[str], operator.add]</code>로 적습니다. 스크롤하면서 같은 두 노드가 쪽지를 두 방식의 칸에 붙이는 모습을 나란히 보세요. 직접 실행해서 확인한 값입니다.</p>
+        </div>
+      </div>
+      <div class="lg-story" style="margin-top:44px" data-lg-story>
+        <div class="lg-steps">
+          <div class="lg-step" data-lg-step><h3>처음 State</h3><p><code>notes</code> 칸에는 "시작" 하나가 들어 있습니다. 노드 A와 B가 차례로 이 칸에 새 쪽지를 돌려줄 참입니다.</p></div>
+          <div class="lg-step" data-lg-step><h3>노드 A가 ["A 노드"]를 돌려줌</h3><p>reducer에 따라 이 쪽지가 칸에 반영됩니다. 기본 방식은 칸 전체를 새 값으로 바꾸고 <code>operator.add</code>는 뒤에 이어 붙입니다.</p></div>
+          <div class="lg-step" data-lg-step><h3>노드 B가 ["B 노드"]를 돌려줌</h3><p>덮어쓰기에서는 앞의 값이 모두 사라지고 ["B 노드"]만 남습니다. 이어 붙이기에서는 ["시작", "A 노드", "B 노드"]가 됩니다.</p></div>
+        </div>
+        <div class="lg-sfig" data-lg-sfig data-figure>
+          <svg class="lg-scene lg-nar" data-lg-red viewBox="0 0 460 450" role="img" aria-label="reducer 그림. notes 칸에 노드 A와 B의 쪽지가 차례로 도착한다. 덮어쓰기에서는 앞 쪽지가 지워지고 마지막 것만 남고, 이어 붙이기에서는 쪽지가 차례로 쌓인다."></svg>
+          <p class="lg-stat" data-lg-stat></p>
+        </div>
+      </div>
+      <div class="lg-codepair" style="margin-top:44px">
+        <div class="cp-code">
+<pre data-title="reducer.py" data-hl="2-4"><code class="language-python"># ⑦ 이어 붙이는 칸은 종류에 reducer를 적는다
+class S(TypedDict):
+    notes: Annotated[list[str], operator.add]
+    last: str</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lg-term" data-lg-term>
+  <div class="lg-term-bar"><span>터미널</span><button type="button" class="lg-act" data-lg-run="r">실행해 보기</button></div>
+  <div class="lg-term-out" data-lg-out aria-live="polite">$ python reducer.py
+{'notes': ['시작', 'A 노드', 'B 노드'], 'last': 'B'}
+{'notes': ['B 노드'], 'last': 'B'}</div>
+</div>
+<p class="lg-cap">출력은 예시입니다. 첫 줄은 reducer를 단 경우이고 둘째 줄은 reducer 없이 <code>list[str]</code>만 적은 경우입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 6">
+  <li><b>칸마다 합치는 규칙을 정합니다.</b> <code>Annotated[종류, 함수]</code>에서 함수가 reducer입니다. <code>operator.add</code>는 목록 둘을 이어 붙입니다. 대화 메시지를 쌓는 칸이 이 방식이고 메시지용 reducer <code>add_messages</code>가 따로 있습니다. <code>last</code>처럼 reducer가 없는 칸은 마지막 값이 남습니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg-sec">
+    <div class="lg-wrap lg-split rev">
+      <div data-figure>
+        <svg class="lg-scene lg-nar" viewBox="0 0 460 480" role="img" aria-label="길 두 가지 그림. 위쪽은 코드가 길을 정하는 순서가 고정된 흐름으로 시작에서 classify, lookup, reply를 거쳐 끝으로 간다. 아래쪽은 모델이 길을 정하는 돌아가는 흐름으로 model과 tools 사이를 오가다 끝난다.">
+          <text x="14" y="28" font-size="17" class="t-s" style="fill:var(--lg-code)">순서가 정해진 흐름 · 코드가 길을 정함</text>
+          <path d="M40 90 H420" class="lg-rail"/>
+          <g font-size="15" class="t-s mono" text-anchor="middle"><circle cx="40" cy="90" r="14" fill="var(--fg-strong)"/><rect x="80" y="70" width="80" height="40" rx="10" fill="color-mix(in srgb, var(--lg-code) 14%, var(--bg-base))" stroke="var(--lg-code)" stroke-width="3"/><text x="120" y="96">classify</text><rect x="190" y="70" width="80" height="40" rx="10" fill="color-mix(in srgb, var(--lg-code) 14%, var(--bg-base))" stroke="var(--lg-code)" stroke-width="3"/><text x="230" y="96">lookup</text><rect x="300" y="70" width="80" height="40" rx="10" fill="color-mix(in srgb, var(--lg-code) 14%, var(--bg-base))" stroke="var(--lg-code)" stroke-width="3"/><text x="340" y="96">reply</text></g>
+          <text x="14" y="140" font-size="15" class="t-d">이 글의 그래프입니다.</text><text x="14" y="162" font-size="15" class="t-d">입력이 무엇이든 같은 순서로 지나갑니다.</text>
+          <line x1="10" y1="180" x2="450" y2="180" class="ln" stroke-dasharray="4 8"/>
+          <text x="14" y="214" font-size="17" class="t-s" style="fill:var(--lg-model)">돌아가는 흐름 · 모델이 길을 정함</text>
+          <path d="M40 300 H130" class="lg-rail"/><path d="M244 284 H326" fill="none" stroke="var(--lg-model)" stroke-width="5"/><path d="M328 284 l-14 -8 v16z" fill="var(--lg-model)"/><path d="M326 316 H244" fill="none" stroke="var(--lg-code)" stroke-width="5"/><path d="M242 316 l14 -8 v16z" fill="var(--lg-code)"/><text x="285" y="262" font-size="15" text-anchor="middle" class="t-s" style="fill:var(--lg-model)">도구가 필요하면</text><text x="285" y="350" font-size="15" text-anchor="middle" class="t-s" style="fill:var(--lg-code)">결과를 들고 돌아옴</text>
+          <circle cx="40" cy="300" r="14" fill="var(--fg-strong)"/>
+          <rect x="130" y="270" width="110" height="60" rx="14" fill="color-mix(in srgb, var(--lg-model) 14%, var(--bg-base))" stroke="var(--lg-model)" stroke-width="3"/><use href="#lg-ic-robot" x="140" y="284" width="32" height="32" style="color:var(--lg-model)"/><text x="206" y="306" font-size="15" text-anchor="middle" class="t-s mono">model</text>
+          <rect x="330" y="270" width="100" height="60" rx="14" fill="color-mix(in srgb, var(--lg-code) 14%, var(--bg-base))" stroke="var(--lg-code)" stroke-width="3"/><use href="#lg-ic-gear" x="338" y="284" width="32" height="32" style="color:var(--lg-code)"/><text x="400" y="306" font-size="15" text-anchor="middle" class="t-s mono">tools</text>
+          <path d="M180 332 V396 H224" fill="none" stroke="var(--fg-strong)" stroke-width="5"/><path d="M228 396 l-14 -8 v16z" fill="var(--fg-strong)"/><use href="#lg-ic-flag" x="234" y="374" width="40" height="40" style="color:var(--fg-strong)"/><text x="284" y="400" font-size="15" class="t-s">답이 나오면 끝</text>
+          <text x="14" y="440" font-size="15" class="t-d">앞서 본 create_agent의 안쪽입니다.</text><text x="14" y="462" font-size="15" class="t-d">모델의 응답에 따라 tools로 갔다가 돌아오거나 끝납니다.</text>
+        </svg>
+        <p class="lg-cap">두 그래프 모두 노드와 엣지로 그린다는 점은 같고 길을 누가 고르는지가 다릅니다.</p>
+      </div>
+      <div>
+        <h2>그래프는 순서를 눈에 보이게 만듭니다</h2>
+        <p>순서가 고정된 일이라면 함수 안에서 차례로 호출해도 됩니다. 그래도 그래프로 그리면 얻는 게 있습니다. 어느 단계에서 실패했는지 노드 이름으로 알 수 있고 중간 결과가 State에 남고 길을 갈라 놓거나 단계를 하나 끼워 넣을 때 다른 노드를 건드리지 않습니다.</p>
+        <p>LangGraph는 다른 도구보다 낮은 층에 놓인 도구입니다. 문서는 오래 도는 상태 있는 흐름을 위한 기반이라고 설명하고 LangChain의 Agent도 그 위에 만들어졌다고 밝힙니다. 앞서 본 <code>create_agent</code>의 model과 tools 노드가 이 구조입니다. 다음 글에서는 이 그래프를 직접 조립해 Agent를 다시 만들어 봅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg-sec">
+    <div class="lg-wrap">
+      <div class="lg-head">
+        <h2>처음 만들 때 자주 나는 실수</h2>
+        <div>
+          <p>그래프를 처음 짜면 비슷한 실수를 합니다. 아래는 직접 실행해서 얻은 오류 메시지입니다. 모든 실수가 오류로 알려 주지는 않고 조용히 넘어가는 경우도 있어서 하나는 따로 표시했습니다.</p>
+        </div>
+      </div>
+      <div style="margin-top:36px" data-figure>
+        <div class="lg-mb" role="group" aria-label="실수 고르기">
+          <button type="button" data-lg-m="0" aria-pressed="true"><b>add_node</b>같은 이름을 두 번 등록</button>
+          <button type="button" data-lg-m="1" aria-pressed="false"><b>add_edge</b>없는 노드로 화살표를 이음</button>
+          <button type="button" data-lg-m="2" aria-pressed="false"><b>START</b>시작 화살표를 안 이음</button>
+          <button type="button" data-lg-m="3" aria-pressed="false"><b>invoke</b>compile 하기 전에 실행</button>
+          <button type="button" data-lg-m="4" aria-pressed="false"><b>return</b>State에 없는 칸 이름을 돌려줌</button>
+        </div>
+        <svg class="lg-scene lg-nar" data-lg-mist viewBox="0 0 460 300" role="img" aria-label="실수 장면 그림. 고른 실수에 따라 같은 이름의 노드가 겹치거나, 화살표가 없는 노드로 향하거나, 시작과 이어지지 않은 노드가 떠 있거나, 컴파일하지 않은 설계도에 실행 버튼을 누르거나, 도장이 서류 밖에 찍히는 장면이 나온다."></svg>
+        <div class="lg-mres" data-lg-mp></div>
+      </div>
+      <p style="margin-top:36px">모델 없이도 그래프가 돌아가고 State가 바뀌는 과정이 눈에 보이면 다음 단계가 쉽습니다. 다음 글에서는 이 State와 노드로 model과 tools를 직접 짠 Agent 그래프를 살펴봅니다.</p>
+    </div>
+  </section>
+
+  <section class="lg-sec">
+    <div class="lg-wrap">
+      <div class="lg-head">
+        <h2>참고 자료</h2>
+        <details><summary>출처 4개 펼치기</summary><ul class="lg-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/overview">LangGraph overview</a>, LangChain: LangGraph가 낮은 층의 오케스트레이션 도구라는 설명</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/graph-api">Graph API</a>, LangGraph: State, Node, Edge, reducer, 부분 업데이트, compile</li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/choosing-apis">Choosing between Graph and Functional APIs</a>, LangGraph: Graph API와 Functional API의 차이</li>
+          <li><a href="https://pypi.org/project/langgraph/">langgraph 1.2.15</a>, PyPI</li>
+        </ul></details>
+      </div>
+    </div>
+  </section>
+  <div class="lg-end-pad"></div>
+</div>
+<script>
+(() => {
+
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const nf = (n) => n.toLocaleString("ko-KR");
+  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
+  const initTerms = (RUNS) => $$("[data-lg-run]").forEach((btn) => btn.addEventListener("click", async () => {
+    const out = $("[data-lg-out]", btn.closest("[data-lg-term]"));
+    btn.disabled = true; out.textContent = "";
+    const cur = document.createElement("span"); cur.className = "cur";
+    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
+    for (const [kind, v] of RUNS[btn.dataset.lgRun]) {
+      if (signal.aborted) return;
+      if (kind === "wait") { if (!reduce) await later(v); continue; }
+      if (out.textContent) add("\n");
+      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
+      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
+    }
+    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
+  }, { signal }));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-lg-step]", st), fig = $("[data-lg-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--lg-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--lg-model)", code: "var(--lg-code)", human: "var(--lg-human)", bad: "var(--lg-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  /* 서류 그리기: 칸 목록과 새로 찬 칸 */
+  function drawDoc(p, x, y, w, st, fresh, title = "State (공유 서류)") {
+    box(p, x, y, w, 262, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 3, rx: 14 }); mk("rect", { x, y, width: w, height: 40, rx: 14, fill: "var(--bg-muted)" }, p); mk("rect", { x, y: y + 20, width: w, height: 20, fill: "var(--bg-muted)" }, p);
+    txt(p, x + 12, y + 27, title, { "font-size": 16, class: "t-s" });
+    ["text", "category", "queue", "reply"].forEach((k, i) => { const y0 = y + 54 + i * 50, v = st[k], isNew = fresh === k; txt(p, x + 12, y0 + 14, k, { "font-size": 15, class: "t-d mono" }); box(p, x + 12, y0 + 20, w - 24, 26, isNew ? C.code : "var(--line-subtle)", { fill: v ? (isNew ? `color-mix(in srgb, ${C.code} 20%, var(--bg-base))` : "var(--bg-base)") : "var(--bg-subtle)", sw: isNew ? 3 : 1.5, rx: 6 }); if (v) txt(p, x + 20, y0 + 39, v.length > 13 ? v.slice(0, 13) + "…" : v, { "font-size": 15, class: "t-s", style: isNew ? `fill:${C.code}` : "" }); });
+  }
+  /* ───── 히어로: 은행 창구 ───── */
+  const bk = $("[data-lg-bank]");
+  const DATA = { vpn: { text: "VPN이 안 붙어요", steps: [{ category: "네트워크" }, { queue: "네트워크 팀 큐" }, { reply: "'네트워크' 문의로 접수해 팀 큐에 전달했습니다." }] }, print: { text: "프린터 용지가 걸렸어요", steps: [{ category: "기타" }, { queue: "일반 큐" }, { reply: "'기타' 문의로 접수해 일반 큐에 전달했습니다." }] } };
+  let q = "vpn", at = 3;
+  function drawBank() {
+    const d = DATA[q], state = { text: d.text, category: "", queue: "", reply: "" }; for (let i = 0; i < at; i++) Object.assign(state, d.steps[i]);
+    bk.innerHTML = ""; const fresh = at > 0 ? Object.keys(d.steps[at - 1])[0] : null;
+    mk("path", { d: "M70 40 V600", class: "lg-rail" }, bk);
+    [["START", 40, null], ["classify", 170, "문의를 분류"], ["lookup", 310, "담당 큐를 찾음"], ["reply", 450, "안내문을 씀"], ["END", 590, null]].forEach(([nm, y, d2], i) => {
+      if (!d2) { mk("circle", { cx: 70, cy: y, r: 20, fill: "var(--fg-strong)" }, bk); txt(bk, 70, y + 5, nm === "START" ? "시작" : "끝", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" }); return; }
+      const idx = i - 1, on = idx === at - 1 && at > 0 && at <= 3, done = idx < at; const col = done ? C.code : "var(--line-strong)";
+      box(bk, 22, y - 44, 130, 88, col, { fill: done ? `color-mix(in srgb, ${C.code} ${on ? 22 : 10}%, var(--bg-base))` : "var(--bg-base)", sw: on ? 5 : 3, rx: 12 });
+      mk("use", { href: "#lg-ic-" + ["gear", "mail", "paper"][idx], x: 32, y: y - 34, width: 30, height: 30, style: `color:${done ? C.code : "var(--fg-neutral)"}` }, bk); txt(bk, 36, y + 22, nm, { "font-size": 16, class: "t-s mono" }); txt(bk, 36, y + 40, d2, { "font-size": 15, class: "t-d" });
+      if (on) { mk("path", { d: `M152 ${y} H236`, stroke: C.code, "stroke-width": 4, "stroke-dasharray": "6 5" }, bk); mk("path", { d: `M240 ${y} l-12 -7 v14z`, fill: C.code }, bk); }
+    });
+    drawDoc(bk, 240, 150, 210, state, fresh);
+    txt(bk, 345, 440, at === 0 ? "아직 아무 창구도 지나지 않았습니다" : at < 3 ? `${at}번째 창구까지 지나감` : "세 창구를 모두 지남", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+  }
+  const next = () => { if (at < 3) { at++; drawBank(); } };
+  $("[data-lg-next]").addEventListener("click", next, { signal }); $("[data-lg-reset]").addEventListener("click", () => { at = 0; drawBank(); }, { signal });
+  $("[data-lg-all]").addEventListener("click", async () => { at = 0; drawBank(); for (let i = 0; i < 3; i++) { if (signal.aborted) return; if (!reduce) await later(700); next(); } }, { signal });
+  $$("[data-lg-q]").forEach((b) => b.addEventListener("click", () => { q = b.dataset.lgQ; press("[data-lg-q]", b); at = 3; drawBank(); }, { signal })); drawBank();
+
+  /* ───── 노드 기계 ───── */
+  const nd = $("[data-lg-node]"); let nGen = 0;
+  async function drawNode(animate) {
+    const my = ++nGen; nd.innerHTML = "";
+    drawDoc(nd, 14, 10, 200, { text: "VPN이 안 붙어요", category: "", queue: "", reply: "" }, null, "State 전체");
+    box(nd, 250, 60, 196, 120, C.model, { fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#lg-ic-gear", x: 262, y: 72, width: 36, height: 36, style: `color:${C.model}` }, nd); txt(nd, 308, 96, "classify", { "font-size": 17, class: "t-s mono", style: `fill:${C.model}` }); txt(nd, 262, 138, "서류를 읽고 바꿀 칸만", { "font-size": 15, class: "t-s" }); txt(nd, 262, 160, "쪽지에 적어 돌려줌", { "font-size": 15, class: "t-s" });
+    mk("path", { d: "M214 120 H242", stroke: "var(--fg-neutral)", "stroke-width": 4 }, nd); mk("path", { d: "M248 120 l-12 -7 v14z", fill: "var(--fg-neutral)" }, nd);
+    const note = mk("g", { style: "opacity:0" }, nd); box(note, 250, 214, 196, 60, C.code, { rx: 8, fill: `color-mix(in srgb, ${C.code} 16%, var(--bg-base))` }); txt(note, 348, 238, "돌려준 쪽지", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(note, 348, 262, 'category: 네트워크', { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
+    mk("path", { d: "M348 182 V212", stroke: C.model, "stroke-width": 3.5, "stroke-dasharray": "6 5" }, note);
+    const merged = mk("g", { style: "opacity:0" }, nd); txt(merged, 14, 300, "▼ 쪽지의 칸만 서류에 반영됩니다", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); drawDoc(merged, 14, 312, 200, { text: "VPN이 안 붙어요", category: "네트워크", queue: "", reply: "" }, "category", "State: 반영된 모습"); mk("path", { d: "M250 244 H232 V428 H218", fill: "none", stroke: C.code, "stroke-width": 3.5, "stroke-dasharray": "6 5" }, merged); mk("path", { d: "M214 428 l12 -7 v14z", fill: C.code }, merged);
+    const keep = txt(nd, 250, 500, "나머지 칸은", { "font-size": 15, class: "t-d", opacity: 0 }); const keep2 = txt(nd, 250, 522, "건드리지 않습니다", { "font-size": 15, class: "t-d", opacity: 0 });
+    const show = (e) => { e.style.opacity = 1; };
+    if (animate && !reduce) { await later(200); await tween(400, (t) => { note.style.opacity = t; }); await later(500); if (my !== nGen) return; await tween(500, (t) => { merged.style.opacity = t; }); keep.setAttribute("opacity", 1); keep2.setAttribute("opacity", 1); }
+    else { show(note); show(merged); keep.setAttribute("opacity", 1); keep2.setAttribute("opacity", 1); }
+  }
+  $("[data-lg-mach]").addEventListener("click", () => drawNode(true), { signal }); drawNode(false);
+
+  /* ───── reducer 서류 칸 (스크롤 이야기) ───── */
+  const rd = $("[data-lg-red]"), stat = $("[data-lg-stat]"); let rm = "over", rstep = 0;
+  function drawRed(i) {
+    rstep = i < 0 ? 2 : i; const k = rstep; rd.innerHTML = "";
+    const lists = { over: [["시작"], ["A 노드"], ["B 노드"]], add: [["시작"], ["시작", "A 노드"], ["시작", "A 노드", "B 노드"]] };
+    const colOf = (t) => t === "시작" ? C.human : t === "A 노드" ? C.model : C.code;
+    [["over", "기본(덮어쓰기)", 10, C.bad], ["add", "operator.add(이어 붙이기)", 190, C.code]].forEach(([mode, title, y, col]) => {
+      box(rd, 14, y, 432, 164, col, { fill: "var(--bg-base)", sw: 3.5 }); txt(rd, 28, y + 30, "notes 칸 · " + title, { "font-size": 16, class: "t-s", style: `fill:${col}` });
+      lists[mode][k].forEach((t, n) => { mk("rect", { x: 28 + n * 134, y: y + 50, width: 120, height: 56, rx: 10, fill: `color-mix(in srgb, ${colOf(t)} 18%, var(--bg-base))`, stroke: colOf(t), "stroke-width": 3 }, rd); txt(rd, 88 + n * 134, y + 84, t, { "font-size": 16, "text-anchor": "middle", class: "t-s" }); });
+      if (mode === "over" && k >= 1) txt(rd, 28, y + 138, k === 1 ? "시작이 지워졌습니다" : "시작과 A 노드가 지워졌습니다", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
+      if (mode === "add" && k >= 1) txt(rd, 28, y + 138, "앞의 쪽지 뒤에 이어 붙었습니다", { "font-size": 15, class: "t-s", style: `fill:${C.code}` });
+    });
+    [["A 노드", C.model, 1], ["B 노드", C.code, 2]].forEach(([nm, col, st], n) => { const x = 14 + n * 224, cur = k === st, done = k >= st; const g = mk("g", { opacity: cur ? 1 : done ? .5 : .7 }, rd); box(g, x, 378, 208, 56, col, { rx: 10, dash: done && !cur ? "6 5" : "" }); txt(g, x + 12, 402, `노드 ${nm[0]}가 돌려줌`, { "font-size": 15, class: "t-s", style: `fill:${col}` }); txt(g, x + 12, 424, `["${nm}"]`, { "font-size": 15, class: "t-s mono" }); if (cur) { mk("path", { d: `M${x + 104} 378 V362`, stroke: col, "stroke-width": 4 }, rd); } });
+    stat.innerHTML = i < 0 ? "<b>두 노드를 모두 지난 뒤의 notes 칸입니다</b>" : `<b>${k === 0 ? "처음" : k === 1 ? "노드 A 도착" : "노드 B 도착"}</b>`;
+  }
+  story("[data-lg-story]", (i) => drawRed(i)); drawRed(0);
+
+  /* ───── 실수 장면 ───── */
+  const ms = $("[data-lg-mist]");
+  const MS = [
+    { code: 'builder.add_node("a", a)\nbuilder.add_node("a", a)', kind: "x", t: "오류(ValueError)", m: "Node `a` already present." },
+    { code: 'builder.add_edge("a", "nope")\ngraph = builder.compile()', kind: "x", t: "오류(ValueError, compile 때)", m: "Found edge ending at unknown node `nope`" },
+    { code: 'builder.add_node("a", a)\nbuilder.add_edge("a", END)\ngraph = builder.compile()', kind: "x", t: "오류(ValueError, compile 때)", m: "Graph must have an entrypoint: add at least one edge from START to another node" },
+    { code: 'builder = StateGraph(S)\n# ... 노드·엣지 등록\nbuilder.invoke({"text": "..."})', kind: "x", t: "오류(AttributeError)", m: "'StateGraph' object has no attribute 'invoke'" },
+    { code: 'def a(state):\n    return {"zzz": 1}   # State에 없는 칸', kind: "q", t: "오류 없음 (조용히 무시)", m: "State에 없는 칸 이름은 오류 없이 버려집니다. 칸 이름에 오타가 있어도 알려 주지 않으니 결과 State를 꼭 확인합니다." },
+  ];
+  const nb = (g, x, y, lb, col) => { box(g, x, y, 100, 44, col, { rx: 10 }); txt(g, x + 50, y + 28, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s mono" }); };
+  function drawM(i) {
+    ms.innerHTML = ""; const m = MS[i], col = m.kind === "x" ? C.bad : C.model;
+    if (i === 0) { nb(ms, 120, 80, "a", C.model); nb(ms, 140, 100, "a", C.model); mk("use", { href: "#lg-ic-stop", x: 300, y: 80, width: 56, height: 56, style: `color:${C.bad}` }, ms); txt(ms, 230, 200, "같은 이름의 노드가 둘이라 어느 쪽인지 알 수 없음", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    if (i === 1) { nb(ms, 40, 80, "a", C.code); mk("path", { d: "M140 102 H300", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "7 5" }, ms); mk("path", { d: "M304 102 l-14 -8 v16z", fill: C.bad }, ms); txt(ms, 360, 98, "nope", { "font-size": 18, "text-anchor": "middle", class: "t-d mono" }); mk("circle", { cx: 360, cy: 94, r: 34, fill: "none", stroke: C.bad, "stroke-width": 3, "stroke-dasharray": "5 5" }, ms); txt(ms, 230, 200, "화살표가 가리키는 노드가 등록되지 않음", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    if (i === 2) { mk("circle", { cx: 50, cy: 100, r: 22, fill: "var(--fg-strong)" }, ms); txt(ms, 50, 105, "시작", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" }); nb(ms, 170, 78, "a", C.code); mk("path", { d: "M270 100 H340", stroke: C.code, "stroke-width": 4 }, ms); mk("circle", { cx: 366, cy: 100, r: 22, fill: "var(--fg-strong)" }, ms); txt(ms, 366, 105, "끝", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" }); mk("path", { d: "M74 100 H160", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "5 5" }, ms); mk("path", { d: "M110 88 l24 24 M134 88 l-24 24", stroke: C.bad, "stroke-width": 5, "stroke-linecap": "round" }, ms); txt(ms, 230, 200, "시작과 이어진 길이 없어 어디서 출발할지 모름", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    if (i === 3) { box(ms, 60, 70, 150, 110, "var(--fg-neutral)", { fill: "var(--bg-subtle)", dash: "7 5" }); txt(ms, 135, 118, "builder", { "font-size": 17, "text-anchor": "middle", class: "t-s mono" }); txt(ms, 135, 142, "(설계도)", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); box(ms, 250, 90, 160, 70, C.bad, { rx: 14 }); txt(ms, 330, 130, "▶ invoke 실행", { "font-size": 16, "text-anchor": "middle", class: "t-s" }); mk("path", { d: "M250 126 H214", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "5 4" }, ms); txt(ms, 230, 220, "compile()로 실행 가능한 그래프를 만들기 전에는 실행 버튼이 없음", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    if (i === 4) { drawDoc(ms, 20, 12, 190, { text: "VPN이 안 붙어요", category: "", queue: "", reply: "" }, null, "State"); box(ms, 250, 56, 150, 50, C.model, { rx: 8 }); txt(ms, 325, 86, '{"zzz": 1}', { "font-size": 16, "text-anchor": "middle", class: "t-s mono" }); mk("path", { d: "M250 82 C230 82 230 82 214 82", stroke: "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": "4 4" }, ms); mk("path", { d: "M220 70 l16 24 M236 70 l-16 24", stroke: "var(--line-strong)", "stroke-width": 4, "stroke-linecap": "round" }, ms); txt(ms, 325, 140, "그런 칸이 없어서", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(ms, 325, 162, "조용히 버려짐", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }
+    $("[data-lg-mp]").innerHTML = `<pre class="lg-mcode">${esc(m.code)}</pre><div class="lg-mres"><small style="color:${col}">${esc(m.t)}</small><code>${esc(m.m)}</code></div>`;
+  }
+  $$("[data-lg-m]").forEach((b) => b.addEventListener("click", () => { press("[data-lg-m]", b); drawM(+b.dataset.lgM); }, { signal })); drawM(0);
+
+  initTerms({
+    g: [["cmd", "$ python graph.py"], ["wait", 700], ["line", "{'text': 'VPN이 안 붙어요', 'category': '네트워크', 'queue': '네트워크 팀 큐', 'reply': \"'네트워크' 문의로 접수해 네트워크 팀 큐에 전달했습니다.\"}"], ["wait", 400], ["line", "{'classify': {'category': '네트워크'}}"], ["line", "{'lookup': {'queue': '네트워크 팀 큐'}}"], ["type", "{'reply': {'reply': \"'네트워크' 문의로 접수해 네트워크 팀 큐에 전달했습니다.\"}}"]],
+    r: [["cmd", "$ python reducer.py"], ["wait", 600], ["line", "{'notes': ['시작', 'A 노드', 'B 노드'], 'last': 'B'}"], ["type", "{'notes': ['B 노드'], 'last': 'B'}"]],
+  });
+})();
+</script>
