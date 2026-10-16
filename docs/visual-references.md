@@ -132,6 +132,7 @@
 | [LangChain, Agents](https://docs.langchain.com/oss/python/langchain/agents) · [Streaming](https://docs.langchain.com/oss/python/langchain/streaming) · [LangGraph, Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api) | 직접 짠 루프의 줄을 기능별 묶음으로 나눠 create_agent 안의 어디로 옮겨 갔는지 짝짓고(맡길 수 없는 줄 포함), stream_mode 조각·get_graph 노드·recursion_limit 단계를 모의 서버로 실행해 관찰한 값으로 그린다 | 프레임워크가 대신하는 일과 대신하지 않는 일을 가를 때 | 2026-10-16 | langchain-create-agent-loop-anatomy |
 | [LangChain, Middleware](https://docs.langchain.com/oss/python/langchain/middleware/custom) · [Guardrails](https://docs.langchain.com/oss/python/langchain/guardrails) | 훅 여섯 곳을 한 번의 실행을 편 시간 줄 위 깃발로 두고 끼운 코드를 바꿔 어느 깃발이 켜지는지 본다. before/after(지나가며 확인)와 wrap(호출을 감쌈)을 안팎 상자로 구분하고, 실행 순서(A·B)는 모의 서버 로그 순서를 양파 그림으로 옮긴다 | 코드를 끼워 넣는 지점과 순서를 보일 때 | 2026-10-17 | langchain-middleware-hooks-guardrails |
 | [LangChain, Short-term memory](https://docs.langchain.com/oss/python/langchain/short-term-memory) · [Long-term memory](https://docs.langchain.com/oss/python/langchain/long-term-memory) · [Context Engineering for Agents](https://www.langchain.com/blog/context-engineering-for-agents) · [Anthropic, Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | 컨텍스트 창을 책상, Store를 서랍으로 그려 write·select·compress·isolate 네 전략을 책상↔서랍 화살표로 바꾸고, thread_id·Store·SummarizationMiddleware 동작은 모의 서버로 직접 실행해 얻은 메시지 수(1·3·5 대 1·3·5·3·5)로 보인다 | 기억·컨텍스트 관리처럼 눈에 안 보이는 저장 위치를 그릴 때 | 2026-10-17 | langchain-agent-memory-context-engineering |
+| [LangChain, Retrieval](https://docs.langchain.com/oss/python/langchain/retrieval) · [Build a RAG agent](https://docs.langchain.com/oss/python/langchain/rag) · [Anthropic, Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval) | 2-Step RAG와 Agentic RAG를 같은 질문 세 개로 나란히 흘려 검색·모델 호출 횟수가 갈리는 모습을 보인다. 청크 분할은 splitter를 직접 돌려 얻은 실제 청크(둘째 청크에 VPN이 없음)로 그리고, 검색 도구의 content/artifact 분리는 모의 서버로 실행해 확인한다 | 검색 방식 두 가지의 호출 횟수 차이와 청크 경계 문제를 보일 때 | 2026-10-17 | agentic-rag-search-as-tool-langchain |
 
 ## 미확인
 
@@ -234,6 +235,8 @@
 - **규칙 기반 vs 모델 기반 Guardrail은 같은 입력 세 개로 대조** (langchain-middleware-hooks-guardrails) — "해킹"이라는 낱말이 든 입력은 둘 다 막고 돌려 쓴 입력은 규칙 기반만 놓친다. 상자 나열이 표 같다는 지적을 입력 → 검문 → 결과 흐름으로 바꾼 것
 - **책상 용량 막대와 책상 비우는 방법 토글** (langchain-agent-memory-context-engineering) — 대화 횟수 슬라이더로 책상 칸이 차오르고 100칸을 넘으면 빨강으로 바뀐다. 그대로 두기·요약·서랍에 쓰고 꺼내기·따로 맡기기 네 방법이 책상 사용량과 서랍 메모 수를 다르게 만든다(예시 값). 책상=컨텍스트 창, 서랍=장기 기억이라는 비유를 글 전체 시각 언어로 썼다
 - **요약 전후 모델이 받은 메시지 수 막대** (langchain-agent-memory-context-engineering) — 같은 질문 다섯 번에서 요약 없음은 1·3·5·7·9, 요약 켬은 1·3·5·3·5로 직접 실행해 확인한 값을 그렸다. 토글 하나로 두 막대 묶음이 바뀐다
+- **같은 질문 세 개를 두 검색 방식에 흘려 보기** (agentic-rag-search-as-tool-langchain) — 질문 토글 하나로 2-Step(검색 항상 1번)과 Agentic(0·1·2번)의 사건 줄이 함께 바뀌고 아래에 검색·모델 호출 횟수가 쓰인다. "다시 흘려 보기"를 누르면 두 줄이 같은 박자로 한 칸씩 나타난다. 검색이 필요 없는 질문에서 2-Step이 불필요하게 검색하는 것을 첫 질문으로 보였다
+- **실제로 나눠 본 청크를 카드로, 잘린 청크에 경고 표시** (agentic-rag-search-as-tool-langchain) — splitter 결과 둘째 청크에 VPN이라는 말이 사라진 것을 그대로 카드에 옮겼다. Contextual Retrieval의 필요성을 만든 예시 없이 보이는 방법
 
 ## 페이지 레이아웃
 

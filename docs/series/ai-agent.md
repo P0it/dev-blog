@@ -61,7 +61,7 @@
 | 7 | 직접 짠 루프 24줄은 create_agent 안 어디에 있을까요? (`langchain-create-agent-loop-anatomy`) | 3편의 50줄은 한 줄로 어떻게 줄어드나? | 루프를 맡기기 · `system_prompt` · 스트리밍으로 단계 보기 · recursion limit · 속은 그래프(11편 예고) | system prompt, recursion limit | 3도구 헬프데스크 Agent | 3, 6 | 발행 |
 | 8 | Agent 루프에 코드를 끼워 넣는 여섯 곳, Middleware (`langchain-middleware-hooks-guardrails`) | 루프를 고치지 않고 동작을 끼워 넣을 수 있나? | 훅 위치(before/after model, wrap tool) · 내장(Summarization·HITL·PII·CallLimit·ModelFallback·ToolRetry) · 커스텀(데코레이터 훅) · Guardrail(`jump_to` 로 막기, 답 고쳐 쓰기) | Middleware, 훅, Guardrail | 호출 제한·PII 가림·재시도 붙인 Agent | 7 | 발행 |
 | 9 | 책상 위와 서랍 속, Agent의 단기 기억과 장기 기억 (`langchain-agent-memory-context-engineering`) | Agent 는 어제 대화를 어떻게 기억하고, 무엇을 잊어야 하나? | 단기 기억(checkpointer·`thread_id`) · 장기 기억(Store) · 컨텍스트 창=책상 크기 · write/select/compress/isolate | 단기·장기 기억, checkpointer, thread, Context Engineering | 대화를 이어 가는 Agent | 8 | 발행 |
-| 10 | 검색을 도구로 쓰는 Agent(Agentic RAG) | 검색할지, 다시 검색할지는 누가 정하나? | 리트리버를 도구로 · 청킹·임베딩·벡터 DB 요약(기존 RAG 글 링크) · 근거 표시 · 검색 실패·재검색 | Agentic RAG, 리트리버, 청크, 임베딩, 벡터 DB | IT 매뉴얼 검색 도구 | 9 | 계획 |
+| 10 | 검색을 도구로 바꾸면 달라지는 것, Agentic RAG (`agentic-rag-search-as-tool-langchain`) | 검색할지, 다시 검색할지는 누가 정하나? | 리트리버를 도구로 · 청킹·임베딩·벡터 DB 요약(기존 RAG 글 링크) · 근거 표시 · 검색 실패·재검색 | Agentic RAG, 리트리버, 청크, 임베딩, 벡터 DB | IT 매뉴얼 검색 도구 | 9 | 발행 |
 
 ### Part 3. LangGraph 로 흐름 직접 설계
 
