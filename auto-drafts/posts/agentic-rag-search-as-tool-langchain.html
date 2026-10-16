@@ -6,10 +6,10 @@ tags: [AI Agent, Agentic RAG, RAG, LangChain, 벡터 검색, Python]
 category: ai
 series: ai-agent
 series_order: 10
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agentic-rag-search-as-tool-langchain-mvb49662.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agentic-rag-search-as-tool-langchain-mvb6wli8.jpg
 ---
 <!-- page -->
-<!-- layout: 제목|글 머리 + 전폭 비교 보드 히어로(질문 고르기 × 검색 방식) + 가로 청크 띠 + 코드|해설 + 지그재그(출처 표시) + 실험판 전폭 띠(실패 유형과 처방) | 글의 성격: 같은 질문을 두 방식에 흘려 검색 횟수가 어떻게 갈리는지 비교하는 글이라 질문 토글과 방식 토글만 바꾸게 하고 이어서 검색 도구의 구조·출처·실패를 한 단계씩 푼다 | 버린 후보: 분할 히어로, 그림 고정 스크롤리텔링(앞 편들에서 쓴 구조) -->
+<!-- layout: 제목|글 머리 + 전폭 두 레일 히어로(도서관 길 두 가지) + 그림 고정 스크롤리텔링(의미 지도) + 코드|해설 + 글|그림(결과 두 칸 보관함) + 그림|글 뒤집기(출처 연결선) + 실험판 전폭 띠(실패 장면) | 글의 성격: 같은 질문을 두 방식에 흘려 검색 횟수가 갈리는 모습이 핵심이라 두 레일 위를 지나가는 길로 열고 청크가 의미 지도의 점이 되어 가까운 것이 뽑히는 과정을 스크롤로 보인다 | 버린 후보: 카드 줄 비교 보드(앞 버전) -->
 <style>
 .post-page .rg {
   --rg-human: rgb(37, 112, 235); --rg-code: rgb(16, 150, 120); --rg-model: rgb(226, 106, 28); --rg-bad: rgb(214, 56, 56);
@@ -135,106 +135,106 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 .post-page .rg-tag.n { --t: var(--fg-strong); }
 
-.post-page .rg-cmpb { margin-top: 26px; }
-.post-page .rg-row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 32px); margin-top: 22px; }
-.post-page .rg-lane { border-radius: 16px; border: 1.5px solid var(--k); background: var(--bg-base); padding: 14px 16px 16px; }
-.post-page .rg-lane.t2 { --k: var(--rg-human); } .post-page .rg-lane.ag { --k: var(--rg-code); }
-.post-page .rg-lane h3 { font-size: 16px; margin: 0 0 4px; color: var(--k); }
-.post-page .rg-lane > small { display: block; font-size: 13px; color: var(--fg-neutral); margin-bottom: 14px; line-height: 1.5; }
-.post-page .rg-chain { display: grid; gap: 10px; }
-.post-page .rg-ev { border-radius: 12px; border: 1.5px solid var(--e); background: color-mix(in srgb, var(--e) 7%, var(--bg-base)); padding: 8px 12px; font-size: 14px; line-height: 1.5; position: relative; opacity: 0; transform: translateY(8px); transition: opacity .45s, transform .45s; }
-.post-page .rg-ev.on { opacity: 1; transform: none; }
-.post-page .rg-ev small { display: block; font-size: 12px; font-weight: 700; color: var(--e); }
-.post-page .rg-ev code { background: transparent; padding: 0; font-size: 12.5px; color: var(--fg-strong); overflow-wrap: anywhere; }
-.post-page .rg-ev.m { --e: var(--rg-model); } .post-page .rg-ev.s { --e: var(--rg-code); } .post-page .rg-ev.h { --e: var(--rg-human); } .post-page .rg-ev.x { --e: var(--rg-bad); }
-.post-page .rg-ev + .rg-ev::before { content: "↓"; position: absolute; top: -17px; left: 16px; font-size: 13px; color: var(--fg-neutral); }
-.post-page .rg-sum { margin: 14px 0 0; font-size: 14.5px; font-weight: 700; color: var(--fg-strong); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
-@media (max-width: 900px) { .post-page .rg-row2 { grid-template-columns: minmax(0, 1fr); } }
 
-/* 청크 띠 */
-.post-page .rg-band { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: color-mix(in srgb, var(--rg-code) 6%, var(--bg-base)); }
-.post-page .rg-band h2 { margin-bottom: 20px; }
-.post-page .rg-pipe { display: grid; grid-template-columns: minmax(0, 1.1fr) 28px minmax(0, 2fr) 28px minmax(0, 1fr); gap: 0 8px; align-items: stretch; margin-top: 30px; }
-.post-page .rg-doc { border-radius: 14px; border: 1.5px solid var(--line-strong); background: var(--bg-base); padding: 12px 14px; font-size: 13.5px; line-height: 1.6; }
-.post-page .rg-doc b { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-strong); margin-bottom: 6px; }
-.post-page .rg-chunks { display: grid; gap: 8px; }
-.post-page .rg-ck { border-radius: 12px; border: 2px solid var(--k, var(--rg-code)); background: color-mix(in srgb, var(--k, var(--rg-code)) 8%, var(--bg-base)); padding: 8px 12px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; font-family: var(--font-mono); }
-.post-page .rg-ck small { display: block; font-family: var(--font-sans); font-weight: 700; color: var(--k, var(--rg-code)); }
-.post-page .rg-ck.warn { --k: var(--rg-model); }
-.post-page .rg-pa { align-self: center; text-align: center; font-size: 20px; color: var(--fg-neutral); }
-.post-page .rg-store { border-radius: 14px; border: 2px dashed var(--rg-code); background: color-mix(in srgb, var(--rg-code) 6%, var(--bg-base)); padding: 12px 14px; font-size: 13.5px; line-height: 1.6; text-align: center; display: grid; place-items: center; }
-.post-page .rg-store b { display: block; color: var(--rg-code); }
-.post-page .rg-why { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); font-weight: 600; }
-@media (max-width: 900px) { .post-page .rg-pipe { grid-template-columns: minmax(0, 1fr); gap: 10px; } .post-page .rg-pa { transform: rotate(90deg); height: 20px; } }
+.post-page .rg-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
+.post-page .rg-nar { max-width: 520px; }
+.post-page .rg-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .rg-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .rg-scene .t-d { fill: var(--fg-neutral); }
+.post-page .rg-scene .mono { font-family: var(--font-mono); }
+.post-page .rg-scene .ln { stroke: var(--line-strong); fill: none; }
+.post-page .rg-rail { fill: none; stroke: var(--line-strong); stroke-width: 12; stroke-linecap: round; }
+[data-theme="dark"] .post-page .rg-rail { stroke: color-mix(in srgb, var(--fg-neutral) 55%, var(--bg-base)); }
+.post-page .rg-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.post-page .rg-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.post-page .rg-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: start; }
+.post-page .rg-steps { padding-bottom: 14vh; }
+.post-page .rg-step { min-height: 30vh; display: flex; flex-direction: column; justify-content: center; opacity: .4; transition: opacity .5s; }
+.post-page .rg-step.on { opacity: 1; }
+.post-page .rg-step h3 { font-size: 20px; }
+.post-page .rg-step p { margin: 0; }
+.post-page .rg-sfig { position: sticky; top: var(--rg-top, 96px); }
+.post-page .rg-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .rg-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .rg-story { grid-template-columns: minmax(0, 1fr); } .post-page .rg-sfig { position: static; order: -1; } .post-page .rg-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .rg-steps { padding-bottom: 0; } }
 
-/* 출처 */
-.post-page .rg-ans { border-radius: 14px; background: var(--bg-base); border: 1.5px solid var(--line-strong); padding: 16px 18px; font-size: 16px; line-height: 1.85; }
-.post-page .rg-ans button { font: inherit; font-size: 12.5px; font-weight: 800; font-family: var(--font-mono); padding: 0 6px; margin: 0 2px; border-radius: 6px; border: 1.5px solid var(--rg-code); background: transparent; color: var(--rg-code); cursor: pointer; vertical-align: 2px; }
-.post-page .rg-ans button[aria-pressed="true"] { background: var(--rg-code); color: var(--bg-base); }
-.post-page .rg-src { display: grid; gap: 8px; margin-top: 14px; }
-.post-page .rg-sc { border-radius: 12px; border: 1.5px solid var(--line-strong); padding: 9px 12px; font-size: 13.5px; line-height: 1.55; transition: border-color .4s, background .4s, opacity .4s; opacity: .55; }
-.post-page .rg-sc b { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-strong); display: block; }
-.post-page .rg-sc.on { opacity: 1; border-color: var(--rg-code); background: color-mix(in srgb, var(--rg-code) 9%, var(--bg-base)); }
-.post-page .rg-sc em { font-style: normal; font-size: 12px; color: var(--fg-neutral); }
-
-/* 실패 */
-.post-page .rg-fl { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(20px, 3vw, 44px); margin-top: 24px; align-items: start; }
-.post-page .rg-cases { display: grid; gap: 8px; }
-.post-page .rg-cases button { text-align: left; font: inherit; font-size: 14.5px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; line-height: 1.5; transition: border-color .3s, background .3s; }
-.post-page .rg-cases button[aria-pressed="true"] { border-color: var(--fg-strong); background: color-mix(in srgb, var(--fg-strong) 6%, var(--bg-base)); color: var(--fg-strong); }
-.post-page .rg-cases button b { display: block; font-size: 12.5px; color: var(--rg-bad); }
-.post-page .rg-fix { display: grid; gap: 12px; }
-.post-page .rg-fix .rg-s + .rg-s::before { content: none !important; }
-@media (max-width: 900px) { .post-page .rg-fl { grid-template-columns: minmax(0, 1fr); } }
+.post-page .rg-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
+.post-page .rg-hero-top p { margin: 0 0 1.2em; } .post-page .rg-hero-top p:last-child { margin-bottom: 0; }
+@media (max-width: 900px) { .post-page .rg-hero-top { grid-template-columns: minmax(0, 1fr); } }
+.post-page .rg-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 36px; }
+.post-page .rg-stage .rg-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .rg-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+.post-page .rg-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .rg-cases { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.post-page .rg-cases button { font: inherit; font-size: 14px; text-align: left; padding: 8px 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; }
+.post-page .rg-cases button b { display: block; font-size: 14px; color: var(--fg-strong); }
+.post-page .rg-cases button[aria-pressed="true"] { border-color: var(--fg-strong); background: var(--bg-muted); }
+.post-page .rg-rx { display: grid; gap: 8px; margin-top: 12px; }
+.post-page .rg-rx > div { font-size: 14.5px; line-height: 1.65; padding: 8px 0; border-top: 1px solid var(--line-subtle); }
+.post-page .rg-rx b { color: var(--fg-strong); }
+.post-page .rg-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="rg-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
+    <symbol id="rg-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
+    <symbol id="rg-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
+    <symbol id="rg-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
+    <symbol id="rg-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
+    <symbol id="rg-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
+    <symbol id="rg-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
+    <symbol id="rg-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
+    <symbol id="rg-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
+  </defs>
+</svg>
 <div class="rg">
   <section class="rg-hero">
     <div class="rg-wrap">
-      <div class="rg-head">
+      <div class="rg-hero-top">
         <h1>검색을 도구로 바꾸면 달라지는 것, Agentic RAG</h1>
         <div>
-          <p>도서관에서 조사 숙제를 할 때 사서에게 "무조건 책 세 권을 먼저 가져다 달라"고 부탁할 수도 있고 필요하다고 생각할 때 직접 서가에 갈 수도 있습니다. 앞쪽은 검색 횟수가 정해져 있어 빠르고 예측하기 쉽습니다. 뒤쪽은 질문마다 가는 횟수가 달라집니다.</p>
+          <p>도서관에서 조사 숙제를 할 때 사서에게 "무조건 책 세 권을 먼저 가져다 달라"고 부탁하는 방법이 있고 필요하다고 생각할 때 직접 서가에 가는 방법이 있습니다. 앞쪽은 검색 횟수가 정해져 있어 빠르고 예측하기 쉽습니다. 뒤쪽은 질문마다 가는 횟수가 달라집니다.</p>
           <p>RAG(검색해서 찾은 글을 모델에게 근거로 함께 주는 방식)도 둘로 나뉩니다. 질문마다 검색을 한 번 하고 답하게 하는 방식은 2-Step RAG이고 검색을 도구로 줘서 모델이 할지 말지와 검색어를 정하는 방식은 Agentic RAG입니다. 같은 질문을 두 방식에 보내면 어떻게 달라지는지 아래에서 확인합니다.</p>
         </div>
       </div>
-      <div class="rg-board rg-cmpb" data-figure data-thumb data-rg-hero>
+      <div class="rg-stage" data-figure data-thumb data-rg-hero>
         <div class="rg-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">질문</span>
           <div class="rg-seg" role="group" aria-label="질문 고르기">
-            <button type="button" data-rg-q="0" aria-pressed="true">와이파이가 뭐예요?</button>
+            <button type="button" data-rg-q="0" aria-pressed="false">와이파이가 뭐예요?</button>
             <button type="button" data-rg-q="1" aria-pressed="false">VPN이 안 붙어요</button>
-            <button type="button" data-rg-q="2" aria-pressed="false">프린터 XJ-9 용지가 걸렸어요</button>
+            <button type="button" data-rg-q="2" aria-pressed="true">프린터 XJ-9 용지가 걸렸어요</button>
           </div>
           <button type="button" class="rg-act" data-rg-play>다시 흘려 보기</button>
         </div>
-        <div class="rg-row2">
-          <div class="rg-lane t2"><h3>2-Step RAG</h3><small>검색을 항상 한 번 하고 그 결과로 답합니다</small><div class="rg-chain" data-rg-t2></div><p class="rg-sum" data-rg-s2></p></div>
-          <div class="rg-lane ag"><h3>Agentic RAG</h3><small>검색을 도구로 줘서 모델이 정합니다</small><div class="rg-chain" data-rg-ag></div><p class="rg-sum" data-rg-sa></p></div>
-        </div>
-        <p class="rg-cap">설명을 위한 예시 장면입니다. 실제 검색 결과와 호출 횟수는 모델과 자료에 따라 다릅니다.</p>
+        <svg class="rg-scene rg-nar" data-rg-lib viewBox="0 0 460 760" role="img" aria-label="도서관 길 두 가지. 왼쪽 2-Step RAG는 어떤 질문이든 서가에 한 번 들렀다가 모델이 답한다. 오른쪽 Agentic RAG는 모델이 먼저 판단해서 서가에 안 가거나 한 번 가거나 검색어를 바꿔 두 번 간다."></svg>
+        <p class="rg-verdict" data-rg-sum></p>
+        <p class="rg-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 실제 검색 결과와 호출 횟수는 모델과 자료에 따라 다릅니다.</p>
       </div>
     </div>
   </section>
 
-  <section class="rg-band">
+  <section class="rg-sec">
     <div class="rg-wrap">
-      <h2>매뉴얼은 청크로 나눠 벡터 저장소에 넣습니다</h2>
-      <p>검색을 도구로 만들기 전에 검색할 자료를 준비해야 합니다. IT 매뉴얼 같은 긴 글은 한꺼번에 컨텍스트에 넣을 수 없어서 청크(chunk, 검색할 때 한 번에 꺼내는 작은 토막)로 나눕니다. 각 청크는 임베딩(embedding, 글의 뜻을 숫자 목록으로 바꾼 것)으로 바뀌어 벡터 저장소(vector store, 임베딩을 모아 두고 비슷한 것을 찾아 주는 곳)에 들어갑니다. 질문도 같은 방식으로 바꿔서 가까운 청크를 찾습니다.</p>
-      <div class="rg-pipe" data-figure>
-        <div class="rg-doc"><b>it-manual.md</b>VPN 접속 오류 해결 …<br>프린터 용지 걸림 해결 …</div>
-        <span class="rg-pa">→</span>
-        <div class="rg-chunks">
-          <div class="rg-ck"><small>청크 1</small>VPN 접속 오류 해결
-1. 앱을 완전히 종료한 뒤 다시 실행합니다.</div>
-          <div class="rg-ck warn"><small>청크 2 · "VPN"이라는 말이 없음</small>2. 사내 Wi-Fi가 아니라면 인증서를 다시 설치합니다.</div>
-          <div class="rg-ck"><small>청크 3</small>프린터 용지 걸림 해결
-1. 전원을 끄고 뒤쪽 덮개를 엽니다.
-2. 걸린 용지를 천천히 당겨 뺍니다.</div>
+      <div class="rg-head">
+        <h2>매뉴얼은 청크로 나눠 벡터 저장소에 넣습니다</h2>
+        <div>
+          <p>검색을 도구로 만들기 전에 검색할 자료를 준비해야 합니다. IT 매뉴얼 같은 긴 글은 한꺼번에 컨텍스트에 넣을 수 없어서 청크(chunk, 검색할 때 한 번에 꺼내는 작은 토막)로 나눕니다. 각 청크는 임베딩(embedding, 글의 뜻을 숫자 목록으로 바꾼 것)으로 바뀌어 벡터 저장소(vector store, 임베딩을 모아 두고 비슷한 것을 찾아 주는 곳)에 들어갑니다. 스크롤하며 청크가 뜻의 지도 위 점이 되는 과정을 보세요.</p>
         </div>
-        <span class="rg-pa">→</span>
-        <div class="rg-store"><span><b>벡터 저장소</b><span style="letter-spacing:6px;color:var(--rg-code)">● ● ●</span><br>청크마다 임베딩과<br><code>source: it-manual.md</code><br>를 함께 저장</span></div>
       </div>
-      <p class="rg-why">청크 2는 VPN 해결 방법의 둘째 단계인데 잘려 나오면서 VPN이라는 말을 잃었습니다. "VPN 인증서"를 검색해도 이 청크가 안 나올 수 있습니다.</p>
-      <p class="rg-cap">설명을 위한 예시 매뉴얼을 <code>langchain-text-splitters</code> 1.1의 <code>RecursiveCharacterTextSplitter</code>(chunk_size=60)로 직접 나눈 결과입니다. Anthropic은 청크마다 앞뒤 맥락을 덧붙이는 Contextual Retrieval로 상위 20개 청크의 검색 실패율을 5.7%에서 3.7%로 줄였다고 밝혔습니다.</p>
+      <div class="rg-story" style="margin-top:44px" data-rg-story>
+        <div class="rg-steps">
+          <div class="rg-step" data-rg-step><h3>긴 매뉴얼 한 권</h3><p>VPN 접속 오류와 프린터 용지 걸림 해결법이 한 파일에 이어져 있습니다. 통째로 모델에게 주기에는 깁니다.</p></div>
+          <div class="rg-step" data-rg-step><h3>청크로 자르기</h3><p>일정한 길이로 자르면 세 조각이 나옵니다. 둘째 조각은 VPN 해결 방법의 둘째 단계인데 잘려 나오면서 VPN이라는 말을 잃었습니다.</p></div>
+          <div class="rg-step" data-rg-step><h3>뜻의 지도에 점으로 놓기</h3><p>임베딩은 글의 뜻을 지도 위 좌표로 바꿉니다. 뜻이 비슷한 글은 가까이 놓이고 다른 글은 멀리 놓입니다. 청크마다 점 하나가 되어 벡터 저장소에 들어갑니다.</p></div>
+          <div class="rg-step" data-rg-step><h3>질문도 점이 되어 가까운 것을 찾음</h3><p>질문도 같은 방식으로 점이 되고 가장 가까운 청크 두 개(k=2)가 뽑힙니다. 질문을 바꿔 가며 어떤 청크가 뽑히는지 보세요. "VPN 인증서"를 검색해도 청크 2가 안 나올 수 있습니다.</p></div>
+        </div>
+        <div class="rg-sfig" data-rg-sfig data-figure>
+          <div class="rg-ctrl" style="margin-bottom:8px"><div class="rg-seg" role="group" aria-label="질문 고르기"><button type="button" data-rg-sq="0" aria-pressed="true">VPN이 안 붙어요</button><button type="button" data-rg-sq="1" aria-pressed="false">VPN 인증서</button><button type="button" data-rg-sq="2" aria-pressed="false">프린터 용지</button></div></div>
+          <svg class="rg-scene rg-nar" data-rg-map viewBox="0 0 460 620" role="img" aria-label="청크와 의미 지도 그림. 위의 긴 매뉴얼이 세 청크로 잘리고, 아래 지도에서 청크마다 점이 되며, 질문도 점이 되어 가장 가까운 청크 둘이 뽑힌다."></svg>
+          <p class="rg-stat" data-rg-stat></p>
+        </div>
+      </div>
+      <p class="rg-cap" style="margin-top:28px">설명을 위한 예시 매뉴얼을 <code>langchain-text-splitters</code> 1.1의 <code>RecursiveCharacterTextSplitter</code>(chunk_size=60)로 직접 나눈 결과이고 지도 위 점 위치는 설명을 위한 값입니다. Anthropic은 청크마다 앞뒤 맥락을 덧붙이는 Contextual Retrieval로 상위 20개 청크의 검색 실패율을 5.7%에서 3.7%로 줄였다고 밝혔습니다.</p>
     </div>
   </section>
 
@@ -244,11 +244,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <h2>검색을 함수로 감싸면 도구가 됩니다</h2>
         <div>
           <p>벡터 저장소의 검색은 함수 하나입니다. 이 함수를 앞서 만든 방식대로 <code>@tool</code>로 감싸면 모델이 부를 수 있는 검색 도구가 됩니다. 모델이 설명서를 읽고 검색할지 말지와 어떤 검색어를 쓸지를 정합니다. 검색어를 쓰는 일도 모델이 하니 질문을 다듬어 쓸 수 있고 첫 검색이 빗나가면 다른 검색어로 다시 찾을 수 있습니다.</p>
-          <p>도구 결과는 모델이 읽는 글과 코드가 보관하는 부가 정보로 나눌 수 있습니다. <code>response_format="content_and_artifact"</code>로 두면 도구가 글(content)과 부가 정보(artifact) 두 개를 돌려주고 글만 모델에게 갑니다. artifact는 모델에게 보내지 않고 코드만 보관하는 부가 데이터입니다. 글과 출처 같은 정보(metadata)를 함께 담는 LangChain의 Document 객체를 여기에 두면 모델 컨텍스트를 늘리지 않고 출처를 보관합니다.</p>
+          <p>도구 결과는 모델이 읽는 글과 코드가 보관하는 부가 정보로 나눌 수 있습니다. <code>response_format="content_and_artifact"</code>로 두면 도구가 글(content)과 부가 정보(artifact) 두 개를 돌려주고 글만 모델에게 갑니다. 글과 출처 같은 정보(metadata)를 함께 담는 LangChain의 Document 객체를 artifact에 두면 모델 컨텍스트를 늘리지 않고도 출처를 보관할 수 있습니다.</p>
         </div>
       </div>
-      <p class="rg-cap rg-mobhint">코드 창은 좌우로 밀어서 줄 끝까지 볼 수 있습니다.</p>
-      <div class="rg-codepair">
+      <div style="margin-top:36px" data-figure>
+        <svg class="rg-scene rg-nar" data-rg-tray viewBox="0 0 460 430" role="img" aria-label="도구 결과 두 칸 그림. 검색 도구가 결과를 둘로 나눠 글은 위로 올려 모델에게 보내고, 출처가 든 Document는 아래 코드 보관함에 넣는다. 모델은 보관함 안을 보지 못한다."></svg>
+        <p class="rg-cap">content_and_artifact로 두면 도구가 (글, 부가 정보) 두 값을 돌려주고 그중 글만 모델의 컨텍스트에 들어갑니다.</p>
+      </div>
+      <div class="rg-codepair" style="margin-top:36px">
         <div class="cp-code">
 <pre data-title="rag_tool.py" data-hl="2-4,7-12"><code class="language-python"># ① 청크로 나눠 벡터 저장소에 넣는다
 splitter = RecursiveCharacterTextSplitter(chunk_size=60, chunk_overlap=10)
@@ -265,8 +268,8 @@ def search_manual(query: str):
         </div>
         <div class="cp-notes">
 <ol class="pg-code-notes">
-  <li><b>자료를 저장합니다.</b> <code>chunk_overlap=10</code>은 이웃한 청크가 10자씩 겹치게 해서 문장이 잘리는 손실을 줄입니다. <code>embeddings</code>는 회사의 임베딩 모델을 가리키는 값입니다. 이 모델이 글을 숫자 목록으로 바꿉니다.</li>
-  <li><b>도구로 감쌉니다.</b> 설명 글은 "언제 쓰는 도구인지"를 적습니다. <code>similarity_search</code>는 질문과 가까운 청크를 <code>k</code>개(여기서는 2개) 찾습니다. 반환값은 (글, Document 목록) 두 개입니다. 글에는 출처를 붙여 모델이 답에 인용할 수 있게 합니다.</li>
+  <li><b>자료를 저장합니다.</b> <code>chunk_overlap=10</code>은 이웃한 청크가 10자씩 겹치게 해서 문장이 잘리는 손실을 줄입니다. <code>embeddings</code>는 회사의 임베딩 모델을 가리키는 값이며 그 모델이 글을 숫자 목록으로 바꿉니다.</li>
+  <li><b>도구로 감쌉니다.</b> 설명 글에는 "언제 쓰는 도구인지"를 적습니다. <code>similarity_search</code>는 질문과 가까운 청크를 <code>k</code>개(여기서는 2개) 찾습니다. 반환값은 (글, Document 목록) 두 개입니다. 글에는 출처를 붙여 모델이 답에 인용할 수 있게 합니다.</li>
 </ol>
         </div>
       </div>
@@ -306,12 +309,9 @@ print(r["messages"][-1].content)</code></pre>
   <section class="rg-sec">
     <div class="rg-wrap rg-split rev">
       <div data-figure>
-        <div class="rg-ans" data-rg-ans>앱을 완전히 종료한 뒤 다시 실행해 보세요<button type="button" data-rg-c="1" aria-pressed="true">[1]</button> 그래도 안 되면 사내 Wi-Fi가 아닌 곳에서는 인증서를 다시 설치합니다<button type="button" data-rg-c="2" aria-pressed="false">[2]</button>.</div>
-        <div class="rg-src" data-rg-src>
-          <div class="rg-sc" data-rg-sc="1"><b>[1] it-manual.md · 청크 1</b>VPN 접속 오류 해결 1. 앱을 완전히 종료한 뒤 다시 실행합니다. <em>도구 결과의 출처 줄과 artifact 메타데이터로 짝을 짓습니다</em></div>
-          <div class="rg-sc" data-rg-sc="2"><b>[2] it-manual.md · 청크 2</b>2. 사내 Wi-Fi가 아니라면 인증서를 다시 설치합니다. <em>이 청크는 "VPN"이라는 말이 없어서 검색어에 따라 못 찾을 수도 있었습니다</em></div>
-        </div>
-        <p class="rg-cap" data-rg-lk></p><p class="rg-cap" style="margin-top:6px">설명을 위한 예시 답변입니다. 번호를 누르면 어느 청크에서 나온 문장인지 표시됩니다.</p>
+        <div class="rg-ctrl" style="margin-bottom:8px"><div class="rg-seg" role="group" aria-label="출처 번호 고르기"><button type="button" data-rg-c="1" aria-pressed="true">[1]</button><button type="button" data-rg-c="2" aria-pressed="false">[2]</button></div></div>
+        <svg class="rg-scene rg-nar" data-rg-cite viewBox="0 0 460 520" role="img" aria-label="출처 연결선 그림. 위의 답 문장 끝 번호 1과 2가 아래 청크 카드와 선으로 이어진다. 번호를 고르면 해당 청크가 켜진다."></svg>
+        <p class="rg-cap" style="margin-top:6px">설명을 위한 예시 답변입니다. 번호를 고르면 어느 청크에서 나온 문장인지 표시됩니다.</p>
       </div>
       <div>
         <h2>답 옆에 출처를 붙이면 확인할 수 있습니다</h2>
@@ -321,25 +321,26 @@ print(r["messages"][-1].content)</code></pre>
     </div>
   </section>
 
-  <section class="rg-lab">
+  <section class="rg-sec">
     <div class="rg-wrap">
-      <div class="rg-labtop">
+      <div class="rg-head">
         <h2>검색이 빗나가거나 비면 Agent는 다시 찾아야 합니다</h2>
         <div>
-          <p>검색을 모델이 정하는 만큼 실패도 다양합니다. 결과가 질문과 무관하거나 아예 비기도 합니다. 모델이 검색을 건너뛰고 기억으로 답하거나 같은 검색어를 되풀이하기도 합니다. 이 글에서는 도구가 값을 돌려주는 구조와 검색을 두 번 부르는 흐름을 직접 확인했습니다. 나머지 처방은 앞 글들의 장치를 검색에 적용한 것입니다.</p>
-          <p>유형을 고르면 처방이 나옵니다. 처방은 모델에게 시키는 방법(프롬프트), 코드로 막는 방법, 한도 세 가지로 나뉩니다.</p>
+          <p>검색을 모델이 정하는 만큼 실패도 다양합니다. 결과가 질문과 무관하거나 아예 비어 있기도 합니다. 모델이 검색을 건너뛰고 기억으로 답하거나 같은 검색어를 되풀이하기도 합니다. 이 글에서 직접 확인한 것은 도구가 값을 돌려주는 구조와 검색을 두 번 부르는 흐름이고 나머지 처방은 앞 글들의 장치를 검색에 적용한 것입니다.</p>
+          <p>유형을 고르면 장면과 처방이 나옵니다. 처방은 모델에게 시키는 방법(프롬프트), 코드로 막는 방법, 한도 세 가지로 나뉩니다.</p>
         </div>
       </div>
-      <div class="rg-fl" data-figure>
+      <div style="margin-top:36px" data-figure>
         <div class="rg-cases" role="group" aria-label="실패 유형 고르기">
           <button type="button" data-rg-f="0" aria-pressed="true"><b>무관한 결과</b>첫 검색어가 너무 구체적입니다</button>
           <button type="button" data-rg-f="1" aria-pressed="false"><b>빈 결과</b>매뉴얼에 없는 내용입니다</button>
           <button type="button" data-rg-f="2" aria-pressed="false"><b>검색을 안 함</b>모델이 기억으로 바로 답합니다</button>
           <button type="button" data-rg-f="3" aria-pressed="false"><b>같은 검색 반복</b>같은 검색어로 계속 부릅니다</button>
         </div>
-        <div class="rg-fix" data-rg-fix></div>
+        <svg class="rg-scene rg-nar" data-rg-fail viewBox="0 0 460 400" role="img" aria-label="실패 장면 그림. 모델이 서가에서 검색하는 길에서 고른 실패 유형에 따라 엉뚱한 책이 오거나, 서가가 비어 있거나, 서가에 가지 않고 기억으로 답하거나, 같은 검색어로 계속 왕복하는 모습이 나온다."></svg>
+        <div class="rg-rx" data-rg-fix></div>
       </div>
-      <p class="rg-cap" style="margin-top:18px">처방은 앞 글에서 본 시스템 프롬프트, 도구 오류 처리, 단계 한도(recursion_limit), 호출 제한 Middleware를 검색 도구에 적용한 것입니다. 검색 결과 글에 든 지시를 따르지 않게 하는 보안 문제는 별도로 다룹니다. LangChain 문서도 검색된 글 속에 숨은 지시로 모델을 조종하는 공격(간접 프롬프트 주입)을 어떤 프롬프트로도 완전히 막지는 못한다고 적고 있습니다.</p>
+      <p class="rg-cap" style="margin-top:18px">처방은 앞 글에서 본 시스템 프롬프트, 도구 오류 처리, 단계 한도(recursion_limit), 호출 제한 Middleware를 검색 도구에 적용한 것입니다. 검색 결과 글에 든 지시를 따르지 않게 하는 보안 문제는 별도로 다룹니다. LangChain 문서에도 검색된 글 속에 숨은 지시로 모델을 조종하는 공격(간접 프롬프트 주입)은 어떤 프롬프트로도 완전히 막지 못한다고 적혀 있습니다.</p>
       <p style="margin-top:36px">다음 글에서는 정해진 순서와 분기를 직접 설계하는 LangGraph의 State, Node, Edge를 알아보겠습니다.</p>
     </div>
   </section>
@@ -348,13 +349,13 @@ print(r["messages"][-1].content)</code></pre>
     <div class="rg-wrap">
       <div class="rg-head">
         <h2>참고 자료</h2>
-        <ul class="rg-refs">
+        <details><summary>출처 5개 펼치기</summary><ul class="rg-refs">
           <li><a href="https://docs.langchain.com/oss/python/langchain/retrieval">Retrieval</a>, LangChain: 2-Step RAG와 Agentic RAG, Hybrid RAG의 구분과 제어·유연성·지연 비교</li>
           <li><a href="https://docs.langchain.com/oss/python/langchain/rag">Build a RAG agent</a>, LangChain: 청크 분할, 벡터 저장소, 검색 도구, 간접 프롬프트 주입 주의</li>
           <li><a href="https://www.anthropic.com/engineering/contextual-retrieval">Introducing Contextual Retrieval</a>, Anthropic: 청크 맥락 추가와 검색 실패율 감소 수치</li>
           <li><a href="https://platform.claude.com/docs/en/build-with-claude/citations">Citations</a>, Anthropic: 문서 인용 기능</li>
           <li><a href="https://pypi.org/project/langchain-text-splitters/">langchain-text-splitters 1.1.3</a>, <a href="https://pypi.org/project/langchain-core/">langchain-core 1.6.11</a>, PyPI</li>
-        </ul>
+        </ul></details>
       </div>
     </div>
   </section>
@@ -389,43 +390,125 @@ print(r["messages"][-1].content)</code></pre>
     cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
   }, { signal }));
 
-  /* 히어로: 질문 × 두 방식 */
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
+  const story = (rootSel, onStep) => {
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-rg-step]", st), fig = $("[data-rg-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (!mq.matches) { apply(-1); return; }
+      fig.style.setProperty("--rg-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
+      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
+      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
+    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+  };
+
+  const C = { model: "var(--rg-model)", code: "var(--rg-code)", human: "var(--rg-human)", bad: "var(--rg-bad)" };
+  const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
+  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
+  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+
+  const shelf = (p, x, y, s = 1, col = C.model) => { const g = mk("g", { transform: `translate(${x} ${y}) scale(${s})` }, p); mk("rect", { x: -22, y: -26, width: 44, height: 52, rx: 4, fill: "var(--bg-base)", stroke: col, "stroke-width": 3 }, g); [-12, 0, 12].forEach((dx, i) => mk("rect", { x: dx - 4, y: -20 + (i % 2) * 4, width: 8, height: 20 - (i % 2) * 4, rx: 1, fill: col, opacity: .8 }, g)); mk("path", { d: "M-22 0 H22", stroke: col, "stroke-width": 3 }, g); [-12, 0, 12].forEach((dx, i) => mk("rect", { x: dx - 4, y: 6, width: 8, height: 14 + (i % 2) * 4, rx: 1, fill: col, opacity: .55 }, g)); return g; };
+
+  /* ───── 히어로: 두 레일 ───── */
+  const lib = $("[data-rg-lib]");
   const SC = [
-    { t2: [["h", "질문", "와이파이가 뭐예요?"], ["s", "검색(항상)", "검색어: 와이파이가 뭐예요? → 관련 없는 청크 2개"], ["m", "모델 호출 1번", "엉뚱한 근거가 컨텍스트에 섞인 채 답합니다"]], ag: [["h", "질문", "와이파이가 뭐예요?"], ["m", "모델 호출 1번", "매뉴얼을 찾을 질문이 아니라고 판단해 검색 없이 답합니다"]], s2: "검색 1번 · 모델 호출 1번 (불필요한 검색)", sa: "검색 0번 · 모델 호출 1번" },
-    { t2: [["h", "질문", "VPN이 안 붙어요"], ["s", "검색(항상)", "검색어: VPN이 안 붙어요 → 청크 1, 2"], ["m", "모델 호출 1번", "찾은 청크로 답하고 출처를 붙입니다"]], ag: [["h", "질문", "VPN이 안 붙어요"], ["m", "모델 호출 1번", "도구 요청서: search_manual(\"VPN 접속 오류\")"], ["s", "검색 도구 실행", "청크 1, 2를 글과 artifact로 돌려줌"], ["m", "모델 호출 2번", "찾은 청크로 답하고 출처를 붙입니다"]], s2: "검색 1번 · 모델 호출 1번", sa: "검색 1번 · 모델 호출 2번" },
-    { t2: [["h", "질문", "프린터 XJ-9 용지가 걸렸어요"], ["s", "검색(항상)", "검색어: 프린터 XJ-9 용지가 걸렸어요 → 모델명 때문에 점수가 낮은 청크"], ["m", "모델 호출 1번", "근거가 약한 채로 답하거나 모른다고 합니다"]], ag: [["h", "질문", "프린터 XJ-9 용지가 걸렸어요"], ["m", "모델 호출 1번", "검색어: \"프린터 모델 XJ-9 용지\""], ["s", "검색 도구 실행", "관련 낮은 결과"], ["m", "모델 호출 2번", "검색어를 \"프린터 용지 걸림\"으로 바꿔 다시 부릅니다"], ["s", "검색 도구 실행", "청크 3 (프린터 용지 걸림 해결)"], ["m", "모델 호출 3번", "찾은 청크로 답하고 출처를 붙입니다"]], s2: "검색 1번 · 모델 호출 1번 (재검색 불가)", sa: "검색 2번 · 모델 호출 3번" },
+    { two: [["q", "질문", ""], ["s", "서가", "엉뚱한 청크"], ["m", "모델 1번", "엉뚱한 근거"], ["f", "답", "불필요 검색"]], ag: [["q", "질문", ""], ["m", "모델 1번", "검색 불필요"], ["f", "답", "검색 없이"]], s2: "검색 1번 · 모델 호출 1번 (불필요한 검색)", sa: "검색 0번 · 모델 호출 1번" },
+    { two: [["q", "질문", ""], ["s", "서가", "청크 1·2"], ["m", "모델 1번", "찾은 청크로"], ["f", "답", "+ 출처"]], ag: [["q", "질문", ""], ["m", "모델 1번", "검색어 정함"], ["s", "서가", "청크 1·2"], ["m", "모델 2번", "청크로 답"], ["f", "답", "+ 출처"]], s2: "검색 1번 · 모델 호출 1번", sa: "검색 1번 · 모델 호출 2번" },
+    { two: [["q", "질문", ""], ["s", "서가", "점수 낮음"], ["m", "모델 1번", "약한 근거"], ["f", "약한 답", ""]], ag: [["q", "질문", ""], ["m", "모델 1번", "XJ-9 검색"], ["s", "서가", "관련 낮음"], ["m", "모델 2번", "검색어 바꿈"], ["s", "서가", "청크 3"], ["m", "모델 3번", "청크로 답"], ["f", "답", "+ 출처"]], s2: "검색 1번 · 모델 호출 1번 (재검색 불가)", sa: "검색 2번 · 모델 호출 3번" },
   ];
-  let qi = 0;
-  const draw = (lane, rows) => { lane.innerHTML = rows.map(([c, t, x]) => `<div class="rg-ev ${c}"><small>${esc(t)}</small>${esc(x)}</div>`).join(""); };
-  async function play() {
-    const d = SC[qi]; const btn = $("[data-rg-play]"); btn.disabled = true;
-    draw($("[data-rg-t2]"), d.t2); draw($("[data-rg-ag]"), d.ag);
-    $("[data-rg-s2]").textContent = ""; $("[data-rg-sa]").textContent = "";
-    const a = $$(".rg-ev", $("[data-rg-t2]")), b = $$(".rg-ev", $("[data-rg-ag]"));
-    const n = Math.max(a.length, b.length);
-    for (let i = 0; i < n; i++) { if (signal.aborted) return; if (!reduce) await later(i ? 520 : 150); a[i] && a[i].classList.add("on"); b[i] && b[i].classList.add("on"); }
-    $("[data-rg-s2]").textContent = d.s2; $("[data-rg-sa]").textContent = d.sa; btn.disabled = false;
+  let qi = 2, hGen = 0;
+  const KC = { q: C.human, s: C.code, m: C.model, f: "var(--fg-strong)" };
+  function stop(p, kind, x, y, lab, on) {
+    const g = mk("g", { opacity: on ? 1 : .15 }, p), col = KC[kind];
+    if (kind === "s") shelf(g, x, y, .75, col); else { mk("circle", { cx: x, cy: y, r: 22, fill: "var(--bg-base)", stroke: col, "stroke-width": 3.5 }, g); mk("use", { href: "#rg-ic-" + (kind === "q" ? "paper" : kind === "m" ? "robot" : "flag"), x: x - 14, y: y - 14, width: 28, height: 28, style: `color:${col}` }, g); }
+    return g;
   }
-  function settle() { const d = SC[qi]; draw($("[data-rg-t2]"), d.t2); draw($("[data-rg-ag]"), d.ag); $$(".rg-ev").forEach((e) => e.classList.add("on")); $("[data-rg-s2]").textContent = d.s2; $("[data-rg-sa]").textContent = d.sa; }
-  $$("[data-rg-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.rgQ; press("[data-rg-q]", b); settle(); }, { signal }));
-  $("[data-rg-play]").addEventListener("click", play, { signal });
-  qi = 2; press("[data-rg-q]", $$("[data-rg-q]")[2]); settle();
+  async function drawLib(animate) {
+    const my = ++hGen, d = SC[qi]; lib.innerHTML = "";
+    const Y0 = 100, DY = 90; txt(lib, 80, 30, "2-Step RAG", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` }); txt(lib, 80, 52, "항상 한 번 검색", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(lib, 380, 30, "Agentic RAG", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` }); txt(lib, 380, 52, "모델이 정함", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+    mk("path", { d: `M80 ${Y0} V${Y0 + 7 * DY - 10}`, class: "rg-rail", opacity: .5 }, lib); mk("path", { d: `M380 ${Y0} V${Y0 + 7 * DY - 10}`, class: "rg-rail", opacity: .5 }, lib);
+    const groups = []; [[d.two, 80, "L"], [d.ag, 380, "R"]].forEach(([rows, x, side]) => rows.forEach(([k, lb, dt], i) => { const y = Y0 + i * DY; const g = stop(lib, k, x, y, lb, !animate); txt(g, side === "L" ? x + 36 : x - 36, y - (dt ? 2 : -5), lb, { "font-size": 16, "text-anchor": side === "L" ? "start" : "end", class: "t-s" }); if (dt) txt(g, side === "L" ? x + 36 : x - 36, y + 18, dt, { "font-size": 15, "text-anchor": side === "L" ? "start" : "end", class: "t-d" }); groups.push([g, i]); }));
+    const dot = (x) => { const g = mk("circle", { cx: x, cy: Y0, r: 9, fill: "var(--fg-strong)", style: "opacity:0" }, lib); return g; };
+    $("[data-rg-sum]").textContent = animate ? "" : `2-Step: ${d.s2}  ·  Agentic: ${d.sa}`;
+    if (animate) { const n = Math.max(d.two.length, d.ag.length); for (let i = 0; i < n; i++) { if (my !== hGen || signal.aborted) return; groups.filter(([, k]) => k === i).forEach(([g]) => { g.setAttribute("opacity", 1); }); if (!reduce) await later(520); } $("[data-rg-sum]").textContent = `2-Step: ${d.s2}  ·  Agentic: ${d.sa}`; $("[data-rg-play]").disabled = false; }
+  }
+  $$("[data-rg-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.rgQ; press("[data-rg-q]", b); hGen++; $("[data-rg-play]").disabled = false; drawLib(false); }, { signal }));
+  $("[data-rg-play]").addEventListener("click", () => { $("[data-rg-play]").disabled = true; drawLib(true); }, { signal });
+  drawLib(false);
 
-  /* 출처 번호 */
-  const showSrc = (k) => { $$("[data-rg-c]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.rgC === k))); $$("[data-rg-sc]").forEach((s) => s.classList.toggle("on", s.dataset.rgSc === k)); $("[data-rg-lk]").textContent = `▼ 답의 [${k}]이 가리키는 곳: ${k === "1" ? "청크 1(VPN 접속 오류 해결)" : "청크 2(인증서 재설치)"}`; };
-  $$("[data-rg-c]").forEach((b) => b.addEventListener("click", () => showSrc(b.dataset.rgC), { signal }));
-  showSrc("1");
+  /* ───── 청크와 의미 지도 (스크롤 이야기) ───── */
+  const mp = $("[data-rg-map]"), stat = $("[data-rg-stat]"); let sq = 0;
+  const CK = [{ p: [140, 450], t: "청크 1", d: "VPN 접속 오류 해결 · 앱을 완전히 종료한 뒤 다시 실행", c: C.model }, { p: [230, 520], t: "청크 2", d: "사내 Wi-Fi가 아니라면 인증서를 다시 설치", c: C.human, warn: true }, { p: [370, 570], t: "청크 3", d: "프린터 용지 걸림 해결", c: C.code }];
+  const QP = [{ p: [170, 468], l: "VPN이 안 붙어요" }, { p: [260, 532], l: "VPN 인증서" }, { p: [350, 556], l: "프린터 용지" }];
+  function drawMap(i) {
+    const k = i < 0 ? 3 : i; mp.innerHTML = "";
+    // 문서와 청크
+    const cutOp = k >= 1 ? 1 : 0;
+    box(mp, 20, 14, 420, k >= 1 ? 40 : 126, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 3 }); txt(mp, 34, 40, "it-manual.md", { "font-size": 16, class: "t-s mono" });
+    if (k === 0) { ["VPN 접속 오류 해결", "1. 앱을 완전히 종료한 뒤 다시 실행합니다.", "2. 사내 Wi-Fi가 아니라면 인증서를 다시 설치합니다.", "프린터 용지 걸림 해결 …"].forEach((t, n) => txt(mp, 34, 66 + n * 22, t, { "font-size": 15, class: "t-d" })); }
+    else { CK.forEach((c, n) => { const y = 70 + n * 104; const w = 420; const g = mk("g", { opacity: cutOp }, mp); box(g, 20, y - 6 + (n ? 0 : 0), w, 88, c.warn ? C.bad : "var(--line-strong)", { fill: "var(--bg-base)", sw: c.warn ? 3.5 : 2.5, rx: 12, dash: c.warn ? "" : "" }); txt(g, 34, y + 20, c.t + (c.warn ? " · \"VPN\"이라는 말이 없음" : ""), { "font-size": 15, class: "t-s", style: c.warn ? `fill:${C.bad}` : "" }); txt(g, 34, y + 48, c.d.length > 26 ? c.d.slice(0, 26) : c.d, { "font-size": 15, class: "t-d" }); if (c.d.length > 26) txt(g, 34, y + 70, c.d.slice(26), { "font-size": 15, class: "t-d" }); if (k >= 2) { mk("path", { d: `M${w + 20} ${y + 38} H${w + 20}`, stroke: c.c }, g); } }); }
+    if (k >= 2) {
+      // 지도 영역 (아래)
+      box(mp, 20, 400, 420, 210, "var(--line-strong)", { fill: "var(--bg-subtle)", sw: 2.5, rx: 12 }); txt(mp, 32, 424, "뜻의 지도 (가까울수록 비슷한 뜻)", { "font-size": 15, class: "t-s" });
+      CK.forEach((c, n) => { mk("circle", { cx: c.p[0], cy: c.p[1], r: 14, fill: c.c, opacity: .9 }, mp); txt(mp, c.p[0], c.p[1] + 5, String(n + 1), { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" }); });
+    }
+    if (k >= 3) {
+      const q = QP[sq].p; const ds = CK.map((c) => Math.hypot(c.p[0] - q[0], c.p[1] - q[1])); const order = ds.map((d, n) => [d, n]).sort((a, b) => a[0] - b[0]).slice(0, 2).map((x) => x[1]);
+      mk("circle", { cx: q[0], cy: q[1], r: Math.max(...order.map((n) => ds[n])) + 20, fill: "none", stroke: C.bad, "stroke-width": 2.5, "stroke-dasharray": "6 5", opacity: .7 }, mp);
+      order.forEach((n) => { mk("path", { d: `M${q[0]} ${q[1]} L${CK[n].p[0]} ${CK[n].p[1]}`, stroke: C.bad, "stroke-width": 3 }, mp); mk("circle", { cx: CK[n].p[0], cy: CK[n].p[1], r: 20, fill: "none", stroke: C.bad, "stroke-width": 4 }, mp); });
+      mk("circle", { cx: q[0], cy: q[1], r: 11, fill: "var(--fg-strong)" }, mp); txt(mp, q[0] + 16, q[1] - 10, "질문: " + QP[sq].l, { "font-size": 15, class: "t-s", style: "paint-order:stroke;stroke:var(--bg-subtle);stroke-width:5px" });
+      stat.innerHTML = `<b>뽑힌 청크: ${order.map((n) => n + 1).sort().join("번, ")}번</b>`;
+    } else stat.innerHTML = k === 0 ? "<b>긴 매뉴얼</b>" : k === 1 ? "<b>청크 3개로 잘림</b>" : "<b>점으로 놓인 청크</b>";
+  }
+  $$("[data-rg-sq]").forEach((b) => b.addEventListener("click", () => { sq = +b.dataset.rgSq; press("[data-rg-sq]", b); drawMap(3); }, { signal }));
+  story("[data-rg-story]", (i) => drawMap(i)); drawMap(0);
 
-  /* 실패와 처방 */
+  /* ───── 결과 두 칸 ───── */
+  const tr = $("[data-rg-tray]");
+  mk("use", { href: "#rg-ic-robot", x: 190, y: 14, width: 80, height: 80, style: `color:${C.model}` }, tr); txt(tr, 230, 114, "모델 (글만 받음)", { "font-size": 16, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` });
+  arrowDown(tr, 230, 214, 128, C.model); mk("path", { d: "M230 128 l-9 14 h18z", fill: "none" }, tr);
+  box(tr, 90, 190, 280, 72, C.code, {}); mk("use", { href: "#rg-ic-gear", x: 104, y: 206, width: 40, height: 40, style: `color:${C.code}` }, tr); txt(tr, 156, 220, "search_manual", { "font-size": 17, class: "t-s mono" }); txt(tr, 156, 244, "(글, Document 목록)을 돌려줌", { "font-size": 15, class: "t-d" });
+  txt(tr, 246, 158, "글(content) · 출처 줄이 붙은 청크", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
+  arrowDown(tr, 230, 316, 264, C.human); mk("path", { d: "M230 264 l0 0", stroke: "none" }, tr);
+  box(tr, 50, 322, 360, 96, C.human, { dash: "7 5", fill: `color-mix(in srgb, ${C.human} 6%, var(--bg-base))` }); txt(tr, 66, 350, "코드 보관함 (artifact) · 모델은 못 봄", { "font-size": 15, class: "t-s", style: `fill:${C.human}` });
+  [0, 1].forEach((n) => { box(tr, 66 + n * 166, 364, 150, 42, C.human, { rx: 8 }); txt(tr, 141 + n * 166, 391, `청크 ${n + 1} · source`, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); });
+  txt(tr, 246, 296, "부가 정보(artifact) · 어느 파일에서 왔는지", { "font-size": 15, class: "t-s", style: `fill:${C.human}` });
+
+  /* ───── 출처 연결선 ───── */
+  const ci = $("[data-rg-cite]");
+  function drawCite(k) {
+    ci.innerHTML = ""; box(ci, 14, 10, 432, 150, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 2.5 }); txt(ci, 30, 36, "모델의 답", { "font-size": 15, class: "t-d" });
+    txt(ci, 30, 66, "앱을 완전히 종료한 뒤 다시 실행해 보세요", { "font-size": 15.5, class: "t-s" }); const b1 = box(ci, 372, 46, 56, 28, k === "1" ? C.model : "var(--line-strong)", { rx: 14, fill: k === "1" ? C.model : "var(--bg-base)" }); txt(ci, 400, 66, "[1]", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: k === "1" ? "fill:var(--bg-base)" : "" });
+    txt(ci, 30, 104, "그래도 안 되면 사내 Wi-Fi가 아닌 곳에서는", { "font-size": 15.5, class: "t-s" }); txt(ci, 30, 128, "인증서를 다시 설치합니다", { "font-size": 15.5, class: "t-s" }); box(ci, 372, 110, 56, 28, k === "2" ? C.model : "var(--line-strong)", { rx: 14, fill: k === "2" ? C.model : "var(--bg-base)" }); txt(ci, 400, 130, "[2]", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: k === "2" ? "fill:var(--bg-base)" : "" });
+    const cards = [["1", "청크 1 · it-manual.md", "VPN 접속 오류 해결 1. 앱을 완전히 종료한 뒤 다시 실행합니다.", "출처 줄과 artifact로 짝을 짓습니다"], ["2", "청크 2 · it-manual.md", "2. 사내 Wi-Fi가 아니라면 인증서를 다시 설치합니다.", "\"VPN\"이라는 말이 없어 검색어에 따라 못 찾을 수도 있었습니다"]];
+    cards.forEach(([n, t, d, e], i) => { const y = 220 + i * 150, on = n === k; const g = mk("g", { opacity: on ? 1 : .35 }, ci); box(g, 14, y, 432, 130, on ? C.model : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` : "var(--bg-subtle)", sw: on ? 4 : 2.5 }); txt(g, 30, y + 30, t, { "font-size": 16, class: "t-s mono" }); const L = d.length > 28 ? [d.slice(0, 28), d.slice(28)] : [d]; L.forEach((l, j) => txt(g, 30, y + 58 + j * 22, l, { "font-size": 15, class: "t-s" })); const E = e.length > 24 ? [e.slice(0, 24), e.slice(24)] : [e]; E.forEach((l, j) => txt(g, 30, y + 106 + j * 18 - (E.length - 1) * 9, l, { "font-size": 15, class: "t-d" })); });
+    const ty = k === "1" ? 220 : 370, sy = k === "1" ? 74 : 138; mk("path", { d: `M400 ${sy} C440 ${sy + 40} 440 ${ty - 30} 400 ${ty}`, fill: "none", stroke: C.model, "stroke-width": 4 }, ci); mk("path", { d: `M400 ${ty} l-6 -14 h12z`, fill: C.model, transform: `rotate(180 400 ${ty - 7}) translate(0 0)` }, ci);
+  }
+  $$("[data-rg-c]").forEach((b) => b.addEventListener("click", () => { press("[data-rg-c]", b); drawCite(b.dataset.rgC); }, { signal })); drawCite("1");
+
+  /* ───── 실패 장면 ───── */
+  const fl = $("[data-rg-fail]");
   const FX = [
-    [["x", "무슨 일이", "모델이 모델 이름(XJ-9)까지 넣어 검색해서 점수가 낮은 청크만 돌아옵니다"], ["m", "처방 · 프롬프트", "\"증상과 오류 이름만 검색어로 쓴다\"를 도구 설명에 적습니다"], ["c", "처방 · 코드", "점수가 낮으면 \"관련 문서 없음\"을 도구 결과로 돌려 모델이 검색어를 바꾸게 합니다"]],
-    [["x", "무슨 일이", "검색이 빈 결과를 돌려줍니다"], ["m", "처방 · 프롬프트", "\"근거가 없으면 없다고 답한다\"를 시스템 프롬프트에 적습니다. 문서 예시에는 실패하면 추정으로 답하는 지시도 있으니 문구를 직접 정합니다"], ["c", "처방 · 코드", "빈 결과도 \"결과 없음\"이라는 글로 돌려줘 모델이 알 수 있게 합니다"]],
-    [["x", "무슨 일이", "모델이 검색 도구를 부르지 않고 기억으로 답합니다"], ["m", "처방 · 프롬프트", "\"매뉴얼 근거 없이 답하지 않는다. 먼저 검색한다\"를 시스템 프롬프트에 적습니다"], ["c", "처방 · 코드", "도구 호출을 반드시 하게 하는 방법이 모델에 따라(Claude Sonnet 5.5 등) 막혀 있을 수 있어서 프롬프트와 검증으로 보완합니다"]],
-    [["x", "무슨 일이", "같은 검색어를 계속 불러 비용만 늡니다"], ["m", "처방 · 한도", "Agent의 단계 한도(recursion_limit)나 호출 제한 Middleware(루프에 끼우는 검문 코드)로 검색 횟수를 막습니다"], ["c", "처방 · 코드", "이미 쓴 검색어를 도구 결과에 알려 줘 다른 검색어를 쓰게 합니다"]],
+    ["무슨 일이", "모델이 제품 모델명(XJ-9)까지 넣어 검색해서 점수가 낮은 청크만 돌아옵니다", "프롬프트", "\"증상과 오류 이름만 검색어로 쓴다\"를 도구 설명에 적습니다", "코드", "점수가 낮으면 \"관련 문서 없음\"을 도구 결과로 돌려 모델이 검색어를 바꾸게 합니다"],
+    ["무슨 일이", "검색이 빈 결과를 돌려줍니다", "프롬프트", "\"근거가 없으면 없다고 답한다\"를 시스템 프롬프트에 적습니다. 문서 예시에는 실패하면 추정으로 답하는 지시도 있으니 문구를 직접 정합니다", "코드", "빈 결과도 \"결과 없음\"이라는 글로 돌려줘 모델이 알 수 있게 합니다"],
+    ["무슨 일이", "모델이 검색 도구를 부르지 않고 기억으로 답합니다", "프롬프트", "\"매뉴얼 근거 없이 답하지 않는다. 먼저 검색한다\"를 시스템 프롬프트에 적습니다", "코드", "도구 호출을 반드시 하게 하는 방법은 모델에 따라 막혀 있을 수 있어서(Claude Sonnet 5.5 등) 프롬프트와 검증으로 보완합니다"],
+    ["무슨 일이", "같은 검색어를 계속 불러 비용만 늡니다", "한도", "Agent의 단계 한도(recursion_limit)나 호출 제한 Middleware(루프에 끼우는 검문 코드)로 검색 횟수를 막습니다", "코드", "이미 쓴 검색어를 도구 결과에 알려 줘 다른 검색어를 쓰게 합니다"],
   ];
-  const drawFx = (i) => { $("[data-rg-fix]").innerHTML = FX[i].map(([c, t, x]) => `<div class="rg-s ${c}"><small>${esc(t)}</small>${esc(x)}</div>`).join(""); };
-  $$("[data-rg-f]").forEach((b) => b.addEventListener("click", () => { press("[data-rg-f]", b); drawFx(+b.dataset.rgF); }, { signal }));
-  drawFx(0);
+  function drawFail(i) {
+    fl.innerHTML = ""; mk("use", { href: "#rg-ic-robot", x: 24, y: 150, width: 64, height: 64, style: `color:${C.model}` }, fl); txt(fl, 56, 238, "모델", { "font-size": 16, "text-anchor": "middle", class: "t-s" });
+    shelf(fl, 370, 182, 1.9, i === 1 ? "var(--line-strong)" : C.code); txt(fl, 370, 258, i === 1 ? "서가가 비어 있음" : "서가(검색)", { "font-size": 16, "text-anchor": "middle", class: "t-s" });
+    const bub = (x, y, w, t, col) => { box(fl, x, y, w, 40, col, { rx: 12 }); txt(fl, x + w / 2, y + 26, t, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); };
+    if (i === 0) { bub(110, 120, 150, "XJ-9 프린터 용지", C.model); mk("path", { d: "M92 190 H318", stroke: C.model, "stroke-width": 4 }, fl); mk("path", { d: "M322 190 l-14 -8 v16z", fill: C.model }, fl); mk("path", { d: "M318 214 H92", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "6 5" }, fl); box(fl, 120, 300, 220, 44, C.bad, { rx: 10 }); txt(fl, 230, 328, "점수 낮은 엉뚱한 청크", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); mk("use", { href: "#rg-ic-stop", x: 354, y: 296, width: 40, height: 40, style: `color:${C.bad}` }, fl); }
+    if (i === 1) { bub(110, 120, 150, "신규 장비 반입 절차", C.model); mk("path", { d: "M92 190 H318", stroke: C.model, "stroke-width": 4 }, fl); mk("path", { d: "M322 190 l-14 -8 v16z", fill: C.model }, fl); mk("path", { d: "M318 214 H92", stroke: "var(--line-strong)", "stroke-width": 4, "stroke-dasharray": "6 5" }, fl); txt(fl, 230, 330, "돌아온 것: 아무것도 없음", { "font-size": 16, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    if (i === 2) { mk("path", { d: "M92 190 H318", stroke: "var(--line-strong)", "stroke-width": 4, "stroke-dasharray": "6 5" }, fl); mk("use", { href: "#rg-ic-stop", x: 190, y: 164, width: 48, height: 48, style: `color:${C.bad}` }, fl); txt(fl, 214, 130, "서가에 안 감", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); box(fl, 40, 300, 240, 44, C.model, { rx: 10 }); txt(fl, 160, 328, "기억만으로 바로 답함", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }
+    if (i === 3) { [0, 1, 2].forEach((n) => { const y = 118 + n * 36; mk("path", { d: `M92 ${y} H318`, stroke: C.model, "stroke-width": 3 }, fl); mk("path", { d: `M322 ${y} l-12 -7 v14z`, fill: C.model }, fl); }); [0, 1, 2].forEach((n) => { const y = 136 + n * 36; mk("path", { d: `M318 ${y} H92`, stroke: C.bad, "stroke-width": 3, "stroke-dasharray": "6 5" }, fl); }); txt(fl, 230, 292, "같은 검색어 + 같은 결과를 반복", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); box(fl, 130, 316, 200, 44, C.bad, { rx: 22 }); txt(fl, 230, 344, "검색 3번째 · 4번째 …", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); }
+    const f = FX[i]; $("[data-rg-fix]").innerHTML = `<div><b>${f[0]}</b> ${f[1]}</div><div><b>처방 · ${f[2]}</b> ${f[3]}</div><div><b>처방 · ${f[4]}</b> ${f[5]}</div>`;
+  }
+  $$("[data-rg-f]").forEach((b) => b.addEventListener("click", () => { press("[data-rg-f]", b); drawFail(+b.dataset.rgF); }, { signal })); drawFail(0);
 
   initTerms({
     rag: [["cmd", "$ python rag_agent.py"], ["wait", 800], ["line", "[출처: it-manual.md]"], ["line", "2 {'source': 'it-manual.md'}"], ["type", "매뉴얼(it-manual.md)에 따르면 앱을 완전히 종료한 뒤 다시 실행하세요."]],
