@@ -20,6 +20,11 @@ export function TrackPlayer({
   title?: string;
 }) {
   return (
-    <TapePlayer tape={tape} title={title} stage={(s) => <StageTrack values={values} state={s} />} />
+    <TapePlayer
+      tape={tape}
+      title={title}
+      // 정렬처럼 값이 움직이면 스텝이 들고 있는 값을 쓴다
+      stage={(s) => <StageTrack values={s.values ?? values} state={s} />}
+    />
   );
 }

@@ -57,10 +57,11 @@ AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 �
 | 고칠 것 | 원본 |
 |---|---|
 | `/portfolio` | `skills/portfolio/SKILL.md` (`~/.claude/skills/portfolio` 가 여기로 걸린 심볼릭 링크) |
-| `/draft` `/insight` `/project` `/research` `/revise` `/study` | `.claude/commands/*.md` |
+| `/algo` `/draft` `/insight` `/project` `/research` `/revise` `/study` | `.claude/commands/*.md` |
 | 시각 설명 레퍼런스 (`/study` 가 쌓는다) | `docs/visual-references.md` |
 | 시리즈 계획 (편 목록·질문·소주제·상태) | `docs/series/<slug>.md` — `/study docs/series/ai-agent.md N편` |
 | 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
+| 알고리즘 탭(`/algo`) 규약 | `docs/superpowers/specs/2026-10-17-algo-visualizer-design.md` |
 | `/lab` 화면 규약 | `docs/superpowers/specs/2026-08-22-lab-portfolio-design.md` |
 
 `.gitignore` 가 `/.claude/*` 를 무시하되 `commands/` 와 humanize-korean 이 든 `agents/` `skills/` `scripts/` `.claude-plugin/` 만 살려 둔다.

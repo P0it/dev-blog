@@ -17,10 +17,13 @@ export function TapePlayer({
   tape,
   stage,
   title,
+  layout = "split",
 }: {
   tape: Tape;
   stage: (s: StageState) => ReactNode;
   title?: string;
+  /** "stack" 은 그림을 위, 코드를 아래로 둔다. 격자처럼 넓은 그림에 쓴다 */
+  layout?: "split" | "stack";
 }) {
   const [at, setAt] = useState(-1);
   const [playing, setPlaying] = useState(false);
@@ -60,7 +63,7 @@ export function TapePlayer({
   if (tape.steps.length === 0) return null;
 
   return (
-    <figure className="algo-player" aria-label={title ?? "코드와 그림이 함께 도는 플레이어"}>
+    <figure className="algo-player" data-layout={layout} aria-label={title ?? "코드와 그림이 함께 도는 플레이어"}>
       <div className="algo-player-tabs" role="tablist">
         <button
           type="button"

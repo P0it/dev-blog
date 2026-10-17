@@ -62,7 +62,7 @@ export const registry: AlgoEntry[] = [
   plan("heap", "힙(우선순위 큐)", "가장 급한 것부터 꺼내기", "자료구조", ["heapq", "priority queue"], ["매번 최솟값"]),
 
   // ── 정렬
-  plan("bubble-sort", "버블 정렬", "옆 사람과 키 순서로 서 보기", "정렬", ["bubble sort"], []),
+  { slug: "bubble-sort", title: "버블 정렬", lede: "옆 사람과 키 순서로 서 보기", category: "정렬", tier: 1, aliases: ["bubble sort", "거품 정렬"], signals: ["옆칸만 비교", "제자리 정렬"], status: "ready" },
   plan("selection-sort", "선택 정렬", "가장 작은 것부터 꺼내 놓기", "정렬", ["selection sort"], []),
   plan("insertion-sort", "삽입 정렬", "카드를 한 장씩 끼워 넣기", "정렬", ["insertion sort"], ["거의 정렬돼 있다"]),
   plan("merge-sort", "병합 정렬", "반으로 쪼갰다 붙이기", "정렬", ["merge sort"], []),
@@ -85,7 +85,7 @@ export const registry: AlgoEntry[] = [
   plan("parametric-search", "답을 이분 탐색하기", "되는지 안 되는지만 물어보기", "탐색", ["parametric search"], ["최댓값의 최솟값"]),
 
   // ── 그래프 탐색
-  plan("bfs-grid", "격자 BFS", "소문은 어떻게 퍼질까", "그래프 탐색", ["BFS", "너비 우선"], ["최단 거리", "가중치 없다"]),
+  { slug: "bfs-grid", title: "격자 BFS", lede: "소문은 어떻게 퍼질까", category: "그래프 탐색", tier: 1, aliases: ["BFS", "너비 우선", "breadth first"], signals: ["최단 거리", "가중치 없다", "격자"], status: "ready" },
   plan("dfs", "DFS", "막다른 길까지 가 보기", "그래프 탐색", ["DFS", "깊이 우선"], ["모든 경로"]),
   plan("connected-components", "연결 요소", "섬이 몇 개인지 세기", "그래프 탐색", ["connected components"], ["덩어리 개수"]),
 

@@ -3922,3 +3922,120 @@ a.algo-index-card:hover { border-color: var(--line-primary); transform: translat
   content: "준비 중"; font-family: var(--font-mono); font-size: 10px; font-weight: 400;
   margin-left: 8px; color: var(--fg-disabled); letter-spacing: .04em;
 }
+
+/* ── 손으로 정렬해 보기 (① 직접 해 보기) ── */
+.algo-byhand {
+  background: var(--bg-subtle); border-radius: var(--radius-lg);
+  padding: 22px 16px 16px; margin: 24px 0 8px;
+}
+.algo-byhand-ask {
+  text-align: center; font-size: 14px; color: var(--fg-neutral); margin: 0 0 16px;
+}
+.algo-byhand button.algo-cell { cursor: pointer; font: inherit; font-family: var(--font-mono); }
+.algo-byhand button.algo-cell:disabled { cursor: default; }
+.algo-byhand-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line-normal);
+  font-size: 14px; color: var(--fg-neutral);
+}
+.algo-byhand-foot b {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 17px; color: var(--fg-strong); margin-left: 4px;
+}
+.algo-byhand-foot button {
+  min-height: 40px; padding: 0 14px; font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg-neutral);
+}
+
+/* ── 계수기 — 숫자 둘을 나란히 ── */
+.algo-counter { margin: 22px 0; padding: 0; }
+.algo-counter-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto;
+  align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.algo-counter-label { font-size: 13.5px; color: var(--fg-neutral); }
+.algo-counter-bar {
+  height: 10px; border-radius: var(--radius-full);
+  background: var(--bg-muted); overflow: hidden;
+}
+.algo-counter-bar i {
+  display: block; height: 100%; border-radius: var(--radius-full);
+  background: var(--bg-primary); opacity: .55;
+}
+.algo-counter-row:first-child .algo-counter-bar i { background: var(--fg-cautionary); opacity: .6; }
+.algo-counter-n {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 16px; font-weight: 700; color: var(--fg-strong);
+}
+.algo-counter-n em {
+  font-style: normal; font-size: 11px; font-weight: 400;
+  color: var(--fg-alternative); margin-left: 2px;
+}
+.algo-counter figcaption {
+  font-size: 13px; color: var(--fg-alternative); margin-top: 10px; line-height: 1.6;
+}
+
+/* ── 격자 무대와 레인(큐) ── */
+.algo-grid-wrap { display: grid; gap: 16px; justify-items: center; }
+.algo-grid { display: grid; gap: 4px; justify-content: center; }
+.algo-gcell {
+  aspect-ratio: 1; min-width: 0; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-normal); background: var(--bg-base);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 12px; color: var(--fg-normal); padding: 0;
+  transition: background-color .35s cubic-bezier(.2,.7,.2,1), color .35s,
+              border-color .35s, opacity .35s, transform .35s cubic-bezier(.2,.7,.2,1);
+}
+button.algo-gcell { cursor: pointer; font-family: var(--font-mono); }
+
+/* 레인 — 들어가는 쪽과 나오는 쪽을 못박는다 */
+.algo-lane {
+  display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--line-subtle); border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+.algo-lane-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  color: var(--fg-alternative); text-transform: uppercase;
+}
+.algo-lane-out,
+.algo-lane-in { font-size: 10.5px; color: var(--fg-disabled); white-space: nowrap; }
+.algo-lane-items {
+  list-style: none; display: flex; gap: 4px; margin: 0; padding: 0;
+  overflow-x: auto; min-height: 26px; align-items: center;
+}
+.algo-lane-items li {
+  flex: 0 0 auto; min-width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-xs); background: var(--bg-accent-soft);
+  color: var(--algo-waiting-fg); font-family: var(--font-mono); font-size: 11.5px;
+}
+.algo-lane-items li[data-empty] {
+  background: transparent; color: var(--fg-disabled); min-width: auto; padding: 0 6px;
+  font-family: var(--font-sans); font-size: 11.5px;
+}
+
+.algo-spread-go {
+  font-weight: 600 !important; color: var(--fg-on-color) !important;
+  background: var(--bg-primary) !important; border-color: var(--bg-primary) !important;
+  padding: 0 18px !important;
+}
+
+/* 격자에서 벽은 채워진 면으로 보인다 — 칸 트랙의 "버림"(취소선)과 뜻이 다르다 */
+.algo-gcell.algo-cell-dropped {
+  background: var(--bg-emphasized); border-color: var(--line-strong);
+  opacity: 1; text-decoration: none; transform: none; color: transparent;
+}
+
+/* 격자처럼 넓은 그림은 위아래로 쌓는다 — 좌우로 가르면 코드가 잘린다 */
+.algo-player[data-layout="stack"] .algo-player-tabs { display: none; }
+.algo-player[data-layout="stack"] .algo-player-pane { display: block; }
+.algo-player[data-layout="stack"] .algo-player-stage {
+  border-right: 0; border-bottom: 1px solid var(--line-subtle);
+}
+.algo-player[data-layout="stack"] .algo-player-pane > [data-hidden-narrow] { display: block; }
+.algo-player-code { overflow-x: auto; }
+.algo-grid .algo-gcell { font-size: 11px; }

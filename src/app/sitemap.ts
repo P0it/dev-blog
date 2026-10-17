@@ -8,6 +8,7 @@ import {
   getProjects,
 } from "@/lib/queries";
 import { isoDate } from "@/lib/seo";
+import { registry } from "@/content/algo/registry";
 
 export const revalidate = 3600;
 
@@ -28,6 +29,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/`, lastModified: latest, changeFrequency: "daily", priority: 1 },
     { url: `${base}/posts`, lastModified: latest, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/lab`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${base}/algo`, changeFrequency: "weekly", priority: 0.7 },
+    ...registry
+      .filter((e) => e.status === "ready")
+      .map((e) => ({
+        url: `${base}/algo/${e.slug}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+      })),
     { url: `${base}/series`, lastModified: latest, changeFrequency: "weekly", priority: 0.5 },
     { url: `${base}/tags`, lastModified: latest, changeFrequency: "weekly", priority: 0.4 },
   ];

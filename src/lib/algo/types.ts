@@ -18,6 +18,8 @@ export type StageState = {
   cells: CellState[];
   /** 칸 위에 꽂히는 깃발. `{ left: 0, mid: 4, right: 9 }` */
   flags: Record<string, number>;
+  /** 이 스텝에서의 값들. 정렬처럼 값이 움직이는 알고리즘이 쓴다 */
+  values?: number[];
   /** 레인(스택·큐·힙)에 담긴 값. 없으면 그리지 않는다 */
   queue?: number[];
 };
