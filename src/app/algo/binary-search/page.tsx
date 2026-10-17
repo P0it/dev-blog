@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { PublicNav } from "@/components/layout/PublicNav";
-import { Footer } from "@/components/layout/Footer";
 import { TrackPlayer } from "@/components/algo/TrackPlayer";
 import { GameReveal } from "@/components/algo/GameReveal";
 import { Quiz } from "@/components/algo/Quiz";
@@ -18,9 +16,7 @@ export default function BinarySearchPage() {
   const tape = binarySearchTape(VALUES, TARGET);
 
   return (
-    <>
-      <PublicNav active="" />
-      <main className="algo-page">
+    <main className="algo-page">
         <p className="algo-crumb">탐색</p>
         <h1 className="algo-title">이분 탐색</h1>
         <p className="algo-lede">업-다운 게임 잘하는 법</p>
@@ -127,8 +123,6 @@ export default function BinarySearchPage() {
         <p className="algo-next">
           다음 장에서는 찾는 값이 여러 개일 때 그중 첫 번째를 어떻게 찾는지 봅니다.
         </p>
-      </main>
-      <Footer />
-    </>
+    </main>
   );
 }

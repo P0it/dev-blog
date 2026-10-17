@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { FlaskConical, Layers, Newspaper, Search } from "lucide-react";
+import { Binary, FlaskConical, Layers, Newspaper, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { BrandLogo, BrandMark } from "@/components/layout/BrandLogo";
 import type { Locale } from "@/lib/types";
 import { pathFor } from "@/lib/i18n";
 
-type Active = "home" | "posts" | "series" | "lab" | "";
+type Active = "home" | "posts" | "series" | "lab" | "algo" | "";
 
 export function PublicNav({
   active = "home",
@@ -36,6 +36,10 @@ export function PublicNav({
           <Link href={pathFor(locale, "/lab")} className={active === "lab" ? "active" : ""}>
             <FlaskConical size={14} />
             Labs
+          </Link>
+          <Link href={pathFor(locale, "/algo")} className={active === "algo" ? "active" : ""}>
+            <Binary size={14} />
+            Algo
           </Link>
         </div>
       </div>
