@@ -18,11 +18,13 @@ export const BINARY_SEARCH_CODE = [
 ];
 
 function stage(len: number, left: number, right: number, mid: number | null, found = false) {
+  // 사양 4절 색 규약 그대로다 — 잘려 나간 범위가 dropped, 아직 안 건드린 후보가 out.
+  // 거꾸로 칠하면 "버렸다"가 흐릿해지고 "아직 후보다"가 눈에 튄다.
   const cells: CellState[] = [];
   for (let i = 0; i < len; i++) {
-    if (i < left || i > right) cells.push("out");
+    if (i < left || i > right) cells.push("dropped");
     else if (i === mid) cells.push(found ? "settled" : "current");
-    else cells.push("compare");
+    else cells.push("out");
   }
   const flags: Record<string, number> = {};
   if (left < len) flags.left = left;
@@ -76,7 +78,8 @@ function* walk(arr: number[], target: number): Generator<Step> {
       line: 5,
       vars: vars(),
       stage: stage(arr.length, left, right, mid),
-      note: `${josa(arr[mid], "이", "가")} 찾는 ${target}일까요?`,
+      // 찾는 값을 되풀이하지 않는다 — `42가 찾는 42일까요?` 가 되는 자리다
+      note: `${mid}번 칸의 ${josa(arr[mid], "이", "가")} 찾는 값일까요?`,
     };
 
     if (arr[mid] === target) {

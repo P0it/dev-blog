@@ -39,12 +39,12 @@ test("binarySearchTape — 길이 1 배열에서 찾고 못 찾고 둘 다 끝�
   assert.equal(binarySearchTape([5], 9).steps.at(-1)!.done, false);
 });
 
-test("binarySearchTape — 버린 범위는 stage 에서 out 으로 표시된다", () => {
+test("binarySearchTape — 버린 범위는 dropped, 찾은 칸은 settled 다", () => {
   const t = binarySearchTape([7, 12, 19, 23, 31, 42, 55, 68, 71, 90], 42);
   const last = t.steps.at(-1)!;
-  // 42 는 5번 칸. 왼쪽 0~4 는 전부 버려졌고, 찾은 칸은 확정이다
-  assert.equal(last.stage.cells[0], "out");
-  assert.equal(last.stage.cells[4], "out");
+  // 42 는 5번 칸. 왼쪽 0~4 는 전부 잘려 나갔다
+  assert.equal(last.stage.cells[0], "dropped");
+  assert.equal(last.stage.cells[4], "dropped");
   assert.equal(last.stage.cells[5], "settled");
 });
 
@@ -98,4 +98,16 @@ test("Python 과 JS 가 같은 줄·같은 변수 시퀀스를 낸다", () => {
     ]);
     assert.deepEqual(mine, pythonSteps(c.trace), `케이스: ${c.name}`);
   }
+});
+
+test("비교 스텝은 같은 수를 두 번 말하지 않는다", () => {
+  const t = binarySearchTape([7, 12, 19, 23, 31, 42, 55, 68, 71, 90], 42);
+  const compare = t.steps.filter((s) => s.line === 5).map((s) => s.note);
+  assert.equal(compare.at(-1), "5번 칸의 42가 찾는 값일까요?");
+  assert.equal(compare[0], "4번 칸의 31이 찾는 값일까요?");
+});
+
+test("시작 스텝은 아무 칸도 건드리지 않은 상태다", () => {
+  const t = binarySearchTape([7, 12, 19, 23, 31, 42, 55, 68, 71, 90], 42);
+  assert.ok(t.steps[0].stage.cells.every((c) => c === "out"), "첫 스텝은 전부 out 이어야 한다");
 });
