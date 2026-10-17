@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { highlightTape } from "@/lib/algo/highlight";
 import { TrackPlayer } from "@/components/algo/TrackPlayer";
 import { GameReveal } from "@/components/algo/GameReveal";
 import { Quiz } from "@/components/algo/Quiz";
@@ -12,8 +13,8 @@ export const metadata: Metadata = {
   description: "업-다운 게임 잘하는 법",
 };
 
-export default function BinarySearchPage() {
-  const tape = binarySearchTape(VALUES, TARGET);
+export default async function BinarySearchPage() {
+  const tape = await highlightTape(binarySearchTape(VALUES, TARGET));
 
   return (
     <main className="algo-page">

@@ -41,6 +41,8 @@ export type Tape = {
   steps: Step[];
   /** 화면에 보여 줄 Python 코드. 줄 번호는 1-base */
   code: string[];
+  /** 색을 칠한 코드 줄(`highlightTape`). 없으면 색 없이 `code` 를 그린다 */
+  html?: string[];
   /** 스텝 상한에 닿아 끊겼는지 */
   truncated: boolean;
 };

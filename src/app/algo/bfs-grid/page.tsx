@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { highlightTape } from "@/lib/algo/highlight";
 import { GridPlayer } from "@/components/algo/GridPlayer";
 import { SpreadReveal } from "@/components/algo/SpreadReveal";
 import { Quiz } from "@/components/algo/Quiz";
@@ -21,8 +22,8 @@ export const metadata: Metadata = {
   description: "소문은 어떻게 퍼질까",
 };
 
-export default function BfsGridPage() {
-  const tape = bfsGridTape(GRID, START, GOAL);
+export default async function BfsGridPage() {
+  const tape = await highlightTape(bfsGridTape(GRID, START, GOAL));
   const best = shortestSteps(GRID, START, GOAL);
 
   return (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { highlightTape } from "@/lib/algo/highlight";
 import { TrackPlayer } from "@/components/algo/TrackPlayer";
 import { SortReveal } from "@/components/algo/SortReveal";
 import { Counter } from "@/components/algo/Counter";
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
   description: "옆 사람과 키 순서로 서 보기",
 };
 
-export default function BubbleSortPage() {
-  const tape = bubbleSortTape(VALUES);
+export default async function BubbleSortPage() {
+  const tape = await highlightTape(bubbleSortTape(VALUES));
   const ops = countOps(VALUES);
 
   return (

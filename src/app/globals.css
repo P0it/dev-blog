@@ -3531,10 +3531,16 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
 .algo-page {
   --track-h: 46px;
   --track-r: 10px;
-  max-width: 660px;
+  /* 넓은 화면 전용이다(2026-10-17 사용자 지시). 플레이어가 그림과 코드를 좌우로 나란히
+     놓으려면 블로그 본문 폭(660px)으로는 모자란다 — 쪽 전체를 남은 폭에 맞춰 넓힌다. */
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 34px 20px 120px;
+  padding: 40px 48px 120px;
 }
+/* 줄글만은 한 줄이 너무 길어지지 않게 묶는다. 그림·플레이어·퀴즈는 쪽 폭을 다 쓴다 */
+.algo-page > p,
+.algo-page > ul,
+.algo-page > h2 { max-width: 780px; }
 .algo-page p { margin: 0 0 14px; line-height: 1.8; }
 .algo-page strong { font-weight: 600; }
 .algo-page code {
@@ -3668,23 +3674,23 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
 }
 .algo-keys b { color: var(--fg-strong); font-weight: 600; }
 
-/* ── ④ 플레이어 — 도구다. 조용한 테두리 ── */
+/* ── ④ 플레이어 — 도구다. 조용한 테두리 ──
+   그림 왼쪽, 코드 오른쪽. 탭·위아래 쌓기는 접었다 — 넓은 화면만 받으니 둘을 같이 본다. */
 .algo-player {
-  margin: 24px 0; border: 1px solid var(--line-normal);
+  margin: 28px 0; border: 1px solid var(--line-normal);
   border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-elevated);
 }
-.algo-player-tabs { display: flex; border-bottom: 1px solid var(--line-normal); }
-.algo-player-tabs button {
-  flex: 1; min-height: 46px; border: 0; background: transparent; font: inherit;
-  font-size: 13px; color: var(--fg-alternative); cursor: pointer;
+.algo-player-pane {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  min-height: 420px;
 }
-.algo-player-tabs button.on { color: var(--fg-strong); box-shadow: inset 0 -2px 0 var(--fg-primary); }
-
-.algo-player-pane { display: block; }
-.algo-player-stage { padding: 26px 14px 20px; }
+.algo-player-stage {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 32px 28px 24px;
+}
 .algo-player-note {
   text-align: center; font-size: 14.5px; line-height: 1.6; color: var(--fg-normal);
-  margin: 22px auto 0; min-height: 46px; max-width: 30ch;
+  margin: 22px auto 0; min-height: 46px; max-width: 34em; text-wrap: balance;
 }
 .algo-player-vars {
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
@@ -3692,32 +3698,89 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
   margin: 8px 0 0; letter-spacing: .02em;
 }
 
-.algo-player-code {
-  list-style: none; margin: 0; padding: 16px 0;
-  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.85;
-  background: var(--bg-subtle);
+/* 코드 칸은 블로그 글 코드 블록과 같은 에디터 창이다 — 색은 --code-* 토큰, 칠은 Shiki
+   (src/lib/algo/highlight.ts). 플레이어 오른쪽을 통째로 차지해 테두리·그림자는 따로 두지 않는다. */
+.algo-editor { display: flex; flex-direction: column; background: var(--code-bg); color: var(--code-fg); }
+.algo-editor-head {
+  display: flex; align-items: center; height: 38px; padding: 0 8px 0 84px; flex: none;
+  background: var(--code-dots), var(--code-head-bg); background-repeat: no-repeat;
+  border-bottom: 1px solid var(--code-border);
 }
-.algo-player-code li { padding: 0 14px; white-space: pre; transition: background-color .2s; }
-.algo-player-code li.on { background: var(--bg-primary-tint); box-shadow: inset 2px 0 0 var(--fg-primary); }
-.algo-code-ln { display: inline-block; width: 20px; color: var(--fg-disabled); }
+.algo-editor-file {
+  display: flex; align-items: center; height: 26px; padding: 0 12px; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07); color: var(--code-head-fg);
+  font-family: var(--font-mono); font-size: 12px; white-space: nowrap;
+}
+.algo-player-code {
+  flex: 1; list-style: none; margin: 0; padding: 16px 0;
+  font-family: var(--font-mono); font-size: 14px; line-height: 1.9; tab-size: 4;
+  overflow-x: auto;
+  /* <= 가 ≤ 로 붙으면 "등호를 빼면 틀린다" 같은 설명이 코드에서 안 보인다 */
+  font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+}
+.algo-player-code li {
+  padding: 0 20px 0 0; white-space: pre;
+  border-left: 3px solid transparent; transition: background-color .2s, border-color .2s;
+}
+.algo-player-code li.on { background: rgba(97, 175, 239, 0.16); border-left-color: var(--code-hl-bar); }
+.algo-player-code li.on .algo-code-ln { color: var(--code-head-fg); }
+.algo-code-ln {
+  display: inline-block; width: 3ch; margin: 0 18px 0 10px; text-align: right;
+  color: var(--code-line-no); user-select: none;
+}
 
 .algo-player-ctl {
-  display: flex; align-items: center; gap: 6px; padding: 10px;
-  border-top: 1px solid var(--line-normal);
+  display: flex; align-items: center; gap: 20px; padding: 12px 20px;
+  border-top: 1px solid var(--line-normal); background: var(--bg-subtle);
 }
-.algo-player-ctl button {
-  min-height: 44px; min-width: 44px; padding: 0 14px; font: inherit; font-size: 14px;
-  cursor: pointer; border-radius: var(--radius-sm);
-  border: 1px solid var(--line-normal); background: transparent; color: var(--fg-normal);
-  transition: border-color .18s, color .18s;
+.algo-ctl-btns { display: flex; align-items: center; gap: 4px; flex: none; }
+.algo-ctl {
+  display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--fg-neutral);
+  cursor: pointer; transition: background-color .15s, color .15s, transform .1s;
 }
-.algo-player-ctl button:hover { border-color: var(--line-strong); color: var(--fg-strong); }
-.algo-player-ctl .algo-play { border-color: var(--line-strong); color: var(--fg-strong); font-weight: 600; }
+.algo-ctl:hover { background: var(--bg-muted); color: var(--fg-strong); }
+.algo-ctl:active { transform: scale(.94); }
+.algo-ctl:focus-visible { outline: 2px solid var(--fg-primary); outline-offset: 2px; }
+/* 재생만 색을 입힌다 — 손이 가장 먼저 가는 버튼이다 */
+.algo-ctl.algo-play {
+  width: 46px; height: 46px; margin: 0 4px;
+  background: var(--bg-primary); color: var(--fg-on-color);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--bg-primary) 35%, transparent);
+}
+.algo-ctl.algo-play:hover { background: var(--bg-primary); color: var(--fg-on-color); filter: brightness(1.06); }
+.algo-ctl.algo-play svg { width: 20px; height: 20px; }
+
+/* 진행 막대 — 지나온 만큼 브랜드 색으로 찬다(--p 는 플레이어가 넣는다) */
+.algo-scrub {
+  flex: 1; min-width: 0; height: 18px; margin: 0; cursor: pointer;
+  -webkit-appearance: none; appearance: none; background: transparent;
+}
+.algo-scrub::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--bg-primary) var(--p, 0%), var(--line-normal) var(--p, 0%));
+}
+.algo-scrub::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line-normal); }
+.algo-scrub::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--bg-primary); }
+.algo-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%;
+  background: var(--bg-base); border: 2px solid var(--bg-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18); transition: transform .12s;
+}
+.algo-scrub::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg-base); border: 2px solid var(--bg-primary);
+}
+.algo-scrub:hover::-webkit-slider-thumb { transform: scale(1.15); }
+.algo-scrub:focus-visible { outline: none; }
+.algo-scrub:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--fg-primary); outline-offset: 2px; }
+
 .algo-player-count {
-  margin-left: auto; padding-right: 6px;
+  flex: none; min-width: 64px; text-align: right;
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-  font-size: 12px; color: var(--fg-assistive);
+  font-size: 13px; color: var(--fg-assistive);
 }
+.algo-player-count b { color: var(--fg-strong); font-weight: 600; }
 .algo-player-truncated {
   margin: 0; padding: 10px 14px; border-top: 1px solid var(--line-normal);
   font-size: 13px; color: var(--fg-cautionary);
@@ -3795,18 +3858,6 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
 }
 .algo-next { color: var(--fg-assistive); font-size: 13.5px; margin-top: 30px; }
 
-/* ── 넓은 화면 ── */
-@media (min-width: 680px) {
-  .algo-player-tabs { display: none; }
-  .algo-player-pane { display: grid; grid-template-columns: 1fr 1fr; }
-  .algo-player-pane > [data-hidden-narrow] { display: block; }
-  .algo-player-stage { border-right: 1px solid var(--line-subtle); }
-}
-@media (max-width: 679px) {
-  .algo-player-pane > [data-hidden-narrow="true"] { display: none; }
-  .algo-title { font-size: 28px; }
-  .algo-game-pick { font-size: 48px; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .algo-cell,
@@ -4030,12 +4081,4 @@ button.algo-gcell { cursor: pointer; font-family: var(--font-mono); }
   opacity: 1; text-decoration: none; transform: none; color: transparent;
 }
 
-/* 격자처럼 넓은 그림은 위아래로 쌓는다 — 좌우로 가르면 코드가 잘린다 */
-.algo-player[data-layout="stack"] .algo-player-tabs { display: none; }
-.algo-player[data-layout="stack"] .algo-player-pane { display: block; }
-.algo-player[data-layout="stack"] .algo-player-stage {
-  border-right: 0; border-bottom: 1px solid var(--line-subtle);
-}
-.algo-player[data-layout="stack"] .algo-player-pane > [data-hidden-narrow] { display: block; }
-.algo-player-code { overflow-x: auto; }
 .algo-grid .algo-gcell { font-size: 11px; }

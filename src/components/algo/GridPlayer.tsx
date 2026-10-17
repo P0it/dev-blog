@@ -20,7 +20,6 @@ export function GridPlayer({
     <TapePlayer
       tape={tape}
       title={title}
-      layout="stack"
       stage={(s) => <StageGrid cols={cols} state={s} labels={labels} />}
     />
   );
