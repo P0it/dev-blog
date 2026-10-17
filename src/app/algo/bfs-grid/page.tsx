@@ -65,7 +65,7 @@ export default async function BfsGridPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>큐가 겹을 만든다</h2>
       <p>
-        ▶로 한 칸씩 넘기며 <strong>큐에 쌓이는 순서</strong>를 보세요. 아래 숫자가 그 칸까지의
+        <strong>다음</strong>을 눌러 한 줄씩 넘기며 <strong>큐에 쌓이는 순서</strong>를 보세요. 아래 숫자가 그 칸까지의
         걸음 수입니다.
       </p>
 

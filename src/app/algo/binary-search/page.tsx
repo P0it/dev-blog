@@ -57,7 +57,7 @@ export default async function BinarySearchPage() {
         {/* ④ 코드와 플레이어 */}
         <h2>코드는 방금 한 게임을 그대로 옮긴 것이다</h2>
         <p>
-          배열에서 <strong>{TARGET}</strong> 찾기. ▶로 한 칸씩 넘겨 보세요.
+          배열에서 <strong>{TARGET}</strong> 찾기. <strong>다음</strong>을 눌러 한 줄씩 넘겨 보세요.
         </p>
 
         <TrackPlayer tape={tape} values={VALUES} title="이분 탐색이 한 칸씩 도는 모습" />

@@ -54,7 +54,7 @@ export default async function BubbleSortPage() {
 
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 바퀴 두 번 도는 것이 전부다</h2>
-      <p>▶로 한 칸씩 넘기며 확정된 칸이 뒤에서부터 쌓이는 걸 보세요.</p>
+      <p><strong>다음</strong>을 눌러 한 줄씩 넘기며 확정된 칸이 뒤에서부터 쌓이는 걸 보세요.</p>
 
       <TrackPlayer tape={tape} values={VALUES} title="버블 정렬이 한 칸씩 도는 모습" />
 
