@@ -3928,16 +3928,25 @@ a.series-nav-link:hover { border-color: var(--line-strong); transform: translate
 .algo-sb-group[data-folded="true"] .algo-sb-chev { transform: rotate(-90deg); }
 
 .algo-sb-group ul { list-style: none; margin: 0 0 10px; padding: 0 0 0 4px; }
+/* 항목은 알약 면으로 받는다. 호버는 연한 회색 면, 선택은 민트 면이다.
+   **선택에 왼쪽 선을 더하지 않는다** — 면과 선이 겹치면 지저분하다.
+   왼쪽 가이드 선은 목록 전체의 것이라 상태에 따라 색이 바뀌지 않는다. */
 .algo-sb-item {
-  display: block; padding: 7px 10px; margin-left: 9px;
-  border-left: 2px solid var(--line-subtle);
+  display: block; position: relative;
+  padding: 8px 12px; margin: 1px 0 1px 10px;
+  border-radius: var(--radius-sm);
   font-size: 14px; color: var(--fg-neutral); text-decoration: none;
-  transition: color .15s, border-color .15s;
+  transition: background-color .16s ease, color .16s ease;
 }
-a.algo-sb-item:hover { color: var(--fg-strong); border-color: var(--line-strong); }
+.algo-sb-item::before {
+  content: ""; position: absolute; left: -10px; top: -1px; bottom: -1px;
+  width: 2px; background: var(--line-subtle);
+}
+a.algo-sb-item:hover { background: var(--bg-subtle); color: var(--fg-strong); }
 a.algo-sb-item[data-active="true"] {
-  color: var(--fg-primary-strong); border-color: var(--fg-primary); font-weight: 600;
+  background: var(--bg-primary-tint); color: var(--fg-primary-strong); font-weight: 600;
 }
+a.algo-sb-item:focus-visible { outline: 2px solid var(--fg-primary); outline-offset: 1px; }
 .algo-sb-item[data-planned] { color: var(--fg-disabled); cursor: default; }
 
 .algo-sb-none { font-size: 13.5px; color: var(--fg-assistive); padding: 4px; }
@@ -3946,19 +3955,29 @@ a.algo-sb-item[data-active="true"] {
   font-family: var(--font-mono); font-size: 11px; color: var(--fg-disabled);
 }
 
-/* 넓은 화면 — 사이드바를 왼쪽에 고정한다 */
+/* 넓은 화면 — 사이드바는 화면 왼쪽 끝에 붙인다.
+   본문과 같이 가운데로 몰리면 목록이 떠 있는 것처럼 보인다. */
 @media (min-width: 1000px) {
   .algo-sb-toggle { display: none; }
-  .algo-shell {
-    display: grid; grid-template-columns: 236px minmax(0, 1fr);
-    max-width: 1060px; margin: 0 auto; gap: 8px;
-  }
+  .algo-shell { display: block; }
   .algo-sb {
-    display: block; position: sticky; top: 72px; align-self: start;
-    max-height: calc(100vh - 92px); overflow-y: auto;
+    display: block;
+    position: fixed; left: 0; top: var(--nav-h, 64px);
+    width: 244px; height: calc(100vh - var(--nav-h, 64px));
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: 20px 14px 40px;
     border-right: 1px solid var(--line-subtle);
+    background: var(--bg-base);
   }
-  .algo-page { margin: 0; }
+  .algo-main { margin-left: 244px; }
+  /* 본문은 남은 폭의 가운데에 둔다 */
+  .algo-page { margin: 0 auto; }
+}
+
+/* 아주 넓으면 가운데 정렬된 본문이 사이드바에서 너무 멀어진다 —
+   본문 영역 폭을 묶어 사이드바 가까이 둔다 */
+@media (min-width: 1500px) {
+  .algo-main { max-width: 1180px; }
 }
 
 /* ── /algo 목록 ── */
@@ -4090,3 +4109,43 @@ button.algo-gcell { cursor: pointer; font-family: var(--font-mono); }
 }
 
 .algo-grid .algo-gcell { font-size: 11px; }
+
+
+/* 사이드바·목록 링크는 밑줄을 쓰지 않는다 — 전역 a:hover 의 밑줄을 끈다.
+   목록에서는 밑줄이 줄마다 깜빡여 어지럽다. 면과 글자 색으로 이미 충분하다. */
+a.algo-sb-item,
+a.algo-sb-item:hover,
+a.algo-index-card,
+a.algo-index-card:hover,
+a.algo-index-card:hover b { text-decoration: none; }
+
+/* 스크롤바 — 기본 스크롤바는 굵어 목록 옆에서 튄다.
+   평소엔 숨기고 손이 올라갔을 때만 가늘게 보인다. */
+.algo-sb {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color .25s ease;
+}
+.algo-sb:hover { scrollbar-color: var(--line-strong) transparent; }
+.algo-sb::-webkit-scrollbar { width: 8px; }
+.algo-sb::-webkit-scrollbar-track { background: transparent; }
+.algo-sb::-webkit-scrollbar-thumb {
+  background: transparent; border-radius: 99px;
+  border: 2px solid transparent; background-clip: content-box;
+  transition: background-color .25s ease;
+}
+.algo-sb:hover::-webkit-scrollbar-thumb { background: var(--line-strong); background-clip: content-box; }
+.algo-sb::-webkit-scrollbar-thumb:hover { background: var(--fg-disabled); background-clip: content-box; }
+
+/* 큐·코드처럼 가로로 넘치는 칸도 같은 규칙 */
+.algo-lane-items,
+.algo-player-code { scrollbar-width: thin; scrollbar-color: var(--line-normal) transparent; }
+.algo-lane-items::-webkit-scrollbar,
+.algo-player-code::-webkit-scrollbar { height: 8px; }
+.algo-lane-items::-webkit-scrollbar-track,
+.algo-player-code::-webkit-scrollbar-track { background: transparent; }
+.algo-lane-items::-webkit-scrollbar-thumb,
+.algo-player-code::-webkit-scrollbar-thumb {
+  background: var(--line-normal); border-radius: 99px;
+  border: 2px solid transparent; background-clip: content-box;
+}
