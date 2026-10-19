@@ -31,7 +31,7 @@ export function SortReveal({
             : `옆 칸끼리만 바꾸면 이 줄은 아무리 잘해도 ${minSwaps}번 아래로는 안 됩니다.`}
         </p>
         <p>
-          키가 거꾸로 선 쌍이 {minSwaps}개이고, 옆 칸을 한 번 바꾸면 그 쌍이 많아야 하나 줄기 때문입니다.
+          키가 거꾸로 선 쌍이 {minSwaps}개입니다. 옆 칸을 한 번 바꾸면 그 쌍이 많아야 하나 줄어듭니다.
         </p>
         <p>
           버블 정렬도 바꾸기는 <strong>{minSwaps}번</strong>, 비교는 <strong>{compares}번</strong> 합니다.

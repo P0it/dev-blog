@@ -39,7 +39,7 @@ export default async function BfsGridPage() {
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
-        왼쪽 위에서 소문이 시작돼 오른쪽 아래 도착 칸까지 퍼집니다. <strong>도착까지 몇 걸음일지 먼저 고르고</strong>,
+        왼쪽 위에서 소문이 시작돼 오른쪽 아래 도착 칸까지 퍼집니다. <strong>도착까지 몇 걸음일지 먼저 고르고</strong>{" "}
         한 걸음씩 퍼뜨려 맞혀 보세요.
       </p>
 
@@ -54,7 +54,7 @@ export default async function BfsGridPage() {
       </SpreadReveal>
 
       {/* ③ 조건 짚기 */}
-      <h2>BFS 의 최단 거리는 걸음 수가 같을 때만 맞다</h2>
+      <h2>BFS 의 최단 거리는 걸음마다 걸리는 시간이 같을 때만 맞다</h2>
       <ul className="algo-keys">
         <li>
           <b>한 겹 = 한 걸음</b> — 겹이 넓어지는 순서가 곧 가까운 순서다
@@ -75,8 +75,8 @@ export default async function BfsGridPage() {
         <strong>같은 격자</strong>입니다.
       </p>
       <p>
-        <strong>다음</strong>을 눌러 한 줄씩 넘기며 <strong>큐에 쌓이는 순서</strong>를 보세요. 아래 숫자가 그 칸까지의
-        걸음 수이고, 숫자가 같은 칸끼리 한 겹입니다.
+        <strong>다음</strong>을 눌러 한 줄씩 넘기며 <strong>큐에 쌓이는 순서</strong>를 보세요. 아래 숫자는 그 칸까지의
+        걸음 수입니다. 숫자가 같은 칸끼리 한 겹입니다.
       </p>
 
       <GridPlayer
@@ -127,10 +127,9 @@ export default async function BfsGridPage() {
         ]}
         why={
           <>
-            스택은 <strong>마지막에 넣은 칸부터</strong> 꺼냅니다. 그래서 한 겹씩 넓어지지 않고 한 방향으로 막다른
-            길까지 파고듭니다. 이 방법 = DFS. 이 격자는 길이 둘이라 먼저 파고든 쪽이 더 멉니다.{" "}
-            <strong>{stack}걸음</strong>이 나옵니다. 길이 하나뿐인 격자라면 스택도 {best}걸음처럼 최단이 나와서 구분이 안
-            됩니다.
+            스택은 <strong>마지막에 넣은 칸부터</strong> 꺼내서, 한 겹씩 넓어지지 않고 막다른 길까지 파고듭니다. 이
+            방법 = DFS. 이 격자는 길이 둘이라 먼저 파고든 쪽이 더 멀어서 <strong>{stack}걸음</strong>이 나옵니다.{" "}
+            길이 하나뿐인 격자라면 스택도 {best}걸음처럼 최단이 나와서 구분이 안 됩니다.
           </>
         }
       />
@@ -157,7 +156,7 @@ export default async function BfsGridPage() {
         </li>
       </ul>
       <p>
-        위 플레이어에서 도착까지 <strong>{best}걸음</strong>입니다. 가로 4칸 + 세로 3칸 = {best}걸음으로,
+        위 플레이어에서 도착까지 <strong>{best}걸음</strong> = 가로 4칸 + 세로 3칸입니다.
         이 격자에는 돌아가지 않고 갈 수 있는 길이 있습니다. 벽이 그 길을 막으면 더 걸립니다.
       </p>
 

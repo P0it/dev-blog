@@ -52,7 +52,7 @@ function* walk(input: number[]): Generator<Step> {
         line: 5,
         vars: { n, i, j },
         stage: stage(arr, settledFrom, j, j + 1),
-        note: `${arr[j]}와 ${josa(arr[j + 1], "을", "를")} 견줍니다`,
+        note: `${josa(arr[j], "과", "와")} ${josa(arr[j + 1], "을", "를")} 견줍니다`,
       };
 
       if (arr[j] > arr[j + 1]) {

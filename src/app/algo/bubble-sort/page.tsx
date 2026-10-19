@@ -31,7 +31,7 @@ export default async function BubbleSortPage() {
       <p className="algo-lede">옆 사람과 키 순서로 서 보기</p>
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
-      <p>여섯 칸을 작은 수부터 늘어놓아 보세요. 두 칸을 누르면 자리가 바뀌는데, 옆 칸끼리만 됩니다.</p>
+      <p>여섯 칸을 작은 수부터 늘어놓아 보세요. 두 칸을 누르면 자리가 바뀝니다. 옆 칸끼리만 됩니다.</p>
 
       <SortReveal minSwaps={ops.swaps} compares={ops.compares}>
         <p>
@@ -127,7 +127,7 @@ export default async function BubbleSortPage() {
           <b>
             <code>- i</code> 를 빼면
           </b>{" "}
-          — 답은 맞는데 비교가 {ops.compares}번에서 {wide.compares}번으로 는다. 끝자리에 확정된 칸을 또 보기 때문이다
+          — 답은 맞는데 비교가 {ops.compares}번에서 {wide.compares}번으로 는다. 끝자리에 확정된 칸까지 또 본다
         </li>
         <li>
           <b>
@@ -155,7 +155,7 @@ export default async function BubbleSortPage() {
           { label: `버블 정렬 · ${BIG}개`, n: (BIG * (BIG - 1)) / 2, unit: "번" },
           { label: `Python sorted · ${BIG}개`, n: Math.round(BIG * Math.log2(BIG)), unit: "번" },
         ]}
-        caption="같은 1000개를 정렬할 때의 비교 횟수. 10000개면 차이가 또 열 배로 벌어집니다."
+        caption="같은 1000개를 정렬할 때의 비교 횟수. 10000개면 차이가 약 380배까지 벌어집니다."
       />
       <p>
         여섯 칸짜리 예시에서는 비교 {ops.compares}번, 교환 {ops.swaps}번이었습니다. 칸이 늘어나면 이 수가 제곱으로
