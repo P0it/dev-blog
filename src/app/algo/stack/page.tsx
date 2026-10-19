@@ -31,7 +31,7 @@ export default async function StackPage() {
       at: firstCloseStep(okTape),
       ask: (
         <>
-          누르기 전에 맞혀 보세요. 다음 글자는 닫는 괄호 <code>{"}"}</code> 입니다. 스택 맨 위는 <code>{"{"}</code> 입니다. 어떻게 할까요?
+          누르기 전에 맞혀 보세요. 다음 글자는 닫는 괄호 <code>{"}"}</code> 이고 스택 맨 위는 <code>{"{"}</code> 입니다. 어떻게 할까요?
         </>
       ),
       options: [
@@ -49,7 +49,7 @@ export default async function StackPage() {
       at: firstCloseStep(badTape),
       ask: (
         <>
-          누르기 전에 맞혀 보세요. 다음 글자는 닫는 괄호 <code>)</code> 입니다. 스택 맨 위는 <code>{"{"}</code> 입니다. 어떻게 할까요?
+          누르기 전에 맞혀 보세요. 다음 글자는 닫는 괄호 <code>)</code> 이고 스택 맨 위는 <code>{"{"}</code> 입니다. 어떻게 할까요?
         </>
       ),
       options: [
@@ -59,7 +59,7 @@ export default async function StackPage() {
       ],
       why: (
         <>
-          <code>)</code> 의 짝은 <code>(</code> 인데 맨 위는 <code>{"{"}</code> 입니다. 가운데 깔린 <code>(</code> 는 꺼낼 수 없으니, 이 문자열은 짝이 안 맞습니다.
+          <code>)</code> 의 짝은 <code>(</code> 인데 맨 위는 <code>{"{"}</code> 입니다. 가운데 깔린 <code>(</code> 는 꺼낼 수 없으니 이 문자열은 짝이 안 맞습니다.
         </>
       ),
     },
@@ -75,7 +75,7 @@ export default async function StackPage() {
       <StackReveal>
         <p className="algo-chain">
           글자 굵게 → 그림 넣기 → 색 바꾸기
-          <span>한 순서입니다. 되돌릴 때는 이 순서의 거꾸로 나갔습니다.</span>
+          <span>한 순서입니다. 되돌릴 때는 거꾸로 된 순서로 나갔습니다.</span>
         </p>
         <p>
           나중에 넣은 것이 먼저 나오는 더미 = <strong>스택</strong>
@@ -102,7 +102,7 @@ export default async function StackPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 쌓고 걷는 두 줄이 전부다</h2>
       <p>
-        문자열을 고르고 <strong>다음</strong>을 눌러 한 줄씩 넘기세요. 여는 괄호는 쌓이고, 닫는 괄호는 맨 위와 짝을 맞춘 뒤 걷힙니다.
+        문자열을 고르고 <strong>다음</strong>을 눌러 한 줄씩 넘기세요. 여는 괄호는 쌓이고 닫는 괄호는 맨 위와 짝을 맞춘 뒤 걷힙니다.
       </p>
 
       <BracketPlayer tapes={{ ok: okTape, bad: badTape }} pauses={pauses} />
@@ -151,7 +151,7 @@ export default async function StackPage() {
         ]}
         why={
           <>
-            <code>(</code> 두 개가 쌓이고 <code>)</code> 가 맨 위 <code>(</code> 하나를 꺼내서, <code>(</code> 하나가 남습니다. 스택이 비지 않았으니 <code>return not stack</code> 은 <code>False</code> 입니다. 닫는 괄호는 스택에 올리지 않아서 <code>)</code> 가 남는 일은 없습니다.
+            <code>(</code> 두 개가 쌓이고 <code>)</code> 가 맨 위 <code>(</code> 하나를 꺼내서 <code>(</code> 하나가 남습니다. 스택이 비지 않았으니 <code>return not stack</code> 은 <code>False</code> 입니다. 닫는 괄호는 스택에 올리지 않아서 <code>)</code> 가 남는 일은 없습니다.
           </>
         }
       />

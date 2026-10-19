@@ -21,7 +21,7 @@ export function StackReveal({ children }: { children: ReactNode }) {
           내 예상 <b>{res?.guess}</b> · 실제 <b>{res?.remaining}</b> → {hit ? "맞았어요" : "달랐어요"}
         </p>
         <p>
-          되돌릴 때 나간 순서는 <strong>{res?.undone.join(" → ")}</strong> 이었습니다. 가장 먼저 한 일이 끝까지 남았습니다.
+          되돌릴 때 나간 순서는 <strong>{res?.undone.join(" → ")}</strong> 였습니다. 가장 먼저 한 일이 끝까지 남았습니다.
         </p>
         {children}
       </div>

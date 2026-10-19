@@ -75,7 +75,7 @@ function* walk(s: string): Generator<Step> {
       top === undefined
         ? `스택이 비어 있어 짝이 될 괄호가 없습니다`
         : mismatch
-          ? `맨 위는 ${top} 라서 ${c} 의 짝 ${PAIRS[c]} 가 아닙니다`
+          ? `맨 위 ${top} 는 ${c} 의 짝 ${PAIRS[c]} 가 아닙니다`
           : `맨 위는 ${top} 이고 ${c} 의 짝과 같습니다`,
       i,
       i,
