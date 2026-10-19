@@ -42,6 +42,21 @@ export type StageState = {
    * `name` 은 지금 다루는 이름표, `scan` 은 `hot` 칸 안에서 지금까지 훑은 이름표 수.
    */
   hash?: { buckets: string[][]; hot?: number; name?: string; scan?: number };
+  /**
+   * 병합(합치기). 위 줄(`values`·`cells`)은 원래 줄 전체이고, 지금 합치는 구간 `[lo, hi)` 가 켜진다 —
+   * 앞 `mid` 칸이 왼쪽 묶음, 나머지가 오른쪽 묶음이다. 아래 줄은 `result` 에 쌓인, 합쳐서 만드는 줄이다.
+   * `mode`: split(반으로 나눔) · ready(합칠 두 묶음) · compare(맨 앞 둘 견주기) · place(한 장 내려놓음, `side` 가 쪽) ·
+   * rest(남은 묶음 이어 붙임) · done(합치기 끝). `taken` 은 묶음별로 지금까지 내려놓은 카드 수다.
+   */
+  merge?: {
+    lo: number;
+    hi: number;
+    mid: number;
+    mode: "split" | "ready" | "compare" | "place" | "rest" | "done";
+    taken: { left: number; right: number };
+    side?: "left" | "right";
+    result: number[];
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
