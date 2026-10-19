@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CellState, StageState } from "@/lib/algo/types";
 import { WARD, NEWCOMER, parentOf, shouldRise, riseStep } from "@/lib/algo/heap";
+import { josa } from "@/lib/algo/josa";
 import { StageHeap } from "./StageHeap";
 
 export type HeapResult = {
@@ -48,11 +49,11 @@ export function HeapByHand({ onDone }: { onDone?: (r: HeapResult | null) => void
     const p = parentOf(i);
     if (!shouldRise(heap, i)) {
       // 이 입력은 맨 위에 닿아 끝나지만, 부모가 더 급한 경우의 이유도 같은 자리에서 말해 둔다
-      finish(heap, i, ups, `부모 ${heap[p]} 이 더 급해서(숫자가 더 작아서) 안 바뀝니다. 여기서 멈춥니다`);
+      finish(heap, i, ups, `부모 ${josa(heap[p], "이", "가")} 더 급해서(숫자가 더 작아서) 안 바뀝니다. 여기서 멈춥니다`);
       return;
     }
     const r = riseStep(heap, i);
-    const text = `새 환자 ${heap[i]} 이 부모 ${heap[p]} 보다 급합니다. 자리를 바꿔 ${r.i}번 자리로 올라갑니다`;
+    const text = `새 환자 ${josa(heap[i], "이", "가")} 부모 ${heap[p]}보다 급합니다. 자리를 바꿔 ${r.i}번 자리로 올라갑니다`;
     setHeap(r.heap);
     setI(r.i);
     setUps(ups + 1);
@@ -80,12 +81,12 @@ export function HeapByHand({ onDone }: { onDone?: (r: HeapResult | null) => void
     if (guess === null || done) return;
     if (k === parentOf(i) && i > 0) return rise();
     if (k === i) {
-      setMsg({ ok: false, text: "지금 올라가는 환자입니다. 바로 위, 연결선으로 이어진 자리와 견줘 보세요" });
+      setMsg({ ok: false, text: "지금 올라가는 환자입니다. 선으로 이어진 바로 위 자리와 견줘 보세요" });
       return;
     }
     setMsg({
       ok: false,
-      text: "그 자리와는 바꿀 수 없어요. 바로 위로 이어진 자리, 부모와만 견주고 바꿉니다",
+      text: "그 자리와는 바꿀 수 없어요. 바로 위로 이어진 부모 자리와만 견주고 바꿉니다",
     });
   };
 

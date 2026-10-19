@@ -27,7 +27,7 @@ export default async function HeapPage() {
     at: swapAt,
     ask: (
       <>
-        누르기 전에 맞혀 보세요. 6번 줄에서 부모 {WARD[2]} 과 새 환자 {NEWCOMER} 을 견줬습니다. 다음에 켜질 줄은 어디일까요?
+        누르기 전에 맞혀 보세요. 6번 줄에서 부모 {josa(WARD[2], "과", "와")} 새 환자 {josa(NEWCOMER, "을", "를")} 견줬습니다. 다음에 켜질 줄은 어디일까요?
       </>
     ),
     options: [
@@ -37,7 +37,7 @@ export default async function HeapPage() {
     ],
     why: (
       <>
-        <code>heap[p] &lt;= heap[i]</code> 는 {WARD[2]} ≤ {NEWCOMER} 이라 거짓입니다. 그래서 <code>break</code> 를 건너뛰고 8번 줄에서 자리를
+        <code>heap[p] &lt;= heap[i]</code> 는 {WARD[2]} ≤ {josa(NEWCOMER, "이라", "라")} 거짓입니다. 그래서 <code>break</code> 를 건너뛰고 8번 줄에서 자리를
         바꿉니다.
       </>
     ),
@@ -94,10 +94,10 @@ export default async function HeapPage() {
           <b>규칙은 하나</b> — 위 칸은 바로 아래 두 칸보다 늘 같거나 급하다
         </li>
         <li>
-          <b>줄 세운 게 아니다</b> — 새 환자를 올린 뒤 배열은 <code>{`[${after.join(", ")}]`}</code> 입니다. 앞에서부터 읽어도 정렬이 아닙니다. 맨 앞 칸만 보장됩니다
+          <b>줄 세운 게 아니다</b> — 새 환자를 올린 뒤 배열은 <code>{`[${after.join(", ")}]`}</code> 입니다. 앞에서부터 읽으면 작은 순서가 아닙니다. 믿을 수 있는 건 맨 앞 칸뿐입니다
         </li>
         <li>
-          <b>부모가 더 급하면 멈춘다</b> — 새 환자가 4 였다면 부모 3 이 더 급해서 첫 비교에서 바로 멈춥니다
+          <b>부모가 더 급하면 멈춘다</b> — 새 환자가 4였다면 부모 3이 더 급해서 첫 비교에서 바로 멈춥니다
         </li>
       </ul>
       <p className="algo-chain">
@@ -156,11 +156,11 @@ export default async function HeapPage() {
         options={[
           { label: "1번 올라간다" },
           { label: `2번 올라간다 — 새 환자 ${NEWCOMER} 일 때처럼` },
-          { label: `올라가지 않는다 — 부모 ${WARD[2]} 이 더 급하다`, correct: true },
+          { label: `올라가지 않는다 — 부모 ${josa(WARD[2], "이", "가")} 더 급하다`, correct: true },
         ]}
         why={
           <>
-            4 의 부모는 {WARD[2]} 입니다. {WARD[2]} 이 더 급해서({WARD[2]} ≤ 4) 6번 줄에서 바로 <code>break</code> 합니다. 2번 올라가는 건 {NEWCOMER} 이
+            4의 부모는 {WARD[2]}입니다. {josa(WARD[2], "이", "가")} 더 급해서({WARD[2]} ≤ 4) 6번 줄에서 바로 <code>break</code> 합니다. 2번 올라가는 건 {josa(NEWCOMER, "이", "가")}
             앉았을 때입니다.
           </>
         }
@@ -173,7 +173,7 @@ export default async function HeapPage() {
           <b>가장 작은 것이 먼저다</b> — <code>heapq</code> 는 최소 힙이다. 큰 것부터 꺼내려면 <code>-x</code> 로 넣고 꺼낸 뒤 다시 <code>-</code> 를 붙인다
         </li>
         <li>
-          <b>리스트는 정렬이 아니다</b> — 5, 3, 8, 1 을 차례로 넣으면 <code>[1, 3, 8, 5]</code> 다. 맨 앞 <code>heap[0]</code> 만 가장 작다
+          <b>리스트는 정렬이 아니다</b> — 5, 3, 8, 1을 차례로 넣으면 <code>[1, 3, 8, 5]</code> 다. 맨 앞 <code>heap[0]</code> 만 가장 작다
         </li>
         <li>
           <b>급한 정도와 이름을 같이</b> — <code>{`heappush(h, (2, "복통"))`}</code> 처럼 튜플로 넣는다. 앞 숫자가 같으면 뒤 값끼리 견주는데, 견줄 수 없는 값이면 <code>TypeError</code> 가 난다
