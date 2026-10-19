@@ -4957,3 +4957,49 @@ button.algo-island-cell { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .algo-memo-node rect { transition: none; }
 }
+
+/* ── 다익스트라 ── */
+.algo-dijk { display: grid; gap: 10px; justify-items: center; width: 100%; }
+.algo-dijk-map { width: 100%; max-width: 560px; height: auto; display: block; }
+.algo-dijk-edge line { stroke: var(--line-strong); stroke-width: 2; transition: stroke .35s, stroke-width .35s; }
+.algo-dijk-edge text {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600; fill: var(--fg-neutral);
+  text-anchor: middle; dominant-baseline: central;
+  paint-order: stroke; stroke: var(--bg-base); stroke-width: 6px; stroke-linejoin: round;
+}
+.algo-dijk-edge[data-hot] line { stroke: var(--fg-cautionary); stroke-width: 3.5; }
+.algo-dijk-edge[data-hot] text { fill: var(--fg-cautionary); }
+.algo-dijk-node circle {
+  fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 2;
+  transition: fill .35s cubic-bezier(.2,.7,.2,1), stroke .35s;
+}
+.algo-dijk-node text {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 700; fill: var(--fg-strong);
+  text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.algo-dijk-node .algo-dijk-tag { font-size: 12px; font-weight: 500; fill: var(--fg-assistive); }
+.algo-dijk-node .algo-dijk-tag[data-known] { font-weight: 700; fill: var(--fg-strong); }
+.algo-dijk-node[data-s="waiting"] circle { fill: var(--bg-accent-soft); stroke: var(--algo-waiting-line); }
+.algo-dijk-node[data-s="compare"] circle { fill: var(--bg-cautionary-soft, var(--bg-muted)); stroke: var(--fg-cautionary); }
+.algo-dijk-node[data-s="current"] circle { fill: var(--bg-primary); stroke: var(--bg-primary); }
+.algo-dijk-node[data-s="current"] > text:not(.algo-dijk-tag) { fill: var(--fg-on-color); }
+.algo-dijk-node[data-s="settled"] circle { fill: var(--fg-positive); stroke: var(--fg-positive); }
+.algo-dijk-node[data-s="settled"] > text:not(.algo-dijk-tag) { fill: var(--fg-on-color); }
+.algo-dijk-node[data-changed] .algo-dijk-tag { fill: var(--fg-cautionary); }
+.algo-dijk-node[data-click] { cursor: pointer; }
+.algo-dijk-node[data-click]:focus { outline: none; }
+.algo-dijk-node[data-click]:focus-visible circle { stroke: var(--bg-primary); stroke-width: 4; }
+.algo-dijk-row { width: 100%; }
+.algo-dijk-row .algo-cell[data-changed] { box-shadow: 0 0 0 2px var(--fg-cautionary); }
+.algo-dijk-queue { width: 100%; display: grid; gap: 6px; }
+.algo-dijk-queue ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; min-height: 34px; }
+.algo-dijk-queue li {
+  font-family: var(--font-mono); font-size: 13px; padding: 6px 10px; min-height: 34px;
+  border: 1px solid var(--algo-waiting-line); border-radius: var(--radius-sm);
+  background: var(--bg-accent-soft); color: var(--algo-waiting-fg);
+}
+.algo-dijk-queue li:first-child { border-color: var(--bg-primary); box-shadow: 0 0 0 1px var(--bg-primary); }
+.algo-dijk-queue li.algo-dijk-empty { background: transparent; border-style: dashed; border-color: var(--line-normal); color: var(--fg-assistive); }
+.algo-dijk-predict .algo-pairs-btns button { min-width: 180px; max-width: 360px; }
+.algo-dijk-guess { text-align: center; margin: 14px 0 0; font-size: 14px; color: var(--fg-neutral); }
+.algo-dijk-guess b { color: var(--fg-primary); }

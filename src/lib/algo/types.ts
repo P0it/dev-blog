@@ -75,6 +75,19 @@ export type StageState = {
    * 수첩에서 꺼내 쓰는 순간이다. 호출 탑은 `frames` 가 그린다.
    */
   memo?: { notebook: { n: number; v: number }[]; hit?: boolean };
+  /**
+   * 지도(다익스트라). `dist[i]` 는 i 번 곳까지 지금까지 알려진 가장 빠른 시간(분), 아직 길을 모르면 null(∞).
+   * `confirmed` 는 확정한 곳, `now` 는 지금 다루는 곳, `look` 은 지금 견주는 이웃, `changed` 는 방금 시간이 고쳐진 곳.
+   * `queue` 는 큐에 든 `[거리, 곳 번호]` — 앞이 먼저 나간다. 곳 이름과 번호는 `lib/algo/dijkstra.ts` 의 NAMES 다.
+   */
+  graph?: {
+    dist: (number | null)[];
+    confirmed: boolean[];
+    now?: number;
+    look?: number;
+    changed?: number[];
+    queue: [number, number][];
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

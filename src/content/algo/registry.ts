@@ -180,7 +180,7 @@ export const registry: AlgoEntry[] = [
   },
 
   // ── 최단경로
-  plan("dijkstra", "다익스트라", "길마다 걸리는 시간이 다르면", "최단경로·MST", ["dijkstra"], ["가중치 있다", "최단 거리"]),
+  { slug: "dijkstra", title: "다익스트라", lede: "길마다 걸리는 시간이 다르면", category: "최단경로·MST", tier: 1, aliases: ["dijkstra", "다익스트라 알고리즘", "최단 경로", "shortest path"], signals: ["길마다 걸리는 시간·비용이 다르다", "최단 거리·최소 비용", "지도·네트워크"], status: "ready" },
 
   // ── DP
   {
