@@ -144,7 +144,16 @@ export const registry: AlgoEntry[] = [
     signals: ["정렬돼 있다", "값 하나를 찾는다", "N이 너무 크다"],
     status: "ready",
   },
-  plan("bisect-bounds", "왼쪽 끝·오른쪽 끝 찾기", "같은 값이 여러 개일 때", "탐색", ["bisect_left", "bisect_right", "lower bound"], ["같은 값이 여러 개"]),
+  {
+    slug: "bisect-bounds",
+    title: "왼쪽 끝·오른쪽 끝 찾기",
+    lede: "같은 값이 여러 개일 때",
+    category: "탐색",
+    tier: 1,
+    aliases: ["bisect_left", "bisect_right", "lower bound", "upper bound", "bisect", "경계 찾기"],
+    signals: ["같은 값이 여러 개", "개수를 세야 한다", "x 이상이 처음 나오는 자리"],
+    status: "ready",
+  },
   plan("parametric-search", "답을 이분 탐색하기", "되는지 안 되는지만 물어보기", "탐색", ["parametric search"], ["최댓값의 최솟값"]),
 
   // ── 그래프 탐색
