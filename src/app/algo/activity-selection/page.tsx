@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { highlightTape } from "@/lib/algo/highlight";
 import type { PlayerPause } from "@/components/algo/TapePlayer";
 import { MeetPlayer } from "@/components/algo/MeetPlayer";
@@ -99,7 +100,7 @@ export default async function ActivitySelectionPage() {
           </li>
         </ul>
         <p>
-          지금 가장 좋아 보이는 것을 고르고 되돌아보지 않는 방법 = <strong>그리디</strong>. 거스름돈에서 큰 동전부터 주는 것과 같은 생각입니다.
+          지금 가장 좋아 보이는 것을 고르고 되돌아보지 않는 방법 = <strong>그리디</strong>. <Link href="/algo/greedy-coins">거스름돈</Link>에서 큰 동전부터 주는 것과 같은 생각입니다.
         </p>
         <p>
           이 문제의 이름은 <strong>회의실 배정</strong>(활동 선택)입니다.
