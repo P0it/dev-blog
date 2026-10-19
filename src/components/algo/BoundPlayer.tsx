@@ -45,7 +45,7 @@ export function BoundPlayer({
             bisect_left 코드
           </button>
           <button type="button" aria-pressed={variant === "right"} onClick={() => setVariant("right")}>
-            {"`<` 를 `<=` 로 바꾼 코드"}
+            {"bisect_right 코드 (< 대신 <=)"}
           </button>
         </div>
       </div>

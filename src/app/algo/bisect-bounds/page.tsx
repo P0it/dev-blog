@@ -8,6 +8,7 @@ import { BOUND_ARR, boundTape, type BoundVariant } from "@/lib/algo/bisect-bound
 import { worstCaseGuesses } from "@/lib/algo/up-down";
 import type { Tape } from "@/lib/algo/types";
 import type { PlayerPause } from "@/components/algo/TapePlayer";
+import { josa } from "@/lib/algo/josa";
 
 const BIG = 1_000_000;
 
@@ -30,11 +31,11 @@ function pauseFor(tape: Tape, x: number, variant: BoundVariant): PlayerPause | u
   const hi = { label: "hi — mid 칸 바로 앞 틈에 두어 뒤쪽을 버린다" };
   return {
     at: at + 1,
-    ask: `먼저 예상해 보세요. ${mid}번 칸의 값은 ${v}입니다. 찾는 값 ${x} 와 견주면 ${cmp}. 다음에 움직이는 것은 무엇일까요?`,
+    ask: `먼저 예상해 보세요. ${mid}번 칸의 값 ${josa(v, "은", "는")} 찾는 값 ${x}보다 ${cmp}. 다음에 움직이는 것은 무엇일까요?`,
     options: small ? [{ ...lo, correct: true }, hi] : [lo, { ...hi, correct: true }],
     why: small
-      ? `${mid}번 칸까지는 전부 경계의 왼쪽입니다. 그래서 lo 가 그 칸 바로 뒤 틈으로 옮겨 가고 앞쪽이 통째로 버려집니다.`
-      : `${mid}번 칸이 경계의 오른쪽에 있거나, 경계가 바로 이 칸 앞일 수 있습니다. 그래서 hi 를 이 칸 바로 앞 틈에 둡니다. 한 칸 더 앞으로 두면 이 칸이 후보에서 빠집니다.`,
+      ? `${mid}번 칸까지는 전부 경계의 왼쪽입니다. 그래서 lo 를 그 칸 바로 뒤 틈으로 옮겨 앞쪽을 통째로 버립니다.`
+      : `${mid}번 칸이 경계의 오른쪽에 있거나 경계가 바로 이 칸 앞일 수 있습니다. 그래서 hi 를 이 칸 바로 앞 틈에 둡니다. 한 칸 더 앞으로 두면 이 칸이 후보에서 빠집니다.`,
   };
 }
 
@@ -64,7 +65,7 @@ export default async function BisectBoundsPage() {
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
         번호표가 <strong>1 2 2 2 3 5</strong> 로 줄을 섰습니다. 카드와 카드 <strong>사이의 틈</strong>에 번호가 붙어
-        있습니다. 2번 표가 몇 장인지 세지 않고 알아내 보세요.
+        있습니다. 번호표 2 가 몇 장인지 세지 않고 알아내 보세요.
       </p>
 
       <BoundReveal>
@@ -81,12 +82,12 @@ export default async function BisectBoundsPage() {
             { label: "하나씩 세기", n: BIG, unit: "번" },
             { label: "틈 두 개 찾기", n: worstCaseGuesses(BIG) * 2, unit: "번" },
           ]}
-          caption="100만 장 중 같은 값이 몇 장인지 알아낼 때, 최악의 횟수."
+          caption="100만 장 중 같은 값이 몇 장인지 알아낼 때 최악의 횟수."
         />
       </BoundReveal>
 
       {/* ③ 조건 짚기 */}
-      <h2>정렬돼 있고, 같은 값이 한 덩어리여야 한다</h2>
+      <h2>정렬돼 있고 같은 값이 한 덩어리여야 한다</h2>
       <ul className="algo-keys">
         <li>
           <b>정렬돼 있다</b> — 가운데를 보고 한쪽을 통째로 버리려면 필요하다. 이분 탐색과 같다
@@ -100,7 +101,7 @@ export default async function BisectBoundsPage() {
       </ul>
 
       {/* ④ 코드와 플레이어 */}
-      <h2>코드는 이분 탐색에서 비교 한 줄이 다르다</h2>
+      <h2>왼쪽 끝과 오른쪽 끝은 비교 한 줄만 다르다</h2>
       <ul className="algo-keys">
         <li>
           <b>찾았다고 멈추지 않는다</b> — 같은 값이 더 있을 수 있어서 경계가 나올 때까지 좁힌다
@@ -137,8 +138,8 @@ export default async function BisectBoundsPage() {
         ]}
         why={
           <>
-            bisect_right 는 2 보다 큰 수가 <strong>처음 나오는 틈</strong>입니다. 마지막 2 는 3번 칸이고 그 바로 뒤
-            틈이 4번입니다. 1번은 같은 줄에서 bisect_left 가 돌려주는 값이고, 3번은 틈이 아니라 칸 번호입니다.
+            bisect_right 는 2 보다 큰 수가 <strong>처음 나오는 틈</strong>을 돌려줍니다. 마지막 2 는 3번 칸이고 그 바로 뒤
+            틈이 4번입니다. 1번은 같은 줄에서 bisect_left 가 돌려주는 값이고 3번은 틈이 아니라 칸 번호입니다.
           </>
         }
       />
@@ -177,7 +178,7 @@ export default async function BisectBoundsPage() {
         <b>x 이상이 처음 나오는 자리</b>
       </div>
       <p>
-        파이썬에는 이미 있습니다. <code>from bisect import bisect_left, bisect_right</code> 를 쓰고, 개수는{" "}
+        파이썬에는 이미 있습니다. <code>from bisect import bisect_left, bisect_right</code> 로 불러 씁니다. 개수는{" "}
         <code>bisect_right(a, x) - bisect_left(a, x)</code> 입니다.
       </p>
       <p className="algo-next">

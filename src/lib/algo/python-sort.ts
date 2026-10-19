@@ -137,7 +137,7 @@ function* walk(cards: Card[]): Generator<Step> {
       line: 3,
       vars: vars(c.score, k),
       stage: stage(table(k, k, false)),
-      note: `${c.name} 카드를 집습니다. 점수는 ${c.score}`,
+      note: `${c.name} 카드를 집습니다. 점수는 ${c.score}점입니다`,
     };
     yield {
       line: 4,

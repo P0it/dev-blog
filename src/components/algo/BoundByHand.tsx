@@ -95,8 +95,8 @@ export function BoundByHand({ onDone }: { onDone?: (r: BoundResult | null) => vo
     : needGuess
       ? "먼저 맞혀 보세요. 이번에는 줄에 없는 값 4 를 찾습니다. 4 의 시작 틈과 끝 틈은 같은 자리일까요?"
       : step < 2
-        ? `칸 사이에 틈 번호가 붙어 있습니다. 목표: ${task.x} 가 몇 장인지 세지 말고, 틈 두 개로 알아내기. ${task.x} 묶음이 ${task.kind === "left" ? "시작되는" : "끝나는"} 틈을 누르세요`
-        : `이번에는 줄에 없는 ${task.x}${p(task.x, "을", "를")} 찾습니다. ${task.x} 가 ${task.kind === "left" ? "들어갈 수 있는 가장 앞" : "들어갈 수 있는 가장 뒤"} 틈을 누르세요`;
+        ? `칸 사이에 틈 번호가 붙어 있습니다. 목표: ${task.x} ${p(task.x, "이", "가")} 몇 장인지 세지 말고 틈 두 개로 알아내기. ${task.x} 묶음이 ${task.kind === "left" ? "시작되는" : "끝나는"} 틈을 누르세요`
+        : `이번에는 줄에 없는 ${task.x} ${p(task.x, "을", "를")} 찾습니다. ${task.x} ${p(task.x, "이", "가")} ${task.kind === "left" ? "들어갈 수 있는 가장 앞" : "들어갈 수 있는 가장 뒤"} 틈을 누르세요`;
 
   // 지금 풀고 있는 값의 카드를 켠다. 줄에 없으면 아무 카드도 안 켜진다(없다는 걸 눈으로 확인)
   const lit = (v: number) => !done && !needGuess && v === task.x;
@@ -152,7 +152,7 @@ export function BoundByHand({ onDone }: { onDone?: (r: BoundResult | null) => vo
 
       {step >= 2 && L2 !== null && R2 !== null && (
         <p className="algo-bound-eq">
-          2 가 몇 장인지 센 적이 없는데: 끝 틈 <b>{R2}</b> − 시작 틈 <b>{L2}</b> = <b>{R2 - L2}장</b>
+          2 를 세지 않고 얻은 개수: 끝 틈 <b>{R2}</b> − 시작 틈 <b>{L2}</b> = <b>{R2 - L2}장</b>
         </p>
       )}
 

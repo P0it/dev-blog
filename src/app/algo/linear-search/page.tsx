@@ -7,6 +7,7 @@ import { Quiz } from "@/components/algo/Quiz";
 import type { PlayerPause } from "@/components/algo/TapePlayer";
 import { searchTape, SEARCH_ARR, SEARCH_TARGET, SEARCH_MISSING, linearSearch } from "@/lib/algo/linear-search";
 import { ops } from "@/lib/algo/big-o";
+import { josa } from "@/lib/algo/josa";
 
 const BIG = 1_000_000;
 const REPEAT = 10_000;
@@ -26,7 +27,7 @@ export default async function LinearSearchPage() {
     at: 2,
     ask: (
       <>
-        0번 칸의 번호표는 {SEARCH_ARR[0]} 입니다. 찾는 번호 {SEARCH_TARGET} 와 다릅니다. 코드는 다음에 어느 줄로 갈까요?
+        0번 칸의 번호표는 {SEARCH_ARR[0]} 입니다. 찾는 번호 {josa(SEARCH_TARGET, "과", "와")} 다릅니다. 코드는 다음에 어느 줄로 갈까요?
       </>
     ),
     options: [
@@ -68,7 +69,7 @@ export default async function LinearSearchPage() {
             <b>운이 좋으면</b> — 첫 칸에서 끝난다
           </li>
           <li>
-            <b>없으면</b> — {SEARCH_ARR.length}칸을 다 열어야 확실하다. 칸이 N개면 N번이고, 이걸 <code>O(N)</code> 이라고 적는다
+            <b>없으면</b> — {SEARCH_ARR.length}칸을 다 열어야 확실하다. 칸이 N개면 N번. 이걸 <code>O(N)</code> 이라고 적는다
           </li>
         </ul>
       </LockerReveal>
@@ -90,7 +91,7 @@ export default async function LinearSearchPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 칸 번호를 하나씩 올리는 반복문이 전부다</h2>
       <p>
-        <strong>다음</strong>을 눌러 한 줄씩 넘기며 지나간 칸이 쌓이는 걸 보세요. 번호표 {SEARCH_TARGET} 를 찾아 멈춥니다.
+        <strong>다음</strong>을 눌러 한 줄씩 넘기며 지나간 칸이 쌓이는 걸 보세요. 번호표 {josa(SEARCH_TARGET, "을", "를")} 찾아 멈춥니다.
       </p>
 
       <TrackPlayer tape={tape} values={SEARCH_ARR} title="앞 칸부터 하나씩 열며 번호표를 찾는 모습" pause={pause} />
@@ -132,13 +133,13 @@ export default async function LinearSearchPage() {
       />
 
       {/* ⑥ 틀리는 자리 */}
-      <h2>못 찾았는데 에러가 나거나, 한 줄인데 느리다</h2>
+      <h2>못 찾았는데 에러가 나거나 한 줄인데 느리다</h2>
       <ul className="algo-keys">
         <li>
           <b>
             <code>arr.index(x)</code>
           </b>{" "}
-          — 없으면 -1 이 아니라 <code>ValueError</code> 가 난다. {SEARCH_MISSING} 을 찾으면 <code>list.index(x): x not in list</code> 로 멈춘다
+          — 없으면 -1 이 아니라 <code>ValueError</code> 가 난다. {josa(SEARCH_MISSING, "을", "를")} 찾으면 <code>list.index(x): x not in list</code> 로 멈춘다
         </li>
         <li>
           <b>같은 번호가 여럿이면</b> — 첫 칸만 돌려준다. <code>[3, 8, 3]</code> 에서 3 은 0번 칸이다

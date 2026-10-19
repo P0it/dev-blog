@@ -56,14 +56,14 @@ export default async function PythonSortPage() {
           — 이름까지 거꾸로 선다. 80점끼리 <code>zed → kim → amy</code>
         </li>
         <li>
-          <b>문자열에는 부호가 없다</b> — <code>-&apos;kim&apos;</code> 은 <code>TypeError</code>. 이름을 거꾸로 하고 싶으면 이름순으로 한 번, 점수순으로 한 번 따로 정렬한다
+          <b>문자열에는 부호가 없다</b> — <code>-&apos;kim&apos;</code> 은 <code>TypeError</code>. 이름만 거꾸로 하고 싶으면 이름을 거꾸로 먼저 정렬하고 점수순을 나중에 정렬한다
         </li>
       </ul>
 
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 key 를 만들고, key 로 줄 세운다</h2>
       <p>
-        <code>sorted(key=…)</code> 가 안에서 하는 일을 풀어 쓴 코드입니다. 줄 세우는 알고리즘은 앞 장들과 같고 여기서는 보이지 않습니다. 카드는 ①과 같은 여섯 장입니다.{" "}
+        <code>sorted(key=…)</code> 가 안에서 하는 일을 풀어 쓴 코드입니다. 줄 세우는 알고리즘은 앞 장에서 본 정렬들과 비슷한 방법이고 여기서는 보이지 않습니다. ①과 같은 카드 여섯 장으로{" "}
         <strong>다음</strong>을 눌러 key 가 한 장씩 만들어지는 걸 보세요.
       </p>
 
@@ -124,7 +124,7 @@ export default async function PythonSortPage() {
         ]}
         why={
           <>
-            key 가 같으면 <strong>원래 순서를 지킵니다</strong>. 이름은 key 에 없어서 정렬이 보지 않습니다. 원래 줄에서 kim, amy, zed 순이었으니 그대로 나옵니다. 이름순으로 서려면 이름도
+            key 가 같으면 <strong>원래 순서를 지킵니다</strong>. 원래 줄이 kim, amy, zed 순이라 그대로 나옵니다. 이름은 key 에 없으니 이름순으로 서려면 이름도
             key 에 넣어야 합니다.
           </>
         }
@@ -159,8 +159,8 @@ export default async function PythonSortPage() {
         <b>N log N 이면 충분한 정렬</b>
       </div>
       <p>
-        앞에서 배운 정렬들은 원리를 보려고 직접 짠 것입니다. 실전에서는 <code>sorted()</code> 한 줄이면 됩니다. 파이썬의 정렬은 병합 정렬과 삽입 정렬을 섞은 방식(Timsort)이라 N log N 이고, 이미 정렬된
-        입력에는 훨씬 빠릅니다. 이 컴퓨터에서 정렬된 10만 개는 약 0.0003초였습니다.
+        원리를 보려고 직접 짠 앞의 정렬들과 달리 실전에서는 <code>sorted()</code> 한 줄이면 됩니다. 파이썬의 정렬은 병합 정렬과 삽입 정렬을 섞은 방식(Timsort)이라 N log N 입니다. 이미 정렬된
+        입력에는 훨씬 빠릅니다 — 이 컴퓨터에서 정렬된 10만 개가 약 0.0003초였습니다.
       </p>
       <p className="algo-next">다음 장에서는 앞에서부터 하나씩 찾는 선형 탐색을 봅니다.</p>
     </main>

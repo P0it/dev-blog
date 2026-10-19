@@ -32,7 +32,7 @@ export function LockerReveal({ children }: { children: ReactNode }) {
           내 예상 <b>{res?.guess ?? ""}</b> · 실제 <b>{actual}번 칸</b> → {res?.predicted ? "맞았어요" : "달랐어요"}
         </p>
         <p>
-          번호표 {josa(SEARCH_TARGET, "은", "는")} {actual}번 칸에 있었습니다. 칸을 <strong>{res?.opens ?? 0}번</strong> 열어서 찾았습니다.
+          칸을 <strong>{res?.opens ?? 0}번</strong> 열어 {actual}번 칸에서 번호표 {josa(SEARCH_TARGET, "을", "를")} 찾았습니다.
           번호표가 섞여 있어서 열어 보기 전에는 어느 칸인지 알 수 없었습니다.
           {missing !== null ? ` 없는 번호 ${josa(SEARCH_MISSING, "은", "는")} 칸을 ${missing}번 다 열고서야 없다고 말할 수 있었습니다.` : ""}
         </p>

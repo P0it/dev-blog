@@ -178,8 +178,8 @@ export function explainGap(arr: number[], x: number, kind: BoundVariant, g: numb
       ok: true,
       text:
         kind === "left"
-          ? `맞아요. ${g}번 틈 왼쪽은 전부 ${x}보다 작고, 오른쪽은 ${x} 이상입니다`
-          : `맞아요. ${g}번 틈 왼쪽은 전부 ${x} 이하이고, 오른쪽은 ${x}보다 큽니다`,
+          ? `맞아요. ${g}번 틈 왼쪽은 전부 ${x}보다 작고 오른쪽은 ${x} 이상입니다`
+          : `맞아요. ${g}번 틈 왼쪽은 전부 ${x} 이하이고 오른쪽은 ${x}보다 큽니다`,
     };
   }
   if (g < answer) {
