@@ -6,7 +6,7 @@ tags: [AI Agent, LangChain, Middleware, Guardrail, PII, Python]
 category: ai
 series: ai-agent
 series_order: 8
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-middleware-hooks-guardrails-mvfewado.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-middleware-hooks-guardrails-mvfg8ay0.jpg
 ---
 <!-- page -->
 <!-- layout: 제목|글 머리 + 전폭 노선도 히어로 + 글|그림 2단(훅 두 종류를 눈금으로) + 두 칸(호출권 구멍·원문 교정 표시) + 그림|글 뒤집기(손그림 괄호 순서) + 줄 세운 세 문장(Guardrail) | 글의 성격: 루프의 어느 지점에 무엇을 끼우는지가 핵심이라 한 번의 실행을 노선도로 펴 놓고 훅을 역으로 보인다. 그림 문법은 POSTING 5-9 | 버린 후보: 공항 검문대 상자 그림(2026-10-20 상자 그림 전수 조사로 교체), 시간 줄 칸 나열 -->
@@ -138,6 +138,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 .post-page .mw-scene { width: 100%; max-width: 760px; margin: 0 auto; display: block; height: auto; }
 .post-page .mw-nar { max-width: 520px; }
+.post-page .mw-scene.mw-line { max-width: 1000px; }
 .post-page .mw-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
 .post-page .mw-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
 .post-page .mw-scene .t-d { fill: var(--fg-neutral); }
@@ -217,9 +218,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </div>
           <button type="button" class="mw-act" data-mw-run1>한 번 지나가 보기</button>
         </div>
-        <svg class="mw-scene mw-nar" data-mw-line viewBox="0 0 460 640" role="img" aria-label="Agent 루프 노선도. 위에서 아래로 before_agent, before_model, 모델(wrap_model_call 괄호가 감쌈), after_model, after_agent 역이 이어진다. after_model 아래에서 도구 역(wrap_tool_call 괄호)으로 갈라졌다가 다시 before_model 로 돌아오는 순환선이 있다. 고른 코드가 서는 역에 색 고리와 이름이 붙는다."></svg>
+        <svg class="mw-scene mw-line" data-mw-line viewBox="0 0 1000 330" role="img" aria-label="Agent 루프 노선도. 왼쪽 시작에서 오른쪽 끝까지 한 줄로 before_agent, before_model, 모델, after_model, after_agent 역이 이어진다. after_model 뒤에서 아래로 갈라져 도구 역을 지나 before_model 앞으로 돌아오는 순환선이 있다. 고른 코드가 서는 역에만 초록 고리와 이름이 붙는다."></svg>
         <div class="mw-eff" data-mw-eff></div>
-        <p class="mw-cap" style="margin-bottom:0">실행 한 번을 노선도로 그렸습니다. 흰 역이 코드를 끼울 수 있게 열어 둔 자리인 훅(hook)이고 대괄호는 호출을 감싸는 훅입니다. 역 이름은 LangChain 문서를 따랐습니다. 색 고리가 붙은 역에서는 고른 코드가 돌아갑니다.</p>
+        <p class="mw-cap" style="margin-bottom:0">실행 한 번을 노선도로 그렸습니다. 작은 흰 역이 코드를 끼울 수 있게 열어 둔 자리인 훅(hook)입니다. 역 이름은 LangChain 문서를 따랐고, 초록 고리가 붙은 역에서 고른 코드가 돌아갑니다.</p>
       </div>
     </div>
   </section>
@@ -434,63 +435,75 @@ Model call limits exceeded: run limit (2/2)</div>
   /* 손으로 그은 듯 살짝 흔들리는 값 — 매번 같은 모양이 나오게 고정 씨앗 */
   let seed = 7; const jit = (a = 3) => { seed = (seed * 9301 + 49297) % 233280; return (seed / 233280 - .5) * 2 * a; };
 
-  /* ───── 히어로: 노선도 ───── */
+  /* ───── 히어로: 왼쪽 → 오른쪽 노선도 (좁은 화면은 세로) ─────
+     큰 역(시작·모델·도구·끝)과 훅 이름만 둔다. 고른 코드가 서는 역 하나만 크게 짚는다. */
   const ln = $("[data-mw-line]");
   const MW = {
-    guard: { at: ["before_agent"], tag: "before_agent", eff: "시작할 때 한 번 입력을 검사하고 위험하면 <code>jump_to: end</code>로 모델을 부르지 않은 채 끝냅니다. 직접 실행해 보니 모델은 한 번도 호출되지 않았습니다.", lb: "입력 검사" },
-    pii: { at: ["before_model"], tag: "before_model", eff: "모델을 부르기 직전마다 메시지에서 이메일 같은 개인정보를 찾아 <code>[REDACTED_EMAIL]</code>처럼 바꿉니다. 모델이 받은 요청에는 원문이 없었습니다.", lb: "가리기" },
-    limit: { at: ["before_model"], tag: "before_model", eff: "모델을 부르기 직전마다 이번 실행에서 몇 번 불렀는지 세고 한도에 닿으면 멈춥니다. 한도 2에서는 세 번째 호출 직전에 멈췄습니다.", lb: "횟수 세기" },
-    retry: { at: ["wrap_tool_call"], tag: "wrap_tool_call", eff: "도구 호출을 감싸서 예외가 나면 오류 표시가 붙은 ToolMessage로 바꿔 돌려줍니다. 도구를 실행하는 쪽만 감싸는 훅입니다.", lb: "오류를 결과로" },
-    out: { at: ["after_agent"], tag: "after_agent", eff: "끝날 때 한 번 최종 답을 검사해서 위험하면 안내 문장으로 고쳐 씁니다. 모델을 이미 다 부른 뒤라 입력 검사보다 비용이 더 듭니다.", lb: "답 검사" },
+    guard: { at: "before_agent", eff: "시작할 때 한 번 입력을 검사하고 위험하면 <code>jump_to: end</code>로 모델을 부르지 않은 채 끝냅니다. 직접 실행해 보니 모델은 한 번도 호출되지 않았습니다.", lb: "입력 검사" },
+    pii: { at: "before_model", eff: "모델을 부르기 직전마다 메시지에서 이메일 같은 개인정보를 찾아 <code>[REDACTED_EMAIL]</code>처럼 바꿉니다. 모델이 받은 요청에는 원문이 없었습니다.", lb: "개인정보 가리기" },
+    limit: { at: "before_model", eff: "모델을 부르기 직전마다 이번 실행에서 몇 번 불렀는지 세고 한도에 닿으면 멈춥니다. 한도 2에서는 세 번째 호출 직전에 멈췄습니다.", lb: "호출 횟수 세기" },
+    retry: { at: "wrap_tool_call", eff: "도구 호출을 감싸서 예외가 나면 오류 표시가 붙은 ToolMessage로 바꿔 돌려줍니다. 도구를 실행하는 쪽만 감싸는 훅입니다.", lb: "도구 오류 처리" },
+    out: { at: "after_agent", eff: "끝날 때 한 번 최종 답을 검사해서 위험하면 안내 문장으로 고쳐 씁니다. 모델을 이미 다 부른 뒤라 입력 검사보다 비용이 더 듭니다.", lb: "답 검사" },
   };
-  const LX = 120; /* 본선 x */
-  const HOOK = { before_agent: 80, before_model: 175, after_model: 365, after_agent: 560 };
-  const DESC = { before_agent: "시작할 때 한 번", before_model: "모델 부르기 전", after_model: "모델 응답 뒤", after_agent: "끝날 때 한 번" };
-  const MODEL_Y = 270, TOOL = [250, 430];
-  let cur = "guard", runGen = 0, dotG = null;
+  /* 두 배치: H = 가로(넓은 화면), V = 세로(좁은 화면). 같은 역 이름, 좌표만 다르다 */
+  const LAY = {
+    H: { vb: "0 0 1000 330", st: { start: [50, 130], before_agent: [175, 130], before_model: [325, 130], model: [455, 130], after_model: [585, 130], after_agent: [800, 130], end: [950, 130], tool: [455, 245] },
+         loop: "M585 130 H630 Q665 130 665 165 V210 Q665 245 630 245 H285 Q250 245 250 210 V165 Q250 130 285 130",
+         path: [[50, 130], [175, 130], [325, 130], [455, 130], [585, 130], [630, 130], [665, 165], [665, 210], [630, 245], [455, 245], [285, 245], [250, 210], [250, 165], [270, 130], [325, 130], [455, 130], [585, 130], [800, 130], [950, 130]],
+         chev: [[580, 245, 180], [340, 245, 180]], fs: 1 },
+    V: { vb: "0 0 400 560", st: { start: [90, 30], before_agent: [90, 100], before_model: [90, 185], model: [90, 260], after_model: [90, 335], after_agent: [90, 470], end: [90, 535], tool: [300, 260] },
+         loop: "M90 335 V370 H270 Q300 370 300 340 V170 Q300 140 270 140 H90",
+         path: [[90, 30], [90, 100], [90, 185], [90, 260], [90, 335], [90, 370], [270, 370], [300, 340], [300, 260], [300, 170], [270, 140], [90, 140], [90, 185], [90, 260], [90, 335], [90, 470], [90, 535]],
+         chev: [[300, 300, 270], [190, 140, 180]], fs: 1.25 },
+  };
+  let cur = "guard", runGen = 0, dotG = null, L = null;
+  const pickLay = () => (ln.getBoundingClientRect().width || innerWidth) < 640 ? LAY.V : LAY.H;
   function drawLine() {
-    const m = MW[cur]; ln.innerHTML = "";
-    /* 순환선: after_model 아래에서 도구로 갈라져 before_model 위로 돌아온다 */
-    mk("path", { d: `M${LX} 430 H350 Q380 430 380 400 V155 Q380 125 350 125 H${LX}`, fill: "none", stroke: RAIL, "stroke-width": 8, "stroke-linejoin": "round" }, ln);
-    mk("path", { d: `M${LX} 30 V615`, fill: "none", stroke: RAIL, "stroke-width": 10, "stroke-linecap": "round" }, ln);
-    txt(ln, 390, 268, "도구를 쓰면", { "font-size": 15, class: "t-d" }); txt(ln, 390, 290, "다시 모델로", { "font-size": 15, class: "t-d" });
-    /* 종점 */
-    [[30, "시작"], [615, "끝"]].forEach(([y, t]) => { mk("line", { x1: LX - 16, y1: y, x2: LX + 16, y2: y, stroke: INK, "stroke-width": 6, "stroke-linecap": "round" }, ln); txt(ln, LX + 28, y + 5, t, { "font-size": 15, class: "t-s" }); });
-    /* 큰 역: 모델·도구 */
-    mk("circle", { cx: LX, cy: MODEL_Y, r: 15, fill: INK }, ln); txt(ln, LX + 50, MODEL_Y + 6, "모델", { "font-size": 18, class: "t-s" });
-    mk("circle", { cx: TOOL[0], cy: TOOL[1], r: 15, fill: INK }, ln); txt(ln, TOOL[0], TOOL[1] + 40, "도구", { "font-size": 18, class: "t-s", "text-anchor": "middle" });
-    /* 감싸는 훅 = 대괄호 */
-    const hitMW = m.at.includes("wrap_model_call"), hitTW = m.at.includes("wrap_tool_call");
-    mk("path", { d: `M${LX - 26} ${MODEL_Y - 34} h-10 V${MODEL_Y + 34} h10 M${LX + 26} ${MODEL_Y - 34} h10 V${MODEL_Y + 34} h-10`, fill: "none", stroke: hitMW ? ACC : MUT, "stroke-width": hitMW ? 5 : 3, "stroke-linecap": "round" }, ln);
-    txt(ln, LX + 50, MODEL_Y + 30, "wrap_model_call", { "font-size": 15, class: "t-d mono" });
-    const [tx, ty] = TOOL;
-    mk("path", { d: `M${tx - 26} ${ty - 30} h-10 V${ty + 30} h10 M${tx + 26} ${ty - 30} h10 V${ty + 30} h-10`, fill: "none", stroke: hitTW ? ACC : MUT, "stroke-width": hitTW ? 5 : 3, "stroke-linecap": "round" }, ln);
-    txt(ln, tx, ty + 62, "wrap_tool_call", { "font-size": 15, class: "t-d mono", "text-anchor": "middle", ...(hitTW ? { style: `fill:${ACC};font-weight:700` } : {}) });
-    /* 훅 역: 흰 고리. 고른 코드가 서는 역은 초록 고리 + 갈래선 + 이름 */
-    Object.entries(HOOK).forEach(([n, y]) => {
-      const hit = m.at.includes(n);
-      if (hit) { mk("path", { d: `M${LX} ${y} H34`, stroke: ACC, "stroke-width": 8, "stroke-linecap": "round", fill: "none" }, ln); mk("circle", { cx: 34, cy: y, r: 7, fill: ACC }, ln); txt(ln, 22, y - 16, m.lb, { "font-size": 16, class: "t-s", style: halo + `fill:${ACC}` }); }
-      mk("circle", { cx: LX, cy: y, r: hit ? 13 : 10, fill: "var(--bg-subtle)", stroke: hit ? ACC : INK, "stroke-width": hit ? 6 : 4 }, ln);
-      txt(ln, LX + 28, y - 2, n, { "font-size": 17, class: "t-s mono", style: halo + (hit ? `fill:${ACC}` : "") });
-      txt(ln, LX + 28, y + 20, DESC[n], { "font-size": 16, class: "t-d", style: halo });
+    const m = MW[cur], k = L = pickLay(), H = k === LAY.H, f = k.fs, P = k.st; ln.innerHTML = ""; ln.setAttribute("viewBox", k.vb);
+    const [ax, ay] = P.start, [bx, by] = P.end;
+    mk("path", { d: k.loop, fill: "none", stroke: RAIL, "stroke-width": 8, "stroke-linejoin": "round", "stroke-linecap": "round" }, ln);
+    k.chev.forEach(([x, y, r]) => mk("path", { d: "M5 -7 L-4 0 L5 7", transform: `translate(${x} ${y}) rotate(${r - 180})`, fill: "none", stroke: "var(--bg-subtle)", "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round" }, ln));
+    mk("line", { x1: ax, y1: ay, x2: bx, y2: by, stroke: RAIL, "stroke-width": 10, "stroke-linecap": "round" }, ln);
+    /* 큰 역 */
+    const big = (n, t) => { const [x, y] = P[n]; mk("circle", { cx: x, cy: y, r: 15, fill: INK }, ln);
+      if (H) txt(ln, x, y + 42, t, { "font-size": 20, class: "t-s", "text-anchor": "middle" }); else txt(ln, n === "tool" ? x + 26 : x - 28, y + 7, t, { "font-size": 20 * f, class: "t-s", "text-anchor": n === "tool" ? "start" : "end" }); };
+    [["start", "시작"], ["end", "끝"]].forEach(([n, t]) => { const [x, y] = P[n]; mk("line", H ? { x1: x, y1: y - 18, x2: x, y2: y + 18 } : { x1: x - 18, y1: y, x2: x + 18, y2: y }, ln).setAttribute("style", `stroke:${INK};stroke-width:6;stroke-linecap:round`);
+      if (H) txt(ln, x, y + 46, t, { "font-size": 18, class: "t-s", "text-anchor": "middle" }); else txt(ln, x - 28, y + 7, t, { "font-size": 18 * f, class: "t-s", "text-anchor": "end" }); });
+    big("model", "모델"); big("tool", "도구");
+    /* 훅 역: 작은 흰 고리 + 이름. 고른 역만 초록으로 크게 */
+    ["before_agent", "before_model", "after_model", "after_agent"].forEach((n) => {
+      const [x, y] = P[n], hit = m.at === n;
+      mk("circle", { cx: x, cy: y, r: hit ? 14 : 9, fill: "var(--bg-subtle)", stroke: hit ? ACC : INK, "stroke-width": hit ? 6 : 3.5 }, ln);
+      if (H) txt(ln, x, y - 26, n, { "font-size": 15, class: "t-d mono", "text-anchor": "middle", ...(hit ? { style: `fill:${ACC};font-weight:700` } : {}) });
+      else txt(ln, x + 28, y + 6, n, { "font-size": 15 * f, class: "t-d mono", ...(hit ? { style: `fill:${ACC};font-weight:700` } : {}) });
     });
-    if (hitTW) { mk("path", { d: `M${tx} ${ty + 36} V${ty + 90}`, stroke: ACC, "stroke-width": 8, "stroke-linecap": "round" }, ln); mk("circle", { cx: tx, cy: ty + 90, r: 7, fill: ACC }, ln); txt(ln, tx + 16, ty + 96, m.lb, { "font-size": 15, class: "t-s", style: halo + `fill:${ACC}` }); }
+    /* 고른 코드: 역 위에 깃발 하나 */
+    const flag = (x, y) => { if (H) { mk("line", { x1: x, y1: y - 46, x2: x, y2: y - 66, stroke: ACC, "stroke-width": 3 }, ln); txt(ln, x, y - 76, m.lb, { "font-size": 20, class: "t-s", "text-anchor": "middle", style: halo + `fill:${ACC}` }); }
+      else { mk("line", { x1: x + 18, y1: y - 14, x2: x + 60, y2: y - 30, stroke: ACC, "stroke-width": 3 }, ln); txt(ln, x + 66, y - 26, m.lb, { "font-size": 19 * f, class: "t-s", style: halo + `fill:${ACC}` }); } };
+    if (m.at === "wrap_tool_call") { const [x, y] = P.tool, d = 34;
+      mk("path", { d: H ? `M${x - d} ${y - 22} h-10 V${y + 22} h10 M${x + d} ${y - 22} h10 V${y + 22} h-10` : `M${x - 22} ${y - d} v-10 H${x + 22} v10 M${x - 22} ${y + d} v10 H${x + 22} v-10`, fill: "none", stroke: ACC, "stroke-width": 5, "stroke-linecap": "round" }, ln);
+      if (H) { txt(ln, x, y - 40, m.lb, { "font-size": 20, class: "t-s", "text-anchor": "middle", style: halo + `fill:${ACC}` }); txt(ln, x, y + 68, "wrap_tool_call", { "font-size": 15, class: "t-d mono", "text-anchor": "middle", style: `fill:${ACC};font-weight:700` }); }
+      else { txt(ln, x - 40, y - 52, m.lb, { "font-size": 19 * f, class: "t-s", "text-anchor": "middle", style: halo + `fill:${ACC}` }); txt(ln, x - 40, y + 70, "wrap_tool_call", { "font-size": 15 * f, class: "t-d mono", "text-anchor": "middle", style: `fill:${ACC};font-weight:700` }); } }
+    else flag(...P[m.at]);
+    if (H) { if (m.at !== "wrap_tool_call") txt(ln, 458, 207, "도구를 쓰면 다시 모델로", { "font-size": 15, class: "t-d", "text-anchor": "middle" }); }
+    else txt(ln, 316, 400, "도구를 쓰면 다시 모델로", { "font-size": 15 * f, class: "t-d", "text-anchor": "end" });
     dotG = mk("g", { style: "opacity:0" }, ln); mk("circle", { r: 9, fill: BAD, stroke: "var(--bg-subtle)", "stroke-width": 3 }, dotG);
-    $("[data-mw-eff]").innerHTML = `<span class="mw-tag" style="--t:${ACC}">${m.tag}</span><span>${m.eff}</span>`;
+    $("[data-mw-eff]").innerHTML = `<span class="mw-tag" style="--t:${ACC}">${m.at}</span><span>${m.eff}</span>`;
   }
   async function runLine() {
-    const my = ++runGen, btn = $("[data-mw-run1]"); btn.disabled = true;
-    const pts = [[LX, 30], [LX, 80], [LX, 175], [LX, 270], [LX, 365], [LX, 430], [250, 430], [350, 430], [380, 400], [380, 155], [350, 125], [LX, 125], [LX, 175], [LX, 270], [LX, 365], [LX, 560], [LX, 615]];
+    const my = ++runGen, btn = $("[data-mw-run1]"); btn.disabled = true; const pts = L.path;
+    const stops = new Set(Object.values(L.st).map(([a, b]) => a + "," + b));
     dotG.style.opacity = 1; let [x, y] = pts[0]; dotG.setAttribute("transform", `translate(${x} ${y})`);
     for (const [tx2, ty2] of pts.slice(1)) {
       if (my !== runGen) return; const x0 = x, y0 = y, d = Math.hypot(tx2 - x0, ty2 - y0);
-      await tween(reduce ? 0 : Math.max(120, d * 3.2), (t) => { x = x0 + (tx2 - x0) * t; y = y0 + (ty2 - y0) * t; dotG.setAttribute("transform", `translate(${x} ${y})`); }); x = tx2; y = ty2;
-      if (Object.values(HOOK).includes(ty2) && tx2 === LX || ty2 === 270 && tx2 === LX || tx2 === 250) await later(reduce ? 0 : 220);
+      await tween(reduce ? 0 : Math.max(90, d * 3), (t) => { x = x0 + (tx2 - x0) * t; y = y0 + (ty2 - y0) * t; dotG.setAttribute("transform", `translate(${x} ${y})`); }); x = tx2; y = ty2;
+      if (stops.has(tx2 + "," + ty2)) await later(reduce ? 0 : 200);
     }
     dotG.style.opacity = 0; btn.disabled = false;
   }
   $$("[data-mw-m]").forEach((b) => b.addEventListener("click", () => { cur = b.dataset.mwM; press("[data-mw-m]", b); runGen++; $("[data-mw-run1]").disabled = false; drawLine(); }, { signal }));
   $("[data-mw-run1]").addEventListener("click", runLine, { signal });
+  addEventListener("resize", () => { if (pickLay() !== L) { runGen++; $("[data-mw-run1]").disabled = false; drawLine(); } }, { passive: true, signal });
   drawLine();
 
   /* ───── 훅 두 종류: 한 순간의 눈금 vs 구간을 덮는 괄호 ───── */
