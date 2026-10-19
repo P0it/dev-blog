@@ -108,7 +108,7 @@ function* walk(n: number): Generator<Step> {
     line: 2,
     vars: vars(n, null),
     stage: stage(dp, 0, null, [], null),
-    note: `계단이 ${n}칸이니 시작 자리까지 ${n + 1}칸짜리 표를 0 으로 만듭니다`,
+    note: `계단이 ${n}칸이니 시작 자리를 더해 ${n + 1}칸짜리 표를 0 으로 만듭니다`,
   };
 
   dp[0] = dp[1] = 1;

@@ -6,6 +6,7 @@ import { Dp1Reveal } from "@/components/algo/Dp1Reveal";
 import { Counter } from "@/components/algo/Counter";
 import { Quiz } from "@/components/algo/Quiz";
 import { timeLabel } from "@/lib/algo/big-o";
+import { josa } from "@/lib/algo/josa";
 import { climbTape, climbTable, climbWith, waysWithSteps, waysCount50, STAIRS } from "@/lib/algo/dp-1d";
 
 const TABLE = climbTable(STAIRS);
@@ -34,7 +35,7 @@ export default async function Dp1dPage() {
     ],
     why: (
       <>
-        <code>dp[i - 1] + dp[i - 2]</code> 에 i = 5 를 넣으면 <code>dp[4] + dp[3]</code> 입니다. 표에는 {TABLE[4]} 과 {TABLE[3]} 이
+        <code>dp[i - 1] + dp[i - 2]</code> 에 i = 5 를 넣으면 <code>dp[4] + dp[3]</code> 입니다. 표에는 {josa(TABLE[4], "과", "와")} {josa(TABLE[3], "이", "가")}
         적혀 있어서 합은 {TABLE[5]} 입니다.
       </>
     ),
@@ -61,7 +62,7 @@ export default async function Dp1dPage() {
             { label: "계단 50칸 · 길을 하나씩 세기", n: waysCount50, unit: "번" },
             { label: "계단 50칸 · 표 채우기", n: 49, unit: "칸" },
           ]}
-          caption={`길이 ${waysCount50.toLocaleString("ko-KR")}가지라 하나씩 세면 컴퓨터로 ${timeLabel(Math.log10(waysCount50))}입니다. 표는 1초 안에 끝납니다.`}
+          caption={`오르는 방법이 ${waysCount50.toLocaleString("ko-KR")}가지라 하나씩 세면 컴퓨터로 ${timeLabel(Math.log10(waysCount50))}입니다. 표는 1초 안에 끝납니다.`}
         />
         <p>
           작은 문제의 답을 표에 채우며 큰 문제의 답까지 올라가는 방법 = <strong>1차원 DP</strong> (동적 계획법, dynamic programming)
@@ -71,7 +72,7 @@ export default async function Dp1dPage() {
             <b>칸의 값</b> — 앞 두 칸의 합. 이 관계를 점화식(recurrence)이라고 부른다
           </li>
           <li>
-            <b>1 1 2 3 5 8 13</b> — 피보나치 수열과 같은 수열이다
+            <b>1 1 2 3 5 8 13</b> — 앞 장 메모이제이션의 피보나치 수열과 같은 수열이다
           </li>
         </ul>
       </Dp1Reveal>
@@ -86,7 +87,7 @@ export default async function Dp1dPage() {
           <b>앞에서부터 채우면</b> — 필요한 값이 늘 준비돼 있다. ①에서 앞 칸부터만 눌렸던 이유다
         </li>
         <li>
-          <b>한 번 구한 칸은</b> — 표에 적어 두고 다시 계산하지 않는다
+          <b>한 번 구한 칸은</b> — 표에 적어 두고 다시 계산하지 않는다. 앞 장의 수첩을 위가 아니라 아래부터 채운 것이다
         </li>
       </ul>
 
@@ -134,7 +135,7 @@ export default async function Dp1dPage() {
         why={
           <>
             마지막 걸음이 1칸, 2칸, 3칸 중 하나라서 <code>dp[3] = dp[2] + dp[1] + dp[0]</code> 입니다. 2 + 1 + 1 = <strong>{three}가지</strong>입니다.
-            앞 두 칸만 더하면 {twoOnly}가지라 3칸 걸음으로 시작 자리에서 곧장 올라오는 방법이 빠집니다.
+            앞 두 칸만 더하면 {twoOnly}가지입니다. 시작 자리에서 3칸 걸음으로 곧장 올라오는 방법이 빠집니다.
           </>
         }
       />

@@ -140,7 +140,7 @@ export function MemoByHand({ onDone, onReset }: { onDone?: (r: MemoResult) => vo
           {next && (
             <>
               <p className="algo-memo-ask">
-                다음 호출 <b>fib({nextN})</b> 은 어떻게 할까요?
+                다음 호출은 <b>fib({nextN})</b>입니다. 어떻게 할까요?
               </p>
               <div className="algo-memo-btns">
                 <button type="button" className="algo-memo-btn" data-kind="compute" onClick={() => press("compute")}>

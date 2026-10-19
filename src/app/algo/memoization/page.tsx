@@ -36,7 +36,7 @@ export default async function MemoizationPage() {
       <MemoReveal>
         <p className="algo-chain">
           호출 {plainCalls(N)}번 → 수첩에 적은 값 {memoComputes(N)}개 → <b>계산 {memoComputes(N)}번</b>
-          <span>같은 값은 한 번만 계산하고, 두 번째부터는 수첩에서 꺼내 썼습니다.</span>
+          <span>같은 값은 한 번만 계산했습니다. 두 번째부터는 수첩에서 꺼내 썼습니다.</span>
         </p>
         <ul className="algo-keys">
           <li>
@@ -71,7 +71,7 @@ export default async function MemoizationPage() {
           <b>같은 계산이 되풀이된다</b> — 나무에서 fib(2) 가 {twice}번 나왔다. 겹치지 않는 문제는 적어 둬도 꺼내 쓸 일이 없다
         </li>
         <li>
-          <b>입력으로 값을 찾는다</b> — 수첩은 입력(n)을 칸 이름으로 값을 찾는다. 앞 장의 해시가 이 일을 한다
+          <b>입력으로 값을 찾는다</b> — 수첩은 입력(n)을 칸 이름 삼아 값을 찾는다. 앞서 본 해시가 이 일을 한다
         </li>
       </ul>
 
@@ -100,7 +100,7 @@ export default async function MemoizationPage() {
           ],
           why: (
             <>
-              수첩에 <strong>{josa(gateStep.vars.n, "이", "가")}</strong> 이미 있습니다. 앞에서 fib({gateStep.vars.n}) 을 계산하면서 적어 둔 값입니다. 그래서 계산하지 않고 줄 3 으로 가서 값을 그대로 돌려줍니다.
+              수첩에 <strong>{josa(gateStep.vars.n, "이", "가")}</strong> 이미 있습니다. 앞에서 fib({gateStep.vars.n}) 을 계산하면서 적어 둔 값입니다. 계산하지 않고 줄 3 으로 가서 값을 그대로 돌려줍니다.
             </>
           ),
         }}
@@ -141,9 +141,9 @@ export default async function MemoizationPage() {
       <Quiz
         question="같은 방법으로 fib(7) 을 구하면 값을 계산하는 일은 몇 번일까요?"
         options={[
+          { label: `${memoComputes(7)}번 — fib(0) 부터 fib(7) 까지 값마다 한 번씩`, correct: true },
           { label: `${memoComputes(N)}번 — fib(6) 때와 같다` },
           { label: `${memoCalls(7)}번 — 호출한 횟수` },
-          { label: `${memoComputes(7)}번 — fib(0) 부터 fib(7) 까지 값마다 한 번씩`, correct: true },
         ]}
         why={
           <>
@@ -175,7 +175,7 @@ export default async function MemoizationPage() {
         </li>
       </ul>
       <p>
-        직접 재 보니 fib({f.measured.n}) 은 수첩 없이 약 {f.measured.plainSeconds}초, 수첩을 쓰면 약 {f.measured.memoSeconds.toFixed(6)}초였습니다. 컴퓨터마다 다르니 비율만 보세요.
+        직접 재 보니 수첩 없이 fib({f.measured.n}) 에 약 {f.measured.plainSeconds}초, 수첩을 쓰면 약 {f.measured.memoSeconds.toFixed(6)}초였습니다. 컴퓨터마다 다르니 비율만 보세요.
       </p>
 
       {/* ⑦ 꺼내라는 신호 */}

@@ -65,7 +65,7 @@ export function DijkByHand({ onDone, onReset }: { onDone?: (r: DijkResult) => vo
       } else {
         setMsg({
           ok: false,
-          text: `가장 가까운 곳은 ${NAMES[check.closest.idx]} (${check.closest.d}분)입니다. 더 가까운 곳을 먼저 확정해야, 그곳을 거쳐 더 짧게 오는 길이 있는지 볼 수 있어요`,
+          text: `가장 가까운 곳은 ${NAMES[check.closest.idx]} (${check.closest.d}분)입니다. 더 가까운 곳을 먼저 확정해야 그곳을 거쳐 더 짧게 오는 길이 있는지 볼 수 있어요`,
         });
       }
       return;
@@ -105,7 +105,7 @@ export function DijkByHand({ onDone, onReset }: { onDone?: (r: DijkResult) => vo
       <p className="algo-byhand-ask">
         출발지 <b>{START}</b> 에서 가게 <b>{TARGET}</b> 까지 가장 빠르게 가는 시간을 찾습니다.
         <br />
-        지도의 숫자는 길마다 걸리는 시간(분)이고, 곳 옆의 숫자는 지금까지 알려진 가장 빠른 시간입니다.
+        길 위의 숫자는 걸리는 시간(분)입니다. 곳 옆의 숫자는 지금까지 알려진 가장 빠른 시간입니다.
       </p>
 
       <StageGraph state={stageFromHand(hand, GRAPH)} onPick={guess !== null && !done ? pick : undefined} />
@@ -113,7 +113,7 @@ export function DijkByHand({ onDone, onReset }: { onDone?: (r: DijkResult) => vo
       {guess === null ? (
         <div className="algo-dijk-predict" role="group" aria-label="예상 고르기">
           <p className="algo-byhand-ask">
-            <b>거치는 길이 가장 적은 길이 가장 빠른 길일까요?</b> 먼저 골라 보세요.
+            <b>걸음이 가장 적은 길이 가장 빠른 길일까요?</b> 먼저 골라 보세요.
           </p>
           <div className="algo-pairs-btns">
             {GUESSES.map((g, k) => (
