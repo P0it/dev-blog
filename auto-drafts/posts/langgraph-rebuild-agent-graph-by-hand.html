@@ -6,16 +6,16 @@ tags: [AI Agent, LangGraph, ToolNode, conditional edge, Command, Python]
 category: ai
 series: ai-agent
 series_order: 12
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-rebuild-agent-graph-by-hand-mvb7e2ar.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-rebuild-agent-graph-by-hand-mvfhpf7t.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 조립 작업대 히어로(부품 다섯 개를 올려 그래프 완성) + 그림|글(쪽지 쌓는 칸) + 코드|해설 + 그림 고정 스크롤리텔링(길 고르기) + 글|그림(도구 창고) + 그림|글 뒤집기(Command) + 정리 | 글의 성격: create_agent라는 완성품을 부품으로 분해해 다시 조립하는 글이라 부품 서랍에서 부품을 골라 작업대에 올리면 그래프가 완성되는 장면으로 열고 부품마다 장면 하나로 푼다 | 버린 후보: 카드 목록(앞 시리즈 방식) -->
+<!-- layout: 제목 위 + 전폭 노선도 히어로(부품을 올리면 역·선로가 생기고 아래 코드 줄이 켜짐) + 그림|글(messages 목록 원문에 직접 표시) + 제목|글 머리 + 외길·전환기 두 장 + 코드|해설 + 그림 고정 스크롤리텔링(마지막 쪽지 한 줄을 펜으로 짚고 전환기가 꺾임) + 글|그림(실행 기록이 끊기나 이어지나) + 그림|글 뒤집기(갈림길이 선로 위 vs 역 안) + 한도 눈금 + 정리 | 글의 성격: create_agent라는 완성품을 부품으로 분해해 다시 조립하는 글이라 부품을 올릴 때마다 노선도에 역·선로가 생기고 코드 줄이 켜지는 장면으로 연다. 그림 문법은 POSTING 5-9(노선도·원문 표시·로그가 곧 그림), 색은 상태에만 | 버린 후보: 카드 목록(앞 시리즈 방식), 조립 작업대 상자 그림(아이콘 노드 상자+체크 목록), 쪽지 색 상자 세로 쌓기, 마름모 순서도, 도구 창고 상자, Command 상자 안 상자(2026-10-20 상자 그림 전수 조사로 교체) -->
 <style>
 .post-page .gb {
-  --gb-human: rgb(37, 112, 235); --gb-code: rgb(16, 150, 120); --gb-model: rgb(226, 106, 28); --gb-bad: rgb(214, 56, 56);
+  --gb-code: rgb(16, 150, 120); --gb-bad: rgb(214, 56, 56);
   color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
 }
-[data-theme="dark"] .post-page .gb { --gb-human: rgb(110, 165, 255); --gb-code: rgb(60, 205, 165); --gb-model: rgb(255, 150, 80); --gb-bad: rgb(255, 110, 110); }
+[data-theme="dark"] .post-page .gb { --gb-code: rgb(60, 205, 165); --gb-bad: rgb(255, 110, 110); }
 .post-page .gb * { box-sizing: border-box; }
 .post-page .gb-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
 .post-page .gb h1, .post-page .gb h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
@@ -101,7 +101,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (max-width: 900px) {
   .post-page .gb-wrap { padding: 0 20px; }
   .post-page .gb-head, .post-page .gb-split { grid-template-columns: minmax(0, 1fr); }
-  .post-page .gb-split.rev > :first-child { order: 0; }
+  .post-page .gb-split.rev > :first-child { order: 2; }
   .post-page p.gb-mobhint { display: block; }
 }
 /* 실험판 전폭 띠 */
@@ -168,20 +168,49 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .gb-parts button b { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); }
 .post-page .gb-parts button[aria-pressed="true"] { border-color: var(--gb-code); background: color-mix(in srgb, var(--gb-code) 12%, var(--bg-base)); }
 .post-page .gb-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+/* 2026-10-20 그림 문법 교체(POSTING 5-9): 색은 상태에만 — 먹(지나감·켜짐) · 초록(방금 고른 것) · 빨강(막힘) */
+.post-page .gb p.gb-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .gb-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
+.post-page .gb-seg button { font-family: var(--font-mono); font-size: 13.5px; }
+.post-page .gb-seg button small { font-family: var(--font-sans); }
+.post-page [data-gb-parts] button[aria-pressed="false"] { box-shadow: inset 0 0 0 1.5px var(--line-strong); opacity: .7; }
+.post-page [data-gb-parts] button[aria-pressed="false"]::before { content: "+ "; }
+.post-page .gb-stage > .gb-seg { margin-bottom: 18px; }
+.post-page .gb-scene.gb-line { max-width: 1000px; }
+.post-page .gb-benchlow { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px clamp(24px, 4vw, 56px); align-items: start; margin-top: 10px; }
+.post-page .gb-codel { margin: 0; padding: 14px 0; border-radius: 12px; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .gb-codel span { display: block; padding: 0 16px; transition: opacity .3s, background .3s; }
+.post-page .gb-codel span.off { opacity: .28; }
+.post-page .gb-codel span.hot { background: color-mix(in srgb, var(--gb-code) 30%, transparent); color: #fff; }
+.post-page .gb-plbl { font-size: 14px !important; line-height: 1.5 !important; color: var(--fg-neutral); margin: 0 0 6px !important; }
+.post-page .gb-plbl code { font-size: 12.5px; }
+.post-page .gb-msgfig { margin-top: 18px; }
+.post-page .gb p.gb-ret { font-size: 14px; color: var(--fg-neutral); margin: 0 0 10px; line-height: 1.6; }
+.post-page .gb-ret code { color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .gb-msgs { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.6; }
+.post-page .gb-msgs li { position: relative; padding: 7px 10px; margin: 0 0 4px; border-radius: 8px; color: var(--fg-strong); overflow-wrap: anywhere; transition: opacity .4s; }
+.post-page .gb-msgs li.dim { opacity: .4; }
+.post-page .gb-msgs li.gone { color: var(--fg-neutral); } .post-page .gb-msgs li.gone .t { text-decoration: line-through 2px var(--gb-bad); }
+.post-page .gb-msgs li.new { background: color-mix(in srgb, var(--gb-code) 14%, var(--bg-base)); }
+.post-page .gb-msgs li.ring { box-shadow: 0 0 0 2.5px var(--fg-strong); border-radius: 22px; }
+.post-page .gb-msgs li.ring em { color: var(--fg-strong); }
+.post-page .gb-mfig { display: none; }
+@media (max-width: 900px) { .post-page .gb-sfig { display: none; } .post-page .gb-mfig { display: block; margin-top: 18px; } }
+.post-page .gb-msgs li em { display: block; font-style: normal; font-family: var(--font-sans); font-size: 13.5px; font-weight: 700; color: var(--gb-bad); margin-top: 2px; }
+.post-page .gb-msgs li em.ok { color: var(--gb-code); }
+.post-page .gb-sw2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px clamp(28px, 5vw, 72px); margin-top: 14px; }
+.post-page .gb-rtfig .gb-msgs { margin-bottom: 14px; }
+.post-page .gb-tlog { margin-top: 4px; }
+.post-page .gb-tl { list-style: none; margin: 0; padding: 12px 0 14px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; }
+.post-page .gb-tl li { padding: 4px 16px; overflow-wrap: anywhere; }
+.post-page .gb-tl li.err { color: rgb(255, 130, 130); }
+.post-page .gb-tl li.ok { background: rgba(60, 205, 165, .16); color: #e6fff7; }
+.post-page .gb-tl li.cut { border-top: 3px solid rgb(255, 110, 110); margin-top: 8px; padding-top: 8px; }
+.post-page .gb-tl li.ghost { opacity: .35; text-decoration: line-through; }
+.post-page .gb-tl li small { display: block; font-family: var(--font-sans); font-size: 13px; font-weight: 700; color: rgb(255, 150, 150); }
+.post-page .gb-tl li.ok small { color: rgb(120, 230, 195); }
+@media (max-width: 900px) { .post-page .gb-benchlow, .post-page .gb-sw2 { grid-template-columns: minmax(0, 1fr); } .post-page .gb-msgs { font-size: 13px; } }
 </style>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <symbol id="gb-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
-    <symbol id="gb-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
-    <symbol id="gb-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
-    <symbol id="gb-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
-    <symbol id="gb-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
-    <symbol id="gb-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
-    <symbol id="gb-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
-    <symbol id="gb-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
-    <symbol id="gb-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
-  </defs>
-</svg>
 <div class="gb">
   <section class="gb-hero">
     <div class="gb-wrap">
@@ -190,27 +219,35 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>조립 완성품 장난감을 사면 설명서 없이도 놀 수 있지만 부품을 낱개로 받으면 원하는 대로 바꿔 끼울 수 있습니다. <code>create_agent</code>는 완성품이고 LangGraph는 그 부품 서랍입니다. 앞 글에서 본 model과 tools 두 노드, 그리고 길 고르기가 어떤 부품으로 되어 있는지 하나씩 직접 올려 보겠습니다.</p>
       </div>
       <div class="gb-stage" data-figure data-thumb data-gb-bench>
-        <svg class="gb-scene gb-nar" data-gb-benchsvg viewBox="0 0 460 584" role="img" aria-label="조립 작업대 그림. 부품 서랍에서 부품을 누르면 작업대에 올라가 그래프가 완성된다. 시작에서 model 노드로 가고 도구 요청이 있으면 tools 노드로 갔다가 model로 돌아오며 없으면 끝으로 간다. 모든 부품이 올라가면 질문을 흘려 볼 수 있다."></svg>
-        <p class="gb-verdict" data-gb-bsay></p>
-        <div class="gb-parts" role="group" aria-label="부품 서랍" data-gb-parts>
-          <button type="button" data-gb-part="state" aria-pressed="false"><b>MessagesState</b>① 쪽지가 쌓이는 칸</button>
-          <button type="button" data-gb-part="model" aria-pressed="false"><b>call_model</b>② 모델을 부르는 노드</button>
-          <button type="button" data-gb-part="tools" aria-pressed="false"><b>ToolNode</b>③ 도구를 실행하는 노드</button>
-          <button type="button" data-gb-part="cond" aria-pressed="false"><b>conditional edge</b>④ 길 고르기 화살표</button>
-          <button type="button" data-gb-part="back" aria-pressed="false"><b>add_edge(tools→model)</b>⑤ 돌아오는 화살표</button>
+        <p class="gb-ask">올리거나 내릴 부품을 눌러 보세요. 노선도에 그 부품의 역이나 선로가 생기고 아래 코드에서 그 줄이 켜집니다.</p>
+        <div class="gb-seg" role="group" aria-label="부품 고르기" data-gb-parts>
+          <button type="button" data-gb-part="state" aria-pressed="false">MessagesState<small>쪽지 칸</small></button>
+          <button type="button" data-gb-part="model" aria-pressed="false">call_model<small>모델 노드</small></button>
+          <button type="button" data-gb-part="tools" aria-pressed="false">ToolNode<small>도구 노드</small></button>
+          <button type="button" data-gb-part="cond" aria-pressed="false">conditional edge<small>길 고르기</small></button>
+          <button type="button" data-gb-part="back" aria-pressed="false">tools → model<small>돌아오는 선로</small></button>
         </div>
-        <div class="gb-ctrl"><button type="button" class="gb-act" data-gb-fill>부품 전부 올리기</button><button type="button" class="gb-act" data-gb-clear>작업대 비우기</button><button type="button" class="gb-act" data-gb-run1>질문 한 번 흘려 보기</button></div>
-
-        <p class="gb-cap" style="margin-bottom:0">부품 이름은 LangGraph 1.2의 이름이고 앞 글의 create_agent 안쪽과 같은 모양입니다.</p>
+        <svg class="gb-scene gb-line" data-gb-line viewBox="0 50 1000 280" role="img" aria-label="Agent 그래프 노선도. 왼쪽 시작에서 model 역을 지나 오른쪽 끝까지 한 줄로 이어진다. model 뒤 갈림길에서 도구 요청이 있으면 아래로 꺾여 tools 역을 지나 model 앞으로 돌아온다. 왼쪽 아래 쪽지 더미는 messages 칸이다. 아직 올리지 않은 부품은 흐린 점선으로, 방금 올린 부품은 초록으로 표시된다."></svg>
+        <p class="gb-ask" style="margin-top:6px">질문을 흘려 보세요. 점이 선로를 따라가고 역을 지날 때마다 쪽지 더미에 한 장씩 쌓입니다.</p>
+        <div class="gb-ctrl"><button type="button" class="gb-act" data-gb-run1>질문 한 번 흘려 보기</button><button type="button" class="gb-act" data-gb-fill>부품 전부 올리기</button><button type="button" class="gb-act" data-gb-clear>모두 내리기</button></div>
+        <p class="gb-verdict" data-gb-bsay></p>
+        <div class="gb-benchlow">
+          <pre class="gb-codel" data-gb-codel aria-label="부품마다 켜지는 코드 줄"></pre>
+          <p class="gb-cap" style="margin-top:0">부품 이름은 LangGraph 1.2의 이름이고 앞 글의 create_agent 안쪽과 같은 모양입니다. 켜진 코드 줄이 지금 노선도에 올라간 부품입니다.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="gb-sec">
     <div class="gb-wrap gb-split rev">
-      <div data-figure>
-        <svg class="gb-scene gb-nar" data-gb-msg viewBox="0 0 460 520" role="img" aria-label="쪽지 칸 그림. messages 칸에 대화 쪽지가 쌓인다. 새 쪽지는 뒤에 붙고, 이미 있는 쪽지와 번호표가 같은 쪽지가 오면 그 자리의 쪽지가 새것으로 바뀐다."></svg>
-        <div class="gb-ctrl" style="justify-content:center;margin-top:8px"><div class="gb-seg" role="group" aria-label="쪽지 종류"><button type="button" data-gb-mk="new" aria-pressed="true">새 쪽지가 도착</button><button type="button" data-gb-mk="same" aria-pressed="false">번호표가 같은 쪽지</button></div></div>
+      <div>
+        <p class="gb-ask">노드가 돌려줄 쪽지를 골라 보세요. 아래 messages 목록에서 쪽지가 붙거나 바뀌는 줄이 표시됩니다.</p>
+        <div class="gb-ctrl"><div class="gb-seg" role="group" aria-label="노드가 돌려줄 쪽지"><button type="button" data-gb-mk="new" aria-pressed="true">새 번호표<small>id="4"</small></button><button type="button" data-gb-mk="same" aria-pressed="false">같은 번호표<small>id="2"</small></button></div></div>
+        <div class="gb-msgfig" data-figure role="img" aria-label="messages 목록을 코드 그대로 띄운 그림. 노드가 새 번호표의 쪽지를 돌려주면 목록 맨 뒤에 한 줄이 붙는다. 이미 있는 번호표의 쪽지를 돌려주면 그 줄에 빨간 줄이 그어지고 새 줄이 같은 자리에 들어간다.">
+          <p class="gb-ret">노드가 돌려준 값 <code data-gb-mret></code></p>
+          <ol class="gb-msgs" data-gb-msgs></ol>
+        </div>
         <p class="gb-wnote" data-gb-mnote></p>
       </div>
       <div>
@@ -230,16 +267,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <p>길 고르기는 조건부 엣지(conditional edge)로 합니다. 일반 엣지는 늘 같은 곳으로 가고 조건부 엣지는 함수를 불러 그때그때 갈 곳을 정합니다. 마지막 쪽지에 도구 요청이 있으면 <code>"tools"</code>로 가고 없으면 끝으로 가는 규칙은 <code>tools_condition</code>이라는 이름으로 이미 만들어져 있습니다.</p>
         </div>
       </div>
-      <div style="margin-top:36px" data-figure>
-        <svg class="gb-scene gb-nar" viewBox="0 0 460 300" role="img" aria-label="길 고르기 그림. model 노드 뒤 마름모에서 마지막 쪽지에 도구 요청이 있으면 tools 노드로, 없으면 끝으로 간다. tools 다음에는 늘 model로 돌아온다.">
-          <rect x="14" y="20" width="130" height="56" rx="12" fill="color-mix(in srgb, var(--gb-model) 14%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3.5"/><use href="#gb-ic-robot" x="22" y="34" width="30" height="30" style="color:var(--gb-model)"/><text x="100" y="54" font-size="16" text-anchor="middle" class="t-s mono">model</text>
-          <path d="M144 48 H196" stroke="var(--fg-neutral)" stroke-width="4"/><path d="M200 48 l-14 -8 v16z" fill="var(--fg-neutral)"/>
-          <path d="M260 8 L322 48 L260 88 L198 48 Z" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="3.5" stroke-linejoin="round"/><text x="260" y="44" font-size="15" text-anchor="middle" class="t-s">도구 요청</text><text x="260" y="62" font-size="15" text-anchor="middle" class="t-s">있나?</text>
-          <path d="M322 48 H340" stroke="var(--gb-code)" stroke-width="5"/><text x="334" y="30" font-size="15" class="t-s" style="fill:var(--gb-code)">있으면</text>
-          <rect x="340" y="20" width="106" height="56" rx="12" fill="color-mix(in srgb, var(--gb-code) 14%, var(--bg-base))" stroke="var(--gb-code)" stroke-width="3.5"/><use href="#gb-ic-gear" x="346" y="34" width="30" height="30" style="color:var(--gb-code)"/><text x="408" y="54" font-size="16" text-anchor="middle" class="t-s mono">tools</text>
-          <path d="M260 88 V160" stroke="var(--fg-strong)" stroke-width="5"/><path d="M260 168 l-9 -14 h18z" fill="var(--fg-strong)"/><text x="276" y="128" font-size="15" class="t-s">없으면</text><use href="#gb-ic-flag" x="238" y="172" width="44" height="44" style="color:var(--fg-strong)"/><text x="292" y="200" font-size="15" class="t-s">끝</text>
-          <path d="M408 76 V250 H80 V80" fill="none" stroke="var(--gb-code)" stroke-width="4" stroke-dasharray="7 6"/><path d="M80 78 l-8 14 h16z" fill="var(--gb-code)"/><text x="240" y="274" font-size="15" text-anchor="middle" class="t-s" style="fill:var(--gb-code)">tools 다음에는 늘 model로 돌아옴</text>
-        </svg>
+      <div class="gb-sw" style="margin-top:44px">
+        <p class="gb-ask">tools_condition이 돌려줄 값을 골라 보세요. 조건부 엣지 그림의 전환기가 그쪽 선로로 꺾입니다.</p>
+        <div class="gb-ctrl"><div class="gb-seg" role="group" aria-label="tools_condition이 돌려준 값"><button type="button" data-gb-sv="tools" aria-pressed="true">"tools"<small>도구 요청 있음</small></button><button type="button" data-gb-sv="__end__" aria-pressed="false">"__end__"<small>도구 요청 없음</small></button></div></div>
+        <div class="gb-sw2" data-figure>
+          <div><p class="gb-plbl">일반 엣지 <code>add_edge("tools", "model")</code></p><svg class="gb-scene" data-gb-sw1 viewBox="0 0 460 200" role="img" aria-label="일반 엣지 그림. tools 역에서 model 역까지 갈림길 없는 외길 하나가 놓여 있다. 어떤 값을 골라도 늘 model로 간다."></svg></div>
+          <div><p class="gb-plbl">조건부 엣지 <code>add_conditional_edges("model", tools_condition)</code></p><svg class="gb-scene" data-gb-sw2 viewBox="0 0 460 200" role="img" aria-label="조건부 엣지 그림. model 역 뒤에 전환기가 있고 선로가 위쪽 tools와 아래쪽 끝으로 갈린다. tools_condition이 돌려준 값에 따라 전환기가 한쪽으로 꺾이고 그 선로만 진하게 칠해진다."></svg></div>
+        </div>
+        <p class="gb-wnote" data-gb-swnote></p>
       </div>
       <div class="gb-codepair" style="margin-top:36px">
         <div class="cp-code">
@@ -261,6 +296,7 @@ b.add_edge("tools", "model")
 graph = b.compile()</code></pre>
         </div>
         <div class="cp-term">
+<p class="gb-ask" style="margin-top:14px">실행해 보기를 누르면 아래 터미널에 노드마다 찍힌 출력이 한 줄씩 나옵니다.</p>
 <div class="gb-term" data-gb-term>
   <div class="gb-term-bar"><span>터미널</span><button type="button" class="gb-act" data-gb-run="g">실행해 보기</button></div>
   <div class="gb-term-out" data-gb-out aria-live="polite">$ python agent_graph.py
@@ -300,12 +336,16 @@ b.add_conditional_edges("model", should_continue)</code></pre>
       </div>
       <div class="gb-story" style="margin-top:44px" data-gb-story>
         <div class="gb-steps">
-          <div class="gb-step" data-gb-step><h3>모델 응답 1: 도구 요청이 있음</h3><p>모델이 <code>get_ticket</code>을 부르는 쪽지를 냈습니다. 길 고르기 함수가 마지막 쪽지에서 도구 요청을 찾아 "tools"를 돌려줍니다.</p></div>
-          <div class="gb-step" data-gb-step><h3>tools를 거쳐 model로 돌아옴</h3><p>ToolNode가 도구를 실행해 결과 쪽지를 붙이고 일반 엣지를 따라 model로 돌아갑니다. 이번에는 쪽지가 세 장입니다.</p></div>
-          <div class="gb-step" data-gb-step><h3>모델 응답 2: 도구 요청이 없음</h3><p>모델이 글로만 답했습니다. 길 고르기 함수가 "__end__"를 돌려주고 그래프가 끝납니다. 마지막 쪽지가 최종 답입니다.</p></div>
+          <div class="gb-step" data-gb-step><h3>모델 응답 1: 도구 요청이 있음</h3><p>모델이 <code>get_ticket</code>을 부르는 쪽지를 냈습니다. 길 고르기 함수가 마지막 쪽지에서 도구 요청을 찾아 "tools"를 돌려줍니다.</p><div class="gb-mfig gb-rtfig" data-gb-mfig="0" aria-hidden="true"></div></div>
+          <div class="gb-step" data-gb-step><h3>tools를 거쳐 model로 돌아옴</h3><p>ToolNode가 도구를 실행해 결과 쪽지를 붙이고 일반 엣지를 따라 model로 돌아갑니다. 이번에는 쪽지가 세 장입니다.</p><div class="gb-mfig gb-rtfig" data-gb-mfig="1" aria-hidden="true"></div></div>
+          <div class="gb-step" data-gb-step><h3>모델 응답 2: 도구 요청이 없음</h3><p>모델이 글로만 답했습니다. 길 고르기 함수가 "__end__"를 돌려주고 그래프가 끝납니다. 마지막 쪽지가 최종 답입니다.</p><div class="gb-mfig gb-rtfig" data-gb-mfig="2" aria-hidden="true"></div></div>
         </div>
         <div class="gb-sfig" data-gb-sfig data-figure>
-          <svg class="gb-scene gb-nar" data-gb-route viewBox="0 0 460 420" role="img" aria-label="길 고르기 그림. model 노드 뒤에서 마지막 쪽지에 도구 요청이 있으면 tools 쪽 길로, 없으면 끝 쪽 길로 분기기가 돌아간다. 아래에는 쪽지 더미가 쌓인다."></svg>
+          <div class="gb-rtfig" role="img" aria-label="messages 목록과 전환기 그림. 목록의 앞 쪽지들은 흐리게 두고 마지막 쪽지 한 줄만 빨간 펜 동그라미로 짚는다. 그 줄에 tool_calls가 있으면 아래 전환기가 tools 쪽으로, 비어 있으면 끝 쪽으로 꺾인다. tools 다음 차례에서는 외길이라 길 고르기 함수를 부르지 않는다.">
+            <p class="gb-plbl">state["messages"]</p>
+            <ol class="gb-msgs" data-gb-rlog></ol>
+            <svg class="gb-scene" data-gb-route viewBox="0 0 460 200" aria-hidden="true"></svg>
+          </div>
           <p class="gb-stat" data-gb-stat></p>
         </div>
       </div>
@@ -318,10 +358,14 @@ b.add_conditional_edges("model", should_continue)</code></pre>
         <h2>ToolNode는 도구를 실행하고 결과 쪽지를 돌려줍니다</h2>
         <p>모델이 도구 요청 여러 개를 한 번에 하면 ToolNode가 그 요청들을 함께 실행하고 요청마다 결과 쪽지를 하나씩 돌려줍니다. 결과 쪽지에는 어느 요청의 결과인지 번호가 붙어 있어서 모델이 짝을 맞출 수 있습니다.</p>
         <p>도구 안에서 예외가 나면 기본 설정에서는 그 예외를 그대로 위로 던지고 그래프가 멈춥니다. <code>handle_tool_errors=True</code>로 켜면 예외를 오류 표시가 붙은 결과 쪽지로 바꿔 모델에게 돌려줍니다. 앞서 <code>wrap_tool_call</code>로 직접 하던 일을 ToolNode 옵션 하나가 해 줍니다. 직접 실행해 확인한 결과입니다.</p>
-        <div class="gb-ctrl"><div class="gb-seg" role="group" aria-label="오류 처리"><button type="button" data-gb-te="off" aria-pressed="true">기본(꺼짐)</button><button type="button" data-gb-te="on" aria-pressed="false">handle_tool_errors=True</button></div></div>
       </div>
-      <div data-figure>
-        <svg class="gb-scene gb-nar" data-gb-warehouse viewBox="0 0 460 460" role="img" aria-label="도구 창고 그림. 모델의 도구 요청 쪽지가 ToolNode 창고에 들어가 도구가 실행된다. 번호가 틀려 도구에서 오류가 나면 기본값에서는 창고가 멈추고, handle_tool_errors를 켜면 오류 쪽지가 모델에게 돌아간다."></svg>
+      <div>
+        <p class="gb-ask">handle_tool_errors 설정을 골라 보세요. 아래 실행 기록이 어디서 끊기는지, 끝까지 이어지는지가 바뀝니다.</p>
+        <div class="gb-ctrl"><div class="gb-seg" role="group" aria-label="handle_tool_errors 설정"><button type="button" data-gb-te="off" aria-pressed="true">기본값<small>꺼짐</small></button><button type="button" data-gb-te="on" aria-pressed="false">handle_tool_errors=True<small>오류를 쪽지로</small></button></div></div>
+        <div class="gb-term gb-tlog" data-figure role="img" aria-label="실행 기록 그림. 모델이 틀린 번호 T1042로 도구를 부른다. 기본값이면 tools 줄에서 ValueError가 나고 빨간 선 아래 기록이 끊긴다. handle_tool_errors를 켜면 같은 줄이 status error 쪽지가 되어 모델이 번호를 T-1042로 고쳐 다시 부르고 답까지 이어진다.">
+          <div class="gb-term-bar"><span>실행 기록 · 예시 출력</span></div>
+          <ol class="gb-tl" data-gb-tlog></ol>
+        </div>
         <p class="gb-wnote" data-gb-wnote></p>
       </div>
     </div>
@@ -330,19 +374,10 @@ b.add_conditional_edges("model", should_continue)</code></pre>
   <section class="gb-sec">
     <div class="gb-wrap gb-split rev">
       <div data-figure>
-        <svg class="gb-scene gb-nar" viewBox="0 0 460 460" role="img" aria-label="두 방식 비교 그림. 왼쪽은 노드가 쪽지만 돌려주고 갈 곳은 따로 그려 둔 화살표가 정한다. 오른쪽은 노드가 쪽지와 갈 곳을 한 번에 담은 Command를 돌려준다.">
-          <text x="14" y="26" font-size="17" class="t-s" style="fill:var(--gb-code)">따로 정하는 방식</text>
-          <rect x="14" y="40" width="200" height="70" rx="14" fill="color-mix(in srgb, var(--gb-model) 12%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3"/><text x="114" y="70" font-size="16" text-anchor="middle" class="t-s mono">call_model</text><text x="114" y="94" font-size="15" text-anchor="middle" class="t-d">쪽지만 돌려줌</text>
-          <path d="M214 76 H262" stroke="var(--fg-neutral)" stroke-width="4"/><path d="M268 76 l-14 -8 v16z" fill="var(--fg-neutral)"/>
-          <rect x="268" y="40" width="178" height="70" rx="14" fill="var(--bg-base)" stroke="var(--fg-neutral)" stroke-width="3" stroke-dasharray="7 5"/><text x="357" y="68" font-size="15" text-anchor="middle" class="t-s">조건부 엣지</text><text x="357" y="92" font-size="15" text-anchor="middle" class="t-d">길 고르기 함수가 정함</text>
-          <line x1="10" y1="140" x2="450" y2="140" class="ln" stroke-dasharray="4 8"/>
-          <text x="14" y="176" font-size="17" class="t-s" style="fill:var(--gb-model)">Command로 한 번에</text>
-          <rect x="14" y="192" width="432" height="120" rx="14" fill="color-mix(in srgb, var(--gb-model) 8%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3"/>
-          <text x="30" y="224" font-size="16" class="t-s mono" style="fill:var(--gb-model)">call_model</text><text x="30" y="250" font-size="15" class="t-s">돌려주는 것 = Command(</text><rect x="46" y="260" width="170" height="36" rx="8" fill="color-mix(in srgb, var(--gb-code) 16%, var(--bg-base))" stroke="var(--gb-code)" stroke-width="2.5"/><text x="131" y="284" font-size="15" text-anchor="middle" class="t-s">update: 새 쪽지</text><rect x="228" y="260" width="200" height="36" rx="8" fill="color-mix(in srgb, var(--gb-human) 16%, var(--bg-base))" stroke="var(--gb-human)" stroke-width="2.5"/><text x="328" y="284" font-size="15" text-anchor="middle" class="t-s">goto: 다음 노드</text>
-          <path d="M328 312 V352" stroke="var(--gb-human)" stroke-width="4"/><path d="M328 362 l-9 -14 h18z" fill="var(--gb-human)"/>
-          <rect x="268" y="366" width="130" height="40" rx="10" fill="color-mix(in srgb, var(--gb-code) 14%, var(--bg-base))" stroke="var(--gb-code)" stroke-width="3"/><text x="333" y="392" font-size="16" text-anchor="middle" class="t-s mono">tools</text>
-          <text x="14" y="440" font-size="15" class="t-d">갱신과 이동을 한 노드가 함께 정합니다.</text>
-        </svg>
+        <p class="gb-plbl">조건부 엣지로 고를 때</p>
+        <svg class="gb-scene" data-gb-cmd1 viewBox="0 0 460 190" role="img" aria-label="조건부 엣지 방식의 작은 노선도. model 역을 나온 선로 위에 전환기가 드러나 있고 tools와 끝으로 갈린다. 빨간 메모: 갈림길이 선로 위에 보임."></svg>
+        <p class="gb-plbl" style="margin-top:28px">Command로 고를 때</p>
+        <svg class="gb-scene" data-gb-cmd2 viewBox="0 0 460 190" role="img" aria-label="Command 방식의 작은 노선도. 전환기가 model 역 동그라미 안으로 들어가 있고 tools와 끝으로 가는 선로는 점선이다. 빨간 메모: 갈림길이 역 안에 숨음."></svg>
         <p class="gb-cap">Command를 쓰는 노드는 갈 수 있는 곳을 반환 타입에 적어 두어야 그래프가 길을 그릴 수 있습니다.</p>
       </div>
       <div>
@@ -378,25 +413,12 @@ b.add_conditional_edges("model", should_continue)</code></pre>
           <p>그래프 전체에 거는 단계 한도(<code>recursion_limit</code>)도 그대로 적용됩니다. 이 글의 그래프에서 모델이 도구만 부르는 상황을 한도 6으로 돌렸더니 <code>GraphRecursionError</code>가 났습니다. 직접 만든 그래프라면 기본 한도부터 확인한 뒤 낮추는 편이 안전합니다.</p>
         </div>
       </div>
-      <div style="margin-top:36px" data-figure>
-        <svg class="gb-scene gb-nar" viewBox="0 0 460 360" role="img" aria-label="한도 눈금 그림. 모델이 도구만 계속 부르는 상황에서 model과 tools가 번갈아 한 칸씩 눈금을 채우고 여섯 번째 칸에서 단계 한도 recursion_limit 6에 걸려 GraphRecursionError로 멈춘다.">
-          <text x="14" y="28" font-size="17" class="t-s">단계 한도 recursion_limit = 6 · 눈금 하나가 노드 한 번</text>
-          <g font-size="15" class="t-s mono" text-anchor="middle">
-            <rect x="14" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-model) 18%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3"/><text x="47" y="78">1</text><text x="47" y="100" font-size="15">model</text>
-            <rect x="84" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-code) 18%, var(--bg-base))" stroke="var(--gb-code)" stroke-width="3"/><text x="117" y="78">2</text><text x="117" y="100" font-size="15">tools</text>
-            <rect x="154" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-model) 18%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3"/><text x="187" y="78">3</text><text x="187" y="100" font-size="15">model</text>
-            <rect x="224" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-code) 18%, var(--bg-base))" stroke="var(--gb-code)" stroke-width="3"/><text x="257" y="78">4</text><text x="257" y="100" font-size="15">tools</text>
-            <rect x="294" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-model) 18%, var(--bg-base))" stroke="var(--gb-model)" stroke-width="3"/><text x="327" y="78">5</text><text x="327" y="100" font-size="15">model</text>
-            <rect x="364" y="52" width="66" height="60" rx="10" fill="color-mix(in srgb, var(--gb-bad) 18%, var(--bg-base))" stroke="var(--gb-bad)" stroke-width="3"/><text x="397" y="78">6</text><text x="397" y="100" font-size="15">tools</text>
-          </g>
-          <rect x="434" y="44" width="10" height="76" rx="4" fill="var(--gb-bad)"/><use href="#gb-ic-stop" x="394" y="124" width="48" height="48" style="color:var(--gb-bad)"/>
-          <text x="14" y="160" font-size="16" class="t-s" style="fill:var(--gb-bad)">여기서 GraphRecursionError</text><text x="14" y="184" font-size="15" class="t-d">모델이 도구만 계속 부르는 상황을 한도 6으로 돌린 결과입니다</text>
-          <line x1="10" y1="212" x2="450" y2="212" class="ln" stroke-dasharray="4 8"/>
-          <text x="14" y="244" font-size="17" class="t-s" style="fill:var(--gb-code)">따로 만든 turns 칸 · 이 글의 예시</text>
-          <text x="14" y="272" font-size="15" class="t-s">State에 칸을 하나 더 두고 model 노드가 1씩 올립니다</text><text x="14" y="296" font-size="15" class="t-s">길 고르기 함수가 turns 3이면 끝으로 보냅니다</text>
-          <text x="14" y="334" font-size="15" class="t-d">두 한도는 별개입니다. 바깥 눈금은 그래프가, turns는 내가 정합니다.</text>
-        </svg>
-        <p class="gb-cap">설명을 위한 그림입니다. turns 칸은 이 글에서 직접 만든 예시 State입니다.</p>
+      <div style="margin-top:44px" data-figure>
+        <p class="gb-ask">길 고르기 함수에 turns 규칙을 넣을지 골라 보세요. 눈금 위에서 실행이 멈추는 자리와 그 까닭이 바뀝니다.</p>
+        <div class="gb-ctrl"><div class="gb-seg" role="group" aria-label="turns 규칙"><button type="button" data-gb-tn="off" aria-pressed="true">규칙 없음<small>도구만 계속 부름</small></button><button type="button" data-gb-tn="on" aria-pressed="false">turns 3이면 끝<small>내가 정한 한도</small></button></div></div>
+        <svg class="gb-scene gb-nar" data-gb-limit viewBox="0 0 460 210" style="margin:18px 0 0;max-width:640px" role="img" aria-label="한도 눈금 그림. 가로 눈금 한 칸이 노드 한 번 실행이다. model과 tools가 번갈아 칸을 채운다. 규칙이 없으면 여섯 번째 칸에서 recursion_limit 6에 걸려 GraphRecursionError로 멈추고 그 뒤 칸은 막힌다. turns 3이면 끝 규칙을 넣으면 model이 세 번째로 불린 다섯 번째 칸 뒤에서 초록 선을 따라 끝으로 간다."></svg>
+        <p class="gb-wnote" data-gb-lnote></p>
+        <p class="gb-cap">설명을 위한 그림입니다. turns 칸은 이 글에서 직접 만든 예시 State입니다. 바깥 한도는 그래프가, turns는 내가 정합니다.</p>
       </div>
       <p style="margin-top:36px">다음 글에서는 체이닝과 라우팅이라는 워크플로 패턴으로 정해진 순서의 일을 처리하는 법을 알아보겠습니다.</p>
     </div>
@@ -463,100 +485,178 @@ b.add_conditional_edges("model", should_continue)</code></pre>
     addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
   };
 
-  const C = { model: "var(--gb-model)", code: "var(--gb-code)", human: "var(--gb-human)", bad: "var(--gb-bad)" };
+  /* 색은 상태에만: 먹(켜짐·지나감) · 초록(방금 고른 것) · 빨강(막힘·짚는 펜) */
+  const INK = "var(--fg-strong)", MUT = "var(--fg-neutral)", ACC = "var(--gb-code)", BAD = "var(--gb-bad)", RAIL = "var(--line-strong)";
+  const halo = "paint-order:stroke;stroke:var(--bg-subtle);stroke-width:6px;stroke-linejoin:round;";
   const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
-  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
-  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+  const chev = (p, x, y, r, col = "var(--bg-subtle)") => mk("path", { d: "M-4 -7 L5 0 L-4 7", transform: `translate(${x} ${y}) rotate(${r})`, fill: "none", stroke: col, "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round" }, p);
 
-  /* ───── 히어로: 조립 작업대 ───── */
-  const bn = $("[data-gb-benchsvg]"), say = $("[data-gb-bsay]");
-  const PARTS = ["state", "model", "tools", "cond", "back"], on = { state: false, model: false, tools: false, cond: false, back: false };
-  const MSG = { state: "① 쪽지 칸: 메시지가 쌓일 곳이 생겼습니다.", model: "② 모델 노드: 쪽지를 모델에 보내고 응답을 돌려줄 수 있습니다.", tools: "③ ToolNode: 도구 요청이 있으면 실행할 수 있습니다.", cond: "④ 조건부 엣지: model 뒤에서 도구 요청이 있는지 보고 길을 고릅니다.", back: "⑤ 돌아오는 화살표: tools 다음에 model로 돌아가 루프가 완성됩니다." };
-  let dotGen = 0, dot = null;
-  function drawBench() {
-    bn.innerHTML = ""; const all = PARTS.every((k) => on[k]);
-    // 쪽지 칸
-    box(bn, 14, 10, 432, 74, on.state ? C.human : "var(--line-strong)", { fill: on.state ? `color-mix(in srgb, ${C.human} 8%, var(--bg-base))` : "var(--bg-subtle)", dash: on.state ? "" : "7 5", sw: on.state ? 3.5 : 2.5 }); txt(bn, 30, 38, "State · messages 칸", { "font-size": 16, class: "t-s mono", style: on.state ? `fill:${C.human}` : "", opacity: on.state ? 1 : .5 });
-    if (on.state) [["질문", C.human], ["응답", C.model], ["결과", C.code]].forEach(([t, c], n) => { box(bn, 30 + n * 92, 48, 80, 28, c, { rx: 6, sw: 2.5 }); txt(bn, 70 + n * 92, 67, t, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); }); else txt(bn, 30, 66, "비어 있는 자리", { "font-size": 15, class: "t-d" });
-    // 노드와 길
-    txt(bn, 46, 120, "시작", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); mk("circle", { cx: 46, cy: 140, r: 14, fill: "var(--fg-strong)" }, bn);
-    const nodeBox = (x, y, w, lb, col, ok, ic) => { box(bn, x, y, w, 60, ok ? col : "var(--line-strong)", { fill: ok ? `color-mix(in srgb, ${col} 14%, var(--bg-base))` : "var(--bg-subtle)", dash: ok ? "" : "7 5", sw: ok ? 3.5 : 2.5, rx: 14 }); if (ok) mk("use", { href: "#gb-ic-" + ic, x: x + 10, y: y + 14, width: 32, height: 32, style: `color:${col}` }, bn); txt(bn, x + w / 2 + (ok ? 14 : 0), y + 36, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s mono", opacity: ok ? 1 : .45 }); };
-    nodeBox(100, 110, 140, "model", C.model, on.model, "robot"); nodeBox(300, 110, 140, "tools", C.code, on.tools, "gear");
-    mk("path", { d: "M60 140 H98", stroke: on.model ? "var(--fg-strong)" : "var(--line-strong)", "stroke-width": 4, "stroke-dasharray": on.model ? "" : "5 5" }, bn); if (on.model) mk("path", { d: "M100 140 l-12 -7 v14z", fill: "var(--fg-strong)" }, bn);
-    // 조건부 엣지
-    const cc = on.cond && on.model; mk("path", { d: "M240 128 H298", stroke: cc ? C.model : "var(--line-strong)", "stroke-width": cc ? 5 : 3, "stroke-dasharray": cc ? "" : "5 5" }, bn); if (cc && on.tools) mk("path", { d: "M300 128 l-14 -8 v16z", fill: C.model }, bn);
-    if (cc) { txt(bn, 270, 110, "요청 있으면", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` }); mk("path", { d: "M170 170 V250", stroke: C.model, "stroke-width": 5 }, bn); mk("path", { d: "M170 256 l-9 -14 h18z", fill: C.model }, bn); txt(bn, 184, 214, "없으면", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); }
-    const bk = on.back && on.tools; mk("path", { d: "M298 152 H242", stroke: bk ? C.code : "var(--line-strong)", "stroke-width": bk ? 5 : 3, "stroke-dasharray": bk ? "" : "5 5" }, bn); if (bk && on.model) mk("path", { d: "M240 152 l14 -8 v16z", fill: C.code }, bn); if (bk) txt(bn, 270, 196, "결과를 들고 돌아옴", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` });
-    mk("circle", { cx: 170, cy: 276, r: 18, fill: all || (cc) ? "var(--fg-strong)" : "var(--line-strong)" }, bn); txt(bn, 170, 281, "끝", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--bg-base)" });
-    // 부품 목록
-    box(bn, 14, 320, 432, 244, "var(--line-strong)", { fill: "var(--bg-base)", sw: 2, rx: 14 }); txt(bn, 30, 348, "올린 부품", { "font-size": 15.5, class: "t-s" });
-    PARTS.forEach((k, n) => { txt(bn, 30, 378 + n * 30, `${n + 1}. ${{ state: "MessagesState", model: "call_model 노드", tools: "ToolNode", cond: "conditional edge", back: "tools → model 엣지" }[k]}`, { "font-size": 15, class: "t-s mono", style: on[k] ? `fill:${C.code}` : "", opacity: on[k] ? 1 : .35 }); if (on[k]) mk("use", { href: "#gb-ic-check", x: 262, y: 360 + n * 30, width: 24, height: 24, style: `color:${C.code}` }, bn); });
-    txt(bn, 30, 546, all ? "다섯 부품이 모두 올라 create_agent와 같은 그래프가 되었습니다" : `${PARTS.filter((k) => on[k]).length}/5개 올림`, { "font-size": 15, class: "t-s", style: all ? `fill:${C.code}` : "" });
-    dot = mk("g", { style: "opacity:0" }, bn); mk("rect", { x: -12, y: -9, width: 24, height: 18, rx: 4, fill: "var(--fg-strong)" }, dot);
+  /* ───── 히어로: 부품을 올리면 노선도에 역·선로가 생기고 코드 줄이 켜진다 (좁은 화면은 세로) ───── */
+  const ln = $("[data-gb-line]"), say = $("[data-gb-bsay]"), codel = $("[data-gb-codel]");
+  const PARTS = ["state", "model", "tools", "cond", "back"], on = { state: true, model: true, tools: true, cond: true, back: true };
+  const PNAME = { state: "MessagesState", model: "call_model", tools: "ToolNode", cond: "conditional edge", back: "tools → model" };
+  const MSG = { state: "쪽지 칸이 생겼습니다. 모든 노드가 이 messages 하나를 읽고 씁니다.", model: "model 역과 시작에서 model로 가는 선로가 생겼습니다.", tools: "tools 역이 생겼습니다. 도구 요청이 오면 여기서 도구를 실행합니다.", cond: "model 뒤에 갈림길이 생겼습니다. 도구 요청이 있으면 아래로, 없으면 끝으로 갑니다.", back: "tools에서 model로 돌아오는 선로가 생겨 루프가 닫혔습니다." };
+  const CODE = [["state", "b = StateGraph(MessagesState)"], ["model", 'b.add_node("model", call_model)'], ["tools", 'b.add_node("tools", ToolNode([get_ticket]))'], ["model", 'b.add_edge(START, "model")'], ["cond", 'b.add_conditional_edges("model", tools_condition,'], ["cond", '    {"tools": "tools", "__end__": END})'], ["back", 'b.add_edge("tools", "model")'], [null, "graph = b.compile()"]];
+  const LAY = {
+    H: { vb: "0 50 1000 280", f: 1, st: { start: [70, 110], model: [400, 110], end: [930, 110], tools: [400, 250] }, stack: [100, 262],
+         seg: { model: "M70 110 H400", condEnd: "M400 110 H930", condTools: "M580 110 Q620 110 620 150 V210 Q620 250 580 250 H400", back: "M400 250 H270 Q230 250 230 210 V150 Q230 110 270 110 H400" },
+         chev: { condTools: [[620, 182, 90]], back: [[316, 250, 180], [230, 182, 270]] },
+         lab: { model: [400, 78, "middle"], tools: [400, 294, "middle"], start: [70, 160, "middle"], end: [930, 160, "middle"], condTools: [638, 187, "start", "도구 요청 있으면"], condEnd: [770, 92, "middle", "없으면 끝으로"], back: [316, 232, "middle", "결과를 들고 돌아옴"] },
+         path: [[70, 110], [400, 110, 1], [580, 110], [620, 150], [620, 210], [580, 250], [400, 250, 1], [270, 250], [230, 210], [230, 150], [270, 110], [400, 110, 1], [930, 110]] },
+    V: { vb: "0 0 400 610", f: 1.25, st: { start: [120, 30], model: [120, 190], end: [120, 575], tools: [300, 260] }, stack: [290, 500],
+         seg: { model: "M120 30 V190", condEnd: "M120 190 V575", condTools: "M120 190 V300 Q120 340 160 340 H260 Q300 340 300 300 V260", back: "M300 260 V130 Q300 90 260 90 H160 Q120 90 120 130 V190" },
+         chev: { condTools: [[210, 340, 0]], back: [[300, 180, 270], [210, 90, 180]] },
+         lab: { model: [92, 197, "end"], tools: [282, 232, "end"], start: [92, 37, "end"], end: [92, 582, "end"], condTools: [210, 378, "middle", "도구 요청 있으면"], condEnd: [134, 455, "start", "없으면 끝"], back: [210, 68, "middle", "결과를 들고 돌아옴"] },
+         path: [[120, 30], [120, 190, 1], [120, 300], [160, 340], [260, 340], [300, 300], [300, 260, 1], [300, 130], [260, 90], [160, 90], [120, 130], [120, 190, 1], [120, 575]] },
+  };
+  const SEGPART = { model: "model", condEnd: "cond", condTools: "cond", back: "back" };
+  let last = null, L = null, runGen = 0, slips = 1, dotG = null, slipG = null;
+  const pickLay = () => (ln.getBoundingClientRect().width || innerWidth) < 640 ? LAY.V : LAY.H;
+  function drawSlips() {
+    if (!slipG) return; slipG.innerHTML = ""; const [cx, cy] = L.stack, f = L.f, hot = last === "state";
+    if (!on.state) { mk("rect", { x: cx - 40, y: cy - 22, width: 80, height: 44, rx: 4, fill: "none", stroke: RAIL, "stroke-width": 2, "stroke-dasharray": "5 5" }, slipG); txt(slipG, cx, cy + 50, "쪽지 칸 없음", { "font-size": 15 * f, class: "t-d", "text-anchor": "middle" }); return; }
+    for (let j = 0; j < slips; j++) mk("rect", { x: cx - 32 + j * 4, y: cy - 18 - j * 7, width: 64, height: 40, rx: 3, fill: "var(--bg-base)", stroke: hot ? ACC : INK, "stroke-width": hot ? 3 : 2, transform: `rotate(${(j % 2 ? 3 : -3)} ${cx} ${cy})` }, slipG);
+    txt(slipG, cx, cy - 40 - slips * 7, "messages", { "font-size": 15 * f, class: "t-s mono", "text-anchor": "middle", ...(hot ? { style: `fill:${ACC}` } : {}) });
+    txt(slipG, cx, cy + 48, `쪽지 ${slips}장`, { "font-size": 15 * f, class: "t-s", "text-anchor": "middle" });
+  }
+  function drawLine() {
+    const k = L = pickLay(), H = k === LAY.H, f = k.f; ln.innerHTML = ""; ln.setAttribute("viewBox", k.vb);
+    /* 선로: 안 올린 부품은 흐린 점선, 올린 부품은 굵은 선, 방금 올린 부품은 초록 */
+    Object.entries(k.seg).forEach(([n, d]) => { const p = SEGPART[n], ok = on[p] && (n === "model" || on.model) && (n !== "condTools" || on.tools) && (n !== "back" || on.tools);
+      mk("path", { d, fill: "none", stroke: ok ? (last === p ? ACC : RAIL) : RAIL, "stroke-width": ok ? 10 : 3, "stroke-dasharray": ok ? "" : "6 8", opacity: ok ? 1 : .55, "stroke-linecap": "round", "stroke-linejoin": "round" }, ln);
+      if (ok) (k.chev[n] || []).forEach(([x, y, r]) => chev(ln, x, y, r));
+      if (ok && k.lab[n]) { const [x, y, a, t] = k.lab[n]; txt(ln, x, y, t, { "font-size": 15 * f, class: "t-d", "text-anchor": a, style: halo }); } });
+    /* 역 */
+    [["start", "시작"], ["end", "끝"]].forEach(([n, t]) => { const [x, y] = k.st[n]; mk("line", H ? { x1: x, y1: y - 18, x2: x, y2: y + 18 } : { x1: x - 18, y1: y, x2: x + 18, y2: y }, ln).setAttribute("style", `stroke:${INK};stroke-width:6;stroke-linecap:round`); const [lx, ly, a] = k.lab[n]; txt(ln, lx, ly, t, { "font-size": 17 * f, class: "t-s", "text-anchor": a }); });
+    ["model", "tools"].forEach((n) => { const [x, y] = k.st[n], ok = on[n], hot = last === n, [lx, ly, a] = k.lab[n];
+      mk("circle", { cx: x, cy: y, r: ok ? (hot ? 19 : 16) : 15, fill: ok ? (hot ? ACC : INK) : "var(--bg-subtle)", stroke: ok ? "var(--bg-subtle)" : RAIL, "stroke-width": ok ? 4 : 2.5, "stroke-dasharray": ok ? "" : "5 4" }, ln);
+      txt(ln, lx, ly, n, { "font-size": 19 * f, class: "t-s mono", "text-anchor": a, opacity: ok ? 1 : .45, style: halo + (hot ? `fill:${ACC}` : "") }); });
+    slipG = mk("g", {}, ln); drawSlips();
+    dotG = mk("g", { style: "opacity:0" }, ln); mk("circle", { r: 10, fill: INK, stroke: "var(--bg-subtle)", "stroke-width": 3 }, dotG);
+    codel.innerHTML = CODE.map(([p, c]) => `<span class="${p && !on[p] ? "off" : ""}${p && p === last && on[p] ? " hot" : ""}">${esc(c)}</span>`).join("");
     $$("[data-gb-part]").forEach((b) => b.setAttribute("aria-pressed", String(on[b.dataset.gbPart])));
   }
-  $$("[data-gb-part]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.gbPart; on[k] = !on[k]; drawBench(); say.textContent = on[k] ? MSG[k] : "부품을 내렸습니다."; }, { signal }));
-  $("[data-gb-fill]").addEventListener("click", () => { PARTS.forEach((k) => { on[k] = true; }); drawBench(); say.textContent = "다섯 부품이 모두 올라갔습니다. 질문을 흘려 보세요."; }, { signal });
-  $("[data-gb-clear]").addEventListener("click", () => { PARTS.forEach((k) => { on[k] = false; }); dotGen++; drawBench(); say.textContent = ""; }, { signal });
+  const reset = () => { runGen++; slips = 1; $("[data-gb-run1]").disabled = false; };
+  $$("[data-gb-part]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.gbPart; on[k] = !on[k]; last = on[k] ? k : null; reset(); drawLine(); say.textContent = on[k] ? MSG[k] : `${PNAME[k]}를 내렸습니다. 흐린 점선은 그 부품이 들어갈 자리입니다.`; }, { signal }));
+  $("[data-gb-fill]").addEventListener("click", () => { PARTS.forEach((k) => { on[k] = true; }); last = null; reset(); drawLine(); say.textContent = "다섯 부품이 모두 올라갔습니다. 질문을 흘려 보세요."; }, { signal });
+  $("[data-gb-clear]").addEventListener("click", () => { PARTS.forEach((k) => { on[k] = false; }); last = null; reset(); drawLine(); say.textContent = "작업대가 비었습니다. 부품을 하나씩 눌러 올려 보세요."; }, { signal });
   $("[data-gb-run1]").addEventListener("click", async () => {
-    if (!PARTS.every((k) => on[k])) { say.textContent = "부품 다섯 개가 모두 올라야 질문이 흘러갑니다."; return; }
-    const my = ++dotGen; drawBench(); const path = [[46, 140], [170, 140], [300, 128], [370, 140], [270, 160], [170, 140], [170, 270]];
-    dot.style.opacity = 1; for (let i = 1; i < path.length; i++) { if (my !== dotGen) return; const [x0, y0] = path[i - 1], [x1, y1] = path[i]; await tween(reduce ? 0 : 520, (t) => dot.setAttribute("transform", `translate(${x0 + (x1 - x0) * t} ${y0 + (y1 - y0) * t})`)); await later(reduce ? 0 : 150); }
-    say.textContent = "질문이 model에서 tools를 한 번 거쳐 돌아온 뒤 끝으로 갔습니다. 쪽지는 질문·응답·결과·응답 네 장이 쌓입니다.";
+    const miss = PARTS.filter((k) => !on[k]); if (miss.length) { say.textContent = `${miss.map((k) => PNAME[k]).join(", ")}가 빠져 있어 질문이 끝까지 갈 수 없습니다.`; return; }
+    const my = ++runGen, btn = $("[data-gb-run1]"); btn.disabled = true; last = null; slips = 1; drawLine(); const pts = L.path;
+    dotG.style.opacity = 1; let [x, y] = pts[0]; dotG.setAttribute("transform", `translate(${x} ${y})`);
+    for (const [tx2, ty2, stop] of pts.slice(1)) {
+      if (my !== runGen) return; const x0 = x, y0 = y, d = Math.hypot(tx2 - x0, ty2 - y0);
+      await tween(reduce ? 0 : Math.max(90, d * 3), (t) => { x = x0 + (tx2 - x0) * t; y = y0 + (ty2 - y0) * t; dotG.setAttribute("transform", `translate(${x} ${y})`); }); x = tx2; y = ty2;
+      if (stop) { slips++; drawSlips(); await later(reduce ? 0 : 260); }
+    }
+    if (my !== runGen) return; dotG.style.opacity = 0; btn.disabled = false;
+    say.textContent = "질문이 model에서 tools를 한 번 거쳐 돌아온 뒤 끝으로 갔습니다. 쪽지는 질문·응답·결과·응답 네 장이 쌓였습니다.";
   }, { signal });
-  drawBench(); PARTS.forEach((k) => { on[k] = true; }); drawBench(); say.textContent = "다섯 부품이 모두 올라 create_agent와 같은 그래프가 되었습니다. 아래 부품 버튼을 눌러 내렸다 올려 보세요.";
+  addEventListener("resize", () => { if (pickLay() !== L) { reset(); drawLine(); } }, { passive: true, signal });
+  drawLine(); say.textContent = "다섯 부품이 모두 올라 create_agent와 같은 그래프가 되었습니다. 부품 버튼을 눌러 내렸다 올려 보세요.";
 
-  /* ───── 쪽지 쌓기 ───── */
-  const ms = $("[data-gb-msg]"); let mkind = "new";
-  const MN = { new: "새 번호표의 쪽지는 뒤에 붙습니다. 노드는 새 쪽지만 돌려주면 됩니다.", same: "번호표(id)가 이미 있는 쪽지와 같으면 그 자리의 쪽지가 새것으로 바뀝니다. 같은 쪽지를 고쳐 쓸 때 씁니다." };
+  /* ───── messages 목록: 새 번호표는 뒤에 붙고, 같은 번호표는 그 줄을 바꾼다 ───── */
+  let mkind = "new";
+  const BASE = ['HumanMessage(id="1", "T-1042 어떻게 됐어?")', 'AIMessage(id="2", tool_calls=[get_ticket])', 'ToolMessage(id="3", "부품 대기, 도착 예정 10월 18일")'];
+  const MRET = { new: 'AIMessage(id="4", "T-1042는 부품 대기 중입니다.")', same: 'AIMessage(id="2", "고친 응답")' };
+  const MN = { new: "번호표가 처음 보는 것이라 목록 맨 뒤에 붙었습니다. 노드는 새 쪽지만 돌려주면 됩니다. 쪽지 내용은 예시 값입니다.", same: "번호표(id)가 이미 있는 쪽지와 같아서 그 줄이 새것으로 바뀌었습니다. 쪽지 수는 그대로입니다. 같은 쪽지를 고쳐 쓸 때 이 방법을 씁니다." };
   function drawMsg() {
-    ms.innerHTML = ""; box(ms, 14, 10, 432, 360, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 3 }); txt(ms, 30, 40, "messages 칸 (add_messages가 관리)", { "font-size": 16, class: "t-s mono" });
-    const base = [["질문", C.human, "id 1"], ["응답", C.model, "id 2"], ["도구 결과", C.code, "id 3"]];
-    base.forEach(([t, c, id], n) => { box(ms, 30, 60 + n * 70, 260, 56, c, { rx: 10, sw: mkind === "same" && n === 1 ? 2 : 3, dash: mkind === "same" && n === 1 ? "6 5" : "" }); txt(ms, 46, 86 + n * 70, t, { "font-size": 16, class: "t-s", style: `fill:${c}`, opacity: mkind === "same" && n === 1 ? .4 : 1 }); txt(ms, 46, 106 + n * 70, id, { "font-size": 15, class: "t-d mono" }); if (mkind === "same" && n === 1) { mk("path", { d: "M40 118 L280 148", stroke: C.bad, "stroke-width": 4, "stroke-linecap": "round" }, ms); txt(ms, 150, 104 + n * 70 + 40, "지워짐", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); } });
-    if (mkind === "new") { box(ms, 30, 270, 260, 56, C.model, { rx: 10, fill: `color-mix(in srgb, ${C.model} 20%, var(--bg-base))` }); txt(ms, 46, 296, "새 응답", { "font-size": 16, class: "t-s", style: `fill:${C.model}` }); txt(ms, 46, 316, "id 4", { "font-size": 15, class: "t-d mono" }); }
-    else { box(ms, 300, 124, 130, 56, C.model, { rx: 10, fill: `color-mix(in srgb, ${C.model} 28%, var(--bg-base))`, sw: 4.5 }); txt(ms, 314, 150, "고친 응답", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); txt(ms, 314, 170, "id 2 · 새 쪽지", { "font-size": 15, class: "t-d mono" }); mk("path", { d: "M310 158 H290", stroke: C.model, "stroke-width": 4 }, ms); mk("path", { d: "M288 158 l12 -7 v14z", fill: C.model, transform: "rotate(180 294 158) translate(-12 0)" }, ms); }
-    txt(ms, 30, 360, mkind === "new" ? "붙은 뒤: 쪽지 4장" : "바뀐 뒤: 쪽지 3장(2번이 교체됨)", { "font-size": 15.5, class: "t-s" });
-    box(ms, 14, 384, 432, 120, C.model, { dash: "7 5", fill: "var(--bg-subtle)" }); txt(ms, 30, 414, "노드가 돌려주는 것", { "font-size": 15, class: "t-d" }); txt(ms, 30, 444, mkind === "new" ? '{"messages": [AIMessage(id=4, …)]}' : '{"messages": [AIMessage(id=2, 고친 글)]}', { "font-size": 15, class: "t-s mono" }); txt(ms, 30, 474, "칸 전체를 새로 쓰지 않고 새 쪽지만 돌려줍니다", { "font-size": 15, class: "t-s" });
-    $("[data-gb-mnote]").textContent = MN[mkind];
+    const li = (t, cls = "", em = "", ok = false) => `<li class="${cls}"><span class="t">${esc(t)}</span>${em ? `<em class="${ok ? "ok" : ""}">${em}</em>` : ""}</li>`;
+    let h = "";
+    if (mkind === "new") h = BASE.map((t) => li(t)).join("") + li(MRET.new, "new", "새 번호표 → 맨 뒤에 붙음 · 쪽지 4장", true);
+    else h = li(BASE[0]) + li(BASE[1], "gone", "같은 번호표 → 지워짐") + li(MRET.same, "new", "그 자리에 들어감 · 쪽지 3장 그대로", true) + li(BASE[2]);
+    $("[data-gb-msgs]").innerHTML = h; $("[data-gb-mret]").textContent = `{"messages": [${MRET[mkind]}]}`; $("[data-gb-mnote]").textContent = MN[mkind];
   }
   $$("[data-gb-mk]").forEach((b) => b.addEventListener("click", () => { mkind = b.dataset.gbMk; press("[data-gb-mk]", b); drawMsg(); }, { signal })); drawMsg();
 
-  /* ───── 길 고르기 (스크롤 이야기) ───── */
-  const rt = $("[data-gb-route]"), stat = $("[data-gb-stat]");
+  /* ───── 전환기: 일반 엣지는 외길, 조건부 엣지는 돌려준 값대로 꺾인다 ───── */
+  function drawSwitch(svg, choice, note) {
+    svg.innerHTML = ""; const sx = 200, sy = 104;
+    const up = `M${sx} ${sy} C260 ${sy} 300 44 360 44 H410`, dn = `M${sx} ${sy} C260 ${sy} 300 164 360 164 H410`;
+    mk("path", { d: `M60 ${sy} H${sx}`, stroke: INK, "stroke-width": 8, "stroke-linecap": "round" }, svg);
+    [["tools", up], ["__end__", dn]].forEach(([v, d]) => { const hit = choice === v; mk("path", { d, fill: "none", stroke: hit ? ACC : RAIL, "stroke-width": hit ? 8 : 3, "stroke-dasharray": hit || choice === null ? "" : "6 7", "stroke-linecap": "round" }, svg); });
+    mk("circle", { cx: sx, cy: sy, r: 6, fill: "var(--bg-base)", stroke: INK, "stroke-width": 3 }, svg);
+    mk("circle", { cx: 60, cy: sy, r: 15, fill: INK }, svg); txt(svg, 60, sy + 42, "model", { "font-size": 18, class: "t-s mono", "text-anchor": "middle" });
+    mk("circle", { cx: 414, cy: 44, r: 13, fill: choice === "tools" ? ACC : INK }, svg); txt(svg, 396, 24, "tools", { "font-size": 18, class: "t-s mono", "text-anchor": "end", style: halo });
+    mk("line", { x1: 414, y1: 148, x2: 414, y2: 180 }, svg).setAttribute("style", `stroke:${choice === "__end__" ? ACC : INK};stroke-width:6;stroke-linecap:round`); txt(svg, 396, 194, "끝", { "font-size": 18, class: "t-s", "text-anchor": "end", style: halo });
+    txt(svg, 16, 30, note, { "font-size": 17, class: choice ? "t-s mono" : "t-d", ...(choice ? { style: `fill:${ACC}` } : {}) });
+  }
+  const sw1 = $("[data-gb-sw1]"), sw2 = $("[data-gb-sw2]"); let sv = "tools";
+  function drawSw() {
+    sw1.innerHTML = ""; mk("path", { d: "M60 104 H404", stroke: INK, "stroke-width": 8, "stroke-linecap": "round" }, sw1); chev(sw1, 240, 104, 0);
+    mk("circle", { cx: 60, cy: 104, r: 15, fill: INK }, sw1); txt(sw1, 60, 146, "tools", { "font-size": 18, class: "t-s mono", "text-anchor": "middle" });
+    mk("circle", { cx: 404, cy: 104, r: 15, fill: INK }, sw1); txt(sw1, 404, 146, "model", { "font-size": 18, class: "t-s mono", "text-anchor": "middle" });
+    txt(sw1, 16, 30, "갈림길이 없어 늘 model로", { "font-size": 17, class: "t-d" });
+    drawSwitch(sw2, sv, `돌려준 값 "${sv}"`);
+    $("[data-gb-swnote]").textContent = sv === "tools" ? "\"tools\"를 돌려주면 전환기가 위로 꺾여 tools로 갑니다. 일반 엣지는 고른 값과 상관없이 그대로입니다." : "\"__end__\"를 돌려주면 전환기가 아래로 꺾여 끝으로 갑니다. 일반 엣지는 고른 값과 상관없이 그대로입니다.";
+  }
+  $$("[data-gb-sv]").forEach((b) => b.addEventListener("click", () => { sv = b.dataset.gbSv; press("[data-gb-sv]", b); drawSw(); }, { signal })); drawSw();
+
+  /* ───── 길 고르기 (스크롤 이야기): 마지막 쪽지 한 줄만 펜으로 짚는다 ───── */
+  const rt = $("[data-gb-route]"), rlog = $("[data-gb-rlog]"), stat = $("[data-gb-stat]");
+  const RL = ['HumanMessage("T-1042 어떻게 됐어?")', "AIMessage(tool_calls=[get_ticket])", 'ToolMessage("T-1042: 부품 대기…")', 'AIMessage("T-1042는 부품 대기 중입니다.", tool_calls=[])'];
+  const RS = [{ n: 2, ring: true, em: "tool_calls 있음 → \"tools\"", ch: "tools", note: 'tools_condition → "tools"' }, { n: 3, ring: false, em: "tools 다음은 외길 · 길 고르기 함수를 부르지 않음", ch: null, note: "tools → model 외길" }, { n: 4, ring: true, em: "tool_calls 비어 있음 → \"__end__\"", ch: "__end__", note: 'tools_condition → "__end__"' }];
+  const logHtml = (s) => RL.slice(0, s.n).map((t, j) => { const lastj = j === s.n - 1; return `<li class="${lastj ? (s.ring ? "ring" : "") : "dim"}">${esc(t)}${lastj ? `<em${s.ring ? "" : ' class="ok" style="color:var(--fg-neutral)"'}>${esc(s.em)}</em>` : ""}</li>`; }).join("");
+  const drawStraight = (svg) => { svg.innerHTML = ""; mk("path", { d: "M60 104 H404", stroke: ACC, "stroke-width": 8, "stroke-linecap": "round" }, svg); chev(svg, 240, 104, 0);
+    mk("circle", { cx: 60, cy: 104, r: 15, fill: INK }, svg); txt(svg, 60, 146, "tools", { "font-size": 18, class: "t-s mono", "text-anchor": "middle" });
+    mk("circle", { cx: 404, cy: 104, r: 15, fill: INK }, svg); txt(svg, 404, 146, "model", { "font-size": 18, class: "t-s mono", "text-anchor": "middle" });
+    txt(svg, 16, 30, "tools → model 외길 · 갈림길 없음", { "font-size": 17, class: "t-s", style: `fill:${ACC}` }); };
+  const drawRS = (svg, s) => s.ch ? drawSwitch(svg, s.ch, s.note) : drawStraight(svg);
+  $$("[data-gb-mfig]").forEach((el) => { const s = RS[+el.dataset.gbMfig]; el.innerHTML = `<ol class="gb-msgs">${logHtml(s)}</ol>`; drawRS(mk("svg", { class: "gb-scene", viewBox: "0 0 460 200" }, el), s); });
   function drawRoute(i) {
-    const k = i < 0 ? 2 : i; rt.innerHTML = "";
-    const hot = k === 0 ? "model1" : k === 1 ? "tools" : "model2";
-    const nd = (x, y, lb, col, h, ic) => { box(rt, x, y, 130, 56, h ? col : "var(--line-strong)", { fill: h ? `color-mix(in srgb, ${col} 16%, var(--bg-base))` : "var(--bg-base)", sw: h ? 4.5 : 2.5, rx: 12 }); mk("use", { href: "#gb-ic-" + ic, x: x + 8, y: y + 12, width: 30, height: 30, style: `color:${h ? col : "var(--fg-neutral)"}` }, rt); txt(rt, x + 84, y + 34, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s mono" }); };
-    nd(30, 40, "model", C.model, hot === "model1" || hot === "model2", "robot"); nd(300, 40, "tools", C.code, hot === "tools", "gear");
-    const toTools = k === 0, back = k === 1, toEnd = k === 2;
-    mk("path", { d: "M160 58 H296", stroke: toTools ? C.model : "var(--line-strong)", "stroke-width": toTools ? 6 : 3, "stroke-dasharray": toTools ? "" : "6 5" }, rt); mk("path", { d: "M298 58 l-14 -8 v16z", fill: toTools ? C.model : "var(--line-strong)" }, rt); txt(rt, 228, 46, "도구 요청 있음", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${toTools ? C.model : "var(--fg-neutral)"}` });
-    mk("path", { d: "M300 82 H164", stroke: back ? C.code : "var(--line-strong)", "stroke-width": back ? 6 : 3, "stroke-dasharray": back ? "" : "6 5" }, rt); mk("path", { d: "M162 82 l14 -8 v16z", fill: back ? C.code : "var(--line-strong)" }, rt); txt(rt, 228, 108, "결과를 붙여 돌아옴", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${back ? C.code : "var(--fg-neutral)"}` });
-    mk("path", { d: "M95 96 V150", stroke: toEnd ? "var(--fg-strong)" : "var(--line-strong)", "stroke-width": toEnd ? 6 : 3, "stroke-dasharray": toEnd ? "" : "6 5" }, rt); mk("path", { d: "M95 158 l-9 -14 h18z", fill: toEnd ? "var(--fg-strong)" : "var(--line-strong)" }, rt); txt(rt, 110, 130, "도구 요청 없음 → 끝", { "font-size": 15, class: "t-s", style: `fill:${toEnd ? "var(--fg-strong)" : "var(--fg-neutral)"}` });
-    mk("use", { href: "#gb-ic-flag", x: 74, y: 160, width: 42, height: 42, style: `color:${toEnd ? "var(--fg-strong)" : "var(--line-strong)"}` }, rt);
-    // 쪽지 더미
-    txt(rt, 30, 238, "messages 쪽지 더미", { "font-size": 16, class: "t-s" });
-    const cards = [["질문", C.human], ["응답(도구 요청)", C.model], ["도구 결과", C.code], ["응답(최종 답)", C.model]]; const n = k === 0 ? 2 : k === 1 ? 3 : 4;
-    cards.slice(0, n).forEach(([t, c], j) => { box(rt, 30, 252 + j * 40, 280, 34, c, { rx: 8, sw: 2.5 }); txt(rt, 44, 275 + j * 40, `${j + 1}. ${t}`, { "font-size": 15, class: "t-s" }); });
-    const bx = mk("g", {}, rt); box(bx, 320, 252, 112, 70, "var(--line-strong)", { rx: 10, dash: "6 5" }); txt(bx, 376, 276, "마지막 쪽지만", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(bx, 376, 298, "길 고르기가 봄", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+    const k = i < 0 ? 2 : i, s = RS[k];
+    rlog.innerHTML = logHtml(s); drawRS(rt, s);
     stat.innerHTML = i < 0 ? "<b>세 단계를 모두 지난 모습입니다</b>" : `<b>${["모델 응답 1 → tools", "tools → model", "모델 응답 2 → 끝"][k]}</b>`;
   }
   story("[data-gb-story]", (i) => drawRoute(i)); drawRoute(0);
 
-  /* ───── 도구 창고 ───── */
-  const wh = $("[data-gb-warehouse]"); let te = "off";
+  /* ───── ToolNode 오류 처리: 실행 기록이 끊기는지 이어지는지 ───── */
+  let te = "off";
+  const TL = { off: [["", 'model → ai    get_ticket(ticket_id="T1042")'], ["err", "tools → ValueError: T1042 티켓이 없습니다. 번호는 T-1042 형식입니다.", "예외가 그래프 밖으로 나가 실행이 멈춤"], ["cut", "", "여기부터는 실행되지 않음 · 사용자는 답을 못 받음"], ["ghost", 'model → ai    get_ticket(ticket_id="T-1042")'], ["ghost", "tools → tool  T-1042: 부품 대기, 도착 예정 10월 18일"], ["ghost", "model → ai    T-1042는 부품 대기 중입니다."]],
+    on: [["", 'model → ai    get_ticket(ticket_id="T1042")'], ["ok", 'tools → tool  status="error" · T1042 티켓이 없습니다. 번호는 T-1042 형식입니다.', "예외가 오류 쪽지로 바뀌어 모델에게 감"], ["", 'model → ai    get_ticket(ticket_id="T-1042")'], ["", "tools → tool  T-1042: 부품 대기, 도착 예정 10월 18일"], ["", "model → ai    T-1042는 부품 대기 중입니다."]] };
   const WN = { off: "기본값에서는 도구 안의 예외가 그대로 위로 던져져 그래프가 멈춥니다. 직접 돌려 보니 ValueError가 났습니다.", on: "handle_tool_errors=True면 예외가 오류 표시가 붙은 결과 쪽지(status: error)로 바뀌어 모델에게 돌아갑니다. 모델이 읽고 인자를 고칠 수 있습니다." };
-  function drawWh() {
-    wh.innerHTML = ""; const okp = te === "on";
-    box(wh, 14, 10, 432, 66, C.model, {}); txt(wh, 30, 38, "모델의 도구 요청 쪽지", { "font-size": 15, class: "t-d" }); txt(wh, 30, 62, 'get_ticket(ticket_id="T1042")', { "font-size": 16, class: "t-s mono" });
-    arrowDown(wh, 230, 78, 112);
-    box(wh, 14, 116, 432, 150, okp ? C.code : C.bad, { fill: `color-mix(in srgb, ${okp ? C.code : C.bad} 6%, var(--bg-base))`, sw: 4 }); mk("use", { href: "#gb-ic-gear", x: 28, y: 126, width: 34, height: 34, style: `color:${okp ? C.code : C.bad}` }, wh); txt(wh, 70, 150, "ToolNode (도구 창고)", { "font-size": 17, class: "t-s", style: `fill:${okp ? C.code : C.bad}` });
-    box(wh, 30, 176, 190, 70, "var(--fg-neutral)", { rx: 10, fill: "var(--bg-base)" }); txt(wh, 125, 202, "get_ticket 실행", { "font-size": 15.5, "text-anchor": "middle", class: "t-s" }); txt(wh, 125, 226, "번호가 틀려 예외 발생", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` });
-    mk("use", { href: "#gb-ic-bolt", x: 232, y: 190, width: 38, height: 38, style: `color:${C.bad}` }, wh);
-    if (okp) { box(wh, 286, 176, 144, 70, C.code, { rx: 10, fill: `color-mix(in srgb, ${C.code} 14%, var(--bg-base))` }); txt(wh, 358, 202, "오류 쪽지로 변환", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(wh, 358, 226, "status: error", { "font-size": 15, "text-anchor": "middle", class: "t-s mono" }); arrowDown(wh, 358, 268, 330, C.code); box(wh, 14, 334, 432, 100, C.model, {}); mk("use", { href: "#gb-ic-robot", x: 28, y: 346, width: 40, height: 40, style: `color:${C.model}` }, wh); txt(wh, 80, 366, "모델이 오류 쪽지를 읽고", { "font-size": 15.5, class: "t-s" }); txt(wh, 80, 392, '인자를 "T-1042"로 고쳐 다시 요청', { "font-size": 15.5, class: "t-s" }); txt(wh, 80, 420, "예: T1042 티켓이 없습니다. 번호는 T-1042 형식입니다.", { "font-size": 15, class: "t-d" }); }
-    else { mk("use", { href: "#gb-ic-stop", x: 300, y: 178, width: 60, height: 60, style: `color:${C.bad}` }, wh); txt(wh, 366, 214, "창고가 멈춤", { "font-size": 16, class: "t-s", style: `fill:${C.bad}` }); arrowDown(wh, 230, 268, 330, C.bad); box(wh, 14, 334, 432, 100, C.bad, { dash: "7 5", fill: `color-mix(in srgb, ${C.bad} 6%, var(--bg-base))` }); txt(wh, 30, 372, "예외가 그래프 밖으로 나가", { "font-size": 16, class: "t-s", style: `fill:${C.bad}` }); txt(wh, 30, 400, "실행이 멈추고 사용자는 답을 못 받음", { "font-size": 16, class: "t-s", style: `fill:${C.bad}` }); }
+  function drawTl() {
+    $("[data-gb-tlog]").innerHTML = TL[te].map(([c, t, sm]) => `<li class="${c}">${esc(t)}${sm ? `<small>${esc(sm)}</small>` : ""}</li>`).join("");
     $("[data-gb-wnote]").textContent = WN[te];
   }
-  $$("[data-gb-te]").forEach((b) => b.addEventListener("click", () => { te = b.dataset.gbTe; press("[data-gb-te]", b); drawWh(); }, { signal })); drawWh();
+  $$("[data-gb-te]").forEach((b) => b.addEventListener("click", () => { te = b.dataset.gbTe; press("[data-gb-te]", b); drawTl(); }, { signal })); drawTl();
+
+  /* ───── Command: 갈림길이 선로 위에 있나, 역 안에 숨었나 ───── */
+  const pen = (p, x, y, t) => txt(p, x, y, t, { "font-size": 17, class: "t-s", style: `fill:${BAD}` });
+  (function drawCmd() {
+    const a = $("[data-gb-cmd1]"), b = $("[data-gb-cmd2]"); const sx = 200, sy = 84;
+    const br = (p, x0, dash) => { [[`M${x0} ${sy} C${x0 + 60} ${sy} 300 34 360 34 H404`], [`M${x0} ${sy} C${x0 + 60} ${sy} 300 134 360 134 H404`]].forEach(([d]) => mk("path", { d, fill: "none", stroke: dash ? RAIL : INK, "stroke-width": dash ? 4 : 7, "stroke-dasharray": dash ? "7 7" : "", "stroke-linecap": "round" }, p));
+      mk("circle", { cx: 408, cy: 34, r: 12, fill: INK }, p); txt(p, 390, 18, "tools", { "font-size": 17, class: "t-s mono", "text-anchor": "end", style: halo });
+      mk("line", { x1: 408, y1: 118, x2: 408, y2: 150 }, p).setAttribute("style", `stroke:${INK};stroke-width:6;stroke-linecap:round`); txt(p, 388, 158, "끝", { "font-size": 17, class: "t-s", "text-anchor": "end", style: halo }); };
+    br(a, sx, false); mk("path", { d: `M60 ${sy} H${sx}`, stroke: INK, "stroke-width": 7, "stroke-linecap": "round" }, a);
+    mk("circle", { cx: sx, cy: sy, r: 6, fill: "var(--bg-base)", stroke: INK, "stroke-width": 3 }, a); mk("ellipse", { cx: sx + 14, cy: sy, rx: 34, ry: 26, fill: "none", stroke: BAD, "stroke-width": 2.5, transform: `rotate(-8 ${sx + 14} ${sy})` }, a);
+    mk("circle", { cx: 60, cy: sy, r: 15, fill: INK }, a); txt(a, 60, sy + 40, "model", { "font-size": 17, class: "t-s mono", "text-anchor": "middle" }); pen(a, 16, 180, "갈림길이 선로 위에 보임");
+    br(b, 126, true); mk("circle", { cx: 80, cy: sy, r: 46, fill: "var(--bg-base)", stroke: INK, "stroke-width": 5 }, b);
+    mk("path", { d: `M56 ${sy} H80 L104 ${sy - 14} M80 ${sy} L104 ${sy + 14}`, fill: "none", stroke: MUT, "stroke-width": 3, "stroke-linecap": "round" }, b); txt(b, 80, sy + 72, "model", { "font-size": 17, class: "t-s mono", "text-anchor": "middle" });
+    mk("ellipse", { cx: 80, cy: sy, rx: 58, ry: 56, fill: "none", stroke: BAD, "stroke-width": 2.5 }, b); pen(b, 160, 180, "갈림길이 역 안에 숨음");
+  })();
+
+  /* ───── 한도 눈금: 바깥 한도(recursion_limit)와 내가 만든 turns 한도 ───── */
+  let tn = "off"; const lim = $("[data-gb-limit]");
+  const LN = { off: "모델이 도구만 계속 부르면 model과 tools가 번갈아 칸을 채우다 여섯 번째 칸에서 recursion_limit 6에 걸립니다. 직접 돌렸을 때 GraphRecursionError가 났습니다.", on: "model 노드가 turns를 1씩 올리고 길 고르기 함수가 turns 3을 보면 끝으로 보냅니다. 바깥 한도에 닿기 전에 내가 정한 자리에서 끝납니다." };
+  function drawLimit() {
+    lim.innerHTML = ""; const X = (i) => 40 + i * 63, Y = 92, stopAt = tn === "on" ? 4 : 5, f = (lim.getBoundingClientRect().width || innerWidth) < 520 ? 1.22 : 1;
+    lim.setAttribute("viewBox", f > 1 ? "0 0 460 238" : "0 0 460 210");
+    txt(lim, 16, 26, "눈금 한 칸 = 노드 한 번 · recursion_limit = 6", { "font-size": 16 * f, class: "t-d" });
+    mk("line", { x1: X(0), y1: Y, x2: X(6), y2: Y, stroke: RAIL, "stroke-width": 4 }, lim);
+    let turns = 0;
+    for (let i = 0; i < 7; i++) { const isM = i % 2 === 0; if (isM && i <= stopAt) turns++;
+      const ran = i <= stopAt, err = tn === "off" && i === 5, blocked = i > stopAt;
+      mk("circle", { cx: X(i), cy: Y, r: 15, fill: err ? BAD : ran ? INK : "var(--bg-base)", stroke: err ? BAD : ran ? INK : RAIL, "stroke-width": 2.5, "stroke-dasharray": blocked ? "4 4" : "" }, lim);
+      txt(lim, X(i), Y + 6, String(i + 1), { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: ran ? "fill:var(--bg-base)" : "fill:var(--fg-neutral)" });
+      txt(lim, X(i), Y + (f > 1 && !isM ? 62 : 40), isM ? "model" : "tools", { "font-size": 15 * f, class: "mono " + (ran ? "t-s" : "t-d"), "text-anchor": "middle", opacity: blocked ? .5 : 1 });
+      if (tn === "on" && isM && ran) txt(lim, X(i), Y - 26, `turns ${turns}`, { "font-size": 14 * f, class: "t-s mono", "text-anchor": "middle", ...(turns === 3 ? { style: `fill:${ACC}` } : {}) });
+    }
+    if (tn === "off") { const x = X(5) + 32; mk("line", { x1: x, y1: Y - 34, x2: x, y2: Y + 52, stroke: BAD, "stroke-width": 4, "stroke-linecap": "round" }, lim); txt(lim, X(6) + 16, Y + (f > 1 ? 98 : 86), "GraphRecursionError", { "font-size": 16 * f, class: "t-s mono", "text-anchor": "end", style: `fill:${BAD}` }); txt(lim, X(6) + 16, Y + (f > 1 ? 122 : 108), "그래프가 정한 바깥 한도", { "font-size": 15 * f, class: "t-d", "text-anchor": "end" }); }
+    else { const x = X(4); mk("path", { d: `M${x + 15} ${Y} Q${x + 31} ${Y} ${x + 31} ${Y + 18} V${Y + 70}`, fill: "none", stroke: ACC, "stroke-width": 5, "stroke-linecap": "round" }, lim); mk("line", { x1: x + 15, y1: Y + 72, x2: x + 47, y2: Y + 72, stroke: ACC, "stroke-width": 5, "stroke-linecap": "round" }, lim); txt(lim, x + 47, Y + (f > 1 ? 112 : 102), "끝 · 내가 정한 한도", { "font-size": 16 * f, class: "t-s", "text-anchor": "end", style: `fill:${ACC}` }); }
+    $("[data-gb-lnote]").textContent = LN[tn];
+  }
+  $$("[data-gb-tn]").forEach((b) => b.addEventListener("click", () => { tn = b.dataset.gbTn; press("[data-gb-tn]", b); drawLimit(); }, { signal })); drawLimit(); addEventListener("resize", drawLimit, { passive: true, signal });
 
   initTerms({
     g: [["cmd", "$ python agent_graph.py"], ["wait", 700], ["line", "model → ai [{'name': 'get_ticket', 'args': {'ticket_id': 'T-1042'}, ...}]"], ["line", "tools → tool T-1042: 부품 대기, 도착 예정 10월 18일"], ["line", "model → ai T-1042는 부품 대기 중입니다."], ["type", "['human', 'ai', 'tool', 'ai']"]],
