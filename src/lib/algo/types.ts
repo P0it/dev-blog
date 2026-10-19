@@ -153,6 +153,11 @@ export type StageState = {
    * stuck(놓을 칸이 없어 앞 줄로 돌아감) · done(모든 줄에 놓음). 노리는 칸은 보드가 `at` 으로 직접 계산한다.
    */
   queens?: { n: number; at: number[]; row: number; try?: number; mode: "scan" | "place" | "back" | "stuck" | "done" };
+  /**
+   * 에라토스테네스의 체 수 격자. `erased[m]` 은 수 m 이 지워졌는지(0 은 쓰지 않는다), `i` 는 지금 보는 수,
+   * `plan` 은 이번에 지울 예정인 배수, `fresh` 는 이 스텝에서 새로 지운 수, `done` 이면 남은 수(소수)를 강조한다.
+   */
+  sieve?: { n: number; erased: boolean[]; i?: number; plan?: number[]; fresh?: number[]; done?: boolean };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

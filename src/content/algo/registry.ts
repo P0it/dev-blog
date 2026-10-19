@@ -282,7 +282,16 @@ export const registry: AlgoEntry[] = [
 
   // ── 수학
   plan("gcd", "최대공약수", "유클리드가 2300년 전에 푼 문제", "수학", ["gcd", "유클리드"], ["약수", "기약분수"]),
-  plan("sieve", "에라토스테네스의 체", "소수를 체로 거르기", "수학", ["sieve", "소수"], ["소수 판별", "N까지 전부"]),
+  {
+    slug: "sieve",
+    title: "에라토스테네스의 체",
+    lede: "소수를 체로 거르기",
+    category: "수학",
+    tier: 1,
+    aliases: ["sieve", "소수", "prime", "에라토스테네스", "소수 판별"],
+    signals: ["N 이하 소수를 전부 구한다", "소수 판별을 여러 번 한다", "약수가 없는 수를 거른다"],
+    status: "ready",
+  },
 ];
 
 export function byCategory(): Map<string, AlgoEntry[]> {
