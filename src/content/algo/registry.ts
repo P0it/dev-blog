@@ -49,7 +49,7 @@ export const registry: AlgoEntry[] = [
   // ── 기초 개념
   { slug: "big-o", title: "시간복잡도", lede: "1억 번이면 1초, 그래서 어쩌라고", category: "기초 개념", tier: 1, aliases: ["Big-O", "빅오", "time complexity"], signals: ["N이 얼마까지", "제한 시간 1~2초", "반복문 안의 반복문"], status: "ready" },
   { slug: "recursion", title: "재귀", lede: "거울 앞에 거울을 두면", category: "기초 개념", tier: 1, aliases: ["recursion", "재귀 함수", "재귀호출"], signals: ["같은 모양의 더 작은 문제", "점화식이 주어진다", "폴더·트리처럼 안에 같은 것이 든다"], status: "ready" },
-  plan("brute-force", "완전탐색", "일단 다 해 보면 안 되나", "기초 개념", ["brute force"], ["N이 작다"]),
+  { slug: "brute-force", title: "완전탐색", lede: "일단 다 해 보면 안 되나", category: "기초 개념", tier: 1, aliases: ["brute force", "전수 조사", "exhaustive search", "itertools"], signals: ["N이 작다", "모든 경우", "조건을 만족하는 것 중 최선"], status: "ready" },
   plan("two-pointers", "투 포인터", "양쪽에서 좁혀 오기", "기초 개념", ["two pointers"], ["정렬돼 있다", "두 수의 합"]),
   plan("sliding-window", "슬라이딩 윈도우", "창문을 밀면서 보기", "기초 개념", ["sliding window"], ["연속한 구간"]),
   plan("prefix-sum", "누적합", "구간의 합을 한 번 빼기로", "기초 개념", ["prefix sum"], ["구간 합을 여러 번"]),
