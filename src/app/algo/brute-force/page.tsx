@@ -54,7 +54,7 @@ export default async function BruteForcePage() {
           { label: "물건 20개", n: subsetCount(20), unit: "가지" },
           { label: "물건 10개", n: subsetCount(10), unit: "가지" },
         ]}
-        caption="컴퓨터는 1초에 1억 번쯤 합니다(시간복잡도). 30개는 11초가 걸립니다."
+        caption="컴퓨터는 1초에 1억 번쯤 계산합니다(시간복잡도). 30개는 11초가 걸립니다."
       />
       <ul className="algo-keys">
         <li>
@@ -64,7 +64,7 @@ export default async function BruteForcePage() {
           <b>N 이 25 안팎을 넘으면</b> — 2^N 은 1초를 넘는다. 다른 방법을 찾아야 한다
         </li>
         <li>
-          <b>그래서</b> — 문제에서 N 이 작다고 알려 주면 완전탐색을 먼저 의심한다
+          <b>그래서</b> — 문제에서 N 이 작다고 알려 주면 완전탐색을 먼저 떠올린다
         </li>
       </ul>
 
@@ -107,7 +107,7 @@ export default async function BruteForcePage() {
         ]}
         why={
           <>
-            물건마다 담음과 안 담음, 두 가지씩이 곱해집니다. 2 × 2 × 2 × 2 = <strong>16</strong>. 3개면 8, 5개면 32입니다.
+            물건마다 담기와 안 담기, 두 가지씩을 곱합니다. 2 × 2 × 2 × 2 = <strong>16</strong>. 3개면 8, 5개면 32입니다.
           </>
         }
       />

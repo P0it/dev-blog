@@ -1,5 +1,6 @@
 import type { CellState, Step, Tape } from "./types.ts";
 import { buildTape } from "./tape.ts";
+import { josa } from "./josa.ts";
 
 /** 물건을 담을지 말지 **모든 경우**를 나열하는 코드. mask 의 비트 하나가 물건 하나다. */
 export const PACK_CODE = [
@@ -60,14 +61,14 @@ function* walk(weights: number[], values: number[], limit: number): Generator<St
 
   yield at(2, `물건이 ${n}개입니다`, null, null);
   s.best = 0;
-  yield at(3, "가장 좋은 값을 0 으로 시작합니다", null, null);
+  yield at(3, "가장 좋은 값은 0 에서 시작합니다", null, null);
 
   for (let m = 0; m < total; m++) {
     s.mask = m;
     yield at(4, `${m + 1}번째 경우 / ${total}가지 — ${picked(m, n)}`, m, null);
     s.w = 0;
     s.v = 0;
-    yield at(5, "무게와 값을 0 으로 비웁니다", m, null);
+    yield at(5, "무게와 값을 0 으로 맞춥니다", m, null);
 
     for (let k = 0; k < n; k++) {
       s.i = k;
@@ -76,12 +77,12 @@ function* walk(weights: number[], values: number[], limit: number): Generator<St
       yield at(7, inIt ? `이 경우에 ${k}번 물건이 들어 있습니다` : `이 경우에 ${k}번 물건은 없습니다`, m, k);
       if (inIt) {
         s.w = (s.w ?? 0) + weights[k];
-        yield at(8, `무게에 ${weights[k]} 을 더합니다 → ${s.w}`, m, k);
+        yield at(8, `무게에 ${josa(weights[k], "을", "를")} 더합니다 → ${s.w}`, m, k);
         s.v = (s.v ?? 0) + values[k];
-        yield at(9, `값에 ${values[k]} 을 더합니다 → ${s.v}`, m, k);
+        yield at(9, `값에 ${josa(values[k], "을", "를")} 더합니다 → ${s.v}`, m, k);
       }
     }
-    yield at(6, `${picked(m, n)} 를 다 봤습니다`, m, null);
+    yield at(6, `다 봤습니다 — ${picked(m, n)}`, m, null);
 
     const w = s.w ?? 0;
     const v = s.v ?? 0;
@@ -89,13 +90,13 @@ function* walk(weights: number[], values: number[], limit: number): Generator<St
     const ok = w <= limit && v > best;
     yield at(
       10,
-      w > limit ? `무게 ${w} 가 한도 ${limit} 을 넘습니다. 버립니다` : ok ? `무게 ${w} 는 한도 안이고 값 ${v} 가 최고 ${best} 보다 큽니다` : `한도 안이지만 값 ${v} 가 최고 ${best} 를 넘지 못합니다`,
+      w > limit ? `무게 ${josa(w, "이", "가")} 한도 ${josa(limit, "을", "를")} 넘습니다. 버립니다` : ok ? `무게 ${josa(w, "은", "는")} 한도 안입니다. 값 ${josa(v, "이", "가")} 최고 ${best}보다 큽니다` : `한도 안이지만 값 ${josa(v, "이", "가")} 최고 ${josa(best, "을", "를")} 넘지 못합니다`,
       m,
       null,
     );
     if (ok) {
       s.best = v;
-      yield at(11, `최고 값을 ${v} 로 바꿉니다`, m, null);
+      yield at(11, `최고 값을 바꿉니다 → ${v}`, m, null);
     }
   }
 
