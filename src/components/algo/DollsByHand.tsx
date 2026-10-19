@@ -90,9 +90,9 @@ export function DollsByHand({ onDone }: { onDone?: (guessRight: boolean | null) 
   let ask: string;
   let button: string | null = null;
   if (guess === null) ask = "맨 안쪽 상자를 열면 무엇이 나올까요? 먼저 예상을 고르세요";
-  else if (done) ask = "전부 닫았습니다. 상자 1 안의 구슬은 모두 몇 개인지 알게 됐습니다";
+  else if (done) ask = "전부 닫았습니다. 상자 1 안의 구슬이 모두 몇 개인지 나왔습니다";
   else if (closing) {
-    ask = "맨 안쪽이 나왔습니다. 안쪽 상자부터 하나씩 닫으세요. 닫을 때마다 그 상자의 구슬 수가 정해집니다";
+    ask = "맨 안쪽에 닿았습니다. 안쪽 상자부터 하나씩 닫으세요. 닫을 때마다 그 상자의 구슬 수가 정해집니다";
     button = "가장 안쪽 상자 닫기";
   } else {
     ask = "상자 안에 상자가 들어 있습니다. 상자마다 구슬이 하나씩 있습니다. 상자 1 안의 구슬이 모두 몇 개인지 알아내세요";

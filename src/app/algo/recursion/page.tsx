@@ -45,7 +45,7 @@ export default async function RecursionPage() {
           자기 안에서 같은 일을 다시 하는 방법 = <strong>재귀</strong>
         </p>
         <p>
-          거울 앞에 거울을 두면 거울 속에 거울이 끝없이 이어집니다. 상자는 맨 안쪽에서 끝났기에 답이 나왔습니다.
+          거울 앞에 거울을 두면 거울 속에 거울이 끝없이 이어집니다. 상자는 맨 안쪽에서 끝났습니다. 그래서 답이 나왔습니다.
         </p>
       </DollsReveal>
 
@@ -66,7 +66,7 @@ export default async function RecursionPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 상자 열기를 그대로 옮긴 것이다</h2>
       <p>
-        1 부터 <strong>{N}</strong> 까지 곱하는 <code>factorial({N})</code>. <strong>다음</strong>을 눌러 한 줄씩 넘기며 층이 쌓이고 걷히는 걸 보세요. 중간에 한 번 물어봅니다.
+        <code>factorial({N})</code> 는 1 부터 <strong>{N}</strong> 까지 곱합니다. <strong>다음</strong>을 눌러 한 줄씩 넘기며 층이 쌓이고 걷히는 걸 보세요. 중간에 한 번 물어봅니다.
       </p>
 
       <TowerPlayer
@@ -82,7 +82,7 @@ export default async function RecursionPage() {
           ],
           why: (
             <>
-              코드가 <code>n * …</code> 이라서 <strong>2 × 1 = 2</strong> 를 돌려줍니다. 상자에서 안쪽 답에 1 을 더했듯, 안쪽 층의 값이 와야 바깥 층이 계산을 이어 갑니다.
+              코드는 <code>n * …</code> 입니다. 그래서 <strong>2 × 1 = 2</strong> 를 돌려줍니다. 상자에서 안쪽 답에 1 을 더했듯 안쪽 층의 값이 와야 바깥 층이 계산을 이어 갑니다.
             </>
           ),
         }}
@@ -135,7 +135,7 @@ export default async function RecursionPage() {
         why={
           <>
             factorial(1) 이 1 을 돌려준 뒤에야 <strong>2 × 1 = 2</strong>, 그다음 3 × 2 = 6, 마지막으로 4 × 6 = 24 입니다.
-            곱셈은 부른 순서의 <strong>거꾸로</strong> 일어납니다. 안쪽 값이 있어야 바깥이 곱할 수 있기 때문입니다.
+            곱셈은 부른 순서와 <strong>거꾸로</strong> 일어납니다. 안쪽 값이 있어야 바깥이 곱할 수 있기 때문입니다.
           </>
         }
       />
@@ -162,7 +162,7 @@ export default async function RecursionPage() {
           <b>
             <code>sys.setrecursionlimit(10**6)</code>
           </b>{" "}
-          — 코딩테스트에서는 한도를 이렇게 늘려 씁니다. 너무 깊으면 한도에 닿기 전에 메모리가 먼저 터질 수 있다
+          — 코딩테스트에서는 한도를 이렇게 늘려 쓴다. 너무 깊으면 한도에 닿기 전에 메모리가 먼저 터질 수 있다
         </li>
       </ul>
       <p>깊이가 1만, 10만이 될 수 있는 문제는 재귀 대신 반복문으로 바꾸는 쪽이 안전합니다.</p>

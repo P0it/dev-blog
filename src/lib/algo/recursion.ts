@@ -1,5 +1,6 @@
 import type { Step, Tape } from "./types.ts";
 import { buildTape } from "./tape.ts";
+import { josa } from "./josa.ts";
 
 /** 화면에 보여 주는 Python 코드. 아래 제너레이터가 이 줄 번호를 따라간다. */
 export const FACTORIAL_CODE = [
@@ -43,7 +44,7 @@ function* call(n: number, stack: Frame[], outer: boolean): Generator<Step, numbe
     2,
     n,
     stack,
-    n === 1 ? "n 이 1 입니다. 여기서 멈춥니다" : `n 이 1 인지 봅니다. ${n} 이라서 아닙니다`,
+    n === 1 ? "n 이 1 입니다. 여기서 멈춥니다" : `n 이 1 인지 봅니다. ${josa(n, "이라서", "라서")} 아닙니다`,
   );
 
   if (n === 1) {
@@ -54,7 +55,7 @@ function* call(n: number, stack: Frame[], outer: boolean): Generator<Step, numbe
     return 1;
   }
 
-  yield snap(4, n, stack, `${n} × factorial(${n - 1}) 을 풀려면 factorial(${n - 1}) 부터 알아야 합니다`);
+  yield snap(4, n, stack, `factorial(${n - 1}) 부터 알아야 ${josa(n, "과", "와")} 곱할 수 있습니다`);
   const inner = yield* call(n - 1, stack, false);
   const ret = n * inner;
   frame.ret = ret;

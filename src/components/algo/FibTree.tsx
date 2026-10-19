@@ -62,7 +62,7 @@ export function FibTree({ n }: { n: number }) {
         })}
       </svg>
       <figcaption>
-        호출 {placed.length}번. 색이 다른 <b>fib(2)</b> 는 같은 계산을 {countOf(root, 2)}번 되풀이한 것입니다.
+        호출은 모두 {placed.length}번입니다. 색이 다른 <b>fib(2)</b> 는 같은 계산을 {countOf(root, 2)}번 되풀이합니다.
       </figcaption>
     </figure>
   );
