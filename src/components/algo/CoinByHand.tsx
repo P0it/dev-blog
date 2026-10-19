@@ -28,9 +28,9 @@ type Phase = "A" | "predict" | "B" | "optimal";
 
 /** 예상 선택지 — 정답(아니다)을 세 번째에 둬서 위치로 찍을 수 없게 한다. */
 const GUESSES: { v: CoinGuess; label: string }[] = [
+  { v: "no", label: "아니다 — 더 적게 줄 방법이 있다" },
   { v: "yes", label: "그렇다 — 큰 동전부터 주면 늘 가장 적다" },
   { v: "unknown", label: "알 수 없다 — 해 봐야 안다" },
-  { v: "no", label: "아니다 — 더 적게 줄 방법이 있다" },
 ];
 
 const GUESS_LABEL: Record<CoinGuess, string> = { yes: "그렇다", unknown: "알 수 없다", no: "아니다" };

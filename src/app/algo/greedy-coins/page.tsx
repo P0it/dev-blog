@@ -42,9 +42,9 @@ export default async function GreedyCoinsPage() {
     at: afterFour,
     ask: <>4원을 주고 남은 돈이 2원입니다. 다음에 줄 동전은 무엇일까요?</>,
     options: [
+      { label: "1원 — 4원도 3원도 남은 2원보다 크다", correct: true },
       { label: "4원 — 큰 동전이니까 한 번 더" },
       { label: "3원 — 그다음으로 큰 동전" },
-      { label: "1원 — 4원도 3원도 남은 2원보다 크다", correct: true },
     ],
     why: (
       <>
@@ -84,12 +84,12 @@ export default async function GreedyCoinsPage() {
         </p>
         <p>
           세트 A 에서는 맞았고 세트 B 에서는 틀렸습니다. 그리디는 늘 맞는 방법이 아닙니다. 모든 경우를 따져 맞게 만드는
-          방법은 <Link href="/algo/dp-1d">1차원 DP</Link> 에서 봤습니다.
+          방법은 작은 경우부터 표를 채우는 DP 입니다. 앞 장의 <Link href="/algo/knapsack">0/1 배낭</Link> 이 그 예입니다.
         </p>
       </CoinReveal>
 
       {/* ③ 조건 짚기 */}
-      <h2>큰 동전이 작은 동전의 배수일 때만 맞다</h2>
+      <h2>큰 동전이 작은 동전의 배수일 때는 맞다</h2>
       <ul className="algo-keys">
         <li>
           <b>세트 A</b> — 500 = 5 × 100, 100 = 2 × 50, 50 = 5 × 10. 큰 동전 하나는 작은 동전 여러 개와 같아서 큰 동전을 줘도 손해가
@@ -146,7 +146,7 @@ export default async function GreedyCoinsPage() {
           <b>
             <code>amount -= coin</code>
           </b>{" "}
-          — 낼 때마다 남은 돈이 준다. 한 번 낸 동전은 물리지 않는다
+          — 낼 때마다 남은 돈이 줄어든다. 한 번 낸 동전은 물리지 않는다
         </li>
       </ul>
 
@@ -188,7 +188,7 @@ export default async function GreedyCoinsPage() {
           <b>
             <code>while</code> 대신 <code>//</code> 와 <code>%</code>
           </b>{" "}
-          — 10억 원이면 <code>while</code> 이 200만 번 돌아 0.04초 걸리지만, 몫을 <code>amount // coin</code> 으로 한 번에 구하면 4번
+          — 세트 A 로 10억 원이면 <code>while</code> 이 200만 번 돌아 0.04초 걸린다. 몫을 <code>amount // coin</code> 으로 한 번에 구하면 4번
           계산해 0.000003초다(Python 3.14, 컴퓨터마다 다르다)
         </li>
       </ul>

@@ -28,3 +28,11 @@ test("josa — 음수도 끝자리로 고른다", () => {
   assert.equal(josa(-3, "이", "가"), "-3이");
   assert.equal(josa(-2, "이", "가"), "-2가");
 });
+
+test("josa — 으로/로 는 ㄹ 받침(1·7·8)에서 로", () => {
+  assert.equal(josa(7, "으로", "로"), "7로");
+  assert.equal(josa(1, "으로", "로"), "1로");
+  assert.equal(josa(8, "으로", "로"), "8로");
+  assert.equal(josa(10, "으로", "로"), "10으로"); // 십 → 받침 ㅂ
+  assert.equal(josa(12, "으로", "로"), "12로"); // 이 → 없음
+});

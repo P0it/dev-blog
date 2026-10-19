@@ -36,8 +36,8 @@ export default async function ActivitySelectionPage() {
     at: ifStep[2],
     ask: (
       <>
-        누르기 전에 맞혀 보세요. 이제 {third.name}({third.s}~{third.e}시)를 봅니다. 지금까지 고른 회의의 끝은 {nowEnd}시입니다. 6번 줄에서 이
-        회의는 어떻게 될까요?
+        이제 {third.name}({third.s}~{third.e}시)를 봅니다. 지금까지 고른 회의의 끝은 {nowEnd}시입니다. 6번 줄에서 이 회의는 어떻게
+        될까요?
       </>
     ),
     options: [
@@ -47,7 +47,7 @@ export default async function ActivitySelectionPage() {
     ],
     why: (
       <>
-        6번 줄은 <strong>시작</strong>을 지금 끝과 견줍니다. {third.name}는 {third.s}시에 시작해서 {nowEnd}시보다 앞이라 이미 고른 회의와 겹칩니다. 건너뜁니다.
+        6번 줄은 <strong>시작</strong>을 지금 끝과 비교합니다. {third.name}는 {third.s}시에 시작해서 {nowEnd}시보다 앞이라 이미 고른 회의와 겹칩니다. 건너뜁니다.
       </>
     ),
   };
@@ -117,7 +117,7 @@ export default async function ActivitySelectionPage() {
           <b>짧은 순</b> — 가장 짧은 {mt(idx("B"))} 다음에 {mt(idx("E"))}를 고르면 {mt(idx("C"))}와 {mt(idx("F"))}가 둘 다 겹친다. {short.length}개
         </li>
         <li>
-          <b>끝나는 시간 순</b> — 어떤 입력에서도 가장 많이 잡힌다. 가장 먼저 끝나는 회의를 고르면 뒤에 남는 시간이 줄어들지 않는다. {end.length}개
+          <b>끝나는 시간 순</b> — 어떤 입력에서도 가장 많이 잡힌다. 가장 먼저 끝나는 회의를 고르면 뒤에 남는 시간이 가장 길다. {end.length}개
         </li>
         <li>
           <b>① 에서 본 것</b> — 시작 순과 짧은 순이 진 자리가 바로 반례다. 기준을 바꾸면 결과가 달라진다
@@ -133,7 +133,7 @@ export default async function ActivitySelectionPage() {
       <MeetPlayer tape={tape} pause={pause} title="끝나는 시간이 빠른 회의부터 고르는 모습" />
 
       <p>
-        {tape.steps.length}스텝입니다. 2번 줄에서 줄이 바로 끝나는 시간 순으로 바뀝니다. 회의 이름(A~F)은 처음 순서이고, 그림의 줄 순서가 정렬된 순서입니다.
+        {tape.steps.length}스텝입니다. 2번 줄에서 회의 순서가 곧바로 끝나는 시간 순으로 바뀝니다. 회의 이름(A~F)은 처음 순서이고, 그림의 줄 순서가 정렬된 순서입니다.
       </p>
       <ul className="algo-keys">
         <li>

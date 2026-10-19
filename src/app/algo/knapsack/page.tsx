@@ -168,7 +168,7 @@ export default async function KnapsackPage() {
       <ul className="algo-keys">
         <li>
           <b>무게당 값이 큰 것부터 담으면</b> — 틀릴 수 있다. 용량 {GREEDY_COUNTER.W}에 P(무게 3 · 값 5), Q(무게 2 · 값 3), R(무게 2 · 값 3)이 있으면 P 부터 담아{" "}
-          {josa(counterGreedy, "이", "가")} 되지만 표는 Q 와 R 로 {josa(counterBest, "을", "를")} 찾는다. 이 장의 입력에서는 두 방법 모두 {greedyByRatio()}입니다
+          {josa(counterGreedy, "이", "가")} 되지만 표는 Q 와 R 로 {josa(counterBest, "을", "를")} 찾는다. 이 장의 입력에서는 두 방법 모두 {greedyByRatio()}이다
         </li>
         <li>
           <b>1차원 배열로 줄일 때</b> — 용량을 <strong>큰 쪽부터 거꾸로</strong> 돌아야 한다. 앞에서부터 돌면 같은 물건을 여러 번 담아 용량 4 칸이 {josa(bwd[4], "이", "가")} 아니라 {josa(fwd[4], "이", "가")} 된다 (A 를 두 번 담은 값이다)

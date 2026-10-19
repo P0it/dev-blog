@@ -12,5 +12,7 @@ const HAS_BATCHIM = [true, true, false, true, false, false, true, true, true, fa
 
 export function josa(n: number, withBatchim: string, withoutBatchim: string): string {
   const last = Math.abs(n % 10);
+  // ㄹ 받침(일·칠·팔 = 1·7·8)에는 "으로" 가 아니라 "로" 를 쓴다
+  if (withBatchim === "으로" && (last === 1 || last === 7 || last === 8)) return `${n}${withoutBatchim}`;
   return `${n}${HAS_BATCHIM[last] ? withBatchim : withoutBatchim}`;
 }

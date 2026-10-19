@@ -106,7 +106,7 @@ export function KnapByHand({ onDone, onReset }: { onDone?: (r: KnapResult) => vo
       ? `가방은 ${CAPACITY}kg까지 담을 수 있습니다. 물건 A(무게 2 · 값 3), B(무게 3 · 값 4), C(무게 4 · 값 5) 중에서 무게의 합이 ${josa(CAPACITY, "을", "를")} 넘지 않게 담아 값의 합을 가장 크게 만듭니다. 목표는 담을 수 있는 최대 가치입니다.`
       : phase === "done"
         ? `가방 용량 ${CAPACITY}에 담을 수 있는 최대 가치는 ${TABLE[N][CAPACITY]}입니다`
-        : "표의 칸 하나는 이 물건까지 보고 가방 용량이 이 열일 때 담을 수 있는 최대 가치입니다. 칸을 눌러 채워 보세요. 위 칸과 왼쪽 위 칸이 채워져 있어야 누를 수 있습니다";
+        : "표의 칸 하나는 그 줄의 물건까지 보고, 가방 용량이 그 열의 숫자일 때 담을 수 있는 최대 가치입니다. 칸을 눌러 채워 보세요. 위 칸과 왼쪽 위 칸이 채워져 있어야 누를 수 있습니다";
 
   return (
     <section className="algo-byhand algo-knap" aria-label="가방에 담는 표 채우기">

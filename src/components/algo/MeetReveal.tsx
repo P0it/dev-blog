@@ -26,7 +26,7 @@ export function MeetReveal({ children }: { children: ReactNode }) {
         <p className="algo-chain">
           {BEST.map((i) => `${NAMES[i]} ${MEETINGS[i][0]}~${MEETINGS[i][1]}시`).join(" → ")}
           <span>
-            내가 고른 회의는 {res?.mine ?? 0}개였고, 시작이 빠른 순은 {res?.counts.start ?? 0}개, 짧은 순은 {res?.counts.short ?? 0}개, 끝나는
+            내가 고른 회의는 {res?.mine ?? 0}개였습니다. 시작이 빠른 순은 {res?.counts.start ?? 0}개, 짧은 순은 {res?.counts.short ?? 0}개, 끝나는
             시간 순은 {res?.counts.end ?? 0}개({namesOf(BEST)})를 잡았습니다.
           </span>
         </p>
