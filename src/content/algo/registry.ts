@@ -85,7 +85,16 @@ export const registry: AlgoEntry[] = [
     signals: ["먼저 온 순서", "BFS", "양쪽 끝에서 넣고 뺀다"],
     status: "ready",
   },
-  plan("hash", "해시", "사물함을 번호 대신 이름으로 찾기", "자료구조", ["dict", "set", "hash"], ["있는지 빨리 확인"]),
+  {
+    slug: "hash",
+    title: "해시",
+    lede: "사물함을 번호 대신 이름으로 찾기",
+    category: "자료구조",
+    tier: 1,
+    aliases: ["dict", "set", "hash", "해시 테이블", "해시 함수", "딕셔너리", "집합", "hash table", "충돌"],
+    signals: ["있는지 빨리 확인", "몇 번 나왔는지 세기", "두 수의 합"],
+    status: "ready",
+  },
   {
     slug: "heap",
     title: "힙(우선순위 큐)",

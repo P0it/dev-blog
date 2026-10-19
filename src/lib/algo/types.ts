@@ -37,6 +37,11 @@ export type StageState = {
    * 지금까지 한 칸씩 당겼을 칸 수, `hot` 은 이 스텝에서 사람이 드나든 끝이다.
    */
   line?: { served: number[]; shifted: number; hot?: "front" | "back" };
+  /**
+   * 사물함(해시 표). `buckets[i]` 는 i 번 칸에 이어 붙은 이름표(먼저 온 것이 앞), `hot` 은 지금 열어 본 칸,
+   * `name` 은 지금 다루는 이름표, `scan` 은 `hot` 칸 안에서 지금까지 훑은 이름표 수.
+   */
+  hash?: { buckets: string[][]; hot?: number; name?: string; scan?: number };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
