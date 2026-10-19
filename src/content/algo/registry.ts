@@ -86,7 +86,16 @@ export const registry: AlgoEntry[] = [
     status: "ready",
   },
   plan("hash", "해시", "사물함을 번호 대신 이름으로 찾기", "자료구조", ["dict", "set", "hash"], ["있는지 빨리 확인"]),
-  plan("heap", "힙(우선순위 큐)", "가장 급한 것부터 꺼내기", "자료구조", ["heapq", "priority queue"], ["매번 최솟값"]),
+  {
+    slug: "heap",
+    title: "힙(우선순위 큐)",
+    lede: "가장 급한 것부터 꺼내기",
+    category: "자료구조",
+    tier: 1,
+    aliases: ["heapq", "priority queue", "우선순위 큐", "힙"],
+    signals: ["매번 최솟값", "K번째로 큰 수", "다익스트라"],
+    status: "ready",
+  },
 
   // ── 정렬
   { slug: "bubble-sort", title: "버블 정렬", lede: "옆 사람과 키 순서로 서 보기", category: "정렬", tier: 1, aliases: ["bubble sort", "거품 정렬"], signals: ["옆칸만 비교", "제자리 정렬"], status: "ready" },
