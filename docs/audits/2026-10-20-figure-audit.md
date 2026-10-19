@@ -12,7 +12,7 @@ HTML 페이지 글 55편의 그림 509개를 `POSTING.md` 5-9(그림 문법)로 
 |---|---|---|---|---|---|
 | high | langchain-middleware-hooks-guardrails | ai-agent | 6/0/0 | 5-9 규약이 반례로 든 글. 그림 6개 전부 상자·화살표·상자 안 상자·N개 세로 쌓기. 견본 docs/visual-grammar-specimens.html 이 바로 이 글의 대안 | 2026-10-20 · Critic 이해 4.5 / 시선 4 |
 | high | langgraph-rebuild-agent-graph-by-hand | ai-agent | 5/1/1 | 히어로 조립대부터 길 고르기·ToolNode·Command까지 노드 상자+화살표 반복. 한도 눈금만 양호 | |
-| high | ai-agent-vs-chatbot | ai-agent | 4/1/2 | LLM 이어쓰기·요청 응답·루프·구성도 모두 상자 흐름. 요리 비유와 대화 기억만 원리 그림 | |
+| high | ai-agent-vs-chatbot | ai-agent | 4/1/2 | LLM 이어쓰기·요청 응답·루프·구성도 모두 상자 흐름. 요리 비유와 대화 기억만 원리 그림 || 2026-10-20 · Critic 4/4 |
 | high | langchain-create-agent-loop-anatomy | ai-agent | 4/1/1 | invoke 흐름·그래프 노드 상자(제목+회색 부제)가 세 번 반복되고 요약도 라벨 상자 목록. 계단 한도만 직관형 || 2026-10-20 · Critic 4/4 |
 | high | langchain-init-chat-model-switch-provider | ai-agent | 4/1/3 | 히어로가 코드 상자→어댑터 상자→콘센트 상자 세로 흐름. 응답 비교·파이프·요약도 상자. 물컵·다이얼·채팅 말풍선은 양호 | |
 | high | mcp-host-client-server-primitives | ai-agent | 4/0/3 | 연결 가닥 히어로와 생명선 두 개는 좋음. Host·Client·Server, 서랍, 층, A2A 그림이 모두 둥근 상자+아이콘+화살표 | |

@@ -6,10 +6,10 @@ tags: [AI Agent, LLM, 챗봇, 워크플로, OpenAI API, Python]
 category: ai
 series: ai-agent
 series_order: 1
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-vs-chatbot-mv7k1o3b.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-vs-chatbot-mvfhp23j.jpg
 ---
 <!-- page -->
-<!-- layout: 비교 나란히(세 갈래 레인) 히어로 + 가운데 글 열, 넓은 그림은 860px | 글의 성격: 같은 입력을 세 방식이 다르게 처리하는 비교가 핵심, 뒤 섹션은 짧은 개념 여러 개 | 버린 후보: 그림 고정 스크롤리텔링(한 그림이 단계별로 변하는 계산 글이 아님), 옆 조작판(모든 그림을 움직일 변수 하나가 없음) -->
+<!-- layout: 비교 히어로(한 요청이 챗봇·워크플로·Agent 세 선로로 갈라지는 노선도, 상황 토글로 Agent 갈림길만 바뀜) + 글|그림 2단(흐르는 글자와 진짜 티켓 장부) + 제목|글 머리 + 요청·응답 원문에 빨간 번호 메모 + 쌓이는 messages 띠 + 노선도 스크롤리텔링(모델역·도구 실행역 순환선) + 시리즈 노선도 | 글의 성격: 같은 입력을 세 방식이 다르게 처리하는 비교가 핵심, 뒤 섹션은 짧은 개념 여러 개. 그림 문법은 POSTING 5-9 | 버린 후보: 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 세 레인 단계 카드 목록 히어로·프롬프트→LLM→출력 상자·요청/응답 봉투 상자·모델↔프로그램 상자 루프·둥근 상자 구성도(2026-10-20 상자 그림 전수 조사로 교체) -->
 <style>
 .post-page .ag {
   --ag-human: rgb(37, 112, 235); --ag-code: rgb(16, 150, 120); --ag-model: rgb(226, 106, 28); --ag-bad: rgb(214, 56, 56);
@@ -34,13 +34,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .ag details + details { margin-top: 4px; }
 
-/* 누가 정했나 칩 — 이 글의 시각 언어 */
-.post-page .ag-who { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 2px 9px 2px 7px; border-radius: 999px; white-space: nowrap; border: 1.5px solid currentColor; }
+/* 사람 이름표 */
+.post-page .ag-who { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 2px 9px 2px 7px; border-radius: 999px; white-space: nowrap; border: 1.5px solid currentColor; color: var(--fg-strong); }
 .post-page .ag-who::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.post-page .ag-who.h { color: var(--ag-human); }
-.post-page .ag-who.c { color: var(--ag-code); }
-.post-page .ag-who.m { color: var(--ag-model); }
-
 /* 버튼: 고르기 = 붙은 세그먼트, 실행 = 테두리 + ▶ */
 /* 고르기 = 토글(옅은 트랙 안에서 고른 칸만 채움). 밑줄 탭과 섞지 않는다 */
 .post-page .ag-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
@@ -54,84 +50,67 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-ctrl { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
 .post-page .ag-ctrl > span { font-size: 14px; color: var(--fg-neutral); }
 
-/* 히어로 */
+/* 히어로: 한 요청이 세 선로로 갈라지는 노선도 */
 .post-page .ag-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
 .post-page .ag-hero .ag-col { text-align: left; }
 .post-page .ag-lede { font-size: 18px !important; color: var(--fg-neutral); margin-top: 32px !important; }
 .post-page .ag-req { max-width: 700px; margin: 44px auto 0; display: flex; gap: 12px; align-items: flex-start; }
-.post-page .ag-req-bubble { flex: 1; padding: 12px 16px; border-radius: 16px 16px 16px 4px; border: 1.5px solid var(--ag-human); font-size: 16px; line-height: 1.6; }
-.post-page .ag-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); margin-top: 40px; }
-.post-page .ag-lane { border-top: 2px solid var(--line-strong); padding-top: 14px; }
-.post-page .ag-lane h3 { font-family: var(--font-display); font-size: 20px; color: var(--fg-strong); margin: 0 0 4px; }
-.post-page .ag-lane .ag-sub { font-size: 14px; color: var(--fg-neutral); margin: 0 0 24px; line-height: 1.5; }
-.post-page .ag-steps { list-style: none; margin: 0; padding: 0; position: relative; }
-.post-page .ag-step { position: relative; padding: 0 0 24px 22px; transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0ms); }
-.post-page .ag-step::before { content: ""; position: absolute; left: 6px; top: 10px; bottom: -2px; width: 2px; background: var(--line-subtle); }
-.post-page .ag-step:last-child::before { display: none; }
-.post-page .ag-step::after { content: ""; position: absolute; left: 1px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg-base); border: 2.5px solid var(--dot, var(--line-strong)); }
-.post-page .ag-step[data-w="h"] { --dot: var(--ag-human); }
-.post-page .ag-step[data-w="c"] { --dot: var(--ag-code); }
-.post-page .ag-step[data-w="m"] { --dot: var(--ag-model); }
-.post-page .ag-step .ag-who { margin-bottom: 6px; }
-.post-page .ag-step-t { font-size: 15px; line-height: 1.55; color: var(--fg-normal); }
-.post-page .ag-step-r { display: block; margin-top: 4px; font-size: 13.5px; line-height: 1.5; color: var(--fg-neutral); }
-.post-page .ag-step.hide { opacity: 0; transform: translateY(14px); transition-delay: 0ms; }
-.post-page .ag-lane[data-lane="flow"] { --d: 90ms; } .post-page .ag-lane[data-lane="agent"] { --d: 180ms; }
-.post-page .ag-end { margin-top: 2px; padding: 8px 12px; border-radius: 10px; font-size: 14px; line-height: 1.5; font-weight: 600; border: 1.5px dashed var(--line-strong); color: var(--fg-strong); transition: opacity .35s; }
-.post-page .ag-end.bad { border-style: solid; border-color: var(--ag-bad); color: var(--ag-bad); }
-.post-page .ag-end { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0ms); }
-.post-page .ag-end.hide { opacity: 0; transform: translateY(14px); transition-delay: 0ms; }
-.post-page .ag .ag-swipe { display: none; font-size: 14px; color: var(--fg-neutral); margin: 16px 0 0; }
-.post-page .ag-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 14px; color: var(--fg-neutral); margin-top: 32px; }
+.post-page .ag-req-bubble { flex: 1; padding: 12px 16px; border-radius: 16px 16px 16px 4px; border: 1.5px solid var(--fg-strong); font-size: 16px; line-height: 1.6; }
+.post-page .ag-hfig { max-width: 1040px; margin: 40px auto 0; }
+.post-page .ag-hfig .ag-ctrl { margin-bottom: 22px; }
+.post-page .ag-scene { width: 100%; height: auto; display: block; margin: 0 auto; }
+.post-page .ag-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .ag-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .ag-scene .t-d { fill: var(--fg-neutral); }
+.post-page .ag p.ag-eff { font-size: 16px; line-height: 1.7; font-weight: 600; color: var(--fg-strong); margin: 18px auto 0; max-width: 760px; min-height: 3.4em; text-align: center; }
+.post-page .ag p.ag-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
 
-/* 1. 글만 쓰는 LLM */
-.post-page .ag-gen { display: grid; grid-template-columns: 1fr 44px auto 44px 1.3fr; align-items: center; }
-.post-page .ag-gen-arr { display: grid; place-items: center; color: var(--fg-alternative); font-size: 20px; line-height: 1; }
-.post-page .ag-gen-arr::before { content: "→"; }
-.post-page .ag-gen-in, .post-page .ag-gen-out { border: 1.5px solid var(--line-strong); border-radius: 14px; padding: 12px 14px; min-height: 92px; font-size: 15px; line-height: 1.6; }
-.post-page .ag-gen-in { border-color: var(--ag-human); }
-.post-page .ag-gen-box { width: 96px; height: 96px; border-radius: 20px; border: 2.5px solid var(--ag-model); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--ag-model); font-size: 20px; }
-.post-page .ag-tok { display: inline-block; padding: 1px 5px; margin: 2px 2px 2px 0; border-radius: 6px; background: color-mix(in srgb, var(--ag-model) 14%, var(--bg-base)); border: 1px solid color-mix(in srgb, var(--ag-model) 45%, var(--bg-base)); animation: pg-ag-pop .25s ease-out; }
-@keyframes pg-ag-pop { from { opacity: 0; transform: translateY(4px); } }
-.post-page .ag-gen-lbl { font-size: 12.5px; color: var(--fg-neutral); display: block; margin-bottom: 6px; font-weight: 700; letter-spacing: .02em; }
-.post-page .ag-db { margin-top: 18px; display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1.5px dashed var(--line-strong); }
-.post-page .ag-db svg { flex: none; }
-.post-page .ag-db-t { font-size: 15px; line-height: 1.55; }
-.post-page .ag-db-t b { font-family: var(--font-mono); }
-.post-page .ag-db.flash { animation: pg-ag-flash 1.2s ease-out; }
-@keyframes pg-ag-flash { 0%, 40% { border-color: var(--ag-bad); } }
+/* 1. 글만 쓰는 LLM: 흐르는 글자 + 진짜 티켓 장부 */
+.post-page .ag-txt { font-size: 16px; line-height: 2; margin-top: 22px; }
+.post-page .ag-txt-lbl { display: block; font-size: 13px; font-weight: 700; color: var(--fg-neutral); line-height: 1.5; margin-bottom: 2px; }
+.post-page .ag-txt-in { color: var(--fg-strong); padding-bottom: 12px; border-bottom: 1px dashed var(--line-strong); }
+.post-page .ag-txt-out { padding-top: 12px; min-height: 6.2em; }
+.post-page .ag-tok { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--fg-neutral) 55%, transparent); margin-right: 2px; animation: pg-ag-pop .25s ease-out; }
+.post-page .ag-tok.lie { color: var(--ag-bad); font-weight: 700; box-shadow: inset 0 -3px 0 var(--ag-bad); }
+@keyframes pg-ag-pop { from { opacity: 0; } }
+.post-page .ag-ledger { margin-top: 28px; font-size: 15px; }
+.post-page .ag-ledger h4 { margin: 0 0 8px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .ag-ledger ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--fg-strong); }
+.post-page .ag-ledger li { display: flex; gap: 16px; padding: 8px 2px; border-bottom: 1px solid var(--line-subtle); color: var(--fg-normal); transition: color .3s; }
+.post-page .ag-ledger li b { font-family: var(--font-mono); font-size: 14px; }
+.post-page .ag-ledger li.slot { color: var(--fg-alternative); border-bottom: 1.5px dashed var(--line-strong); }
+.post-page .ag-ledger li.slot b { color: inherit; }
+.post-page .ag-ledger li.slot.lie { color: var(--ag-bad); font-weight: 700; border-bottom-color: var(--ag-bad); }
 
-/* 2. 봉투 */
-.post-page .ag-env { display: grid; grid-template-columns: 1fr 84px 1fr; align-items: stretch; }
-.post-page .ag-env-n { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--bg-base); background: var(--fg-strong); }
-.post-page .ag-env-box { border: 2px solid var(--line-strong); border-radius: 16px; padding: 14px 16px 16px; }
-.post-page .ag-env-box h4 { margin: 0 0 10px; font-size: 14px; color: var(--fg-neutral); font-weight: 700; }
-.post-page .ag-field { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-subtle); font-size: 14.5px; line-height: 1.5; }
-.post-page .ag-field:first-of-type { border-top: 0; }
-.post-page .ag-field i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--bg-base); background: var(--fg-strong); margin-top: 1px; }
-.post-page .ag-field code { font-size: 13px; }
-.post-page .ag-field small { display: block; color: var(--fg-neutral); font-size: 13px; }
-.post-page .ag-msg { display: block; margin-top: 6px; padding: 6px 10px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; background: color-mix(in srgb, var(--c) 10%, var(--bg-base)); }
-.post-page .ag-msg > b { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.6; color: var(--bg-base); background: var(--c); vertical-align: 1px; }
-.post-page .ag-msg.sys { --c: var(--fg-alternative); } .post-page .ag-msg.usr { --c: var(--ag-human); } .post-page .ag-msg.ast { --c: var(--ag-model); }
-.post-page .ag-env-mid { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; font-size: 12.5px; color: var(--fg-neutral); }
-.post-page .ag-env-mid span { font-size: 22px; color: var(--fg-strong); line-height: 1; }
+/* 2. 요청·응답 원문에 빨간 번호 메모 */
+.post-page .ag-wire { display: grid; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr); align-items: start; }
+.post-page .ag-wire-mid { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 13px; color: var(--fg-neutral); }
+.post-page .ag-wire-mid span { font-size: 22px; color: var(--fg-strong); line-height: 1; }
+.post-page .ag-json h4 { margin: 0 0 8px; font-size: 14px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .ag-json-b { background: var(--bg-muted); border-radius: 12px; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; }
+.post-page .ag-jl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+.post-page .ag .ag-jl > code { background: none; padding: 0; font-size: inherit; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-normal); flex: 0 1 auto; min-width: 0; }
+.post-page .ag-jl.dim > code { color: var(--fg-alternative); }
+.post-page .ag-jl > em { font-style: normal; font-family: var(--font-sans); font-size: 13.5px; font-weight: 700; color: var(--ag-bad); white-space: nowrap; margin-left: auto; }
+.post-page .ag-jl mark { background: none; color: var(--fg-strong); box-shadow: inset 0 -2px 0 var(--ag-bad); }
+.post-page .ag-msg { display: block; margin-top: 6px; padding: 6px 10px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; background: color-mix(in srgb, var(--fg-neutral) 10%, var(--bg-base)); }
+.post-page .ag-msg > b { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.6; color: var(--bg-base); background: var(--fg-neutral); vertical-align: 1px; font-family: var(--font-mono); }
 
 /* 3. 쌓이는 messages */
-.post-page .ag-calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end; margin-top: 16px; min-height: 280px; }
+.post-page .ag-calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 16px; }
 .post-page .ag-call { display: flex; flex-direction: column; gap: 5px; transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
-.post-page .ag-call.off { opacity: 0.14; transform: translateY(16px); }
+.post-page .ag-call.off { opacity: 0.45; transform: translateY(16px); }
 .post-page .ag-call h5 { margin: 6px 0 0; font-size: 13px; color: var(--fg-neutral); font-weight: 700; text-align: center; order: 9; }
 .post-page .ag-call .ag-msg { margin: 0; }
-.post-page .ag-call .ag-msg.new { box-shadow: inset 0 0 0 2px var(--c); }
+.post-page .ag-call .ag-msg.new { box-shadow: inset 0 0 0 2px var(--ag-model); }
 .post-page .ag-call .ag-msg.forget { opacity: .35; text-decoration: line-through; }
 .post-page .ag-bar { order: 10; height: 10px; border-radius: 5px; background: var(--bg-muted); overflow: hidden; }
 .post-page .ag-bar i { display: block; height: 100%; background: var(--fg-strong); transition: width .7s cubic-bezier(.2,.7,.2,1); }
 .post-page .ag-bar-t { order: 11; font-size: 13px; color: var(--fg-neutral); text-align: center; }
-.post-page .ag-reply { order: 8; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 12px 12px 4px 12px; border: 1.5px solid var(--ag-model); }
+.post-page .ag-reply { order: 8; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 12px 12px 4px 12px; border: 1.5px solid var(--fg-strong); }
 .post-page .ag-reply.bad { border-color: var(--ag-bad); color: var(--ag-bad); }
 
-/* 4. 스펙트럼 SVG / 5. 루프 SVG */
+/* 4. 스펙트럼 SVG */
 .post-page .ag svg text { font-family: var(--font-sans); fill: var(--fg-normal); }
 .post-page .ag svg .t-strong { fill: var(--fg-strong); font-weight: 700; }
 .post-page .ag svg .t-dim { fill: var(--fg-neutral); }
@@ -141,21 +120,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-spec-i h4 { margin: 0; font-family: var(--font-display); font-size: 19px; color: var(--fg-strong); }
 .post-page .ag-spec-i small { display: block; font-size: 14px; color: var(--fg-neutral); margin: 2px 0 10px; }
 .post-page .ag-spec-i svg { width: 100%; max-width: 180px; height: auto; display: block; margin: 0 auto; }
-.post-page .ag-spec-i b { display: block; margin-top: 8px; font-size: 14.5px; color: var(--k); }
+.post-page .ag-spec-i b { display: block; margin-top: 8px; font-size: 14.5px; color: var(--fg-strong); }
 .post-page .ag-spec-axis { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; padding-top: 24px; text-align: center; font-size: 13.5px; color: var(--fg-neutral); }
 .post-page .ag-spec-axis::before { content: ""; position: absolute; left: 4%; right: 6px; top: 7px; height: 2.5px; background: var(--fg-strong); }
 .post-page .ag-spec-axis::after { content: ""; position: absolute; right: 0; top: 2px; border: 6.5px solid transparent; border-left: 11px solid var(--fg-strong); border-right: 0; }
 .post-page .ag-spec-axis span { position: relative; }
-.post-page .ag-spec-axis span::before { content: ""; position: absolute; left: 50%; top: -23px; width: 13px; height: 13px; border-radius: 50%; margin-left: -6.5px; }
-.post-page .ag-spec-axis span:nth-child(1)::before { background: var(--ag-human); }
-.post-page .ag-spec-axis span:nth-child(2)::before { background: var(--ag-code); }
-.post-page .ag-spec-axis span:nth-child(3)::before { background: var(--ag-model); }
-.post-page .ag-loop-wrap { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: center; }
-.post-page .ag-loop { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; }
-.post-page .ag-loop .arc { stroke: var(--fg-alternative); stroke-width: 3; fill: none; transition: stroke .3s; }
-.post-page .ag-loop .arc.on { stroke: var(--ag-model); stroke-width: 5; }
-.post-page .ag-loop .nd { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 2; transition: stroke .3s; }
-.post-page .ag-loop .nd.on { stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .ag-spec-axis span::before { content: ""; position: absolute; left: 50%; top: -23px; width: 13px; height: 13px; border-radius: 50%; margin-left: -6.5px; background: var(--fg-strong); }
+/* 5. 루프 노선도 + 쌓이는 메시지 목록 */
 .post-page .ag-state { font-size: 13.5px; }
 .post-page .ag-state h4 { margin: 0 0 8px; font-size: 14px; color: var(--fg-strong); }
 .post-page .ag-state ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -167,14 +138,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-state li.hide { grid-template-rows: 0fr; opacity: 0; transform: translateY(8px); }
 .post-page .ag-state li > .ag-msg { transition: padding .5s cubic-bezier(.2,.7,.2,1); }
 .post-page .ag-state li.hide > .ag-msg { padding-top: 0; padding-bottom: 0; }
-.post-page .ag-msg.tool { --c: var(--ag-code); }
-.post-page .ag-loop-note { font-size: 14.5px; color: var(--fg-strong); font-weight: 600; min-height: 3.2em; margin: 12px auto 0 !important; line-height: 1.55; text-align: center; max-width: 440px; }
+.post-page .ag-state .ag-msg.new { box-shadow: inset 0 0 0 2px var(--ag-model); }
 
-/* 7. 지도 */
-.post-page .ag-map { width: 100%; max-width: 860px; height: auto; display: block; margin: 0 auto; }
-.post-page .ag-map.mob { display: none; max-width: 360px; }
-.post-page .ag-map .done { fill: color-mix(in srgb, var(--ag-model) 16%, var(--bg-base)); stroke: var(--ag-model); stroke-width: 2.5; }
-.post-page .ag-map .todo { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 5 4; }
+
 
 /* 터미널: 실제 호출 없이 준비한 출력을 찍어 보인다 */
 .post-page .ag-term { border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; margin: 8px 0 0; }
@@ -198,10 +164,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 /* 배치 — 섹션마다 다르게: 글|그림, 제목|글 머리, 코드|해설, 전폭 띠, 지그재그 */
 .post-page .ag-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
 .post-page .ag-split .ag-fig { margin: 0; }
-.post-page .ag-split .ag-gen { grid-template-columns: 1fr; }
-.post-page .ag-split .ag-gen-box { margin: 0 auto; width: 120px; height: 72px; }
-.post-page .ag-split .ag-gen-arr { height: 44px; }
-.post-page .ag-split .ag-gen-arr::before { content: "↓"; }
 .post-page .ag-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
 .post-page .ag-head > h2 { margin: 0; }
 .post-page .ag-head-sub { margin-top: 8px; }
@@ -237,41 +199,33 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-loop-steps li::before { content: counter(lp); flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--bg-base); background: var(--fg-alternative); }
 .post-page .ag-loop-steps li.on { opacity: 1; color: var(--fg-strong); }
 .post-page .ag-loop-steps li.on::before { background: var(--ag-model); }
-.post-page .ag-loop-stick { position: sticky; top: 96px; align-self: start; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .9fr); gap: 24px; align-items: center; background: var(--bg-base); z-index: 2; }
+.post-page .ag-loop-stick { position: sticky; top: 96px; align-self: start; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; background: var(--bg-base); z-index: 2; }
 @media (max-width: 900px) {
   .post-page .ag-loopscroll { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .post-page .ag-loop-stick { order: -1; top: 64px; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px 0 12px; }
   .post-page .ag-loop-stick .ag-loop { max-width: 340px; }
-  .post-page .ag-loop-stick .ag-state ol { max-height: 92px; overflow: hidden; justify-content: flex-end; }
+  .post-page .ag-loop-stick .ag-state ol { max-height: 104px; overflow: hidden; justify-content: flex-end; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22px); mask-image: linear-gradient(to bottom, transparent, #000 22px); }
   .post-page .ag-loop-stick .ag-state .ag-msg { padding: 3px 8px; }
   .post-page .ag-loop-stick .ag-state { font-size: 12.5px; }
-  .post-page .ag-loop-stick .ag-state h4 { display: none; }
+  .post-page .ag-loop-stick .ag-state h4 { margin-bottom: 4px; font-size: 12.5px; }
   .post-page .ag-loop-steps { padding: 4vh 0 30vh; }
-  .post-page .ag-loop-steps li { min-height: 52vh; align-items: flex-start; padding-top: 6vh; }
+  .post-page .ag-loop-steps li { min-height: 52vh; align-items: center; padding-top: 0; }
   .post-page .ag-stick { top: 60px; }
 }
 @media (max-width: 900px) {
-  .post-page .ag-lanes { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 82%; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; overscroll-behavior-x: contain; }
-  .post-page .ag-lane { scroll-snap-align: start; }
-  .post-page .ag-swipe { display: block !important; }
-  .post-page .ag-loop-wrap { grid-template-columns: 1fr; }
-  .post-page .ag-env { grid-template-columns: 1fr; gap: 6px; }
-  .post-page .ag-env-mid { flex-direction: row; padding: 6px 0; }
-  .post-page .ag-env-mid span { transform: rotate(90deg); }
+  .post-page .ag-wire { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .post-page .ag-wire-mid { flex-direction: row; justify-content: center; padding: 6px 0; }
+  .post-page .ag-wire-mid span { transform: rotate(90deg); }
+  .post-page .ag-wire-mid br { display: none; }
 }
 @media (max-width: 640px) {
   .post-page .ag-wrap { padding: 0 20px; }
   .post-page .ag p { font-size: 16px; }
-  .post-page .ag-gen { grid-template-columns: 1fr; }
-  .post-page .ag-gen-box { margin: 0 auto; width: 80px; height: 64px; }
-  .post-page .ag-gen-arr { height: 40px; }
-  .post-page .ag-gen-arr::before { content: "↓"; }
   .post-page .ag-calls { grid-template-columns: 1fr; min-height: 0; }
   .post-page .ag-spec { grid-template-columns: 1fr; gap: 28px; }
   .post-page .ag-spec-axis { display: none; }
-  .post-page .ag-map.desk { display: none; }
-  .post-page .ag-map.mob { display: block; }
   .post-page .ag-call h5 { order: -1; text-align: left; }
+  .post-page .ag-json-b { font-size: 12.5px; padding: 10px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .post-page .ag * { animation: none !important; transition: none !important; }
@@ -286,46 +240,21 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p class="ag-lede">회사 IT 헬프데스크에 이런 메시지가 들어왔다고 해 보겠습니다. <b>티켓</b>은 헬프데스크에 들어온 요청 한 건을 기록해 두는 접수 번호표입니다. 같은 LLM을 쓰는 프로그램 세 개가 이 요청을 받으면 어떻게 될까요? 차이는 모델의 똑똑함이 아니라 <b>다음에 할 일을 누가 정하느냐</b>에서 생깁니다.</p>
       </div>
       <div class="ag-req">
-        <span class="ag-who h">직원</span>
+        <span class="ag-who">직원</span>
         <div class="ag-req-bubble">노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
       </div>
-      <div class="ag-scroll" data-ag-scroll="hero">
-      <div class="ag-stick">
-      <div class="ag-wide" style="max-width:1120px" data-figure data-thumb data-thumb-act="el.querySelector('[data-ag-lanes]').dispatchEvent(new Event('ag-all')); el.querySelector('.ag-ctrl').style.display='none'; el.querySelector('.ag-stepcap').style.display='none'; el.querySelector('.ag-cap').style.display='none'">
-        <div class="ag-ctrl" style="margin-top:36px;justify-content:center">
-          <span>상황</span>
-          <div class="ag-seg" role="group" aria-label="상황 고르기">
+      <div class="ag-hfig" data-figure data-thumb data-thumb-act="el.querySelectorAll('.ag-ask, .ag-ctrl, .ag-cap').forEach((x) => { x.style.display = 'none'; })">
+        <p class="ag-ask">직원 상황을 골라 보세요. Agent 선로의 갈림길과 맨 오른쪽 결과가 바뀝니다. ▶를 누르면 요청 하나가 세 선로를 함께 지나갑니다.</p>
+        <div class="ag-ctrl">
+          <div class="ag-seg" role="group" aria-label="직원 상황 고르기">
             <button type="button" data-ag-case="dup" aria-pressed="true">지난주에 같은 티켓을 열어 둠</button>
             <button type="button" data-ag-case="new" aria-pressed="false">열린 티켓 없음</button>
           </div>
+          <button type="button" class="ag-act" data-ag-hrun>세 곳에 보내 보기</button>
         </div>
-        <p class="ag-stepcap" data-ag-hcap aria-live="polite">스크롤을 내리면 세 칸이 한 단계씩 진행됩니다</p>
-        <p class="ag-swipe">옆으로 밀면 세 칸을 차례로 볼 수 있습니다 →</p>
-        <div class="ag-lanes" data-ag-lanes aria-live="polite">
-          <div class="ag-lane" data-lane="chat">
-            <h3>챗봇</h3>
-            <p class="ag-sub">LLM이 답을 글로 씁니다. 그다음은 사람이 합니다.</p>
-            <ol class="ag-steps"></ol>
-          </div>
-          <div class="ag-lane" data-lane="flow">
-            <h3>워크플로</h3>
-            <p class="ag-sub">개발자가 미리 정해 둔 순서대로 갑니다.</p>
-            <ol class="ag-steps"></ol>
-          </div>
-          <div class="ag-lane" data-lane="agent">
-            <h3>Agent</h3>
-            <p class="ag-sub">LLM이 결과를 보고 다음 할 일을 고릅니다.</p>
-            <ol class="ag-steps"></ol>
-          </div>
-        </div>
-        <div class="ag-legend">
-          <span>점 색 = 그 단계를 하자고 정한 쪽</span>
-          <span class="ag-who h">사람</span><span class="ag-who c">미리 짠 코드</span><span class="ag-who m">모델(LLM)</span>
-        </div>
-        <p class="ag-cap">설명을 위해 만든 예시 시나리오입니다. 실제 모델이 늘 이렇게 판단하지는 않습니다. 상황을 바꿔 보세요. 챗봇과 워크플로는 같은 길로 가고 Agent만 길을 바꿉니다.</p>
-      </div>
-      </div>
-      <div class="ag-scroll-space" style="--n:3"></div>
+        <svg class="ag-scene" data-ag-hero role="img" aria-label="한 요청이 챗봇, 워크플로, Agent 세 선로로 갈라지는 노선도. 챗봇은 답을 글로 쓴 뒤 사람이 직접 처리한다. 워크플로는 분류, 새 티켓 만들기, 안내 문장 순서로 늘 같은 길을 간다. Agent는 먼저 티켓을 찾아보고 그 결과에 따라 기존 티켓에 덧붙이거나 새 티켓을 만드는 갈림길에서 길을 고른다. 같은 티켓이 이미 있으면 워크플로는 중복 티켓을 만들고 Agent는 기존 티켓에 메모를 남긴다."></svg>
+        <p class="ag-eff" data-ag-heff aria-live="polite"></p>
+        <p class="ag-cap">선로 하나가 프로그램 하나이고 점은 그 프로그램이 하는 일입니다. 점선은 사람이 손으로 하는 일이거나 이번에 가지 않은 길입니다. 설명용으로 만든 예시 시나리오라 실제 모델이 늘 이렇게 판단하지는 않습니다.</p>
       </div>
     </div>
   </header>
@@ -341,21 +270,21 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       </div>
       <div class="ag-split-fig">
       <div class="ag-fig ag-fig-tight" data-figure>
-        <div class="ag-gen">
-          <div class="ag-gen-in"><span class="ag-gen-lbl">보내는 글(프롬프트)</span>노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
-          <span class="ag-gen-arr" aria-hidden="true"></span>
-          <div class="ag-gen-box" aria-hidden="true">LLM</div>
-          <span class="ag-gen-arr" aria-hidden="true"></span>
-          <div class="ag-gen-out"><span class="ag-gen-lbl">돌아오는 글</span><span data-ag-gen-out aria-live="polite"></span></div>
+        <p class="ag-ask">보내기를 누르면 LLM이 프롬프트 뒤에 글을 한 조각씩 이어 씁니다. 글에 나온 티켓 번호가 아래 장부에도 생기는지 보세요.</p>
+        <div class="ag-ctrl"><button type="button" class="ag-act" data-ag-gen>보내기</button></div>
+        <div class="ag-txt">
+          <div class="ag-txt-in"><span class="ag-txt-lbl">보내는 글(프롬프트)</span>노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
+          <div class="ag-txt-out"><span class="ag-txt-lbl">LLM이 이어 쓴 글</span><span data-ag-gen-out aria-live="polite"></span></div>
         </div>
-        <div class="ag-db" data-ag-db>
-          <svg width="44" height="50" viewBox="0 0 44 50" aria-hidden="true"><ellipse cx="22" cy="8" rx="19" ry="6" class="bx"/><path d="M3 8v34c0 3.3 8.5 6 19 6s19-2.7 19-6V8" class="bx"/><path d="M3 20c0 3.3 8.5 6 19 6s19-2.7 19-6M3 31c0 3.3 8.5 6 19 6s19-2.7 19-6" class="ln" stroke-width="1.5"/></svg>
-          <div class="ag-db-t">진짜 티켓 시스템: 새로 생긴 티켓 <b data-ag-db-n>0</b>건<br><span style="color:var(--fg-neutral);font-size:14px" data-ag-db-note>LLM이 무슨 글을 쓰든 여기는 바뀌지 않습니다.</span></div>
+        <div class="ag-ledger" data-ag-db>
+          <h4>진짜 티켓 시스템의 장부</h4>
+          <ol>
+            <li><b>#1041</b><span>지난주 접수</span></li>
+            <li><b>#1042</b><span>지난주 접수</span></li>
+            <li class="slot" data-ag-slot><b>#3471</b><span data-ag-db-note>아직 없음</span></li>
+          </ol>
         </div>
-        <div class="ag-ctrl" style="margin-top:16px">
-          <button type="button" class="ag-act" data-ag-gen>보내기</button>
-        </div>
-        <p class="ag-cap">돌아오는 글은 토큰 단위로 하나씩 이어 붙습니다. 토큰을 나누는 방식은 설명을 위해 단순하게 그렸습니다.</p>
+        <p class="ag-cap">밑줄 하나가 토큰 하나입니다. 토큰을 나누는 방식은 설명하기 쉽도록 단순하게 그렸습니다.</p>
       </div>
       </div>
     </div>
@@ -370,25 +299,41 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>요청에는 대화가 <b>메시지</b> 목록으로 들어갑니다. 메시지마다 누가 한 말인지 적는 <b>role</b>이 붙습니다. <code>system</code>은 개발자가 모델에게 주는 지시, <code>user</code>는 사용자의 말, <code>assistant</code>는 모델이 앞서 한 말입니다.</p>
         </div>
       </div>
-      <div class="ag-wide ag-fig" data-figure>
-        <div class="ag-env">
-          <div class="ag-env-box">
+      <div class="ag-fig" data-figure>
+        <div class="ag-wire">
+          <div class="ag-json">
             <h4>보내는 요청</h4>
-            <div class="ag-field"><i>1</i><div><code>base_url</code> 어느 주소로 보낼지<small>비우면 OpenAI</small></div></div>
-            <div class="ag-field"><i>2</i><div><code>model</code> 어떤 모델에게 시킬지<small>예: gpt-5.5</small></div></div>
-            <div class="ag-field"><i>3</i><div><code>messages</code> 대화 목록
-              <span class="ag-msg sys"><b>system</b> 너는 IT 헬프데스크 상담원이다.</span>
-              <span class="ag-msg usr"><b>user</b> 와이파이가 안 잡혀요. 티켓 열어 주세요.</span></div></div>
+            <div class="ag-json-b">
+<div class="ag-jl"><code>POST <mark>https://api.openai.com/v1</mark></code><em>① 보낼 주소</em></div>
+<div class="ag-jl"><code>     /chat/completions</code></div>
+<div class="ag-jl"><code>{</code></div>
+<div class="ag-jl"><code>  "model": <mark>"gpt-5.5"</mark>,</code><em>② 어떤 모델</em></div>
+<div class="ag-jl"><code>  <mark>"messages"</mark>: [</code><em>③ 대화 목록</em></div>
+<div class="ag-jl"><code>    {"role": "system",
+     "content": "너는 IT 헬프데스크 상담원이다."},</code></div>
+<div class="ag-jl"><code>    {"role": "user",
+     "content": "와이파이가 안 잡혀요. 티켓 열어 주세요."}</code></div>
+<div class="ag-jl"><code>  ]</code></div>
+<div class="ag-jl"><code>}</code></div>
+            </div>
           </div>
-          <div class="ag-env-mid"><span>→</span>보내면<br>답이 옴</div>
-          <div class="ag-env-box">
+          <div class="ag-wire-mid" aria-hidden="true"><span>→</span>보내면 <br>답이 옴</div>
+          <div class="ag-json">
             <h4>돌아오는 응답</h4>
-            <div class="ag-field"><i>4</i><div><code>choices[0].message</code> 모델이 쓴 답
-              <span class="ag-msg ast"><b>assistant</b> 와이파이를 껐다 켜 보세요. 그래도 안 되면 티켓을 열어 드릴게요.</span></div></div>
-            <div class="ag-field"><i>5</i><div><code>usage</code> 쓴 토큰 수<small>요금과 속도가 이 숫자로 정해집니다</small></div></div>
+            <div class="ag-json-b">
+<div class="ag-jl"><code>{</code></div>
+<div class="ag-jl dim"><code>  "id": "chatcmpl-…",</code></div>
+<div class="ag-jl"><code>  "choices": [</code></div>
+<div class="ag-jl"><code>    {"message": {</code></div>
+<div class="ag-jl"><code>       "role": "assistant",</code></div>
+<div class="ag-jl"><code>       "content": <mark>"와이파이를 껐다 켜 보세요. 그래도 안 되면 티켓을 열어 드릴게요."</mark>}}</code><em>④ 모델이 쓴 답</em></div>
+<div class="ag-jl"><code>  ],</code></div>
+<div class="ag-jl"><code>  "usage": {<mark>"total_tokens": 57</mark>, …}</code><em>⑤ 쓴 토큰 수</em></div>
+<div class="ag-jl"><code>}</code></div>
+            </div>
           </div>
         </div>
-        <p class="ag-cap">번호는 아래 코드의 번호 표지와 같습니다. 답 문장은 설명을 위한 예시입니다.</p>
+        <p class="ag-cap">실제로 오가는 요청과 응답 원문입니다. 빨간 번호는 아래 코드의 번호와 같습니다. 칸 일부는 줄였습니다. 답 문장과 토큰 수는 예시이고 보낼 때마다 달라집니다.</p>
       </div>
       <div class="ag-head ag-head-sub">
         <span></span>
@@ -467,6 +412,7 @@ print(response.usage.total_tokens)</code></pre>
       <div class="ag-scroll" data-ag-scroll="calls">
       <div class="ag-stick">
       <div class="ag-fig ag-fig-band" data-figure>
+        <p class="ag-ask">모델에 무엇을 실어 보낼지 골라 보세요. 호출마다 실린 메시지 칸과 맨 아래 토큰 막대가 바뀝니다.</p>
         <div class="ag-ctrl">
           <span class="ag-stepcap" data-ag-ccap aria-live="polite">1번째 호출</span>
           <div class="ag-seg" role="group" aria-label="보내는 방식">
@@ -535,7 +481,7 @@ while True:
   <li><b>목록 전체를 보냅니다.</b> 호출할 때마다 처음부터 지금까지가 다 실립니다.</li>
   <li><b>모델의 답도 목록에 더합니다.</b> 이걸 빼면 다음 질문을 보낼 때 모델은 자기가 앞에서 무슨 답을 했는지 모릅니다.</li>
 </ol>
-        <p>두 번 물어보면 첫 호출에는 메시지 2개가, 두 번째 호출에는 4개가 실려 갑니다. 여기까지가 가장 단순한 <b>챗봇</b>입니다. 히어로의 첫 번째 칸과 같습니다. 모델은 답을 글로 쓰고 그 글로 무엇을 할지는 사람이 정합니다.</p>
+        <p>두 번 물어보면 첫 호출에는 메시지 2개가, 두 번째 호출에는 4개가 실려 갑니다. 여기까지가 가장 단순한 <b>챗봇</b>입니다. 맨 위 그림의 첫 번째 선로와 같습니다. 모델은 답을 글로 쓰고 그 글로 무엇을 할지는 사람이 정합니다.</p>
         </div>
       </div>
     </div>
@@ -558,17 +504,17 @@ while True:
           </div>
           <div class="ag-spec-i" style="--k:var(--ag-code)">
             <h4>워크플로</h4><small>순서가 정해진 조리기</small>
-            <svg viewBox="0 0 160 150" aria-hidden="true"><defs><marker id="ag-arr" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ag-code)"/></marker></defs><rect x="50" y="2" width="60" height="28" rx="7" class="bx"/><text x="80" y="21" text-anchor="middle" font-size="13">물</text><path d="M80 35v14" stroke="var(--ag-code)" stroke-width="2.5" marker-end="url(#ag-arr)"/><rect x="50" y="56" width="60" height="28" rx="7" class="bx"/><text x="80" y="75" text-anchor="middle" font-size="13">면</text><path d="M80 89v14" stroke="var(--ag-code)" stroke-width="2.5" marker-end="url(#ag-arr)"/><rect x="50" y="110" width="60" height="28" rx="7" class="bx"/><text x="80" y="129" text-anchor="middle" font-size="13">4분</text></svg>
+            <svg viewBox="0 0 160 150" aria-hidden="true"><line x1="8" y1="78" x2="152" y2="78" stroke="var(--line-strong)" stroke-width="5" stroke-linecap="round"/><circle cx="30" cy="78" r="7" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="3"/><circle cx="80" cy="78" r="7" fill="var(--bg-base)" stroke="var(--ag-bad)" stroke-width="3" stroke-dasharray="3 3"/><circle cx="130" cy="78" r="7" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="3"/><text x="30" y="56" text-anchor="middle" font-size="14">물</text><text x="80" y="56" text-anchor="middle" font-size="14">면</text><text x="130" y="56" text-anchor="middle" font-size="14">4분</text><text x="80" y="110" text-anchor="middle" font-size="13" style="fill:var(--ag-bad)">면 없음</text></svg>
             <b>면이 없어도 4분 돈다</b>
           </div>
           <div class="ag-spec-i" style="--k:var(--ag-model)">
             <h4>Agent</h4><small>냉장고부터 열어 보는 요리사</small>
-            <svg viewBox="0 0 160 150" aria-hidden="true" overflow="visible"><defs><marker id="ag-arr4" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ag-model)"/></marker></defs><rect x="30" y="6" width="74" height="108" rx="8" class="bx"/><line x1="30" y1="42" x2="104" y2="42" class="ln" stroke-width="1.5"/><circle cx="54" cy="70" r="9" fill="none" stroke="var(--fg-alternative)" stroke-width="2"/><rect x="72" y="78" width="20" height="28" rx="4" fill="none" stroke="var(--fg-alternative)" stroke-width="2"/><path d="M104 60c22-4 36 10 36 30" fill="none" stroke="var(--ag-model)" stroke-width="2.5" stroke-dasharray="5 4"/><path d="M140 100c-2 12-12 20-28 22" fill="none" stroke="var(--ag-model)" stroke-width="2.5" marker-end="url(#ag-arr4)"/><text x="70" y="140" text-anchor="middle" font-size="13">"면이 없네, 밥으로"</text></svg>
+            <svg viewBox="0 0 160 150" aria-hidden="true"><line x1="8" y1="78" x2="30" y2="78" stroke="var(--line-strong)" stroke-width="5" stroke-linecap="round"/><path d="M30 78 C55 78 58 44 84 44 C110 44 112 78 132 78" fill="none" stroke="var(--line-strong)" stroke-width="2.5" stroke-dasharray="4 5"/><path d="M30 78 C55 78 58 112 84 112 C110 112 112 78 132 78 H152" fill="none" stroke="var(--ag-model)" stroke-width="5" stroke-linecap="round"/><circle cx="30" cy="78" r="7" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="3"/><circle cx="84" cy="44" r="5" fill="var(--bg-base)" stroke="var(--line-strong)" stroke-width="2.5"/><circle cx="84" cy="112" r="7" fill="var(--bg-base)" stroke="var(--ag-model)" stroke-width="3.5"/><text x="30" y="56" text-anchor="middle" font-size="13">냉장고</text><text x="84" y="28" text-anchor="middle" font-size="13" class="t-dim">면</text><text x="84" y="140" text-anchor="middle" font-size="14" style="fill:var(--ag-model);font-weight:700">면이 없네, 밥으로</text></svg>
             <b>보고 나서 다음을 고른다</b>
           </div>
         </div>
         <div class="ag-spec-axis"><span>사람이 정한다</span><span>미리 짠 코드가 정한다</span><span>모델이 정한다</span></div>
-        <p class="ag-cap">색은 히어로와 같은 뜻입니다. 파랑은 사람, 초록은 미리 짠 코드, 주황은 모델이 다음 단계를 정한다는 표시입니다.</p>
+        <p class="ag-cap">아래 화살표는 다음 단계를 정하는 쪽이 사람에서 코드로, 코드에서 모델로 옮겨 가는 방향을 가리킵니다.</p>
       </div>
       <div class="ag-zig">
         <div>
@@ -576,7 +522,7 @@ while True:
         <blockquote class="ag-quote">워크플로는 LLM과 도구가 개발자가 미리 짜 둔 코드 순서대로 움직이는 시스템입니다. Agent는 일을 어떻게 진행할지, 어떤 도구를 쓸지를 LLM이 스스로 정하는 시스템입니다.<span>Anthropic, Building effective agents (2024-12-19)를 풀어 옮김</span></blockquote>
         </div>
         <div>
-        <p>여기서 <b>도구(tool)</b>는 모델이 쓸 수 있게 열어 준 함수, 곧 이름을 붙여 둔 코드 묶음입니다. 티켓 조회, 티켓 생성 같은 것들입니다. 워크플로도 LLM과 도구를 쓰지만 어떤 순서로 쓸지는 개발자가 코드에 이미 적어 두었습니다. 히어로의 워크플로가 같은 티켓을 또 만든 것도 그 순서에 "먼저 찾아보기"가 없어서입니다.</p>
+        <p>여기서 <b>도구(tool)</b>는 모델이 쓸 수 있게 열어 준 함수, 곧 이름을 붙여 둔 코드 묶음입니다. 티켓 조회, 티켓 생성 같은 것들입니다. 워크플로도 LLM과 도구를 쓰지만 어떤 순서로 쓸지는 개발자가 코드에 이미 적어 두었습니다. 맨 위 그림의 워크플로가 같은 티켓을 또 만든 것도 그 순서에 "먼저 찾아보기"가 없어서입니다.</p>
         <p>요리사 비유가 맞지 않는 부분도 있습니다. Agent는 개발자가 열어 준 도구만 쓸 수 있습니다. 또 틀린 판단을 알아채지 못한 채 그대로 밀고 나갈 수도 있습니다.</p>
         </div>
       </div>
@@ -589,7 +535,7 @@ while True:
         <h2>Agent는 도구를 부르는 반복 하나로 움직입니다</h2>
         <div>
         <p>Agent를 이루는 부품은 네 가지입니다. 판단하는 <b>모델</b>, 개발자가 주는 <b>지시</b>(system 메시지), 모델이 부를 수 있는 <b>도구</b>, 지금까지 일어난 일을 담은 <b>상태</b>(메시지 목록)입니다. 이 넷을 엮는 것이 <b>루프</b>입니다. 같은 순서를 되풀이하는 반복문을 말합니다.</p>
-        <p>개발자 Simon Willison은 2025년 9월 이것을 한 문장으로 정리했습니다. "LLM Agent는 목표를 이루려고 루프 안에서 도구를 실행한다." 아래로 스크롤하면 히어로의 Agent가 한 일이 한 단계씩 진행됩니다.</p>
+        <p>개발자 Simon Willison은 2025년 9월 이것을 한 문장으로 정리했습니다. "LLM Agent는 목표를 이루려고 루프 안에서 도구를 실행한다." 아래로 스크롤하면 맨 위 그림의 Agent가 한 일이 한 단계씩 진행됩니다.</p>
         </div>
       </div>
       <div class="ag-loopscroll">
@@ -604,28 +550,7 @@ while True:
           <li data-ag-li="7">이번에는 요청서 대신 직원에게 줄 답을 썼습니다. 루프가 끝납니다.</li>
         </ol>
         <div class="ag-loop-stick" data-figure>
-          <svg class="ag-loop" viewBox="0 0 480 440" role="img" aria-label="모델이 도구 요청서를 쓰면 코드가 도구를 실행하고 결과를 메시지 목록에 더한 뒤 다시 모델을 부르는 루프. 모델이 요청서 대신 답을 쓰면 루프를 빠져나간다">
-            <defs><marker id="ag-arr2" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-neutral)"/></marker></defs>
-            <path class="arc" data-arc="0" d="M165 92 C 96 104 72 168 88 222" marker-end="url(#ag-arr2)"/>
-            <path class="arc" data-arc="1" d="M128 340 C 190 398 292 398 352 342" marker-end="url(#ag-arr2)"/>
-            <path class="arc" data-arc="2" d="M394 226 C 408 164 380 106 320 90" marker-end="url(#ag-arr2)"/>
-            <path class="arc" data-arc="3" d="M318 52 L 440 16" marker-end="url(#ag-arr2)"/>
-            <rect class="nd" data-nd="model" x="165" y="38" width="150" height="82" rx="16"/>
-            <text x="240" y="72" text-anchor="middle" class="t-strong" font-size="20" style="fill:var(--ag-model)">모델</text>
-            <text x="240" y="100" text-anchor="middle" class="t-dim" font-size="16">다음 할 일을 씀</text>
-            <rect class="nd" data-nd="req" x="8" y="228" width="174" height="108" rx="14"/>
-            <text x="95" y="262" text-anchor="middle" class="t-strong" font-size="17">도구 요청서</text>
-            <text x="95" y="288" text-anchor="middle" class="t-dim" font-size="16">"티켓 조회해 줘"</text>
-            <text x="95" y="312" text-anchor="middle" class="t-dim" font-size="16">글일 뿐, 실행 전</text>
-            <rect class="nd" data-nd="code" x="298" y="228" width="174" height="108" rx="14"/>
-            <text x="385" y="262" text-anchor="middle" class="t-strong" font-size="17" style="fill:var(--ag-code)">Agent 프로그램</text>
-            <text x="385" y="288" text-anchor="middle" class="t-dim" font-size="16">도구를 실제로 실행</text>
-            <text x="385" y="312" text-anchor="middle" class="t-dim" font-size="16">결과를 목록에 더함</text>
-            <text x="240" y="178" text-anchor="middle" class="t-dim" font-size="16">바퀴마다 지시·도구 목록·</text>
-            <text x="240" y="198" text-anchor="middle" class="t-dim" font-size="16">메시지 목록을 함께 보냄</text>
-            <text x="240" y="412" text-anchor="middle" class="t-dim" font-size="16">요청서를 받으면 코드가 실행 →</text>
-            <text x="478" y="56" text-anchor="end" class="t-dim" font-size="16">답을 쓰면 끝</text>
-          </svg>
+          <svg class="ag-scene ag-loop" data-ag-loop role="img" aria-label="Agent 루프 노선도. 시작에서 출발해 모델역에 닿는다. 모델역에서 오른쪽으로 내려가는 선에는 도구 요청서가 실려 가고, 아래 도구 실행역에서 Agent 프로그램이 도구를 실제로 실행한다. 왼쪽으로 올라가는 선에 결과를 싣고 모델역으로 돌아온다. 모델이 요청서 대신 답을 쓰면 오른쪽 끝으로 빠져나간다. 스크롤 단계마다 점이 움직이고 메시지 목록이 쌓인다."></svg>
           <div class="ag-state">
             <h4>상태: 메시지 목록</h4>
             <ol data-ag-state></ol>
@@ -634,7 +559,7 @@ while True:
       </div>
       <div class="ag-zig ag-zig-b">
         <div>
-        <p>왼쪽 아래 칸을 눈여겨보세요. 모델이 쓰는 것은 "티켓을 조회해 달라"는 <b>요청서</b>까지입니다. 이 요청서를 읽고 진짜 티켓 시스템에 접속하는 건 Agent 프로그램입니다. 이렇게 모델이 도구 사용을 요청하게 하는 기능을 <b>Tool Calling</b>이라고 합니다.</p>
+        <p>모델역에서 도구 실행역으로 내려가는 선을 눈여겨보세요. 모델은 이 선에 실려 가는 "티켓을 조회해 달라"는 <b>요청서</b>까지만 씁니다. 요청서를 읽고 진짜 티켓 시스템에 접속하는 건 도구 실행역에 있는 Agent 프로그램입니다. 이렇게 모델이 도구 사용을 요청하게 하는 기능을 <b>Tool Calling</b>이라고 합니다.</p>
         <p>모델이 어떤 도구를 쓸 수 있는지 아는 것도 코드 덕분입니다. 코드가 바퀴마다 도구 이름과 설명을 적은 목록을 메시지와 함께 보내면 모델은 그 목록 안에서 고릅니다.</p>
         <p>루프는 모델이 요청서 대신 사람에게 줄 답을 쓰면 끝납니다. 끝나지 않을 때를 대비해 최대 반복 횟수도 정해 둡니다. 다음 글에서는 Tool Calling 요청서가 실제로 어떻게 생겼고 코드가 그걸 어떻게 실행하는지 알아보겠습니다.</p>
         </div>
@@ -665,62 +590,12 @@ while True:
       <div class="ag-head">
         <h2>앞으로 만들 헬프데스크 Agent</h2>
         <div>
-        <p>이 시리즈에서는 히어로의 헬프데스크 Agent를 조금씩 실제로 만듭니다. 오늘 만든 것은 그림에서 주황으로 칠한 부분, 모델을 부르고 대화 기록을 들고 있는 데까지입니다.</p>
+        <p>이 시리즈에서는 맨 위 그림의 헬프데스크 Agent를 조금씩 실제로 만듭니다. 오늘은 그림에서 주황으로 칠한 구간, 모델을 부르고 대화 기록을 들고 있는 데까지 만들었습니다.</p>
         </div>
       </div>
-      <div class="ag-fig">
-        <svg class="ag-map desk" viewBox="0 0 860 300" role="img" aria-label="헬프데스크 Agent 구성도. 직원의 요청이 헬프데스크 Agent로 들어간다. Agent는 모델 호출과 메시지 목록, 도구 반복으로 이루어진다. 도구는 FAQ 검색, 티켓 조회·생성, 장비 조회이며 사내 문서와 티켓 시스템에 닿는다. 위험한 작업은 사람 승인을 거친다. 이 글에서 만든 것은 모델 호출과 메시지 목록">
-          <defs><marker id="ag-arr3" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-alternative)"/></marker></defs>
-          <rect x="20" y="118" width="110" height="64" rx="14" class="bx" style="stroke:var(--ag-human);stroke-width:2"/>
-          <text x="75" y="156" text-anchor="middle" class="t-strong" font-size="15">직원</text>
-          <path d="M136 150h40" class="ln" stroke-width="2" marker-end="url(#ag-arr3)"/>
-          <rect x="182" y="40" width="300" height="220" rx="18" class="todo"/>
-          <text x="332" y="68" text-anchor="middle" class="t-strong" font-size="15">헬프데스크 Agent</text>
-          <rect x="204" y="86" width="256" height="56" rx="12" class="done"/>
-          <text x="332" y="112" text-anchor="middle" class="t-strong" font-size="14">모델 호출</text>
-          <text x="332" y="131" text-anchor="middle" class="t-dim" font-size="12.5">지시(system) + 메시지</text>
-          <rect x="204" y="154" width="256" height="40" rx="12" class="done"/>
-          <text x="332" y="179" text-anchor="middle" class="t-strong" font-size="14">상태: 메시지 목록</text>
-          <rect x="204" y="206" width="256" height="40" rx="12" class="todo"/>
-          <text x="332" y="231" text-anchor="middle" font-size="13.5">도구 요청 → 실행 → 결과 반복</text>
-          <path d="M488 100h46" class="ln" stroke-width="2" marker-end="url(#ag-arr3)"/><path d="M488 150h46" class="ln" stroke-width="2" marker-end="url(#ag-arr3)"/><path d="M488 200h46" class="ln" stroke-width="2" marker-end="url(#ag-arr3)"/>
-          <rect x="540" y="78" width="140" height="40" rx="10" class="todo"/><text x="610" y="103" text-anchor="middle" font-size="13.5">FAQ·매뉴얼 검색</text>
-          <rect x="540" y="130" width="140" height="40" rx="10" class="todo"/><text x="610" y="155" text-anchor="middle" font-size="13.5">티켓 조회·생성</text>
-          <rect x="540" y="182" width="140" height="40" rx="10" class="todo"/><text x="610" y="207" text-anchor="middle" font-size="13.5">장비 상태 조회</text>
-          <path d="M682 98h40M682 150h40M682 202h40" class="ln" stroke-width="1.5" stroke-dasharray="4 4"/>
-          <rect x="724" y="78" width="120" height="144" rx="12" class="todo"/>
-          <text x="784" y="140" text-anchor="middle" font-size="13.5">사내 문서</text>
-          <text x="784" y="160" text-anchor="middle" font-size="13.5">티켓 시스템</text>
-          <rect x="540" y="244" width="304" height="40" rx="10" class="todo"/>
-          <text x="692" y="269" text-anchor="middle" font-size="13.5">도구 중 위험한 작업은 사람이 승인</text>
-          
-        </svg>
-        <svg class="ag-map mob" viewBox="0 0 340 600" role="img" aria-label="헬프데스크 Agent 구성도(세로). 직원, 헬프데스크 Agent(모델 호출·메시지 목록·도구 반복), 도구 세 개, 사내 문서와 티켓 시스템, 사람 승인 순서">
-          <defs><marker id="ag-arr5" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--fg-alternative)"/></marker></defs>
-          <rect x="110" y="6" width="120" height="48" rx="14" class="bx" style="stroke:var(--ag-human);stroke-width:2"/>
-          <text x="170" y="36" text-anchor="middle" class="t-strong" font-size="15">직원</text>
-          <path d="M170 58v18" class="ln" stroke-width="2" marker-end="url(#ag-arr5)"/>
-          <rect x="20" y="82" width="300" height="212" rx="18" class="todo"/>
-          <text x="170" y="108" text-anchor="middle" class="t-strong" font-size="15">헬프데스크 Agent</text>
-          <rect x="40" y="122" width="260" height="56" rx="12" class="done"/>
-          <text x="170" y="147" text-anchor="middle" class="t-strong" font-size="14">모델 호출</text>
-          <text x="170" y="166" text-anchor="middle" class="t-dim" font-size="12.5">지시(system) + 메시지</text>
-          <rect x="40" y="188" width="260" height="40" rx="12" class="done"/>
-          <text x="170" y="213" text-anchor="middle" class="t-strong" font-size="14">상태: 메시지 목록</text>
-          <rect x="40" y="238" width="260" height="40" rx="12" class="todo"/>
-          <text x="170" y="263" text-anchor="middle" font-size="13.5">도구 요청 → 실행 → 결과 반복</text>
-          <path d="M170 298v18" class="ln" stroke-width="2" marker-end="url(#ag-arr5)"/>
-          <rect x="40" y="322" width="260" height="38" rx="10" class="todo"/><text x="170" y="346" text-anchor="middle" font-size="13.5">FAQ·매뉴얼 검색</text>
-          <rect x="40" y="368" width="260" height="38" rx="10" class="todo"/><text x="170" y="392" text-anchor="middle" font-size="13.5">티켓 조회·생성</text>
-          <rect x="40" y="414" width="260" height="38" rx="10" class="todo"/><text x="170" y="438" text-anchor="middle" font-size="13.5">장비 상태 조회</text>
-          <path d="M170 454v22" class="ln" stroke-width="1.5" stroke-dasharray="4 4"/>
-          <rect x="40" y="480" width="260" height="46" rx="12" class="todo"/>
-          <text x="170" y="508" text-anchor="middle" font-size="13.5">사내 문서 · 티켓 시스템</text>
-          <rect x="40" y="544" width="260" height="40" rx="10" class="todo"/>
-          <text x="170" y="569" text-anchor="middle" font-size="13.5">도구 중 위험한 작업은 사람이 승인</text>
-        </svg>
-
-        <p class="ag-cap">주황 칸은 이 글에서 만든 부분, 점선 칸은 앞으로 만들 부분입니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
+      <div class="ag-fig" data-figure>
+        <svg class="ag-scene" data-ag-map role="img" aria-label="헬프데스크 Agent 노선도. 직원에서 출발해 모델 호출역을 지나 답으로 가는 본선은 이 글에서 만든 구간이라 주황으로 칠했다. 모델 호출역에서 도구 실행역으로 내려갔다 돌아오는 순환선, 도구 실행역에서 FAQ·매뉴얼 검색, 장비 상태 조회, 티켓 조회·생성으로 갈라지는 지선은 앞으로 깔 구간이라 점선이다. 티켓 지선에는 사람 승인 검문이 있다."></svg>
+        <p class="ag-cap">주황 선은 이 글에서 만든 구간, 회색 점선은 앞으로 깔 구간입니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
       </div>
         <p class="ag-pull">정리하면 챗봇, 워크플로, Agent는 같은 LLM을 씁니다. 다른 점은 LLM이 쓴 글을 받은 뒤 다음 단계를 누가 정하느냐입니다. 사람이 정하면 챗봇, 미리 짠 코드가 정하면 워크플로, 모델이 결과를 보고 정하면 Agent입니다.</p>
     </div>
@@ -795,65 +670,136 @@ while True:
     tick();
   }
 
-  /* 히어로: 세 갈래 */
-  const LANES = {
-    dup: {
-      chat: { steps: [["h", "질문을 보냅니다"], ["m", "답을 글로 씁니다", "\"와이파이를 껐다 켜 보세요. 티켓은 사내 접수 사이트에서 열 수 있습니다\""], ["h", "접수 사이트에 들어가 보니 지난주 티켓 #1042가 있어 직접 내용을 덧붙입니다"]], end: ["", "티켓 일은 사람이 직접 합니다"] },
-      flow: { steps: [["c", "문의를 '네트워크'로 분류합니다"], ["c", "새 티켓을 만듭니다", "create_ticket() → #1043"], ["c", "안내 문장을 모델에게 쓰게 합니다", "\"#1043으로 접수했습니다\""]], end: ["bad", "이미 열린 #1042와 같은 티켓이 하나 더 생겼습니다"] },
-      agent: { steps: [["m", "먼저 이 직원의 티켓을 찾아보기로 합니다", "search_tickets() → #1042 (지난주, 같은 증상)"], ["m", "새로 만들지 않고 #1042에 덧붙이기로 합니다", "add_note(#1042) → 메모 추가됨"], ["m", "할 일을 마쳤다고 보고 답을 씁니다", "\"이미 #1042로 접수돼 있어 오늘 증상을 덧붙였습니다\""]], end: ["", "중복 없이 기존 티켓을 이어 갑니다"] },
-    },
-    new: {
-      chat: { steps: [["h", "질문을 보냅니다"], ["m", "답을 글로 씁니다", "\"와이파이를 껐다 켜 보세요. 티켓은 사내 접수 사이트에서 열 수 있습니다\""], ["h", "접수 사이트에 들어가 티켓을 직접 엽니다"]], end: ["", "티켓 일은 사람이 직접 합니다"] },
-      flow: { steps: [["c", "문의를 '네트워크'로 분류합니다"], ["c", "새 티켓을 만듭니다", "create_ticket() → #1043"], ["c", "안내 문장을 모델에게 쓰게 합니다", "\"#1043으로 접수했습니다\""]], end: ["", "정해 둔 순서대로 접수를 마쳤습니다"] },
-      agent: { steps: [["m", "먼저 이 직원의 티켓을 찾아보기로 합니다", "search_tickets() → 열린 티켓 없음"], ["m", "없으니 새로 만들기로 합니다", "create_ticket() → #1043"], ["m", "할 일을 마쳤다고 보고 답을 씁니다", "\"#1043으로 접수했습니다\""]], end: ["", "찾아본 결과에 따라 새로 접수했습니다"] },
-    },
+  /* 그림 공통 — 색은 상태에만: 먹 = 가는 길, 주황 = 고른 길, 빨강 = 잘못된 결과 (POSTING 5-9) */
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
+  const txt = (p, x, y, s, a = {}) => { const e = mk("text", { x, y, ...a }, p); const ls = String(s).split("\n"); if (ls.length === 1) e.textContent = s; else ls.forEach((l, i) => { const t = mk("tspan", { x, dy: i ? "1.25em" : 0 }, e); t.textContent = l; }); return e; };
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  const INK = "var(--fg-strong)", MUT = "var(--fg-neutral)", RAIL = "var(--line-strong)", ACC = "var(--ag-model)", BAD = "var(--ag-bad)";
+  const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const halo = "paint-order:stroke;stroke:var(--bg-base);stroke-width:5px;stroke-linejoin:round;";
+  /* 그림 칸 폭이 기준보다 좁으면 세로 배치로 바꿔 그린다(글자가 작아지지 않게) */
+  const wide = (el, min) => (el.parentElement.getBoundingClientRect().width || innerWidth) >= min;
+  const seg = (a, b, H) => { const [x1, y1] = a, [x2, y2] = b; if (x1 === x2 || y1 === y2) return ` L${x2} ${y2}`; if (H) { const m = (x1 + x2) / 2; return ` C${m} ${y1} ${m} ${y2} ${x2} ${y2}`; } const m = (y1 + y2) / 2; return ` C${x1} ${m} ${x2} ${m} ${x2} ${y2}`; };
+  const pathD = (pts, H) => `M${pts[0][0]} ${pts[0][1]}` + pts.slice(1).map((p, i) => seg(pts[i], p, H)).join("");
+
+  /* 히어로: 한 요청이 세 선로로 갈라진다. 상황을 바꾸면 Agent 선로의 갈림길만 바뀐다 */
+  const HERO = {
+    chat: { name: "챗봇", who: "다음 일을 사람이 고름", whoN: "사람이 고름", nodes: [["답을 글로 씀", "답을\n글로 씀"], ["사람이 직접 처리", "사람이\n직접 처리"]] },
+    flow: { name: "워크플로", who: "다음 일을 미리 짠 코드가 고름", whoN: "코드가 고름", nodes: [["분류", "분류"], ["새 티켓 만들기", "새 티켓\n만들기"], ["안내 문장", "안내\n문장"]] },
+    agent: { name: "Agent", who: "다음 일을 모델이 고름", whoN: "모델이 고름", nodes: [["티켓 찾아보기", "티켓\n찾아보기"], null, ["답 쓰기", "답 쓰기"]] },
   };
-  let hCase = "dup", hStep = 99;
-  const lanesEl = $("[data-ag-lanes]");
-  function esc(t) { return t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
-  // 칸은 상황을 바꿀 때만 새로 만들고, 단계가 바뀌면 hide 클래스만 바꿔 CSS 전환으로 스르르 나타나게 한다
-  let builtCase = null;
-  function buildLanes() {
-    for (const lane of $$("[data-lane]", lanesEl)) {
-      const d = LANES[hCase][lane.dataset.lane];
-      $(".ag-steps", lane).innerHTML = d.steps.map(([w, t, r]) =>
-        `<li class="ag-step hide" data-w="${w}"><span class="ag-who ${w}">${who[w]}</span><div class="ag-step-t">${esc(t)}${r ? `<span class="ag-step-r">${esc(r)}</span>` : ""}</div></li>`
-      ).join("") + `<li class="ag-end ${d.end[0]} hide">${esc(d.end[1])}</li>`;
-    }
-    builtCase = hCase;
+  const FORK = { a: ["#1042에 덧붙이기", "#1042에\n덧붙이기"], b: ["새 티켓 만들기", "새 티켓\n만들기"] };
+  const CASE = {
+    dup: { br: "a", found: ["찾은 결과: #1042", "#1042 있음"], res: { chat: ["사람 몫", "사람 몫", "dim"], flow: ["#1043 중복", "#1043\n중복", "bad"], agent: ["#1042에 메모", "#1042에\n메모", "ok"] },
+           eff: "Agent는 찾아본 결과에서 #1042를 보고 덧붙이는 길로 갔습니다. 워크플로는 정해 둔 길대로 가서 #1043을 하나 더 만들었습니다." },
+    new: { br: "b", found: ["찾은 결과: 없음", "없음"], res: { chat: ["사람 몫", "사람 몫", "dim"], flow: ["#1043 접수", "#1043\n접수", ""], agent: ["#1043 접수", "#1043\n접수", "ok"] },
+           eff: "열린 티켓이 없자 Agent는 새 티켓을 만드는 길로 갔습니다. 이번에는 워크플로와 결과가 같습니다. 챗봇은 두 경우 모두 글로 답하고 끝납니다." },
+  };
+  const heroSvg = $("[data-ag-hero]");
+  let hCase = "dup", hH = null, hGen = 0, hRoutes = {}, hRes = {};
+  function hp(k, i, H, br) { // i: -1 출발, 0~2 역, 9 끝
+    if (H) { const y = { chat: 80, flow: 205, agent: 330 }[k]; const x = i < 0 ? 160 : i === 9 ? 880 : [400, 610, 800][i]; return [x, br === "a" ? y - 34 : br === "b" ? y + 36 : y]; }
+    const x = { chat: 60, flow: 180, agent: 300 }[k]; const y = i < 0 ? 62 : i === 9 ? 450 : [130, 240, 350][i]; return [br === "a" ? x - 30 : br === "b" ? x + 30 : x, y];
   }
-  function drawLanes() {
-    if (builtCase !== hCase) { buildLanes(); void lanesEl.offsetWidth; }
-    for (const lane of $$("[data-lane]", lanesEl)) {
-      const items = $$(".ag-step", lane);
-      items.forEach((li, i) => li.classList.toggle("hide", i >= hStep));
-      $(".ag-end", lane).classList.toggle("hide", hStep < items.length);
+  function drawHero() {
+    const H = hH = wide(heroSvg, 820), C = CASE[hCase], f = H ? 1 : 1;
+    heroSvg.innerHTML = ""; heroSvg.setAttribute("viewBox", H ? "0 0 1040 410" : "0 0 360 520"); heroSvg.style.maxWidth = H ? "1040px" : "440px";
+    hRoutes = {}; hRes = {};
+    const rail = (pts, a = {}) => mk("path", { d: pathD(pts, H), fill: "none", stroke: RAIL, "stroke-width": H ? 6 : 5, "stroke-linecap": "round", ...a }, heroSvg);
+    const node = ([x, y], a = {}) => mk("circle", { cx: x, cy: y, r: 9, fill: "var(--bg-base)", stroke: INK, "stroke-width": 3.5, ...a }, heroSvg);
+    const lab = ([x, y], pair, a = {}) => H ? txt(heroSvg, x, y - 20, pair[0], { "font-size": 16, "text-anchor": "middle", ...a }) : txt(heroSvg, x, y + 28, pair[1], { "font-size": 14, "text-anchor": "middle", style: halo + "stroke-width:9px;" + (a.style || ""), ...(a.class ? { class: a.class } : {}) });
+    const SRC = [36, 205];
+    if (H) {
+      ["chat", "flow", "agent"].forEach((k) => mk("path", { d: pathD([SRC, hp(k, -1, H)], H), fill: "none", stroke: RAIL, "stroke-width": 3 }, heroSvg));
+      mk("circle", { cx: SRC[0], cy: SRC[1], r: 8, fill: INK }, heroSvg);
+      txt(heroSvg, SRC[0] - 6, SRC[1] + 34, "요청", { "font-size": 15, class: "t-d" });
     }
-    const cap = $("[data-ag-hcap]");
-    if (cap) cap.textContent = hStep >= 3 ? "세 칸 모두 끝까지 진행했습니다" : `${hStep}단계 / 3 · 스크롤을 내리면 다음 단계가 나옵니다`;
+    for (const k of ["chat", "flow", "agent"]) {
+      const D = HERO[k], st = hp(k, -1, H), end = hp(k, 9, H);
+      if (H) { const e = txt(heroSvg, st[0], st[1] - 44, "", { "font-size": 18, class: "t-s" }); e.textContent = D.name; const w = mk("tspan", { dx: 10, "font-size": 14, class: "t-d", style: "font-weight:400" }, e); w.textContent = D.who; }
+      else { txt(heroSvg, st[0], 20, D.name, { "font-size": 16, class: "t-s", "text-anchor": "middle" }); txt(heroSvg, st[0], 40, D.whoN, { "font-size": 13, class: "t-d", "text-anchor": "middle" }); }
+      let route;
+      if (k === "chat") {
+        const n0 = hp(k, 0, H), n1 = hp(k, 1, H);
+        rail([st, n0]); rail([n0, n1, end], { "stroke-dasharray": "2 10", "stroke-width": H ? 5 : 4 });
+        node(n0); node(n1, { stroke: MUT }); lab(n0, D.nodes[0]); lab(n1, D.nodes[1], { class: "t-d" });
+        route = [st, n0, n1, end];
+      } else if (k === "flow") {
+        const ns = [0, 1, 2].map((i) => hp(k, i, H));
+        rail([st, ...ns, end]);
+        ns.forEach((p, i) => { const bad = i === 1 && hCase === "dup"; node(p, bad ? { stroke: BAD } : {}); lab(p, D.nodes[i], bad ? { style: `fill:${BAD}`, class: "t-s" } : {}); });
+        route = [st, ...ns, end];
+      } else {
+        const n0 = hp(k, 0, H), n2 = hp(k, 2, H), on = hp(k, 1, H, C.br), off = hp(k, 1, H, C.br === "a" ? "b" : "a");
+        rail([st, n0]); rail([n2, end]);
+        rail([n0, off, n2], { "stroke-dasharray": "6 8", "stroke-width": H ? 3 : 2.5, stroke: RAIL });
+        rail([n0, on, n2], { stroke: ACC, "stroke-width": H ? 7 : 6 });
+        node(n0); node(n2); node(off, { r: 6, stroke: RAIL, "stroke-width": 2.5 }); node(on, { r: 10, stroke: ACC, "stroke-width": 4 });
+        lab(n0, D.nodes[0]); lab(n2, D.nodes[2]);
+        const onLab = FORK[C.br], offLab = FORK[C.br === "a" ? "b" : "a"];
+        if (H) {
+          txt(heroSvg, on[0], C.br === "a" ? on[1] - 20 : on[1] + 30, onLab[0], { "font-size": 16, class: "t-s", "text-anchor": "middle", style: `fill:${ACC}` });
+          txt(heroSvg, off[0], C.br === "a" ? off[1] + 30 : off[1] - 20, offLab[0], { "font-size": 14, class: "t-d", "text-anchor": "middle", style: "opacity:.7" });
+          txt(heroSvg, n0[0], n0[1] + 30, C.found[0], { "font-size": 14, class: "t-s", "text-anchor": "middle", style: `fill:${ACC}` });
+        } else {
+          txt(heroSvg, on[0], on[1] + 28, onLab[1], { "font-size": 14, class: "t-s", "text-anchor": "middle", style: halo + `fill:${ACC}` });
+          txt(heroSvg, n0[0] - 16, n0[1] + 5, C.found[1], { "font-size": 13, class: "t-s", "text-anchor": "end", style: halo + `fill:${ACC}` });
+        }
+        route = [st, n0, on, n2, end];
+      }
+      /* 끝: 선로를 막는 막대 + 결과 */
+      mk("line", H ? { x1: end[0], y1: end[1] - 14, x2: end[0], y2: end[1] + 14 } : { x1: end[0] - 14, y1: end[1], x2: end[0] + 14, y2: end[1] }, heroSvg).setAttribute("style", `stroke:${INK};stroke-width:5;stroke-linecap:round`);
+      const [rt, rtn, kind] = C.res[k], col = kind === "bad" ? BAD : kind === "ok" ? ACC : "";
+      hRes[k] = H ? txt(heroSvg, end[0] + 18, end[1] + 6, rt, { "font-size": 16, class: kind === "dim" ? "t-d" : "t-s", style: col ? `fill:${col}` : "" })
+                  : txt(heroSvg, end[0], end[1] + 30, rtn, { "font-size": 14, class: kind === "dim" ? "t-d" : "t-s", "text-anchor": "middle", style: col ? `fill:${col}` : "" });
+      hRoutes[k] = mk("path", { d: (H ? `M${SRC[0]} ${SRC[1]}` + seg(SRC, st, H) : `M${st[0]} ${st[1]}`) + pathD(route, H).replace(/^M[\d.]+ [\d.]+/, ""), fill: "none", stroke: "none" }, heroSvg);
+    }
+    $("[data-ag-heff]").textContent = C.eff;
+  }
+  async function runHero() {
+    const my = ++hGen, btn = $("[data-ag-hrun]"); btn.disabled = true;
+    const ks = Object.keys(hRoutes), lens = ks.map((k) => hRoutes[k].getTotalLength()), max = Math.max(...lens);
+    ks.forEach((k) => { hRes[k].style.opacity = 0; });
+    const dots = ks.map(() => mk("circle", { r: 9, fill: INK, stroke: "var(--bg-base)", "stroke-width": 3 }, heroSvg));
+    await tween(reduce ? 0 : Math.max(2400, max * 4.5), (e) => {
+      if (my !== hGen) return;
+      ks.forEach((k, i) => { const l = Math.min(lens[i], e * max), p = hRoutes[k].getPointAtLength(l); dots[i].setAttribute("cx", p.x); dots[i].setAttribute("cy", p.y); if (l >= lens[i] - 1) hRes[k].style.opacity = 1; });
+    });
+    dots.forEach((d) => d.remove()); ks.forEach((k) => { if (hRes[k]) hRes[k].style.opacity = 1; });
+    if (my === hGen) btn.disabled = false;
   }
   $$("[data-ag-case]").forEach((b) => b.addEventListener("click", () => {
-    hCase = b.dataset.agCase;
+    hCase = b.dataset.agCase; hGen++; $("[data-ag-hrun]").disabled = false;
     $$("[data-ag-case]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    drawLanes();
+    drawHero();
   }, { signal }));
-  // 썸네일용: 완성 상태로 고정(뒤이은 스크롤이 단계를 되돌리지 않게)
-  let heroPinned = false;
-  lanesEl.addEventListener("ag-all", () => { heroPinned = true; hStep = 99; drawLanes(); }, { signal });
-  scrollSteps($('[data-ag-scroll="hero"]'), 3, (k) => { if (heroPinned) return; hStep = k + 1; drawLanes(); });
+  $("[data-ag-hrun]").addEventListener("click", runHero, { signal });
+  addEventListener("resize", () => { if (wide(heroSvg, 820) !== hH) { hGen++; $("[data-ag-hrun]").disabled = false; drawHero(); } }, { passive: true, signal });
+  drawHero();
 
-  /* 1. 글만 쓰는 LLM */
-  const OUT = ["네", ",", " 티켓", " #", "1043", "을", " 열", "었습니다", ".", " 곧", " 담당자가", " 연락", "드릴", " 거예요", "."];
-  const outEl = $("[data-ag-gen-out]"), dbEl = $("[data-ag-db]");
+  /* 1. 글만 쓰는 LLM: 프롬프트 뒤에 토큰이 붙고, 장부는 그대로 */
+  const OUT = ["네", ",", " 티켓", " #", "3471", "을", " 열", "었습니다", ".", " 곧", " 담당자가", " 연락", "드릴", " 거예요", "."];
+  const outEl = $("[data-ag-gen-out]"), dbEl = $("[data-ag-db]"), slotEl = $("[data-ag-slot]");
   let genTimer = 0;
-    outEl.innerHTML = '<span style="color:var(--fg-alternative)">보내기를 누르면 여기에 글이 나옵니다</span>';
+  const genIdle = () => { outEl.innerHTML = '<span style="color:var(--fg-alternative)">보내기를 누르면 여기에 글이 이어집니다</span>'; };
+  genIdle();
   $("[data-ag-gen]").addEventListener("click", () => {
-    clearInterval(genTimer); outEl.innerHTML = ""; dbEl.classList.remove("flash");
+    clearInterval(genTimer); outEl.innerHTML = ""; slotEl.classList.remove("lie"); $("[data-ag-db-note]").textContent = "아직 없음";
     let i = 0;
     genTimer = setInterval(() => {
-      if (i >= OUT.length) { clearInterval(genTimer); void dbEl.offsetWidth; dbEl.classList.add("flash"); $("[data-ag-db-note]").textContent = "글에는 #1043이 생겼다고 나왔지만 실제 티켓은 하나도 생기지 않았습니다."; return; }
-      const s = document.createElement("span"); s.className = "ag-tok"; s.textContent = OUT[i++]; outEl.append(s);
-    }, 120);
+      if (i >= OUT.length) {
+        clearInterval(genTimer);
+        $$(".ag-tok.claim", outEl).forEach((x) => x.classList.add("lie"));
+        slotEl.classList.add("lie"); $("[data-ag-db-note]").textContent = "글에만 있고 장부에는 없음";
+        return;
+      }
+      const t = OUT[i];
+      if (t.startsWith(" ")) outEl.append(" ");
+      const s = document.createElement("span"); s.className = "ag-tok" + (i === 3 || i === 4 ? " claim" : ""); s.textContent = t.trim(); outEl.append(s); i++;
+    }, reduce ? 0 : 120);
   }, { signal });
   signal.addEventListener("abort", () => clearInterval(genTimer));
 
@@ -869,7 +815,7 @@ while True:
   function drawCalls() {
     if (builtMem === mem) {
       $$(".ag-call", callsEl).forEach((c, k) => c.classList.toggle("off", k >= turn));
-      $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3`;
+      $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3 · 스크롤로 진행`;
       return;
     }
     builtMem = mem;
@@ -894,7 +840,7 @@ while True:
         <div class="ag-bar-t">보낸 토큰 약 ${tokens}개</div></div>`;
     }
     callsEl.innerHTML = html;
-    $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3`;
+    $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3 · 스크롤로 진행`;
   }
   $$("[data-ag-mem]").forEach((b) => b.addEventListener("click", () => {
     mem = b.dataset.agMem;
@@ -928,34 +874,133 @@ while True:
     cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
   }, { signal }));
 
-  /* 5. 루프 */
+  /* 5. 루프: 노선도 위 점이 스크롤 단계마다 움직이고 메시지 목록이 쌓인다 */
   const LOOP = [
-    { arc: null, nd: "model", add: null, note: "시작: 직원의 메시지가 목록에 들어왔습니다. 모델을 부릅니다." },
-    { arc: 0, nd: "req", add: ["ast", "assistant", "요청서: search_tickets(직원=김민지)"], note: "모델이 답 대신 도구 요청서를 썼습니다. 아직 아무것도 실행되지 않았습니다." },
-    { arc: 1, nd: "code", add: ["tool", "tool", "결과: #1042, 지난주, 같은 증상"], note: "Agent 프로그램이 요청서를 읽고 티켓 시스템을 실제로 조회해 결과를 목록에 더했습니다." },
-    { arc: 2, nd: "model", add: null, note: "목록 전체를 들고 모델을 다시 부릅니다. 한 바퀴를 돌았습니다." },
-    { arc: 0, nd: "req", add: ["ast", "assistant", "요청서: add_note(#1042, 오늘 증상)"], note: "모델이 결과를 보고 새 티켓 대신 기존 티켓에 덧붙이기로 했습니다." },
-    { arc: 1, nd: "code", add: ["tool", "tool", "결과: 메모 추가됨"], note: "코드가 메모를 실제로 추가하고 결과를 목록에 더했습니다." },
-    { arc: 2, nd: "model", add: null, note: "다시 모델을 부릅니다. 두 바퀴째입니다." },
-    { arc: 3, nd: "model", add: ["ast", "assistant", "답: 이미 #1042로 접수돼 있어 오늘 증상을 덧붙였습니다"], note: "이번에는 요청서 대신 직원에게 줄 답을 썼습니다. 루프가 끝납니다." },
+    { t: 1, add: null },
+    { t: 1.25, add: ["ast", "assistant", "요청서: search_tickets(직원=김민지) · 티켓 찾아 줘"] },
+    { t: 1.5, add: ["tool", "tool", "결과: #1042, 지난주, 같은 증상"] },
+    { t: 2, add: null },
+    { t: 2.25, add: ["ast", "assistant", "요청서: add_note(#1042, 오늘 증상) · 메모 붙여 줘"] },
+    { t: 2.5, add: ["tool", "tool", "결과: 메모 추가됨"] },
+    { t: 3, add: null },
+    { t: 4, add: ["ast", "assistant", "답: 이미 #1042로 접수돼 있어 오늘 증상을 덧붙였습니다"] },
   ];
+  /* t: 0~1 시작→모델, 1~3 순환선 두 바퀴(0.25 요청서 선, 0.5 도구 실행역, 0.75 결과 선), 3~4 모델→끝 */
+  const LG = {
+    H: { vb: "0 0 760 290", mw: 760, st: [40, 100], md: [300, 100], en: [720, 100], tl: [300, 220], fs: 1,
+         loop: "M300 100 H400 Q440 100 440 140 V180 Q440 220 400 220 H200 Q160 220 160 180 V140 Q160 100 200 100 H300",
+         req: [454, 165, "start"], res: [146, 165, "end"], lap: [300, 166], exit: [510, 82], chev: [[440, 156, 90], [262, 220, 180], [160, 150, 270]] },
+    N: { vb: "0 0 360 236", mw: 380, st: [24, 70], md: [150, 70], en: [336, 70], tl: [150, 180], fs: .92,
+         loop: "M150 70 H205 Q235 70 235 100 V150 Q235 180 205 180 H95 Q65 180 65 150 V100 Q65 70 95 70 H150",
+         req: [247, 156, "start"], res: [53, 156, "end"], lap: [150, 130], exit: [262, 52], chev: [[235, 122, 90], [118, 180, 180], [65, 112, 270]] },
+  };
+  const loopSvg = $("[data-ag-loop]");
+  let lLay = null, lt = 0, lGen = 0, lRef = {};
+  function drawLoopMap() {
+    const g = lLay = wide(loopSvg, 560) ? LG.H : LG.N, f = g.fs;
+    loopSvg.innerHTML = ""; loopSvg.setAttribute("viewBox", g.vb); loopSvg.style.maxWidth = g.mw + "px";
+    mk("line", { x1: g.st[0], y1: g.st[1], x2: g.en[0], y2: g.en[1], stroke: RAIL, "stroke-width": 8, "stroke-linecap": "round" }, loopSvg);
+    const lp = mk("path", { d: g.loop, fill: "none", stroke: RAIL, "stroke-width": 8, "stroke-linejoin": "round" }, loopSvg);
+    g.chev.forEach(([x, y, r]) => mk("path", { d: "M-4 -6 L4 0 L-4 6", transform: `translate(${x} ${y}) rotate(${r}) scale(1.6)`, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round" }, loopSvg));
+    [g.st, g.en].forEach(([x, y]) => mk("line", { x1: x, y1: y - 16, x2: x, y2: y + 16, stroke: INK, "stroke-width": 6, "stroke-linecap": "round" }, loopSvg));
+    txt(loopSvg, g.st[0], g.st[1] + 40, "시작", { "font-size": 16 * f, class: "t-d", "text-anchor": "middle" });
+    lRef.end = txt(loopSvg, g.en[0], g.en[1] + 40, "끝", { "font-size": 17 * f, class: "t-s", "text-anchor": "middle" });
+    txt(loopSvg, g.exit[0], g.exit[1], "답을 쓰면 빠져나감", { "font-size": 14 * f, class: "t-d", "text-anchor": "middle" });
+    lRef.md = mk("circle", { cx: g.md[0], cy: g.md[1], r: 15, fill: INK }, loopSvg);
+    txt(loopSvg, g.md[0], g.md[1] - 30, "모델", { "font-size": 20 * f, class: "t-s", "text-anchor": "middle" });
+    lRef.tl = mk("circle", { cx: g.tl[0], cy: g.tl[1], r: 15, fill: INK }, loopSvg);
+    txt(loopSvg, g.tl[0], g.tl[1] + 40, "도구 실행", { "font-size": 18 * f, class: "t-s", "text-anchor": "middle" });
+    lRef.req = txt(loopSvg, g.req[0], g.req[1], "요청서", { "font-size": 16 * f, class: "t-d", "text-anchor": g.req[2] });
+    lRef.res = txt(loopSvg, g.res[0], g.res[1], "결과", { "font-size": 16 * f, class: "t-d", "text-anchor": g.res[2] });
+    lRef.lap = txt(loopSvg, g.lap[0], g.lap[1], "", { "font-size": 15 * f, class: "t-d", "text-anchor": "middle" });
+    lRef.path = lp; lRef.len = lp.getTotalLength();
+    lRef.dot = mk("circle", { r: 10, fill: ACC, stroke: "var(--bg-base)", "stroke-width": 3 }, loopSvg);
+    setLoopT(lt);
+  }
+  function setLoopT(t) {
+    const g = lLay; let x, y;
+    if (t <= 1) { x = g.st[0] + (g.md[0] - g.st[0]) * t; y = g.st[1]; }
+    else if (t < 3 - 1e-6) { const fr = (t - 1) % 1; if (fr < 1e-6 || fr > 1 - 1e-6) { [x, y] = g.md; } else { const p = lRef.path.getPointAtLength(fr * lRef.len); x = p.x; y = p.y; } }
+    else { const e = Math.min(1, t - 3); x = g.md[0] + (g.en[0] - g.md[0]) * e; y = g.md[1]; }
+    lRef.dot.setAttribute("cx", x); lRef.dot.setAttribute("cy", y);
+    const fr = t > 1 && t < 3 ? (t - 1) % 1 : -1;
+    const at = (v) => Math.abs(t - v) < 0.02;
+    lRef.md.setAttribute("fill", at(1) || at(2) || at(3) ? ACC : INK);
+    lRef.tl.setAttribute("fill", Math.abs(fr - .5) < .02 ? ACC : INK);
+    const onReq = fr > .02 && fr < .48, onRes = fr > .52 && fr < .98;
+    lRef.req.setAttribute("class", onReq ? "t-s" : "t-d"); lRef.req.style.fill = onReq ? ACC : "";
+    lRef.res.setAttribute("class", onRes ? "t-s" : "t-d"); lRef.res.style.fill = onRes ? ACC : "";
+    lRef.end.style.fill = t > 3.98 ? ACC : "";
+    const laps = t <= 1 ? 0 : Math.min(2, Math.floor(t - 1 + 1e-6));
+    lRef.lap.textContent = t < 1 ? "" : `바퀴 수 ${laps}`;
+  }
+  async function goLoop(target) {
+    const my = ++lGen, from = lt, d = Math.abs(target - from);
+    await tween(Math.min(1400, Math.max(450, d * 900)), (e) => { if (my !== lGen) return; lt = from + (target - from) * e; setLoopT(lt); });
+  }
   let li = 0;
   const stateEl = $("[data-ag-state]");
   function drawLoop() {
-    $$(".ag-loop .arc").forEach((a) => a.classList.toggle("on", LOOP[li].arc !== null && Number(a.dataset.arc) === LOOP[li].arc));
-    $$(".ag-loop .nd").forEach((n) => n.classList.toggle("on", n.dataset.nd === LOOP[li].nd));
     if (!stateEl.children.length) {
       const rows = [[0, "sys", "system", "너는 IT 헬프데스크 Agent다"], [0, "usr", "user", "와이파이가 안 잡혀요. 티켓 열어 주세요"]];
       LOOP.forEach((st, k) => { if (st.add) rows.push([k, ...st.add]); });
       stateEl.innerHTML = rows.map(([k, c, r, t]) => `<li class="hide" data-at="${k}"><span class="ag-msg ${c}"><b>${r}</b> ${esc(t)}</span></li>`).join("");
       void stateEl.offsetWidth;
     }
-    $$("li", stateEl).forEach((x) => x.classList.toggle("hide", Number(x.dataset.at) > li));
+    $$("li", stateEl).forEach((x) => { const at = Number(x.dataset.at); x.classList.toggle("hide", at > li); $(".ag-msg", x).classList.toggle("new", at === li && li > 0); });
     $$("[data-ag-li]").forEach((x) => x.classList.toggle("on", Number(x.dataset.agLi) === li));
+    goLoop(LOOP[li].t);
   }
+  drawLoopMap();
+  addEventListener("resize", () => { if ((wide(loopSvg, 560) ? LG.H : LG.N) !== lLay) drawLoopMap(); }, { passive: true, signal });
   // 화면 가운데 띠에 들어온 단계 글이 그림의 단계를 정한다
   centerSticky($(".ag-loop-stick"), 64);
   drawLoop();
   nearestStep($$("[data-ag-li]"), (k) => { if (k !== li) { li = k; drawLoop(); } });
+
+  /* 7. 시리즈 노선도: 이번 글에서 깐 구간(직원→모델→답)만 주황, 나머지는 앞으로 깔 점선 */
+  const mapSvg = $("[data-ag-map]");
+  let mLay = null;
+  function drawMap() {
+    const H = mLay = wide(mapSvg, 760);
+    mapSvg.innerHTML = ""; mapSvg.setAttribute("viewBox", H ? "0 36 1000 384" : "0 0 360 384"); mapSvg.style.maxWidth = H ? "1000px" : "440px";
+    const g = H ? { st: [50, 110], md: [330, 110], en: [930, 110], tl: [330, 240], fs: 1,
+                    loop: "M330 110 H410 Q450 110 450 150 V200 Q450 240 410 240 H250 Q210 240 210 200 V150 Q210 110 250 110 H330",
+                    br: [[600, 300], [600, 340], [600, 382]], gate: [548, 377] }
+                : { st: [24, 60], md: [150, 60], en: [336, 60], tl: [150, 170], fs: .92,
+                    loop: "M150 60 H205 Q235 60 235 90 V140 Q235 170 205 170 H95 Q65 170 65 140 V90 Q65 60 95 60 H150",
+                    br: [[60, 270], [180, 270], [300, 270]], gate: [300, 246] };
+    const f = g.fs, dash = { stroke: RAIL, "stroke-width": 4, "stroke-dasharray": "7 7", fill: "none", "stroke-linecap": "round" };
+    mk("path", { d: g.loop, ...dash, "stroke-linejoin": "round" }, mapSvg);
+    g.br.forEach(([x, y]) => mk("path", { d: H ? `M${g.tl[0]} ${g.tl[1]} C${g.tl[0]} ${y - 10} ${g.tl[0] + 90} ${y} ${x} ${y}` : `M${g.tl[0]} ${g.tl[1]} C${g.tl[0]} ${g.tl[1] + 50} ${x} ${y - 50} ${x} ${y}`, ...dash }, mapSvg));
+    mk("line", { x1: g.st[0], y1: g.st[1], x2: g.en[0], y2: g.en[1], stroke: ACC, "stroke-width": 9, "stroke-linecap": "round" }, mapSvg);
+    [g.st, g.en].forEach(([x, y]) => mk("line", { x1: x, y1: y - 16, x2: x, y2: y + 16, stroke: INK, "stroke-width": 6, "stroke-linecap": "round" }, mapSvg));
+    mk("circle", { cx: g.md[0], cy: g.md[1], r: 14, fill: INK }, mapSvg);
+    mk("circle", { cx: g.tl[0], cy: g.tl[1], r: 11, fill: "var(--bg-base)", stroke: MUT, "stroke-width": 3.5, "stroke-dasharray": "4 3" }, mapSvg);
+    g.br.forEach(([x, y]) => mk("circle", { cx: x, cy: y, r: 8, fill: "var(--bg-base)", stroke: MUT, "stroke-width": 3 }, mapSvg));
+    /* 사람 승인 검문: 선을 가로지르는 짧은 막대 두 개 */
+    const [gx, gy] = g.gate;
+    mk("path", { d: H ? `M${gx} ${gy - 14} v28` : `M${gx - 15} ${gy} h30 M${gx - 15} ${gy - 7} v14 M${gx + 15} ${gy - 7} v14`, stroke: INK, "stroke-width": H ? 5 : 3.5, "stroke-linecap": "round" }, mapSvg);
+    const T = (x, y, s, a) => txt(mapSvg, x, y, s, a);
+    T(g.st[0], g.st[1] + 40, "직원", { "font-size": 17 * f, class: "t-s", "text-anchor": "middle" });
+    T(g.md[0], H ? g.md[1] + 44 : g.md[1] - 28, "모델 호출", { "font-size": 18 * f, class: "t-s", "text-anchor": "middle" });
+    T(g.en[0], g.en[1] + 40, "답", { "font-size": 17 * f, class: "t-s", "text-anchor": "middle" });
+    if (H) {
+      mk("path", { d: "M50 84 V72 H930 V84", fill: "none", stroke: ACC, "stroke-width": 2.5, "stroke-linejoin": "round" }, mapSvg);
+      T(490, 62, "이번 글에서 만든 구간 · 직원 말을 모델에 보내고 답을 받기까지", { "font-size": 15, class: "t-s", "text-anchor": "middle", style: `fill:${ACC}` });
+      T(690, 102, "메시지 목록을 들고 다님", { "font-size": 15, class: "t-d", "text-anchor": "middle" });
+      T(g.tl[0] - 70, g.tl[1] + 36, "도구 실행", { "font-size": 16, class: "t-d", "text-anchor": "end" });
+      T(462, 182, "요청서", { "font-size": 15, class: "t-d" }); T(198, 182, "결과", { "font-size": 15, class: "t-d", "text-anchor": "end" });
+      ["FAQ·매뉴얼 검색", "장비 상태 조회", "티켓 조회·생성"].forEach((s, i) => T(g.br[i][0] + 20, g.br[i][1] + 6, s, { "font-size": 16, class: "t-s" }));
+      T(gx, gy + 34, "사람 승인", { "font-size": 14, class: "t-d", "text-anchor": "middle" });
+    } else {
+      T(56, 36, "이번 글", { "font-size": 14, class: "t-s", "text-anchor": "middle", style: `fill:${ACC}` });
+      T(g.tl[0], g.tl[1] - 22, "도구 실행", { "font-size": 14, class: "t-d", "text-anchor": "middle" });
+      [["FAQ·매뉴얼\n검색"], ["장비 상태\n조회"], ["티켓\n조회·생성"]].forEach(([s], i) => T(g.br[i][0], g.br[i][1] + 30, s, { "font-size": 14, class: "t-s", "text-anchor": "middle" }));
+      T(gx + 20, gy + 5, "승인", { "font-size": 13, class: "t-s" });
+    }
+  }
+  drawMap();
+  addEventListener("resize", () => { if (wide(mapSvg, 760) !== mLay) drawMap(); }, { passive: true, signal });
 })();
 </script>
