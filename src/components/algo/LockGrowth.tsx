@@ -39,7 +39,7 @@ export function LockGrowth() {
           <em>1초에 한 번</em>
         </span>
         <span className="algo-growth-n">{opsLabel(l)}번</span>
-        <span className="algo-growth-time">{timeLabel(l + 8)}</span>
+        <span className="algo-growth-time">{timeLabel(l, 1)}</span>
       </div>
       <div className="algo-growth-row" data-ok={d <= 8}>
         <span className="algo-growth-name">
@@ -47,7 +47,7 @@ export function LockGrowth() {
           <em>1초에 1억 번</em>
         </span>
         <span className="algo-growth-n">{opsLabel(l)}번</span>
-        <span className="algo-growth-time">{d <= 8 ? `✔ ${timeLabel(l)}` : `✘ ${timeLabel(l)}`}</span>
+        <span className="algo-growth-time">{d <= 8 ? `✔ ${timeLabel(l, 100_000_000)}` : `✘ ${timeLabel(l, 100_000_000)}`}</span>
       </div>
     </section>
   );

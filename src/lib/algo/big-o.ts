@@ -83,8 +83,11 @@ export function pairsTape(input: number[]): Tape {
 
 // ── 횟수 세기 — 비교용이라 테이프를 만들지 않는다 ──
 
-/** 컴퓨터가 1초에 하는 단순한 일의 수(코딩테스트에서 쓰는 어림값). */
-export const OPS_PER_SECOND = 100_000_000;
+/**
+ * Python 이 1초에 하는 일의 수(보수적 어림값). 1천만~3천만 번 사이인데 여유 있게 하한을 쓴다.
+ * `1억 번` 은 C++ 감각이라 이 탭(Python)에서는 한계선에 닿는 값을 "된다"고 하게 만든다.
+ */
+export const OPS_PER_SECOND = 10_000_000;
 
 export type Growth = "linear" | "nlogn" | "square" | "exp";
 
@@ -114,8 +117,8 @@ export function pairCount(n: number): number {
 }
 
 /** 이 횟수를 컴퓨터가 끝내는 데 걸리는 시간을 사람 말로. 로그값을 받아 넘침을 피한다. */
-export function timeLabel(log10: number): string {
-  const secLog = log10 - Math.log10(OPS_PER_SECOND);
+export function timeLabel(log10: number, perSecond: number = OPS_PER_SECOND): string {
+  const secLog = log10 - Math.log10(perSecond);
   if (secLog <= 0) return "1초 안";
   const sec = 10 ** secLog;
   if (secLog < Math.log10(60)) return `${Math.round(sec)}초`;
@@ -128,8 +131,8 @@ export function timeLabel(log10: number): string {
 }
 
 /** 1초 안에 끝나는지. */
-export function fitsInSecond(log10: number): boolean {
-  return log10 <= Math.log10(OPS_PER_SECOND);
+export function fitsInSecond(log10: number, perSecond: number = OPS_PER_SECOND): boolean {
+  return log10 <= Math.log10(perSecond);
 }
 
 /** 횟수 표기. 1조를 넘으면 10^k 로 적는다. */

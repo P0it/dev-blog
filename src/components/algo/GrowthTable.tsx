@@ -29,6 +29,7 @@ export function GrowthTable() {
           </button>
         ))}
       </div>
+      <p className="algo-growth-note">Python 은 1초에 약 1천만 번(보수적 기준)으로 셉니다. 1초를 넘으면 ✘ 와 걸리는 시간이 뜹니다.</p>
 
       {ROWS.map((r) => {
         const l = log10Ops(r.kind, n);

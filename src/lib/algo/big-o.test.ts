@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pairsTape, PAIRS_CODE, ops, log10Ops, pairCount, timeLabel, fitsInSecond, opsLabel } from "./big-o.ts";
+import { pairsTape, PAIRS_CODE, ops, log10Ops, pairCount, timeLabel, fitsInSecond, opsLabel, OPS_PER_SECOND } from "./big-o.ts";
 import fixture from "./fixtures/big-o.json" with { type: "json" };
 
 test("PAIRS_CODE — Python 코드와 한 글자도 다르지 않다", () => {
@@ -50,9 +50,27 @@ test("ops — 칸이 열 배가 되면 선형은 10배, 제곱은 100배다", ()
 test("timeLabel·fitsInSecond — 10만 칸에서 제곱은 1초를 넘고 n log n 은 안이다", () => {
   assert.equal(fitsInSecond(log10Ops("square", 100_000)), false);
   assert.equal(fitsInSecond(log10Ops("nlogn", 100_000)), true);
-  assert.equal(timeLabel(log10Ops("square", 100_000)), "2분");
-  assert.equal(timeLabel(Math.log10(pairCount(100_000))), "50초");
+  assert.equal(timeLabel(log10Ops("square", 100_000)), "17분");
+  assert.equal(timeLabel(Math.log10(pairCount(100_000))), "8분");
   assert.equal(timeLabel(log10Ops("nlogn", 100_000)), "1초 안");
+});
+
+test("Python 어림 — 1초는 1천만 번이고, 한계선에 닿는 N² = 1억 은 안 된다", () => {
+  assert.equal(OPS_PER_SECOND, 10_000_000);
+  assert.equal(fitsInSecond(log10Ops("square", 10_000)), false, "N=1만 의 N² 은 1억 번이라 10초");
+  assert.equal(timeLabel(log10Ops("square", 10_000)), "10초");
+});
+
+test("③ 한도 불릿 — 페이지에 적은 N 이 실제로 1초 안이다", () => {
+  assert.equal(fitsInSecond(log10Ops("nlogn", 500_000)), true);
+  assert.equal(fitsInSecond(log10Ops("square", 3_000)), true);
+  assert.equal(fitsInSecond(log10Ops("exp", 20)), true);
+  assert.equal(fitsInSecond(log10Ops("exp", 30)), false);
+});
+
+test("지정한 속도로 따로 셀 수 있다 — 사람은 1초에 1번", () => {
+  assert.equal(timeLabel(Math.log10(1_000), 1), "17분");
+  assert.equal(fitsInSecond(Math.log10(100_000_000), 100_000_000), true);
 });
 
 test("2^n — 숫자로 못 담는 크기도 라벨이 나온다", () => {
