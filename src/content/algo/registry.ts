@@ -51,7 +51,16 @@ export const registry: AlgoEntry[] = [
   { slug: "recursion", title: "재귀", lede: "거울 앞에 거울을 두면", category: "기초 개념", tier: 1, aliases: ["recursion", "재귀 함수", "재귀호출"], signals: ["같은 모양의 더 작은 문제", "점화식이 주어진다", "폴더·트리처럼 안에 같은 것이 든다"], status: "ready" },
   { slug: "brute-force", title: "완전탐색", lede: "일단 다 해 보면 안 되나", category: "기초 개념", tier: 1, aliases: ["brute force", "전수 조사", "exhaustive search", "itertools"], signals: ["N이 작다", "모든 경우", "조건을 만족하는 것 중 최선"], status: "ready" },
   plan("two-pointers", "투 포인터", "양쪽에서 좁혀 오기", "기초 개념", ["two pointers"], ["정렬돼 있다", "두 수의 합"]),
-  plan("sliding-window", "슬라이딩 윈도우", "창문을 밀면서 보기", "기초 개념", ["sliding window"], ["연속한 구간"]),
+  {
+    slug: "sliding-window",
+    title: "슬라이딩 윈도우",
+    lede: "창문을 밀면서 보기",
+    category: "기초 개념",
+    tier: 1,
+    aliases: ["sliding window", "슬라이딩윈도우", "고정 길이 구간", "window"],
+    signals: ["연속한 구간", "길이가 k 로 정해져 있다", "최대·최소 구간 합"],
+    status: "ready",
+  },
   plan("prefix-sum", "누적합", "구간의 합을 한 번 빼기로", "기초 개념", ["prefix sum"], ["구간 합을 여러 번"]),
 
   // ── 자료구조
