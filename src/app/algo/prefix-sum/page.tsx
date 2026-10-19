@@ -5,6 +5,7 @@ import { RangeReveal } from "@/components/algo/RangeReveal";
 import { Counter } from "@/components/algo/Counter";
 import { Quiz } from "@/components/algo/Quiz";
 import { timeLabel } from "@/lib/algo/big-o";
+import { josa } from "@/lib/algo/josa";
 import {
   prefixTape,
   prefixOf,
@@ -85,7 +86,7 @@ export default async function PrefixSumPage() {
           { label: "질문 3개 · 칸을 하나씩 더하기", n: handAll, unit: "번" },
           { label: "질문 3개 · 깔고 빼기", n: three.prefix, unit: "번" },
         ]}
-        caption="질문이 하나면 깔 값이 더 듭니다. 셋부터 뒤집힙니다."
+        caption="질문이 하나면 줄을 까는 품이 더 듭니다. 셋부터는 뒤집힙니다."
       />
       <ul className="algo-keys">
         <li>
@@ -140,7 +141,7 @@ export default async function PrefixSumPage() {
         why={
           <>
             1번 칸과 2번 칸을 더하면 1 + 4 = <strong>{rangeSum(QUIZ_PREFIX, 1, 2)}</strong>. 끝 칸을 넣으려면 <code>right + 1</code>, 시작 칸을 빼지 않으려면
-            <code> left</code> 를 씁니다. 첫째 줄은 끝 칸을, 둘째 줄은 시작 칸을 빠뜨린 식입니다.
+            <code> left</code> 를 씁니다. 첫째 보기는 끝 칸을, 둘째 보기는 시작 칸을 빠뜨린 식입니다.
           </>
         }
       />
@@ -152,13 +153,13 @@ export default async function PrefixSumPage() {
           <b>
             <code>prefix = [0]</code> 를 빼먹으면
           </b>{" "}
-          — 0번 칸부터인 질문에서 틀린다. <code>[3, 1, 4]</code> 의 0번~1번 합은 4 인데 {rangeSumWithoutZero(QUIZ_ARR, 0, 1)} 이 나온다. 오류도 안 난다. 파이썬은 <code>-1</code> 번 칸을 맨 뒤 칸으로 읽는다
+          — 0번 칸부터 묻는 질문에서 틀린다. <code>[3, 1, 4]</code> 의 0번~1번 합은 4 인데 {josa(rangeSumWithoutZero(QUIZ_ARR, 0, 1), "이", "가")} 나온다. 오류도 안 난다. 파이썬은 <code>-1</code> 번 칸을 맨 뒤 칸으로 읽는다
         </li>
         <li>
           <b>
             <code>right + 1</code> 을 <code>right</code> 로 쓰면
           </b>{" "}
-          — 끝 칸 하나가 빠진다. 깔아 둔 줄의 k 번 칸은 앞에서 k칸이라서 한 칸 밀려 있다
+          — 끝 칸 하나가 빠진다. 깔아 둔 줄의 k번 칸은 앞에서 k칸의 합이라서 한 칸 밀려 있다
         </li>
         <li>
           <b>값이 중간에 바뀌면</b> — 그 칸 뒤의 줄이 전부 틀어진다. 다시 깔아야 하니 질문 사이에 값이 바뀌는 문제에는 안 맞는다

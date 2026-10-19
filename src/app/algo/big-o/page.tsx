@@ -41,7 +41,7 @@ export default async function BigOPage() {
             <b>횟수를 정하는 것</b> — 장 수 N 과 방법
           </li>
           <li>
-            <b>표시해 두기가 빠른 이유</b> — 번호로 칸을 바로 찾아가서, 장마다 확인이 딱 한 번이다
+            <b>표시해 두기가 빠른 이유</b> — 번호로 칸을 바로 찾아간다. 장마다 확인이 딱 한 번이다
           </li>
         </ul>
         <p className="algo-chain">
@@ -51,11 +51,11 @@ export default async function BigOPage() {
           </span>
         </p>
         <p>
-          이 표기에는 O 를 붙입니다: <code>O(N²)</code>, <code>O(N)</code>. O( ) 는 &ldquo;N 이 커지면 횟수가 대략 이만큼 는다&rdquo;는 표시입니다.
+          이 표기에는 O 를 붙여 <code>O(N²)</code>, <code>O(N)</code> 처럼 적습니다. O( ) 는 &ldquo;N 이 커지면 횟수가 대략 이만큼 는다&rdquo;는 표시입니다.
         </p>
         <p>
           세 번째 방법도 있습니다. 번호순으로 줄을 세우면 같은 번호는 이웃이 되어 옆 장과만 견주면 됩니다. 줄 세우는 데{" "}
-          <code>O(N log N)</code> 이 들고, 10만 장이면 약 {ops("nlogn", BIG).toLocaleString("ko-KR")}번이라 1초 안에 듭니다.
+          <code>O(N log N)</code> 이 들고 10만 장이면 약 {ops("nlogn", BIG).toLocaleString("ko-KR")}번이라 1초 안에 듭니다.
         </p>
         <p>
           log N = N 을 절반씩 줄여 1 이 되기까지 걸리는 횟수입니다. 1,024 → 512 → … → 1 은 10번이라 log 1,024 = 10 입니다.
@@ -114,9 +114,9 @@ export default async function BigOPage() {
 
       {/* ⑤ 확인 문제 */}
       <Quiz
-        question="번호표가 100만 장이다. 모두와 모두를 견주는 방법(N²)은 ③ 표에서 어떻게 나올까요?"
+        question="번호표가 100만 장입니다. 모두와 모두를 견주는 방법(N²)은 ③ 표에서 어떻게 나올까요?"
         options={[
-          { label: "1초 안에 끝나지 못한다. 약 1조 번이라 하루쯤 걸린다", correct: true },
+          { label: "1초 안에 못 끝난다. 약 1조 번이라 하루쯤 걸린다", correct: true },
           { label: "10만 장일 때의 10배라서 몇 분이면 된다" },
           { label: "표시해 두기(N)와 같은 시간이 걸린다" },
         ]}

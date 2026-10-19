@@ -56,7 +56,7 @@ function* walk(input: number[]): Generator<Step> {
       j = b;
       yield { line: 5, vars: vars(n, count, i, j), stage: stage(arr, i, j, false), note: `${b}번 칸을 짝으로 잡습니다` };
       count++;
-      yield { line: 6, vars: vars(n, count, i, j), stage: stage(arr, i, j, false), note: `견준 횟수 ${count}번째` };
+      yield { line: 6, vars: vars(n, count, i, j), stage: stage(arr, i, j, false), note: `${count}번째로 견줍니다` };
       const same = arr[a] === arr[b];
       yield {
         line: 7,

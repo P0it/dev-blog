@@ -167,7 +167,7 @@ export function RangeByHand({ onDone }: { onDone?: (r: RangeResult) => void }) {
       {phase === "predict" && (
         <>
           <p className="algo-range-note">
-            깔아 둔 줄의 예: 앞에서 3칸 합 = 3 + 1 + 4 = 8. 두 칸의 차이가 그 사이 칸들의 합입니다.
+            깔아 둔 줄의 예: 앞에서 3칸 합 = 3 + 1 + 4 = 8. 두 칸을 빼면 그 사이 칸의 합이 나옵니다.
           </p>
           <div className="algo-guess" role="group" aria-label="어느 쪽이 덜 누를까">
             {(Object.keys(GUESS_LABEL) as Guess[]).map((g) => (
@@ -190,7 +190,7 @@ export function RangeByHand({ onDone }: { onDone?: (r: RangeResult) => void }) {
         <p className="algo-range-note">
           {qDone
             ? `합은 ${handSum}. ${handClicks(left, right)}번 눌렀습니다.`
-            : `구간 안의 칸을 눌러 더하세요. 더한 값 ${handSum}`}
+            : `구간 안의 칸을 눌러 더하세요. 지금까지 더한 값 ${handSum}`}
         </p>
       )}
 
