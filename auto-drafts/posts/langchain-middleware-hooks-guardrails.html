@@ -196,6 +196,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .mw-grows .v.stop { color: var(--mw-bad); font-weight: 700; }
 .post-page .mw-grows .v.miss { color: var(--mw-bad); }
 @media (max-width: 900px) { .post-page .mw p.mw-pline { font-size: 17px; line-height: 2.3; } .post-page .mw-pline .em s { font-size: .95em; bottom: 104%; } .post-page .mw-grows { grid-template-columns: minmax(0, 1fr); gap: 4px; } .post-page .mw-grows .v { margin-bottom: 20px; } }
+.post-page .mw p.mw-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .mw-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
 </style>
 <div class="mw">
   <section class="mw-hero">
@@ -208,7 +210,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </div>
       </div>
       <div class="mw-stage" data-figure data-thumb data-mw-hero>
-        <div class="mw-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">끼울 코드</span>
+        <p class="mw-ask">어떤 코드를 끼워 볼까요? 고르면 그 코드가 도는 역에 초록 깃발이 꽂힙니다.</p>
+        <div class="mw-ctrl">
           <div class="mw-seg" role="group" aria-label="끼울 코드 고르기">
             <button type="button" data-mw-m="guard" aria-pressed="true">입력 검사</button>
             <button type="button" data-mw-m="pii" aria-pressed="false">개인정보 가리기</button>
@@ -233,7 +236,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>wrap 훅은 모델 호출이나 도구 호출 자체를 감쌉니다. 호출을 실제로 하는 <code>handler</code>를 받아서 부를지 말지를 직접 정합니다. 한 번 부를 수도 있고 실패하면 다시 부를 수도 있고 아예 부르지 않고 결과를 만들어 줄 수도 있습니다. 그림에서 감싸는 쪽이 호출을 어떻게 다룰지 고를 수 있습니다.</p>
       </div>
       <div data-figure>
-        <div class="mw-ctrl" style="margin-bottom:10px"><div class="mw-seg" role="group" aria-label="handler 다루는 법"><button type="button" data-mw-w="once" aria-pressed="true">한 번 부름</button><button type="button" data-mw-w="retry" aria-pressed="false">실패하면 다시 부름</button><button type="button" data-mw-w="skip" aria-pressed="false">부르지 않음</button></div></div>
+        <p class="mw-ask">wrap 훅이 호출(handler)을 어떻게 다룰지 골라 보세요. 아래 시간축의 막대가 바뀝니다.</p><div class="mw-ctrl" style="margin-bottom:10px"><div class="mw-seg" role="group" aria-label="handler 다루는 법"><button type="button" data-mw-w="once" aria-pressed="true">한 번 부름</button><button type="button" data-mw-w="retry" aria-pressed="false">실패하면 다시 부름</button><button type="button" data-mw-w="skip" aria-pressed="false">부르지 않음</button></div></div>
         <svg class="mw-scene mw-nar" data-mw-two viewBox="0 0 460 370" role="img" aria-label="훅 두 종류를 시간축으로 그린 그림. 위쪽 축에서 before 와 after 는 모델 호출 막대 앞뒤의 한 순간 눈금이다. 아래쪽 축에서 wrap 은 구간 전체를 덮는 괄호이고, 그 안에서 handler 를 한 번 부르거나 실패하면 다시 부르거나 아예 부르지 않는다."></svg>
         <p class="mw-wnote" data-mw-wnote></p>
         <p class="mw-cap">설명을 위한 그림입니다. 도구 호출을 감싸는 wrap_tool_call도 같은 방식으로 동작합니다.</p>
@@ -288,16 +291,17 @@ agent = create_agent(model, tools=tools, middleware=[guard])</code></pre>
       <div class="mw-cols2" style="margin-top:36px" data-figure>
         <div>
           <h3>ModelCallLimitMiddleware</h3>
+          <p class="mw-ask">한도를 바꿔 보세요. 표의 칸 수와 막히는 호출이 함께 바뀝니다.</p>
           <div class="mw-ctrl">
-            <label>run_limit <input type="range" min="1" max="5" value="2" data-mw-rl aria-label="run_limit"><output data-mw-rlout>2</output></label>
-            <div class="mw-seg" role="group" aria-label="exit_behavior"><button type="button" data-mw-eb="end" aria-pressed="true">end</button><button type="button" data-mw-eb="error" aria-pressed="false">error</button></div>
+            <label>호출 한도 run_limit <input type="range" min="1" max="5" value="2" data-mw-rl aria-label="run_limit"><output data-mw-rlout>2</output></label>
+            <div class="mw-seg" role="group" aria-label="exit_behavior"><button type="button" data-mw-eb="end" aria-pressed="true">end<small>안내 남기고 끝</small></button><button type="button" data-mw-eb="error" aria-pressed="false">error<small>예외 내고 멈춤</small></button></div>
           </div>
           <svg class="mw-scene" data-mw-turn viewBox="0 0 460 330" role="img" aria-label="모델 호출권 그림. 표에는 run_limit 만큼 칸이 있고 호출 하나마다 구멍이 하나 뚫린다. 아래 시간축에서 칸이 다 뚫린 다음 호출에 빨간 선이 그어지고 그 뒤 호출은 도착하지 못한다."></svg>
           <p class="mw-wnote" data-mw-resl></p>
         </div>
         <div>
           <h3>PIIMiddleware("email", strategy=…)</h3>
-          <div class="mw-ctrl"><div class="mw-seg" role="group" aria-label="strategy"><button type="button" data-mw-st="redact" aria-pressed="true">redact</button><button type="button" data-mw-st="mask" aria-pressed="false">mask</button><button type="button" data-mw-st="hash" aria-pressed="false">hash</button><button type="button" data-mw-st="block" aria-pressed="false">block</button></div></div>
+          <p class="mw-ask">이메일을 어떻게 처리할지 골라 보세요. 문장 속 주소가 바뀝니다.</p><div class="mw-ctrl"><div class="mw-seg" role="group" aria-label="strategy"><button type="button" data-mw-st="redact" aria-pressed="true">redact<small>통째로 바꿈</small></button><button type="button" data-mw-st="mask" aria-pressed="false">mask<small>일부만 가림</small></button><button type="button" data-mw-st="hash" aria-pressed="false">hash<small>해시값으로</small></button><button type="button" data-mw-st="block" aria-pressed="false">block<small>아예 막음</small></button></div></div>
           <div class="mw-pdoc" data-mw-pii role="img" aria-label="사용자가 보낸 문장에 교정 표시를 한 그림. 이메일 자리에 원래 주소를 빨간 줄로 지우고 처리 방식에 따라 바뀐 값을 적는다. block 이면 문장 전체에 줄이 그어진다."></div>
           <p class="mw-wnote" data-mw-sd></p>
         </div>
@@ -335,7 +339,7 @@ Model call limits exceeded: run limit (2/2)</div>
   <section class="mw-sec">
     <div class="mw-wrap mw-split rev">
       <div data-figure>
-        <div class="mw-ctrl" style="margin-bottom:10px"><button type="button" class="mw-act" data-mw-play>순서대로 켜 보기</button></div>
+        <p class="mw-ask">버튼을 누르면 괄호와 번호가 실행 순서대로 하나씩 켜집니다. 번호를 눌러도 됩니다.</p><div class="mw-ctrl" style="margin-bottom:10px"><button type="button" class="mw-act" data-mw-play>순서대로 켜 보기</button></div>
         <svg class="mw-scene mw-nar" data-mw-onion viewBox="0 0 460 330" role="img" aria-label="손으로 그린 괄호 그림. 아래 번호를 누르면 그 단계로 간다. A( B( A( B( 모델 호출 )B )A )B )A 처럼 괄호가 겹쳐 있다. 바깥 괄호 한 쌍은 agent 훅, 안쪽 한 쌍은 model 훅이다. 아래 번호 1~9가 왼쪽에서 오른쪽으로 실행 순서를 따라간다."></svg>
                 <p class="mw-cap">A, B 두 Middleware를 이 순서로 끼우고 직접 실행해 찍은 출력 순서입니다.</p>
       </div>
@@ -357,6 +361,7 @@ Model call limits exceeded: run limit (2/2)</div>
         </div>
       </div>
       <div style="margin-top:36px" data-figure>
+        <p class="mw-ask">검사 방식을 바꿔 보세요. 세 문장 중 막히는 문장이 달라집니다.</p>
         <div class="mw-ctrl">
           <div class="mw-seg" role="group" aria-label="검문 방식"><button type="button" data-mw-gk="rule" aria-pressed="true">규칙 기반(키워드 "해킹")</button><button type="button" data-mw-gk="model" aria-pressed="false">모델 기반(검사용 모델이 판단)</button></div>
         </div>
