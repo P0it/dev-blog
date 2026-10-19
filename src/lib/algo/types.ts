@@ -22,6 +22,8 @@ export type StageState = {
   values?: number[];
   /** 레인(스택·큐·힙)에 담긴 값. 없으면 그리지 않는다 */
   queue?: number[];
+  /** 호출 탑 — 아래가 먼저 부른 층이다. `ret` 이 있으면 그 층이 값을 돌려주며 걷히는 중이다 */
+  frames?: { n: number; ret?: number }[];
 };
 
 /** 코드 한 줄이 실행된 순간. */
