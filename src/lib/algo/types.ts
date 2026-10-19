@@ -32,6 +32,11 @@ export type StageState = {
   chars?: string[];
   /** 스택에 담긴 글자. 앞이 먼저 넣은 것(아래)이고 맨 뒤가 맨 위다 */
   stack?: string[];
+  /**
+   * 줄(큐·덱) 처리. `served` 는 지금까지 받고 내보낸 사람, `shifted` 는 같은 일을 리스트 `pop(0)` 으로 했다면
+   * 지금까지 한 칸씩 당겼을 칸 수, `hot` 은 이 스텝에서 사람이 드나든 끝이다.
+   */
+  line?: { served: number[]; shifted: number; hot?: "front" | "back" };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
