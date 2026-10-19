@@ -23,8 +23,8 @@ export function MergeReveal({ children }: { children: ReactNode }) {
           </p>
         )}
         <p>
-          카드 여섯 장을 <strong>{res?.placed ?? 0}번</strong> 내려놓아 합쳤습니다. 두 장씩만 견주면 됐고, 견준 횟수는{" "}
-          <strong>{res?.compares ?? 0}번</strong>이었습니다.
+          카드 여섯 장을 <strong>{res?.placed ?? 0}번</strong> 내려놓아 합쳤습니다. 맨 앞 두 장만 견주면 됐습니다. 견준 횟수는{" "}
+          <strong>{res?.compares ?? 0}번</strong>입니다.
         </p>
         {children}
       </div>

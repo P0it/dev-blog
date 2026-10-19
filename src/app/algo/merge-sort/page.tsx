@@ -84,7 +84,7 @@ export default async function MergeSortPage() {
         </p>
         <p>
           정렬이 안 된 카드 여덟 장도 이걸로 정렬할 수 있습니다. 반으로 쪼개고 또 쪼개면 한 장씩이 됩니다. 한 장은 이미
-          정렬된 묶음이라, 거꾸로 합쳐 올라가면 끝납니다.
+          정렬된 묶음이라 거꾸로 합쳐 올라가면 끝납니다.
         </p>
         <MergeTree cards={MERGE_TREE_CARDS} />
         <p>
@@ -99,21 +99,21 @@ export default async function MergeSortPage() {
           <b>두 묶음이 각각 정렬돼 있다</b> — 그래서 맨 앞 두 장만 견주면 됐다. ① 에서 뒤쪽 카드를 누를 수 없던 이유다
         </li>
         <li>
-          <b>한 장짜리 묶음은 이미 정렬돼 있다</b> — 쪼개기를 여기서 멈춘다. 재귀의 멈추는 자리와 같다
+          <b>한 장짜리 묶음은 이미 정렬돼 있다</b> — 쪼개기를 여기서 멈춘다. 재귀가 멈추는 자리와 같다
         </li>
         <li>
-          <b>층마다</b> — 합치며 카드를 한 번씩 내려놓는다. 반으로 쪼갠 횟수가 층 수이고, 8장은 {sortedEight.levels}층, 1000장은 10층이다
+          <b>층마다</b> — 합치며 카드를 한 번씩 내려놓는다. 반으로 쪼갠 횟수가 층 수다. 8장은 {sortedEight.levels}층, 1000장은 10층이다
         </li>
       </ul>
       <p>
-        층 수 × 카드 수가 곧 <strong>N log N</strong> 입니다. 반으로 몇 번 쪼개면 1이 되는지가 log N 입니다.
+        반으로 몇 번 쪼개면 1이 되는지가 log N 입니다. 층 수 × 카드 수가 곧 <strong>N log N</strong> 입니다.
       </p>
       <Counter
         rows={[
           { label: `버블 정렬 · ${BIG}장`, n: bubbleBig, unit: "번" },
           { label: `병합 정렬 · ${BIG}장`, n: mergeBig, unit: "번" },
         ]}
-        caption={`같은 ${BIG}장을 정렬할 때 카드를 견주거나 내려놓는 횟수입니다. ${HUGE.toLocaleString("ko-KR")}장이면 약 2천만 번 대 5천억 번이라 ${timeLabel(log10Ops("nlogn", HUGE))} 대 ${timeLabel(Math.log10(pairCount(HUGE)))}쯤 걸립니다(Python 1초 ≈ 1천만 번 어림).`}
+        caption={`같은 ${BIG}장을 정렬할 때 카드를 견주거나 내려놓는 횟수입니다. ${HUGE.toLocaleString("ko-KR")}장이면 약 2천만 번 대 5천억 번입니다. 시간으로는 ${timeLabel(log10Ops("nlogn", HUGE))} 대 ${timeLabel(Math.log10(pairCount(HUGE)))}쯤입니다(Python 1초 ≈ 1천만 번 어림).`}
       />
 
       {/* ④ 코드와 플레이어 */}
@@ -157,7 +157,7 @@ export default async function MergeSortPage() {
         why={
           <>
             병합 정렬은 입력이 어떻게 생겼든 똑같이 쪼개고 합칩니다. 8장은 {sortedEight.levels}층이고 층마다 8장을 내려놓아{" "}
-            <strong>{sortedEight.placed}번</strong>입니다. 흐트러진 8장도 {shuffledEight.placed}번이라 잘 선 줄도 못 선 줄도
+            <strong>{sortedEight.placed}번</strong>입니다. 흐트러진 8장도 {shuffledEight.placed}번으로
             같습니다.
           </>
         }
@@ -184,7 +184,7 @@ export default async function MergeSortPage() {
           <b>
             <code>arr[:mid]</code> 는 복사다
           </b>{" "}
-          — 카드를 새 리스트로 옮기니 메모리를 카드 수만큼 더 쓴다. 쪼개는 깊이는 log N 이라 100만 장도 20층이어서
+          — 카드를 새 리스트로 옮기니 메모리를 카드 수만큼 더 쓴다. 쪼개는 깊이는 log N 이라 100만 장도 20층이다.
           RecursionError 는 걱정하지 않아도 된다
         </li>
       </ul>
@@ -198,8 +198,8 @@ export default async function MergeSortPage() {
       </div>
       <p>
         실전에서 정렬이 필요하면 <code>sorted()</code> 한 줄이면 됩니다. 파이썬의 <code>sorted()</code> 는 병합 정렬과 삽입
-        정렬을 섞은 방법이라 직접 만든 이 코드보다 훨씬 빠릅니다. 10만 장에서 이 코드는 0.13초, <code>sorted()</code> 는
-        0.008초였습니다. Python 3.14 에서 직접 잰 값이라 컴퓨터마다 달라서 비율만 보세요.
+        정렬을 섞은 방법을 C 로 구현해 둬서 직접 만든 이 코드보다 훨씬 빠릅니다. Python 3.14 에서 10만 장을 재 보니 이 코드는 0.13초,{" "}
+        <code>sorted()</code> 는 0.008초였습니다(컴퓨터마다 다르니 비율만 보세요).
       </p>
       <p className="algo-next">다음 장에서는 기준 카드 하나로 좌우를 가르는 퀵 정렬을 봅니다.</p>
     </main>

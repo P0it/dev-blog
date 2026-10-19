@@ -53,7 +53,7 @@ export default async function QuickSortPage() {
       <p className="algo-lede">기준 하나로 좌우를 가르기</p>
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
-      <p>카드 일곱 장이 있습니다. 맨 앞 카드를 기준으로 삼고, 나머지를 한 장씩 보며 왼쪽과 오른쪽 묶음으로 가릅니다.</p>
+      <p>카드 일곱 장이 있습니다. 맨 앞 카드를 기준으로 삼고 나머지를 한 장씩 보며 왼쪽과 오른쪽 묶음으로 가릅니다.</p>
 
       <QuickReveal>
         <ul className="algo-keys">
@@ -65,7 +65,7 @@ export default async function QuickSortPage() {
           </li>
         </ul>
         <p>
-          기준을 잡고 좌우로 가르기를 되풀이하는 방법 = <strong>퀵 정렬</strong>. 이때 기준 카드를 <strong>피벗</strong>이라고
+          기준을 잡고 좌우로 가르기를 되풀이하는 방법 = <strong>퀵 정렬</strong>. 이때 기준 카드를 <strong>피벗(pivot)</strong>이라고
           부릅니다.
         </p>
         <Counter
@@ -87,8 +87,8 @@ export default async function QuickSortPage() {
           <b>한쪽으로 쏠리면</b> — 한 번에 기준 카드 하나만 정해진다. 층이 N 개가 되어 비교가 N(N−1)/2, 곧 N²
         </li>
         <li>
-          <b>정렬된 카드</b> — 위의 「이미 정렬된 카드로 해 보기」에서 왼쪽이 0장이었다. 일곱 장이면 비교 {sorted.compares}번(손으로
-          해 본 카드는 {hand.compares}번), 10만 장이면 {pairCount(HUGE).toLocaleString("ko-KR")}번으로{" "}
+          <b>정렬된 카드</b> — 위의 「이미 정렬된 카드로 해 보기」에서 왼쪽이 0장이었다. 일곱 장이면 비교 {sorted.compares}번이다(손으로
+          해 본 카드는 {hand.compares}번). 10만 장이면 {pairCount(HUGE).toLocaleString("ko-KR")}번으로{" "}
           {timeLabel(Math.log10(pairCount(HUGE)))} 걸린다
         </li>
       </ul>
@@ -96,7 +96,7 @@ export default async function QuickSortPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 가르고 양쪽에 되풀이하는 것이 전부다</h2>
       <p>
-        기준을 맨 앞 칸에 두고 앞에서부터 훑는 방식입니다. ① 에서 한 순서와 같아서 따라가기 쉽습니다.{" "}
+        ① 에서 한 순서 그대로 기준을 맨 앞 칸에 두고 앞에서부터 훑습니다.{" "}
         <strong>다음</strong>을 눌러 첫 분할을 한 줄씩 보세요. 안쪽 분할은 기준을 놓은 줄 하나로 묶어 보여 줍니다.
       </p>
 
@@ -107,7 +107,7 @@ export default async function QuickSortPage() {
           <b>
             <code>lo</code> · <code>hi</code>
           </b>{" "}
-          — 지금 가르는 구간. 처음엔 0번 칸부터 6번 칸이다
+          — 지금 가르는 구간. 처음엔 0번 칸부터 6번 칸까지다
         </li>
         <li>
           <b>
@@ -127,7 +127,7 @@ export default async function QuickSortPage() {
       <Quiz
         question={
           <>
-            이미 정렬된 카드 <code>{QUICK_SORTED.join(" ")}</code> 을 맨 앞 카드로 첫 분할하면 왼쪽 묶음에 몇 장이 모일까요?
+            이미 정렬된 카드 <code>{QUICK_SORTED.join(" ")}</code> 을 맨 앞 카드를 기준으로 첫 분할하면 왼쪽 묶음에 몇 장이 모일까요?
           </>
         }
         options={[
@@ -138,7 +138,7 @@ export default async function QuickSortPage() {
         why={
           <>
             기준 1 보다 작은 카드가 없어서 왼쪽 묶음은 비어 있습니다. 6장은 <code>7 6 5 4 3 2 1</code> 처럼 거꾸로 선 카드에서
-            나오는 수이고, 3장은 가운데 카드 4 를 기준으로 잡았을 때 나오는 수입니다.
+            나옵니다. 3장은 가운데 카드 4 를 기준으로 잡았을 때 나옵니다.
           </>
         }
       />
@@ -148,7 +148,7 @@ export default async function QuickSortPage() {
       <ul className="algo-keys">
         <li>
           <b>정렬된 큰 입력</b> — 5000장만 돼도 <code>RecursionError: maximum recursion depth exceeded</code> 가 난다. 층이 N 개가
-          되는데 파이썬 기본 한도는 1000이다
+          되는데 파이썬의 기본 재귀 한도는 1000이다
         </li>
         <li>
           <b>같은 값이 많으면</b> — 5000장이 모두 같아도 같은 에러가 난다. 같은 카드는 <code>&lt;</code> 가 거짓이라 전부 오른쪽으로
@@ -164,7 +164,7 @@ export default async function QuickSortPage() {
             [1, "b"],
             [1, "c"],
           ]).join(" ")}{" "}
-          이 된다. 안정 정렬이 아니다
+          가 된다. 안정 정렬이 아니다
         </li>
         <li>
           <b>리스트 컴프리헨션 버전</b> — 짧게 쓸 수 있지만 가를 때마다 새 리스트를 만들어 메모리를 더 쓴다

@@ -109,7 +109,7 @@ export function QuickByHand({ onDone }: { onDone?: (r: QuickResult | null) => vo
         {done
           ? "기준 카드가 두 묶음 사이에 놓였습니다"
           : phase === "predict"
-            ? `맨 앞 카드 ${pivot}${p(pivot, "을", "를")} 기준으로 잡습니다. 먼저 맞혀 보세요. 기준보다 작은 카드는 왼쪽 묶음에 몇 장 모일까요?`
+            ? `맨 앞 카드 ${pivot}${p(pivot, "을", "를")} 기준으로 잡습니다. 기준보다 작은 카드가 왼쪽 묶음에 몇 장 모일지 먼저 맞혀 보세요`
             : `기준 카드 ${pivot}. 나머지 카드를 한 장씩 보며 기준보다 작은 카드는 왼쪽, 큰 카드는 오른쪽 묶음에 넣습니다`}
       </p>
 
