@@ -74,7 +74,7 @@ export const registry: AlgoEntry[] = [
     signals: ["맨 앞에서 넣고 뺀다", "줄(큐)을 리스트로 짠다", "반복문 안에서 in 을 쓴다"],
     status: "ready",
   },
-  plan("stack", "스택", "왜 Ctrl+Z 는 방금 한 것부터 되돌릴까", "자료구조", ["stack"], ["괄호", "되돌리기"]),
+  { slug: "stack", title: "스택", lede: "왜 Ctrl+Z 는 방금 한 것부터 되돌릴까", category: "자료구조", tier: 1, aliases: ["stack", "LIFO", "후입선출", "괄호 검사"], signals: ["괄호", "되돌리기 · 가장 최근", "같은 쌍이 안쪽부터 끝난다"], status: "ready" },
   plan("queue-deque", "큐와 덱", "줄을 서면 앞사람부터", "자료구조", ["queue", "deque"], ["먼저 온 순서"]),
   plan("hash", "해시", "사물함을 번호 대신 이름으로 찾기", "자료구조", ["dict", "set", "hash"], ["있는지 빨리 확인"]),
   plan("heap", "힙(우선순위 큐)", "가장 급한 것부터 꺼내기", "자료구조", ["heapq", "priority queue"], ["매번 최솟값"]),

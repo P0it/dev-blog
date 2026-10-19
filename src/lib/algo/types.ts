@@ -28,6 +28,10 @@ export type StageState = {
   gap?: number;
   /** 호출 탑 — 아래가 먼저 부른 층이다. `ret` 이 있으면 그 층이 값을 돌려주며 걷히는 중이다 */
   frames?: { n: number; ret?: number }[];
+  /** 글자를 한 칸씩 읽는 입력(괄호 검사). `cells` 가 이 글자들의 상태이고 `flags.i` 가 지금 읽는 글자다 */
+  chars?: string[];
+  /** 스택에 담긴 글자. 앞이 먼저 넣은 것(아래)이고 맨 뒤가 맨 위다 */
+  stack?: string[];
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
