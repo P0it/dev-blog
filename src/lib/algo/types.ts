@@ -70,6 +70,11 @@ export type StageState = {
     scan?: number;
     now?: number;
   };
+  /**
+   * 수첩(메모이제이션). `notebook` 은 지금까지 수첩에 적힌 `n → fib(n)`(적은 순서), `hit` 은 이 스텝이
+   * 수첩에서 꺼내 쓰는 순간이다. 호출 탑은 `frames` 가 그린다.
+   */
+  memo?: { notebook: { n: number; v: number }[]; hit?: boolean };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

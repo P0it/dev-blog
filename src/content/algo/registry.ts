@@ -183,7 +183,16 @@ export const registry: AlgoEntry[] = [
   plan("dijkstra", "다익스트라", "길마다 걸리는 시간이 다르면", "최단경로·MST", ["dijkstra"], ["가중치 있다", "최단 거리"]),
 
   // ── DP
-  plan("memoization", "메모이제이션", "같은 걸 두 번 세지 않기", "DP", ["memoization", "캐시"], ["같은 계산 반복"]),
+  {
+    slug: "memoization",
+    title: "메모이제이션",
+    lede: "같은 걸 두 번 세지 않기",
+    category: "DP",
+    tier: 1,
+    aliases: ["memoization", "캐시", "cache", "lru_cache", "메모"],
+    signals: ["같은 계산 반복", "부분 문제로 쪼개진다", "경우의 수·최댓값을 재귀로"],
+    status: "ready",
+  },
   {
     slug: "dp-1d",
     title: "1차원 DP",
