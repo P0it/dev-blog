@@ -4805,3 +4805,34 @@ button.algo-hash-locker:hover { background: var(--bg-muted); }
 .algo-param-line-cells .algo-cell[data-ok="false"] .algo-param-line-mark { color: var(--fg-negative); }
 .algo-param-line-hours { font-size: 11px; line-height: 1.2; opacity: .85; }
 .algo-param-line figcaption { font-size: 13px; color: var(--fg-alternative); margin-top: 10px; line-height: 1.6; }
+
+/* ── DFS ── */
+.algo-dfs-guess { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 14px; }
+.algo-dfs-guess .algo-quiz-q { flex: 0 0 100%; text-align: center; margin: 0 0 4px; }
+.algo-dfs-pick { text-align: center; font-size: 13.5px; color: var(--fg-neutral); margin: 0 0 10px; }
+.algo-dfs-pick b { color: var(--fg-strong); }
+/* 지금 갈 수 있는 옆 칸 — 점선 테두리로 눌러도 된다고 알린다 */
+.algo-gcell.algo-dfs-next { outline: 2px dashed var(--bg-primary); outline-offset: -3px; cursor: pointer; }
+.algo-dfs-btns { display: flex; gap: 8px; }
+.algo-dfs-back {
+  min-height: 40px; padding: 0 14px; font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--bg-primary); border-radius: var(--radius-sm);
+  background: transparent; color: var(--bg-primary); font-weight: 600;
+}
+.algo-dfs-back:disabled { opacity: .4; cursor: default; }
+.algo-dfs-verdict { margin: 0 0 8px; }
+/* 스택 레인 — 맨 위(오른쪽 끝)가 다음 차례. 「맨 위」 라벨이 마지막 칸 바로 옆에 붙게 한다 */
+.algo-dfs-lane { grid-template-columns: auto auto minmax(0, max-content) 1fr; }
+.algo-dfs-lane .algo-lane-in { color: var(--fg-neutral); }
+/* 격자 칸의 상태 색 — `.algo-gcell` 이 상태 색(.algo-cell-*)보다 뒤에 정의돼 같은 우선순위로 덮어쓴다.
+   칸에 한해 상태 색을 한 단계 높은 우선순위로 다시 건다(격자 BFS 의 칸도 같은 색을 받는다). */
+.algo-gcell.algo-cell-current {
+  background: var(--bg-primary); border-color: var(--bg-primary);
+  color: var(--fg-on-color); font-weight: 700; transform: translateY(-3px);
+}
+.algo-gcell.algo-cell-settled {
+  background: var(--bg-positive); border-color: var(--bg-positive);
+  color: var(--fg-on-color); font-weight: 700; transform: translateY(-3px);
+}
+.algo-gcell.algo-cell-compare { background: var(--bg-cautionary-soft); border-color: var(--fg-cautionary); color: var(--fg-cautionary); }
+.algo-gcell.algo-cell-waiting { background: var(--bg-accent-soft); border-color: var(--algo-waiting-line); color: var(--algo-waiting-fg); }

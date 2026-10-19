@@ -11,10 +11,13 @@ export function StageGrid({
   cols,
   state,
   labels,
+  lane = "queue",
 }: {
   cols: number;
   state: StageState;
   labels?: Record<number, string>;
+  /** `queue` 는 앞에서 꺼내 뒤에 넣는 줄(BFS), `stack` 은 한쪽에서만 넣고 꺼내는 더미(DFS) */
+  lane?: "queue" | "stack";
 }) {
   return (
     <div className="algo-grid-wrap">
@@ -31,6 +34,22 @@ export function StageGrid({
         ))}
       </div>
 
+      {lane === "stack" ? (
+        <div className="algo-lane algo-dfs-lane">
+          <span className="algo-lane-label">스택</span>
+          <span className="algo-lane-out">바닥</span>
+          <ol className="algo-lane-items">
+            {(state.queue ?? []).map((n, i, all) => (
+              // 맨 위(가장 나중에 넣은 칸)가 다음에 나온다 — 색으로 표시한다
+              <li key={i} data-hot={i === all.length - 1 ? "" : undefined}>
+                {n}
+              </li>
+            ))}
+            {(state.queue ?? []).length === 0 && <li data-empty>비어 있음</li>}
+          </ol>
+          <span className="algo-lane-in">맨 위 ↔ 넣고 꺼낸다</span>
+        </div>
+      ) : (
       <div className="algo-lane">
         <span className="algo-lane-label">큐</span>
         <span className="algo-lane-out">← 꺼낸다</span>
@@ -45,6 +64,7 @@ export function StageGrid({
         </ol>
         <span className="algo-lane-in">넣는다 →</span>
       </div>
+      )}
     </div>
   );
 }

@@ -167,7 +167,7 @@ export const registry: AlgoEntry[] = [
 
   // ── 그래프 탐색
   { slug: "bfs-grid", title: "격자 BFS", lede: "소문은 어떻게 퍼질까", category: "그래프 탐색", tier: 1, aliases: ["BFS", "너비 우선", "breadth first"], signals: ["최단 거리", "가중치 없다", "격자"], status: "ready" },
-  plan("dfs", "DFS", "막다른 길까지 가 보기", "그래프 탐색", ["DFS", "깊이 우선"], ["모든 경로"]),
+  { slug: "dfs", title: "DFS", lede: "막다른 길까지 가 보기", category: "그래프 탐색", tier: 1, aliases: ["DFS", "깊이 우선", "깊이 우선 탐색", "depth first", "depth-first search"], signals: ["모든 경로를 찾는다", "도달할 수 있는가", "한 덩어리로 이어진 곳을 찾는다"], status: "ready" },
   plan("connected-components", "연결 요소", "섬이 몇 개인지 세기", "그래프 탐색", ["connected components"], ["덩어리 개수"]),
 
   // ── 최단경로
