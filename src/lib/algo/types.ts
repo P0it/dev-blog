@@ -147,6 +147,12 @@ export type StageState = {
     ahead: number | null;
     block: "wall" | "edge" | null;
   };
+  /**
+   * N-퀸 보드. `at[r]` 은 r 번째 줄에 놓인 퀸의 칸 번호(아직 없으면 -1), `row` 는 지금 보는 줄, `try` 는 이 스텝에서
+   * 놓거나 거둔 칸이다. `mode`: scan(놓을 수 있는 칸을 찾는 중) · place(방금 놓음) · back(방금 거둠) ·
+   * stuck(놓을 칸이 없어 앞 줄로 돌아감) · done(모든 줄에 놓음). 노리는 칸은 보드가 `at` 으로 직접 계산한다.
+   */
+  queens?: { n: number; at: number[]; row: number; try?: number; mode: "scan" | "place" | "back" | "stuck" | "done" };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

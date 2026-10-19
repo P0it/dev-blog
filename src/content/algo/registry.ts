@@ -247,7 +247,16 @@ export const registry: AlgoEntry[] = [
     signals: ["모든 순서(순열)·모든 뽑기(조합)", "n 이 작다(10 이하)", "경우를 빠짐없이 나열"],
     status: "ready",
   },
-  plan("n-queens", "N-퀸", "서로 못 보게 놓기", "백트래킹·구현", ["n queens", "백트래킹"], ["조건을 만족하는 배치"]),
+  {
+    slug: "n-queens",
+    title: "N-퀸",
+    lede: "서로 못 보게 놓기",
+    category: "백트래킹·구현",
+    tier: 1,
+    aliases: ["n queens", "n-queen", "엔퀸", "백트래킹", "backtracking", "가지치기"],
+    signals: ["조건을 만족하는 배치를 찾는다", "놓다가 안 되면 돌아가 다른 선택", "경우의 수는 많은데 안 되는 경우는 일찍 끊는다"],
+    status: "ready",
+  },
   {
     slug: "simulation",
     title: "시뮬레이션",
