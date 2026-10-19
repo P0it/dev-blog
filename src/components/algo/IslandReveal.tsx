@@ -26,7 +26,7 @@ export function IslandReveal({ children }: { children: ReactNode }) {
         <p className="algo-chain">
           {SIZES.map((s, k) => `섬 ${k + 1}: ${s}칸`).join(" → ")}
           <span>
-            땅 {LAND_TOTAL}칸을 칸마다 센 게 아니라, 번지기를 시작한 횟수 {ACTUAL}번을 셌습니다.
+            땅 {LAND_TOTAL}칸을 칸마다 센 게 아니라 번지기를 시작한 횟수 {ACTUAL}번을 셌습니다.
           </span>
         </p>
         {children}

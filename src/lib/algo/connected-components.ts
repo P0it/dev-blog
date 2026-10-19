@@ -202,7 +202,7 @@ function* walk(grid: number[][]): Generator<Step> {
         stage: stageOf(land, cols, owner, snap.q === null ? [] : q, idx),
         note: fresh
           ? `(${r}, ${c}) 칸은 땅이고 아직 안 센 칸입니다`
-          : `(${r}, ${c}) 칸은 땅이지만 이미 센 칸이라 건너뜁니다. count 는 그대로 ${snap.count} 입니다`,
+          : `(${r}, ${c}) 칸은 땅이지만 이미 센 칸이라 건너뜁니다. count 는 그대로 ${snap.count}입니다`,
       };
       if (!fresh) continue;
 

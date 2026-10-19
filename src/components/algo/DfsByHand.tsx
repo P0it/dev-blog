@@ -112,7 +112,7 @@ export function DfsByHand({ onDone }: { onDone?: (r: DfsResult | null) => void }
       setNotice(
         res.reason === "free"
           ? "아직 가 볼 길이 남아 있어요. 막다른 길에서만 되돌아갈 수 있어요."
-          : "되돌아갈 곳이 없어요. 시작 칸 둘레가 막혔습니다. 「처음부터」를 눌러 주세요.",
+          : "되돌아갈 곳이 없어요. 시작 칸 둘레가 막혔어요. 「처음부터」를 눌러 주세요.",
       );
       return;
     }

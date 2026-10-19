@@ -35,7 +35,7 @@ export default async function ConnectedComponentsPage() {
     ],
     why: (
       <>
-        9번 줄 조건에 <code>(r, c) not in seen</code> 이 있어서, 이미 센 땅은 그냥 지나갑니다. <code>count += 1</code> 은
+        9번 줄 조건에 <code>(r, c) not in seen</code> 이 있어서 이미 센 땅은 그냥 지나갑니다. <code>count += 1</code> 은
         실행되지 않습니다.
       </>
     ),
@@ -81,7 +81,7 @@ export default async function ConnectedComponentsPage() {
           <b>센 땅은 표시해 둔다</b> — 칠한 땅을 또 만나도 세지 않아야 한다. 표시가 없으면 같은 섬을 두 번 센다
         </li>
         <li>
-          <b>칸마다 한 번씩만 본다</b> — 칸이 N개면 N에 비례한다. 100만 칸 지도도 직접 재 보니 1초쯤 걸렸다(Python 3.14, 컴퓨터마다 다르다)
+          <b>칸마다 한 번씩만 본다</b> — 칸이 N개면 걸리는 시간도 N에 비례한다. 100만 칸 지도도 직접 재 보니 1초쯤 걸렸다(Python 3.14, 컴퓨터마다 다르다)
         </li>
       </ul>
 
@@ -92,7 +92,7 @@ export default async function ConnectedComponentsPage() {
         왼쪽에서 c번째 칸이고 0부터 셉니다.
       </p>
       <p>
-        <strong>다음</strong>을 눌러 한 줄씩 넘기며 칠해지는 칸과 큐를 보세요. 바다 칸은 줄을 올리지 않고 땅인 칸만
+        <strong>다음</strong>을 눌러 한 줄씩 넘기며 칠해지는 칸과 큐를 보세요. 바다 칸은 건너뛰고 땅인 칸만
         보여 줍니다.
       </p>
 
@@ -130,7 +130,7 @@ export default async function ConnectedComponentsPage() {
         why={
           <>
             가운데 섬의 (2, 2) 칸과 아래 섬의 (3, 1) 칸이 대각선으로 닿습니다. 그러면 두 섬이 한 덩어리가 되어 {EIGHT}
-            개입니다. 4방향이냐 8방향이냐로 섬 수가 달라지니, 문제에서 이어졌다는 말이 어디까지인지 먼저 읽습니다.
+            개입니다. 4방향이냐 8방향이냐로 섬 수가 달라지니 문제에서 이어졌다는 말이 어디까지인지 먼저 읽습니다.
           </>
         }
       />

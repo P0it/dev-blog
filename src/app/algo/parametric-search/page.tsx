@@ -10,6 +10,7 @@ import { worstCaseGuesses } from "@/lib/algo/up-down";
 import { timeLabel } from "@/lib/algo/big-o";
 import type { PlayerPause } from "@/components/algo/TapePlayer";
 import type { Tape } from "@/lib/algo/types";
+import { josa } from "@/lib/algo/josa";
 
 const BIG = 1_000_000_000;
 
@@ -20,14 +21,14 @@ function pauseFor(tape: Tape): PlayerPause | undefined {
   const { mid, hours } = tape.steps[at].vars;
   const ok = hours <= LIMIT_HOURS;
   const hi = { label: `hi — ${mid} 도 답일 수 있으니 남기고, 더 빠른 속도만 버린다` };
-  const lo = { label: `lo — ${mid} 은 됐으니 그보다 느린 속도를 버린다` };
+  const lo = { label: `lo — ${josa(mid, "은", "는")} 됐으니 그보다 느린 속도를 버린다` };
   const none = { label: "둘 다 그대로 — 됐으니 여기서 끝이다" };
   return {
     at: at + 1,
-    ask: `먼저 예상해 보세요. 속도가 ${mid}일 때 ${hours}시간이 걸립니다. ${LIMIT_HOURS}시간 ${ok ? "이하라 됩니다" : "을 넘어 안 됩니다"}. 다음에 움직이는 것은 무엇일까요?`,
+    ask: `먼저 예상해 보세요. 속도가 ${mid}일 때 ${hours}시간이 걸립니다. ${LIMIT_HOURS}시간${ok ? " 이하라 됩니다" : "을 넘어 안 됩니다"}. 다음에 움직이는 것은 무엇일까요?`,
     options: ok ? [{ ...hi, correct: true }, lo, none] : [{ label: `lo — ${mid} 이하는 전부 안 되니 버린다`, correct: true }, hi, none],
     why: ok
-      ? `속도가 ${mid}일 때 되지만 더 느려도 되는 속도가 있을 수 있습니다. 그래서 ${mid} 은 답 후보로 남기고 hi 를 ${mid} 에 둡니다. 더 빠른 속도는 해 볼 필요 없이 되니 버립니다.`
+      ? `속도가 ${mid}일 때 되지만 더 느려도 되는 속도가 있을 수 있습니다. 그래서 ${josa(mid, "은", "는")} 답 후보로 남기고 hi 를 ${mid} 에 둡니다. 더 빠른 속도는 해 볼 필요 없이 되니 버립니다.`
       : `속도가 ${mid}일 때 안 되면 그보다 느린 속도도 전부 안 됩니다. 그래서 lo 를 ${mid} 바로 다음으로 옮깁니다.`,
   };
 }
@@ -142,10 +143,10 @@ export default async function ParametricSearchPage() {
           <b>
             <code>lo &lt;= hi</code> 와 <code>hi = mid</code> 를 섞으면
           </b>{" "}
-          — lo 와 hi 가 4 로 만나도 mid 가 4 라서 hi 가 다시 4 가 된다. 끝나지 않는다
+          — lo 와 hi 가 4로 만나도 mid 가 4라서 hi 가 다시 4가 된다. 끝나지 않는다
         </li>
         <li>
-          <b>상한을 작게 잡으면</b> — <code>hi</code> 를 3 으로 시작하면 3 이 나오는데 3 으로는 10시간이 걸려 안 된다.
+          <b>상한을 작게 잡으면</b> — <code>hi</code> 를 3으로 시작하면 3이 나오는데 3으로는 10시간이 걸려 안 된다.
           상한은 반드시 되는 속도여야 한다
         </li>
         <li>

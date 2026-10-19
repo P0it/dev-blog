@@ -59,8 +59,8 @@ export function IslandByHand({ onDone, onReset }: { onDone?: (r: IslandResult) =
     const diag = diagonalLeft(LAND, ISLAND_COLS, nextOwner, cellsOf(nextOwner, k));
     setNotice(
       diag
-        ? `${extra}섬 ${nextCount}개째 완성. 그런데 저 섬과 대각선으로 닿은 땅이 안 칠해졌어요. 번지기는 위·아래·왼쪽·오른쪽으로만 가요. 노란 칸을 또 눌러 보세요.`
-        : `${extra}섬 ${nextCount}개째 완성. 아직 안 칠한 땅(노란 칸)이 있어요. 하나를 눌러 보세요.`,
+        ? `${extra}${nextCount}번째 섬 완성. 그런데 방금 칠한 섬과 대각선으로만 닿은 땅이 안 칠해졌어요. 번지기는 위·아래·왼쪽·오른쪽으로만 가요. 노란 칸을 또 눌러 보세요.`
+        : `${extra}${nextCount}번째 섬 완성. 아직 안 칠한 땅(노란 칸)이 있어요. 하나를 눌러 보세요.`,
     );
   };
 

@@ -102,7 +102,7 @@ export function ParamByHand({ onDone }: { onDone?: (r: ParamResult | null) => vo
   const ask = finished
     ? "가장 느린 속도를 찾았습니다"
     : guess === null
-      ? `더미마다 한 시간에 한 더미만 먹고, 남아도 그 시간은 끝납니다. 먼저 맞혀 보세요. 한 시간에 ${FIRST_TRY}개씩 먹으면 ${LIMIT_HOURS}시간 안에 다 먹을 수 있을까요?`
+      ? `한 시간에 한 더미만 먹고, 남아도 그 시간은 끝납니다. 먼저 맞혀 보세요. 한 시간에 ${FIRST_TRY}개씩 먹으면 ${LIMIT_HOURS}시간 안에 다 먹을 수 있을까요?`
       : `목표: ${LIMIT_HOURS}시간 안에 다 먹을 수 있는 가장 느린 속도를 되도록 적게 시험해서 찾기. 속도를 눌러 보세요`;
 
   return (

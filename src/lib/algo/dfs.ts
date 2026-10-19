@@ -79,7 +79,7 @@ function* walk(grid: number[][], start: Cell, goal: Cell): Generator<Step> {
     line: 4,
     vars: { 스택: st.length },
     stage: stage(grid, dist, st, null, goal, false),
-    note: "시작 칸 하나를 스택에 넣고 걸음 수 0 을 적어 둡니다",
+    note: "시작 칸 하나를 스택에 넣고 걸음 수 0을 적어 둡니다",
   };
 
   while (st.length) {

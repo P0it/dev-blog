@@ -160,9 +160,9 @@ export default async function DfsPage() {
 
       {/* ⑤ 확인 문제 */}
       <Quiz
-        question={`아래 길의 한 칸을 벽으로 막으면, 같은 코드가 도착까지 낸 걸음 수는 몇일까요?`}
+        question={`아래 길의 한 칸을 벽으로 막으면, 같은 코드가 도착까지 낸 걸음 수는 몇 걸음일까요?`}
         options={[
-          { label: `${best}걸음 — 막기 전과 같다` },
+          { label: `${best}걸음 — 막아도 처음 BFS 걸음 수 그대로다` },
           { label: `${walledDfs + 2}걸음 — 더 돌아가서 멀어진다` },
           { label: `${walledDfs}걸음 — 길이 하나뿐이라 BFS 와 같다`, correct: true },
         ]}
