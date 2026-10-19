@@ -6,10 +6,10 @@ tags: [AI Agent, LangGraph, 워크플로, Prompt Chaining, Routing, Python]
 category: ai
 series: ai-agent
 series_order: 13
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-vs-agent-chaining-routing-mvb7ip79.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-vs-agent-chaining-routing-mvftja59.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 노선도 히어로(노선버스와 택시) + 그림|글(조립 라인 검문) + 코드|해설 + 그림 고정 스크롤리텔링(우체국 분류) + 코드|해설 + 판단 트리 + 정리 | 글의 성격: 길을 코드가 정하느냐 모델이 정하느냐를 가르는 글이라 정해진 노선과 자유 이동을 나란히 놓고 체이닝은 조립 라인으로 라우팅은 우체국 분류로 장면 하나씩 보인다 | 버린 후보: 비교 카드와 흐름 박스(앞 시리즈 방식) -->
+<!-- layout: 제목 위 + 전폭 거리 지도 히어로(노선버스 한 줄과 택시 점선 자국, 모델을 부른 곳은 주황 점) + 그림|글(원고지 두 장: 초안이 20자 선을 넘는지) + 코드|해설 + 그림 고정 스크롤리텔링(왼쪽→오른쪽 갈림길, 이름표 단 문의 점이 한 갈래로 감) + 코드|해설 + 글|그림(분류 로그: 보기에 기타를 넣으면 마지막 줄이 사람 확인으로) + 순서표 빈칸과 도장 + 정리 | 글의 성격: 길을 코드가 정하느냐 모델이 정하느냐를 가르는 글이라 같은 지도 위 정해진 노선과 그때그때 고른 길을 겹쳐 보이고, 체이닝은 글자 수 검사를 원고지에 직접, 라우팅은 갈래 하나만 칠해 보인다 | 버린 후보: 비교 카드와 흐름 박스(앞 시리즈 방식), 세로 정거장 두 줄 히어로·로봇 아이콘 상자와 마름모 검사 문·우체국 분류 상자·팀 상자 4개·기어/로봇 카드 판단 트리(2026-10-20 상자 그림 점검에서 접음), 가로 노선도(같은 시리즈 앞 글에서 여러 번 써서 반복을 피함) -->
 <style>
 .post-page .wf {
   --wf-human: rgb(37, 112, 235); --wf-code: rgb(16, 150, 120); --wf-model: rgb(226, 106, 28); --wf-bad: rgb(214, 56, 56);
@@ -155,7 +155,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .wf-step p { margin: 0; }
 .post-page .wf-sfig { position: sticky; top: var(--wf-top, 96px); }
 .post-page .wf-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
-.post-page .wf-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+.post-page .wf-stat b { color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .wf-story { grid-template-columns: minmax(0, 1fr); } .post-page .wf-sfig { position: static; order: -1; } .post-page .wf-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .wf-steps { padding-bottom: 0; } }
 
 .post-page .wf-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
@@ -164,20 +164,30 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .wf-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
 .post-page .wf-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
 .post-page .wf-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+/* 2026-10-20 다시 그림: 조작 안내 한 줄, 코드 값 버튼의 한글 뜻, 빨간 펜 */
+.post-page .wf { --wf-penf: "Nanum Pen Script", "Comic Sans MS", cursive; }
+.post-page .wf p.wf-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .wf-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
+.post-page .wf-scene .pen { font-family: var(--wf-penf); fill: var(--wf-bad); }
+.post-page .wf-map { max-width: 920px; }
+.post-page .wf-legend .ln { width: 22px; height: 0; border-top: 5px solid var(--fg-strong); border-radius: 0; vertical-align: 3px; }
+.post-page .wf-legend .tx { width: 22px; height: 0; border-top: 4px dotted var(--fg-neutral); border-radius: 0; vertical-align: 3px; }
+.post-page .wf-legend .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--wf-model); }
+.post-page .wf-legend .sq { width: 11px; height: 11px; border-radius: 1px; background: var(--fg-strong); }
+.post-page .wf-story { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
+@media (max-width: 1100px) { .post-page .wf-story { grid-template-columns: minmax(0, 1fr); } .post-page .wf-sfig { position: static; order: -1; } .post-page .wf-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .wf-steps { padding-bottom: 0; } }
+/* 분류 로그 */
+.post-page .wf-lit { font-family: var(--font-mono); font-size: 14px; color: var(--fg-neutral); margin: 0 0 18px; overflow-wrap: anywhere; line-height: 1.7; }
+.post-page .wf-lit ins { text-decoration: none; color: var(--wf-code); font-weight: 700; }
+.post-page .wf-logl { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-subtle); }
+.post-page .wf-logl li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 18px; align-items: baseline; padding: 12px 2px; border-bottom: 1px solid var(--line-subtle); font-size: 16px; line-height: 1.55; }
+.post-page .wf-logl .to { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .wf-logl .to.x { color: var(--wf-bad); text-decoration: line-through; text-decoration-thickness: 2px; }
+.post-page .wf-logl .to.ok { color: var(--wf-code); }
+.post-page .wf-logl .pen { grid-column: 1 / -1; font-family: var(--wf-penf); color: var(--wf-bad); font-size: 23px; line-height: 1.2; text-align: right; }
+@media (max-width: 520px) { .post-page .wf-logl li { grid-template-columns: minmax(0, 1fr); } .post-page .wf-logl .pen { text-align: left; } }
 </style>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <symbol id="wf-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
-    <symbol id="wf-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
-    <symbol id="wf-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
-    <symbol id="wf-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
-    <symbol id="wf-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
-    <symbol id="wf-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
-    <symbol id="wf-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
-    <symbol id="wf-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
-    <symbol id="wf-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
-  </defs>
-</svg>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 <div class="wf">
   <section class="wf-hero">
     <div class="wf-wrap">
@@ -187,14 +197,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>Anthropic은 이 둘을 워크플로(workflow)와 Agent로 나눕니다. 워크플로는 LLM과 도구가 미리 정해진 코드 경로를 따라 움직이는 시스템이고 Agent는 LLM이 스스로 진행 과정과 도구 사용을 정하는 시스템입니다. 같은 문의를 두 방식으로 처리해 보면 차이가 보입니다.</p>
       </div>
       <div class="wf-stage" data-figure data-thumb data-wf-bus>
-        <div class="wf-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">문의</span>
+        <p class="wf-ask">어떤 문의를 보낼지 골라 보세요. 지도 위 택시의 점선 길과 주황 점 개수가 바뀝니다. ▶를 누르면 버스와 택시가 함께 출발합니다.</p>
+        <div class="wf-ctrl">
           <div class="wf-seg" role="group" aria-label="문의 고르기">
             <button type="button" data-wf-q="0" aria-pressed="true">비밀번호를 잊어버렸어요</button>
             <button type="button" data-wf-q="1" aria-pressed="false">회사 메일이 가끔 안 와요</button>
           </div>
           <button type="button" class="wf-act" data-wf-go>두 방식으로 보내기</button>
         </div>
-        <svg class="wf-scene wf-nar" data-wf-busv viewBox="0 0 460 780" role="img" aria-label="두 길 비교 그림. 왼쪽 워크플로는 분류, 초안, 다듬기 정거장을 늘 같은 순서로 지나가는 노선버스이고 오른쪽 Agent는 모델이 다음 행동을 그때그때 정해 문의에 따라 정거장 수가 달라진다."></svg>
+        <p class="wf-legend"><span><i class="ln"></i>노선버스 = 워크플로</span><span><i class="tx"></i>택시 = Agent</span><span><i class="dot"></i>모델을 부른 곳(부를 때마다 돈과 시간이 듭니다)</span><span><i class="sq"></i>도구를 쓴 곳</span></p>
+        <svg class="wf-scene wf-map" data-wf-busv viewBox="-40 30 1080 385" role="img" aria-label="거리 지도 그림. 문의에서 답까지 노선버스(워크플로)는 가운데 큰길을 곧게 지나며 분류, 초안, 다듬기 세 정류장에서 모델을 부른다. 택시(Agent)는 위아래 골목으로 돌며 계정 조회 같은 도구를 쓰는 곳에 들르고, 문의를 바꾸면 택시 길과 모델을 부르는 횟수만 달라진다."></svg>
         <p class="wf-verdict" data-wf-bsum></p>
         <p class="wf-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 같은 문의라도 Agent가 거치는 단계와 횟수는 모델과 상황에 따라 다릅니다.</p>
       </div>
@@ -204,14 +216,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   <section class="wf-sec">
     <div class="wf-wrap wf-split rev">
       <div data-figure>
-        <div class="wf-ctrl" style="margin-bottom:8px"><div class="wf-seg" role="group" aria-label="검사 결과"><button type="button" data-wf-gt="pass" aria-pressed="true">검사 통과</button><button type="button" data-wf-gt="fail" aria-pressed="false">검사 실패</button></div></div>
-        <svg class="wf-scene wf-nar" data-wf-line viewBox="0 0 460 560" role="img" aria-label="조립 라인 그림. 문의가 초안 만들기 칸을 지나 검사 문에 이르면, 통과하면 바로 끝으로 가고 실패하면 다듬기 칸을 한 번 더 거친다. 모델 호출 횟수가 통과일 때와 실패일 때 다르게 표시된다."></svg>
+        <p class="wf-ask">모델이 쓴 초안을 골라 보세요. 원고지에 찬 글자 수와 아래 다듬기 원고지가 바뀝니다.</p>
+        <div class="wf-ctrl" style="margin-bottom:12px"><div class="wf-seg" role="group" aria-label="초안 고르기"><button type="button" data-wf-gt="pass" aria-pressed="true">긴 초안</button><button type="button" data-wf-gt="fail" aria-pressed="false">짧은 초안</button></div></div>
+        <svg class="wf-scene" data-wf-line viewBox="0 0 540 300" role="img" aria-label="원고지 그림. 모델이 쓴 초안을 원고지 칸에 한 글자씩 적고 20번째 칸 뒤에 빨간 선을 그었다. 초안이 빨간 선을 넘으면 코드 검사를 통과해 다듬기 원고지는 비어 있고, 못 미치면 다듬기 원고지에 모델이 다시 쓴 더 긴 글이 적힌다."></svg>
         <p class="wf-wnote" data-wf-lnote></p>
+        <p class="wf-cap" style="margin-top:6px">원고지 속 문장은 설명을 위한 예시입니다. 공백도 한 칸으로 셉니다.</p>
       </div>
       <div>
         <h2>체이닝은 앞 단계의 결과를 다음 단계로 넘깁니다</h2>
         <p>프롬프트 체이닝(prompt chaining)은 일을 순서대로 나눠 앞 호출의 출력을 다음 호출의 입력으로 넘기는 방식입니다. Anthropic은 일을 고정된 하위 작업으로 깔끔하게 나눌 수 있을 때 쓰라고 하고 각 호출을 쉬운 과제로 만들어 지연이 늘더라도 정확도를 높이려는 것이라고 설명합니다.</p>
-        <p>중간에 코드로 하는 검사(gate)를 넣을 수 있습니다. 초안이 너무 짧으면 다듬기 단계를 한 번 더 거치고 충분하면 건너뜁니다. 검사가 코드라서 모델을 부르지 않고 싸게 판단합니다. 그림에서 검사 결과를 바꿔 모델 호출 횟수가 어떻게 달라지는지 보세요.</p>
+        <p>중간에 코드로 하는 검사(gate)를 넣을 수 있습니다. 초안이 너무 짧으면 다듬기 단계를 한 번 더 거치고 충분하면 건너뜁니다. 검사가 코드라서 모델을 부르지 않고 싸게 판단합니다. 그림에서 초안 길이를 바꿔 가며 모델 호출 횟수가 어떻게 달라지는지 보세요.</p>
       </div>
     </div>
     <div class="wf-wrap">
@@ -219,7 +233,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="cp-code">
 <pre data-title="chain.py" data-hl="2-4,7-9"><code class="language-python"># ① 초안을 쓰고 길이 검사로 길을 가른다(코드가 정함)
 def too_short(s: State) -> Literal["polish", "__end__"]:
-    return "polish" if len(s["draft"]) >= 20 else "__end__"
+    return "polish" if len(s["draft"]) < 20 else "__end__"
 
 c = StateGraph(State)
 c.add_node("draft", draft); c.add_node("polish", polish)
@@ -245,7 +259,7 @@ chain = c.compile()</code></pre>
         <h2>라우팅은 입력을 분류해 알맞은 전문 처리로 보냅니다</h2>
         <div>
           <p>라우팅(routing)은 입력을 먼저 분류하고 그 결과에 맞는 전문 처리로 보내는 방식입니다. Anthropic은 별도로 처리하는 편이 나은 뚜렷한 범주가 있고 분류를 정확히 할 수 있을 때 쓰라고 합니다. 고객 문의를 일반 질문과 환불과 기술 지원으로 나눠 각각 다른 프롬프트와 도구로 처리하는 것이 예입니다.</p>
-          <p>분류에는 앞서 배운 구조화 출력(Structured Output)이 잘 맞습니다. 분류 결과를 <code>Literal["계정", "장비", "소프트웨어"]</code>처럼 정해진 값 중 하나로만 받으면 길 고르기 함수가 안전하게 노드를 고릅니다. 스크롤하며 문의가 우체국 분류기를 지나는 모습을 보세요.</p>
+          <p>분류에는 앞서 배운 구조화 출력(Structured Output)이 잘 맞습니다. 분류 결과를 <code>Literal["계정", "장비", "소프트웨어"]</code>처럼 정해진 값 중 하나로만 받으면 길 고르기 함수가 안전하게 노드를 고릅니다. 스크롤하며 문의가 갈림길을 지나는 모습을 보세요.</p>
         </div>
       </div>
       <div class="wf-story" style="margin-top:44px" data-wf-story>
@@ -256,7 +270,7 @@ chain = c.compile()</code></pre>
           <div class="wf-step" data-wf-step><h3>팀 노드가 초안을 쓰고 다듬기로</h3><p>계정 팀 노드가 자기 전문 프롬프트로 초안을 쓰고 모든 팀이 공통으로 쓰는 다듬기 노드에서 만납니다.</p></div>
         </div>
         <div class="wf-sfig" data-wf-sfig data-figure>
-          <svg class="wf-scene wf-nar" data-wf-post viewBox="0 0 460 560" role="img" aria-label="우체국 분류 그림. 위에서 들어온 문의 소포가 분류 노드에서 계정 장비 소프트웨어 이름표 중 하나를 받고, 이름표에 맞는 팀 줄로 가서 초안이 쓰인 뒤 공통 다듬기 노드에서 합쳐진다."></svg>
+          <svg class="wf-scene" data-wf-post viewBox="0 0 760 380" role="img" aria-label="갈림길 그림. 왼쪽에서 들어온 문의가 분류 지점에서 계정, 장비, 소프트웨어 보기 가운데 계정 이름표를 받고, 세 갈래 가운데 계정 팀 갈래만 칠해진 길을 따라가 초안을 쓴 뒤 세 갈래가 다시 만나는 다듬기 지점을 지나 답으로 간다."></svg>
           <p class="wf-stat" data-wf-stat></p>
         </div>
       </div>
@@ -277,6 +291,7 @@ for n in ["account", "device", "software"]:
     b.add_edge(n, "polish")      # ⑤ 모든 팀이 다듬기에서 만난다</code></pre>
         </div>
         <div class="cp-term">
+<p class="wf-ask">버튼을 누르면 아래 터미널에 문의 세 개의 분류 결과가 한 줄씩 찍힙니다.</p>
 <div class="wf-term" data-wf-term>
   <div class="wf-term-bar"><span>터미널</span><button type="button" class="wf-act" data-wf-run="r">실행해 보기</button></div>
   <div class="wf-term-out" data-wf-out aria-live="polite">$ python router.py
@@ -315,11 +330,14 @@ for n in ["account", "device", "software"]:
         <h2>분류가 애매한 문의를 받을 길도 만들어 둡니다</h2>
         <p>라우팅은 분류가 맞아야 의미가 있습니다. 모델이 분류를 틀릴 수 있어서 어느 보기에도 딱 맞지 않는 문의를 위한 길을 함께 만들어 두는 편이 안전합니다. 보기에 "기타"를 넣고 그 길 끝에 사람이 확인하는 칸을 두는 식입니다.</p>
         <p>이렇게 하면 억지로 가까운 팀에 보내 엉뚱한 답이 나가는 일을 줄일 수 있습니다. 어느 정도로 애매할 때 기타로 보낼지는 분류 결과를 모아 평가하며 정합니다. 평가는 이 시리즈 뒤쪽에서 다룹니다.</p>
-        <div class="wf-ctrl"><div class="wf-seg" role="group" aria-label="문의 고르기"><button type="button" data-wf-ob="a" aria-pressed="true">비밀번호 문의</button><button type="button" data-wf-ob="b" aria-pressed="false">뭔가 이상한데 말로 설명하기 어려워요</button></div></div>
       </div>
       <div data-figure>
-        <svg class="wf-scene wf-nar" data-wf-other viewBox="0 0 460 460" role="img" aria-label="기타 길 그림. 분류 노드 아래에 계정 장비 소프트웨어 팀 길과 사람이 확인하는 기타 길이 있다. 뚜렷한 문의는 해당 팀으로, 애매한 문의는 기타 길로 가서 사람이 확인한다."></svg>
+        <p class="wf-ask">분류 선택지에 '기타'를 넣을지 골라 보세요. 로그의 마지막 줄이 가는 곳이 바뀝니다.</p>
+        <div class="wf-ctrl" style="margin-bottom:16px"><div class="wf-seg" role="group" aria-label="분류 선택지"><button type="button" data-wf-ob="a" aria-pressed="true">선택지 셋</button><button type="button" data-wf-ob="b" aria-pressed="false">'기타' 추가</button></div></div>
+        <p class="wf-lit" data-wf-lit></p>
+        <ol class="wf-logl" data-wf-other aria-live="polite"></ol>
         <p class="wf-wnote" data-wf-onote></p>
+        <p class="wf-cap" style="margin-top:6px">분류 로그는 설명을 위한 예시입니다.</p>
       </div>
     </div>
   </section>
@@ -334,9 +352,10 @@ for n in ["account", "device", "software"]:
         </div>
       </div>
       <div style="margin-top:36px" data-figure>
-        <div class="wf-ctrl"><div class="wf-seg" role="group" aria-label="일 고르기"><button type="button" data-wf-t="0" aria-pressed="true">문의를 유형별로 접수</button><button type="button" data-wf-t="1" aria-pressed="false">장애 원인 조사</button><button type="button" data-wf-t="2" aria-pressed="false">초안 쓰고 다듬기</button></div></div>
-        <svg class="wf-scene wf-nar" data-wf-tree viewBox="0 0 460 520" role="img" aria-label="판단 그림. 질문 하나로 갈리는 갈림길이다. 순서를 미리 알 수 있으면 워크플로 쪽 길로, 알 수 없으면 Agent 쪽 길로 간다. 고른 일이 어느 길 끝에 놓이는지 표시된다."></svg>
-        <p class="wf-verdict" data-wf-tsay></p>
+        <p class="wf-ask">일을 하나 골라 보세요. 순서표에서 그 일의 줄이 진해지고, 아래에 판단한 까닭이 나옵니다.</p>
+        <div class="wf-ctrl" style="margin-bottom:12px"><div class="wf-seg" role="group" aria-label="일 고르기"><button type="button" data-wf-t="0" aria-pressed="true">문의를 유형별로 접수</button><button type="button" data-wf-t="1" aria-pressed="false">장애 원인 조사</button><button type="button" data-wf-t="2" aria-pressed="false">초안 쓰고 다듬기</button></div></div>
+        <svg class="wf-scene" style="margin:0;max-width:880px" data-wf-tree viewBox="0 0 960 300" role="img" aria-label="순서표 그림. 세 가지 일의 단계를 일하기 전에 빈칸에 적어 본다. 문의 접수와 초안 다듬기는 빈칸이 모두 채워져 워크플로로 짜고, 장애 원인 조사는 첫 칸 뒤로 물음표만 남아 몇 칸이 더 필요한지 모르므로 Agent로 짠다."></svg>
+        <p class="wf-verdict" style="margin-top:28px" data-wf-tsay></p>
       </div>
       <p style="margin-top:36px">다음 글에서는 일을 여러 갈래로 나눠 동시에 맡기고 다시 모으는 병렬 처리, 그리고 Orchestrator-Worker와 Evaluator-Optimizer를 알아보겠습니다.</p>
     </div>
@@ -389,10 +408,9 @@ for n in ["account", "device", "software"]:
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
-    const st = $(rootSel); if (!st) return; const steps = $$("[data-wf-step]", st), fig = $("[data-wf-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-wf-step]", st), fig = $("[data-wf-sfig]", st), mq = matchMedia("(min-width: 1101px)"); let raf = 0, cur = -2;
     const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
     const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
       if (!mq.matches) { apply(-1); return; }
@@ -403,96 +421,183 @@ for n in ["account", "device", "software"]:
   };
 
   const C = { model: "var(--wf-model)", code: "var(--wf-code)", human: "var(--wf-human)", bad: "var(--wf-bad)" };
+  const INK = "var(--fg-strong)", MUT = "var(--fg-neutral)", RAIL = "var(--line-strong)", ACC = C.code, BAD = C.bad, MOD = C.model;
+  const halo = (bg) => `paint-order:stroke;stroke:${bg};stroke-width:6px;stroke-linejoin:round;`;
   const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
-  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
-  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+  const wide = (el, min) => (el.getBoundingClientRect().width || innerWidth) >= min;
+  /* 좁은 화면: 같은 그림을 x·y 를 바꿔 세로로 편다. 경로는 "x y" 짝만 쓴다 */
+  const swapD = (d) => d.replace(/(-?[\d.]+) (-?[\d.]+)/g, "$2 $1");
+  const polyLen = (pts) => pts.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
+  const atLen = (pts, L) => { for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], d = Math.hypot(bx - ax, by - ay); if (L <= d) { const t = d ? L / d : 0; return [ax + (bx - ax) * t, ay + (by - ay) * t]; } L -= d; } return pts[pts.length - 1]; };
+  const lenTo = (pts, [x, y]) => { let acc = 0; for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], d = Math.hypot(bx - ax, by - ay); const t = d ? ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / (d * d) : 0; if (t >= -0.001 && t <= 1.001 && Math.abs((bx - ax) * (y - ay) - (by - ay) * (x - ax)) / (d || 1) < 1) return acc + t * d; acc += d; } return acc; };
 
-  /* ───── 히어로: 노선버스와 택시 ───── */
-  const bv = $("[data-wf-busv]"), bsum = $("[data-wf-bsum]"); let qi = 0, bGen = 0;
-  const WF = ["문의 접수", "분류", "초안", "다듬기", "답"];
-  const AG = [
-    [["문의 접수", C.human], ["모델이 판단", C.model], ["도구: 계정 조회", C.code], ["모델이 판단", C.model], ["도구: 초기화 요청", C.code], ["모델이 판단", C.model], ["초안", C.model], ["답", "var(--fg-strong)"]],
-    [["문의 접수", C.human], ["모델이 판단", C.model], ["도구: 계정 조회", C.code], ["모델이 판단", C.model], ["도구: 로그 검색", C.code], ["모델이 판단", C.model], ["초안", C.model], ["답", "var(--fg-strong)"]],
+  /* ───── 히어로: 거리 지도 — 노선버스(정해진 큰길)와 택시(그때그때 고른 골목) ─────
+     바뀌는 것은 택시 점선과 주황 점(모델 호출) 개수뿐. 버스 줄은 문의를 바꿔도 그대로다. */
+  const bv = $("[data-wf-busv]"), bsum = $("[data-wf-bsum]"); let qi = 0, bGen = 0, bH = true;
+  const XS = [60, 240, 420, 600, 780, 940], YS = [80, 220, 360];
+  const BUS = { path: [[60, 220], [940, 220]], calls: [[330, 220, "분류"], [510, 220, "초안"], [690, 220, "다듬기"]] };
+  const TAXI = [
+    { path: [[60, 220], [60, 80], [420, 80], [420, 360], [940, 360], [940, 220]], places: [[160, 80, "계정 조회"], [600, 360, "초기화 요청"]], calls: [[60, 150], [300, 80], [700, 360], [940, 290]] },
+    { path: [[60, 220], [60, 80], [780, 80], [780, 360], [940, 360], [940, 220]], places: [[160, 80, "계정 조회"], [510, 80, "로그 검색"], [860, 360, "메일 설정"]], calls: [[60, 150], [300, 80], [640, 80], [900, 360], [940, 290]] },
   ];
-  async function drawBus(animate) {
-    const my = ++bGen; bv.innerHTML = ""; const ag = AG[qi];
-    txt(bv, 100, 30, "워크플로", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` }); txt(bv, 100, 52, "코드가 길을 정함", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(bv, 350, 30, "Agent", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` }); txt(bv, 350, 52, "모델이 길을 정함", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
-    mk("path", { d: "M100 84 V412", class: "wf-rail", opacity: .5 }, bv); mk("path", { d: `M350 84 V${84 + (ag.length - 1) * 82}`, class: "wf-rail", opacity: .5 }, bv); box(bv, 40, 676, 380, 92, "var(--line-strong)", { dash: "7 5", fill: "var(--bg-base)", rx: 12 }); [[C.human, "코드가 정한 단계"], [C.model, "모델을 부르는 단계"], [C.code, "도구를 실행하는 단계"]].forEach(([c2, t2], n) => { mk("circle", { cx: 66, cy: 702 + n * 26, r: 7, fill: c2 }, bv); txt(bv, 84, 708 + n * 26, t2, { "font-size": 15, class: "t-s" }); }); 
-    const els = [];
-    WF.forEach((t, i) => { const y = 84 + i * 82, g = mk("g", { opacity: animate ? .15 : 1 }, bv); mk("circle", { cx: 100, cy: y, r: 22, fill: "var(--bg-base)", stroke: C.human, "stroke-width": 3.5 }, g); txt(g, 100, y + 6, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: "t-s" }); txt(g, 134, y + 6, t, { "font-size": 16, class: "t-s" }); els.push([g, i]); });
-    ag.forEach(([t, c], i) => { const y = 84 + i * 82, g = mk("g", { opacity: animate ? .15 : 1 }, bv); mk("circle", { cx: 350, cy: y, r: 22, fill: "var(--bg-base)", stroke: c, "stroke-width": 3.5 }, g); txt(g, 350, y + 6, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: "t-s" }); txt(g, 316, y + 6, t, { "font-size": 15, "text-anchor": "end", class: "t-s" }); els.push([g, i]); });
-    const agCalls = ag.filter(([t]) => t === "모델이 판단" || t === "초안").length;
-    bsum.innerHTML = `워크플로: 단계 5개 · 모델 호출 3번(항상 같음)<br>Agent: 단계 ${ag.length}개 · 모델 호출 ${agCalls}번(문의마다 달라지고 미리 알 수 없음)`;
-    if (animate && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) { for (let i = 0; i < 8; i++) { if (my !== bGen) return; els.filter(([, k]) => k === i).forEach(([g]) => g.setAttribute("opacity", 1)); await new Promise((r) => setTimeout(r, 480)); } }
+  let busEls = null;
+  function drawBus() {
+    bH = wide(bv, 640); const H = bH, P = ([x, y]) => H ? [x, y] : [y, x * .8], fs = H ? 19 : 22, hb = halo("var(--bg-subtle)");
+    bv.innerHTML = ""; bv.setAttribute("viewBox", H ? "-40 30 1080 385" : "0 0 440 810");
+    const tq = TAXI[qi];
+    /* 거리 블록: 칸 사이 빈 곳이 길이다 */
+    /* 길: 가는 선으로 바둑판 골목만 긋는다(건물 칸은 그리지 않는다) */
+    const road = (a, b) => { const [x1, y1] = P(a), [x2, y2] = P(b); mk("line", { x1, y1, x2, y2, stroke: RAIL, "stroke-width": 2, opacity: .7 }, bv); };
+    XS.forEach((x) => road([x, YS[0]], [x, YS[2]])); YS.forEach((y) => road([XS[0], y], [XS[5], y]));
+    const pl = (pts) => pts.map(P).map(([x, y]) => `${x} ${y}`).join(" L");
+    mk("path", { d: "M" + pl(tq.path), fill: "none", stroke: "var(--bg-subtle)", "stroke-width": 16, "stroke-linejoin": "round" }, bv); /* 택시 길 밑 골목선을 지운다 */
+    mk("path", { d: "M" + pl(tq.path), fill: "none", stroke: MUT, "stroke-width": 5, "stroke-dasharray": "1 11", "stroke-linecap": "round", "stroke-linejoin": "round" }, bv);
+    mk("path", { d: "M" + pl(BUS.path), fill: "none", stroke: INK, "stroke-width": 9, "stroke-linecap": "round" }, bv);
+    const T = (x, y, s, o) => txt(bv, x, y, s, { "font-size": fs, class: "t-s", style: hb, ...o });
+    /* 시작·끝 */
+    const [sx, sy] = P([60, 220]), [ex, ey] = P([940, 220]);
+    [[sx, sy], [ex, ey]].forEach(([x, y]) => mk("circle", { cx: x, cy: y, r: 13, fill: INK }, bv));
+    if (H) { T(sx - 24, sy + 7, "문의", { "text-anchor": "end" }); T(ex + 24, ey + 7, "답"); }
+    else { T(sx, sy - 26, "문의", { "text-anchor": "middle" }); T(ex, ey + 40, "답", { "text-anchor": "middle" }); }
+    if (H) { T(120, 198, "노선버스", { "font-size": 19 }); T(80, 128, "택시", { "font-size": 19 }); }
+    else { T(240, 128, "노선버스", { "font-size": 22 }); T(66, 30, "택시", { "font-size": 22 }); }
+    /* 도구를 쓴 곳 */
+    tq.places.forEach(([x0, y0, s]) => { const [x, y] = P([x0, y0]); mk("rect", { x: x - 8, y: y - 8, width: 16, height: 16, fill: INK, rx: 2 }, bv);
+      if (H) T(x, y0 < 200 ? y - 22 : y + 38, s, { "text-anchor": "middle", class: "t-d" });
+      else T(y0 < 200 ? x + 22 : x - 22, y + 7, s, { "text-anchor": y0 < 200 ? "start" : "end", class: "t-d" }); });
+    /* 버스 정류장 이름 */
+    BUS.calls.forEach(([x0, y0, s]) => { const [x, y] = P([x0, y0]); if (H) T(x, y + 42, s, { "text-anchor": "middle" }); else T(x + 24, y + 7, s); });
+    /* 모델을 부른 곳: 주황 점 */
+    const dot = (pt, route) => { const [x, y] = P(pt); const c = mk("circle", { cx: x, cy: y, r: 10, fill: MOD, stroke: "var(--bg-subtle)", "stroke-width": 3 }, bv); return [c, lenTo(route, pt)]; };
+    const bDots = BUS.calls.map((c) => dot(c, BUS.path)), tDots = tq.calls.map((c) => dot(c, tq.path));
+    /* 차: 버스는 까만 점, 택시는 속이 빈 점 */
+    const bus = mk("circle", { r: 12, fill: INK, stroke: "var(--bg-subtle)", "stroke-width": 3, style: "opacity:0" }, bv);
+    const taxi = mk("circle", { r: 11, fill: "var(--bg-base)", stroke: INK, "stroke-width": 4, style: "opacity:0" }, bv);
+    busEls = { bus, taxi, bDots, tDots };
+    bsum.innerHTML = `노선버스(워크플로): 모델 호출 3번 · 어느 문의를 골라도 같습니다<br>택시(Agent): 이번 문의는 모델 호출 ${tq.calls.length}번 · 문의마다 달라지고 미리 알 수 없습니다`;
     $("[data-wf-go]").disabled = false;
   }
-  $$("[data-wf-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.wfQ; press("[data-wf-q]", b); bGen++; drawBus(false); }, { signal }));
-  $("[data-wf-go]").addEventListener("click", () => { $("[data-wf-go]").disabled = true; drawBus(true); }, { signal }); drawBus(false);
+  async function runBus() {
+    const my = ++bGen, go = $("[data-wf-go]"); go.disabled = true; const { bus, taxi, bDots, tDots } = busEls, tq = TAXI[qi], P = ([x, y]) => bH ? [x, y] : [y, x * .8];
+    const SP = 0.42, bl = polyLen(BUS.path), tl = polyLen(tq.path), total = Math.max(bl, tl) / SP;
+    [...bDots, ...tDots].forEach(([c]) => c.style.opacity = .22); bus.style.opacity = 1; taxi.style.opacity = 1;
+    await tween(reduce ? 0 : total, (t) => { if (my !== bGen) return; const L = t * total * SP;
+      const [bx, by] = P(atLen(BUS.path, Math.min(L, bl))), [tx, ty] = P(atLen(tq.path, Math.min(L, tl)));
+      bus.setAttribute("cx", bx); bus.setAttribute("cy", by); taxi.setAttribute("cx", tx); taxi.setAttribute("cy", ty);
+      bDots.forEach(([c, at]) => { if (L >= at) c.style.opacity = 1; }); tDots.forEach(([c, at]) => { if (L >= at) c.style.opacity = 1; }); });
+    if (my !== bGen) return; [...bDots, ...tDots].forEach(([c]) => c.style.opacity = 1); go.disabled = false;
+  }
+  /* tween 은 ease 를 쓰므로 선형 이동용으로 따로 둔다 */
+  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(t); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  $$("[data-wf-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.wfQ; press("[data-wf-q]", b); bGen++; drawBus(); }, { signal }));
+  $("[data-wf-go]").addEventListener("click", runBus, { signal }); drawBus();
 
-  /* ───── 조립 라인 ───── */
+  /* ───── 체이닝: 원고지 두 장 — 초안이 20번째 칸 뒤 빨간 선을 넘는가 ───── */
   const ln = $("[data-wf-line]"); let gt = "pass";
+  const DR = { pass: { d: "재설정 링크를 메일로 보냈으니 확인해 주세요." }, fail: { d: "링크 보냈어요.", p: "재설정 링크를 보냈어요. 메일함을 봐 주세요." } };
   const LN = { pass: "초안이 충분해서 검사를 통과했습니다. 다듬기 단계를 건너뛰니 모델 호출은 1번입니다.", fail: "초안이 너무 짧아 검사에서 걸렸습니다. 다듬기 단계를 한 번 더 거쳐 모델 호출은 2번입니다." };
   function drawLine() {
-    ln.innerHTML = ""; const pass = gt === "pass";
-    mk("path", { d: "M80 40 V440", class: "wf-rail" }, ln);
-    const st = (y, lb, sub, col, on, ic) => { box(ln, 22, y - 34, 250, 68, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 12%, var(--bg-base))` : "var(--bg-base)", dash: on ? "" : "6 5", sw: on ? 3.5 : 2.5, rx: 14 }); mk("use", { href: "#wf-ic-" + ic, x: 34, y: y - 20, width: 36, height: 36, style: `color:${on ? col : "var(--line-strong)"}` }, ln); txt(ln, 80, y - 2, lb, { "font-size": 17, class: "t-s", opacity: on ? 1 : .5 }); txt(ln, 80, y + 20, sub, { "font-size": 15, class: "t-d", opacity: on ? 1 : .5 }); };
-    mk("circle", { cx: 300, cy: 40, r: 0 }, ln);
-    st(70, "초안 쓰기", "모델 호출 1번", C.model, true, "robot");
-    arrowDown(ln, 147, 106, 150);
-    mk("path", { d: "M70 190 L100 160 H194 L224 190 L194 220 H100 Z", fill: `color-mix(in srgb, ${C.bad} 10%, var(--bg-base))`, stroke: C.bad, "stroke-width": 3.5, "stroke-linejoin": "round" }, ln); txt(ln, 147, 196, "검사 문", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` });
-    txt(ln, 286, 186, "글자 수 20자", { "font-size": 15, class: "t-s" }); txt(ln, 286, 208, "이상인가?", { "font-size": 15, class: "t-s" });
-    if (pass) { mk("path", { d: "M147 222 V250 H340 V420", fill: "none", stroke: C.code, "stroke-width": 5 }, ln); arrowDown(ln, 340, 400, 440, C.code); txt(ln, 354, 270, "통과 → 바로 끝", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); st(330, "다듬기", "건너뜀", C.model, false, "robot"); }
-    else { arrowDown(ln, 147, 222, 290, C.bad); txt(ln, 160, 262, "실패", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); st(330, "다듬기", "모델 호출 1번 더", C.model, true, "robot"); arrowDown(ln, 147, 366, 440, C.bad); }
-    mk("use", { href: "#wf-ic-flag", x: pass ? 318 : 126, y: 442, width: 44, height: 44, style: "color:var(--fg-strong)" }, ln); txt(ln, pass ? 372 : 180, 470, "끝", { "font-size": 17, class: "t-s" });
-    txt(ln, 22, 530, pass ? "모델 호출 합계: 1번" : "모델 호출 합계: 2번", { "font-size": 17, class: "t-s", style: `fill:${pass ? C.code : C.bad}` });
+    const cols = wide(ln, 500) ? 26 : 13, cs = cols === 26 ? 20 : 28, X0 = 6, fs = cols === 26 ? 16 : 20, W = X0 * 2 + cols * cs, pass = gt === "pass", dr = DR[gt];
+    ln.innerHTML = ""; let y = 0;
+    const sheet = (text, label, skip) => {
+      txt(ln, X0, y + 20, label, { "font-size": fs, class: "t-s", ...(skip ? { opacity: .5 } : {}) }); const top = y + 34, ch = [...(text || "")];
+      for (let i = 0; i < 26; i++) { const r = Math.floor(i / cols), c = i % cols, x = X0 + c * cs, yy = top + r * cs;
+        mk("rect", { x, y: yy, width: cs, height: cs, fill: "var(--bg-base)", stroke: RAIL, "stroke-width": 1, ...(skip ? { "stroke-dasharray": "3 3", opacity: .5 } : {}) }, ln);
+        if (ch[i] && ch[i] !== " ") txt(ln, x + cs / 2, yy + cs * .74, ch[i], { "font-size": cs * .68, "text-anchor": "middle", class: "t-s" }); }
+      const r = Math.floor(19 / cols), c = 19 % cols, lx = X0 + (c + 1) * cs, ly = top + r * cs, bottom = top + Math.ceil(26 / cols) * cs;
+      if (!skip) { mk("line", { x1: lx, y1: ly - 7, x2: lx, y2: ly + cs + 7, stroke: BAD, "stroke-width": 3.5, "stroke-linecap": "round" }, ln); txt(ln, lx, bottom + 26, "20자", { "font-size": cols === 26 ? 28 : 32, class: "pen", "text-anchor": "middle" }); }
+      if (skip) txt(ln, W / 2, top + (bottom - top) / 2 + 7, "다듬기 건너뜀", { "font-size": fs, class: "t-d", "text-anchor": "middle" });
+      y = bottom + (skip ? 10 : 34); return ch.length;
+    };
+    const n = sheet(dr.d, "초안 · 모델 호출 1번");
+    const col = pass ? ACC : BAD, lines = pass ? [`검사(코드): ${n}자, 20자를 넘음`, "→ 다듬기 없이 바로 끝"] : [`검사(코드): ${n}자, 20자에 못 미침`, "→ 다듬기로 보냄"];
+    if (cols === 26) { txt(ln, X0, y + 14, lines.join(" "), { "font-size": fs, class: "t-s", style: `fill:${col}` }); y += 36; }
+    else { lines.forEach((t2, k) => txt(ln, X0, y + 14 + k * 28, t2, { "font-size": fs, class: "t-s", style: `fill:${col}` })); y += 64; }
+    sheet(pass ? "" : dr.p, pass ? "다듬기 · 모델 호출 없음" : "다듬기 · 모델 호출 2번", pass);
+    ln.setAttribute("viewBox", `0 0 ${W} ${Math.ceil(y + 4)}`);
     $("[data-wf-lnote]").textContent = LN[gt];
   }
   $$("[data-wf-gt]").forEach((b) => b.addEventListener("click", () => { gt = b.dataset.wfGt; press("[data-wf-gt]", b); drawLine(); }, { signal })); drawLine();
 
-  /* ───── 우체국 분류 (스크롤 이야기) ───── */
-  const ps = $("[data-wf-post]"), stat = $("[data-wf-stat]");
+  /* ───── 라우팅: 왼쪽 → 오른쪽 갈림길. 고른 갈래 하나만 칠한다 (스크롤 이야기) ───── */
+  const ps = $("[data-wf-post]"), stat = $("[data-wf-stat]"); let pk = 0, pH = true, pTok = null, pLen = 0, pGen = 0;
+  const LANE_Y = [80, 190, 300], LANE_N = ["계정 팀", "장비 팀", "소프트웨어 팀"];
+  const laneD = (y) => `M270 190 C315 190 315 ${y} 360 ${y} L560 ${y} C605 ${y} 605 190 650 190`;
+  const ROUTE = "M40 190 L270 190 C315 190 315 80 360 80 L560 80 C605 80 605 190 650 190 L730 190";
+  const STOP = [[70, 190], [270, 190], [460, 80], [690, 190]];
+  let rPath = null;
+  const nearLen = (path, [x, y]) => { const T = path.getTotalLength(); let best = 0, bd = 1e9; for (let L = 0; L <= T; L += 2) { const q = path.getPointAtLength(L), d = Math.hypot(q.x - x, q.y - y); if (d < bd) { bd = d; best = L; } } return best; };
   function drawPost(i) {
-    const k = i < 0 ? 3 : i; ps.innerHTML = "";
-    const parcel = (x, y) => { box(ps, x, y, 150, 44, C.human, { rx: 8, fill: `color-mix(in srgb, ${C.human} 16%, var(--bg-base))` }); txt(ps, x + 75, y + 28, "비밀번호 문의", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); };
-    parcel(155, 10);
-    arrowDown(ps, 230, 58, 98, k >= 1 ? C.human : "var(--line-strong)");
-    box(ps, 80, 102, 300, 84, k >= 1 ? C.model : "var(--line-strong)", { fill: k >= 1 ? `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` : "var(--bg-base)", sw: k >= 1 ? 4 : 2.5 }); mk("use", { href: "#wf-ic-robot", x: 94, y: 118, width: 40, height: 40, style: `color:${k >= 1 ? C.model : "var(--line-strong)"}` }, ps); txt(ps, 148, 136, "classify 노드", { "font-size": 17, class: "t-s mono" }); txt(ps, 148, 162, k >= 1 ? "이름표: 계정" : "이름표를 붙이는 중", { "font-size": 15.5, class: "t-s", style: k >= 1 ? `fill:${C.model}` : "" });
-    const teams = [["account", "계정 팀", 20], ["device", "장비 팀", 166], ["software", "소프트웨어 팀", 312]];
-    teams.forEach(([nm, lb, x], n) => { const on = k >= 2 && n === 0; mk("path", { d: `M230 188 C230 226 ${x + 60} 210 ${x + 60} 250`, fill: "none", stroke: on ? C.code : "var(--line-strong)", "stroke-width": on ? 5 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ps); box(ps, x, 252, 128, 70, on ? C.code : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${C.code} 14%, var(--bg-base))` : "var(--bg-base)", sw: on ? 4 : 2.5, rx: 12 }); txt(ps, x + 64, 282, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .5 }); txt(ps, x + 64, 306, nm, { "font-size": 15, "text-anchor": "middle", class: "t-d mono", opacity: on ? 1 : .5 }); });
-    if (k >= 3) { box(ps, 20, 346, 128, 44, C.code, { rx: 8, sw: 2.5 }); txt(ps, 84, 374, "초안 작성", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); mk("path", { d: "M84 322 V346", stroke: C.code, "stroke-width": 4 }, ps); }
-    [0, 1, 2].forEach((n) => { const x = 84 + n * 146, on = k >= 3 && n === 0; mk("path", { d: `M${x} ${n === 0 && k >= 3 ? 390 : 322} C${x} 430 230 420 230 450`, fill: "none", stroke: on ? C.code : "var(--line-strong)", "stroke-width": on ? 5 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ps); });
-    box(ps, 130, 454, 200, 70, k >= 3 ? C.model : "var(--line-strong)", { fill: "var(--bg-base)", sw: k >= 3 ? 4 : 2.5 }); txt(ps, 230, 484, "polish 노드", { "font-size": 17, "text-anchor": "middle", class: "t-s mono" }); txt(ps, 230, 508, "모두 여기서 만남", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
-    stat.innerHTML = i < 0 ? "<b>분류부터 다듬기까지 모두 지난 모습입니다</b>" : `<b>${["문의 도착", "이름표 붙임", "계정 팀 줄로", "초안 → 다듬기"][k]}</b>`;
+    const k = i < 0 ? 3 : i; pk = k; pH = wide(ps, 600); const H = pH, P = ([x, y]) => H ? [x, y] : [y, x], D = (d) => H ? d : swapD(d), fs = H ? 18 : 19, hb = halo("var(--bg-base)");
+    ps.innerHTML = ""; ps.setAttribute("viewBox", H ? "0 0 760 380" : "0 0 420 770");
+    const T = (x, y, s, o = {}) => txt(ps, x, y, s, { "font-size": fs, class: "t-s", style: hb, ...o });
+    mk("path", { d: D("M40 190 L270 190"), fill: "none", stroke: k >= 1 ? ACC : INK, "stroke-width": 7, "stroke-linecap": "round" }, ps);
+    mk("path", { d: D("M650 190 L730 190"), fill: "none", stroke: k >= 3 ? ACC : INK, "stroke-width": 7, "stroke-linecap": "round" }, ps);
+    LANE_Y.forEach((y, n) => { const on = n === 0 && k >= 2; mk("path", { d: D(laneD(y)), fill: "none", stroke: on ? ACC : RAIL, "stroke-width": on ? 7 : 4, ...(on ? {} : { "stroke-dasharray": "8 7" }), "stroke-linecap": "round" }, ps); });
+    rPath = mk("path", { d: D(ROUTE), fill: "none", stroke: "none" }, ps);
+    LANE_Y.forEach((y, n) => { const on = n === 0 && k >= 2; const [x, yy] = P([460, y]);
+      if (H) T(x, yy - 16, LANE_N[n], { "text-anchor": "middle", ...(on ? { style: hb + `fill:${ACC}` } : { class: "t-d" }) });
+      else T(n === 0 ? x - 14 : x + 14, n === 2 ? 500 : 440, LANE_N[n].replace(" 팀", ""), { "text-anchor": n === 0 ? "end" : "start", ...(on ? { style: hb + `fill:${ACC}` } : { class: "t-d" }) });
+      if (on && k >= 3) { const [dx, dy] = P([460, y + 34]); if (H) T(dx, dy, "초안 씀", { "text-anchor": "middle", class: "pen", "font-size": 26, style: hb }); else T(x - 14, 490, "초안 씀", { class: "pen", "font-size": 26, style: hb, "text-anchor": "end" }); } });
+    /* 분류·다듬기 지점 */
+    [[270, 190, "분류", k >= 1], [650, 190, "다듬기", k >= 3]].forEach(([x0, y0, s, on]) => { const [x, y] = P([x0, y0]); mk("circle", { cx: x, cy: y, r: 13, fill: "var(--bg-base)", stroke: on ? ACC : INK, "stroke-width": 5 }, ps);
+      if (H) T(x, y + (s === "분류" ? 42 : 56), s, { "text-anchor": "middle" }); else T(x - 24, y + 7, s, { "text-anchor": "end" }); });
+    const [ex, ey] = P([730, 190]); if (H) T(ex, ey - 20, "답", { "text-anchor": "middle" }); else T(ex + 22, ey + 7, "답");
+    /* 들어온 문의 */
+    const [qx, qy] = P([40, 190]); if (H) T(qx, qy - 22, "비밀번호를 잊어버렸어요", { "font-size": 17 }); else T(qx, qy - 18, "비밀번호를 잊어버렸어요", { "text-anchor": "middle", "font-size": 17 });
+    /* 정해진 보기 셋 — 고른 하나만 칠함 */
+    if (k >= 1) { const opts = ["계정", "장비", "소프트웨어"];
+      opts.forEach((o, n) => { const on = n === 0; const [x, y] = H ? [40, 252 + n * 28] : [216, 92 + n * 28]; T(x, y, (on ? "✓ " : "   ") + o, { "font-size": 17, ...(on ? { style: hb + `fill:${ACC}` } : { class: "t-d" }) }); });
+      const [hx, hy] = H ? [40, 226] : [216, 66]; T(hx, hy, "정해진 보기", { "font-size": 17, class: "t-d" }); }
+    pTok = mk("g", {}, ps); mk("circle", { r: 11, fill: k >= 1 ? ACC : INK, stroke: "var(--bg-base)", "stroke-width": 3 }, pTok);
+    pLen = nearLen(rPath, P(STOP[k])); const q = rPath.getPointAtLength(pLen); pTok.setAttribute("transform", `translate(${q.x} ${q.y})`);
+    stat.innerHTML = i < 0 ? "<b>분류부터 다듬기까지 모두 지난 모습입니다</b>" : `<b>${["문의 도착", "이름표 붙임", "계정 팀 갈래로", "초안 → 다듬기"][k]}</b>`;
   }
-  story("[data-wf-story]", (i) => drawPost(i)); drawPost(0);
+  let pPrev = 0;
+  const onPost = async (i) => { const from = pLen, k = i < 0 ? 3 : i, my = ++pGen; drawPost(i); const to = pLen;
+    if (i < 0 || reduce || Math.abs(to - from) < 2 || k < pPrev) { pPrev = k; return; } pPrev = k;
+    await tween(520, (t) => { if (my !== pGen) return; const e = ease(t), q = rPath.getPointAtLength(from + (to - from) * e); pTok.setAttribute("transform", `translate(${q.x} ${q.y})`); }); };
+  story("[data-wf-story]", onPost); drawPost(0);
 
-  /* ───── 기타 길 ───── */
+  /* ───── 기타 길: 분류 로그 마지막 줄이 어디로 가는가 ───── */
   const ot = $("[data-wf-other]"); let ob = "a";
+  const LOG = [["비밀번호를 잊어버렸어요", "계정"], ["노트북 화면이 깜빡여요", "장비"], ["엑셀을 설치하고 싶어요", "소프트웨어"]];
   function drawOther() {
-    ot.innerHTML = ""; const sel = ob === "a" ? 0 : 3;
-    box(ot, 130, 14, 200, 70, C.model, { fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#wf-ic-robot", x: 142, y: 28, width: 36, height: 36, style: `color:${C.model}` }, ot); txt(ot, 192, 46, "classify", { "font-size": 17, class: "t-s mono" }); txt(ot, 192, 70, ob === "a" ? "이름표: 계정" : "이름표: 기타", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
-    const lanes = [["계정 팀", 14, C.code, "account"], ["장비 팀", 124, C.code, "device"], ["소프트웨어", 234, C.code, "software"], ["기타", 344, C.bad, "other"]];
-    lanes.forEach(([lb, x, col, nm], n) => { const on = n === sel; mk("path", { d: `M230 86 C230 130 ${x + 51} 120 ${x + 51} 170`, fill: "none", stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 2.5, "stroke-dasharray": on ? "" : "6 5" }, ot); box(ot, x, 174, 102, 78, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 14%, var(--bg-base))` : "var(--bg-base)", sw: on ? 4.5 : 2.5, rx: 12 }); txt(ot, x + 51, 206, lb, { "font-size": 16, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .5 }); txt(ot, x + 51, 232, nm, { "font-size": 15, "text-anchor": "middle", class: "t-d mono", opacity: on ? 1 : .5 }); });
-    if (sel === 3) { mk("path", { d: "M395 254 V312", stroke: C.bad, "stroke-width": 5 }, ot); mk("path", { d: "M395 322 l-9 -14 h18z", fill: C.bad }, ot); mk("use", { href: "#wf-ic-mail", x: 360, y: 326, width: 70, height: 70, style: `color:${C.bad}` }, ot); txt(ot, 395, 418, "사람이 확인", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` }); txt(ot, 40, 340, "억지로 가까운 팀에", { "font-size": 15, class: "t-d" }); txt(ot, 40, 362, "보내지 않고 사람에게", { "font-size": 15, class: "t-d" }); }
-    else { mk("path", { d: "M65 254 V312", stroke: C.code, "stroke-width": 5 }, ot); mk("path", { d: "M65 322 l-9 -14 h18z", fill: C.code }, ot); mk("use", { href: "#wf-ic-paper", x: 30, y: 326, width: 70, height: 70, style: `color:${C.code}` }, ot); txt(ot, 65, 418, "팀 초안", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` }); }
-    $("[data-wf-onote]").textContent = ob === "a" ? "뚜렷한 문의는 해당 팀의 노드로 가서 초안이 쓰입니다." : "어느 보기에도 맞지 않는 문의는 기타로 분류돼 사람이 확인하는 칸으로 갑니다.";
+    const has = ob === "b";
+    $("[data-wf-lit]").innerHTML = `category: Literal["계정", "장비", "소프트웨어"${has ? '<ins>, "기타"</ins>' : ""}]`;
+    ot.innerHTML = LOG.map(([q, a]) => `<li><span>${esc(q)}</span><span class="to">→ ${a}</span></li>`).join("")
+      + (has ? `<li><span>뭔가 이상한데 말로 설명하기 어려워요</span><span class="to ok">→ 기타</span><span class="pen">사람이 확인</span></li>`
+             : `<li><span>뭔가 이상한데 말로 설명하기 어려워요</span><span class="to x">→ 소프트웨어</span><span class="pen">억지로 가장 가까운 팀에</span></li>`);
+    $("[data-wf-onote]").textContent = has ? "선택지에 기타가 있으니 어느 팀에도 맞지 않는 문의는 기타로 분류돼 사람이 확인하는 칸으로 갑니다." : "선택지가 셋뿐이면 모델은 셋 중 하나를 골라야 해서 애매한 문의도 가까워 보이는 팀으로 갑니다.";
   }
   $$("[data-wf-ob]").forEach((b) => b.addEventListener("click", () => { ob = b.dataset.wfOb; press("[data-wf-ob]", b); drawOther(); }, { signal })); drawOther();
 
-  /* ───── 판단 트리 ───── */
+  /* ───── 순서표: 일하기 전에 단계를 빈칸에 다 적을 수 있는가 ───── */
   const tr = $("[data-wf-tree]"); let ti = 0;
-  const TS = [["문의를 유형별로 접수", 0, "순서를 미리 압니다. 분류한 뒤 팀별로 처리하는 길이 늘 같아 라우팅 워크플로로 충분합니다."], ["장애 원인 조사", 1, "무엇을 몇 번 확인해야 할지 미리 모릅니다. 로그를 보고 다음 확인을 정해야 해서 Agent가 맞습니다."], ["초안 쓰고 다듬기", 0, "단계가 고정돼 있습니다. 체이닝 워크플로로 짜고 중간에 검사만 넣으면 됩니다."]];
+  const TS = [["문의를 유형별로 접수", 0, ["분류", "팀별 초안", "다듬기"], "순서를 미리 압니다. 분류한 뒤 팀별로 처리하는 길이 늘 같아 라우팅 워크플로로 충분합니다."], ["장애 원인 조사", 1, ["로그 보기"], "무엇을 몇 번 확인해야 할지 미리 모릅니다. 로그를 보고 다음 확인을 정해야 해서 Agent가 맞습니다."], ["초안 쓰고 다듬기", 0, ["초안", "길이 검사", "다듬기"], "단계가 고정돼 있습니다. 체이닝 워크플로로 짜고 중간에 검사만 넣으면 됩니다."]];
   function drawTree() {
-    tr.innerHTML = ""; const [lb, side, say] = TS[ti];
-    box(tr, 90, 14, 280, 70, "var(--fg-strong)", { fill: "var(--bg-base)", sw: 3.5 }); txt(tr, 230, 42, "순서를 미리 알 수 있나요?", { "font-size": 17, "text-anchor": "middle", class: "t-s" }); txt(tr, 230, 68, `고른 일: ${lb}`, { "font-size": 15, "text-anchor": "middle", class: "t-d" });
-    [[0, 100, C.human, "예 · 압니다", "워크플로", "체이닝 · 라우팅"], [1, 360, C.model, "아니요 · 모릅니다", "Agent", "모델이 판단하며 반복"]].forEach(([s, x, col, ans, nm, sub]) => {
-      const on = s === side; mk("path", { d: `M230 86 C230 126 ${x} 120 ${x} 160`, fill: "none", stroke: on ? col : "var(--line-strong)", "stroke-width": on ? 6 : 3, "stroke-dasharray": on ? "" : "6 5" }, tr); txt(tr, x < 230 ? 190 : 270, 124, ans, { "font-size": 15, "text-anchor": x < 230 ? "end" : "start", class: "t-s", style: `fill:${on ? col : "var(--fg-neutral)"}` });
-      box(tr, x - 90, 168, 180, 150, on ? col : "var(--line-strong)", { fill: on ? `color-mix(in srgb, ${col} 12%, var(--bg-base))` : "var(--bg-subtle)", sw: on ? 4.5 : 2.5, dash: on ? "" : "6 5" }); mk("use", { href: "#wf-ic-" + (s === 0 ? "gear" : "robot"), x: x - 20, y: 182, width: 40, height: 40, style: `color:${on ? col : "var(--line-strong)"}` }, tr); txt(tr, x, 252, nm, { "font-size": 19, "text-anchor": "middle", class: "t-s", opacity: on ? 1 : .55 }); txt(tr, x, 280, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d", opacity: on ? 1 : .55 }); if (on) { mk("use", { href: "#wf-ic-check", x: x - 18, y: 288, width: 36, height: 28, style: `color:${col}` }, tr); }
+    const H = wide(tr, 640); tr.innerHTML = ""; tr.setAttribute("viewBox", H ? "0 0 960 300" : "0 0 400 420");
+    txt(tr, 0, 24, "일하기 전에 적어 본 순서", { "font-size": H ? 17 : 19, class: "t-d" });
+    TS.forEach(([name, side, steps], r) => {
+      const on = r === ti, g = mk("g", { opacity: on ? 1 : .55 }, tr), fs = H ? 19 : 18;
+      const ry = H ? 96 + r * 84 : 74 + r * 118, sx = H ? 220 : 0, sy = H ? ry : ry + 50, step = H ? 150 : 100, w = H ? 128 : 88;
+      txt(g, 0, ry, name, { "font-size": H ? 18 : 19, class: on ? "t-s" : "t-d" });
+      for (let i = 0; i < 4; i++) {
+        const known = i < steps.length, unk = side === 1 && !known, last = i === 3; if (!known && !unk) continue;
+        const x = sx + i * step;
+        mk("line", { x1: x, y1: sy + 12, x2: x + w, y2: sy + 12, stroke: unk ? BAD : INK, "stroke-width": 2.5, ...(unk ? { "stroke-dasharray": "5 6" } : {}), opacity: last ? .55 : 1 }, g);
+        if (known) txt(g, x + w / 2, sy, steps[i], { "font-size": fs, class: "t-s", "text-anchor": "middle" });
+        else txt(g, x + w / 2, sy + 4, last ? "몇 칸 더?" : "?", { "font-size": last ? (H ? 28 : 24) : 40, class: "pen", "text-anchor": "middle" });
+      }
+      const word = side === 0 ? "→ 워크플로" : "→ Agent";
+      if (H) txt(g, 820, ry, word, { "font-size": 20, class: "t-s" }); else txt(g, 400, ry, word, { "font-size": 19, class: "t-s", "text-anchor": "end" });
     });
-    box(tr, 14, 350, 432, 150, "var(--line-strong)", { dash: "7 5", fill: "var(--bg-subtle)" }); txt(tr, 30, 380, "Anthropic의 권고", { "font-size": 16, class: "t-s" }); txt(tr, 30, 408, "가능한 가장 단순한 해법을 찾고", { "font-size": 16, class: "t-s" }); txt(tr, 30, 434, "필요할 때만 복잡도를 높이세요.", { "font-size": 16, class: "t-s" }); txt(tr, 30, 470, "성능이 나아지는 게 확인될 때 더합니다", { "font-size": 15, class: "t-d" });
-    $("[data-wf-tsay]").textContent = say;
+    $("[data-wf-tsay]").textContent = TS[ti][3];
   }
   $$("[data-wf-t]").forEach((b) => b.addEventListener("click", () => { ti = +b.dataset.wfT; press("[data-wf-t]", b); drawTree(); }, { signal })); drawTree();
+
+  /* 화면 폭이 바뀌어 가로/세로가 갈리면 다시 그린다 */
+  let rzRaf = 0; addEventListener("resize", () => { cancelAnimationFrame(rzRaf); rzRaf = requestAnimationFrame(() => { bGen++; drawBus(); drawLine(); drawPost(pk); drawTree(); }); }, { passive: true, signal });
 
   initTerms({
     r: [["cmd", "$ python router.py"], ["wait", 700], ["line", "비밀번호를 잊어버렸어요 → 계정"], ["line", "노트북 화면이 깜빡여요 → 장비"], ["type", "엑셀을 설치하고 싶어요 → 소프트웨어"]],
