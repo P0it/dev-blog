@@ -93,6 +93,12 @@ export type StageState = {
    * `given` 은 지금까지 바구니에 담은 동전(낸 순서), `left` 는 남은 돈이다.
    */
   coins?: { values: number[]; at: number | null; given: number[]; left: number };
+  /**
+   * 시간표(회의실 배정). `rows` 는 지금 순서대로 늘어선 회의 한 줄씩(`name` 은 회의 이름, `s`·`e` 는 시작·끝 시각)이고,
+   * 줄마다 상태는 `cells` 가 쥔다(고름 settled · 지금 보는 current · 건너뜀 dropped · 아직 out).
+   * `end` 는 지금까지 고른 회의 가운데 가장 늦은 끝 시각 — 시간표에 세로 선으로 그린다. 시간 축은 `lib/algo/activity-selection.ts` 의 AXIS 다.
+   */
+  timeline?: { rows: { name: string; s: number; e: number }[]; end?: number };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

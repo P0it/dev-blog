@@ -216,7 +216,16 @@ export const registry: AlgoEntry[] = [
     signals: ["최소 개수", "큰 것부터 고르면 된다 (배수 관계)", "증명할 수 있으면 그리디, 아니면 DP"],
     status: "ready",
   },
-  plan("activity-selection", "회의실 배정", "끝나는 시간이 빠른 것부터", "그리디", ["activity selection"], ["겹치지 않게 최대"]),
+  {
+    slug: "activity-selection",
+    title: "회의실 배정",
+    lede: "끝나는 시간이 빠른 것부터",
+    category: "그리디",
+    tier: 1,
+    aliases: ["activity selection", "활동 선택", "회의실", "interval scheduling", "greedy"],
+    signals: ["겹치지 않게 최대 개수", "회의실 배정·스케줄", "끝나는 시간 순으로 정렬"],
+    status: "ready",
+  },
 
   // ── 백트래킹·구현
   plan("permutations", "순열과 조합 만들기", "가능한 경우를 빠짐없이", "백트래킹·구현", ["itertools", "permutations"], ["모든 순서"]),
