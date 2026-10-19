@@ -203,7 +203,16 @@ export const registry: AlgoEntry[] = [
     signals: ["경우의 수를 센다", "앞 결과로 지금을 구한다", "n 이 크다 (1000 이상)"],
     status: "ready",
   },
-  plan("knapsack", "0/1 배낭", "가방에 무엇을 담을까", "DP", ["knapsack"], ["무게 제한", "최대 가치"]),
+  {
+    slug: "knapsack",
+    title: "0/1 배낭",
+    lede: "가방에 무엇을 담을까",
+    category: "DP",
+    tier: 1,
+    aliases: ["knapsack", "배낭 문제", "냅색", "0/1 knapsack", "dp 표", "무게 제한"],
+    signals: ["무게(용량) 제한이 있다", "최대 가치 · 최소 비용", "물건마다 담거나 말거나"],
+    status: "ready",
+  },
 
   // ── 그리디
   {

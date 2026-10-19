@@ -99,6 +99,19 @@ export type StageState = {
    * `end` 는 지금까지 고른 회의 가운데 가장 늦은 끝 시각 — 시간표에 세로 선으로 그린다. 시간 축은 `lib/algo/activity-selection.ts` 의 AXIS 다.
    */
   timeline?: { rows: { name: string; s: number; e: number }[]; end?: number };
+  /**
+   * 0/1 배낭 표. `dp[i][w]` 는 물건을 i 개까지 보고 가방 용량이 w 일 때 담을 수 있는 최대 가치(코드의 dp 그대로),
+   * `done[i][w]` 는 그 칸을 이미 채웠는지, `cur` 는 지금 채우는 칸 `[i, w]`, `from` 은 그 칸이 읽는 칸들(안 담기 = 바로 위 칸,
+   * 담기 = 무게만큼 왼쪽 위 칸)이다. `items` 는 물건 이름·무게·값, `W` 는 가방 용량이다.
+   */
+  knap?: {
+    items: { name: string; w: number; v: number }[];
+    W: number;
+    dp: number[][];
+    done: boolean[][];
+    cur?: [number, number];
+    from?: [number, number][];
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
