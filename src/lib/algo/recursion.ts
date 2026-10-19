@@ -54,7 +54,7 @@ function* call(n: number, stack: Frame[], outer: boolean): Generator<Step, numbe
     return 1;
   }
 
-  yield snap(4, n, stack, `${n} × factorial(${n - 1}) 을 풀려면 factorial(${n - 1}) 부터 필요합니다`);
+  yield snap(4, n, stack, `${n} × factorial(${n - 1}) 을 풀려면 factorial(${n - 1}) 부터 알아야 합니다`);
   const inner = yield* call(n - 1, stack, false);
   const ret = n * inner;
   frame.ret = ret;
