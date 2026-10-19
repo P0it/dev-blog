@@ -114,7 +114,7 @@ function* walk(a0: number, b0: number): Generator<Step> {
     const tail =
       round.q > 0
         ? `한 변 ${ob} 짜리 정사각형 ${round.q}개를 깔면 ${rest}`
-        : `${oa} 이 ${ob} 보다 작아서 정사각형은 못 깔고 자리만 바뀝니다`;
+        : `${josa(oa, "이", "가")} ${ob} 보다 작아서 정사각형은 못 깔고 자리만 바뀝니다`;
     yield {
       line: 3,
       vars: { a, b },
@@ -186,7 +186,7 @@ export function handRows(): HandRow[] {
     const tooMany: HandOption = {
       label: `한 변 ${s} 짜리 ${n + 1}개`,
       correct: false,
-      reason: `${s} × ${n + 1} = ${s * (n + 1)} 이라서 긴 변 ${josa(long, "을", "를")} 넘어요`,
+      reason: `${s} × ${n + 1} = ${josa(s * (n + 1), "이라서", "라서")} 긴 변 ${josa(long, "을", "를")} 넘어요`,
     };
     const tooBig: HandOption = {
       label: `한 변 ${long} 짜리 1개`,

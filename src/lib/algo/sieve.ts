@@ -186,7 +186,7 @@ function* walk(n: number): Generator<Step> {
       line: 6,
       vars: varsOf(snap),
       stage: stageOf(n, erased, { i: a, plan }),
-      note: `${a}의 배수를 ${a * a}부터 ${a}칸씩 지웁니다. ${a * a}보다 작은 배수는 더 작은 수가 이미 지웠습니다`,
+      note: `${a}의 배수를 ${a * a}부터 ${a}칸씩 지웁니다. ${a}의 배수 중 ${a}보다 크고 ${a * a}보다 작은 것은 더 작은 수가 이미 지웠습니다`,
     };
 
     const fresh: number[] = [];

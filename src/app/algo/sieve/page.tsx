@@ -14,6 +14,7 @@ import {
   outerChecks,
   sieveWithout01,
 } from "@/lib/algo/sieve";
+import { josa } from "@/lib/algo/josa";
 
 const N = SIEVE_N;
 const PRIMES = primesUpTo(N);
@@ -33,7 +34,7 @@ export default async function SievePage() {
   const at = raw.steps.findIndex((s) => s.line === 5 && s.vars.i === 4);
   const pause: PlayerPause = {
     at,
-    ask: <>누르기 전에 맞혀 보세요. i 가 4 입니다. 4 가 있는 칸은 이미 지워져 있습니다. 안쪽 반복이 돌까요?</>,
+    ask: <>누르기 전에 맞혀 보세요. i 가 4 이고 4 는 이미 지워진 칸입니다. 안쪽 반복이 돌까요?</>,
     options: [
       { label: "돈다 — 4 의 배수 16, 20, 24 … 를 지워야 하니까" },
       { label: "돈다 — 모든 i 에서 안쪽 반복이 돈다" },
@@ -78,7 +79,7 @@ export default async function SievePage() {
         </p>
         <p>
           7 까지만 눌러도 끝이었습니다. 11 부터는 11 × 11 = 121 이 {N}을 넘어서 눌러도 지울 수가 없습니다. {N} 이하의 합성수는
-          7 이하의 소수를 약수로 하나는 가지기 때문입니다.
+          7 이하의 소수를 약수로 꼭 하나는 가집니다.
         </p>
         <Counter
           rows={[
@@ -96,8 +97,8 @@ export default async function SievePage() {
           <b>지워지지 않은 수</b> — 더 작은 어떤 수의 배수도 아니다. 그래서 1 과 자기 자신 말고는 약수가 없다
         </li>
         <li>
-          <b>작은 수부터 누른다</b> — 앞에서 누른 수가 합성수를 대신 지워 준다. 방금 막혔던 이유다. 3 이 남아 있는데 9 를
-          누르면 9 는 아직 지워지지 않았을 뿐 약수가 3 인 수다
+          <b>작은 수부터 누른다</b> — 앞에서 누른 수가 합성수를 대신 지워 준다. 3 을 누르기 전의 9 는
+          아직 지워지지 않았을 뿐 약수가 3 인 수다
         </li>
         <li>
           <b>처음부터 지워 둔 1</b> — 약수가 1 하나뿐이라 &ldquo;1 과 자기 자신&rdquo; 규칙에서 따로 뺐다
@@ -133,16 +134,16 @@ export default async function SievePage() {
           <b>
             <code>int(n ** 0.5)</code>
           </b>{" "}
-          — i 는 {Math.floor(Math.sqrt(N))} 까지만 돈다. 8 이상의 합성수는 이미 지워져 있다
+          — i 는 {Math.floor(Math.sqrt(N))} 까지만 돈다. 8 부터는 i × i 가 {N} 을 넘어 새로 지울 수가 없다
         </li>
       </ul>
 
       {/* ⑤ 확인 문제 */}
       <Quiz
-        question={`같은 방법으로 1~${QUIZ_N} 을 거르면, 눌러서 배수가 지워지는 가장 큰 수는 얼마일까요?`}
+        question={`같은 방법으로 1~${QUIZ_N} 을 거르면 눌러서 배수가 지워지는 가장 큰 수는 얼마일까요?`}
         options={[
           { label: "5 — 5 의 배수까지만 지우면 끝이다" },
-          { label: `${QUIZ_PRESS} — ${QUIZ_PRESS} × ${QUIZ_PRESS} = ${QUIZ_PRESS! * QUIZ_PRESS!} 은 ${QUIZ_N} 이하라서 지워진다`, correct: true },
+          { label: `${QUIZ_PRESS} — ${QUIZ_PRESS} × ${QUIZ_PRESS} = ${josa(QUIZ_PRESS! * QUIZ_PRESS!, "은", "는")} ${QUIZ_N} 이하라서 지워진다`, correct: true },
           { label: `${Math.floor(Math.sqrt(QUIZ_N))} — √${QUIZ_N} = ${Math.floor(Math.sqrt(QUIZ_N))} 이니까` },
         ]}
         why={
@@ -170,7 +171,7 @@ export default async function SievePage() {
           {innerWrites(1_000_000, "double").toLocaleString("ko-KR")}번이다. 시간은 0.035초와 0.036초로 거의 같았다
         </li>
         <li>
-          <b>바깥 반복을 n 까지 돌리면</b> — 소수가 아닌 수도 하나씩 훑는다. 100만에서 {outerChecks(1_000_000, "sqrt").toLocaleString("ko-KR")}번이 아니라{" "}
+          <b>바깥 반복을 n 까지 돌리면</b> — √n 보다 큰 수까지 전부 훑는다. 100만에서 {outerChecks(1_000_000, "sqrt").toLocaleString("ko-KR")}번이 아니라{" "}
           {outerChecks(1_000_000, "n").toLocaleString("ko-KR")}번 돈다. 0.035초가 0.049초가 됐다
         </li>
         <li>

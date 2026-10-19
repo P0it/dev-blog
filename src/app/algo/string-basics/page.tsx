@@ -56,7 +56,7 @@ export default async function StringBasicsPage() {
       <PalReveal>
         <p className="algo-chain">
           기 ↔ 기 → 가운데 러
-          <span>같은 한 쌍만 견주면 끝났습니다. 가운데 글자는 짝이 없어도 됩니다.</span>
+          <span>기러기는 같은 한 쌍만 견주면 끝났습니다. 가운데 글자는 짝이 없어도 됩니다.</span>
         </p>
         <p>
           앞에서 읽으나 뒤에서 읽으나 같은 말 = <strong>회문</strong>(palindrome)
@@ -72,7 +72,7 @@ export default async function StringBasicsPage() {
             <b>
               <code>len(s)</code>
             </b>{" "}
-            — 글자 수. 「기러기」 는 3이고 마지막 글자는 <code>s[len(s) - 1]</code> 또는 <code>s[-1]</code> 이다
+            — 글자 수. 「기러기」는 3이고 마지막 글자는 <code>s[len(s) - 1]</code> 또는 <code>s[-1]</code> 이다
           </li>
           <li>
             <b>한 줄 방법</b> — <code>s == s[::-1]</code> 은 글자를 거꾸로 뒤집은 새 문자열과 같은지 본다
@@ -85,10 +85,10 @@ export default async function StringBasicsPage() {
             { label: "한 쌍씩 견주기 · 첫 글자부터 다른 100만 글자", n: 0.003, unit: "ms" },
             { label: "뒤집어 비교 · 첫 글자부터 다른 100만 글자", n: 0.41, unit: "ms" },
           ]}
-          caption="Python 3.14 에서 직접 잰 값이고 컴퓨터마다 다릅니다. 한 줄 방법은 C 로 돌아서 회문일 때 더 빠르고, 한 쌍씩 견주는 쪽은 첫 쌍부터 다르면 바로 멈춥니다."
+          caption="Python 3.14 에서 직접 잰 값이고 컴퓨터마다 다릅니다. 한 줄 방법은 C 로 돌아서 회문일 때 더 빠릅니다. 한 쌍씩 견주는 쪽은 첫 쌍부터 다르면 바로 멈춥니다."
         />
         <p>
-          한 쌍씩 안쪽으로 좁히는 방법은 앞 장의 <Link href="/algo/two-pointers">투 포인터</Link> 와 같습니다.
+          한 쌍씩 안쪽으로 좁히는 방법은 앞에서 본 <Link href="/algo/two-pointers">투 포인터</Link>와 같습니다.
         </p>
       </PalReveal>
 
@@ -109,7 +109,7 @@ export default async function StringBasicsPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 양끝 번호 둘이 전부다</h2>
       <p>
-        단어를 골라 <strong>다음</strong>을 눌러 보세요. 짝이 같으면 두 끝이 안쪽으로 한 칸씩 가고, 다르면 5번 줄에서 끝납니다.
+        단어를 골라 <strong>다음</strong>을 눌러 보세요. 짝이 같으면 두 끝이 안쪽으로 한 칸씩 가고 다르면 5번 줄에서 끝납니다.
       </p>
 
       <PalPlayer words={PAL_WORDS} tapes={tapes} pauses={pauses} />
@@ -145,8 +145,8 @@ export default async function StringBasicsPage() {
         ]}
         why={
           <>
-            첫 쌍 a 와 a 는 같아서 통과합니다. 안쪽 b 와 c 는 달라서 두 번째 쌍에서 <code>return False</code> 로 끝납니다. 4쌍을
-            견주는 경우는 없습니다. 글자가 4개라도 쌍은 최대 2개입니다.
+            첫 쌍 a 와 a 는 같아서 통과합니다. 안쪽 b 와 c 는 달라서 두 번째 쌍에서 <code>return False</code> 로 끝납니다. 글자가 4개라도 쌍은
+            최대 2개입니다.
           </>
         }
       />
@@ -159,8 +159,8 @@ export default async function StringBasicsPage() {
           assignment</code>. 글자를 고치려면 새 문자열을 만든다
         </li>
         <li>
-          <b>문장은 먼저 거른다</b> — <code>A man, a plan, a canal: Panama</code> 는 그대로 <code>False</code> 다. 대소문자와 공백,
-          기호를 걸러 <code>amanaplanacanalpanama</code> 로 만들어야 <code>True</code> 다. <code>lower()</code> 와{" "}
+          <b>문장은 먼저 거른다</b> — <code>A man, a plan, a canal: Panama</code> 는 그대로 <code>False</code> 다. 대문자는 소문자로 바꾸고
+          공백과 기호는 걸러 <code>amanaplanacanalpanama</code> 로 만들어야 <code>True</code> 다. <code>lower()</code> 와{" "}
           <code>isalnum()</code> 을 쓴다
         </li>
         <li>

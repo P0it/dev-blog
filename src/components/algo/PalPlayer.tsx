@@ -39,7 +39,7 @@ export function PalPlayer({
       <TapePlayer
         key={word}
         tape={tapes[word]}
-        title={`「${word}」 가 뒤집어도 같은지 양끝에서 견주는 모습`}
+        title={`뒤집어도 같은지 「${word}」의 양끝에서 견주는 모습`}
         pause={pauses[word]}
         stage={(s) => (
           <div className="algo-pal-stage">

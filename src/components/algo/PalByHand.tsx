@@ -108,13 +108,13 @@ export function PalByHand({ onDone }: { onDone?: (r: PalResult | null) => void }
             ? st.palindrome
               ? "뒤집어도 같은 말입니다"
               : "뒤집으면 달라지는 말입니다"
-            : "앞 글자와 뒤 글자가 같은지, 바깥 한 쌍씩 안쪽으로 견주세요"}
+            : "바깥 한 쌍부터 안쪽으로 앞 글자와 뒤 글자가 같은지 견주세요"}
       </p>
 
       {guess === null ? (
         <div className="algo-pal-predict" role="group" aria-label="예상 고르기">
           <p className="algo-pal-ask">
-            <strong>「{PAL_PREDICT_WORD}」 를 뒤집어 읽으면 어떨까요?</strong>
+            <strong>「{PAL_PREDICT_WORD}」를 뒤집어 읽어도 같은 말일까요?</strong>
           </p>
           {GUESSES.map((g) => (
             <button key={g.v} type="button" className="algo-opt" onClick={() => setGuess(g.v)}>
@@ -137,7 +137,7 @@ export function PalByHand({ onDone }: { onDone?: (r: PalResult | null) => void }
                   type="button"
                   aria-pressed={w === word}
                   disabled={locked}
-                  title={locked ? "먼저 「아버지」 를 끝내 보세요" : undefined}
+                  title={locked ? "먼저 「아버지」를 끝내 보세요" : undefined}
                   onClick={() => pick(w)}
                 >
                   {w}
@@ -166,7 +166,7 @@ export function PalByHand({ onDone }: { onDone?: (r: PalResult | null) => void }
           {judging && (
             <>
               <p className="algo-pal-ask">
-                앞 글자 <b>「{a}」</b> 와 뒤 글자 <b>「{b}」</b> 는 같은가요?
+                앞 글자 <b>「{a}」</b>, 뒤 글자 <b>「{b}」</b>. 둘이 같은가요?
               </p>
               <div className="algo-pairs-btns">
                 <button type="button" onClick={() => judge("same")}>

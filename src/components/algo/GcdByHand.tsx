@@ -65,7 +65,7 @@ export function GcdByHand({ onDone }: { onDone?: (r: GcdResult | null) => void }
     <section className="algo-byhand" aria-label="바닥에 타일 깔아 보기">
       <p className="algo-byhand-ask">
         {guess === null
-          ? `${HAND.a}×${HAND.b} 바닥에 정사각형 타일만 빈틈없이 깝니다. 먼저 맞혀 보세요. 마지막에 남는 정사각형은 한 변이 얼마일까요?`
+          ? `${HAND.a}×${HAND.b} 바닥에 정사각형 타일만 빈틈없이 깝니다. 먼저 맞혀 보세요. 마지막에 까는 정사각형은 한 변이 얼마일까요?`
           : finished
             ? "바닥을 모두 깔았습니다"
             : "지금 남은 바닥을 채울 수 있는 가장 큰 정사각형으로 한 줄씩 깝니다. 어떻게 깔지 고르세요."}

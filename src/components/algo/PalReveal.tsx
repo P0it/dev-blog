@@ -28,12 +28,12 @@ export function PalReveal({ children }: { children: ReactNode }) {
         <p>
           {bad && (
             <>
-              「{bad.word}」 는 <strong>{bad.checks}쌍</strong>만 견주고 끝났습니다. 다른 글자가 나오는 순간 더 볼 필요가 없습니다.{" "}
+              「{bad.word}」에서는 <strong>{bad.checks}쌍</strong>만 견주고 끝났습니다. 다른 글자가 나오는 순간 더 볼 필요가 없습니다.{" "}
             </>
           )}
           {first && (
             <>
-              「{first.word}」 는 끝까지 <strong>{first.checks}쌍</strong>을 견줬고 가운데 글자는 짝 없이 건너뛰었습니다.
+              「{first.word}」에서는 끝까지 <strong>{first.checks}쌍</strong>을 견줬고 가운데 글자는 짝 없이 건너뛰었습니다.
             </>
           )}
         </p>

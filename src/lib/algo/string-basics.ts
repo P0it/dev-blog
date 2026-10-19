@@ -166,7 +166,7 @@ export function palJudge(s: string, st: PalState, guess: PalGuess): { ok: boolea
   if (!same) {
     return {
       ok: true,
-      text: `${pair} 다른 글자입니다. 여기서 끝, 뒤집어 읽으면 달라집니다`,
+      text: `${pair} 다른 글자입니다. 여기서 끝납니다. 뒤집어 읽으면 달라집니다`,
       next: { ...st, checks: st.checks + 1, done: true, palindrome: false },
     };
   }
@@ -177,7 +177,7 @@ export function palJudge(s: string, st: PalState, guess: PalGuess): { ok: boolea
   if (left >= right) {
     const text =
       left === right
-        ? `${pair} 같은 글자입니다. 가운데 글자 「${cs[left]}」 는 짝이 없어 건너뜁니다`
+        ? `${pair} 같은 글자입니다. 가운데 「${cs[left]}」 한 글자는 짝이 없어 건너뜁니다`
         : `${pair} 같은 글자입니다. 짝을 모두 견줬습니다`;
     return { ok: true, text, next: { left, right, checks, done: true, palindrome: true } };
   }
