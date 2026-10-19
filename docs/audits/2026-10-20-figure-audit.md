@@ -20,7 +20,7 @@ HTML 페이지 글 55편의 그림 509개를 `POSTING.md` 5-9(그림 문법)로 
 | high | workflow-vs-agent-chaining-routing | ai-agent | 4/0/1 | 히어로 노선도는 좋다. 조립 라인·우체국 분류·기타 길·판단 트리 네 장면이 로봇·기어 아이콘 색 상자 + 화살표 + 마름모 || 2026-10-20 · Critic 4.1/4 + chain.py 조건 >=20 → <20 정정 |
 | high | agent-security-prompt-injection-trifecta | ai-agent | 3/0/1 | 히어로·지시/자료·방어 관문이 모두 색 상자+화살표. 세 원 겹침만 원리 그림 || 2026-10-20 · Critic 4.1/4 |
 | high | agent-service-docker-eval-adr | ai-agent | 3/1/0 | 히어로 벽부터 컨테이너·문서 카드까지 제목+부제 상자 중심. 평가 격자는 표 || 2026-10-20 · Critic 4/4 |
-| high | agent-skills-subagents-hooks | ai-native-dev | 3/3/5 | 서랍장·대화 기록·훅 검문소는 좋음. 서브에이전트 책상·일꾼 층·플러그인이 제목+부제 상자·아이콘 카드 | |
+| high | agent-skills-subagents-hooks | ai-native-dev | 3/3/5 | 서랍장·대화 기록·훅 검문소는 좋음. 서브에이전트 책상·일꾼 층·플러그인이 제목+부제 상자·아이콘 카드 || 2026-10-20 · Critic 3.9/3.8 (새 그림 4~4.5, 손대지 않은 기존 그림이 감점) — 후속 과제 있음 |
 | high | beyond-llm-xgboost-timesfm-two-tower | llm-infra-basics | 3/1/12 | 실측 그래프·점 격자는 강함. TimesFM 단계도·Two-Tower 탑·마지막 고르기 흐름이 상자 흐름도 | |
 | high | coding-agent-security-prompt-injection-owasp | ai-native-dev | 3/4/8 | 랜턴·시험지·벤·치즈 은유는 좋음. 입구 지도·권한 경계·할 일 묶음이 라벨 상자, 표 두 개가 약함 | |
 | high | context-engineering-claude-md-agents-md | ai-native-dev | 3/2/10 | 책상 띠·점 잇기·실측 막대는 좋음. 프롬프트→컨텍스트 도식·폴더 상자 안 상자·압축 전후 대응이 상자 문법 | |
