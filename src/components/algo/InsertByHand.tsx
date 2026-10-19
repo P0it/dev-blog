@@ -71,7 +71,7 @@ export function InsertByHand({ onDone }: { onDone?: (r: InsertResult | null) => 
       <p className="algo-byhand-ask">
         {hand.done
           ? "왼쪽부터 작은 순서로 섰습니다"
-          : "카드 여섯 장을 작은 수부터 왼쪽에 늘어놓습니다. 숫자는 키입니다. 한 장씩 받아 왼쪽 손패에 끼워 넣을 자리를 찾습니다"}
+          : "카드 여섯 장을 작은 수부터 왼쪽에 늘어놓습니다. 한 장씩 받아 왼쪽 손패에 끼워 넣을 자리를 찾습니다"}
       </p>
 
       <StageInsert values={handStage(hand).values ?? []} state={handStage(hand)} />

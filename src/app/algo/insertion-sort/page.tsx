@@ -62,7 +62,7 @@ export default async function InsertionSortPage() {
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
-        카드 여섯 장을 작은 수부터 왼쪽에 늘어놓아 보세요. 한 장씩 받아서, 왼쪽에 모인 카드들 사이에 끼워 넣을 자리를 찾습니다.
+        카드 여섯 장을 작은 수부터 왼쪽에 늘어놓아 보세요. 한 장씩 받아서 왼쪽에 모인 카드 사이에 끼워 넣을 자리를 찾습니다.
       </p>
 
       <InsertReveal>
@@ -84,7 +84,7 @@ export default async function InsertionSortPage() {
 
       {/* ③ 조건 짚기 */}
       <h2>제자리에 가까울수록 적게 견준다</h2>
-      <p>카드 모양을 바꿔 눌러 보세요. 견주는 횟수가 달라집니다.</p>
+      <p>카드 모양을 바꿔 가며 눌러 보세요. 견주는 횟수가 달라집니다.</p>
       <InsertInputs />
       <ul className="algo-keys">
         <li>
@@ -170,7 +170,7 @@ export default async function InsertionSortPage() {
           </b>{" "}
           — 같은 값도 넘어간다. 이미 정렬된 <code>1a 1b 2c</code> 가 {insertionLabels(sortedPairs, ">=").join(" ")} 로 뒤집힌다.{" "}
           <code>&gt;</code> 로 쓰면 <code>2a 2b 1c</code> 가 {insertionLabels(pairs, ">").join(" ")} 로 원래 순서가 지켜진다(안정 정렬).
-          선택 정렬은 이렇게 안 된다
+          선택 정렬은 같은 값의 순서를 지키지 못한다
         </li>
         <li>
           <b>
@@ -189,7 +189,7 @@ export default async function InsertionSortPage() {
         <b>하나씩 들어오는 데이터를 바로 정렬해 둔다</b>
       </div>
       <p>
-        실전에서 정렬이 필요하면 <code>sorted()</code> 한 줄이면 됩니다. 파이썬의 정렬(Timsort)도 짧은 구간은 삽입 정렬 계열로
+        실전에서 정렬이 필요할 때는 <code>sorted()</code> 한 줄이면 됩니다. 파이썬의 정렬(Timsort)도 짧은 구간은 삽입 정렬 계열로
         정리합니다.
       </p>
       <p className="algo-next">다음 장에서는 반으로 쪼갰다가 정렬된 두 묶음을 합치는 병합 정렬을 봅니다.</p>

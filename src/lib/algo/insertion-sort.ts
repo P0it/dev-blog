@@ -271,7 +271,7 @@ export function stepHand(
   }
 
   if (action === "front") {
-    return { state: s, ok: false, text: `아직 맨 앞이 아니에요. 왼쪽의 ${left}와 먼저 견주세요` };
+    return { state: s, ok: false, text: `아직 맨 앞이 아니에요. 왼쪽의 ${josa(left, "과", "와")} 먼저 견주세요` };
   }
 
   const truth = left > key;
