@@ -9,9 +9,12 @@ import { cellClass } from "./cell-class";
 export function StageTrack({
   values,
   state,
+  hideIndex,
 }: {
   values: number[];
   state: StageState;
+  /** 칸의 값이 곧 번호(속도 1~11 처럼)라 아래 칸 번호가 중복일 때 숨긴다 */
+  hideIndex?: boolean;
 }) {
   if (values.length === 0) {
     return <p className="algo-track-empty">배열이 비어 있습니다</p>;
@@ -25,7 +28,11 @@ export function StageTrack({
   }
 
   return (
-    <div className="algo-track" role="img" aria-label={trackLabel(values, state)}>
+    <div
+      className={hideIndex ? "algo-track algo-track-noindex" : "algo-track"}
+      role="img"
+      aria-label={trackLabel(values, state)}
+    >
       <div className="algo-track-cells">
         {values.map((v, i) => (
           <div key={i} className={`algo-cell ${cellClass(state.cells[i] ?? "out")}`}>

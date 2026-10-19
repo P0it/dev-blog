@@ -154,7 +154,16 @@ export const registry: AlgoEntry[] = [
     signals: ["같은 값이 여러 개", "개수를 세야 한다", "x 이상이 처음 나오는 자리"],
     status: "ready",
   },
-  plan("parametric-search", "답을 이분 탐색하기", "되는지 안 되는지만 물어보기", "탐색", ["parametric search"], ["최댓값의 최솟값"]),
+  {
+    slug: "parametric-search",
+    title: "답을 이분 탐색하기",
+    lede: "되는지 안 되는지만 물어보기",
+    category: "탐색",
+    tier: 1,
+    aliases: ["parametric search", "파라메트릭 서치", "결정 문제", "답에 대한 이분 탐색", "binary search on answer"],
+    signals: ["최댓값의 최솟값 · 최솟값의 최댓값", "~할 수 있는 가장 작은 값", "후보가 너무 많아 하나씩 해 볼 수 없다"],
+    status: "ready",
+  },
 
   // ── 그래프 탐색
   { slug: "bfs-grid", title: "격자 BFS", lede: "소문은 어떻게 퍼질까", category: "그래프 탐색", tier: 1, aliases: ["BFS", "너비 우선", "breadth first"], signals: ["최단 거리", "가중치 없다", "격자"], status: "ready" },
