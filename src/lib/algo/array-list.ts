@@ -71,7 +71,7 @@ function* walk(input: number[], x: number): Generator<Step> {
   };
 
   s.moved = 0;
-  yield { line: 3, vars: vars(s), stage: stage(a, { gap: n0, waiting: x }), note: "밀어낸 횟수를 0 으로 시작합니다" };
+  yield { line: 3, vars: vars(s), stage: stage(a, { gap: n0, waiting: x }), note: "밀어낸 횟수를 0 으로 둡니다" };
 
   // 줄 4~6: 뒤에서부터 한 칸씩
   for (let i = n0; i >= 1; i--) {
@@ -89,7 +89,7 @@ function* walk(input: number[], x: number): Generator<Step> {
       line: 5,
       vars: vars(s),
       stage: stage(a, { gap: i - 1, waiting: x, cur: i, flagI: i }),
-      note: `${who}번 사람을 ${i}번 칸으로, 한 칸 뒤로 보냅니다`,
+      note: `${who}번 사람을 한 칸 뒤 ${i}번 칸으로 보냅니다`,
     };
 
     s.moved = (s.moved ?? 0) + 1;
@@ -115,7 +115,7 @@ function* walk(input: number[], x: number): Generator<Step> {
     line: 7,
     vars: vars(s),
     stage: stage(a, { settledAt: 0 }),
-    note: `빈 맨 앞 칸에 새 사람 ${x}번을 세웁니다`,
+    note: `비어 있는 맨 앞 칸에 새 사람 ${x}번을 세웁니다`,
   };
 
   yield {

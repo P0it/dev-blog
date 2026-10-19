@@ -57,7 +57,7 @@ export function LineByHand({ onDone, onReset }: { onDone?: (r: LineResult) => vo
       {locked ? (
         <div className="algo-line-predict" role="group" aria-label="먼저 예상하기">
           <p className="algo-line-q">
-            먼저 예상해 보세요. 맨 앞에 끼우는 것과 맨 뒤에 붙이는 것 중, 줄 선 사람을 <b>덜 밀게 되는</b> 쪽은 어디일까요?
+            먼저 예상해 보세요. 맨 앞에 끼우기와 맨 뒤에 붙이기 중 줄 선 사람을 <b>덜 미는</b> 쪽은 어디일까요?
           </p>
           <div className="algo-guess">
             {PREDICT_OPTIONS.map((o, i) => (

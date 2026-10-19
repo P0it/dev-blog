@@ -85,8 +85,8 @@ export default async function ArrayListPage() {
         </li>
       </ul>
       <p>
-        가끔은 <code>append</code> 도 오래 걸립니다. 칸이 꽉 차면 더 큰 자리로 줄 전체를 옮겨 가기 때문입니다. 파이썬은 그때 조금
-        넉넉하게 더 잡아 둡니다. 그래서 평균하면 <code>append</code> 한 번이 칸 하나 옮기는 일 정도입니다.
+        가끔은 <code>append</code> 도 오래 걸립니다. 칸이 꽉 차면 줄 전체를 더 큰 자리로 옮기기 때문입니다. 파이썬이 그때 칸을
+        넉넉하게 잡아 두어서 평균하면 <code>append</code> 한 번은 칸 하나 옮기는 일 정도입니다.
       </p>
 
       {/* ④ 코드와 플레이어 */}
@@ -114,7 +114,7 @@ export default async function ArrayListPage() {
           <b>
             <code>moved</code>
           </b>{" "}
-          — 한 칸 밀 때마다 1 오른다. 끝나면 줄 길이와 같다
+          — 한 칸 밀 때마다 1씩 는다. 끝나면 줄 길이와 같다
         </li>
       </ul>
 
@@ -168,8 +168,8 @@ export default async function ArrayListPage() {
         </li>
       </ul>
       <p>
-        줄 서기(맨 앞에서 빼고 맨 뒤에 넣기)를 리스트로 흉내 내면 <code>pop(0)</code> 이 계속 나옵니다. 다음 쪽의 <code>deque</code> 는 같은 일을 한
-        번에 1번으로 합니다.
+        줄 서기(맨 앞에서 빼고 맨 뒤에 넣기)를 리스트로 흉내 내면 <code>pop(0)</code> 이 계속 나옵니다. 뒤에서 볼 큐와 덱의 <code>deque</code> 는 같은 일을 당기기 없이
+        한 번에 합니다.
       </p>
 
       {/* ⑦ 꺼내라는 신호 */}
