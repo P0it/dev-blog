@@ -124,7 +124,16 @@ export const registry: AlgoEntry[] = [
   },
 
   // ── 탐색
-  plan("linear-search", "선형 탐색", "앞에서부터 하나씩 보면", "탐색", ["linear search"], []),
+  {
+    slug: "linear-search",
+    title: "선형 탐색",
+    lede: "앞에서부터 하나씩 보면",
+    category: "탐색",
+    tier: 1,
+    aliases: ["linear search", "순차 탐색", "하나씩 찾기", "index", "in 연산"],
+    signals: ["정렬돼 있지 않다", "한 번만 찾는다", "N이 작다"],
+    status: "ready",
+  },
   {
     slug: "binary-search",
     title: "이분 탐색",
