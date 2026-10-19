@@ -184,7 +184,16 @@ export const registry: AlgoEntry[] = [
 
   // ── DP
   plan("memoization", "메모이제이션", "같은 걸 두 번 세지 않기", "DP", ["memoization", "캐시"], ["같은 계산 반복"]),
-  plan("dp-1d", "1차원 DP", "계단을 오르는 경우의 수", "DP", ["dynamic programming"], ["경우의 수"]),
+  {
+    slug: "dp-1d",
+    title: "1차원 DP",
+    lede: "계단을 오르는 경우의 수",
+    category: "DP",
+    tier: 1,
+    aliases: ["dynamic programming", "동적 계획법", "다이나믹 프로그래밍", "점화식", "dp", "계단 오르기", "피보나치"],
+    signals: ["경우의 수를 센다", "앞 결과로 지금을 구한다", "n 이 크다 (1000 이상)"],
+    status: "ready",
+  },
   plan("knapsack", "0/1 배낭", "가방에 무엇을 담을까", "DP", ["knapsack"], ["무게 제한", "최대 가치"]),
 
   // ── 그리디
