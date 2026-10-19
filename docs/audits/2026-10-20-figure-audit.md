@@ -18,7 +18,7 @@ HTML 페이지 글 55편의 그림 509개를 `POSTING.md` 5-9(그림 문법)로 
 | high | mcp-host-client-server-primitives | ai-agent | 4/0/3 | 연결 가닥 히어로와 생명선 두 개는 좋음. Host·Client·Server, 서랍, 층, A2A 그림이 모두 둥근 상자+아이콘+화살표 || 2026-10-20 · Critic 4/4 |
 | high | spec-driven-development-spec-kit-kiro | ai-native-dev | 4/2/5 | 히어로 코드 메모·색칠한 SPEC.md는 좋다. 케이크 주문서/레시피, spec→plan→tasks→코드 네 칸, EARS 세로 쌓기, waves 작업 상자가 상자 문법 | |
 | high | workflow-vs-agent-chaining-routing | ai-agent | 4/0/1 | 히어로 노선도는 좋다. 조립 라인·우체국 분류·기타 길·판단 트리 네 장면이 로봇·기어 아이콘 색 상자 + 화살표 + 마름모 | |
-| high | agent-security-prompt-injection-trifecta | ai-agent | 3/0/1 | 히어로·지시/자료·방어 관문이 모두 색 상자+화살표. 세 원 겹침만 원리 그림 | |
+| high | agent-security-prompt-injection-trifecta | ai-agent | 3/0/1 | 히어로·지시/자료·방어 관문이 모두 색 상자+화살표. 세 원 겹침만 원리 그림 || 2026-10-20 · Critic 4.1/4 |
 | high | agent-service-docker-eval-adr | ai-agent | 3/1/0 | 히어로 벽부터 컨테이너·문서 카드까지 제목+부제 상자 중심. 평가 격자는 표 | |
 | high | agent-skills-subagents-hooks | ai-native-dev | 3/3/5 | 서랍장·대화 기록·훅 검문소는 좋음. 서브에이전트 책상·일꾼 층·플러그인이 제목+부제 상자·아이콘 카드 | |
 | high | beyond-llm-xgboost-timesfm-two-tower | llm-infra-basics | 3/1/12 | 실측 그래프·점 격자는 강함. TimesFM 단계도·Two-Tower 탑·마지막 고르기 흐름이 상자 흐름도 | |
