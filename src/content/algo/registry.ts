@@ -112,7 +112,16 @@ export const registry: AlgoEntry[] = [
   { slug: "insertion-sort", title: "삽입 정렬", lede: "카드를 한 장씩 끼워 넣기", category: "정렬", tier: 1, aliases: ["insertion sort", "삽입정렬", "카드 끼우기"], signals: ["거의 정렬돼 있다", "n이 작다", "하나씩 들어오는 데이터를 바로 정렬해 둔다"], status: "ready" },
   { slug: "merge-sort", title: "병합 정렬", lede: "반으로 쪼갰다 붙이기", category: "정렬", tier: 1, aliases: ["merge sort", "머지 소트", "합병 정렬"], signals: ["같은 값의 순서를 지켜야 한다", "N이 커도 최악이 N log N", "정렬된 두 묶음을 합친다"], status: "ready" },
   { slug: "quick-sort", title: "퀵 정렬", lede: "기준 하나로 좌우를 가르기", category: "정렬", tier: 1, aliases: ["quick sort", "quicksort", "pivot", "피벗", "퀵소트", "분할"], signals: ["평균적으로 빠른 정렬을 직접 짠다", "k번째로 작은 수", "기준보다 작다/크다로 가르기"], status: "ready" },
-  plan("python-sort", "Python sort 와 key", "실전에서는 이 한 줄이면 된다", "정렬", ["sorted", "key", "lambda"], ["여러 기준으로 정렬"]),
+  {
+    slug: "python-sort",
+    title: "Python sort 와 key",
+    lede: "실전에서는 이 한 줄이면 된다",
+    category: "정렬",
+    tier: 1,
+    aliases: ["sorted", "sort", "key", "lambda", "정렬 함수", "안정 정렬", "reverse", "Timsort"],
+    signals: ["여러 기준으로 정렬", "정렬 기준을 직접 정한다", "N log N 이면 충분한 정렬"],
+    status: "ready",
+  },
 
   // ── 탐색
   plan("linear-search", "선형 탐색", "앞에서부터 하나씩 보면", "탐색", ["linear search"], []),
