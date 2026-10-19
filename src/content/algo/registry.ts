@@ -47,7 +47,7 @@ const plan = (
 
 export const registry: AlgoEntry[] = [
   // ── 기초 개념
-  plan("big-o", "시간복잡도", "1억 번이면 1초, 그래서 어쩌라고", "기초 개념", ["Big-O", "빅오"], ["N이 얼마까지"]),
+  { slug: "big-o", title: "시간복잡도", lede: "1억 번이면 1초, 그래서 어쩌라고", category: "기초 개념", tier: 1, aliases: ["Big-O", "빅오", "time complexity"], signals: ["N이 얼마까지", "제한 시간 1~2초", "반복문 안의 반복문"], status: "ready" },
   plan("recursion", "재귀", "거울 앞에 거울을 두면", "기초 개념", ["recursion"], ["자기를 다시 부른다"]),
   plan("brute-force", "완전탐색", "일단 다 해 보면 안 되나", "기초 개념", ["brute force"], ["N이 작다"]),
   plan("two-pointers", "투 포인터", "양쪽에서 좁혀 오기", "기초 개념", ["two pointers"], ["정렬돼 있다", "두 수의 합"]),
