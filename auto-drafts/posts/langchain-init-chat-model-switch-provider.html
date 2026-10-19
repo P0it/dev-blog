@@ -6,11 +6,12 @@ tags: [AI Agent, LangChain, init_chat_model, Claude, OpenAI, Python]
 category: ai
 series: ai-agent
 series_order: 4
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-init-chat-model-switch-provider-mvb5s2xr.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-init-chat-model-switch-provider-mvft715g.jpg
 ---
 <!-- page -->
-<!-- layout: 분할 히어로(글 | 어댑터 그림) + 글|그림 2단(서랍장) + 그림 고정 스크롤리텔링(채팅창) + 그림|글 뒤집기(택배 두 개) + 실험판 전폭 띠(물컵) + 글|그림(다이얼) + 파이프 + 정리 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지를 여행용 어댑터 비유로 보이는 글이라 요청 봉투·서랍장·택배·다이얼 같은 장면 그림으로 같은 것과 다른 것을 나눈다 | 버린 후보: 상자 보드 나열(앞 버전, 그림이 라벨 상자뿐) -->
+<!-- layout: 제목|글 머리 + 전폭 요청서 두 장 히어로(작은 그림 여러 장) + 글|그림 2단(문자열에 펜 동그라미·메모) + 그림 고정 스크롤리텔링(채팅창) + 글|넓은 그림(원본 응답 두 장 → AIMessage, 고른 값 줄만 칠함) + 실험판 전폭 띠(물컵) + 글|그림(다이얼) + 글|그림(빈칸에 글자가 흘러 들어가는 틀) + 정리 표 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지가 핵심이라 실제 요청·응답 원문을 나란히 놓고 달라진 줄만 칠한다. 그림 문법은 POSTING 5-9 | 버린 후보: 어댑터 상자→콘센트 상자 세로 흐름(히어로), 서랍장 상자 쌓기, 응답 상자→깔때기→AIMessage 상자, 틀 상자→파이프→로봇 아이콘 모델 상자, 맞춰 줌·직접 확인 아이콘 두 칸 정리 그림(2026-10-20 상자 그림 전수 조사로 교체), 상자 보드 나열(앞 버전) -->
 <style>
+@import url("https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap");
 .post-page .lc {
   --lc-human: rgb(37, 112, 235); --lc-code: rgb(16, 150, 120); --lc-model: rgb(226, 106, 28); --lc-bad: rgb(214, 56, 56);
   color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
@@ -176,49 +177,163 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-req .d2 { background: rgba(60, 205, 165, .22); border-radius: 4px; padding: 0 3px; color: #fff; }
 .post-page .lc-dialwrap input[type="range"] { width: min(100%, 360px); accent-color: var(--fg-strong); }
 .post-page .lc-verdict { margin-top: 10px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+
+/* 2026-10-20 그림 문법 교체(POSTING 5-9): 색은 상태에만 — 먹(그대로) · 초록(회사에 맞게 달라진 곳·고른 것) · 빨강(막힘·원본 그대로 남은 곳, 펜 메모) */
+.post-page .lc p.lc-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .lc-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
+.post-page .lc .pen { font-family: "Nanum Pen Script", "Gaegu", "Comic Sans MS", cursive; color: var(--lc-bad); font-weight: 400; line-height: 1.1; letter-spacing: 0; }
+.post-page .lc-mk { background: color-mix(in srgb, var(--lc-code) 20%, transparent); box-shadow: inset 0 -2px 0 var(--lc-code); border-radius: 2px; }
+
+/* 히어로: 요청서 두 장 */
+.post-page .lc-h-grid.lc-h-top { align-items: end; }
+.post-page .lc-h-top h1 { margin: 0; }
+.post-page .lc-h-top p:last-child { margin-bottom: 0; }
+.post-page .lc-rq { margin-top: clamp(40px, 5vw, 56px); container-type: inline-size; }
+.post-page .lc-rq-same { font-size: 15px; color: var(--fg-neutral); margin: 22px 0 14px; }
+.post-page .lc-rq-same code { font-size: 15px; color: var(--fg-strong); }
+.post-page .lc-rq-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; }
+@container (max-width: 639px) { .post-page .lc-rq-grid { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lc-rq-code { font-family: var(--font-mono); font-size: clamp(12.5px, 1.3vw, 14px); color: var(--fg-neutral); margin: 0 0 8px; overflow-wrap: anywhere; }
+.post-page .lc-rq-code b { color: var(--fg-strong); }
+.post-page .lc-sheet { position: relative; border: 1.5px solid var(--line-strong); border-radius: 12px; background: var(--bg-base); padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.8; color: var(--fg-strong); }
+.post-page .lc-sheet .l { white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .lc-sheet .i1 { padding-left: 2ch; } .post-page .lc-sheet .i2 { padding-left: 4ch; } .post-page .lc-sheet .i3 { padding-left: 5ch; }
+.post-page .lc-sheet .nt { font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); line-height: 1.4; margin: 0 0 4px 2ch; }
+.post-page .lc-sheet .tp { display: none; font-weight: 700; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet .tp { display: block; }
+.post-page .lc-sheet .stamp { display: none; position: absolute; right: 14px; top: 8px; font-size: 34px; transform: rotate(-8deg); }
+.post-page .lc-sheet .strike { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .stamp, .post-page .lc-rq[data-temp="on"] .lc-sheet.rej .strike { display: block; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .l, .post-page .lc-rq[data-temp="on"] .lc-sheet.rej .nt { opacity: .45; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .l.tp { opacity: 1; color: var(--lc-bad); text-decoration: underline wavy var(--lc-bad) 1.5px; text-underline-offset: 5px; }
+.post-page .lc-sheet .tpw { display: none; font-size: 22px; margin: 0 0 2px 2ch; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .tpw { display: block; }
+.post-page .lc-sheet .tpn { display: none; }
+.post-page .lc-rq[data-temp="on"] .lc-sheet .tpn { display: block; }
+
+/* 서랍 고르기: 문자열에 직접 표시 */
+.post-page .lc-str { font-family: var(--font-mono); font-size: clamp(17px, 2.6vw, 30px); font-weight: 700; color: var(--fg-strong); margin: 30px 0 0; white-space: nowrap; }
+.post-page .lc-str .pv { position: relative; display: inline-block; padding: 0 .1em; }
+.post-page .lc-str .pv svg { position: absolute; left: -14px; top: -12px; width: calc(100% + 28px); height: calc(100% + 24px); overflow: visible; }
+.post-page .lc-str .mn { color: var(--fg-neutral); font-weight: 600; }
+.post-page .lc-memo { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 0 10px; margin: 2px 0 0; }
+.post-page .lc-memo svg { width: 54px; height: 70px; overflow: visible; }
+.post-page .lc-memo .pen { font-size: 26px; margin: 34px 0 8px; }
+.post-page .lc-memo ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.post-page .lc-memo li { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); align-items: baseline; gap: 8px; font-size: 15px; }
+.post-page .lc-memo li .pen { font-size: 21px; margin: 0; }
+.post-page .lc-memo li code { background: transparent; padding: 0; font-size: 15px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lc p.lc-mnote { font-size: 14.5px; color: var(--fg-neutral); margin: 18px 0 0; }
+
+/* 응답: 원본 두 장 → AIMessage */
+@media (max-width: 900px) { .post-page .lc-split.rev.lc-wide > :first-child { order: 2; } .post-page .lc-h-grid.lc-h-top { row-gap: 28px; } }
+.post-page .lc-split.rev.lc-wide { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); }
+@media (max-width: 900px) { .post-page .lc-split.rev.lc-wide { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lc-rs { container-type: inline-size; }
+.post-page .lc-rs-grid { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); gap: 14px 8px; align-items: center; }
+.post-page .lc-rs-src { display: grid; gap: 14px; }
+.post-page .lc-rs-ar { font-size: 22px; color: var(--fg-neutral); text-align: center; }
+@container (max-width: 639px) { .post-page .lc-rs-grid { grid-template-columns: minmax(0, 1fr); } .post-page .lc-rs-ar { transform: rotate(90deg); } }
+.post-page .lc-rs .lc-sheet { font-size: 12.5px; line-height: 1.7; padding: 12px 14px; }
+.post-page .lc-rs h3 { font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); margin: 0 0 6px; font-family: var(--font-sans); }
+.post-page .lc-rs .f { border-radius: 3px; transition: background .3s, box-shadow .3s; }
+.post-page .lc-rs[data-f="content"] .f.content, .post-page .lc-rs[data-f="usage"] .f.usage { background: color-mix(in srgb, var(--lc-code) 20%, transparent); box-shadow: inset 0 -2px 0 var(--lc-code); }
+.post-page .lc-rs[data-f="stop"] .f.stop { background: color-mix(in srgb, var(--lc-bad) 14%, transparent); box-shadow: inset 0 -2px 0 var(--lc-bad); }
+.post-page .lc-rs .rn { display: none; font-size: 24px; margin: 2px 0 0 2ch; }
+.post-page .lc-rs[data-f="stop"] .rn { display: block; }
+.post-page .lc-rs .sn { display: none; font-family: var(--font-sans); font-size: 13px; color: var(--lc-code); font-weight: 700; margin: 0 0 2px 2ch; }
+.post-page .lc-rs[data-f="content"] .sn.content, .post-page .lc-rs[data-f="usage"] .sn.usage { display: block; }
+
+/* 프롬프트 틀: 빈칸에 글자가 흘러 들어감 */
+.post-page .lc-tpl { margin-top: 4px; }
+.post-page .lc-tpl-val { font-family: var(--font-mono); font-size: 14.5px; color: var(--fg-neutral); margin: 18px 0 10px; min-height: 1.7em; transition: opacity .5s; }
+.post-page .lc-tpl-val b { color: var(--lc-code); }
+.post-page .lc-tpl-doc { font-size: clamp(16px, 1.7vw, 19px); line-height: 2.1; color: var(--fg-strong); }
+.post-page .lc-tpl-doc .r { display: inline-block; min-width: 4.6em; font-family: var(--font-mono); font-size: .8em; color: var(--fg-neutral); }
+.post-page .lc-tpl .slot { display: inline-grid; vertical-align: baseline; }
+.post-page .lc-tpl .slot > span { grid-area: 1 / 1; transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .lc-tpl .slot .ph { font-family: var(--font-mono); font-size: .85em; color: var(--fg-neutral); border-bottom: 2px dashed var(--line-strong); opacity: 0; }
+.post-page .lc-tpl .slot .fv { box-shadow: inset 0 -2px 0 var(--lc-code); }
+.post-page .lc-tpl[data-st="0"] .slot .ph, .post-page .lc-tpl[data-st="1"] .slot .ph { opacity: 1; }
+.post-page .lc-tpl[data-st="0"] .slot .fv { opacity: 0; transform: translateY(-34px); }
+.post-page .lc-tpl[data-st="1"] .slot .fv { opacity: 0; transform: translateY(-34px); }
+.post-page .lc-tpl[data-st="0"] .lc-tpl-val, .post-page .lc-tpl[data-st="1"] .lc-tpl-val { opacity: 1; }
+.post-page .lc-tpl .lc-tpl-val { opacity: 0; }
+.post-page .lc-tpl-pipe { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin: 30px 0 0; font-family: var(--font-mono); font-size: clamp(20px, 2.4vw, 26px); font-weight: 700; color: var(--fg-strong); }
+.post-page .lc-tpl-pipe .bar { position: relative; color: var(--fg-neutral); transition: color .4s; }
+.post-page .lc-tpl[data-st="3"] .lc-tpl-pipe .bar { color: var(--lc-code); }
+.post-page .lc-tpl-pipe .out { font-size: .62em; font-weight: 600; color: var(--fg-neutral); transition: opacity .5s; }
+.post-page .lc-tpl[data-st="0"] .lc-tpl-pipe .out, .post-page .lc-tpl[data-st="1"] .lc-tpl-pipe .out, .post-page .lc-tpl[data-st="2"] .lc-tpl-pipe .out { opacity: 0; }
+.post-page .lc p.pen { font-size: 24px; margin: 6px 0 0 4.2em; }
+
+/* 채팅창: 말한 쪽 위치로 구분, 방금 붙은 쪽지만 초록 */
+.post-page .lc-sum-tbl td:first-child { font-weight: 400; white-space: normal; color: var(--fg-normal); }
+.post-page .lc-sum-tbl td b { color: var(--fg-strong); }
 </style>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <symbol id="lc-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
-    <symbol id="lc-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
-    <symbol id="lc-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
-    <symbol id="lc-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
-    <symbol id="lc-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
-    <symbol id="lc-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
-    <symbol id="lc-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
-    <symbol id="lc-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
-    <symbol id="lc-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
-  </defs>
-</svg>
 <div class="lc">
   <section class="lc-hero">
     <div class="lc-wrap">
-      <div class="lc-h-grid">
+      <div class="lc-h-grid lc-h-top">
         <div class="lc-h-lede">
           <h1>GPT를 Claude로 바꾸는 데 필요한 코드 한 줄, LangChain 첫걸음</h1>
+        </div>
+        <div class="lc-h-lede">
           <p>해외여행을 갈 때 멀티 어댑터를 챙깁니다. 콘센트 모양은 나라마다 달라도 어댑터를 끼우면 같은 충전기를 그대로 씁니다.</p>
           <p>Agent 프로그램도 비슷한 상황을 만납니다. 모델을 서비스하는 회사(provider)마다 요청 모양이 달라서 회사를 바꾸려면 호출 코드를 고쳐야 합니다. LangChain은 이 사이에 끼우는 어댑터 역할을 하는 프레임워크(framework, 자주 쓰는 뼈대를 미리 만들어 둔 도구 묶음)입니다.</p>
-          <p>그러면 모델을 바꿀 때 정말 한 줄만 고치면 될까요? 대부분은 그렇습니다. 다만 어댑터는 콘센트 모양만 맞춰 줄 뿐 전압까지 바꿔 주지는 않습니다. 회사를 바꿔 보세요.</p>
+          <p>그러면 모델을 바꿀 때 정말 한 줄만 고치면 될까요? 대부분은 그렇습니다. 다만 어댑터는 콘센트 모양만 맞춰 줄 뿐 전압까지 바꿔 주지는 않습니다. 아래 요청서 두 장에 temperature를 넣어 보세요.</p>
         </div>
-        <div class="lc-h-fig" data-figure data-thumb data-lc-rig>
-          <div class="lc-ctrl">
-            <span>모델 회사</span>
-            <div class="lc-seg" role="group" aria-label="모델 회사 고르기">
-              <button type="button" data-lc-prov="anthropic" aria-pressed="true">Anthropic Claude</button>
-              <button type="button" data-lc-prov="openai" aria-pressed="false">OpenAI GPT</button>
+      </div>
+      <div class="lc-rq" data-figure data-thumb data-lc-rig data-temp="off">
+        <p class="lc-ask">temperature를 넣을지 골라 보세요. 두 요청서에 temperature 줄이 생기고, 그 값을 받지 않는 쪽 요청서에 거절 표시가 붙습니다.</p>
+        <div class="lc-ctrl">
+          <div class="lc-seg" role="group" aria-label="temperature 넣기">
+            <button type="button" data-lc-temp="off" aria-pressed="true">넣지 않음</button>
+            <button type="button" data-lc-temp="on" aria-pressed="false">temperature=0.7<small>답의 무작위성 설정</small></button>
+          </div>
+        </div>
+        <p class="lc-rq-same">두 쪽 모두 호출 줄은 똑같이 <code>res = model.invoke(messages)</code>입니다.</p>
+        <div class="lc-rq-grid" role="img" aria-label="요청서 두 장 그림. 같은 호출 코드가 Anthropic에는 system이 messages 밖 따로 칸에 있고 max_tokens가 채워진 요청으로, OpenAI에는 system이 messages 안 첫 쪽지인 요청으로 나간다. 달라진 줄은 초록으로 칠했다. temperature를 넣으면 Claude 쪽 요청서에 400 거절 표시가 붙는다.">
+          <div>
+            <div class="lc-rq-code">init_chat_model("<b>anthropic:claude-sonnet-5-5</b>")</div>
+            <div class="lc-sheet rej">
+              <div class="l">POST <span class="lc-mk">/v1/messages</span></div>
+              <div class="l">{</div>
+              <div class="l i1">"model": "claude-sonnet-5-5",</div>
+              <div class="l i1"><span class="lc-mk">"max_tokens": 128000,</span></div>
+              <div class="nt">↑ 코드에 안 쓴 값을 LangChain이 채움</div>
+              <div class="l i1 tp">"temperature": 0.7,</div>
+              <div class="pen tpw">↑ 이 줄 때문에 요청 전체가 거절됨</div>
+              <div class="l i1"><span class="lc-mk">"system": "너는 IT 헬프데스크 상담원이다.",</span></div>
+              <div class="nt">↑ messages 목록 밖 따로 칸</div>
+              <div class="l i1">"messages": [</div>
+              <div class="l i2">{"role": "user",</div>
+              <div class="l i3">"content": "T-1042 티켓 어떻게 됐어요?"}</div>
+              <div class="l i1">]</div>
+              <div class="l">}</div>
+              <span class="pen stamp">400 거절</span>
             </div>
           </div>
-          <div class="lc-ctrl">
-            <span>temperature</span>
-            <div class="lc-seg" role="group" aria-label="temperature 고르기">
-              <button type="button" data-lc-temp="" aria-pressed="true">쓰지 않음</button>
-              <button type="button" data-lc-temp="0.7" aria-pressed="false">0.7</button>
+          <div>
+            <div class="lc-rq-code">init_chat_model("<b>openai:gpt-5.5</b>")</div>
+            <div class="lc-sheet">
+              <div class="l">POST <span class="lc-mk">/v1/chat/completions</span></div>
+              <div class="l">{</div>
+              <div class="l i1">"model": "gpt-5.5",</div>
+              <div class="l i1 tp">"temperature": 0.7,</div>
+              <div class="nt tpn">↑ gpt-5.5가 받는지는 OpenAI 문서에서 확인</div>
+              <div class="l i1">"messages": [</div>
+              <div class="l i2"><span class="lc-mk">{"role": "system",</span></div>
+              <div class="l i3"><span class="lc-mk">"content": "너는 IT 헬프데스크 상담원이다."},</span></div>
+              <div class="nt">↑ messages 안 첫 쪽지</div>
+              <div class="l i2">{"role": "user",</div>
+              <div class="l i3">"content": "T-1042 티켓 어떻게 됐어요?"}</div>
+              <div class="l i1">]</div>
+              <div class="l">}</div>
             </div>
           </div>
-          <svg class="lc-scene" data-lc-hero viewBox="0 0 460 560" role="img" aria-label="어댑터 그림. 위쪽 내 코드는 어느 회사든 같은 한 줄이다. 가운데 LangChain 어댑터가 요청 봉투를 회사에 맞게 만든다. 아래쪽 회사 콘센트로 들어간다."></svg>
-          <pre class="lc-m" data-lc-code></pre>
-          <p class="lc-note" data-lc-notebox></p>
         </div>
+        <p class="lc-note" data-lc-notebox>초록 줄은 같은 호출이 회사에 따라 다르게 나간 곳입니다. 이 차이는 LangChain이 맞춰 줍니다.</p>
+        <p class="lc-cap">같은 코드로 보낸 요청을 줄여 옮긴 예시입니다. 128000은 이 환경에서 LangChain이 모델 정보를 보고 채운 값이며 버전에 따라 다를 수 있습니다.</p>
       </div>
     </div>
   </section>
@@ -230,15 +345,30 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p><code>init_chat_model</code>에 <code>"회사:모델"</code> 모양의 문자열을 넘기면 LangChain이 콜론 앞의 회사 이름을 보고 알맞은 클래스를 꺼내 줍니다. 회사마다 따로 만들어진 클래스가 서랍장에 들어 있는 셈입니다.</p>
         <p>그 클래스는 회사별 패키지 안에 있어서 해당 패키지를 설치해야 합니다. API 키는 환경변수(프로그램 밖에서 넘겨주는 설정값)에 둡니다. 모델 이름은 바뀌지 않는 고정 이름을 쓰라고 LangChain 레퍼런스가 권합니다.</p>
         <p>이 구조 덕분에 코드의 나머지는 어느 회사의 클래스인지 몰라도 됩니다. 클래스마다 같은 <code>invoke</code>가 있어서 부르는 쪽 코드는 그대로입니다.</p>
-        <div class="lc-ctrl" style="margin-top:8px">
+      </div>
+      <div data-figure>
+        <p class="lc-ask">회사 이름을 골라 보세요. 문자열의 콜론 앞이 바뀌고, 펜 메모가 그 회사의 클래스·패키지·API 키 이름으로 바뀝니다.</p>
+        <div class="lc-ctrl">
           <div class="lc-seg" role="group" aria-label="회사 고르기">
             <button type="button" data-lc-p2="anthropic" aria-pressed="true">anthropic</button>
             <button type="button" data-lc-p2="openai" aria-pressed="false">openai</button>
           </div>
         </div>
-      </div>
-      <div data-figure>
-        <svg class="lc-scene lc-nar" data-lc-cab viewBox="0 0 460 440" role="img" aria-label="서랍장 그림. 위의 문자열에서 콜론 앞 회사 이름이 서랍을 고른다. 고른 서랍이 열려 클래스 이름과 설치할 패키지와 API 키 이름이 보인다."></svg>
+        <div role="img" aria-label="모델 이름 문자열에 직접 표시한 그림. 콜론 앞 회사 이름에 빨간 펜 동그라미를 치고, 화살표 메모로 그 이름이 여는 서랍의 클래스와 설치할 패키지와 API 키 환경변수 이름을 적었다.">
+          <div class="lc-str">"<span class="pv"><span data-lc-pv>anthropic</span><svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M52 3 C20 1 3 10 4 21 C5 33 30 39 56 37 C82 35 98 28 96 17 C94 7 76 2 44 5" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg></span>:<span class="mn" data-lc-mn>claude-sonnet-5-5</span>"</div>
+          <div class="lc-memo">
+            <svg viewBox="0 0 54 70" aria-hidden="true"><path d="M30 2 C26 24 28 44 44 60" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round"/><path d="M34 58 L45 61 L44 50" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div>
+              <p class="pen">이 서랍을 엽니다</p>
+              <ul>
+                <li><span class="pen">클래스</span><code data-lc-m1>ChatAnthropic</code></li>
+                <li><span class="pen">설치</span><code data-lc-m2>pip install langchain-anthropic</code></li>
+                <li><span class="pen">API 키</span><code data-lc-m3>ANTHROPIC_API_KEY</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="lc-mnote">콜론 뒤 모델 이름은 고른 클래스에 그대로 넘어갑니다.</p>
         <p class="lc-cap">클래스·패키지·환경변수 이름은 langchain 1.4와 각 회사 패키지 기준입니다. 모델 이름은 예시입니다.</p>
       </div>
     </div>
@@ -288,41 +418,69 @@ model = init_chat_model("anthropic:claude-sonnet-5-5")
   </section>
 
   <section class="lc-sec">
-    <div class="lc-wrap lc-split rev">
-      <div data-figure>
-        <svg class="lc-scene lc-nar" viewBox="0 0 460 560" role="img" aria-label="응답 흐름 그림. 위쪽에서 Anthropic과 OpenAI가 각자 다른 모양의 상자로 답을 보낸다. 가운데 LangChain 깔때기를 지나면 글과 도구 요청과 토큰 수는 같은 초록 모양 하나로 합쳐지고, 멈춘 이유는 회사 원본 이름 그대로 옆 칸에 남는다.">
-          <g>
-            <rect x="14" y="12" width="200" height="104" rx="16" fill="color-mix(in srgb, var(--lc-model) 14%, var(--bg-base))" stroke="var(--lc-model)" stroke-width="3"/>
-            <text x="114" y="40" text-anchor="middle" font-size="16" class="t-s">Anthropic 응답</text>
-            <text x="114" y="68" text-anchor="middle" font-size="14" class="t-d mono">content: [글, 도구 요청]</text>
-            <text x="114" y="90" text-anchor="middle" font-size="14" class="t-d mono">usage: input/output</text>
-            <rect x="30" y="98" width="168" height="26" rx="13" fill="var(--lc-model)"/><text x="114" y="116" text-anchor="middle" font-size="13" class="mono" style="fill:var(--bg-base);font-weight:800">stop_reason</text>
-          </g>
-          <g>
-            <rect x="246" y="12" width="200" height="104" rx="16" fill="color-mix(in srgb, var(--lc-human) 14%, var(--bg-base))" stroke="var(--lc-human)" stroke-width="3"/>
-            <text x="346" y="40" text-anchor="middle" font-size="16" class="t-s">OpenAI 응답</text>
-            <text x="346" y="68" text-anchor="middle" font-size="14" class="t-d mono">message.content</text>
-            <text x="346" y="90" text-anchor="middle" font-size="14" class="t-d mono">tool_calls · usage</text>
-            <rect x="262" y="98" width="168" height="26" rx="13" fill="var(--lc-human)"/><text x="346" y="116" text-anchor="middle" font-size="13" class="mono" style="fill:var(--bg-base);font-weight:800">finish_reason</text>
-          </g>
-          <path d="M114 128 C114 170 190 170 190 206" fill="none" stroke="var(--fg-neutral)" stroke-width="4"/><path d="M346 128 C346 170 270 170 270 206" fill="none" stroke="var(--fg-neutral)" stroke-width="4"/>
-          <path d="M150 210 H310 L274 280 H186 Z" fill="color-mix(in srgb, var(--lc-model) 9%, var(--bg-base))" stroke="var(--lc-model)" stroke-width="3"/>
-          <text x="230" y="252" text-anchor="middle" font-size="15" class="t-s" style="fill:var(--lc-model)">LangChain</text>
-          <path d="M230 282 V322" stroke="var(--lc-code)" stroke-width="6" stroke-linecap="round"/><path d="M230 330 l-11 -14 h22z" fill="var(--lc-code)"/>
-          <rect x="30" y="338" width="400" height="124" rx="18" fill="color-mix(in srgb, var(--lc-code) 10%, var(--bg-base))" stroke="var(--lc-code)" stroke-width="3"/>
-          <text x="230" y="366" text-anchor="middle" font-size="16" class="t-s" style="fill:var(--lc-code)">어느 회사든 같은 AIMessage</text>
-          <g font-size="14" class="mono t-s" text-anchor="middle"><text x="130" y="402">content</text><text x="230" y="402">tool_calls</text><text x="340" y="402">usage_metadata</text><text x="180" y="436">content_blocks</text></g>
-          <use href="#lc-ic-check" x="388" y="410" width="28" height="28" style="color:var(--lc-code)"/>
-          <path d="M230 470 V500" stroke="var(--lc-model)" stroke-width="4" stroke-dasharray="6 6"/>
-          <rect x="30" y="504" width="400" height="44" rx="22" fill="color-mix(in srgb, var(--lc-model) 14%, var(--bg-base))" stroke="var(--lc-model)" stroke-width="3" stroke-dasharray="7 5"/>
-          <text x="230" y="532" text-anchor="middle" font-size="15" class="t-s" style="fill:var(--lc-model)">response_metadata: 멈춘 이유는 원본 이름 그대로</text>
-        </svg>
-                <p class="lc-cap">같은 질문에 두 회사 모델이 답한 예시를 정리한 값입니다. response_metadata에는 이보다 많은 항목이 들어갑니다.</p>
+    <div class="lc-wrap lc-split rev lc-wide">
+      <div class="lc-rs" data-figure data-f="content" data-lc-rs>
+        <p class="lc-ask">어떤 값을 따라가 볼지 골라 보세요. 두 회사 원본 응답과 AIMessage에서 그 값이 든 줄이 칠해집니다.</p>
+        <div class="lc-ctrl" style="margin-bottom:16px">
+          <div class="lc-seg" role="group" aria-label="따라갈 값 고르기">
+            <button type="button" data-lc-f="content" aria-pressed="true">글<small>content</small></button>
+            <button type="button" data-lc-f="usage" aria-pressed="false">토큰 수<small>usage</small></button>
+            <button type="button" data-lc-f="stop" aria-pressed="false">멈춘 이유<small>stop · finish</small></button>
+          </div>
+        </div>
+        <div class="lc-rs-grid" role="img" aria-label="응답 그림. 왼쪽에 Anthropic과 OpenAI가 보낸 원본 응답이 위아래로 있고 오른쪽에 LangChain이 만든 AIMessage가 있다. 글과 토큰 수는 원본에서 이름이 달라도 AIMessage에서는 같은 이름 줄로 모이고, 멈춘 이유는 response_metadata 안에 회사 원본 이름 그대로 남는다.">
+          <div class="lc-rs-src">
+            <div>
+              <h3>Anthropic 원본 응답</h3>
+              <div class="lc-sheet">
+                <div class="l">{</div>
+                <div class="l i1"><span class="f content">"content": [{"type": "text",</span></div>
+                <div class="l i2"><span class="f content">"text": "T-1042는 부품 대기 중입니다."}],</span></div>
+                <div class="l i1"><span class="f stop">"stop_reason": "end_turn",</span></div>
+                <div class="l i1"><span class="f usage">"usage": {"input_tokens": 20,</span></div>
+                <div class="l i2"><span class="f usage">"output_tokens": 12}</span></div>
+                <div class="l">}</div>
+              </div>
+            </div>
+            <div>
+              <h3>OpenAI 원본 응답</h3>
+              <div class="lc-sheet">
+                <div class="l">{</div>
+                <div class="l i1">"choices": [{</div>
+                <div class="l i2"><span class="f content">"message": {"content": "T-1042는 부품 대기 중입니다."},</span></div>
+                <div class="l i2"><span class="f stop">"finish_reason": "stop"}],</span></div>
+                <div class="l i1"><span class="f usage">"usage": {"prompt_tokens": 20,</span></div>
+                <div class="l i2"><span class="f usage">"completion_tokens": 12}</span></div>
+                <div class="l">}</div>
+              </div>
+            </div>
+          </div>
+          <div class="lc-rs-ar" aria-hidden="true">→</div>
+          <div>
+            <h3>LangChain이 돌려주는 AIMessage</h3>
+            <div class="lc-sheet">
+              <div class="l"><span class="f content">content:</span></div>
+              <div class="l i1"><span class="f content">"T-1042는 부품 대기 중입니다."</span></div>
+              <div class="sn content">↑ 어느 회사든 같은 이름</div>
+              <div class="l"><span class="f usage">usage_metadata:</span></div>
+              <div class="l i1"><span class="f usage">{"input_tokens": 20,</span></div>
+              <div class="l i2"><span class="f usage">"output_tokens": 12, …}</span></div>
+              <div class="sn usage">↑ 어느 회사든 같은 이름</div>
+              <div class="l">response_metadata:</div>
+              <div class="l i1">Anthropic이면</div>
+              <div class="l i2"><span class="f stop">{"stop_reason": "end_turn"}</span></div>
+              <div class="l i1">OpenAI면</div>
+              <div class="l i2"><span class="f stop">{"finish_reason": "stop"}</span></div>
+              <div class="pen rn">원본 이름 그대로</div>
+            </div>
+          </div>
+        </div>
+        <p class="lc-cap">같은 질문에 두 회사 모델이 답한 예시를 줄여 옮긴 값입니다. 원본 응답과 response_metadata에는 이보다 많은 항목이 들어갑니다.</p>
       </div>
       <div>
         <h2>응답에는 글만 있지 않습니다</h2>
-        <p>모델의 응답은 글 한 줄이 아니라 AIMessage 객체입니다. 객체(object)는 값 여러 개를 이름을 붙여 한 덩어리로 묶은 것입니다. <code>content_blocks</code>는 글과 도구 요청을 같은 모양의 조각 목록으로 정리한 것이고 <code>tool_calls</code>는 모델이 부른 도구 요청 목록이며 <code>usage_metadata</code>는 토큰(token, 모델이 글을 읽고 쓰는 단위) 수입니다. 그림에서 초록 칸은 어느 회사 모델이든 모양이 같습니다.</p>
-        <p>주황 스티커는 회사가 보내 준 원래 정보를 그대로 담은 곳이라 이름이 다릅니다. 모델이 답을 멈춘 이유를 적은 값이 Anthropic은 <code>stop_reason</code>이고 OpenAI는 <code>finish_reason</code>입니다. LangChain이 맞춰 주는 곳은 글과 도구 요청과 토큰 수이고 멈춘 이유는 아직 회사 이름 그대로입니다.</p>
+        <p>모델의 응답은 글 한 줄이 아니라 AIMessage 객체입니다. 객체(object)는 값 여러 개를 이름을 붙여 한 덩어리로 묶은 것입니다. <code>content_blocks</code>는 글과 도구 요청을 같은 모양의 조각 목록으로 정리한 것이고 <code>tool_calls</code>는 모델이 부른 도구 요청 목록이며 <code>usage_metadata</code>는 토큰(token, 모델이 글을 읽고 쓰는 단위) 수입니다. 그림에서 초록으로 칠해지는 줄은 어느 회사 모델이든 이름과 모양이 같습니다.</p>
+        <p>멈춘 이유를 고르면 <code>response_metadata</code>에 빨간 펜이 붙습니다. 회사가 보내 준 원래 정보를 그대로 담은 곳이라 이름이 다릅니다. 모델이 답을 멈춘 이유를 적은 값이 Anthropic은 <code>stop_reason</code>이고 OpenAI는 <code>finish_reason</code>입니다. LangChain이 맞춰 주는 곳은 글과 도구 요청과 토큰 수이고 멈춘 이유는 아직 회사 이름 그대로입니다.</p>
       </div>
     </div>
     <div class="lc-wrap">
@@ -365,6 +523,7 @@ AIMessage T-1042는 부품 대기 중입니다.
         <h2>invoke는 한 번에 stream은 조금씩 batch는 여러 개를 한꺼번에</h2>
         <div>
           <p>호출 방식은 세 가지입니다. <code>invoke</code>는 컵에 물이 다 찬 뒤에 한 번에 받습니다. <code>stream</code>은 물이 차는 대로 조각(chunk)을 받아 바로 화면에 찍을 수 있습니다. <code>batch</code>는 컵 여러 개를 동시에 채웁니다. 세 가지 모두 어느 회사 모델이든 이름과 사용법이 같습니다.</p>
+          <p class="lc-ask">지금 그림은 1.2초 시점에 멈춘 모습입니다. 버튼을 누르면 세 방식이 처음부터 2.4초 동안 동시에 돌아갑니다. 컵이 차는 모습과 글자가 나오는 때를 비교해 보세요.</p>
           <div class="lc-ctrl"><button type="button" class="lc-act" data-lc-play>돌려 보기</button></div>
         </div>
       </div>
@@ -408,47 +567,17 @@ T-1042는 |부품 대기 |중입니다.|</div>
       <div class="lc-head">
         <h2>문자열만 바꾸면 되지 않는 경우</h2>
         <div>
-          <p>같은 호출이 회사마다 다른 요청 봉투가 되는 것은 위의 히어로에서 보았습니다. Anthropic은 <code>system</code>을 메시지 목록 밖의 별도 칸으로 받고 <code>max_tokens</code>(답 길이 한도)가 꼭 필요합니다. LangChain이 이 둘을 알아서 맞춰 줍니다.</p>
-          <p>모델의 성격은 LangChain도 맞춰 주지 못합니다. 답의 무작위성을 조절하는 설정인 <code>temperature</code>와 <code>top_p</code>와 <code>top_k</code>(답 후보를 몇 개로 좁힐지 정하는 값)가 그렇습니다. Anthropic 문서에 따르면 Claude Sonnet 5.5와 Opus 5.5는 이 값을 기본값이 아닌 값으로 보내면 요청을 거절하고 400 오류(요청이 잘못됐다는 응답)를 돌려줍니다. 다이얼을 돌려 보세요.</p>
+          <p>같은 호출이 회사마다 다른 요청이 된다는 건 맨 위 요청서 두 장에서 보았습니다. Anthropic은 <code>system</code>을 메시지 목록 밖의 별도 칸으로 받고 <code>max_tokens</code>(답 길이 한도)가 꼭 필요합니다. LangChain이 이 둘을 알아서 맞춰 줍니다.</p>
+          <p>모델의 성격은 LangChain도 맞춰 주지 못합니다. 답의 무작위성을 조절하는 설정인 <code>temperature</code>와 <code>top_p</code>와 <code>top_k</code>(답 후보를 몇 개로 좁힐지 정하는 값)가 그렇습니다. Anthropic 문서에 따르면 Claude Sonnet 5.5와 Opus 5.5는 이 값을 기본값이 아닌 값으로 보내면 요청을 거절하고 400 오류(요청이 잘못됐다는 응답)를 돌려줍니다. 값이 얼마인지가 아니라 값을 보내는지 아닌지로 결과가 갈립니다.</p>
         </div>
       </div>
       <div class="lc-dialwrap" style="margin-top:44px" data-figure>
-        <svg class="lc-scene lc-nar" data-lc-dial viewBox="0 0 460 300" role="img" aria-label="다이얼 그림. 바늘이 왼쪽 끝의 쓰지 않음에 있으면 초록 문이 열려 요청이 나가고, 다른 값으로 돌리면 빨간 차단기가 내려와 400 오류가 난다."></svg>
-        <div class="lc-ctrl" style="justify-content:center;flex-wrap:nowrap"><label style="white-space:nowrap">temperature <input type="range" min="0" max="10" value="0" data-lc-dialin aria-label="temperature 다이얼"><output data-lc-dialout style="min-width:5em">쓰지 않음</output></label></div>
+        <p class="lc-ask" style="text-align:center">temperature를 보낼지 골라 보세요. 바늘이 기본값 자리와 0.7 자리를 오가고 가운데 글자가 통과인지 400 거절인지 바뀝니다.</p>
+        <div class="lc-ctrl" style="justify-content:center;margin-bottom:16px"><div class="lc-seg" role="group" aria-label="temperature 보내기"><button type="button" data-lc-dt="off" aria-pressed="true">보내지 않음<small>모델 기본값</small></button><button type="button" data-lc-dt="on" aria-pressed="false">temperature=0.7<small>값을 넣어 보냄</small></button></div></div>
+        <svg class="lc-scene lc-nar" data-lc-dial viewBox="0 0 460 300" role="img" aria-label="다이얼 그림. 바늘이 왼쪽 끝 기본값 자리에 있으면 통과, 0.7 자리로 가면 400 거절이 뜬다. 0부터 1까지 눈금 전체가 빨갛게 칠해져 있어 어느 값을 넣어도 거절된다."></svg>
         <p class="lc-verdict" data-lc-dialv style="text-align:center"></p>
         <p class="lc-cap">Claude Sonnet 5.5·Opus 5.5 기준입니다. top_p와 top_k도 같은 방식으로 기본값이 아니면 거절됩니다. 바늘 위치는 설명을 위한 예시입니다.</p>
       </div>
-      <details style="margin-top:36px"><summary>실제로 나가는 요청 두 장 보기</summary>
-        <div class="lc-vs" style="margin-top:18px">
-          <div>
-            <h3><span class="lc-tag m">anthropic:claude-sonnet-5-5</span></h3>
-            <pre class="lc-req">POST /v1/messages
-{
-  "model": "claude-sonnet-5-5",
-  <span class="d2">"max_tokens": 128000,</span>
-  <span class="d1">"system": "너는 IT 헬프데스크 상담원이다.",</span>
-  "messages": [
-    {"role": "user",
-     "content": "T-1042 티켓 어떻게 됐어요?"}
-  ]
-}</pre>
-          </div>
-          <div>
-            <h3><span class="lc-tag h">openai:gpt-5.5</span></h3>
-            <pre class="lc-req">POST /v1/chat/completions
-{
-  "model": "gpt-5.5",
-  "messages": [
-    <span class="d1">{"role": "system",
-     "content": "너는 IT 헬프데스크 상담원이다."},</span>
-    {"role": "user",
-     "content": "T-1042 티켓 어떻게 됐어요?"}
-  ]
-}</pre>
-          </div>
-        </div>
-        <p class="lc-cap">같은 코드로 보낸 요청을 줄여 옮긴 예시입니다. 128000은 이 환경에서 LangChain이 모델 정보를 보고 채운 값이며 버전에 따라 다를 수 있습니다.</p>
-      </details>
       <div class="lc-head" style="margin-top:56px">
         <h3 style="margin-top:6px">모델을 런타임에 바꾸고 싶다면</h3>
         <div>
@@ -474,10 +603,21 @@ res = model.invoke(messages, config={"configurable": {
         <h2>프롬프트 틀과 LCEL은 지금 어디에 있나</h2>
         <p>ChatPromptTemplate은 빈칸이 있는 메시지 틀입니다. 변수를 채워 <code>invoke</code>하면 메시지 목록이 나옵니다. <code>|</code> 연산자로 틀과 모델을 이어 붙이는 문법은 LCEL(LangChain Expression Language, 부품을 파이프로 잇는 문법)이라 부릅니다. 둘 다 공통 부품 패키지인 <code>langchain-core</code>에 그대로 있습니다.</p>
         <p>LangChain 1.x에서 Agent를 만들 때 권하는 방법은 <code>create_agent</code>입니다. 예전의 LLMChain 같은 낡은 체인은 <code>langchain-classic</code> 패키지로 옮겨졌습니다. 이 시리즈는 <code>create_agent</code>를 쓰는 쪽으로 갑니다.</p>
-        <div class="lc-ctrl"><button type="button" class="lc-act" data-lc-fill>빈칸 채워 보내기</button></div>
       </div>
       <div data-figure>
-        <svg class="lc-scene lc-nar" data-lc-pipe viewBox="0 0 460 400" role="img" aria-label="파이프 그림. 위의 값 카드가 프롬프트 틀의 빈칸에 끼워져 메시지 목록이 되고, 파이프 기호를 따라 모델로 흘러간다."></svg>
+        <div class="lc-tpl" data-lc-tpl data-st="0">
+          <p class="lc-ask">버튼을 누르면 question 값이 틀의 빈칸으로 들어가고, 채운 메시지 목록이 | 기호를 지나 model로 넘어갑니다.</p>
+          <div class="lc-ctrl"><button type="button" class="lc-act" data-lc-fill>빈칸 채워 보내기</button></div>
+          <div role="img" aria-label="프롬프트 틀 그림. question 값이 user 줄의 빈칸 {question} 자리로 내려와 채워지고, prompt | model 줄의 | 기호가 채운 메시지 목록을 모델로 넘긴다.">
+            <div class="lc-tpl-val"><b>question</b> = "T-1042 티켓 어떻게 됐어요?"</div>
+            <div class="lc-tpl-doc">
+              <div><span class="r">system</span>너는 IT 헬프데스크 상담원이다.</div>
+              <div><span class="r">user</span><span class="slot"><span class="ph">{question}</span><span class="fv">T-1042 티켓 어떻게 됐어요?</span></span></div>
+            </div>
+            <div class="lc-tpl-pipe"><span>prompt</span><span class="bar">|</span><span>model</span><span class="out">→ AIMessage</span></div>
+            <p class="pen">↑ 채운 메시지 목록을 모델에 넘김</p>
+          </div>
+        </div>
         <details style="margin-top:20px"><summary>ChatPromptTemplate 예시 보기</summary><div class="lc-in-d">
 <pre data-title="prompt.py" data-hl="3-6,8"><code class="language-python">from langchain_core.prompts import ChatPromptTemplate
 
@@ -496,27 +636,21 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
   <section class="lc-sec">
     <div class="lc-wrap">
       <div class="lc-head">
-        <h2>한 줄로 바뀌는 것과 안 바뀌는 것</h2>
+        <div>
+          <h2 style="margin-bottom:28px">한 줄로 바뀌는 것과 안 바뀌는 것</h2>
+          <table class="lc-tbl lc-sum-tbl">
+            <thead><tr><th>LangChain이 맞춰 줌</th><th>직접 확인</th></tr></thead>
+            <tbody>
+              <tr><td><b>요청 모양</b>: system 자리, max_tokens 채움</td><td><b>모델 설정</b>: temperature·top_p·top_k를 받는지</td></tr>
+              <tr><td><b>응답 모양</b>: content, tool_calls, usage_metadata</td><td><b>원본 이름</b>: stop_reason과 finish_reason</td></tr>
+              <tr><td><b>호출 이름</b>: invoke, stream, batch</td><td><b>모델 이름</b>: 회사 문서의 최신 이름</td></tr>
+            </tbody>
+          </table>
+        </div>
         <div>
           <p class="lc-big">LangChain은 호출 모양을 맞춰 줍니다. 모델의 성격까지 맞춰 주지는 않습니다.</p>
           <p>모델을 바꿀 때는 문자열을 바꾼 뒤 샘플링 파라미터, 멈춘 이유 이름, 모델이 허용하는 설정을 한 번 확인하면 됩니다. 다음 글에서는 모델이 정해진 모양의 데이터로 답하게 하는 Structured Output을 알아보겠습니다.</p>
         </div>
-      </div>
-      <div style="margin-top:36px" data-figure>
-        <svg class="lc-scene lc-nar" viewBox="0 0 460 380" role="img" aria-label="정리 그림. 왼쪽 여행용 어댑터는 요청 모양과 응답 모양과 호출 이름을 맞춰 주고, 오른쪽 전압 다이얼은 직접 확인할 모델 설정과 원본 이름과 모델 이름을 뜻한다.">
-          <rect x="14" y="14" width="212" height="352" rx="18" fill="color-mix(in srgb, var(--lc-code) 8%, var(--bg-base))" stroke="var(--lc-code)" stroke-width="2.5"/>
-          <rect x="234" y="14" width="212" height="352" rx="18" fill="color-mix(in srgb, var(--lc-model) 8%, var(--bg-base))" stroke="var(--lc-model)" stroke-width="2.5"/>
-          <use href="#lc-ic-check" x="28" y="28" width="38" height="38" style="color:var(--lc-code)"/><text x="74" y="55" font-size="18" class="t-s" style="fill:var(--lc-code)">맞춰 줌</text>
-          <use href="#lc-ic-gear" x="248" y="28" width="38" height="38" style="color:var(--lc-model)"/><text x="294" y="55" font-size="18" class="t-s" style="fill:var(--lc-model)">직접 확인</text>
-          <g font-size="15" class="t-s">
-            <text x="30" y="110">요청 모양</text><text x="30" y="132" class="t-d" font-size="14">system 자리</text><text x="30" y="150" class="t-d" font-size="14">max_tokens 채움</text>
-            <text x="30" y="214">응답 모양</text><text x="30" y="236" class="t-d" font-size="14">content · tool_calls</text><text x="30" y="254" class="t-d" font-size="14">usage_metadata</text>
-            <text x="30" y="318">호출 이름</text><text x="30" y="340" class="t-d" font-size="14">invoke · stream · batch</text>
-            <text x="250" y="110">모델 설정</text><text x="250" y="132" class="t-d" font-size="14">temperature · top_p</text><text x="250" y="150" class="t-d" font-size="14">· top_k를 받는지</text>
-            <text x="250" y="214">원본 이름</text><text x="250" y="236" class="t-d" font-size="14">stop_reason과</text><text x="250" y="254" class="t-d" font-size="14">finish_reason</text>
-            <text x="250" y="318">모델 이름</text><text x="250" y="340" class="t-d" font-size="14">회사 문서의 최신 이름</text>
-          </g>
-        </svg>
       </div>
     </div>
   </section>
@@ -586,120 +720,47 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
 
   const C = { model: "var(--lc-model)", code: "var(--lc-code)", human: "var(--lc-human)", bad: "var(--lc-bad)" };
   const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
-  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
 
-  /* ───── 히어로: 어댑터와 요청 봉투 ───── */
-  const hero = $("[data-lc-hero]"), SPEC = { anthropic: "anthropic:claude-sonnet-5-5", openai: "openai:gpt-5.5" };
-  let prov = "anthropic", temp = "", firstDraw = true;
-  function drawHero() {
-    const bad = prov === "anthropic" && temp !== "", col = prov === "anthropic" ? C.model : C.human;
-    hero.innerHTML = "";
-    const g0 = mk("g", {}, hero);
-    mk("rect", { x: 30, y: 14, width: 400, height: 84, rx: 16, fill: `color-mix(in srgb, ${C.code} 10%, var(--bg-base))`, stroke: C.code, "stroke-width": 3 }, g0);
-    txt(g0, 50, 42, "내 코드: 어느 회사든 그대로", { "font-size": 15, class: "t-s", style: `fill:${C.code}` });
-    txt(g0, 50, 78, "res = model.invoke(messages)", { "font-size": 19, class: "t-s mono" });
-    arrowDown(hero, 230, 100, 138);
-    const ad = mk("g", {}, hero);
-    mk("rect", { x: 16, y: 142, width: 428, height: 214, rx: 20, fill: `color-mix(in srgb, ${C.model} 7%, var(--bg-base))`, stroke: C.model, "stroke-width": 3 }, ad);
-    mk("use", { href: "#lc-ic-gear", x: 30, y: 152, width: 30, height: 30, style: `color:${C.model}` }, ad);
-    txt(ad, 68, 174, "LangChain 어댑터가 요청 봉투를 맞춥니다", { "font-size": 15, class: "t-s", style: `fill:${C.model}` });
-    const env = mk("g", {}, ad);
-    if (prov === "anthropic") {
-      mk("rect", { x: 40, y: 192, width: 380, height: 38, rx: 10, fill: `color-mix(in srgb, ${C.human} 14%, var(--bg-base))`, stroke: C.human, "stroke-width": 2.5 }, env);
-      txt(env, 54, 216, "system  너는 IT 헬프데스크 상담원이다.", { "font-size": 14, class: "t-s mono" });
-      txt(env, 230, 250, "↑ messages 목록 밖의 따로 칸", { "font-size": 13.5, "text-anchor": "middle", class: "t-d" });
-      mk("rect", { x: 40, y: 262, width: 380, height: 38, rx: 10, fill: "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, env);
-      txt(env, 54, 286, "messages  user 쪽지", { "font-size": 14, class: "t-s mono" });
-      mk("rect", { x: 40, y: 312, width: 262, height: 32, rx: 16, fill: `color-mix(in srgb, ${C.code} 18%, var(--bg-base))`, stroke: C.code, "stroke-width": 2.5 }, env);
-      txt(env, 54, 333, "max_tokens 128000 (자동으로 채움)", { "font-size": 13.5, class: "t-s mono", style: `fill:${C.code}` });
-    } else {
-      mk("rect", { x: 40, y: 192, width: 380, height: 112, rx: 12, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2.5, "stroke-dasharray": "7 6" }, env);
-      txt(env, 52, 212, "messages 목록 하나에 전부", { "font-size": 13.5, class: "t-d" });
-      mk("rect", { x: 54, y: 220, width: 352, height: 36, rx: 10, fill: `color-mix(in srgb, ${C.human} 14%, var(--bg-base))`, stroke: C.human, "stroke-width": 2.5 }, env);
-      txt(env, 66, 243, "system  너는 IT 헬프데스크 …", { "font-size": 14, class: "t-s mono" });
-      mk("rect", { x: 54, y: 262, width: 352, height: 36, rx: 10, fill: "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, env);
-      txt(env, 66, 285, "user  T-1042 티켓 어떻게 …", { "font-size": 14, class: "t-s mono" });
-      txt(env, 230, 330, "max_tokens는 안 써도 됨", { "font-size": 13.5, "text-anchor": "middle", class: "t-d" });
-    }
-    if (temp !== "") {
-      const tg = mk("g", {}, ad); mk("rect", { x: prov === "anthropic" ? 314 : 292, y: prov === "anthropic" ? 312 : 120, width: 112, height: 32, rx: 16, fill: `color-mix(in srgb, ${bad ? C.bad : C.human} 20%, var(--bg-base))`, stroke: bad ? C.bad : C.human, "stroke-width": 2.5 }, tg);
-      txt(tg, prov === "anthropic" ? 370 : 348, prov === "anthropic" ? 333 : 141, "temperature " + temp, { "font-size": 13, "text-anchor": "middle", class: "t-s mono", style: `fill:${bad ? C.bad : C.human}` });
-    }
-    arrowDown(hero, 230, 358, 408, bad ? C.bad : "var(--fg-neutral)");
-    if (bad) { mk("use", { href: "#lc-ic-stop", x: 248, y: 364, width: 44, height: 44, style: `color:${C.bad}` }, hero); }
-    const sk = mk("g", {}, hero);
-    mk("rect", { x: 50, y: 412, width: 360, height: 72, rx: 18, fill: `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": 3.5 }, sk);
-    mk("rect", { x: 74, y: 436, width: 26, height: 26, rx: 8, fill: col, opacity: .8 }, sk); mk("rect", { x: 112, y: 436, width: 26, height: 26, rx: 8, fill: col, opacity: .8 }, sk);
-    txt(sk, 156, 442, prov === "anthropic" ? "Anthropic 콘센트" : "OpenAI 콘센트", { "font-size": 17, class: "t-s" });
-    txt(sk, 156, 466, prov === "anthropic" ? "POST /v1/messages" : "POST /v1/chat/completions", { "font-size": 13.5, class: "t-d mono" });
-    const rs = mk("g", {}, hero);
-    if (bad) { mk("use", { href: "#lc-ic-stop", x: 30, y: 498, width: 34, height: 34, style: `color:${C.bad}` }, rs); txt(rs, 74, 514, "요청이 나가기 전에 멈췄습니다", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(rs, 74, 536, "이 모델은 기본값 외 temperature를 받지 않음", { "font-size": 13.5, class: "t-d" }); }
-    else { mk("use", { href: "#lc-ic-paper", x: 30, y: 498, width: 34, height: 34, style: `color:${C.code}` }, rs); txt(rs, 74, 514, "AIMessage로 돌아옵니다", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); txt(rs, 74, 536, "T-1042는 부품 대기 중입니다.", { "font-size": 13.5, class: "t-d" }); }
-    [env, rs].forEach((g) => { g.style.opacity = 0; });
-    if (!firstDraw) tween(500, (t) => { env.style.opacity = t; rs.style.opacity = t; env.setAttribute("transform", `translate(${(1 - t) * -16} 0)`); }); else { env.style.opacity = 1; rs.style.opacity = 1; }
-    firstDraw = false;
-    $("[data-lc-code]").innerHTML = `model = init_chat_model(\n    "<u>${SPEC[prov]}</u>"${temp !== "" ? `, <u>temperature=${temp}</u>` : ""})\nres = model.invoke(messages)`;
-    $("[data-lc-notebox]").textContent = bad ? "모델 이름만 바꾼 것이 아니라 이 모델이 받지 않는 설정이 함께 있어서 막혔습니다. 오류를 없애려면 temperature를 지웁니다." : prov === "openai" && temp !== "" ? "요청에 temperature가 실려 나갑니다. gpt-5.5가 이 값을 받는지는 OpenAI 문서에서 확인해야 합니다." : "위쪽 호출 코드는 어느 쪽이든 그대로입니다. 봉투 모양만 회사에 맞게 달라집니다. max_tokens는 코드에 쓰지 않았는데 LangChain이 채워 넣은 값입니다.";
-  }
-  $$("[data-lc-prov]").forEach((b) => b.addEventListener("click", () => { prov = b.dataset.lcProv; press("[data-lc-prov]", b); drawHero(); }, { signal }));
-  $$("[data-lc-temp]").forEach((b) => b.addEventListener("click", () => { temp = b.dataset.lcTemp; press("[data-lc-temp]", b); drawHero(); }, { signal }));
-  drawHero();
+  /* ───── 히어로: 요청서 두 장 — temperature 줄을 넣고 빼기 ───── */
+  const rig = $("[data-lc-rig]");
+  const NOTE = { off: "초록 줄은 같은 호출이 회사에 따라 다르게 나간 곳입니다. 이 차이는 LangChain이 맞춰 줍니다.", on: "두 요청서에 같은 temperature 줄이 실렸습니다. Claude Sonnet 5.5는 기본값이 아닌 temperature를 받지 않아 400 오류로 거절합니다." };
+  $$("[data-lc-temp]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-temp]", b); rig.dataset.temp = b.dataset.lcTemp; $("[data-lc-notebox]").textContent = NOTE[b.dataset.lcTemp]; }, { signal }));
 
-  /* ───── 서랍장 ───── */
-  const cab = $("[data-lc-cab]");
-  const P2 = { anthropic: ["anthropic", "claude-sonnet-5-5", "ChatAnthropic", "langchain-anthropic", "ANTHROPIC_API_KEY", C.model], openai: ["openai", "gpt-5.5", "ChatOpenAI", "langchain-openai", "OPENAI_API_KEY", C.human] };
-  function drawCab(k) {
-    cab.innerHTML = ""; const [p, m, cls, pk, env, col] = P2[k];
-    mk("rect", { x: 14, y: 14, width: 118, height: 52, rx: 14, fill: `color-mix(in srgb, ${col} 18%, var(--bg-base))`, stroke: col, "stroke-width": 3.5 }, cab); txt(cab, 73, 48, p, { "font-size": 19, "text-anchor": "middle", class: "t-s mono" });
-    txt(cab, 144, 48, ":", { "font-size": 24, class: "t-s" });
-    mk("rect", { x: 164, y: 14, width: 282, height: 52, rx: 14, fill: "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, cab); txt(cab, 305, 48, m, { "font-size": 19, "text-anchor": "middle", class: "t-s mono" });
-    txt(cab, 73, 90, "회사가 서랍을 고름", { "font-size": 13.5, "text-anchor": "middle", class: "t-d" }); txt(cab, 305, 90, "모델 이름은 서랍 안으로", { "font-size": 13.5, "text-anchor": "middle", class: "t-d" });
-    mk("path", { d: "M73 96 C73 120 40 120 40 140", fill: "none", stroke: col, "stroke-width": 3.5, "stroke-linecap": "round" }, cab);
-    const drawers = [["anthropic", "ChatAnthropic", C.model], ["openai", "ChatOpenAI", C.human], ["other", "그 밖의 회사 클래스들", "var(--fg-neutral)"]];
-    let y = 140;
-    drawers.forEach(([key, name, c]) => {
-      const sel = key === k, h = sel ? 150 : 60;
-      mk("rect", { x: 20, y, width: 420, height: h, rx: 14, fill: sel ? `color-mix(in srgb, ${c} 10%, var(--bg-base))` : "var(--bg-subtle)", stroke: sel ? c : "var(--line-strong)", "stroke-width": sel ? 3.5 : 2, opacity: sel ? 1 : .7 }, cab);
-      mk("rect", { x: 180, y: y + 8, width: 100, height: 8, rx: 4, fill: sel ? c : "var(--line-strong)", opacity: .8 }, cab);
-      txt(cab, 40, y + 42, name, { "font-size": sel ? 21 : 17, class: "t-s mono", style: sel ? `fill:${c}` : "" });
-      if (sel) {
-        txt(cab, 40, y + 76, "설치: pip install " + pk, { "font-size": 14.5, class: "t-s mono" });
-        mk("use", { href: "#lc-ic-check", x: 38, y: y + 94, width: 28, height: 28, style: `color:${C.code}` }, cab);
-        txt(cab, 74, y + 114, "API 키: " + env, { "font-size": 14.5, class: "t-s mono" });
-        txt(cab, 40, y + 138, "환경변수에서 읽습니다", { "font-size": 13, class: "t-d" });
-      }
-      y += h + 12;
-    });
-  }
-  $$("[data-lc-p2]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-p2]", b); drawCab(b.dataset.lcP2); }, { signal }));
-  drawCab("anthropic");
+  /* ───── 문자열에 직접 표시: 콜론 앞이 서랍을 고른다 ───── */
+  const P2 = { anthropic: ["anthropic", "claude-sonnet-5-5", "ChatAnthropic", "pip install langchain-anthropic", "ANTHROPIC_API_KEY"], openai: ["openai", "gpt-5.5", "ChatOpenAI", "pip install langchain-openai", "OPENAI_API_KEY"] };
+  $$("[data-lc-p2]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-p2]", b); const v = P2[b.dataset.lcP2];
+    $("[data-lc-pv]").textContent = v[0]; $("[data-lc-mn]").textContent = v[1]; $("[data-lc-m1]").textContent = v[2]; $("[data-lc-m2]").textContent = v[3]; $("[data-lc-m3]").textContent = v[4]; }, { signal }));
+
+  /* ───── 응답: 따라갈 값 고르기 ───── */
+  const rs = $("[data-lc-rs]");
+  $$("[data-lc-f]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-f]", b); rs.dataset.f = b.dataset.lcF; }, { signal }));
 
   /* ───── 채팅창 (스크롤 이야기) ───── */
   const chat = $("[data-lc-chat]"), stat = $("[data-lc-stat]");
   mk("rect", { x: 10, y: 8, width: 440, height: 504, rx: 26, fill: "var(--bg-subtle)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, chat);
   mk("rect", { x: 10, y: 8, width: 440, height: 46, rx: 26, fill: "var(--bg-muted)" }, chat); mk("rect", { x: 10, y: 30, width: 440, height: 24, fill: "var(--bg-muted)" }, chat);
   txt(chat, 230, 38, "헬프데스크 채팅", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+  /* 말한 쪽은 위치로 구분한다(사용자 오른쪽, 모델·도구 왼쪽, system 가운데 안내). 색은 방금 붙은 쪽지에만 */
   const BUB = [
-    { y: 74, h: 66, x: 40, w: 380, col: "var(--fg-neutral)", name: "SystemMessage", who: "system", body: "너는 IT 헬프데스크 상담원이다.", from: [0, -18], ic: null },
-    { y: 160, h: 66, x: 150, w: 280, col: C.human, name: "HumanMessage", who: "user", body: "T-1042 티켓 어떻게 됐어요?", from: [30, 0], ic: null },
-    { y: 252, h: 84, x: 30, w: 330, col: C.model, name: "AIMessage", who: "assistant", body: "조회해 보겠습니다.", from: [-30, 0], ic: "robot" },
-    { y: 362, h: 100, x: 30, w: 330, col: C.code, name: "ToolMessage", who: "tool", body: "부품 대기, 10월 18일 (tool_call_id 붙음)", from: [-30, 0], ic: "gear" },
+    { y: 70, h: 58, x: 40, w: 380, name: "SystemMessage", who: "system", body: "너는 IT 헬프데스크 상담원이다.", from: [0, -18], mid: true },
+    { y: 160, h: 66, x: 150, w: 280, name: "HumanMessage", who: "user", body: "T-1042 티켓 어떻게 됐어요?", from: [30, 0], right: true },
+    { y: 258, h: 66, x: 30, w: 300, name: "AIMessage", who: "assistant", body: "조회해 보겠습니다.", from: [-30, 0] },
+    { y: 356, h: 66, x: 30, w: 360, name: "ToolMessage", who: "tool", body: "부품 대기, 10월 18일 (tool_call_id 붙음)", from: [-30, 0] },
   ];
   const bubEls = BUB.map((b) => {
     const g = mk("g", { class: "lc-card", style: `transform: translate(${b.from[0]}px, ${b.from[1]}px)` }, chat);
-    mk("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 18, fill: `color-mix(in srgb, ${b.col} 12%, var(--bg-base))`, stroke: b.col, "stroke-width": 3 }, g);
-    txt(g, b.x + 18, b.y + 26, b.who, { "font-size": 14, "font-weight": 800, style: `fill:${b.col}` });
-    txt(g, b.x + 18, b.y + 54, b.body, { "font-size": 15, class: "t-s" });
-    const tag = mk("g", {}, g);
-    mk("rect", { x: b.x + b.w - 160, y: b.y + b.h - 4, width: 150, height: 26, rx: 13, fill: b.col }, tag);
-    txt(tag, b.x + b.w - 85, b.y + b.h + 14, b.name, { "font-size": 12.5, "text-anchor": "middle", "font-weight": 800, class: "mono", style: "fill:var(--bg-base)" });
-    if (b.ic) mk("use", { href: "#lc-ic-" + b.ic, x: b.x + b.w + 8, y: b.y + 20, width: 40, height: 40, style: `color:${b.col}` }, g);
+    const box = mk("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.mid ? 12 : 18, fill: b.mid ? "var(--bg-muted)" : "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2 }, g);
+    const ax = b.mid ? b.x + b.w / 2 : b.x + 18, anc = b.mid ? "middle" : "start";
+    txt(g, ax, b.y + 24, b.who, { "font-size": 14, "font-weight": 800, "text-anchor": anc, class: "mono t-d" });
+    txt(g, ax, b.y + (b.mid ? 46 : 52), b.body, { "font-size": 15, "text-anchor": anc, class: "t-s" });
+    txt(g, b.right ? b.x + b.w : b.mid ? b.x + b.w / 2 : b.x, b.y + b.h + 19, b.name, { "font-size": 13, "text-anchor": b.right ? "end" : b.mid ? "middle" : "start", class: "mono t-d" });
+    g._box = box;
     return g;
   });
   const STAT = [["system", "SystemMessage 또는 {\"role\": \"system\"}"], ["user", "HumanMessage 또는 {\"role\": \"user\"}"], ["assistant", "AIMessage 또는 {\"role\": \"assistant\"}"], ["tool", "ToolMessage 또는 {\"role\": \"tool\"}"]];
   story("[data-lc-story]", (i) => {
-    bubEls.forEach((g, k) => g.classList.toggle("on", i < 0 || k <= i));
-    stat.innerHTML = i < 0 ? "<b>네 쪽지가 모두 붙은 모습입니다</b>" : `<b>${STAT[i][0]}</b> · ${STAT[i][1]}`;
+    bubEls.forEach((g, k) => { g.classList.toggle("on", i < 0 || k <= i); const now = k === i; g._box.setAttribute("stroke", now ? "var(--lc-code)" : "var(--line-strong)"); g._box.setAttribute("stroke-width", now ? 3.5 : 2); });
+    stat.innerHTML = i < 0 ? "네 쪽지가 모두 붙은 모습입니다" : `<b>${STAT[i][0]}</b> · ${STAT[i][1]}`;
   });
 
   /* ───── 물컵: invoke · stream · batch ───── */
@@ -726,66 +787,55 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
   function lanesFinal() {
     const [a, b] = split2(TXT_); set(0, a, b); set(1, a, b); set(2, "① " + a + "…", "② T-1043은 처리가 끝났습니다.");
     fills.forEach(([, w, base, h]) => { w.setAttribute("y", base - h); w.setAttribute("height", h); });
-    bars.forEach((r) => r.setAttribute("width", 145)); clocks.forEach((c) => { c.textContent = "2.4초"; });
+    bars.forEach((r) => r.setAttribute("width", 145)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 2.4초"; });
   }
   async function playLanes() {
     const btn = $("[data-lc-play]"); btn.disabled = true;
     fills.forEach(([, w, base]) => { w.setAttribute("y", base); w.setAttribute("height", 0); }); bars.forEach((r) => r.setAttribute("width", 0));
-    [0, 1, 2].forEach((i) => { set(i, "기다리는 중…", ""); clocks[i].textContent = "0.0초"; });
+    [0, 1, 2].forEach((i) => { set(i, "기다리는 중…", ""); clocks[i].textContent = i ? "" : "지금 0.0초"; });
     if (reduce) { lanesFinal(); btn.disabled = false; return; }
     const t0 = performance.now();
     await new Promise((res) => { const tick = (now) => {
       if (signal.aborted) return res(); const e = Math.min(now - t0, TOTAL), f = e / TOTAL;
-      bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c) => { c.textContent = (e / 1000).toFixed(1) + "초"; });
-      fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? Math.min(1, f) : i === 0 ? (f >= 1 ? 1 : 0) : Math.min(1, f); const hh = h * lv; w.setAttribute("y", base - hh); w.setAttribute("height", hh); });
+      bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 " + (e / 1000).toFixed(1) + "초"; });
+      fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? Math.min(1, f) : (f >= 1 ? 1 : 0); const hh = h * lv; w.setAttribute("y", base - hh); w.setAttribute("height", hh); });
       if (e > 300) { const n = Math.min(CH.length, Math.floor((e - 300) / ((TOTAL - 300) / CH.length)) + 1); const [a, b] = split2(CH.slice(0, n).join("")); set(1, a, b); }
       if (e >= TOTAL) { const [a, b] = split2(TXT_); set(0, a, b); set(2, "① " + a + "…", "② T-1043은 처리가 끝났습니다."); return res(); }
       requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
     btn.disabled = false;
   }
   $("[data-lc-play]").addEventListener("click", playLanes, { signal });
-  lanesFinal();
+  /* 누르기 전에도 차이가 보이게 1.2초 시점을 멈춰 둔다 */
+  (() => { const e = 1200, f = e / TOTAL;
+    bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 1.2초"; });
+    fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? f : 0; w.setAttribute("y", base - h * lv); w.setAttribute("height", h * lv); });
+    const n = Math.floor((e - 300) / ((TOTAL - 300) / CH.length)) + 1; const [a, b] = split2(CH.slice(0, n).join(""));
+    set(0, "기다리는 중…", ""); set(1, a, b); set(2, "기다리는 중…", ""); })();
 
   /* ───── 다이얼 ───── */
-  const dial = $("[data-lc-dial]"), din = $("[data-lc-dialin]");
+  const dial = $("[data-lc-dial]"); let dOn = false;
   function drawDial() {
-    const v = +din.value, ok = v === 0; dial.innerHTML = "";
-    $("[data-lc-dialout]").textContent = ok ? "쓰지 않음" : (v / 10).toFixed(1);
+    const v = dOn ? 7 : 0, ok = !dOn; dial.innerHTML = "";
     const cx = 230, cy = 230, r = 150;
     const pt = (a, rr = r) => [cx + rr * Math.cos(Math.PI - a), cy - rr * Math.sin(Math.PI - a)];
     const arc = (a1, a2, col, w) => { const [x1, y1] = pt(a1), [x2, y2] = pt(a2); mk("path", { d: `M${x1} ${y1} A${r} ${r} 0 0 1 ${x2} ${y2}`, fill: "none", stroke: col, "stroke-width": w, "stroke-linecap": "round" }, dial); };
     arc(0.0, Math.PI, "var(--line-strong)", 22);
     arc(0.0, 0.22, C.code, 22); arc(0.34, Math.PI, `color-mix(in srgb, ${C.bad} 55%, var(--bg-base))`, 22);
-    txt(dial, 24, 262, "← 기본값(값을 안 보냄)", { "font-size": 15, "text-anchor": "start", class: "t-s", style: `fill:${C.code}` });
-    const [bx, by] = pt(1.9, r + 6); txt(dial, 230, 108, "값을 넣으면 거절", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` });
-    txt(dial, 78, 286, "0", { "font-size": 13, class: "t-d mono" }); txt(dial, 392, 286, "1", { "font-size": 13, class: "t-d mono" });
-    txt(dial, 230, 134, "0 = 차분 · 1 = 자유분방", { "font-size": 13.5, "text-anchor": "middle", class: "t-d" });
+    txt(dial, 80, 272, "기본값(값 없음)", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` });
+    txt(dial, 230, 60, "값을 넣으면 거절", { "font-size": 19, "text-anchor": "middle", class: "t-s", style: `fill:${C.bad}` });
+    txt(dial, 56, 168, "0", { "font-size": 19, class: "t-d mono" }); txt(dial, 374, 272, "1", { "font-size": 19, class: "t-d mono" });
     const ang = ok ? 0.11 : 0.34 + (v / 10) * (Math.PI - 0.34); const [nx, ny] = pt(ang, r - 14);
     mk("line", { x1: cx, y1: cy, x2: nx, y2: ny, stroke: "var(--fg-strong)", "stroke-width": 6, "stroke-linecap": "round" }, dial); mk("circle", { cx, cy, r: 14, fill: "var(--fg-strong)" }, dial);
-    if (ok) { mk("use", { href: "#lc-ic-check", x: 206, y: 248, width: 48, height: 48, style: `color:${C.code}` }, dial); }
-    else { mk("use", { href: "#lc-ic-stop", x: 206, y: 248, width: 48, height: 48, style: `color:${C.bad}` }, dial); }
+    txt(dial, cx, 286, ok ? "통과" : "400 거절", { "font-size": 26, "text-anchor": "middle", class: "t-s", style: `fill:${ok ? C.code : C.bad}` });
     $("[data-lc-dialv]").innerHTML = ok ? `<span style="color:${C.code}">요청이 나갑니다.</span> 값을 보내지 않으면 모델이 정한 기본값으로 답합니다.` : `<span style="color:${C.bad}">400 오류.</span> 이 모델은 기본값이 아닌 temperature를 받지 않습니다. LangChain이 보내기 전에 막기도 합니다.`;
   }
-  din.addEventListener("input", drawDial, { signal }); drawDial();
+  $$("[data-lc-dt]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-dt]", b); dOn = b.dataset.lcDt === "on"; drawDial(); }, { signal })); drawDial();
 
-  /* ───── 파이프 ───── */
-  const pipe = $("[data-lc-pipe]"); let filled = false;
-  function drawPipe(t) {
-    pipe.innerHTML = "";
-    const vy = 14 + t * 96;
-    mk("rect", { x: 40, y: 150, width: 380, height: 112, rx: 16, fill: "var(--bg-subtle)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, pipe);
-    txt(pipe, 56, 174, "ChatPromptTemplate (빈칸이 있는 틀)", { "font-size": 14, class: "t-d" });
-    mk("rect", { x: 56, y: 184, width: 348, height: 32, rx: 8, fill: `color-mix(in srgb, ${C.human} 14%, var(--bg-base))`, stroke: C.human, "stroke-width": 2 }, pipe); txt(pipe, 68, 205, "system  너는 IT 헬프데스크 상담원이다.", { "font-size": 13.5, class: "t-s mono" });
-    mk("rect", { x: 56, y: 222, width: 348, height: 32, rx: 8, fill: t >= 1 ? `color-mix(in srgb, ${C.human} 14%, var(--bg-base))` : "var(--bg-base)", stroke: t >= 1 ? C.human : C.bad, "stroke-width": 2.5, "stroke-dasharray": t >= 1 ? "" : "6 4" }, pipe);
-    txt(pipe, 68, 243, t >= 1 ? "user  T-1042 티켓 어떻게 됐어요?" : "user  {question}", { "font-size": 13.5, class: "t-s mono" });
-    if (t < 1) { const vg = mk("g", {}, pipe); mk("rect", { x: 70, y: vy, width: 320, height: 40, rx: 12, fill: `color-mix(in srgb, ${C.code} 16%, var(--bg-base))`, stroke: C.code, "stroke-width": 3 }, vg); txt(vg, 230, vy + 26, "T-1042 티켓 어떻게 됐어요?", { "font-size": 14.5, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` }); txt(pipe, 230, 56, "빈칸에 들어갈 값", { "font-size": 13, "text-anchor": "middle", class: "t-d" }); }
-    else { txt(pipe, 230, 40, "빈칸이 채워졌습니다", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` }); }
-    mk("path", { d: "M230 262 V300", stroke: "var(--fg-neutral)", "stroke-width": 14, "stroke-linecap": "round" }, pipe); txt(pipe, 262, 288, "|  메시지 목록이 흘러갑니다", { "font-size": 14, class: "t-s mono" });
-    mk("rect", { x: 120, y: 304, width: 220, height: 80, rx: 18, fill: `color-mix(in srgb, ${C.model} 10%, var(--bg-base))`, stroke: C.model, "stroke-width": 3 }, pipe);
-    mk("use", { href: "#lc-ic-robot", x: 136, y: 322, width: 44, height: 44, style: `color:${C.model}` }, pipe); txt(pipe, 192, 350, "모델", { "font-size": 19, class: "t-s" }); txt(pipe, 192, 372, "prompt | model", { "font-size": 13.5, class: "t-d mono" });
-  }
-  drawPipe(1);
-  $("[data-lc-fill]").addEventListener("click", async () => { const b = $("[data-lc-fill]"); b.disabled = true; drawPipe(0); await later(reduce ? 0 : 500); await tween(900, (t) => drawPipe(t)); drawPipe(1); b.disabled = false; }, { signal });
+  /* ───── 프롬프트 틀: 값이 빈칸으로 내려오고 | 를 지나 모델로 ───── */
+  const tpl = $("[data-lc-tpl]");
+  $("[data-lc-fill]").addEventListener("click", async () => { const b = $("[data-lc-fill]"); b.disabled = true;
+    for (const [st, ms] of [["0", 900], ["1", 300], ["2", 900], ["3", 0]]) { if (signal.aborted) return; tpl.dataset.st = st; if (!reduce) await later(ms); }
+    b.disabled = false; b.textContent = "다시 채워 보내기"; }, { signal });
 
   initTerms({
     meta: [["cmd", "$ python llm.py"], ["wait", 800], ["line", "AIMessage T-1042는 부품 대기 중입니다."], ["line", "{'input_tokens': 20, 'output_tokens': 12, 'total_tokens': 32, 'input_token_details': {}}"], ["line", "{'stop_details': None, 'stop_reason': 'end_turn', 'stop_sequence': None}"]],
