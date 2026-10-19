@@ -237,7 +237,16 @@ export const registry: AlgoEntry[] = [
   },
 
   // ── 백트래킹·구현
-  plan("permutations", "순열과 조합 만들기", "가능한 경우를 빠짐없이", "백트래킹·구현", ["itertools", "permutations"], ["모든 순서"]),
+  {
+    slug: "permutations",
+    title: "순열과 조합 만들기",
+    lede: "가능한 경우를 빠짐없이",
+    category: "백트래킹·구현",
+    tier: 1,
+    aliases: ["itertools", "permutations", "combinations", "순열", "조합", "백트래킹", "backtracking"],
+    signals: ["모든 순서(순열)·모든 뽑기(조합)", "n 이 작다(10 이하)", "경우를 빠짐없이 나열"],
+    status: "ready",
+  },
   plan("n-queens", "N-퀸", "서로 못 보게 놓기", "백트래킹·구현", ["n queens", "백트래킹"], ["조건을 만족하는 배치"]),
   plan("simulation", "시뮬레이션", "시키는 대로 그대로 하기", "백트래킹·구현", ["구현", "델타 배열"], ["규칙이 길게 주어진다"]),
 

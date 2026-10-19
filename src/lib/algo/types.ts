@@ -112,6 +112,20 @@ export type StageState = {
     cur?: [number, number];
     from?: [number, number][];
   };
+  /**
+   * 줄 서는 순서(순열·백트래킹). `items` 는 줄 설 친구들, `path` 는 지금 자리에 선 친구의 번호(items 의 칸, 앞자리부터),
+   * `used` 는 친구마다 섰는지, `result` 는 지금까지 결과에 담은 순서들(글자를 이은 것)이다.
+   * `mode` 는 이 스텝이 한 일: start(아무도 안 섬) · choose(친구를 세우고 다음 자리로) · found(자리가 다 차 결과에 담음) ·
+   * undo(마지막 친구를 뺌) · done(모두 끝). `i` 는 이 스텝에서 세우거나 뺀 친구의 번호다.
+   */
+  perm?: {
+    items: string[];
+    path: number[];
+    used: boolean[];
+    result: string[];
+    mode: "start" | "choose" | "found" | "undo" | "done";
+    i?: number;
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
