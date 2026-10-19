@@ -64,7 +64,16 @@ export const registry: AlgoEntry[] = [
   { slug: "prefix-sum", title: "누적합", lede: "구간의 합을 한 번 빼기로", category: "기초 개념", tier: 1, aliases: ["prefix sum", "구간 합", "부분합", "psum"], signals: ["구간의 합을 여러 번", "값은 안 바뀐다", "칸 수와 질문 수가 둘 다 크다"], status: "ready" },
 
   // ── 자료구조
-  plan("array-list", "배열과 리스트", "왜 맨 앞에 끼우면 느릴까", "자료구조", ["list"], []),
+  {
+    slug: "array-list",
+    title: "배열과 리스트",
+    lede: "왜 맨 앞에 끼우면 느릴까",
+    category: "자료구조",
+    tier: 1,
+    aliases: ["list", "array", "리스트", "배열", "append", "insert", "pop(0)"],
+    signals: ["맨 앞에서 넣고 뺀다", "줄(큐)을 리스트로 짠다", "반복문 안에서 in 을 쓴다"],
+    status: "ready",
+  },
   plan("stack", "스택", "왜 Ctrl+Z 는 방금 한 것부터 되돌릴까", "자료구조", ["stack"], ["괄호", "되돌리기"]),
   plan("queue-deque", "큐와 덱", "줄을 서면 앞사람부터", "자료구조", ["queue", "deque"], ["먼저 온 순서"]),
   plan("hash", "해시", "사물함을 번호 대신 이름으로 찾기", "자료구조", ["dict", "set", "hash"], ["있는지 빨리 확인"]),
