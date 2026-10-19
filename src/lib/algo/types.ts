@@ -57,6 +57,19 @@ export type StageState = {
     side?: "left" | "right";
     result: number[];
   };
+  /**
+   * 섬 지도(연결 요소). `land[i]` 는 i 번 칸이 땅인지, `owner[i]` 는 그 칸을 칠한 섬 번호(0부터, 안 칠했으면 null),
+   * `queue` 는 큐에 든 칸 번호(앞이 먼저 나감), `scan` 은 바깥 반복문이 지금 훑는 칸, `now` 는 큐에서 방금 꺼낸 칸이다.
+   * 칸 번호는 `행 * cols + 열` 이다.
+   */
+  island?: {
+    cols: number;
+    land: boolean[];
+    owner: (number | null)[];
+    queue: number[];
+    scan?: number;
+    now?: number;
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
