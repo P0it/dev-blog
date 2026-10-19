@@ -73,7 +73,8 @@ export default async function NQueensPage() {
         </ul>
         <p>
           놓다가 막히면 앞 줄로 돌아가 다른 선택을 하는 방법 = <strong>백트래킹(backtracking)</strong>. 돌아오는 건{" "}
-          <Link href="/algo/recursion">재귀</Link>가 해 주는 일입니다.
+          <Link href="/algo/recursion">재귀</Link>가 해 주는 일입니다. 앞 장{" "}
+          <Link href="/algo/permutations">순열과 조합 만들기</Link>에서도 같은 일을 했습니다.
         </p>
         <p>
           보드의 모든 배치를 따지면 {QUEEN_N}×{QUEEN_N} 에서 퀸 {QUEEN_N}개를 놓는 방법이 {ALL4.toLocaleString("ko-KR")}가지입니다.
