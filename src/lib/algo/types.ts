@@ -88,6 +88,11 @@ export type StageState = {
     changed?: number[];
     queue: [number, number][];
   };
+  /**
+   * 거스름돈. `values` 는 큰 동전부터 늘어놓은 동전 줄, `at` 은 지금 보는 동전 칸(아직 반복에 들어가기 전이면 null),
+   * `given` 은 지금까지 바구니에 담은 동전(낸 순서), `left` 는 남은 돈이다.
+   */
+  coins?: { values: number[]; at: number | null; given: number[]; left: number };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

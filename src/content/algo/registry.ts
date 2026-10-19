@@ -206,7 +206,16 @@ export const registry: AlgoEntry[] = [
   plan("knapsack", "0/1 배낭", "가방에 무엇을 담을까", "DP", ["knapsack"], ["무게 제한", "최대 가치"]),
 
   // ── 그리디
-  plan("greedy-coins", "거스름돈", "큰 동전부터 주면 되나", "그리디", ["greedy"], ["최소 개수"]),
+  {
+    slug: "greedy-coins",
+    title: "거스름돈",
+    lede: "큰 동전부터 주면 되나",
+    category: "그리디",
+    tier: 1,
+    aliases: ["greedy", "그리디", "탐욕", "탐욕법", "coin change", "동전", "거스름돈"],
+    signals: ["최소 개수", "큰 것부터 고르면 된다 (배수 관계)", "증명할 수 있으면 그리디, 아니면 DP"],
+    status: "ready",
+  },
   plan("activity-selection", "회의실 배정", "끝나는 시간이 빠른 것부터", "그리디", ["activity selection"], ["겹치지 않게 최대"]),
 
   // ── 백트래킹·구현
