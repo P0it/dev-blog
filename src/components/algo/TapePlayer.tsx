@@ -3,6 +3,15 @@
 import { useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import type { StageState, Tape } from "@/lib/algo/types";
 import { clampStep } from "./clamp-step";
+import { blocksAt } from "./pause-gate";
+
+/** 플레이어 중간에 끼우는 예측 한 번. `at` 스텝으로 넘어가기 전에 묻는다. 정답은 정확히 하나. */
+export type PlayerPause = {
+  at: number;
+  ask: ReactNode;
+  options: { label: string; correct?: boolean }[];
+  why: ReactNode;
+};
 
 /**
  * 코드 한 줄과 그림이 맞물려 도는 플레이어.
@@ -18,18 +27,41 @@ export function TapePlayer({
   tape,
   stage,
   title,
+  pause,
 }: {
   tape: Tape;
   stage: (s: StageState) => ReactNode;
   title?: string;
+  pause?: PlayerPause;
 }) {
   const [at, setAt] = useState(-1);
+  // 예측 관문 — 열려 있는지, 답했는지, 무엇을 골랐는지
+  const [asking, setAsking] = useState(false);
+  const [answered, setAnswered] = useState(false);
+  const [picked, setPicked] = useState<number | null>(null);
 
   const last = tape.steps.length - 1;
   const step = at < 0 ? tape.steps[0] : tape.steps[at];
 
-  const jump = (d: number) => setAt((prev) => clampStep(prev + d, tape.steps.length));
-  const restart = () => setAt(-1);
+  const jump = (d: number) => {
+    if (blocksAt(at, d, pause?.at, answered)) {
+      setAsking(true);
+      return;
+    }
+    setAt((prev) => clampStep(prev + d, tape.steps.length));
+  };
+  const restart = () => {
+    setAt(-1);
+    setAsking(false);
+    setAnswered(false);
+    setPicked(null);
+  };
+  const passGate = () => {
+    if (!pause) return;
+    setAnswered(true);
+    setAsking(false);
+    setAt(pause.at);
+  };
 
   // 플레이어에 초점이 있을 때 ← → 로 한 칸씩
   const onKey = (e: KeyboardEvent) => {
@@ -78,6 +110,36 @@ export function TapePlayer({
         </div>
       </div>
 
+      {/* 예측 관문 — 정답을 고르면 이유가 열리고, 「계속」을 눌러야 다음 스텝으로 간다 */}
+      {asking && pause && (
+        <div className="algo-predict" role="group" aria-label="다음 스텝 예측">
+          <p className="algo-quiz-q">
+            <strong>{pause.ask}</strong>
+          </p>
+          {pause.options.map((o, i) => (
+            <button
+              key={i}
+              type="button"
+              className={
+                picked === null ? "algo-opt" : `algo-opt ${o.correct ? "right" : picked === i ? "wrong" : ""}`
+              }
+              onClick={() => setPicked(i)}
+              disabled={picked !== null}
+            >
+              {o.label}
+            </button>
+          ))}
+          {picked !== null && (
+            <>
+              <p className="algo-quiz-why">{pause.why}</p>
+              <button type="button" className="algo-ctl algo-next-btn" onClick={passGate}>
+                계속
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* 조작 막대 — 처음·뒤로·다음 + 진행 막대. 막대를 끌면 원하는 스텝으로 바로 간다 */}
       <div className="algo-player-ctl">
         <div className="algo-ctl-btns">
@@ -114,7 +176,15 @@ export function TapePlayer({
           value={at + 1}
           aria-label="스텝 위치"
           style={{ "--p": `${((at + 1) / tape.steps.length) * 100}%` } as CSSProperties}
-          onChange={(e) => setAt(Number(e.target.value) - 1)}
+          onChange={(e) => {
+            const to = Number(e.target.value) - 1;
+            // 진행 막대로 관문을 건너뛰면 물어보지 않는다 — 독자가 일부러 건너뛴 것이다
+            if (pause && to >= pause.at) {
+              setAnswered(true);
+              setAsking(false);
+            }
+            setAt(to);
+          }}
         />
 
         <span className="algo-player-count">

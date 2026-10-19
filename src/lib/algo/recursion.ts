@@ -72,3 +72,29 @@ export function factorialTape(n: number): Tape {
   if (!Number.isInteger(n) || n < 1) throw new RangeError("n 은 1 이상의 정수여야 합니다");
   return buildTape(walk(n), FACTORIAL_CODE);
 }
+
+/**
+ * 플레이어 예측 관문 자리 — 첫 번째 `값 돌려주기` 바로 다음 스텝.
+ * 가장 안쪽 층이 막 돌려줬고, 바깥 층이 곱하기 직전이다("factorial(2) 가 돌려줄 값은?").
+ */
+export function firstReturnGate(tape: Tape): number {
+  return tape.steps.findIndex((s) => s.vars.ret !== undefined) + 1;
+}
+
+/** 자기를 두 번 부르는 재귀(피보나치)의 호출 나무. 갈라지는 재귀를 한 컷으로 보이는 데 쓴다. */
+export type FibNode = { n: number; kids: FibNode[] };
+
+export function fibTree(n: number): FibNode {
+  if (!Number.isInteger(n) || n < 0) throw new RangeError("n 은 0 이상의 정수여야 합니다");
+  return { n, kids: n < 2 ? [] : [fibTree(n - 1), fibTree(n - 2)] };
+}
+
+/** 호출 나무의 호출 횟수. */
+export function countCalls(t: FibNode): number {
+  return 1 + t.kids.reduce((a, k) => a + countCalls(k), 0);
+}
+
+/** n 값이 나무에 몇 번 나오는지. 2 번 이상이면 같은 계산을 되풀이한 것이다. */
+export function countOf(t: FibNode, n: number): number {
+  return (t.n === n ? 1 : 0) + t.kids.reduce((a, k) => a + countOf(k, n), 0);
+}

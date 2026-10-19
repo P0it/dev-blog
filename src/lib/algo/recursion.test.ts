@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { factorialTape, FACTORIAL_CODE } from "./recursion.ts";
+import { factorialTape, FACTORIAL_CODE, firstReturnGate, fibTree, countCalls, countOf } from "./recursion.ts";
 import fixture from "./fixtures/recursion.json" with { type: "json" };
 
 // fixture 는 scripts/algo/trace_recursion.py 가 실제 Python 을 settrace 로 돌려 만든다.
@@ -58,4 +58,30 @@ test("n 이 1 보다 작으면 거절한다 — 진짜 코드는 멈추지 않�
 
 test("파이썬 기본 재귀 한도 — 페이지에 적은 숫자가 실제 값이다", () => {
   assert.equal(fixture.recursionLimit, 1000);
+});
+
+test("firstReturnGate — 관문 스텝은 바깥 층이 처음으로 곱하는 순간이다", () => {
+  const t = factorialTape(4);
+  const g = firstReturnGate(t);
+  assert.equal(g, 9);
+  // 관문 바로 앞 스텝은 가장 안쪽 층(n=1)이 1 을 돌려준 순간
+  assert.equal(t.steps[g - 1].vars.n, 1);
+  assert.equal(t.steps[g - 1].vars.ret, 1);
+  // 관문 스텝은 factorial(2) = 2 × 1 = 2
+  assert.equal(t.steps[g].vars.n, 2);
+  assert.equal(t.steps[g].vars.ret, 2);
+});
+
+test("fibTree(4) — 호출이 9번이고 fib(2) 를 두 번 되풀이한다", () => {
+  const t = fibTree(4);
+  assert.equal(countCalls(t), 9);
+  assert.equal(countOf(t, 2), 2);
+  assert.equal(countOf(t, 1), 3);
+  assert.equal(countOf(t, 0), 2);
+});
+
+test("fibTree — 0 과 1 은 더 부르지 않고, 음수는 거절한다", () => {
+  assert.deepEqual(fibTree(0), { n: 0, kids: [] });
+  assert.equal(countCalls(fibTree(1)), 1);
+  assert.throws(() => fibTree(-1), RangeError);
 });
