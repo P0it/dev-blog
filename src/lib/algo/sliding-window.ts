@@ -111,7 +111,7 @@ function* walk(input: number[], k: number): Generator<Step> {
     }
     yield at(
       7,
-      s.window > prev ? `${josa(s.window, "이", "가")} 최고 ${prev}보다 큽니다. 최고를 바꿉니다` : `${josa(s.window, "은", "는")} 최고 ${prev}${s.window === prev ? "와 같습니다" : "보다 작습니다"}. 그대로 둡니다`,
+      s.window > prev ? `${josa(s.window, "이", "가")} 최고 ${prev}보다 큽니다. 최고를 바꿉니다` : `${josa(s.window, "은", "는")} 최고 ${s.window === prev ? `${josa(prev, "과", "와")} 같습니다` : `${prev}보다 작습니다`}. 그대로 둡니다`,
       { lo: out + 1, hi: i + 1 },
       { flag: i },
     );

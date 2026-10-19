@@ -82,7 +82,7 @@ function* walk(arr: number[], target: number): Generator<Step> {
     }
 
     const small = s.total < target;
-    yield at(7, small ? `${s.total} < ${target} 이라 합이 작습니다` : `${s.total} > ${target} 이라 합이 큽니다`);
+    yield at(7, small ? `${s.total} < ${josa(target, "이라", "라")} 합이 작습니다` : `${s.total} > ${josa(target, "이라", "라")} 합이 큽니다`);
     if (small) {
       const dropped = arr[s.left];
       s.left++;
@@ -158,7 +158,7 @@ export function explain(
     if (choice === "right") {
       return {
         ok: true,
-        text: `남은 카드 중 가장 작은 ${josa(arr[left], "과", "와")} 더해도 ${total} 이라 목표 ${target} 보다 큽니다. ${josa(arr[right], "은", "는")} 어떤 카드와도 짝이 못 되니 버립니다`,
+        text: `남은 카드 중 가장 작은 ${josa(arr[left], "과", "와")} 더해도 ${josa(total, "이라", "라")} 목표 ${target} 보다 큽니다. ${josa(arr[right], "은", "는")} 어떤 카드와도 짝이 못 되니 버립니다`,
       };
     }
     return {
@@ -170,7 +170,7 @@ export function explain(
   if (choice === "left") {
     return {
       ok: true,
-      text: `남은 카드 중 가장 큰 ${josa(arr[right], "과", "와")} 더해도 ${total} 이라 목표 ${target} 보다 작습니다. ${josa(arr[left], "은", "는")} 어떤 카드와도 짝이 못 되니 버립니다`,
+      text: `남은 카드 중 가장 큰 ${josa(arr[right], "과", "와")} 더해도 ${josa(total, "이라", "라")} 목표 ${target} 보다 작습니다. ${josa(arr[left], "은", "는")} 어떤 카드와도 짝이 못 되니 버립니다`,
     };
   }
   return {

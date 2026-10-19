@@ -28,7 +28,7 @@ export default async function TwoPointersPage() {
       <PairsReveal>
         <p className="algo-chain">
           1 + 13 → 1 + 10 → 3 + 10
-          <span>양끝만 보고, 볼 때마다 카드 한 장을 버렸습니다.</span>
+          <span>양끝만 보고 볼 때마다 카드 한 장을 버렸습니다.</span>
         </p>
         <Counter
           rows={[
@@ -75,7 +75,7 @@ export default async function TwoPointersPage() {
         ]}
         why={
           <>
-            합이 크니 큰 쪽 끝인 <strong>right</strong> 를 줄입니다. <strong>다음</strong>을 눌러 확인해 보세요. 3번 줄에서 left 와 right 가 매번 한 쪽만 움직입니다.
+            합이 크니 큰 쪽 끝인 <strong>right</strong> 를 줄입니다. <strong>다음</strong>을 눌러 확인해 보세요. 8번 줄과 10번 줄 중 한 줄만 실행되어, left 와 right 는 매번 한쪽만 움직입니다.
           </>
         }
       />
@@ -113,7 +113,7 @@ export default async function TwoPointersPage() {
         ]}
         why={
           <>
-            처음 합 3 + 1 = 4 가 작아서 3 을 버립니다. 3 은 다시 못 보니 3 + 10 은 영영 못 만들고, 합 4 → 10 → 11 로 끝까지 작아서 <code>False</code> 가 나옵니다. 합을 한 번도 안 보고 끝나는 것은 카드가 한 장도 없을 때입니다.
+            처음 합 3 + 1 = 4 가 작아서 3 을 버립니다. 3 은 다시 못 보니 3 + 10 은 영영 못 만들고 합 4 → 10 → 11 로 끝까지 작아서 <code>False</code> 가 나옵니다. 합을 한 번도 안 보고 끝나는 것은 카드가 한 장도 없을 때입니다.
           </>
         }
       />
