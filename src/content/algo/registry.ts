@@ -269,7 +269,16 @@ export const registry: AlgoEntry[] = [
   },
 
   // ── 문자열
-  plan("string-basics", "문자열과 회문", "뒤집어도 같은 말", "문자열", ["palindrome"], ["뒤집기"]),
+  {
+    slug: "string-basics",
+    title: "문자열과 회문",
+    lede: "뒤집어도 같은 말",
+    category: "문자열",
+    tier: 1,
+    aliases: ["palindrome", "회문", "팰린드롬", "문자열 뒤집기", "slicing", "s[::-1]", "string"],
+    signals: ["앞뒤로 읽어도 같다", "양끝에서 안쪽으로 좁힌다", "문자열을 뒤집거나 잘라 비교한다"],
+    status: "ready",
+  },
 
   // ── 수학
   plan("gcd", "최대공약수", "유클리드가 2300년 전에 푼 문제", "수학", ["gcd", "유클리드"], ["약수", "기약분수"]),
