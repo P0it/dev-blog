@@ -248,7 +248,16 @@ export const registry: AlgoEntry[] = [
     status: "ready",
   },
   plan("n-queens", "N-퀸", "서로 못 보게 놓기", "백트래킹·구현", ["n queens", "백트래킹"], ["조건을 만족하는 배치"]),
-  plan("simulation", "시뮬레이션", "시키는 대로 그대로 하기", "백트래킹·구현", ["구현", "델타 배열"], ["규칙이 길게 주어진다"]),
+  {
+    slug: "simulation",
+    title: "시뮬레이션",
+    lede: "시키는 대로 그대로 하기",
+    category: "백트래킹·구현",
+    tier: 1,
+    aliases: ["구현", "델타 배열", "simulation", "implementation", "dx dy", "방향 배열"],
+    signals: ["규칙이 길게 주어진다", "격자 위에서 이동한다", "시키는 대로 구현"],
+    status: "ready",
+  },
 
   // ── 문자열
   plan("string-basics", "문자열과 회문", "뒤집어도 같은 말", "문자열", ["palindrome"], ["뒤집기"]),

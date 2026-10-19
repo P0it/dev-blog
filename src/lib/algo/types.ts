@@ -126,6 +126,27 @@ export type StageState = {
     mode: "start" | "choose" | "found" | "undo" | "done";
     i?: number;
   };
+  /**
+   * 로봇 방(시뮬레이션). 칸 번호는 `행 * cols + 열` 이고 `walls[i]` 는 그 칸이 벽인지, `(r, c)` 와 `d` 는 로봇의 칸과 방향
+   * (0 위 · 1 오른쪽 · 2 아래 · 3 왼쪽), `trail` 은 지나온 칸 번호(시작 칸부터 순서대로)다. `cmds` 는 명령 전체이고 `at` 은
+   * 지금 읽는 명령 번호(아직 안 읽었으면 -1, 다 읽었으면 `cmds.length`), `done` 은 끝난 명령 수, `cmd` 는 지금 읽은 명령이다.
+   * `ahead` 는 F 가 가려는 앞 칸 번호(방 바깥이면 null), `block` 은 그 칸이 못 가는 칸이면 이유(벽·바깥)다.
+   */
+  robot?: {
+    rows: number;
+    cols: number;
+    walls: boolean[];
+    r: number;
+    c: number;
+    d: number;
+    trail: number[];
+    cmds: string[];
+    at: number;
+    done: number;
+    cmd: string | null;
+    ahead: number | null;
+    block: "wall" | "edge" | null;
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];
