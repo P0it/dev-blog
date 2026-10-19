@@ -158,6 +158,17 @@ export type StageState = {
    * `plan` 은 이번에 지울 예정인 배수, `fresh` 는 이 스텝에서 새로 지운 수, `done` 이면 남은 수(소수)를 강조한다.
    */
   sieve?: { n: number; erased: boolean[]; i?: number; plan?: number[]; fresh?: number[]; done?: boolean };
+  /**
+   * 최대공약수 타일 바닥. `w`×`h` 직사각형(w ≥ h)에 지금까지 깐 정사각형 `squares`(`k` = 몇 번째 반복에서 깔았나),
+   * 아직 못 깐 바닥 `region`(없으면 다 깔았다), 이 스텝에서 방금 깐 반복 번호 `now`(0 이면 없다).
+   */
+  tiles?: {
+    w: number;
+    h: number;
+    squares: { x: number; y: number; s: number; k: number }[];
+    region: { x: number; y: number; w: number; h: number } | null;
+    now: number;
+  };
   /** 경우를 한 줄씩 적는 표. 아직 안 한 줄은 todo, 지금 보는 줄은 current, 한도 안 최고 값을 쥔 줄은 best */
   table?: {
     head: string[];

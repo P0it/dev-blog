@@ -281,7 +281,16 @@ export const registry: AlgoEntry[] = [
   },
 
   // ── 수학
-  plan("gcd", "최대공약수", "유클리드가 2300년 전에 푼 문제", "수학", ["gcd", "유클리드"], ["약수", "기약분수"]),
+  {
+    slug: "gcd",
+    title: "최대공약수",
+    lede: "유클리드가 2300년 전에 푼 문제",
+    category: "수학",
+    tier: 1,
+    aliases: ["gcd", "유클리드", "유클리드 호제법", "최소공배수", "lcm", "약수", "math.gcd"],
+    signals: ["최대공약수·최소공배수", "기약분수로 만들기", "주기가 다시 맞물리는 때"],
+    status: "ready",
+  },
   {
     slug: "sieve",
     title: "에라토스테네스의 체",
