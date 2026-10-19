@@ -22,7 +22,7 @@ export function QueenReveal({ children }: { children: ReactNode }) {
           내 예상 <b>{res?.guessLabel ?? ""}</b> · 실제 <b>안 된다</b> → {res?.predicted ? "맞았어요" : "달랐어요"}
         </p>
         <p>
-          {`퀸을 ${res?.places ?? 0}번 놓고 ${res?.backs ?? 0}번 거둬서 해를 찾았습니다. 첫 줄 맨 왼쪽은 막다른 길이었습니다. 이 보드에서 퀸 ${QUEEN_N}개를 놓는 방법은 모두 ${SOLUTIONS}가지입니다.`}
+          {`퀸을 ${res?.places ?? 0}번 놓고 ${res?.backs ?? 0}번 거둬서 해를 찾았습니다. 첫 줄 맨 왼쪽은 막다른 길이었습니다. 이 보드에서 퀸 ${QUEEN_N}개를 서로 노리지 않게 놓는 방법은 모두 ${SOLUTIONS}가지입니다.`}
         </p>
         {children}
       </div>

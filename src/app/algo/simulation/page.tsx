@@ -44,9 +44,9 @@ export default async function SimulationPage() {
       </>
     ),
     options: [
+      { label: "막힌다 — 10번 줄을 건너뛰고 제자리에 선다", correct: true },
       { label: "움직인다 — 10번 줄로 가서 벽 칸으로 들어간다" },
       { label: "한 칸을 더 가서 벽 너머로 간다" },
-      { label: "막힌다 — 10번 줄을 건너뛰고 제자리에 선다", correct: true },
     ],
     why: (
       <>
@@ -64,7 +64,7 @@ export default async function SimulationPage() {
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
-        로봇에게 명령 줄이 주어졌습니다. <strong>다 하고 나면 어디에 설지 먼저 고르고</strong> 명령을 한 글자씩 대신
+        로봇에게 명령 줄이 주어졌습니다. <strong>다 하고 나면 처음 칸에서 몇 칸 떨어질지 먼저 고르고</strong>, 명령을 한 글자씩 대신
         실행해 보세요.
       </p>
 
@@ -144,8 +144,8 @@ export default async function SimulationPage() {
           </>
         }
         options={[
-          { label: `${cell(SWAPPED_END)} 칸`, correct: true },
           { label: `${cell(END)} 칸 — L 일 때와 같다` },
+          { label: `${cell(SWAPPED_END)} 칸`, correct: true },
           { label: `${cell(OPEN_END)} 칸 — 벽이 없는 방이라면 가는 칸` },
         ]}
         why={

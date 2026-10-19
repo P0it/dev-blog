@@ -48,12 +48,12 @@ export function PermByHand({ onDone, onReset }: { onDone?: (r: PermResult) => vo
 
     const word = next.map((i) => ITEMS[i]).join("");
     if (found.includes(word)) {
-      return setNotice(`${word}는 이미 찾은 순서예요. 한 칸 되돌려서 다른 친구를 세워 보세요.`);
+      return setNotice(`${letterJosa(word, "은", "는")} 이미 찾은 순서예요. 한 칸 되돌려서 다른 친구를 세워 보세요.`);
     }
     const nextFound = [...found, word];
     setFound(nextFound);
     if (nextFound.length === TOTAL) {
-      setNotice(`모든 순서를 찾았어요. ${word}가 마지막 한 가지였어요.`);
+      setNotice(`모든 순서를 찾았어요. ${letterJosa(word, "이", "가")} 마지막 한 가지였어요.`);
       onDone?.({ found: nextFound.length, guess, predicted: guess === TOTAL, places: nextPlaces, undos });
     } else {
       setNotice(`${word} 한 가지를 찾았어요(${nextFound.length}가지째). 한 칸 되돌려서 다른 순서를 찾아 보세요.`);
@@ -90,10 +90,10 @@ export function PermByHand({ onDone, onReset }: { onDone?: (r: PermResult) => vo
 
   const ask =
     guess === null
-      ? `친구 ${ITEMS.join("·")}가 한 줄로 섭니다. 서는 순서는 모두 몇 가지일까요?`
+      ? `친구 ${letterJosa(ITEMS.join("·"), "이", "가")} 한 줄로 서요. 서는 순서는 모두 몇 가지일까요?`
       : finished
         ? `내 예상 ${guess}가지, 찾은 순서 ${found.length}가지 — ${guess === TOTAL ? "맞았습니다" : "달랐습니다"}`
-        : "목표: 서로 다른 순서를 빠짐없이 모두 찾기. 앞자리부터 친구를 한 명씩 세우고, 자리가 다 차면 한 칸씩 되돌리며 다른 순서를 찾아 보세요";
+        : "목표: 서로 다른 순서를 빠짐없이 찾기. 앞자리부터 친구를 한 명씩 세우고, 자리가 다 차면 한 칸씩 되돌리며 다른 순서를 찾아 보세요";
 
   return (
     <section className="algo-byhand algo-perm-hand" aria-label="줄 서는 순서 모두 찾기">

@@ -29,7 +29,7 @@ export function PermReveal({ children }: { children: ReactNode }) {
         <p className="algo-chain">
           <b>3 × 2 × 1 = {TOTAL}가지</b>
           <span>
-            첫 자리 3가지 → 둘째 자리 2가지 → 셋째 자리 1가지. 친구를 세운 횟수는 {res?.places ?? ""}번이었고, 헛걸음 없이 찾으면{" "}
+            첫 자리 3가지 → 둘째 자리 2가지 → 셋째 자리 1가지. 친구를 세운 횟수는 {res?.places ?? ""}번이었습니다. 헛걸음 없이 찾으면{" "}
             {MIN_PLACES}번입니다.
           </span>
         </p>

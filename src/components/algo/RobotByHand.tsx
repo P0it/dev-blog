@@ -89,7 +89,7 @@ export function RobotByHand({ onDone, onReset }: { onDone?: (r: RobotResult) => 
     if (guess === null) return setNotice("먼저 로봇이 몇 칸 떨어져 서게 될지 골라 주세요.");
     if (finished) return;
     if (asking) return setNotice("먼저 이 F 가 어떻게 될지 골라 주세요.");
-    if (cmd !== "F") return setNotice(`이번 명령은 ${cmd} 예요. 칸이 아니라 아래 방향 버튼에서 새 방향을 눌러 주세요.`);
+    if (cmd !== "F") return setNotice(`이번 명령은 ${cmd}이에요. 칸이 아니라 아래 방향 버튼에서 새 방향을 눌러 주세요.`);
 
     const s = stepCommand(ROOM, pose, "F");
     const target = s.pose.r * ROOM_COLS + s.pose.c;
@@ -123,7 +123,7 @@ export function RobotByHand({ onDone, onReset }: { onDone?: (r: RobotResult) => 
     }
     setWrong((w) => w + 1);
     setNotice(
-      `${cmd} 는 ${cmd === "R" ? "오른쪽(시계 방향)" : "왼쪽(반시계 방향)"}으로 90도예요. ${ARROWS[pose.d]} ${DIR_OBJ[pose.d]} 보고 있으니 ${ARROWS[s.pose.d]} 쪽이 돼요.`,
+      `${cmd}은 ${cmd === "R" ? "오른쪽(시계 방향)" : "왼쪽(반시계 방향)"}으로 90도예요. ${ARROWS[pose.d]} ${DIR_OBJ[pose.d]} 보고 있으니 ${ARROWS[s.pose.d]} 쪽이 돼요.`,
     );
   };
 
@@ -140,7 +140,7 @@ export function RobotByHand({ onDone, onReset }: { onDone?: (r: RobotResult) => 
 
   const ask =
     guess === null
-      ? "방에 로봇(▲)이 서 있어요. 명령 줄을 한 글자씩 따라 해요. F 는 앞으로 한 칸, R 은 오른쪽으로 90도, L 은 왼쪽으로 90도 돌아요. 명령 8개를 다 하고 나면 로봇은 처음 칸에서 몇 칸 떨어져 있을까요?"
+      ? "방에 로봇(▲)이 서 있어요. 명령 줄을 한 글자씩 따라 해요. F 는 앞으로 한 칸 가고, R 은 오른쪽으로, L 은 왼쪽으로 90도 돌아요. 명령 8개를 다 하고 나면 로봇은 처음 칸에서 몇 칸 떨어져 있을까요?"
       : finished
         ? `내 예상 ${guess}칸, 실제 ${ACTUAL}칸 — ${guess === ACTUAL ? "맞았습니다" : "달랐습니다"}`
         : asking

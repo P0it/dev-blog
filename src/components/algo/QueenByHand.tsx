@@ -35,9 +35,9 @@ export function QueenByHand({ onDone, onReset }: { onDone?: (r: QueenResult) => 
   const stuck = !finished && nextCol(at, row, start[row], N) === null;
 
   const click = (r: number, c: number) => {
-    if (guess === null) return setNotice("먼저 맞혀 보세요. 아래 세 가지 중에 골라 주세요.");
+    if (guess === null) return setNotice("먼저 맞혀 보세요. 위의 세 가지 중에 골라 주세요.");
     if (finished) return;
-    if (r !== row) return setNotice(`지금은 줄 ${row} 에 놓을 차례예요. 위 줄부터 한 줄에 하나씩 놓습니다.`);
+    if (r !== row) return setNotice(`지금은 줄 ${row} 에 놓을 차례예요. 위 줄부터 한 줄에 하나씩 놓아요.`);
     const by = attackedBy(at, r, c);
     if (by) return setNotice(`칸 ${c} 에는 놓을 수 없어요. ${attackReason(by)}.`);
     if (c < start[row]) return setNotice(`칸 ${josa(c, "은", "는")} 이미 해 봤어요. 그 오른쪽 칸부터 다시 시도해요.`);
@@ -53,7 +53,7 @@ export function QueenByHand({ onDone, onReset }: { onDone?: (r: QueenResult) => 
     const p = places + 1;
     setPlaces(p);
     if (row + 1 === N) {
-      setNotice(`퀸 ${N}개를 모두 놓았어요. 서로 노리는 퀸이 없습니다.`);
+      setNotice(`퀸 ${N}개를 모두 놓았어요. 서로 노리는 퀸이 없어요.`);
       onDone?.({ backs, places: p, guessLabel: PREDICT[guess].label, predicted: guess === CORRECT });
     } else {
       setNotice("");
@@ -87,7 +87,7 @@ export function QueenByHand({ onDone, onReset }: { onDone?: (r: QueenResult) => 
 
   const ask =
     guess === null
-      ? `${N}×${N} 보드에 퀸 ${N}개를 서로 노리지 않게 놓습니다. 퀸은 같은 줄·같은 열·대각선에 있는 칸을 노려요. 첫 줄 맨 왼쪽(칸 0)에 놓으면 끝까지 놓을 수 있을까요?`
+      ? `${N}×${N} 보드에 퀸 ${N}개를 서로 노리지 않게 놓아요. 퀸은 같은 줄·같은 열·대각선에 있는 칸을 노려요. 첫 줄 맨 왼쪽(칸 0)에 놓으면 끝까지 놓을 수 있을까요?`
       : finished
         ? `내 예상 「${PREDICT[guess].label}」 — ${guess === CORRECT ? "맞았습니다" : "달랐습니다"}`
         : stuck

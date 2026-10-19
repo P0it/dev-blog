@@ -13,6 +13,7 @@ import {
     factorial,
   countPerm,
   countComb,
+  letterJosa,
 } from "@/lib/algo/permutations";
 import { timeLabel } from "@/lib/algo/big-o";
 
@@ -39,7 +40,7 @@ export default async function PermutationsPage() {
     options: [
       { label: "새 친구를 한 명 더 세운다" },
       { label: "모든 자리를 비우고 처음부터 다시 한다" },
-      { label: `마지막에 선 ${PERM_ITEMS[N - 1]}를 빼고 되돌아간다`, correct: true },
+      { label: `마지막에 선 ${letterJosa(PERM_ITEMS[N - 1], "을", "를")} 빼고 되돌아간다`, correct: true },
     ],
     why: (
       <>
@@ -57,8 +58,8 @@ export default async function PermutationsPage() {
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
-        친구 셋이 한 줄로 섭니다. <strong>서는 순서가 몇 가지일지 먼저 고르고</strong> 앞자리부터 친구를 세워 서로 다른
-        순서를 빠짐없이 모두 찾아 보세요.
+        친구 셋이 한 줄로 섭니다. <strong>서는 순서가 몇 가지일지 먼저 고르고</strong>, 앞자리부터 친구를 세워 서로 다른
+        순서를 빠짐없이 찾아 보세요.
       </p>
 
       <PermReveal>
@@ -71,7 +72,7 @@ export default async function PermutationsPage() {
           </li>
         </ul>
         <p>
-          자리마다 고르다 끝나면 되돌아와 다음을 고르는 방법 = <strong>백트래킹(backtracking)</strong>. 앞에서 본{" "}
+          자리마다 하나씩 고르다 끝에 닿으면 되돌아와 다른 것을 고르는 방법 = <strong>백트래킹(backtracking)</strong>. 앞에서 본{" "}
           <Link href="/algo/recursion">재귀</Link>가 이 일을 합니다.
         </p>
         <ul className="algo-keys">
@@ -90,7 +91,7 @@ export default async function PermutationsPage() {
             { label: "친구 10명", n: factorial(10), unit: "가지" },
             { label: "친구 12명", n: factorial(12), unit: "가지" },
           ]}
-          caption={`친구가 늘면 순서는 폭발합니다. 12명이면 1초에 1천만 번씩 세도 약 ${timeLabel(Math.log10(factorial(12)))} 걸립니다. 완전탐색 장에서 본 N!입니다.`}
+          caption={`친구가 늘면 순서가 확 늘어납니다. 12명이면 1초에 1천만 번씩 세도 약 ${timeLabel(Math.log10(factorial(12)))} 걸립니다. 완전탐색 장에서 본 N!입니다.`}
         />
       </PermReveal>
 
@@ -115,8 +116,8 @@ export default async function PermutationsPage() {
         부릅니다. 위에서 해 본 것과 <strong>같은 친구 셋</strong>입니다.
       </p>
       <p>
-        <strong>다음</strong>을 눌러 한 줄씩 넘겨 보세요. 모든 줄을 올리면 150스텝이 넘어서, 친구를 세우는 10번 줄, 결과를 담는 4번 줄,
-        마지막 친구를 빼는 12번 줄만 올렸습니다.
+        <strong>다음</strong>을 눌러 한 줄씩 넘겨 보세요. 모든 줄을 보여 주면 150스텝이 넘습니다. 그래서 친구를 세우고 부르는 10번 줄, 결과를 담은 뒤 돌아가는 4번 줄,
+        마지막 친구를 빼고 표시를 지우는 12번 줄만 켜집니다.
       </p>
 
       <PermPlayer tape={tape} title="친구를 세우고 되돌리며 모든 순서를 찾는 모습" pause={pause} />
@@ -146,14 +147,14 @@ export default async function PermutationsPage() {
       <Quiz
         question="친구가 넷(A·B·C·D)이면 한 줄로 서는 순서는 모두 몇 가지일까요?"
         options={[
-          { label: "16가지 — 자리마다 4가지씩" },
-          { label: `${TOTAL * 2}가지 — 셋일 때의 ${TOTAL}가지를 두 배로` },
+          { label: "256가지 — 자리마다 4가지씩" },
           { label: `${FOUR}가지 — 4 × 3 × 2 × 1`, correct: true },
+          { label: `${TOTAL * 2}가지 — 셋일 때의 ${TOTAL}가지를 두 배로` },
         ]}
         why={
           <>
             첫 자리는 4가지, 둘째는 남은 3가지, 셋째는 2가지, 마지막은 1가지입니다. 곱하면 {FOUR}가지(4!)입니다. 자리를 채울수록
-            선택지가 하나씩 줄어서 4 × 4 가 아닙니다.
+            선택지가 하나씩 줄어서 4 × 4 × 4 × 4 가 아닙니다.
           </>
         }
       />

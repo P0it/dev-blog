@@ -39,8 +39,8 @@ export default async function NQueensPage() {
     ask: <>누르기 전에 맞혀 보세요. 퀸이 줄 0 칸 0, 줄 1 칸 2 에 있습니다. 다음 줄(줄 2)에 놓을 수 있는 칸이 있을까요?</>,
     options: [
       { label: "칸 1 에 놓을 수 있다" },
-      { label: "칸 3 에 놓을 수 있다" },
       { label: "하나도 없다 — 앞 줄로 돌아간다", correct: true },
+      { label: "칸 3 에 놓을 수 있다" },
     ],
     why: (
       <>
@@ -59,7 +59,7 @@ export default async function NQueensPage() {
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <p>
         퀸은 같은 줄·같은 열·대각선에 있는 칸을 노립니다. 보드에 퀸 {QUEEN_N}개를 서로 노리지 않게 놓습니다.{" "}
-        <strong>첫 줄 맨 왼쪽에 놓으면 끝까지 놓을 수 있을지 먼저 고르고</strong> 위 줄부터 한 줄에 하나씩 놓아 보세요.
+        <strong>첫 줄 맨 왼쪽에 놓으면 끝까지 놓을 수 있을지 먼저 고르고</strong>, 위 줄부터 한 줄에 하나씩 놓아 보세요.
       </p>
 
       <QueenReveal>
@@ -77,7 +77,7 @@ export default async function NQueensPage() {
           <Link href="/algo/permutations">순열과 조합 만들기</Link>에서도 같은 일을 했습니다.
         </p>
         <p>
-          보드의 모든 배치를 따지면 {QUEEN_N}×{QUEEN_N} 에서 퀸 {QUEEN_N}개를 놓는 방법이 {ALL4.toLocaleString("ko-KR")}가지입니다.
+          {QUEEN_N}×{QUEEN_N} 보드에 퀸 {QUEEN_N}개를 놓는 배치는 모두 {ALL4.toLocaleString("ko-KR")}가지입니다.
           백트래킹은 퀸을 {FIRST4}번 놓고 첫 해를 찾았습니다.
         </p>
         <Counter
@@ -85,7 +85,7 @@ export default async function NQueensPage() {
             { label: "8×8 모든 배치를 하나씩", n: ALL8, unit: "가지" },
             { label: "8×8 백트래킹으로 해 92개 모두", n: BT8_ALL, unit: "번" },
           ]}
-          caption={`8×8 에서 퀸 8개를 놓는 모든 배치는 약 44억 가지입니다. 하나씩 따지면 Python 으로 약 ${timeLabel(Math.log10(ALL8))}이 걸립니다. 막다른 길을 일찍 끊으면 놓는 횟수 ${BT8_ALL.toLocaleString("ko-KR")}번으로 해 ${SOLUTIONS[8]}개를 모두 찾습니다. 해 하나만이면 ${BT8_FIRST}번입니다.`}
+          caption={`8×8 에서 퀸 8개를 놓는 모든 배치는 약 44억 가지입니다. 하나씩 따지면 Python 으로 약 ${timeLabel(Math.log10(ALL8))} 걸립니다. 막다른 길을 일찍 끊으면 퀸을 ${BT8_ALL.toLocaleString("ko-KR")}번 놓아 해 ${SOLUTIONS[8]}개를 모두 찾습니다. 해 하나만 찾으면 ${BT8_FIRST}번입니다.`}
         />
       </QueenReveal>
 
@@ -108,12 +108,15 @@ export default async function NQueensPage() {
       <h2>코드는 놓고, 부르고, 안 되면 거둔다</h2>
       <p>
         위에서 놓아 본 것과 <strong>같은 보드</strong>입니다. 줄 번호와 칸 번호는 코드의 <code>row</code>, <code>col</code> 처럼
-        0부터 셉니다. <strong>다음</strong>을 눌러 퀸이 놓이고 거둬지는 걸 보세요. 칸을 훑는 줄은 한 스텝으로 묶었습니다.
+        0부터 셉니다. <strong>다음</strong>을 눌러 퀸이 놓이고 거둬지는 걸 보세요.
       </p>
 
       <QueenPlayer tape={tape} title="퀸을 놓고 거두는 모습" pause={pause} />
 
       <ul className="algo-keys">
+        <li>
+          <b>칸을 훑는 줄</b> — 플레이어에서는 한 스텝으로 묶었다
+        </li>
         <li>
           <b>
             <code>cols</code> <code>d1</code> <code>d2</code>
