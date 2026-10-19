@@ -37,7 +37,12 @@ export function StageTrack({
       <div className="algo-track-flags">
         {values.map((_, i) => (
           <span key={i} className="algo-flag">
-            {(flagsAt.get(i) ?? []).join("·")}
+            {/* 깃발이 둘 이상 겹치면(left 와 right 가 같은 칸) 한 줄에 우겨 넣지 않고 위아래로 쌓는다 */}
+            {(flagsAt.get(i) ?? []).map((name) => (
+              <span key={name} className="algo-flag-name">
+                {name}
+              </span>
+            ))}
           </span>
         ))}
       </div>

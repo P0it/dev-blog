@@ -4386,3 +4386,48 @@ button.algo-pick-go {
   content: ""; position: absolute; left: -8px; top: 3px; bottom: 3px; width: 2px;
   border-radius: 1px; background: var(--line-strong);
 }
+
+/* ── 완전탐색·이분 탐색 보강 — 경우 표 · 자물쇠 열어 보기 · 찾는 값 고르기 ── */
+.algo-pack { display: grid; gap: 10px; }
+.algo-pack-cap { margin: 0; font-size: 12.5px; color: var(--fg-assistive); }
+
+.algo-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.algo-table th {
+  text-align: left; font-weight: 600; font-size: 12px; color: var(--fg-assistive);
+  padding: 6px 10px; border-bottom: 1.5px solid var(--line-strong);
+}
+.algo-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--line-normal);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--fg-normal);
+}
+.algo-trow.todo td { color: var(--fg-assistive); }
+.algo-trow.current td { background: var(--bg-subtle); color: var(--fg-strong); font-weight: 600; }
+.algo-trow.over td { color: var(--fg-assistive); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.algo-trow.done td { color: var(--fg-neutral); }
+.algo-trow.best td { background: var(--bg-positive-soft); color: var(--fg-strong); font-weight: 600; }
+
+.algo-lock-go { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; min-height: 40px; }
+.algo-lock-go span { font-size: 13.5px; color: var(--fg-neutral); }
+button.algo-go {
+  min-height: 40px; padding: 0 20px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--bg-primary); border-radius: var(--radius-sm);
+  background: var(--bg-primary); color: var(--fg-on-color);
+}
+button.algo-go:hover:not(:disabled) { filter: brightness(1.06); }
+button.algo-go:disabled { opacity: .45; cursor: default; }
+
+.algo-picker { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 14px 0 12px; }
+.algo-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.algo-seg button {
+  min-height: 36px; padding: 0 12px; font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: transparent; color: var(--fg-neutral);
+}
+.algo-seg button[aria-pressed="true"] { background: var(--bg-primary); border-color: var(--bg-primary); color: var(--fg-on-color); }
+/* 경우 표가 들어간 플레이어는 코드 칸을 조금 더 준다 — 긴 한 줄(sum(...))이 잘리지 않게 */
+.algo-player-pane:has(.algo-pack) { grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr); }
+.algo-player-pane:has(.algo-pack) .algo-player-stage { padding: 28px 20px 20px; }
+.algo-pack .algo-table th, .algo-pack .algo-table td { padding: 6px 8px; font-size: 12.5px; }
+.algo-flag-name { display: block; line-height: 1.25; }
+.algo-flag { overflow: visible; }
+.algo-game-note { display: block; font-size: 13px; font-weight: 400; color: var(--fg-assistive); margin-top: 2px; }

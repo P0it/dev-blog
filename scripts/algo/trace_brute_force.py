@@ -18,11 +18,8 @@ CODE = [
     "    n = len(weights)",
     "    best = 0",
     "    for mask in range(2 ** n):",
-    "        w = v = 0",
-    "        for i in range(n):",
-    "            if mask >> i & 1:",
-    "                w += weights[i]",
-    "                v += values[i]",
+    "        w = sum(weights[i] for i in range(n) if mask >> i & 1)",
+    "        v = sum(values[i] for i in range(n) if mask >> i & 1)",
     "        if w <= limit and v > best:",
     "            best = v",
     "    return best",
@@ -40,11 +37,8 @@ def best_pack(weights, values, limit):
     n = len(weights)
     best = 0
     for mask in range(2 ** n):
-        w = v = 0
-        for i in range(n):
-            if mask >> i & 1:
-                w += weights[i]
-                v += values[i]
+        w = sum(weights[i] for i in range(n) if mask >> i & 1)
+        v = sum(values[i] for i in range(n) if mask >> i & 1)
         if w <= limit and v > best:
             best = v
     return best
@@ -54,7 +48,7 @@ FIRST_LINE = best_pack.__code__.co_firstlineno
 
 
 def trace_case(weights, values, limit):
-    """[[line, mask, i, w, v, best], …] — JS 쪽 steps 와 같은 모양. 아직 없는 변수는 None."""
+    """[[line, mask, w, v, best], …] — JS 쪽 steps 와 같은 모양. 아직 없는 변수는 None."""
     rows = []
 
     def tracer(frame, event, arg):
@@ -65,7 +59,6 @@ def trace_case(weights, values, limit):
             rows.append([
                 frame.f_lineno - FIRST_LINE + 1,
                 loc.get("mask"),
-                loc.get("i"),
                 loc.get("w"),
                 loc.get("v"),
                 loc.get("best"),

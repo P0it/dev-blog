@@ -111,3 +111,35 @@ test("시작 스텝은 아무 칸도 건드리지 않은 상태다", () => {
   const t = binarySearchTape([7, 12, 19, 23, 31, 42, 55, 68, 71, 90], 42);
   assert.ok(t.steps[0].stage.cells.every((c) => c === "out"), "첫 스텝은 전부 out 이어야 한다");
 });
+
+// ── ⑥ 틀리는 자리 — 등호를 뺀 코드(<) ──
+import { BINARY_SEARCH_LT_CODE } from "./binary-search.ts";
+
+const ARR = [7, 12, 19, 23, 31, 42, 55, 68, 71, 90];
+
+test("등호를 뺀 코드 — 맨 끝 90 은 배열에 있는데 한 칸 남은 순간을 안 보고 -1 이다", () => {
+  const ok = binarySearchTape(ARR, 90);
+  assert.equal(ok.steps.at(-1)!.done, true);
+  // 정상 코드는 한 칸(left == right == 9) 남은 순간을 본다
+  assert.ok(ok.steps.some((s) => s.vars.left === 9 && s.vars.right === 9 && s.line === 3));
+  const bad = binarySearchTape(ARR, 90, "lt");
+  assert.equal(bad.steps.at(-1)!.done, false);
+  assert.equal(bad.code[2], "    while left < right:");
+  assert.match(bad.steps.at(-1)!.note, /배열에 있는데/);
+});
+
+test("등호를 뺀 코드 — 없는 값 50 은 정상 코드와 같이 -1 이다", () => {
+  assert.equal(binarySearchTape(ARR, 50).steps.at(-1)!.done, false);
+  assert.equal(binarySearchTape(ARR, 50, "lt").steps.at(-1)!.done, false);
+  assert.equal(binarySearchTape(ARR, 50, "lt").steps.at(-1)!.note, "이 줄에는 없습니다");
+});
+
+test("BINARY_SEARCH_LT_CODE — 3번 줄만 다르다", () => {
+  const diff = BINARY_SEARCH_LT_CODE.filter((l, i) => l !== BINARY_SEARCH_CODE[i]);
+  assert.equal(diff.length, 1);
+});
+
+test("후보 칸 수를 알려 준다 — 게임의 '남은 후보'와 같은 말이다", () => {
+  const t = binarySearchTape(ARR, 42);
+  assert.equal(t.steps.find((s) => s.line === 3)!.note, "후보 10칸이 남았습니다");
+});

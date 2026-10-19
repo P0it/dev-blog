@@ -15,7 +15,9 @@ const HI = 100;
  */
 export function UpDownGame({ onWin }: { onWin?: () => void }) {
   const [secret, setSecret] = useState(() => randomSecret());
-  const [pick, setPick] = useState(50);
+  // 가운데(50)에서 시작하면 "가운데를 부르면 좋다"를 독자가 발견할 기회가 사라진다. 끝(1)에서 시작한다
+  const [pick, setPick] = useState(LO);
+  const [note, setNote] = useState("");
   const [range, setRange] = useState<Range>({ lo: LO, hi: HI });
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [tries, setTries] = useState<number[]>([]);
@@ -23,6 +25,12 @@ export function UpDownGame({ onWin }: { onWin?: () => void }) {
 
   const say = () => {
     if (over) return;
+    // 같은 수를 연달아 말하면 시도로 세지 않는다 — 실수가 7번 비교에 섞이면 안 된다
+    if (tries.at(-1) === pick) {
+      setNote("방금 말한 수예요. 세지 않습니다");
+      return;
+    }
+    setNote("");
     const r = respond(secret, pick, range);
     setRange(r.range);
     setVerdict(r.verdict);
@@ -32,7 +40,8 @@ export function UpDownGame({ onWin }: { onWin?: () => void }) {
 
   const reset = () => {
     setSecret(randomSecret());
-    setPick(50);
+    setPick(LO);
+    setNote("");
     setRange({ lo: LO, hi: HI });
     setVerdict(null);
     setTries([]);
@@ -86,6 +95,7 @@ export function UpDownGame({ onWin }: { onWin?: () => void }) {
         {verdict === "higher" && "더 커요 ↑"}
         {verdict === "lower" && "더 작아요 ↓"}
         {verdict === "hit" && `맞았습니다 — ${tries.length}번 만에`}
+        {note && <small className="algo-game-note">{note}</small>}
       </p>
 
       <ol className="algo-game-tries">
