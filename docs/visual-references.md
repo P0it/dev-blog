@@ -247,14 +247,14 @@
 
 | 문법 | 레퍼런스 | 맞는 개념 | 쓴 글 |
 |---|---|---|---|
-| 원문에 직접 표시 | NYT 뮬러 보고서 검열 표시, Genius 주석 | 마스킹·토큰화·템플릿 치환 | |
-| 실물 은유(구멍 뚫는 표·개찰구) | Ciechanowski Mechanical Watch, Nicky Case The Evolution of Trust | rate limit·토큰 예산·재시도 | |
-| 눈금 한 줄 | Tufte 스파크라인, Gapminder | 루프 횟수·요청 타임라인 | |
+| 원문에 직접 표시 | NYT 뮬러 보고서 검열 표시, Genius 주석 | 마스킹·토큰화·템플릿 치환 | langchain-middleware-hooks-guardrails |
+| 실물 은유(구멍 뚫는 표·개찰구) | Ciechanowski Mechanical Watch, Nicky Case The Evolution of Trust | rate limit·토큰 예산·재시도 | langchain-middleware-hooks-guardrails |
+| 눈금 한 줄 | Tufte 스파크라인, Gapminder | 루프 횟수·요청 타임라인 | langchain-middleware-hooks-guardrails |
 | 로그가 곧 그림 | Julia Evans 진, Stripe API 문서 | 에이전트 루프·도구 호출 | |
 | 생명선 | MDN CORS 흐름도, 시퀀스 다이어그램 | MCP·OAuth·미들웨어 전후 | |
-| 작은 그림 여러 장 | Tufte small multiples, The Pudding | 옵션 비교 | |
-| 손그림 층 | Excalidraw, Maggie Appleton, Rough.js | 미들웨어·하네스·샌드박스 | |
-| 노선도 | Harry Beck 지하철 노선도, Transit Maps | hook·CI 파이프라인 | |
+| 작은 그림 여러 장 | Tufte small multiples, The Pudding | 옵션 비교 | langchain-middleware-hooks-guardrails |
+| 손그림 층 | Excalidraw, Maggie Appleton, Rough.js | 미들웨어·하네스·샌드박스 | langchain-middleware-hooks-guardrails |
+| 노선도 | Harry Beck 지하철 노선도, Transit Maps | hook·CI 파이프라인 | langchain-middleware-hooks-guardrails |
 | 흐르는 글자 | Red Blob Games, Ciechanowski Internet | 스트리밍·필터·토크나이저 | |
 | 코드에 직접 메모 | Code Hike, Josh W. Comeau | 설정값이 동작을 정할 때 | |
 
