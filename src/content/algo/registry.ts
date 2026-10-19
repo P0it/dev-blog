@@ -108,7 +108,7 @@ export const registry: AlgoEntry[] = [
 
   // ── 정렬
   { slug: "bubble-sort", title: "버블 정렬", lede: "옆 사람과 키 순서로 서 보기", category: "정렬", tier: 1, aliases: ["bubble sort", "거품 정렬"], signals: ["옆칸만 비교", "제자리 정렬"], status: "ready" },
-  plan("selection-sort", "선택 정렬", "가장 작은 것부터 꺼내 놓기", "정렬", ["selection sort"], []),
+  { slug: "selection-sort", title: "선택 정렬", lede: "가장 작은 것부터 꺼내 놓기", category: "정렬", tier: 1, aliases: ["selection sort", "선택정렬", "최솟값 정렬"], signals: ["n이 작다", "바꾸는 횟수를 줄여야 한다", "k번째로 작은 것까지만"], status: "ready" },
   plan("insertion-sort", "삽입 정렬", "카드를 한 장씩 끼워 넣기", "정렬", ["insertion sort"], ["거의 정렬돼 있다"]),
   plan("merge-sort", "병합 정렬", "반으로 쪼갰다 붙이기", "정렬", ["merge sort"], []),
   plan("quick-sort", "퀵 정렬", "기준 하나로 좌우를 가르기", "정렬", ["quick sort", "pivot"], []),
