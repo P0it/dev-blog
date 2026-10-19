@@ -171,7 +171,7 @@ export function SelectByHand({ onDone }: { onDone?: (r: SelectResult | null) => 
           ? "왼쪽부터 작은 순서로 섰습니다"
           : phase === "predict"
             ? "카드 여섯 장을 작은 수부터 왼쪽에 늘어놓습니다. 먼저 맞혀 보세요. 첫 바퀴를 끝내면 맨 앞에 어떤 카드가 올까요?"
-            : "숫자는 키입니다. 안 정한 카드를 앞에서부터 한 장씩 보며 가장 작은 카드를 찾아 왼쪽 끝으로 보냅니다"}
+            : "숫자가 작을수록 왼쪽에 서야 합니다. 안 정한 카드를 앞에서부터 한 장씩 보며 가장 작은 카드를 찾아 왼쪽 끝으로 보냅니다"}
       </p>
 
       <div className="algo-track-cells">

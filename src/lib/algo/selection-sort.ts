@@ -79,7 +79,7 @@ function* walk(input: number[]): Generator<Step> {
       line: 3,
       vars: vars(n, i, j, min),
       stage: stage(arr, a, null, null, a),
-      note: `${a + 1}번째 바퀴입니다. 앞 ${a}칸은 이미 자리를 잡았습니다`,
+      note: a === 0 ? "1번째 바퀴입니다. 아직 자리를 잡은 칸이 없습니다" : `${a + 1}번째 바퀴입니다. 앞 ${a}칸은 이미 자리를 잡았습니다`,
     };
 
     min = a;

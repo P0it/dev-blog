@@ -44,7 +44,7 @@ export default async function SelectionSortPage() {
     ],
     why: (
       <>
-        {SELECT_CARDS[1]} 가 {SELECT_CARDS[0]} 보다 작아서 <code>min_idx = j</code> 가 실행됩니다. 후보는 늘 하나뿐이고,
+        {SELECT_CARDS[1]} 가 {SELECT_CARDS[0]} 보다 작아서 <code>min_idx = j</code> 가 실행됩니다. 후보는 늘 하나뿐입니다.
         더 작은 카드를 만나야 바뀝니다.
       </>
     ),
@@ -146,7 +146,7 @@ export default async function SelectionSortPage() {
         why={
           <>
             6 은 1 과, 5 는 2 와, 4 는 3 과 맞바꾸면 끝납니다. 그 뒤 바퀴는 후보가 이미 제자리라 바꾸지 않습니다.{" "}
-            <strong>거꾸로 선 쌍마다 한 번씩</strong>({revBubble}번)은 버블 정렬이고, {ops.codeSwaps}번은{" "}
+            <strong>거꾸로 선 쌍마다 한 번씩</strong>({revBubble}번)은 버블 정렬이고 {ops.codeSwaps}번은{" "}
             <code>2 3 4 5 6 1</code> 처럼 한 칸씩 돌려 놓은 줄에서 나옵니다.
           </>
         }
@@ -157,7 +157,7 @@ export default async function SelectionSortPage() {
       <ul className="algo-keys">
         <li>
           <b>같은 값의 순서가 뒤집힌다</b> — 먼 칸과 맞바꾼다. <code>2a 2b 1c</code> 를 정렬하면{" "}
-          {selectionLabels(pairs, "<").join(" ")} 이 된다. 안정 정렬이 아니다
+          {selectionLabels(pairs, "<").join(" ")} 가 된다. 안정 정렬이 아니다
         </li>
         <li>
           <b>
@@ -183,7 +183,7 @@ export default async function SelectionSortPage() {
         <b>k 번째로 작은 것까지만 필요하다</b>
       </div>
       <p>
-        실전에서 정렬이 필요하면 <code>sorted()</code> 한 줄이면 됩니다.
+        실전에서 정렬이 필요할 때는 <code>sorted()</code> 한 줄이면 됩니다.
       </p>
       <p className="algo-next">다음 장에서는 카드를 한 장씩 알맞은 자리에 끼워 넣는 삽입 정렬을 봅니다.</p>
     </main>
