@@ -1,26 +1,40 @@
 "use client";
 
 import { useState } from "react";
-
-const START = [5, 2, 9, 1, 7, 4];
+import { HAND_VALUES } from "@/lib/algo/bubble-sort";
 
 /**
- * ① 직접 해 보기 — 칸 두 개를 눌러 자리를 바꿔 가며 손으로 정렬한다.
+ * ① 직접 해 보기 — 키 순서로 서 보기. **바로 옆 칸끼리만** 자리를 바꿀 수 있다.
  *
- * 다 맞추고 나면 몇 번 바꿨는지 센 숫자가 뜬다. 그 숫자가 ②되짚기의 재료다.
- * 출퇴근길 한 손 조작이라 드래그가 아니라 **두 번 탭**으로 바꾼다.
+ * 컴퓨터(버블 정렬)가 하는 일과 같은 규칙이라야 ② 가 거짓말이 안 된다. 아무 두 칸이나 바꾸게 하면
+ * 2번에 끝나서 "컴퓨터는 옆칸만"이라는 ② 의 말과 어긋난다. 두 번 탭으로 바꾼다(드래그 ✗).
+ * 다 맞추면 `onDone(바꾼 횟수)`, 처음부터를 누르면 `onDone(null)`.
  */
-export function SortByHand({ onDone }: { onDone?: (swaps: number) => void }) {
-  const [values, setValues] = useState(START);
+export function SortByHand({ onDone }: { onDone?: (swaps: number | null) => void }) {
+  const [values, setValues] = useState(HAND_VALUES);
   const [picked, setPicked] = useState<number | null>(null);
   const [swaps, setSwaps] = useState(0);
+  const [notice, setNotice] = useState("");
 
   const sorted = values.every((v, i) => i === 0 || values[i - 1] <= v);
 
   const tap = (i: number) => {
     if (sorted) return;
-    if (picked === null) return setPicked(i);
-    if (picked === i) return setPicked(null);
+    if (picked === null) {
+      setPicked(i);
+      setNotice("");
+      return;
+    }
+    if (picked === i) {
+      setPicked(null);
+      return;
+    }
+    if (Math.abs(picked - i) !== 1) {
+      // 떨어진 칸은 못 바꾼다 — 새로 고른 칸으로 옮겨 주고 이유를 알린다
+      setPicked(i);
+      setNotice("옆 칸끼리만 바꿀 수 있어요. 바꿀 짝은 바로 옆 칸입니다.");
+      return;
+    }
 
     const next = [...values];
     [next[picked], next[i]] = [next[i], next[picked]];
@@ -28,19 +42,24 @@ export function SortByHand({ onDone }: { onDone?: (swaps: number) => void }) {
     setValues(next);
     setSwaps(n);
     setPicked(null);
+    setNotice("");
     if (next.every((v, k) => k === 0 || next[k - 1] <= v)) onDone?.(n);
   };
 
   const reset = () => {
-    setValues(START);
+    setValues(HAND_VALUES);
     setPicked(null);
     setSwaps(0);
+    setNotice("");
+    onDone?.(null);
   };
 
   return (
-    <section className="algo-byhand" aria-label="손으로 정렬해 보기">
+    <section className="algo-byhand" aria-label="키 순서로 서 보기">
       <p className="algo-byhand-ask">
-        {sorted ? "작은 수부터 늘어놓았습니다" : "두 칸을 눌러 자리를 바꿉니다"}
+        {sorted
+          ? "왼쪽부터 작은 순서로 섰습니다"
+          : "숫자는 키입니다. 왼쪽이 가장 작게 세워 보세요. 옆 칸끼리만 바꿀 수 있어요"}
       </p>
 
       <div className="algo-track-cells">
@@ -54,10 +73,13 @@ export function SortByHand({ onDone }: { onDone?: (swaps: number) => void }) {
             disabled={sorted}
           >
             <span>{v}</span>
-            <span className="algo-cell-index">{i}</span>
           </button>
         ))}
       </div>
+
+      <p className="algo-notice" role="status">
+        {notice || " "}
+      </p>
 
       <div className="algo-byhand-foot">
         <span>

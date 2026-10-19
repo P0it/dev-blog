@@ -35,8 +35,11 @@ export function StageGrid({
         <span className="algo-lane-label">큐</span>
         <span className="algo-lane-out">← 꺼낸다</span>
         <ol className="algo-lane-items">
-          {(state.queue ?? []).map((n, i) => (
-            <li key={i}>{n}</li>
+          {(state.queue ?? []).map((n, i, all) => (
+            // 숫자(걸음 수)가 같은 칸끼리 한 겹 — 겹이 바뀌는 자리에 칸막이가 선다
+            <li key={i} data-layer-start={i > 0 && all[i - 1] !== n ? "" : undefined}>
+              {n}
+            </li>
           ))}
           {(state.queue ?? []).length === 0 && <li data-empty>비어 있음</li>}
         </ol>

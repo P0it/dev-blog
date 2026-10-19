@@ -4,9 +4,9 @@ import { TrackPlayer } from "@/components/algo/TrackPlayer";
 import { SortReveal } from "@/components/algo/SortReveal";
 import { Counter } from "@/components/algo/Counter";
 import { Quiz } from "@/components/algo/Quiz";
-import { bubbleSortTape, countOps } from "@/lib/algo/bubble-sort";
+import { bubbleSortTape, countOps, countOpsNoShrink, sortLabels, HAND_VALUES } from "@/lib/algo/bubble-sort";
 
-const VALUES = [5, 2, 9, 1, 7, 4];
+const VALUES = HAND_VALUES;
 const BIG = 1000;
 
 export const metadata: Metadata = {
@@ -17,6 +17,12 @@ export const metadata: Metadata = {
 export default async function BubbleSortPage() {
   const tape = await highlightTape(bubbleSortTape(VALUES));
   const ops = countOps(VALUES);
+  const wide = countOpsNoShrink(VALUES);
+  const pairs: [number, string][] = [
+    [2, "a"],
+    [2, "b"],
+    [1, "c"],
+  ];
 
   return (
     <main className="algo-page">
@@ -25,16 +31,18 @@ export default async function BubbleSortPage() {
       <p className="algo-lede">옆 사람과 키 순서로 서 보기</p>
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
-      <p>여섯 칸을 작은 수부터 늘어놓아 보세요. 두 칸을 누르면 자리가 바뀝니다.</p>
+      <p>여섯 칸을 작은 수부터 늘어놓아 보세요. 두 칸을 누르면 자리가 바뀌는데, 옆 칸끼리만 됩니다.</p>
 
-      <SortReveal>
+      <SortReveal minSwaps={ops.swaps} compares={ops.compares}>
         <p>
-          컴퓨터는 한눈에 못 봅니다. <strong>옆칸 둘씩만</strong> 견줄 수 있습니다. 그래서
-          앞에서 뒤로 훑으며 앞이 크면 바꾸기를 되풀이합니다.
+          컴퓨터도 방금 여러분처럼 <strong>옆칸 둘씩만</strong> 견줍니다. 앞이 크면 바꾸고, 앞에서 뒤로 훑기를
+          되풀이합니다.
         </p>
         <p>
-          한 바퀴 돌면 가장 큰 수가 맨 뒤로 밀려납니다. 이렇게 옆칸 비교만으로 정렬하는 방법 ={" "}
-          <strong>버블 정렬</strong>
+          한 바퀴 돌면 가장 큰 수가 맨 뒤로 밀려납니다. 큰 수가 거품처럼 떠오른다고 해서 이름이 거품(버블)입니다.
+        </p>
+        <p>
+          옆칸 비교만으로 정렬하는 방법 = <strong>버블 정렬</strong>
         </p>
       </SortReveal>
 
@@ -52,9 +60,25 @@ export default async function BubbleSortPage() {
         </li>
       </ul>
 
-      {/* ④ 코드와 플레이어 */}
+      {/* ④ 코드와 플레이어 — 먼저 예측 */}
       <h2>코드는 바퀴 두 번 도는 것이 전부다</h2>
-      <p><strong>다음</strong>을 눌러 한 줄씩 넘기며 확정된 칸이 뒤에서부터 쌓이는 걸 보세요.</p>
+      <Quiz
+        question="5 2 9 1 7 4 를 앞에서 뒤로 한 번만 훑고 나면, 맨 끝 칸에는 무엇이 있을까요?"
+        options={[
+          { label: "5 — 맨 앞에 있던 수" },
+          { label: "9 — 가장 큰 수", correct: true },
+          { label: "4 — 원래 맨 끝에 있던 수" },
+        ]}
+        why={
+          <>
+            9 는 훑는 동안 만나는 수마다 앞이 더 커서 바뀝니다. 1, 7, 4 와 차례로 바뀌며 끝까지 밀려갑니다. 아래
+            플레이어에서 확인해 보세요.
+          </>
+        }
+      />
+      <p>
+        <strong>다음</strong>을 눌러 한 줄씩 넘기며 확정된 칸이 뒤에서부터 쌓이는 걸 보세요.
+      </p>
 
       <TrackPlayer tape={tape} values={VALUES} title="버블 정렬이 한 칸씩 도는 모습" />
 
@@ -83,20 +107,49 @@ export default async function BubbleSortPage() {
       <Quiz
         question="이미 작은 수부터 정렬된 배열을 넣으면 비교는 몇 번일까요?"
         options={[
-          { label: "0번 — 바꿀 게 없으니 건너뛴다" },
           { label: "정렬이 안 된 때와 똑같다", correct: true },
+          { label: "5번 — 한 바퀴만 훑는다" },
+          { label: "0번 — 바꿀 게 없으니 건너뛴다" },
         ]}
         why={
           <>
-            바꾸기는 한 번도 안 일어나지만 <strong>비교는 그대로 다 합니다.</strong> 코드가
-            &ldquo;이미 정렬됐다&rdquo;를 확인하는 줄이 없기 때문입니다. 한 바퀴에 한 번도 안
-            바뀌면 멈추는 줄을 넣으면 그때부터 달라집니다.
+            바꾸기는 한 번도 안 일어나지만 <strong>비교는 그대로 다 합니다.</strong>{" "}
+            코드에 &ldquo;이미 정렬됐다&rdquo;를 확인하는 줄이 없어서입니다. 한 바퀴에 한 번도 안 바뀌면 멈추는 줄을 넣으면 그때부터
+            달라집니다. 그러면 여섯 칸은 5번으로 끝납니다.
           </>
         }
       />
 
-      {/* ⑥ 틀리는 자리 → ⑦ 신호 */}
-      <h2>버블 정렬은 실전에서 쓰지 않는다</h2>
+      {/* ⑥ 틀리는 자리 */}
+      <h2>버블 정렬에서 틀리는 자리</h2>
+      <ul className="algo-keys">
+        <li>
+          <b>
+            <code>- i</code> 를 빼면
+          </b>{" "}
+          — 답은 맞는데 비교가 {ops.compares}번에서 {wide.compares}번으로 는다. 끝자리에 확정된 칸을 또 보기 때문이다
+        </li>
+        <li>
+          <b>
+            <code>range(n - 1 - i)</code> 대신 <code>range(n)</code>
+          </b>{" "}
+          — 마지막 칸에서 <code>arr[j + 1]</code> 이 없어 IndexError 가 난다
+        </li>
+        <li>
+          <b>
+            <code>&gt;</code> 대신 <code>&gt;=</code>
+          </b>{" "}
+          — 같은 값끼리도 자리를 바꾼다. 2a 2b 1c 를 정렬하면 <code>&gt;</code> 는 {sortLabels(pairs, ">").join(" ")},
+          <code>&gt;=</code> 는 {sortLabels(pairs, ">=").join(" ")} 다
+        </li>
+      </ul>
+      <p>
+        같은 값의 원래 순서가 그대로 남는 정렬 = <strong>안정 정렬</strong>. <code>&gt;</code> 로 쓴 버블 정렬은
+        안정 정렬입니다.
+      </p>
+
+      {/* ⑦ 신호 */}
+      <h2>쓸 일은 적지만 이럴 때 나온다</h2>
       <Counter
         rows={[
           { label: `버블 정렬 · ${BIG}개`, n: (BIG * (BIG - 1)) / 2, unit: "번" },
@@ -105,16 +158,15 @@ export default async function BubbleSortPage() {
         caption="같은 1000개를 정렬할 때의 비교 횟수. 10000개면 차이가 또 열 배로 벌어집니다."
       />
       <p>
-        여섯 칸짜리 예시에서는 비교 {ops.compares}번, 교환 {ops.swaps}번이었습니다. 칸이 늘어나면
-        이 수가 제곱으로 커집니다.
+        여섯 칸짜리 예시에서는 비교 {ops.compares}번, 교환 {ops.swaps}번이었습니다. 칸이 늘어나면 이 수가 제곱으로
+        커집니다.
       </p>
-
-      <h2>그래도 버블 정렬을 배우는 이유</h2>
       <div className="algo-signals">
-        <b>옆칸만 비교</b>
-        <b>제자리에서 정렬</b>
-        <b>n² 가 어떤 느낌인지</b>
+        <b>교환 횟수를 세라는 문제</b>
+        <b>n 이 작고 구현이 단순해야 할 때</b>
+        <b>같은 값의 순서를 지켜야 할 때</b>
       </div>
+      <p>실전에서 정렬이 필요하면 <code>sorted()</code> 한 줄이면 됩니다.</p>
       <p className="algo-next">
         다음 장에서는 한 바퀴에 가장 작은 수를 골라 앞으로 보내는 선택 정렬을 봅니다.
       </p>
