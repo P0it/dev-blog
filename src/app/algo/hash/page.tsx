@@ -37,7 +37,7 @@ export default async function HashPage() {
           </li>
         </ul>
         <p>
-          파이썬의 <code>dict</code> 와 <code>set</code> 이 이 방법으로 돕니다. 리스트에서 <code>x in arr</code> 은 칸을 처음부터 훑는 N 번이고, <code>set</code> 은 칸 번호를
+          파이썬의 <code>dict</code> 와 <code>set</code> 이 이 방법을 씁니다. 리스트의 <code>x in arr</code> 은 칸을 처음부터 N 번 훑습니다. <code>set</code> 은 칸 번호를
           계산해 바로 엽니다.
         </p>
         <Counter
@@ -69,7 +69,7 @@ export default async function HashPage() {
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 칸을 계산하는 한 줄이 중심이다</h2>
       <p>
-        <strong>다음</strong>을 눌러 한 줄씩 넘기며 이름표가 칸에 들어가고, 칸 안만 훑어 찾는 걸 보세요. 위 ① 의 이름표 여섯 개와 같습니다.
+        <strong>다음</strong>을 눌러 한 줄씩 넘겨 보세요. 이름표가 칸에 들어가고, 찾을 때는 칸 안만 훑습니다. 위 ① 의 이름표 여섯 개와 같습니다.
       </p>
 
       <HashPlayer

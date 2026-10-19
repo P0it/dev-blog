@@ -109,13 +109,13 @@ function* walk(names: string[], target: string): Generator<Step> {
       5,
       before === 0
         ? `${slot}번 칸이 비어 있어 그대로 넣습니다`
-        : `${slot}번 칸에는 이미 이름표 ${buckets[slot].slice(0, before).join(" · ")} 가 있습니다. 같은 칸에 이어 붙입니다 (충돌)`,
+        : `${slot}번 칸에는 이미 ${buckets[slot].slice(0, before).join(" · ")} 이름표가 있습니다. 같은 칸에 이어 붙입니다 (충돌)`,
     );
   }
 
   cur = undefined;
   hot = undefined;
-  yield at(3, "넣을 이름표를 다 넣었습니다");
+  yield at(3, "이름표를 다 넣었습니다");
 
   cur = target;
   slot = slotOf(target);
@@ -135,7 +135,7 @@ function* walk(names: string[], target: string): Generator<Step> {
   }
 
   yield at(7, `${slot}번 칸의 이름표를 다 봤습니다`);
-  yield at(HASH_CODE.length, `${slot}번 칸 안에 ${target} 가 없습니다 → False`, false);
+  yield at(HASH_CODE.length, `${slot}번 칸 안에 ${target} 이름표가 없습니다 → False`, false);
 }
 
 export function hashTape(names: string[], target: string): Tape {
@@ -190,6 +190,6 @@ export function tryPlace(
     text:
       existing.length === 0
         ? `${slot}번 칸이 비어 있어 그대로 들어갔습니다`
-        : `${slot}번 칸에는 이미 이름표 ${existing.join(" · ")} 가 있습니다. 같은 칸에 이어 붙였습니다`,
+        : `${slot}번 칸에는 이미 ${existing.join(" · ")} 이름표가 있습니다. 같은 칸에 이어 붙였습니다`,
   };
 }

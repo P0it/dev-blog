@@ -116,7 +116,7 @@ export function HashByHand({ onDone, onReset }: { onDone?: (r: HashResult) => vo
                 <span>8로 나누기</span> <code>{remText(name)}</code>
               </p>
               <p className="algo-hash-go">
-                나머지가 <b>{slotOf(name)}</b> 이니 위에서 <b>{slotOf(name)}번 칸</b>을 누르세요
+                나머지는 <b>{slotOf(name)}</b>. 위에서 <b>{slotOf(name)}번 칸</b>을 누르세요
               </p>
             </div>
           ) : (

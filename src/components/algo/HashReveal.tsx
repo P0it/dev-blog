@@ -22,8 +22,8 @@ export function HashReveal({ children }: { children: ReactNode }) {
               <span>내 예상은 {res.predicted ? "맞았습니다" : "달랐습니다"}</span>
             </p>
             <p>
-              <code>zed</code> 는 3번 칸으로 갔고, 거기에는 이미 <code>bob</code> 이 있었습니다. 칸은 8개뿐인데 이름표가 여섯
-              개라, 두 이름표가 같은 칸을 가리키는 일이 생겼습니다.
+              <code>zed</code> 는 3번 칸으로 갔고, 거기에는 이미 <code>bob</code> 이 있었습니다. 서로 다른 이름인데 계산한
+              칸 번호가 같게 나온 겁니다. 칸이 한정돼 있는 한 이런 일은 언제든 생깁니다.
             </p>
           </>
         )}
