@@ -6,10 +6,10 @@ tags: [AI Agent, LangChain, create_agent, LangGraph, Streaming, Python]
 category: ai
 series: ai-agent
 series_order: 7
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-create-agent-loop-anatomy-mvb6q2i4.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-create-agent-loop-anatomy-mvfhct45.jpg
 ---
 <!-- page -->
-<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 이삿짐 트럭 장면) + 그림|글(호출 한 번) + 코드|해설 + 그림 고정 스크롤리텔링(그래프 위의 stream 조각) + 글|그림(길 고르기 그래프) + 그림|글 뒤집기(계단 한도) + 정리 | 글의 성격: 직접 짠 코드가 프레임워크 안으로 옮겨 가는 이사 지도가 핵심이라 줄을 짐 상자로 그려 트럭에 싣고 안쪽 구조를 그래프와 계단으로 보인다 | 버린 후보: 격자 칸 보드와 카드 목록(앞 버전) -->
+<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 24줄 원문에 줄 긋기) + 그림|글(result["messages"] 로그) + 코드|해설 + 그림 고정 스크롤리텔링(노선도 위의 stream 조각) + 제목|글 머리 + 넓은 노선도(길 고르기) + 그림|글 뒤집기(계단 한도) + 정리 | 글의 성격: 직접 짠 코드가 프레임워크 안으로 옮겨 가는 이사가 핵심이라 원문 줄에 직접 줄을 긋고 빨간 펜으로 옮겨 간 곳을 적는다. 안쪽 구조는 model역·tools 순환선 노선도로, 실행 결과는 메시지 로그 그대로 보인다. 그림 문법은 POSTING 5-9 | 버린 후보: 격자 칸 보드와 카드 목록(앞 버전), 이삿짐 트럭 + 아이콘 짐 상자 9개 히어로·질문 상자→기계 상자→메시지 카드 세로 흐름·이름+회색 부제 노드 상자 그래프·트럭 정리 그림(2026-10-20 상자 그림 전수 조사로 교체) -->
 <style>
 .post-page .ag {
   --ag-human: rgb(37, 112, 235); --ag-code: rgb(16, 150, 120); --ag-model: rgb(226, 106, 28); --ag-bad: rgb(214, 56, 56);
@@ -154,7 +154,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-step h3 { font-size: 20px; }
 .post-page .ag-step p { margin: 0; }
 .post-page .ag-sfig { position: sticky; top: var(--ag-top, 96px); }
-.post-page .ag-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
+.post-page .ag-stat { display: none; margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .ag-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .ag-story { grid-template-columns: minmax(0, 1fr); } .post-page .ag-sfig { position: static; order: -1; } .post-page .ag-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .ag-steps { padding-bottom: 0; } }
 
@@ -169,33 +169,92 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-tick { margin: 10px 0 0; display: grid; gap: 6px; }
 .post-page .ag-tick div { font-family: var(--font-mono); font-size: 13.5px; padding: 6px 10px; border-radius: 10px; background: var(--bg-base); border: 1.5px solid var(--line-subtle); color: var(--fg-neutral); transition: all .4s; }
 .post-page .ag-tick div.on { color: var(--fg-strong); border-color: var(--fg-strong); }
+
+/* 2026-10-20 그림 문법 교체(POSTING 5-9): 색은 상태에만 — 먹(지나감·남은 줄) · 초록(지금·고른 것) · 빨강(막힘·펜 메모) */
+.post-page .ag { --ag-pen: rgb(194, 58, 43); --ag-penf: "Nanum Pen Script", "Comic Sans MS", cursive; }
+[data-theme="dark"] .post-page .ag { --ag-pen: rgb(255, 122, 102); }
+.post-page .ag p.ag-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .ag-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
+/* 히어로: 24줄 원문에 직접 줄 긋기 */
+.post-page .ag-src { margin-top: 18px; padding: 16px 0 14px; border-radius: 14px; background: var(--bg-base); font-family: var(--font-mono); font-size: 13.5px; line-height: 1.8; }
+.post-page .ag-src .row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 230px; align-items: start; cursor: pointer; position: relative; }
+.post-page .ag-src.narrow .row { grid-template-columns: 26px minmax(0, 1fr); }
+.post-page .ag-src.narrow { font-size: 12px; line-height: 1.6; }
+.post-page .ag-src .no { text-align: right; padding-right: 10px; color: var(--fg-neutral); opacity: .6; user-select: none; }
+.post-page .ag-src .cd { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-strong); text-decoration: line-through 2px; text-decoration-color: transparent; transition: color .35s, text-decoration-color .35s; transition-delay: var(--d, 0s); }
+.post-page .ag-src .row.cut .cd { color: color-mix(in srgb, var(--fg-neutral) 70%, transparent); text-decoration-color: var(--fg-strong); }
+.post-page .ag-src .row.sel { background: color-mix(in srgb, var(--fg-strong) 7%, transparent); }
+.post-page .ag-src .row.keep.cut-mode .cd { font-weight: 700; }
+.post-page .ag-src .row:hover { background: color-mix(in srgb, var(--fg-strong) 4%, transparent); }
+.post-page .ag-src .row.sel:hover { background: color-mix(in srgb, var(--fg-strong) 7%, transparent); }
+.post-page .ag-src .pcell { position: relative; }
+.post-page .ag-src .pcell .pen { position: absolute; left: 0; top: 0; width: 230px; }
+.post-page .ag-src .pen { font-family: var(--ag-penf); color: var(--ag-pen); font-size: 24px; line-height: 1.1; padding: 2px 10px 0 18px; position: relative; }
+.post-page .ag-src .pen::before { content: ""; position: absolute; left: 0; top: 13px; width: 12px; border-top: 2px solid var(--ag-pen); }
+.post-page .ag-src.narrow .pen { grid-column: 2; padding: 2px 0 6px 18px; font-size: 22px; }
+.post-page .ag-src .pen small { display: block; font-size: 20px; margin-top: 2px; }
+.post-page .ag-after { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 12px 28px; align-items: center; margin-top: 16px; }
+.post-page .ag p.ag-count { margin: 0; font-size: 15px; color: var(--fg-neutral); line-height: 1.5; }
+.post-page .ag-count b { display: block; font-family: var(--font-display); font-size: clamp(30px, 4vw, 44px); color: var(--fg-strong); line-height: 1.15; }
+.post-page .ag-count b span { font-size: .5em; color: var(--fg-neutral); font-weight: 400; }
+.post-page .ag-after .ag-m { margin: 0; }
+@media (max-width: 900px) { .post-page .ag-after { grid-template-columns: minmax(0, 1fr); } }
+/* result["messages"] 로그 */
+.post-page .ag-log { font-family: var(--font-mono); font-size: 14px; line-height: 1.6; display: grid; grid-template-columns: 30px 46px minmax(0, 1fr) 58px; column-gap: 8px; align-items: start; }
+.post-page .ag-log .hd { grid-column: 1 / -1; font-weight: 700; color: var(--fg-strong); padding-bottom: 6px; border-bottom: 1.5px solid var(--line-strong); margin-bottom: 4px; }
+.post-page .ag-log .c { padding: 7px 0; transition: opacity .3s; }
+.post-page .ag-log .i { color: var(--fg-neutral); text-align: right; }
+.post-page .ag-log .t { color: var(--fg-neutral); }
+.post-page .ag-log .x { color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .ag-log .last { background: color-mix(in srgb, var(--ag-code) 16%, var(--bg-base)); }
+.post-page .ag-log .x.last { font-weight: 700; border-radius: 0 8px 8px 0; padding-right: 8px; }
+.post-page .ag-log .i.last { border-radius: 8px 0 0 8px; }
+.post-page .ag-log .rd { align-self: stretch; margin: 6px 0; border: 2px solid var(--line-strong); border-left: 0; border-radius: 0 8px 8px 0; font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; text-align: right; line-height: 1.3; transition: opacity .3s; }
+.post-page .ag-log .pen { grid-column: 3 / -1; font-family: var(--ag-penf); color: var(--ag-pen); font-size: 23px; line-height: 1.2; padding: 6px 0 0; transition: opacity .3s; }
+.post-page .ag-log .hid { opacity: 0; }
+@media (max-width: 600px) { .post-page .ag-log { font-size: 13px; grid-template-columns: 26px 40px minmax(0, 1fr) 46px; column-gap: 6px; } .post-page .ag-log .rd { font-size: 12px; padding-right: 4px; } .post-page .ag-log .pen { grid-column: 2 / -1; font-size: 21px; } }
+/* 노선도 */
+.post-page .ag-map { display: block; width: 100%; height: auto; margin: 4px auto 0; max-width: 680px; }
+.post-page .ag-map.v { max-width: 420px; }
+.post-page .ag-map text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .ag-map .t-s { fill: var(--fg-strong); font-weight: 700; }
+.post-page .ag-map .t-d { fill: var(--fg-neutral); }
+.post-page .ag-map .mono { font-family: var(--font-mono); }
+.post-page .ag-mapfig { margin-top: 44px; }
+.post-page .ag-mapfig .ag-map { max-width: 760px; }
+.post-page .ag-mapfig .ag-map.v { max-width: 420px; }
+.post-page .ag-mapfig p.ag-cap { text-align: center; }
+.post-page .ag-mapfig p.ag-ask { text-align: center; }
+.post-page .ag-mapfig .ag-ctrl { justify-content: center; }
+.post-page .ag-axis { font-size: 14px; color: var(--fg-neutral); margin-right: -8px; }
+.post-page .ag-story { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(36px, 4vw, 56px); }
+@media (max-width: 900px) { .post-page .ag-story { grid-template-columns: minmax(0, 1fr); } }
+.post-page .ag-tick { gap: 2px; }
+.post-page .ag p.ag-mini { display: none; }
+@media (max-width: 900px) { .post-page .ag-sfig .ag-tick { display: none; } .post-page .ag p.ag-mini { display: block; margin: 8px 0 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; color: var(--fg-strong); padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--ag-code) 12%, var(--bg-base)); overflow-wrap: anywhere; } }
+.post-page .ag-tick div { border: 0; background: transparent; padding: 3px 0; border-radius: 0; color: var(--fg-neutral); }
+.post-page .ag-tick div.on { color: var(--fg-neutral); }
+.post-page .ag-tick div.now { color: var(--fg-strong); font-weight: 700; }
+.post-page .ag-tick div.now::after { content: " ←"; color: var(--ag-code); }
 </style>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <symbol id="ag-ic-robot" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="14" width="30" height="24" rx="8"/><circle cx="19" cy="26" r="2.4" fill="currentColor"/><circle cx="29" cy="26" r="2.4" fill="currentColor"/><path d="M19 33h10"/><path d="M24 14V7"/><circle cx="24" cy="6" r="2.2" fill="currentColor"/></g></symbol>
-    <symbol id="ag-ic-gear" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M24 6v6M24 36v6M6 24h6M36 24h6M11.3 11.3l4.2 4.2M32.5 32.5l4.2 4.2M11.3 36.7l4.2-4.2M32.5 15.5l4.2-4.2"/></g></symbol>
-    <symbol id="ag-ic-flag" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42V7"/><path d="M12 8h26l-6 8 6 8H12" fill="currentColor" fill-opacity=".35"/></g></symbol>
-    <symbol id="ag-ic-stop" viewBox="0 0 48 48"><g><polygon points="16,4 32,4 44,16 44,32 32,44 16,44 4,32 4,16" fill="currentColor"/><path d="M14 24h20" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g></symbol>
-    <symbol id="ag-ic-paper" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="6" width="28" height="36" rx="4"/><path d="M16 16h16M16 23h16M16 30h10"/></g></symbol>
-    <symbol id="ag-ic-bolt" viewBox="0 0 48 48"><path d="M27 4L12 27h10l-3 17 17-25H25z" fill="currentColor"/></symbol>
-    <symbol id="ag-ic-mail" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="11" width="36" height="26" rx="4"/><path d="M8 14l16 12 16-12"/></g></symbol>
-    <symbol id="ag-ic-check" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 25l9 9 19-20"/></g></symbol>
-    <symbol id="ag-ic-cut" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="35" r="5"/><circle cx="13" cy="13" r="5"/><path d="M17 16l22 20M17 32L39 12"/></g></symbol>
-  </defs>
-</svg>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 <div class="ag">
   <section class="ag-hero">
     <div class="ag-wrap">
       <h1>직접 짠 루프 24줄은 create_agent 안 어디에 있을까요?</h1>
       <div class="ag-lede">
         <p>이삿짐센터에 짐을 맡기면 상자를 나르고 쌓는 일은 대신해 주지만 귀중품은 직접 챙기라고 합니다. 맡길 수 있는 일과 맡길 수 없는 일이 따로 있습니다.</p>
-        <p>직접 짠 Agent 루프도 마찬가지입니다. LangChain의 <code>create_agent</code>는 모델을 부르고 도구를 실행하고 결과를 붙이는 24줄을 한 번의 호출로 대신합니다. 그런데 줄마다 어디로 옮겨 갔는지 알아야 프레임워크가 동작하지 않을 때 고칠 수 있습니다. 아래 그림은 24줄을 기능별 짐 상자로 나눈 것입니다. 상자를 눌러 트럭에 실어 보세요.</p>
+        <p>직접 짠 Agent 루프도 마찬가지입니다. LangChain의 <code>create_agent</code>는 모델을 부르고 도구를 실행하고 결과를 붙이는 24줄을 한 번의 호출로 대신합니다. 그런데 줄마다 어디로 옮겨 갔는지 알아야 프레임워크가 동작하지 않을 때 고칠 수 있습니다. 아래는 앞 글에서 짠 루프 24줄 원문입니다. 맡기면 어느 줄이 지워지고 어디로 옮겨 가는지 확인해 보세요.</p>
       </div>
       <div class="ag-stage" data-figure data-thumb data-ag-mv>
-        <div class="ag-ctrl"><button type="button" class="ag-act" data-ag-all>전부 맡기기</button><button type="button" class="ag-act" data-ag-none>직접 짜던 상태로 되돌리기</button></div>
-        <svg class="ag-scene ag-nar" data-ag-truck viewBox="0 0 460 736" role="img" aria-label="이삿짐 그림. 위에 create_agent 트럭이 있고 아래에 직접 짠 루프 24줄을 기능별로 나눈 짐 상자 아홉 개가 있다. 상자를 누르면 트럭에 실린다. 도구 오류 처리 상자는 귀중품이라 트럭에 실리지 않는다."></svg>
-        <pre class="ag-m" data-ag-call></pre>
-        <p class="ag-cap" style="margin-bottom:0">줄 수는 앞 글에서 짠 루프에 오류 처리를 더한 코드를 기능별로 센 값입니다. create_agent 호출은 줄여 쓴 예시입니다. 직접 짠 루프에 쓰는 줄 수는 코드 스타일마다 조금씩 다릅니다.</p>
+        <p class="ag-ask">직접 짠 상태와 맡긴 상태를 오가 보세요. 맡기면 프레임워크가 대신하는 줄에 취소선이 그어집니다. 줄을 누르면 그 줄이 옮겨 간 곳이 빨간 글씨로 적힙니다.</p>
+        <div class="ag-ctrl"><div class="ag-seg" role="group" aria-label="루프를 맡길지 고르기"><button type="button" data-ag-dl="mine" aria-pressed="false">직접 짠 루프</button><button type="button" data-ag-dl="agent" aria-pressed="true">create_agent에 맡김</button></div></div>
+        <div class="ag-src" data-ag-src role="img" aria-label="직접 짠 Agent 루프 24줄 원문. 맡기면 대화 기록, 바퀴 수 한도, 모델 호출, 응답 붙이기, 멈춘 이유 확인, 도구 실행, 결과 붙이기, 한도 초과 처리 줄에 줄이 그어지고 도구 오류 처리 5줄만 남는다. 줄을 누르면 그 줄이 create_agent 안 어디로 옮겨 갔는지 빨간 펜 메모가 붙는다."></div>
+        <div class="ag-after">
+          <p class="ag-count" data-ag-count></p>
+          <pre class="ag-m" data-ag-call></pre>
+        </div>
+        <p class="ag-cap" style="margin-bottom:0">앞 글에서 짠 루프에 도구 오류 처리를 더하고 줄여서 옮긴 코드입니다. 직접 짠 루프의 줄 수는 코드 스타일마다 조금씩 다릅니다. create_agent 호출도 줄여 쓴 예시입니다.</p>
       </div>
     </div>
   </section>
@@ -203,8 +262,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   <section class="ag-sec">
     <div class="ag-wrap ag-split rev">
       <div data-figure>
-        <svg class="ag-scene ag-nar" data-ag-inv viewBox="0 0 460 604" role="img" aria-label="호출 한 번 그림. 위의 질문 카드가 create_agent 기계에 들어가면 안에서 모델과 도구가 번갈아 돌고, 아래로 주고받은 메시지 카드가 쌓여 나온다. 마지막 카드가 최종 답이다."></svg>
-        <div class="ag-ctrl" style="justify-content:center;margin-top:8px"><button type="button" class="ag-act" data-ag-invoke>invoke 눌러 보기</button></div>
+        <p class="ag-ask">invoke를 눌러 보세요. 호출 한 번 동안 쌓이는 메시지가 아래 기록에 한 줄씩 찍힙니다.</p>
+        <div class="ag-ctrl" style="margin-bottom:14px"><button type="button" class="ag-act" data-ag-invoke>invoke 실행</button></div>
+        <div class="ag-log" data-ag-log role="img" aria-label="result[&quot;messages&quot;] 기록. human 질문, ai 도구 요청, tool 결과, ai 도구 요청, tool 결과, ai 최종 답 순서로 여섯 줄이 쌓인다. 모델을 부른 바퀴가 세 번이고 마지막 줄이 사용자에게 보여 줄 답이다."></div>
+        <p class="ag-cap">메시지 내용은 예시 값입니다. 오른쪽 괄호 하나가 모델을 한 번 부른 바퀴 하나를 묶습니다.</p>
       </div>
       <div>
         <h2>호출 한 번이 루프 전체를 돌립니다</h2>
@@ -261,16 +322,18 @@ T-1042는 부품 대기 중입니다.</div>
       </div>
       <div class="ag-story" style="margin-top:44px" data-ag-story>
         <div class="ag-steps">
-          <div class="ag-step" data-ag-step><h3>출발</h3><p>질문이 시작 표시를 지나 model 노드로 들어갑니다. 아직 받은 조각은 없습니다.</p></div>
-          <div class="ag-step" data-ag-step><h3>조각 1 · model</h3><p>모델이 <code>list_my_tickets</code> 도구를 요청했습니다. 단계 하나가 끝나 조각 하나가 도착했습니다.</p></div>
-          <div class="ag-step" data-ag-step><h3>조각 2 · tools</h3><p>도구가 실행되어 티켓 번호 T-1042를 돌려줍니다. 이 결과는 tool 메시지로 쌓입니다.</p></div>
-          <div class="ag-step" data-ag-step><h3>조각 3 · model</h3><p>모델이 번호를 읽고 이번에는 <code>get_ticket</code>을 요청합니다.</p></div>
-          <div class="ag-step" data-ag-step><h3>조각 4 · tools</h3><p>도구가 "부품 대기, 도착 예정 10월 18일"을 돌려줍니다.</p></div>
-          <div class="ag-step" data-ag-step><h3>조각 5 · model, 끝</h3><p>모델이 도구 없이 글로 답하자 길이 끝으로 갑니다. 출력에서 <code>model</code>과 <code>tools</code>가 번갈아 나오는 모양이 직접 짠 루프의 한 바퀴입니다.</p></div>
+          <div class="ag-step" data-ag-step><h3>출발</h3><p>질문이 시작역을 지나 model 노드로 들어갑니다. 아직 받은 조각은 없습니다.</p></div>
+          <div class="ag-step" data-ag-step><h3>조각 1 · model</h3><p>모델이 <code>list_my_tickets</code> 도구를 요청했습니다. 단계 하나가 끝나 조각 하나가 도착했습니다.</p><p class="ag-mini">도착한 조각 → {"model": …} ai · list_my_tickets 요청</p></div>
+          <div class="ag-step" data-ag-step><h3>조각 2 · tools</h3><p>도구가 실행되어 티켓 번호 T-1042를 돌려줍니다. 이 결과는 tool 메시지로 쌓입니다.</p><p class="ag-mini">도착한 조각 → {"tools": …} tool · T-1042</p></div>
+          <div class="ag-step" data-ag-step><h3>조각 3 · model</h3><p>모델이 번호를 읽고 이번에는 <code>get_ticket</code>을 요청합니다.</p><p class="ag-mini">도착한 조각 → {"model": …} ai · get_ticket 요청</p></div>
+          <div class="ag-step" data-ag-step><h3>조각 4 · tools</h3><p>도구가 "부품 대기, 도착 예정 10월 18일"을 돌려줍니다.</p><p class="ag-mini">도착한 조각 → {"tools": …} tool · T-1042: 부품 대기…</p></div>
+          <div class="ag-step" data-ag-step><h3>조각 5 · model, 끝</h3><p>모델이 도구 없이 글로 답하자 길이 끝으로 갑니다. 출력에서 <code>model</code>과 <code>tools</code>가 번갈아 나오는 모양이 직접 짠 루프의 한 바퀴입니다.</p><p class="ag-mini">도착한 조각 → {"model": …} ai · T-1042는 부품 대기 중입니다.</p></div>
         </div>
         <div class="ag-sfig" data-ag-sfig data-figure>
-          <div class="ag-ctrl" style="margin-bottom:8px"><div class="ag-seg" role="group" aria-label="stream_mode 고르기"><button type="button" data-ag-mode="updates" aria-pressed="true">updates</button><button type="button" data-ag-mode="values" aria-pressed="false">values</button></div></div>
-          <svg class="ag-scene ag-nar" data-ag-sgraph viewBox="0 0 460 370" role="img" aria-label="그래프 위의 조각 그림. 시작에서 model 노드로 들어가 도구가 필요하면 tools 노드로 갔다가 다시 model로 돌아오고 도구가 필요 없으면 끝으로 간다. 단계마다 켜진 노드와 도착한 조각이 보인다."></svg>
+          <p class="ag-ask">조각에 무엇을 담을지 고르면 노선도 아래 조각 기록의 내용이 바뀝니다.</p>
+          <div class="ag-ctrl" style="margin-bottom:8px"><div class="ag-seg" role="group" aria-label="stream_mode 고르기"><button type="button" data-ag-mode="updates" aria-pressed="true">updates<small>새로 낸 것만</small></button><button type="button" data-ag-mode="values" aria-pressed="false">values<small>쌓인 메시지 전부</small></button></div></div>
+          <svg class="ag-map" data-ag-sgraph viewBox="0 0 640 300" role="img" aria-label="노선도 위의 조각 그림. 시작역에서 model역으로 들어가 도구가 필요하면 순환선을 따라 tools역에 들렀다 model역으로 돌아오고, 도구가 필요 없으면 끝역으로 간다. 스크롤할 때마다 지금 선 역과 도착한 조각이 칠해진다."></svg>
+          <p class="ag-cap" style="margin:6px 0 4px;text-align:center">역이 노드, 역을 잇는 선로가 엣지입니다. 초록 고리가 지금 실행 중인 노드입니다.</p>
           <div class="ag-tick" data-ag-tick></div>
           <p class="ag-stat" data-ag-stat></p>
         </div>
@@ -308,20 +371,24 @@ model → ai T-1042는 부품 대기 중입니다.</div>
   </section>
 
   <section class="ag-sec">
-    <div class="ag-wrap ag-split">
-      <div>
+    <div class="ag-wrap">
+      <div class="ag-head">
         <h2>안쪽은 노드 둘과 화살표로 된 그래프입니다</h2>
-        <p>LangChain 문서에 따르면 Agent는 LangGraph 위에 만들어집니다. LangGraph는 일의 흐름을 그래프(graph)로 짜는 도구입니다. 그래프는 할 일 한 칸인 노드(node)와 다음에 갈 곳을 가리키는 화살표인 엣지(edge)로 이루어진 지도입니다.</p>
-        <p><code>create_agent</code>가 돌려주는 값은 이렇게 짠 그래프를 실행할 수 있게 완성한 객체입니다. <code>agent.get_graph()</code>로 안쪽을 열어 볼 수 있습니다. 실제로 열어 보면 노드는 <code>model</code>과 <code>tools</code> 둘이고 시작과 끝 표시가 붙어 있습니다.</p>
-        <p>모델 노드 뒤에서 길이 갈립니다. 응답에 도구 요청이 있으면 tools로 가고 없으면 끝납니다. 도구 목록이 비어 있으면 tools 노드 자체가 없습니다. 그림에서 직접 고르면 길이 켜집니다.</p>
-      </div>
-      <div data-figure>
-        <div class="ag-ctrl" style="margin-bottom:12px">
-          <div class="ag-seg" role="group" aria-label="모델의 응답"><button type="button" data-ag-resp="call" aria-pressed="true">도구 요청 있음</button><button type="button" data-ag-resp="none" aria-pressed="false">도구 요청 없음</button></div>
-          <div class="ag-seg" role="group" aria-label="도구 목록"><button type="button" data-ag-tl="yes" aria-pressed="true">도구 있음</button><button type="button" data-ag-tl="no" aria-pressed="false">tools=[]</button></div>
+        <div>
+          <p>LangChain 문서에 따르면 Agent는 LangGraph 위에 만들어집니다. LangGraph는 일의 흐름을 그래프(graph)로 짜는 도구입니다. 그래프는 할 일 한 칸인 노드(node)와 다음에 갈 곳을 가리키는 화살표인 엣지(edge)로 이루어진 지도입니다.</p>
+          <p><code>create_agent</code>가 돌려주는 값은 이렇게 짠 그래프를 실행할 수 있게 완성한 객체입니다. <code>agent.get_graph()</code>로 안쪽을 열어 볼 수 있습니다. 실제로 열어 보면 노드는 <code>model</code>과 <code>tools</code> 둘이고 시작과 끝 표시가 붙어 있습니다.</p>
+          <p>모델 노드 뒤에서 길이 갈립니다. 응답에 도구 요청이 있으면 tools로 가고 없으면 끝납니다. 도구 목록이 비어 있으면 tools 노드 자체가 없습니다. 아래 노선도에서는 노드를 역으로, 엣지를 선로로 그렸습니다.</p>
         </div>
-        <svg class="ag-scene ag-nar" data-ag-graph viewBox="0 0 460 370" role="img" aria-label="길 고르기 그래프. 모델 노드 뒤에서 도구 요청이 있으면 tools 노드로 갔다가 되돌아오고, 없으면 끝으로 간다. tools가 빈 목록이면 tools 노드가 사라진다."></svg>
-        <p class="ag-cap">노드 이름은 get_graph()로 확인한 값이고 화살표 방향은 문서와 Mermaid 출력을 줄여 그린 것입니다. 켜진 길이 이번 호출에서 지나가는 길입니다.</p>
+      </div>
+      <div class="ag-mapfig" data-figure>
+        <p class="ag-ask">모델의 응답과 도구 목록을 골라 보세요. 이번 호출이 지나가는 선로가 진하게 켜집니다.</p>
+        <div class="ag-ctrl" style="margin-bottom:12px">
+          <span class="ag-axis">모델의 응답</span><div class="ag-seg" role="group" aria-label="모델의 응답"><button type="button" data-ag-resp="call" aria-pressed="true">도구 요청 있음</button><button type="button" data-ag-resp="none" aria-pressed="false">도구 요청 없음</button></div>
+          <span class="ag-axis">도구 목록</span><div class="ag-seg" role="group" aria-label="도구 목록"><button type="button" data-ag-tl="yes" aria-pressed="true">도구 있음<small>tools=[…]</small></button><button type="button" data-ag-tl="no" aria-pressed="false">tools=[]<small>빈 목록</small></button></div>
+        </div>
+        <svg class="ag-map" data-ag-graph viewBox="0 0 640 300" role="img" aria-label="길 고르기 노선도. 시작역에서 model역으로 가고, model역 뒤에서 도구 요청이 있으면 순환선을 따라 tools역에 들렀다 돌아오고 없으면 끝역으로 간다. tools가 빈 목록이면 순환선이 점선으로 끊긴다."></svg>
+        <p class="ag-cap" data-ag-gnote></p>
+        <p class="ag-cap" style="margin-top:4px">노드 이름은 get_graph()로 확인한 값입니다. 선로는 문서와 Mermaid 출력을 간추려 그렸습니다.</p>
       </div>
     </div>
     <div class="ag-wrap">
@@ -342,13 +409,16 @@ model → ai T-1042는 부품 대기 중입니다.</div>
   <section class="ag-sec">
     <div class="ag-wrap ag-split rev">
       <div data-figure>
+        <p class="ag-ask">모델이 어떻게 움직일지 고르고 한도를 옮겨 보세요. 차단기가 내려오는 계단이 바뀝니다.</p>
         <div class="ag-ctrl" style="margin-bottom:12px">
-          <div class="ag-seg" role="group" aria-label="모델의 행동"><button type="button" data-ag-sc="ok" aria-pressed="true">도구를 두 번 쓰고 답하는 모델</button><button type="button" data-ag-sc="never" aria-pressed="false">도구만 계속 부르는 모델</button></div>
+          <div class="ag-seg" role="group" aria-label="모델의 행동"><button type="button" data-ag-sc="ok" aria-pressed="true">도구를 두 번 쓰고 답하는 모델<small>6단계면 끝남</small></button><button type="button" data-ag-sc="never" aria-pressed="false">도구만 계속 부르는 모델<small>한도에 걸려 멈춤</small></button></div>
+          </div>
+        <div class="ag-ctrl" style="margin-bottom:12px">
           <label>recursion_limit(되풀이 단계 한도) <input type="range" min="3" max="8" value="6" data-ag-lim aria-label="recursion_limit"><output data-ag-limout>6</output></label>
         </div>
-        <svg class="ag-scene ag-nar" data-ag-stairs viewBox="0 0 460 380" role="img" aria-label="계단 그림. 한 계단이 한 단계다. 모델 노드와 도구 노드가 번갈아 계단이 되고, 한도 번호의 계단에서 차단기가 내려와 더 오르지 못하면 GraphRecursionError가 난다."></svg>
+        <svg class="ag-scene ag-nar" style="max-width:500px" data-ag-stairs viewBox="0 0 460 340" role="img" aria-label="계단 그림. 한 계단이 한 단계다. 모델 노드와 도구 노드가 번갈아 계단이 되고, 한도 번호 다음 계단 앞에 빨간 차단기가 내려와 더 오르지 못하면 GraphRecursionError가 난다."></svg>
         <p class="ag-verdict" data-ag-vd></p>
-        <p class="ag-cap">모델이 도구를 두 번 부른 뒤 답하는 경우를 직접 확인한 결과를 계단으로 그렸습니다. 한도 5에서는 실패했고 6에서는 성공했습니다. 6단계 칸은 일이 끝났다는 표시로 가는 단계입니다.</p>
+        <p class="ag-cap">모델이 도구를 두 번 부른 뒤 답하는 경우를 직접 확인한 결과를 계단으로 그렸습니다. 한도 5에서는 실패했고 6에서는 성공했습니다. 6번은 '끝'으로 넘어가는 마지막 한 걸음입니다.</p>
       </div>
       <div>
         <h2>바퀴 수 한도는 단계 수 한도로 바뀌었습니다</h2>
@@ -384,18 +454,6 @@ except GraphRecursionError:
           <p class="ag-big">루프는 맡기고 한도와 오류 처리는 직접 정합니다.</p>
           <p>도구 이름을 잘못 부르면 "그런 도구는 없고 이 중에서 고르라"는 안내가 ToolMessage(도구 결과를 담는 메시지)로 돌아가 모델이 고칩니다. 도구 안에서 난 에러는 다릅니다. 기본값에서는 아무도 처리하지 않아 그대로 위로 던져지고 Agent가 멈춥니다. 앞서 본 방식으로 오류 결과로 바꿔야 합니다. 다음 글에서는 이 루프의 앞뒤에 코드를 끼워 넣는 장치인 Middleware를 알아보겠습니다.</p>
         </div>
-      </div>
-      <div style="margin-top:36px" data-figure>
-        <svg class="ag-scene ag-nar" viewBox="0 0 460 330" role="img" aria-label="정리 그림. 트럭에는 루프와 메시지 쌓기와 끝 판단이 실려 있고, 사람이 직접 들고 가는 짐은 단계 한도와 도구 오류 처리와 역할 및 사용자 정보다.">
-          <rect x="14" y="30" width="270" height="130" rx="14" fill="color-mix(in srgb, var(--ag-code) 10%, var(--bg-base))" stroke="var(--ag-code)" stroke-width="3"/>
-          <rect x="284" y="60" width="86" height="100" rx="10" fill="color-mix(in srgb, var(--ag-code) 18%, var(--bg-base))" stroke="var(--ag-code)" stroke-width="3"/><rect x="300" y="72" width="40" height="30" rx="4" fill="var(--bg-base)" stroke="var(--ag-code)" stroke-width="2.5"/>
-          <circle cx="80" cy="170" r="18" fill="var(--fg-strong)"/><circle cx="324" cy="170" r="18" fill="var(--fg-strong)"/>
-          <text x="30" y="58" font-size="17" class="t-s" style="fill:var(--ag-code)">create_agent 트럭이 맡는 것</text>
-          <rect x="22" y="72" width="14" height="14" rx="3" fill="var(--ag-code)"/><text x="44" y="88" font-size="15" class="t-s">루프 · 모델 호출과 도구 실행 되풀이</text><rect x="22" y="96" width="14" height="14" rx="3" fill="var(--ag-code)"/><text x="44" y="112" font-size="15" class="t-s">메시지 · 응답과 결과를 순서대로 쌓기</text><rect x="22" y="120" width="14" height="14" rx="3" fill="var(--ag-code)"/><text x="44" y="136" font-size="15" class="t-s">끝 판단 · 도구 요청이 없으면 종료</text>
-          <rect x="14" y="196" width="432" height="120" rx="14" fill="color-mix(in srgb, var(--ag-bad) 8%, var(--bg-base))" stroke="var(--ag-bad)" stroke-width="3" stroke-dasharray="7 5"/>
-          <use href="#ag-ic-stop" x="26" y="208" width="30" height="30" style="color:var(--ag-bad)"/><text x="66" y="231" font-size="17" class="t-s" style="fill:var(--ag-bad)">내가 직접 들고 가는 것</text>
-          <rect x="22" y="248" width="14" height="14" rx="3" fill="var(--ag-bad)"/><text x="44" y="262" font-size="15" class="t-s">단계 한도 · recursion_limit(기본 9999)</text><rect x="22" y="272" width="14" height="14" rx="3" fill="var(--ag-bad)"/><text x="44" y="286" font-size="15" class="t-s">도구 오류 · 예외를 결과로 바꾸는 코드</text><rect x="22" y="294" width="14" height="14" rx="3" fill="var(--ag-bad)"/><text x="44" y="308" font-size="15" class="t-s">역할과 사용자 정보 · system_prompt와 context</text>
-        </svg>
       </div>
     </div>
   </section>
@@ -461,117 +519,151 @@ except GraphRecursionError:
     addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
   };
 
-  const C = { model: "var(--ag-model)", code: "var(--ag-code)", human: "var(--ag-human)", bad: "var(--ag-bad)" };
   const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
-  const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
-  const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
+  const INK = "var(--fg-strong)", MUT = "var(--fg-neutral)", ACC = "var(--ag-code)", BAD = "var(--ag-bad)", RAIL = "var(--line-strong)";
+  const halo = "paint-order:stroke;stroke:var(--bg-base);stroke-width:6px;stroke-linejoin:round;";
 
-  /* ───── 히어로: 이삿짐 트럭 ───── */
-  const tk = $("[data-ag-truck]");
-  const G = [
-    { t: "대화 기록 준비", c: "messages = [{…}]", n: 2 },
-    { t: "바퀴 수 한도", c: "for turn in range(…)", n: 1 },
-    { t: "모델 호출", c: "client.messages.create", n: 2 },
-    { t: "응답을 기록에 붙이기", c: "messages.append(…)", n: 1 },
-    { t: "멈춘 이유 확인", c: "if stop_reason != …", n: 3 },
-    { t: "도구 실행", c: "run_tool(…)", n: 7 },
-    { t: "결과 붙이기", c: "messages.append(…)", n: 2 },
-    { t: "한도 초과 처리", c: "return \"N번 안에…\"", n: 1 },
-    { t: "도구 오류 처리", c: "try / except", n: 5, keep: true },
+  /* ───── 히어로: 24줄 원문에 직접 줄 긋기 ─────
+     맡기면 프레임워크가 대신하는 줄에 줄이 그어진다. 고른 묶음 하나에만 빨간 펜 메모를 붙인다. */
+  const GR = {
+    A: { t: "대화 기록 준비", to: "invoke의 messages 칸으로" },
+    B: { t: "바퀴 수 한도", to: "config의 recursion_limit으로" },
+    C: { t: "모델 호출", to: "model 노드로" },
+    D: { t: "응답을 기록에 붙이기", to: "state에 저절로 쌓임" },
+    P: { t: "진행 찍기", to: "stream으로 지켜봄" },
+    E: { t: "멈춘 이유 확인", to: "model 뒤 갈림길로" },
+    F: { t: "도구 실행", to: "tools 노드로" },
+    G: { t: "결과 붙이기", to: "tools 노드가 붙여 줌" },
+    H: { t: "한도 초과 처리", to: "GraphRecursionError로" },
+    I: { t: "도구 오류 처리", to: "도구 오류 처리는 내가 직접", sub: "기본값은 에러를 그대로 던짐", keep: true },
+  };
+  const SRC = [
+    ["A", "def run_agent(question, max_turns=8):"],
+    ["A", '    messages = [{"role": "user", "content": question}]'],
+    ["B", "    for turn in range(max_turns):"],
+    ["C", "        res = client.messages.create(model=MODEL,"],
+    ["C", "            max_tokens=1024, tools=tools, messages=messages)"],
+    ["D", '        messages.append({"role": "assistant", "content": res.content})'],
+    ["P", '        print(f"{turn + 1}번째 호출: {res.stop_reason}")'],
+    ["E", '        if res.stop_reason != "tool_use":'],
+    ["E", '            return "".join(b.text for b in res.content'],
+    ["E", '                           if b.type == "text")'],
+    ["F", "        results = []"],
+    ["F", "        for block in res.content:"],
+    ["F", '            if block.type != "tool_use":'],
+    ["F", "                continue"],
+    ["I", "            try:"],
+    ["F", "                out = run_tool(block.name, block.input)"],
+    ["I", "                err = False"],
+    ["I", "            except Exception as e:"],
+    ["I", '                out = f"도구 오류: {e}"'],
+    ["I", "                err = True"],
+    ["G", '            results.append({"type": "tool_result", "content": out,'],
+    ["G", '                            "tool_use_id": block.id, "is_error": err})'],
+    ["G", '        messages.append({"role": "user", "content": results})'],
+    ["H", '    return f"{max_turns}번 안에 끝내지 못했습니다."'],
   ];
-  const WH = ["state의 messages 칸", "config의 recursion_limit", "model 노드", "state에 자동으로 쌓임", "model 뒤 갈림길", "tools 노드", "tools에서 model로 가는 화살표", "GraphRecursionError", "직접 끼워 넣어야 함"];
-  const on = G.map(() => false), boxes = [];
   const CALL = `agent = create_agent(\n    "anthropic:claude-sonnet-5-5",\n    tools=[get_ticket, list_my_tickets],\n    system_prompt="너는 IT 헬프데스크 상담원이다.",\n)\nresult = agent.invoke({"messages": [...]},\n    config={"recursion_limit": 12})`;
-  function bpos(i) { return [16 + (i % 3) * 144, 360 + Math.floor(i / 3) * 112]; }
-  function tpos(i) { return [30 + (i % 5) * 78, 76 + Math.floor(i / 5) * 40]; }
-  function buildTruck() {
-    tk.innerHTML = "";
-    // 트럭
-    mk("rect", { x: 14, y: 14, width: 316, height: 190, rx: 16, fill: "color-mix(in srgb, var(--ag-code) 8%, var(--bg-base))", stroke: C.code, "stroke-width": 3.5 }, tk);
-    mk("rect", { x: 330, y: 70, width: 110, height: 134, rx: 14, fill: "color-mix(in srgb, var(--ag-code) 16%, var(--bg-base))", stroke: C.code, "stroke-width": 3.5 }, tk); mk("rect", { x: 352, y: 84, width: 60, height: 44, rx: 6, fill: "var(--bg-base)", stroke: C.code, "stroke-width": 3 }, tk);
-    mk("circle", { cx: 90, cy: 214, r: 24, fill: "var(--fg-strong)" }, tk); mk("circle", { cx: 380, cy: 214, r: 24, fill: "var(--fg-strong)" }, tk); mk("circle", { cx: 90, cy: 214, r: 9, fill: "var(--bg-base)" }, tk); mk("circle", { cx: 380, cy: 214, r: 9, fill: "var(--bg-base)" }, tk);
-    txt(tk, 28, 44, "create_agent 트럭", { "font-size": 18, class: "t-s", style: `fill:${C.code}` });
-    txt(tk, 28, 64, "맡긴 짐이 이쪽으로 실립니다", { "font-size": 15, class: "t-d" });
-    // 짐 상자
-    G.forEach((g, i) => {
-      const [x, y] = bpos(i); const el = mk("g", { class: "ag-box" + (g.keep ? " keep" : ""), tabindex: 0, role: "button", "aria-label": `${g.t} ${g.n}줄` }, tk);
-      const col = g.keep ? C.bad : C.model; const IC = ["paper", "flag", "robot", "mail", "check", "gear", "mail", "stop", "bolt"][i];
-      mk("rect", { x, y, width: 132, height: 98, rx: 12, fill: `color-mix(in srgb, ${col} 14%, var(--bg-base))`, stroke: col, "stroke-width": 3, class: "bx" }, el);
-      mk("path", { d: `M${x} ${y + 24} H${x + 132}`, stroke: col, "stroke-width": 2, opacity: .5 }, el);
-      mk("use", { href: "#ag-ic-" + IC, x: x + 8, y: y + 36, width: 26, height: 26, style: `color:${col}`, opacity: .85 }, el);
-      txt(el, x + 66, y + 18, `${g.n}줄`, { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: `fill:${col}` });
-      const words = g.t.length > 8 ? [g.t.slice(0, Math.ceil(g.t.length / 2)), g.t.slice(Math.ceil(g.t.length / 2))] : [g.t];
-      words.forEach((w, k) => txt(el, x + 80, y + 56 + k * 20 - (words.length - 1) * 6, w, { "font-size": 16, "text-anchor": "middle", class: "t-s" }));
-      if (g.keep) { mk("use", { href: "#ag-ic-stop", x: x + 100, y: y + 4, width: 26, height: 26, style: `color:${C.bad}` }, el); txt(el, x + 66, y + 90, "귀중품(직접 챙김)", { "font-size": 15, "text-anchor": "middle", "font-weight": 800, style: `fill:${C.bad}` }); }
-      el.addEventListener("click", () => toggle(i), { signal }); el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(i); } }, { signal });
-      boxes.push({ el, x, y });
+  const srcEl = $("[data-ag-src]"); let dl = "agent", selG = "I", narrowSrc = null;
+  function drawSrc(animate) {
+    const narrow = srcEl.getBoundingClientRect().width < 640; narrowSrc = narrow; srcEl.classList.toggle("narrow", narrow);
+    srcEl.innerHTML = ""; const cut = dl === "agent"; let k = 0;
+    const lastOf = {}; SRC.forEach(([g], i) => { lastOf[g] = i; });
+    const firstOf = {}; SRC.forEach(([g], i) => { if (!(g in firstOf)) firstOf[g] = i; });
+    const pen = () => { const d = document.createElement("div"); d.className = "pen"; const g = GR[selG];
+      d.innerHTML = cut || g.keep ? `${esc(g.keep && !cut ? "맡겨도 직접 남는 줄" : g.to)}${g.sub && cut ? `<small>${esc(g.sub)}</small>` : ""}` : `맡기면 ${esc(g.to)}`; return d; };
+    SRC.forEach(([g, line], i) => {
+      const row = document.createElement("div"); const isCut = cut && !GR[g].keep;
+      row.className = "row" + (isCut ? " cut" : "") + (g === selG ? " sel" : "") + (GR[g].keep ? " keep" : "") + (cut ? " cut-mode" : "");
+      if (isCut && animate && !reduce) row.style.setProperty("--d", (k++ * 0.035).toFixed(3) + "s");
+      row.tabIndex = 0; row.setAttribute("role", "button"); row.setAttribute("aria-label", `${i + 1}번째 줄 · ${GR[g].t}`);
+      const ind = line.match(/^ */)[0].length;
+      row.innerHTML = `<span class="no">${i + 1}</span><span class="cd" style="padding-left:${(narrow ? ind * 0.5 : ind)}ch">${esc(line.trimStart())}</span>`;
+      if (!narrow) { const cell = document.createElement("span"); cell.className = "pcell"; if (g === selG && i === firstOf[g]) cell.append(pen()); row.append(cell); }
+      const pick = () => { if (selG === g) return; selG = g; drawSrc(false); };
+      row.addEventListener("click", pick, { signal }); row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } }, { signal });
+      srcEl.append(row);
+      if (narrow && g === selG && i === lastOf[g]) srcEl.append(pen());
     });
-    txt(tk, 230, 340, "▼ 직접 짠 루프의 짐 상자 (눌러서 싣기)", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
-    tally = txt(tk, 230, 722, "", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+    if (animate && !reduce) { /* 처음엔 줄 없이 그리고 다음 프레임에 줄을 긋는다 */
+      const rows = $$(".row.cut", srcEl); rows.forEach((r) => r.classList.remove("cut")); requestAnimationFrame(() => requestAnimationFrame(() => rows.forEach((r) => r.classList.add("cut"))));
+    }
+    const kept = SRC.filter(([g]) => !cut || GR[g].keep).length;
+    $("[data-ag-count]").innerHTML = `내가 직접 짜는 줄<b>${kept}<span> / ${SRC.length}줄</span></b>`;
+    $("[data-ag-call]").textContent = cut ? CALL : "# 아직 아무것도 맡기지 않았습니다.\n# 맡기면 지워진 줄 대신 create_agent 호출이 남습니다.";
   }
-  let tally, moveGen = 0;
-  async function place(i, animate) {
-    const b = boxes[i], [x, y] = bpos(i); const slot = tpos(onOrder.indexOf(i) >= 0 ? onOrder.indexOf(i) : 0);
-    const to = on[i] ? { dx: slot[0] - x - 0, dy: slot[1] - y, s: .55 } : { dx: 0, dy: 0, s: 1 };
-    const cur = b.cur || { dx: 0, dy: 0, s: 1 }; b.cur = to;
-    const apply = (t) => { const dx = cur.dx + (to.dx - cur.dx) * t, dy = cur.dy + (to.dy - cur.dy) * t, s = cur.s + (to.s - cur.s) * t; b.el.setAttribute("transform", `translate(${dx} ${dy}) translate(${x} ${y}) scale(${s}) translate(${-x} ${-y})`); };
-    if (animate) await tween(550, apply); else apply(1);
-    b.el.style.opacity = 1; b.el.querySelector(".bx").setAttribute("fill", on[i] ? `color-mix(in srgb, ${C.code} 22%, var(--bg-base))` : `color-mix(in srgb, ${G[i].keep ? C.bad : C.model} 14%, var(--bg-base))`); b.el.querySelector(".bx").setAttribute("stroke", on[i] ? C.code : (G[i].keep ? C.bad : C.model));
-  }
-  let onOrder = [];
-  function update() {
-    const gone = G.reduce((a, g, i) => a + (on[i] ? g.n : 0), 0), total = G.reduce((a, g) => a + g.n, 0);
-    tally.textContent = `내가 짜는 줄 ${total - gone}  ·  트럭이 대신하는 줄 ${gone}`;
-    $("[data-ag-call]").textContent = gone ? CALL : "# 아직 아무것도 맡기지 않았습니다.\n# 상자를 하나라도 실으면 create_agent 호출이 나타납니다.";
-  }
-  async function toggle(i) {
-    if (G[i].keep) { const b = boxes[i]; await tween(280, (t) => b.el.setAttribute("transform", `translate(${Math.sin(t * 20) * 6 * (1 - t)} 0)`)); b.el.setAttribute("transform", ""); return; }
-    on[i] = !on[i]; if (on[i]) onOrder.push(i); else onOrder = onOrder.filter((k) => k !== i);
-    update(); await Promise.all(G.map((_, k) => on[k] || boxes[k].cur ? place(k, true) : null));
-  }
-  async function setAll(v) { onOrder = []; G.forEach((g, i) => { on[i] = v && !g.keep; if (on[i]) onOrder.push(i); }); update(); await Promise.all(G.map((_, k) => place(k, true))); }
-  buildTruck(); update();
-  $("[data-ag-all]").addEventListener("click", () => setAll(true), { signal }); $("[data-ag-none]").addEventListener("click", () => setAll(false), { signal });
+  $$("[data-ag-dl]").forEach((b) => b.addEventListener("click", () => { if (dl === b.dataset.agDl) return; dl = b.dataset.agDl; press("[data-ag-dl]", b); drawSrc(true); }, { signal }));
+  drawSrc(false);
+  addEventListener("resize", () => { if ((srcEl.getBoundingClientRect().width < 640) !== narrowSrc) drawSrc(false); }, { passive: true, signal });
 
-  /* ───── invoke 한 번 ───── */
-  const inv = $("[data-ag-inv]"); let invGen = 0;
-  async function drawInv(animate) {
-    const my = ++invGen; inv.innerHTML = "";
-    box(inv, 110, 10, 240, 56, C.human, {}); txt(inv, 230, 44, "질문: 내 티켓 상태 알려줘", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
-    arrowDown(inv, 230, 68, 108);
-    const m = mk("g", {}, inv); box(m, 30, 112, 400, 200, C.model, { fill: "color-mix(in srgb, var(--ag-model) 6%, var(--bg-base))" });
-    txt(m, 230, 140, "create_agent 안에서 루프가 돕니다", { "font-size": 16, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` });
-    box(m, 62, 168, 120, 60, C.model, {}); mk("use", { href: "#ag-ic-robot", x: 72, y: 176, width: 36, height: 36, style: `color:${C.model}` }, m); txt(m, 138, 205, "model", { "font-size": 15, class: "t-s mono" });
-    box(m, 278, 168, 120, 60, C.code, {}); mk("use", { href: "#ag-ic-gear", x: 288, y: 176, width: 36, height: 36, style: `color:${C.code}` }, m); txt(m, 344, 205, "tools", { "font-size": 15, class: "t-s mono" });
-    mk("path", { d: "M182 186 H278", stroke: "var(--fg-neutral)", "stroke-width": 4 }, m); mk("path", { d: "M278 186 l-12 -7 v14z", fill: "var(--fg-neutral)", transform: "translate(0 0)" }, m); mk("path", { d: "M278 214 H182", stroke: "var(--fg-neutral)", "stroke-width": 4 }, m); mk("path", { d: "M182 214 l12 -7 v14z", fill: "var(--fg-neutral)" }, m);
-    txt(m, 230, 270, "도구 요청이 없을 때까지 되풀이", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(m, 230, 296, "돈 횟수는 모델이 정합니다", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
-    arrowDown(inv, 230, 314, 352);
-    const out = mk("g", {}, inv); const cards = [["human", "질문"], ["ai", "도구 요청"], ["tool", "도구 결과"], ["ai", "도구 요청"], ["tool", "도구 결과"], ["ai", "최종 답"]];
-    const els = cards.map(([ty, lb], i) => { const g = mk("g", { style: "opacity:0" }, out); const col = ty === "human" ? C.human : ty === "ai" ? C.model : C.code; const last = i === cards.length - 1; box(g, last ? 90 : 120, 358 + i * 32, last ? 280 : 220, 28, col, { rx: 8, sw: last ? 3.5 : 2 }); txt(g, last ? 106 : 134, 378 + i * 32, `${i + 1}. ${ty} · ${lb}`, { "font-size": 15, class: "t-s" }); return g; });
-    txt(out, 230, 590, "마지막 메시지가 사용자에게 보여 줄 답", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.model}` });
-    for (const g of els) { if (my !== invGen) return; if (animate && !reduce) { await tween(260, (t) => { g.style.opacity = t; }); await later(120); } else g.style.opacity = 1; }
+  /* ───── invoke 한 번: result["messages"] 로그가 곧 그림 ───── */
+  const logEl = $("[data-ag-log]"); let invGen = 0;
+  const MSGS = [["human", "내 티켓 상태 알려줘"], ["ai", "tool_calls → list_my_tickets"], ["tool", "T-1042"], ["ai", "tool_calls → get_ticket"], ["tool", "T-1042: 부품 대기, 도착 예정 10월 18일"], ["ai", "T-1042는 부품 대기 중입니다."]];
+  const ROUNDS = [[1, 2, "바퀴 1"], [3, 4, "바퀴 2"], [5, 5, "바퀴 3"]];
+  function buildLog() {
+    logEl.innerHTML = `<div class="hd">result["messages"]</div>`; const items = [];
+    MSGS.forEach(([ty, tx], i) => { const r = i + 2, last = i === MSGS.length - 1;
+      const cells = [["i", `[${i}]`], ["t", ty], ["x", tx]].map(([c, v]) => { const d = document.createElement("div"); d.className = `c ${c}` + (last ? " last" : ""); d.style.gridRow = r; d.textContent = v; logEl.append(d); return d; });
+      items.push({ cells, i }); });
+    const rds = ROUNDS.map(([a, b, lb]) => { const d = document.createElement("div"); d.className = "rd"; d.style.gridRow = `${a + 2} / ${b + 3}`; d.style.gridColumn = "4"; d.textContent = lb; logEl.append(d); return { d, b }; });
+    const pen = document.createElement("div"); pen.className = "pen"; pen.style.gridRow = MSGS.length + 2; pen.textContent = "↑ [-1] 이 줄이 사용자에게 보여 줄 답"; logEl.append(pen);
+    return { items, rds, pen };
   }
-  $("[data-ag-invoke]").addEventListener("click", () => drawInv(true), { signal }); drawInv(false);
+  async function playLog() {
+    const my = ++invGen, L = buildLog(), btn = $("[data-ag-invoke]");
+    if (reduce) return; btn.disabled = true;
+    [...L.items.flatMap((x) => x.cells), ...L.rds.map((x) => x.d), L.pen].forEach((e) => e.classList.add("hid"));
+    for (const it of L.items) {
+      if (my !== invGen || signal.aborted) return; await later(it.i === 0 ? 150 : 520);
+      it.cells.forEach((e) => e.classList.remove("hid")); L.rds.filter((r) => r.b === it.i).forEach((r) => r.d.classList.remove("hid"));
+    }
+    await later(400); L.pen.classList.remove("hid"); btn.disabled = false; btn.textContent = "다시 실행";
+  }
+  buildLog(); $("[data-ag-invoke]").addEventListener("click", playLog, { signal });
 
-  /* ───── 그래프 공통 그리기 ───── */
-  function graphSvg(svg, st) {
-    svg.innerHTML = ""; const { m = true, t = true, a1 = true, a2 = false, a3 = false, e = false, tOff = false, hot = null } = st;
-    const colOn = "var(--fg-strong)", colOff = "var(--line-strong)";
-    const node = (x, y, w, h, lb, sb, col, onn, off) => { const g = mk("g", { opacity: off ? .25 : 1 }, svg); mk("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 16, fill: onn ? `color-mix(in srgb, ${col} 20%, var(--bg-base))` : "var(--bg-base)", stroke: onn ? col : "var(--line-strong)", "stroke-width": onn ? 4 : 2.5, ...(off ? { "stroke-dasharray": "6 5" } : {}) }, g); txt(g, x, y - 3, lb, { "font-size": 18, "text-anchor": "middle", class: "t-s mono" }); txt(g, x, y + (h < 60 ? 16 : 20), sb, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); return g; };
-    const arr = (d, tip, onn, dash) => { mk("path", { d, fill: "none", stroke: onn ? colOn : colOff, "stroke-width": onn ? 4.5 : 3, ...(dash ? { "stroke-dasharray": "7 6" } : {}) }, svg); mk("path", { d: tip, fill: onn ? colOn : colOff }, svg); };
-    node(150, 40, 130, 56, "__start__", "시작", "var(--fg-strong)", true, false);
-    node(150, 170, 150, 70, "model", "모델 호출", C.model, hot === "m" || a1, false);
-    node(350, 170, 150, 70, "tools", "도구 실행", C.code, hot === "t", tOff);
-    node(150, 330, 130, 56, "__end__", "끝", "var(--fg-strong)", e, false);
-    arr("M150 62 V132", "M150 136 l-8 -12 h16z", true, false);
-    arr("M234 150 H266", "M268 150 l-12 -7 v14z", a2 || hot === "t", true);
-    arr("M266 192 H234", "M230 192 l12 -7 v14z", a2 || hot === "m2", true);
-    arr("M150 206 V290", "M150 296 l-8 -12 h16z", a3 || e, true);
-    txt(svg, 250, 124, "도구 요청 있으면", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(svg, 250, 232, "결과를 붙여 돌아옴", { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(svg, 160, 256, "도구 요청이 없으면", { "font-size": 15, class: "t-d" });
+  /* ───── 노선도: 왼쪽 → 오른쪽 (좁으면 세로). 큰 역 넷만, 지금 선 역 하나만 초록 ───── */
+  const MAP = {
+    H: { vb: "0 0 640 300", P: { start: [50, 100], model: [280, 100], tools: [280, 215], end: [590, 100] },
+      seg: { in: "M50 100 H280", out: "M280 100 H590", go: "M280 100 H370 Q400 100 400 130 V185 Q400 215 370 215 H280", back: "M280 215 H190 Q160 215 160 185 V130 Q160 100 190 100 H280" },
+      chev: [[422, 130, 90], [138, 185, -90]],
+      lab: { start: [50, 144, "middle"], end: [590, 144, "middle"], model: [280, 70, "middle"], tools: [280, 256, "middle"] },
+      chunk: { start: [50, 54, "middle"], end: [590, 54, "middle"], model: [280, 40, "middle"], tools: [280, 286, "middle"] },
+      go: [416, 162, "start"], out: [470, 82, "middle"], fs: 1 },
+    V: { vb: "0 0 380 520", P: { start: [110, 30], model: [110, 200], tools: [290, 200], end: [110, 490] },
+      seg: { in: "M110 30 V200", out: "M110 200 V490", go: "M110 200 V290 Q110 320 140 320 H260 Q290 320 290 290 V200", back: "M290 200 V110 Q290 80 260 80 H140 Q110 80 110 110 V200" },
+      chev: [[230, 342, 0], [170, 58, 180]],
+      lab: { start: [84, 37, "end"], end: [84, 497, "end"], model: [84, 207, "end"], tools: [314, 207, "start"] },
+      chunk: { start: [140, 37, "start"], end: [140, 497, "start"], model: [138, 236, "start"], tools: [314, 236, "start"] },
+      go: [200, 302, "middle"], out: [124, 420, "start"], fs: 1.1 },
+  };
+  const NAME = { start: "시작", end: "끝", model: "model", tools: "tools" };
+  /* st: on(켤 선로 이름 배열) · at(지금 선 역) · tag(그 역 옆 짧은 글) · tOff(tools=[]) */
+  function drawMap(svg, st) {
+    const L = svg.getBoundingClientRect().width < 640 && svg.getBoundingClientRect().width > 0 ? MAP.V : MAP.H, V = L === MAP.V, f = L.fs;
+    svg.innerHTML = ""; svg.setAttribute("viewBox", L.vb); svg.classList.toggle("v", V);
+    const rail = (d, o = {}) => mk("path", { d, fill: "none", stroke: RAIL, "stroke-width": 9, "stroke-linecap": "round", "stroke-linejoin": "round", ...o }, svg);
+    if (st.tOff) { rail(L.seg.go, { "stroke-width": 4, "stroke-dasharray": "8 8", opacity: .6 }); rail(L.seg.back, { "stroke-width": 4, "stroke-dasharray": "8 8", opacity: .6 }); }
+    else { rail(L.seg.go); rail(L.seg.back); }
+    rail(L.seg.in); rail(L.seg.out);
+    (st.on || []).forEach((n) => mk("path", { d: L.seg[n], fill: "none", stroke: INK, "stroke-width": 9, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg));
+    if (!st.tOff) L.chev.forEach(([x, y, r]) => mk("path", { d: "M-6 -8 L7 0 L-6 8 Z", transform: `translate(${x} ${y}) rotate(${r})`, fill: MUT }, svg));
+    ["start", "end"].forEach((n) => { const [x, y] = L.P[n]; const big = st.at === n ? 22 : 16; mk("line", V ? { x1: x - big, y1: y, x2: x + big, y2: y } : { x1: x, y1: y - big, x2: x, y2: y + big }, svg).setAttribute("style", `stroke:${st.at === n ? ACC : INK};stroke-width:${st.at === n ? 9 : 7};stroke-linecap:round`); });
+    ["model", "tools"].forEach((n) => { const [x, y] = L.P[n]; const off = n === "tools" && st.tOff;
+      mk("circle", { cx: x, cy: y, r: 13, fill: off ? "var(--bg-base)" : INK, stroke: off ? MUT : INK, "stroke-width": 3, ...(off ? { "stroke-dasharray": "4 4" } : {}) }, svg); });
+    if (st.at === "model" || st.at === "tools") { const [x, y] = L.P[st.at]; mk("circle", { cx: x, cy: y, r: 20, fill: "none", stroke: ACC, "stroke-width": 5 }, svg); if (st.at === "model" || st.at === "tools") mk("circle", { cx: x, cy: y, r: 11, fill: ACC }, svg); }
+    Object.entries(L.lab).forEach(([n, [x, y, a]]) => { const mono = n === "model" || n === "tools"; const off = n === "tools" && st.tOff;
+      txt(svg, x, y, off ? "tools 없음" : NAME[n], { "font-size": 19 * f, "text-anchor": a, class: (off ? "t-d" : "t-s") + (mono && !off ? " mono" : ""), ...(st.at === n ? { style: `fill:${ACC}` } : {}) }); });
+    if (!st.tOff) txt(svg, ...L.go.slice(0, 2), "도구 요청 있으면", { "font-size": 15 * f, "text-anchor": L.go[2], class: "t-d" });
+    txt(svg, ...L.out.slice(0, 2), "없으면 끝으로", { "font-size": 15 * f, "text-anchor": L.out[2], class: "t-d" });
+    if (st.at && st.tag) { const [x, y, a] = L.chunk[st.at]; txt(svg, x, y, st.tag, { "font-size": 17 * f, "text-anchor": a, class: "t-s", style: halo + `fill:${ACC}` }); }
   }
+
   /* ───── 그래프 길 고르기 ───── */
   const gr = $("[data-ag-graph]"); let resp = "call", tl = "yes";
-  function drawGraph() { const hasT = tl === "yes", loop = hasT && resp === "call"; graphSvg(gr, { a2: loop, a3: !loop, e: !loop, tOff: !hasT, hot: null }); }
+  const GN = { loop: "도구 요청이 있어 순환선을 따라 tools에 들렀다가 model로 돌아옵니다. 도구 요청이 없어질 때까지 이 순환을 되풀이합니다.", end: "도구 요청이 없어 model에서 바로 끝으로 갑니다.", off: "도구 목록이 비어 있어 tools 노드가 없습니다. 모델을 한 번 부르고 끝납니다." };
+  function drawGraph() { const hasT = tl === "yes", loop = hasT && resp === "call";
+    drawMap(gr, { on: loop ? ["in", "go", "back"] : ["in", "out"], tOff: !hasT });
+    $("[data-ag-gnote]").textContent = !hasT ? GN.off : loop ? GN.loop : GN.end; }
   $$("[data-ag-resp]").forEach((b) => b.addEventListener("click", () => { resp = b.dataset.agResp; press("[data-ag-resp]", b); drawGraph(); }, { signal }));
   $$("[data-ag-tl]").forEach((b) => b.addEventListener("click", () => { tl = b.dataset.agTl; press("[data-ag-tl]", b); drawGraph(); }, { signal }));
   drawGraph();
@@ -581,33 +673,40 @@ except GraphRecursionError:
   const UP = [["model", "ai · list_my_tickets 요청"], ["tools", "tool · T-1042"], ["model", "ai · get_ticket 요청"], ["tools", "tool · T-1042: 부품 대기, 도착 예정 10월 18일"], ["model", "ai · T-1042는 부품 대기 중입니다."]];
   const VAL = [["human", 1], ["ai", 2], ["tool", 3], ["ai", 4], ["tool", 5], ["ai", 6]];
   function drawStream(i) {
-    curStep = i; const k = Math.max(0, i);
-    const hot = i <= 0 ? null : (i % 2 ? "m" : "t"); graphSvg(sg, { a2: i > 0 && i < 5 && i % 2 === 0, a3: i === 5, e: i === 5, hot, tOff: false });
+    curStep = i;
+    const at = i < 0 || i === 5 ? "end" : i === 0 ? "start" : i % 2 ? "model" : "tools";
+    const on = i < 0 || i === 5 ? ["in", "go", "back", "out"] : i === 0 ? [] : i === 1 ? ["in"] : ["in", "go", "back"].slice(0, i === 2 ? 2 : 3);
+    drawMap(sg, { on, at, tag: i <= 0 ? (i < 0 ? "조각 5개 도착" : "") : `조각 ${i}` });
     const n = i < 0 ? 5 : Math.max(0, i);
-    tickEl.innerHTML = (mode === "updates" ? UP.slice(0, n).map(([nd, tx], j) => `<div class="on"><b>조각 ${j + 1}</b> {"${nd}": …} ${esc(tx)}</div>`) : VAL.slice(0, n + 1).map(([ty, c], j) => `<div class="on"><b>조각 ${j + 1}</b> messages ${c}개 · 마지막 ${ty}</div>`)).join("") || `<div>아직 받은 조각이 없습니다</div>`;
+    const rows = mode === "updates" ? UP.slice(0, n).map(([nd, tx], j) => `<b>조각 ${j + 1}</b> {"${nd}": …} ${esc(tx)}`) : VAL.slice(1, n + 1).map(([ty, c], j) => `<b>조각 ${j + 1}</b> messages ${c}개 · 마지막 ${ty}`);
+    tickEl.innerHTML = rows.map((r, j) => `<div class="${j === rows.length - 1 ? "now" : ""}">${r}</div>`).join("") || `<div>아직 받은 조각이 없습니다</div>`;
     stat.innerHTML = i < 0 ? "<b>모든 조각이 도착한 모습입니다</b>" : `<b>${i === 0 ? "출발" : `조각 ${i}`}</b>`;
   }
   $$("[data-ag-mode]").forEach((b) => b.addEventListener("click", () => { mode = b.dataset.agMode; press("[data-ag-mode]", b); drawStream(curStep); }, { signal }));
-  story("[data-ag-story]", (i) => drawStream(i)); drawStream(0);
+  story("[data-ag-story]", (i) => drawStream(i)); drawStream(curStep);
+  addEventListener("resize", () => { drawGraph(); drawStream(curStep); }, { passive: true, signal });
 
-  /* ───── 계단 한도 ───── */
+  /* ───── 계단 한도: 먹 계단 + 빨간 차단기 ───── */
   const st = $("[data-ag-stairs]"); let sc = "ok";
   const SEQ = ["model", "tools", "model", "tools", "model", "끝"];
   function drawStairs() {
     const lim = +$("[data-ag-lim]").value; $("[data-ag-limout]").textContent = lim; st.innerHTML = "";
     const N = 8, seq = sc === "ok" ? SEQ : Array.from({ length: N }, (_, i) => (i % 2 ? "tools" : "model"));
     const finishes = sc === "ok" && lim >= SEQ.length; const last = Math.min(lim, seq.length) - 1;
+    const top = (i) => 330 - (48 + i * 22);
     for (let i = 0; i < N; i++) {
-      const nm = seq[i]; const over = i >= lim; const x = 14 + i * 54, h = 56 + i * 28, y = 360 - h;
-      const col = !nm ? "var(--line-strong)" : nm === "model" ? C.model : nm === "tools" ? C.code : "var(--fg-strong)";
-      mk("rect", { x, y, width: 52, height: h, rx: 6, fill: nm && !over ? `color-mix(in srgb, ${col} 20%, var(--bg-base))` : "var(--bg-subtle)", stroke: nm && !over ? col : "var(--line-strong)", "stroke-width": 2.5, "stroke-dasharray": over ? "5 4" : "", opacity: over ? .55 : 1 }, st);
-      txt(st, x + 26, y + 22, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: "t-s" });
-      if (nm) txt(st, x + 26, y + 42, nm === "model" ? "model" : nm === "tools" ? "tools" : "끝", { "font-size": 15, "text-anchor": "middle", class: "t-d mono", opacity: over ? .5 : 1 });
+      const nm = seq[i]; const over = i >= lim || !nm; const x = 14 + i * 54, y = top(i), h = 330 - y, isEnd = nm === "끝";
+      mk("rect", { x, y, width: 52, height: h, rx: 6, fill: over ? "var(--bg-base)" : isEnd ? `color-mix(in srgb, ${ACC} 14%, var(--bg-base))` : `color-mix(in srgb, ${INK} 10%, var(--bg-base))`, stroke: over ? RAIL : isEnd ? ACC : INK, "stroke-width": 2.5, "stroke-dasharray": over ? "5 4" : "", opacity: over ? .7 : 1 }, st);
+      txt(st, x + 26, y + 22, String(i + 1), { "font-size": 17, "text-anchor": "middle", "font-weight": 800, class: over ? "t-d" : "t-s" });
+      if (nm) txt(st, x + 26, y + 42, isEnd ? "끝으로" : nm, { "font-size": isEnd ? 14 : 15, "text-anchor": "middle", class: "t-d" + (isEnd ? "" : " mono"), opacity: over ? .6 : 1 });
     }
-    const cx = 14 + last * 54 + 26, cy = 360 - (56 + last * 28) - 34; mk("use", { href: "#ag-ic-robot", x: cx - 20, y: cy - 24, width: 44, height: 44, style: `color:${C.model}` }, st);
-    if (finishes) { const fx = 14 + 5 * 54 + 26; mk("use", { href: "#ag-ic-flag", x: fx - 12, y: 360 - (56 + 5 * 28) - 56, width: 44, height: 44, style: "color:var(--fg-strong)" }, st); }
-    else { const bx = 14 + lim * 54 - 2; mk("rect", { x: bx - 6, y: 360 - (56 + lim * 28) - 58, width: 10, height: 58, rx: 4, fill: C.bad }, st); mk("use", { href: "#ag-ic-stop", x: bx - 16, y: 360 - (56 + lim * 28) - 98, width: 34, height: 34, style: `color:${C.bad}` }, st); }
-    txt(st, 14, 22, "한 계단 = 노드가 한 번 실행되는 한 단계", { "font-size": 15, class: "t-s" });
+    /* 지금까지 오른 자리: 점 하나 */
+    mk("circle", { cx: 14 + last * 54 + 26, cy: top(last) - 16, r: 10, fill: finishes ? ACC : INK }, st);
+    /* 한도 자리: 늘 보인다. 걸리면 빨간 차단기, 아니면 회색 점선 */
+    const bx = 14 + lim * 54 - 1, by = top(Math.min(lim, N - 1)), stop = !finishes, right = lim >= 7;
+    mk("line", { x1: bx, y1: by - 70, x2: bx, y2: 330, stroke: stop ? BAD : MUT, "stroke-width": stop ? 7 : 2.5, "stroke-linecap": "round", ...(stop ? {} : { "stroke-dasharray": "6 5" }) }, st);
+    txt(st, bx + (right ? -10 : 10), by - 78, stop ? `한도 ${lim} · 멈춤` : `한도 ${lim}`, { "font-size": 16, class: stop ? "t-s" : "t-d", "text-anchor": right ? "end" : "start", ...(stop ? { style: `fill:${BAD}` } : {}) });
+    txt(st, 14, 22, sc === "ok" ? "한 계단 = 한 단계 · 마지막 계단은 끝으로 가는 단계" : "한 계단 = 노드가 한 번 실행되는 한 단계", { "font-size": 15, class: "t-s" });
     $("[data-ag-vd]").innerHTML = finishes ? `<span class="ag-tag n">정상 종료</span> ${SEQ.length}단계 안에 끝났습니다.` : `<span class="ag-tag x">GraphRecursionError</span> 한도 ${lim}에 걸려 멈췄습니다.`;
   }
   $$("[data-ag-sc]").forEach((b) => b.addEventListener("click", () => { sc = b.dataset.agSc; press("[data-ag-sc]", b); drawStairs(); }, { signal }));
