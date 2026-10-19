@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LOCK_SECRET, lockKey } from "@/lib/algo/brute-force";
+import { josa } from "@/lib/algo/josa";
 
 /** 이만큼 해 보고도 못 열면 그만하고 정답을 볼 수 있다. 막막함이 아니라 숫자를 보게 하려는 장치다. */
 const GIVE_UP_AFTER = 8;
@@ -37,7 +38,7 @@ export function LockByHand({
     if (open || gaveUp) return;
     const key = lockKey(dials);
     if (tried.includes(key)) {
-      setMsg(`${key} 는 이미 해 본 번호예요. 세지 않습니다`);
+      setMsg(`${key}${josa(Number(key), "은", "는").slice(-1)} 이미 해 본 번호예요. 세지 않습니다`);
       return;
     }
     const t = tries + 1;
@@ -77,7 +78,7 @@ export function LockByHand({
           ? "열렸습니다"
           : gaveUp
             ? `정답은 ${lockKey(LOCK_SECRET)} 이었습니다`
-            : "번호는 세 자리입니다. ▲▼로 번호를 맞추고 「열어 보기」를 누르세요. 한 번 누를 때마다 1번입니다. 같은 번호를 또 해 보지 않으려면 어떤 순서가 좋을까요?"}
+            : "번호는 세 자리입니다. ▲▼로 번호를 맞추고 「열어 보기」를 누르세요. 누를 때마다 1번으로 셉니다. 같은 번호를 또 해 보지 않으려면 어떤 순서가 좋을까요?"}
       </p>
 
       <div className="algo-lock" data-open={open}>

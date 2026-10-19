@@ -43,7 +43,7 @@ export default async function BruteForcePage() {
 
       {/* ① 직접 해 보기 → ② 되짚기 */}
       <LockReveal>
-        <p>내 순서가 들쭉날쭉하면 번호를 빠뜨리거나 같은 번호를 또 해 봅니다. 순서를 정해 두면 이렇게 됩니다.</p>
+        <p>순서가 들쭉날쭉하면 번호를 빠뜨리거나 같은 번호를 또 해 봅니다. 순서를 정해 두면 이렇게 됩니다.</p>
         <p className="algo-chain">
           000 → 001 → 002 → … → 999
           <span>번호 하나를 열어 보면 1번. 끝까지 가면 최악 1,000번입니다.</span>
@@ -74,7 +74,7 @@ export default async function BruteForcePage() {
           { label: "물건 20개", n: subsetCount(20), unit: "가지" },
           { label: "물건 10개", n: subsetCount(10), unit: "가지" },
         ]}
-        caption="Python 은 1초에 1천만~3천만 번쯤 계산합니다. 경우마다 물건 수만큼 더 보니, 20개는 약 2천만 번이라 1초 안팎입니다. 30개는 약 320억 번이라 18~54분이 걸립니다."
+        caption="Python 은 1초에 1천만~3천만 번쯤 계산합니다. 경우마다 물건 수만큼 더 보니 20개는 약 2천만 번이라 1초 안팎입니다. 30개는 약 320억 번이라 18~54분이 걸립니다."
       />
       <ul className="algo-keys">
         <li>
@@ -90,7 +90,7 @@ export default async function BruteForcePage() {
           <b>N 이 20을 훌쩍 넘으면</b> — 2^N 은 못 쓴다. 다른 방법을 찾아야 한다
         </li>
       </ul>
-      <p>그래서 문제가 N 이 작다고 알려 주면 완전탐색을 먼저 떠올립니다.</p>
+      <p>문제가 N 이 작다고 알려 주면 완전탐색을 먼저 떠올립니다.</p>
 
       {/* ④ 코드와 플레이어 */}
       <h2>코드는 모든 경우를 숫자 하나로 센다</h2>
@@ -139,7 +139,7 @@ export default async function BruteForcePage() {
         ]}
         why={
           <>
-            5 를 이진수로 쓰면 <strong>101</strong> 입니다. 오른쪽부터 0번·1번·2번 자리라서, 1 이 있는 0번과 2번을 담습니다. 무게는 2 + 4 = 6 이라 한도 5 를 넘어 버려집니다.
+            5 를 이진수로 쓰면 <strong>101</strong> 입니다. 오른쪽부터 0번·1번·2번 자리라서 1 이 있는 0번과 2번을 담습니다. 무게는 2 + 4 = 6 이라 한도 5 를 넘으니 버립니다.
           </>
         }
       />

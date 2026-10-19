@@ -31,8 +31,8 @@ function pauseFor(tape: Tape, target: number): PlayerPause | undefined {
     ask: `먼저 예상해 보세요. ${mid}번 칸의 ${josa(VALUES[mid], "은", "는")} 찾는 값 ${target}보다 ${smaller ? "작습니다" : "큽니다"}. 다음에 움직이는 것은 무엇일까요?`,
     options: smaller ? [{ ...left, correct: true }, right] : [left, { ...right, correct: true }],
     why: smaller
-      ? `${josa(target, "은", "는")} mid 의 값보다 더 오른쪽에 있습니다. 그래서 막대의 왼쪽 끝(left)이 mid 다음 칸으로 옮겨 가고, 왼쪽이 통째로 버려집니다.`
-      : `${josa(target, "은", "는")} mid 의 값보다 더 왼쪽에 있습니다. 그래서 막대의 오른쪽 끝(right)이 mid 앞 칸으로 옮겨 가고, 오른쪽이 통째로 버려집니다.`,
+      ? `${josa(target, "은", "는")} mid 의 값보다 더 오른쪽에 있습니다. 그래서 막대의 왼쪽 끝(left)이 mid 다음 칸으로 옮겨 가고 왼쪽이 통째로 버려집니다.`
+      : `${josa(target, "은", "는")} mid 의 값보다 더 왼쪽에 있습니다. 그래서 막대의 오른쪽 끝(right)이 mid 앞 칸으로 옮겨 가고 오른쪽이 통째로 버려집니다.`,
   };
 }
 
@@ -124,9 +124,9 @@ export default async function BinarySearchPage() {
           ]}
           why={
             <>
-              가운데 31이 12보다 큽니다. 12는 31보다 앞에 있습니다. 31과 그 오른쪽이 전부
-              날아가고 왼쪽만 남습니다. 42를 찾을 때는 왼쪽이 날아갔습니다. 방향이
-              반대입니다. 그리고 한 번 물을 때마다 후보는 반드시 절반쯤 줄어듭니다.
+              가운데 31이 12보다 큽니다. 31과 그 오른쪽이 전부 날아가고 왼쪽만 남습니다.
+              42를 찾을 때와 방향이 반대입니다. 어느 쪽이든 한 번 물을 때마다 후보는 절반쯤
+              줄어듭니다.
             </>
           }
         />
@@ -155,7 +155,7 @@ export default async function BinarySearchPage() {
 
         {/* ⑦ 꺼내라는 신호 */}
         <h2>왜 이걸 꺼내나 — N이 클수록 차이가 벌어진다</h2>
-        <p>줄의 길이를 <strong>N</strong>이라고 합니다. 맨 앞부터 하나씩 찾을 때와 이분 탐색의 최대 횟수입니다.</p>
+        <p>줄의 길이를 <strong>N</strong>이라고 합니다. 맨 앞부터 하나씩 찾을 때와 이분 탐색의 최대 횟수를 견줘 봅니다.</p>
         <Counter
           rows={[
             { label: "맨 앞부터", n: 100, unit: "번" },
@@ -175,7 +175,7 @@ export default async function BinarySearchPage() {
             { label: "맨 앞부터", n: 1_000_000, unit: "번" },
             { label: "이분 탐색", n: worstCaseGuesses(1_000_000), unit: "번" },
           ]}
-          caption="N = 1,000,000. 게임에서 겪은 7번이 N 이 만 배가 되어도 20번까지만 늡니다."
+          caption="N = 1,000,000. 게임에서 겪은 7번은 N 이 만 배가 되어도 20번까지만 늡니다."
         />
 
         <h2>이분 탐색을 꺼내라는 세 가지 신호</h2>
