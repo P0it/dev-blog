@@ -88,7 +88,7 @@ export function QueueByHand({ onDone, onReset }: { onDone?: (r: QueueResult) => 
       {picked === null ? (
         <div className="algo-qd-predict">
           <p className="algo-quiz-q">
-            <strong>먼저 맞혀 보세요. 이 줄에서 5번 손님은 몇 번째로 받을까요?</strong>
+            <strong>먼저 맞혀 보세요. 선생님이 오지 않는다면 이 줄에서 5번 손님은 몇 번째로 받을까요?</strong>
           </p>
           {PREDICT.map((o, i) => (
             <button key={i} type="button" className="algo-opt" onClick={() => setPicked(i)}>

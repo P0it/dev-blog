@@ -194,7 +194,7 @@ export function evText(ev: Ev): string {
     case "teacher":
       return "선생님이 오셨어요. 선생님이 먼저 받아야 해요";
     case "leave":
-      return "맨 뒤에 선 손님이 수업 종이 울려서 줄에서 나가요";
+      return "수업 종이 울려 맨 뒤 손님이 줄에서 나가요";
   }
 }
 
@@ -222,7 +222,7 @@ export function stepHand(
     return {
       ok: false,
       line,
-      text: `이 줄에는 「맨 뒤에 서기」와 「맨 앞에서 받기」 두 가지뿐이라 ${what} 방법이 없습니다. 아래 「줄 규칙 풀기」를 눌러 보세요`,
+      text: `이 줄에는 「맨 뒤에 서기」와 「맨 앞에서 받기」 두 가지뿐이라 ${what} 방법이 없습니다. 위의 「줄 규칙 풀기」를 눌러 보세요`,
     };
   }
 
@@ -238,7 +238,7 @@ export function stepHand(
     }
     case "popFront": {
       const [front, ...rest] = line;
-      return { ok: true, line: rest, text: `맨 앞 ${whoLabel(front)} 손님이 받고 나갔습니다`, out: front };
+      return { ok: true, line: rest, text: `맨 앞 ${whoLabel(front)}${front === TEACHER ? "이" : " 손님이"} 받고 나갔습니다`, out: front };
     }
     case "pushFront":
       return { ok: true, line: [TEACHER, ...line], text: "선생님이 맨 앞에 서서 먼저 받습니다" };

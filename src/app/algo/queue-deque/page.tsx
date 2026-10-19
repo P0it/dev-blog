@@ -127,8 +127,8 @@ export default async function QueueDequePage() {
         ]}
         why={
           <>
-            서는 곳은 맨 뒤, 받는 곳은 맨 앞이라 앞에서부터 차례로 <strong>{arrow(fifo)}</strong> 입니다. 뒤에서 서고 뒤에서 받으면{" "}
-            {arrow(backBack)}, 앞에 서고 앞에서 받으면 {arrow(frontFront)} 이 나옵니다. 둘 다 나중에 선 사람이 먼저 받는 줄입니다.
+            서는 곳은 맨 뒤, 받는 곳은 맨 앞이라 앞에서부터 차례로 <strong>{arrow(fifo)}</strong> 입니다. 뒤에 서고 뒤에서 받으면{" "}
+            {arrow(backBack)}, 앞에 서고 앞에서 받으면 {arrow(frontFront)} 순서입니다. 둘 다 나중에 선 사람이 먼저 받는 줄입니다.
           </>
         }
       />
