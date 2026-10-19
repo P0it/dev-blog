@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- 원본 아티팩트: https://claude.ai/artifact/59Lpw1wQMJyDZkrEpKv1aR · 규약: POSTING.md 5-9 -->
+<title>상자 없는 그림 견본첩</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Gowun+Batang:wght@400;700&family=Nanum+Pen+Script&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 레이아웃: 견본마다 왼쪽 설명 열(좁음) | 오른쪽 살아 있는 그림(넓음). 모바일은 그림 먼저 */
+:root{
+  --paper:#F9FAFB; --ink:#1A1D23; --muted:#626873; --hair:#D5D9DF; --faint:#E9ECF0;
+  --accent:#2550B8; --pen:#C23A2B; --hole:#F9FAFB; --mark:#1A1D23; --hi:#FFE48A; --hi-ink:#1A1D23;
+  --line2:#2E8A62; --line3:#B7791F;
+  --f-display:"Gowun Batang",ui-serif,Georgia,serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --f-pen:"Nanum Pen Script","Comic Sans MS",cursive;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#14161A; --ink:#E7E9ED; --muted:#9AA1AC; --hair:#3A3F48; --faint:#23272E;
+  --accent:#7FA2FF; --pen:#FF7A66; --hole:#14161A; --mark:#E7E9ED; --hi:#6B5A12; --hi-ink:#FFF6CF;
+  --line2:#4FC394; --line3:#E3A84A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#14161A; --ink:#E7E9ED; --muted:#9AA1AC; --hair:#3A3F48; --faint:#23272E;
+  --accent:#7FA2FF; --pen:#FF7A66; --hole:#14161A; --mark:#E7E9ED; --hi:#6B5A12; --hi-ink:#FFF6CF;
+  --line2:#4FC394; --line3:#E3A84A; color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.75}
+.wrap{max-width:1180px;margin:0 auto;padding-block:56px 120px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,5vw,52px);line-height:1.2;letter-spacing:-.01em}
+h2{font-size:clamp(22px,2.6vw,28px);line-height:1.3}
+p{margin:0}
+a{color:var(--accent)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+.pen{font-family:var(--f-pen);color:var(--pen);font-size:22px;line-height:1.15}
+
+/* 머리 */
+.head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:end;margin-bottom:96px}
+.head .lead{margin-top:20px;color:var(--muted);max-width:56ch}
+.symptoms{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.symptoms li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:baseline}
+.symptoms li::before{content:"✕";color:var(--pen);font-weight:700}
+.symptoms b{font-weight:600}
+.symptoms span{color:var(--muted)}
+
+/* 견본 */
+.spec{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:56px;padding-block:72px;border-top:1px solid var(--hair)}
+.spec .no{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.meta{display:flex;flex-direction:column;gap:14px;min-width:0}
+.meta .why{color:var(--ink)}
+.meta dl{margin:6px 0 0;display:grid;gap:10px;font-size:14px}
+.meta dt{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.meta dd{margin:0}
+.demo{min-width:0;display:flex;flex-direction:column;gap:20px}
+.cap{font-size:14px;color:var(--muted);max-width:62ch}
+svg text{font-family:var(--f-body)}
+.svgbox{overflow-x:auto}
+.svgbox svg{display:block;width:100%;height:auto}
+
+/* 고르기 토글: 옅은 트랙 안에서 고른 칸만 채움 */
+.ctrls{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;font-size:14px;color:var(--muted)}
+.tog{display:inline-flex;background:var(--faint);border-radius:10px;padding:3px}
+.tog button{all:unset;cursor:pointer;padding:6px 14px;border-radius:8px;font-size:14px;color:var(--muted);font-family:var(--f-mono)}
+.tog button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.tog button:focus-visible,.run:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.run{all:unset;cursor:pointer;padding:6px 14px;border:1px solid var(--ink);border-radius:8px;font-size:14px;color:var(--ink)}
+.run:hover{background:var(--faint)}
+input[type=range]{accent-color:var(--ink);width:120px}
+.val{font-family:var(--f-mono);color:var(--ink);min-width:1ch;display:inline-block}
+
+/* 1. 원문 주석 */
+.doc{font-family:var(--f-display);font-size:clamp(22px,3vw,32px);line-height:1.6;position:relative}
+.pii{font-family:var(--f-mono);font-size:.78em;padding:0 .15em;transition:background .25s,color .25s}
+.pii.redact{background:var(--mark);color:var(--paper)}
+.pii.mask{text-decoration:underline wavy var(--pen) 1.5px;text-underline-offset:6px}
+.pii.hash{color:var(--accent)}
+.pii.orig{background:var(--hi);color:var(--hi-ink)}
+.doc.blocked{color:var(--muted);text-decoration:line-through 2px var(--pen)}
+.anno{position:relative;height:84px}
+.anno .note{position:absolute;top:30px;white-space:nowrap}
+.anno svg{position:absolute;top:0;overflow:visible}
+@media (max-width:640px){.anno .note{white-space:normal;max-width:70vw}}
+
+/* 4. 대화 기록 */
+.log{font-size:15px;display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,190px);row-gap:12px;column-gap:16px;align-items:baseline}
+.log .who{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right}
+.log .msg{min-width:0}
+.log .n{font-family:var(--f-mono);font-size:12px;color:var(--paper);background:var(--ink);border-radius:50%;width:20px;height:20px;display:inline-grid;place-items:center;margin-right:8px;vertical-align:1px}
+.log .cut{text-decoration:line-through 2px var(--pen);color:var(--muted)}
+.log .cut .n{background:var(--pen)}
+.log .side{font-family:var(--f-pen);color:var(--pen);font-size:21px;line-height:1.1}
+.log .rule{grid-column:1/-1;height:0;border-top:2px dashed var(--pen);margin:2px 0}
+.log .end{font-family:var(--f-mono);font-size:13px}
+
+/* 6. 작은 그림 여러 장 */
+.multi{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px 20px;align-items:baseline}
+.multi .k{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.multi .s{font-family:var(--f-display);font-size:clamp(17px,2vw,21px);min-width:0}
+.multi .v{font-size:13px;color:var(--muted);text-align:right}
+.multi .s .pii{font-size:.82em}
+.multi .s.blocked{color:var(--muted);text-decoration:line-through 2px var(--pen)}
+.multi .head-row{font-size:12px;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--hair);padding-bottom:6px}
+
+/* 9. 문자 흐름 */
+.stream{display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);align-items:center;gap:14px;min-height:120px}
+.stream .side{font-family:var(--f-display);font-size:clamp(17px,2.1vw,22px);min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.stream .lbl{display:block;font-family:var(--f-body);font-size:12px;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.stream .ch{transition:opacity .2s}
+.stream .gone{opacity:.15}
+.stream .sieve{align-self:stretch;background-image:radial-gradient(circle,var(--muted) 1.2px,transparent 1.6px);background-size:8px 8px;border-left:1px solid var(--hair);border-right:1px solid var(--hair);border-radius:2px}
+.stream .caught{background:var(--mark);color:var(--paper);font-family:var(--f-mono);font-size:.8em;padding:0 .15em}
+.stream .sq{color:var(--pen);font-family:var(--f-mono)}
+
+/* 10. 코드 위 주석 */
+.codegrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,230px);column-gap:20px;font-family:var(--f-mono);font-size:14px;line-height:2}
+.codegrid .ln{white-space:pre;overflow-x:auto;min-width:0;color:var(--ink)}
+.codegrid .ln .kw{color:var(--accent)}
+.codegrid .ln .st{color:var(--line2)}
+.codegrid .ln mark{background:transparent;color:inherit;border-bottom:2px solid var(--pen);padding-bottom:1px}
+.codegrid .ln mark.on{background:var(--hi);color:var(--hi-ink)}
+.codegrid .nt{font-family:var(--f-pen);color:var(--pen);font-size:21px;line-height:1.1;align-self:center;cursor:default}
+.codegrid .nt::before{content:"← "}
+
+/* 마지막 고르는 표 */
+.pick{margin-top:24px;width:100%;border-collapse:collapse;font-size:15px}
+.pick th,.pick td{text-align:left;padding:12px 16px 12px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+.pick th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.tablebox{overflow-x:auto}
+.outro{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:56px;padding-top:72px;border-top:1px solid var(--hair)}
+
+@media (max-width:860px){
+  .head,.spec,.outro{grid-template-columns:minmax(0,1fr);gap:28px}
+  .spec .demo{order:-1}
+  .log{grid-template-columns:52px minmax(0,1fr)}
+  .log .side{grid-column:2}
+  .codegrid{grid-template-columns:minmax(0,1fr)}
+  .codegrid .nt{margin:-4px 0 10px}
+  .codegrid .nt::before{content:"↑ "}
+  .multi{grid-template-columns:auto minmax(0,1fr)}
+  .multi .v{grid-column:2;text-align:left;margin-top:-12px}
+  .stream{grid-template-columns:minmax(0,1fr);}
+  .stream .sieve{height:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="head">
+  <div>
+    <h1>상자를 걷어낸 그림 열 가지</h1>
+    <p class="lead">AI Agent 시리즈의 미들웨어 그림 두 개(모델 호출 제한, 개인정보 가리기)를 상자 없이 다시 그렸다. 내용은 그대로 두고 그리는 방식만 바꿨다. 오른쪽 그림은 모두 눌러 볼 수 있다.</p>
+  </div>
+  <ul class="symptoms" aria-label="지금 그림에서 AI 티가 나는 곳">
+    <li><div><b>모든 것이 둥근 테두리 상자</b> <span>— 말도, 미들웨어도, 결과도 같은 모양</span></div></li>
+    <li><div><b>뜻 없는 색 배정</b> <span>— 파랑·초록·주황이 상태가 아니라 순번</span></div></li>
+    <li><div><b>상자 → 화살표 → 상자 세로 쌓기</b> <span>— 어떤 개념이든 같은 뼈대</span></div></li>
+    <li><div><b>상자 안 "제목 + 회색 부제" 두 줄</b> <span>— 템플릿 카드의 문법</span></div></li>
+    <li><div><b>장식 아이콘</b> <span>— ⚙ 하나가 아무것도 설명하지 않음</span></div></li>
+  </ul>
+</header>
+
+<!-- 1 -->
+<section class="spec" id="s1">
+  <div class="meta">
+    <span class="no">01 · 원문에 직접 표시하기</span>
+    <h2>말 자체가 그림이다</h2>
+    <p class="why">바뀌는 것이 문장 속 한 토막이면 문장을 상자에 넣지 말고 그 토막에 직접 표시한다. 검열 문서의 검은 줄, 교정지의 빨간 펜처럼 독자가 이미 아는 표기를 빌린다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://www.nytimes.com/interactive/2019/04/18/us/politics/mueller-report-redactions.html" target="_blank" rel="noopener">NYT 뮬러 보고서 검열 표시</a>, <a href="https://genius.com" target="_blank" rel="noopener">Genius</a> 가사 주석</dd>
+      <dt>맞는 개념</dt><dd>입력이 변환되는 것: 마스킹·토큰화·프롬프트 템플릿 치환</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls"><span class="mono">strategy=</span>
+      <div class="tog" data-group="a">
+        <button aria-pressed="false" data-v="orig">원문</button>
+        <button aria-pressed="true" data-v="redact">redact</button>
+        <button aria-pressed="false" data-v="mask">mask</button>
+        <button aria-pressed="false" data-v="hash">hash</button>
+        <button aria-pressed="false" data-v="block">block</button>
+      </div>
+    </div>
+    <div>
+      <p class="doc" id="a-doc">내 이메일은 <span class="pii redact" id="a-pii">[REDACTED_EMAIL]</span> 이고 티켓 상태 알려줘</p>
+      <div class="anno" id="a-anno">
+        <svg id="a-arrow" width="60" height="34" viewBox="0 0 60 34" aria-hidden="true"><path d="M8 32 C 10 18, 18 8, 34 4" fill="none" stroke="var(--pen)" stroke-width="2" stroke-linecap="round"/><path d="M27 1 L35 4 L29 10" fill="none" stroke="var(--pen)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="note pen" id="a-note">통째로 이름표로 바꿈. 모델은 주소를 모른다</span>
+      </div>
+    </div>
+    <p class="cap">모델이 실제로 받는 문장만 보여 준다. "사용자가 보낸 말 / 모델이 받는 말" 두 상자 대신, 같은 문장 한 줄이 제자리에서 바뀐다.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="spec" id="s2">
+  <div class="meta">
+    <span class="no">02 · 실물 은유</span>
+    <h2>호출권에 구멍을 뚫는다</h2>
+    <p class="why">제한·할당량은 눈에 익은 물건으로 바꾸면 설명이 필요 없다. 표에 구멍이 다 뚫리면 개찰구가 닫힌다. 숫자 2를 "남은 칸 두 개"로 보이게 한다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://ciechanow.ski/mechanical-watch/" target="_blank" rel="noopener">Bartosz Ciechanowski, Mechanical Watch</a>, <a href="https://ncase.me/trust/" target="_blank" rel="noopener">Nicky Case, The Evolution of Trust</a></dd>
+      <dt>맞는 개념</dt><dd>rate limit, 토큰 예산, 재시도 횟수, 컨텍스트 창 크기</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls">
+      <label for="b-lim">run_limit</label><input id="b-lim" type="range" min="1" max="4" value="2"><span class="val" id="b-limv">2</span>
+      <button class="run" id="b-next">▶ 모델 호출 한 번</button>
+      <button class="run" id="b-reset">처음부터</button>
+    </div>
+    <div class="svgbox"><svg id="b-svg" viewBox="0 0 640 230" style="max-width:680px" role="img" aria-label="구멍 뚫는 호출권과 개찰구"></svg></div>
+    <p class="cap" id="b-cap">버튼을 누를 때마다 모델을 한 번 부른다. 칸이 남아 있으면 구멍을 뚫고 지나간다.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="spec" id="s3">
+  <div class="meta">
+    <span class="no">03 · 눈금 한 줄</span>
+    <h2>시간축 하나에 자르는 선 하나</h2>
+    <p class="why">순서가 핵심이면 상자를 세로로 쌓지 말고 수평선 위 눈금으로 찍는다. 잉크를 거의 안 쓰고, 두 제한(run·thread)이 어디서 겹쳐 끊기는지까지 한 줄에 들어간다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd>Edward Tufte, <i>Beautiful Evidence</i>의 스파크라인, <a href="https://www.gapminder.org/tools/" target="_blank" rel="noopener">Gapminder</a> 시간축</dd>
+      <dt>맞는 개념</dt><dd>루프 횟수, 재시도, 스트리밍 토큰, 요청 타임라인</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls">
+      <label for="c-run">run_limit</label><input id="c-run" type="range" min="1" max="3" value="2"><span class="val" id="c-runv">2</span>
+      <label for="c-thr">thread_limit</label><input id="c-thr" type="range" min="1" max="6" value="3"><span class="val" id="c-thrv">3</span>
+    </div>
+    <div class="svgbox"><svg id="c-svg" viewBox="0 0 680 190" style="max-width:700px" role="img" aria-label="두 번의 실행에 걸친 모델 호출 눈금"></svg></div>
+    <p class="cap">한 대화에서 질문을 두 번 했고, 매번 모델이 세 번 부르려 한다. 검은 눈금은 나간 호출, 빈 눈금은 막혀서 못 간 호출이다.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="spec" id="s4">
+  <div class="meta">
+    <span class="no">04 · 로그가 곧 그림</span>
+    <h2>대화 기록에 줄을 긋는다</h2>
+    <p class="why">개발자 독자는 로그를 읽을 줄 안다. 실제로 오간 메시지를 그대로 놓고, 막힌 지점에 빨간 줄과 손글씨 한 줄만 더한다. 그림이 실제 실행 결과와 똑같아서 믿음이 간다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://wizardzines.com" target="_blank" rel="noopener">Julia Evans 진(zine)</a>의 터미널 주석, <a href="https://docs.stripe.com/api" target="_blank" rel="noopener">Stripe API 문서</a> 요청·응답 나란히</dd>
+      <dt>맞는 개념</dt><dd>에이전트 루프, 도구 호출, 프롬프트 인젝션이 끼어드는 지점</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="log" role="list">
+      <span class="who">user</span><span class="msg">티켓 #4821 지금 어떻게 됐어?</span><span class="side"></span>
+      <span class="who">model</span><span class="msg"><span class="n">1</span><code>get_ticket(4821)</code> 부를게</span><span class="side"></span>
+      <span class="who">tool</span><span class="msg mono" style="color:var(--muted)">{"status": "대기", "updated": "10-18"}</span><span class="side"></span>
+      <span class="who">model</span><span class="msg"><span class="n">2</span><code>get_history(4821)</code> 도 볼게</span><span class="side"></span>
+      <span class="who">tool</span><span class="msg mono" style="color:var(--muted)">[3건]</span><span class="side"></span>
+      <span class="rule" aria-hidden="true"></span>
+      <span class="who">model</span><span class="msg cut"><span class="n">3</span><code>get_assignee(4821)</code> 도…</span><span class="side">run_limit=2, 여기서 안 나간다</span>
+      <span class="who">ai</span><span class="msg end">Model call limits exceeded: run limit (2/2)</span><span class="side" style="color:var(--muted)">exit_behavior="end" 면 이 한 줄이 마지막 답</span>
+    </div>
+    <p class="cap">번호 뱃지는 모델 호출에만 붙는다. 도구 실행은 세지 않는다는 것이 따로 설명 없이 보인다.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="spec" id="s5">
+  <div class="meta">
+    <span class="no">05 · 생명선</span>
+    <h2>세로줄 세 개와 오가는 말</h2>
+    <p class="why">누가 누구에게 무엇을 넘기는지가 핵심이면 참여자를 세로 실선으로만 둔다. 상자는 없고, 화살표 위에 실제로 넘어가는 문장을 쓴다. block 은 화살표 방향이 거꾸로 바뀌는 것으로 차이가 보인다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">MDN, CORS</a> 요청 흐름도, <a href="https://sequencediagram.org" target="_blank" rel="noopener">시퀀스 다이어그램</a> 표기</dd>
+      <dt>맞는 개념</dt><dd>MCP 주고받기, OAuth, 미들웨어 전후, 스트리밍 응답</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls"><span class="mono">strategy=</span>
+      <div class="tog" data-group="e">
+        <button aria-pressed="true" data-v="redact">redact</button>
+        <button aria-pressed="false" data-v="hash">hash</button>
+        <button aria-pressed="false" data-v="block">block</button>
+      </div>
+    </div>
+    <div class="svgbox"><svg id="e-svg" viewBox="0 0 660 280" style="max-width:680px" role="img" aria-label="사용자, 미들웨어, 모델 사이 메시지 흐름"></svg></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="spec" id="s6">
+  <div class="meta">
+    <span class="no">06 · 작은 그림 여러 장</span>
+    <h2>네 결과를 한눈에 줄 세우기</h2>
+    <p class="why">토글로 하나씩 보여 주면 앞의 것을 기억해야 비교된다. 같은 문장을 같은 크기로 네 줄 놓고 다른 부분만 다르게 칠한다. 눈이 세로로 훑으면서 차이만 잡는다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd>Edward Tufte, <i>Envisioning Information</i>의 small multiples, <a href="https://pudding.cool" target="_blank" rel="noopener">The Pudding</a></dd>
+      <dt>맞는 개념</dt><dd>옵션 비교, 양자화 단계, temperature 값별 출력</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="multi">
+      <span class="head-row">전략</span><span class="head-row">모델이 받는 말</span><span class="head-row" style="text-align:right">모델이 주소를 아나</span>
+      <span class="k">redact</span><span class="s">내 이메일은 <span class="pii redact">[REDACTED_EMAIL]</span> 이고 티켓…</span><span class="v">모른다</span>
+      <span class="k">mask</span><span class="s">내 이메일은 <span class="pii mask">k**@c***.com</span> 이고 티켓…</span><span class="v">모양만 안다</span>
+      <span class="k">hash</span><span class="s">내 이메일은 <span class="pii hash">&lt;email_hash:9f2c1a7e&gt;</span> 이고 티켓…</span><span class="v">같은 사람인지만 안다</span>
+      <span class="k">block</span><span class="s blocked">내 이메일은 kim@corp.com 이고 티켓…</span><span class="v">요청이 멈춘다</span>
+    </div>
+    <p class="cap">mask·hash 값은 모양을 보여 주려고 만든 예시다.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="spec" id="s7">
+  <div class="meta">
+    <span class="no">07 · 손그림</span>
+    <h2>양파 껍질처럼 감싼 미들웨어</h2>
+    <p class="why">반듯한 선과 균일한 둥근 모서리가 자동 생성 티의 큰 몫이다. 같은 구조라도 흔들리는 선과 손글씨로 그리면 화이트보드 앞에서 설명하는 느낌이 난다. 미들웨어가 모델을 겹겹이 감싼다는 구조도 층으로 보인다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://excalidraw.com" target="_blank" rel="noopener">Excalidraw</a>, <a href="https://maggieappleton.com/garden" target="_blank" rel="noopener">Maggie Appleton</a> 손그림 설명, <a href="https://roughjs.com" target="_blank" rel="noopener">Rough.js</a></dd>
+      <dt>맞는 개념</dt><dd>계층·감싸기 구조: 미들웨어, 하네스, 샌드박스</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls"><button class="run" id="g-redraw">다시 그리기</button><span>누를 때마다 선이 조금씩 다르게 흔들린다</span></div>
+    <div class="svgbox"><svg id="g-svg" viewBox="0 0 640 330" style="max-width:660px" role="img" aria-label="미들웨어 층이 모델을 감싼 손그림"></svg></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="spec" id="s8">
+  <div class="meta">
+    <span class="no">08 · 노선도</span>
+    <h2>미들웨어는 어느 역에 서나</h2>
+    <p class="why">루프와 갈고리(hook)가 섞인 흐름은 지하철 노선도가 잘 푼다. 큰 역은 모델·도구, 작은 환승역은 before_model 같은 hook 이다. 미들웨어마다 노선 색을 주면 어디서 끼어드는지가 갈아타는 역으로 보인다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd>Harry Beck 런던 지하철 노선도, <a href="https://www.transitmap.net" target="_blank" rel="noopener">Transit Maps</a></dd>
+      <dt>맞는 개념</dt><dd>에이전트 루프의 hook, CI 파이프라인, 요청 생명주기</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="svgbox"><svg id="h-svg" viewBox="0 0 660 300" style="max-width:680px" role="img" aria-label="에이전트 루프 노선도"></svg></div>
+    <p class="cap">검은 선이 에이전트 본선이다. 색 선은 미들웨어가 지나가는 역만 잇는다.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="spec" id="s9">
+  <div class="meta">
+    <span class="no">09 · 흐르는 글자</span>
+    <h2>체에 걸리는 글자들</h2>
+    <p class="why">미들웨어를 "처리하는 상자"가 아니라 말이 지나가는 체로 그린다. 글자가 한 자씩 체를 통과하고, 이메일 글자만 걸려 이름표로 바뀐다. 스트리밍으로 흘러간다는 성질도 같이 보인다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://www.redblobgames.com" target="_blank" rel="noopener">Red Blob Games</a>, <a href="https://ciechanow.ski/internet/" target="_blank" rel="noopener">Ciechanowski, Internet</a>의 패킷 흐름</dd>
+      <dt>맞는 개념</dt><dd>토큰 스트리밍, 필터·가드레일, 토크나이저</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="ctrls"><button class="run" id="i-play">▶ 흘려 보내기</button></div>
+    <div class="stream">
+      <div class="side"><span class="lbl">들어온 말</span><span id="i-in"></span></div>
+      <div class="sieve" aria-hidden="true"></div>
+      <div class="side"><span class="lbl">모델로 나간 말</span><span id="i-out"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="spec" id="s10">
+  <div class="meta">
+    <span class="no">10 · 코드에 직접 메모</span>
+    <h2>설정 줄 옆에 빨간 펜</h2>
+    <p class="why">개념 그림을 따로 그리는 대신 독자가 복사해 갈 코드 줄 옆에 바로 메모한다. 메모에 마우스를 올리면 그 인자가 칠해진다. 코드 해부(POSTING 5-7)와 결이 같다.</p>
+    <dl>
+      <dt>레퍼런스</dt><dd><a href="https://codehike.org" target="_blank" rel="noopener">Code Hike</a>, <a href="https://www.joshwcomeau.com" target="_blank" rel="noopener">Josh W. Comeau</a> 인라인 주석</dd>
+      <dt>맞는 개념</dt><dd>설정값이 동작을 바꾸는 모든 것</dd>
+    </dl>
+  </div>
+  <div class="demo">
+    <div class="codegrid" id="j-code">
+      <span class="ln"><span class="kw">agent</span> = create_agent(</span><span></span>
+      <span class="ln">    model=<span class="st">"claude-sonnet-5-5"</span>,</span><span></span>
+      <span class="ln">    middleware=[</span><span></span>
+      <span class="ln">        ModelCallLimitMiddleware(<mark data-k="1">run_limit=2</mark>,</span><span class="nt" data-k="1">질문 하나에 모델 두 번까지</span>
+      <span class="ln">                                 <mark data-k="2">exit_behavior=<span class="st">"end"</span></mark>),</span><span class="nt" data-k="2">넘치면 에러 대신 한 줄 남기고 끝</span>
+      <span class="ln">        PIIMiddleware(<span class="st">"email"</span>, <mark data-k="3">strategy=<span class="st">"redact"</span></mark>),</span><span class="nt" data-k="3">주소를 [REDACTED_EMAIL] 로</span>
+      <span class="ln">    ],</span><span></span>
+      <span class="ln">)</span><span></span>
+    </div>
+  </div>
+</section>
+
+<section class="outro">
+  <div class="meta">
+    <span class="no">고르는 법</span>
+    <h2>개념이 무엇이냐에 따라</h2>
+    <p class="why">상자 다이어그램은 "무엇이든 그릴 수 있어서" 기본값이 된다. 개념의 성질을 먼저 묻고, 거기 맞는 그림을 고른다.</p>
+  </div>
+  <div class="tablebox">
+    <table class="pick">
+      <thead><tr><th>개념이 이렇다면</th><th>이 견본</th><th>쓰지 말 것</th></tr></thead>
+      <tbody>
+        <tr><td>문장·데이터 한 토막이 바뀐다</td><td>01 원문 표시, 06 줄 세우기, 09 흐르는 글자</td><td>변환 전·후 상자 두 개</td></tr>
+        <tr><td>개수·한도·예산</td><td>02 실물 은유, 03 눈금</td><td>상자 N개 세로 쌓기</td></tr>
+        <tr><td>여러 주체가 주고받는다</td><td>05 생명선, 04 로그</td><td>주체마다 색 상자</td></tr>
+        <tr><td>감싸기·계층</td><td>07 손그림 양파</td><td>상자 안 상자</td></tr>
+        <tr><td>루프 + 끼어드는 지점</td><td>08 노선도</td><td>순서도 마름모</td></tr>
+        <tr><td>설정값이 동작을 정한다</td><td>10 코드 메모</td><td>설정 이름만 적은 상자</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
+<script>
+(function(){
+const NS="http://www.w3.org/2000/svg";
+const $=s=>document.querySelector(s);
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function toggle(group,cb){const g=document.querySelector('.tog[data-group="'+group+'"]');g.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;g.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
+
+/* 01 원문 주석 */
+const A={orig:["kim@corp.com","들어온 그대로. 이게 모델에 가면 곤란하다"],redact:["[REDACTED_EMAIL]","통째로 이름표로 바꿈. 모델은 주소를 모른다"],mask:["k**@c***.com","모양은 남기고 글자만 가림"],hash:["<email_hash:9f2c1a7e>","같은 주소면 늘 같은 값. 같은 사람인지는 안다"],block:["kim@corp.com","아예 안 보낸다. 요청이 에러로 멈춘다"]};
+function placeA(){const p=$("#a-pii"),doc=$("#a-doc"),an=$("#a-anno");const pr=p.getBoundingClientRect(),dr=an.getBoundingClientRect();let x=pr.left-dr.left+Math.min(pr.width*.3,40);x=Math.max(0,Math.min(x,dr.width-60));const ar=$("#a-arrow");ar.style.left=x+"px";ar.style.transform="scaleX(-1)";const note=$("#a-note");note.style.left=Math.max(0,Math.min(x-10,dr.width-note.offsetWidth))+"px"}
+function setA(v){const p=$("#a-pii"),doc=$("#a-doc");p.textContent=A[v][0];p.className="pii "+(v==="block"?"orig":v);doc.classList.toggle("blocked",v==="block");$("#a-note").textContent=A[v][1];placeA()}
+toggle("a",setA);addEventListener("resize",placeA);document.fonts&&document.fonts.ready.then(placeA);placeA();
+
+/* 02 호출권 */
+const B={lim:2,calls:0,svg:$("#b-svg")};
+function drawB(anim){const s=B.svg;s.innerHTML="";
+  const t=el("g",{},s);
+  // 표: 뜯는 선이 있는 종이
+  el("path",{d:"M20 40 H250 a8 8 0 0 0 0 16 V164 a8 8 0 0 0 0 16 H20 Z",fill:"none",stroke:"var(--ink)","stroke-width":1.5},t);
+  el("text",{x:36,y:70,"font-size":13,fill:"var(--muted)"},t,"모델 호출권");
+  el("text",{x:36,y:92,"font-size":18,"font-weight":700,fill:"var(--ink)"},t,"run_limit = "+B.lim);
+  el("line",{x1:36,y1:104,x2:234,y2:104,stroke:"var(--hair)","stroke-dasharray":"3 4"},t);
+  const gap=Math.min(46,190/B.lim);
+  for(let i=0;i<B.lim;i++){const cx=56+i*gap,cy=138,used=i<B.calls;
+    el("circle",{cx,cy,r:15,fill:used?"var(--ink)":"none",stroke:"var(--ink)","stroke-width":1.5,"stroke-dasharray":used?"":"4 3"},t);
+    el("text",{x:cx,y:cy+5,"text-anchor":"middle","font-size":13,fill:used?"var(--paper)":"var(--muted)","font-family":"var(--f-mono)"},t,String(i+1));}
+  // 개찰구
+  const blocked=B.calls>B.lim;const left=Math.max(0,B.lim-Math.min(B.calls,B.lim));
+  el("line",{x1:430,y1:60,x2:430,y2:180,stroke:"var(--ink)","stroke-width":3},s);
+  el("line",{x1:300,y1:180,x2:620,y2:180,stroke:"var(--hair)"},s);
+  const closed=B.calls>=B.lim;
+  const arm=el("line",{x1:430,y1:110,x2:closed?520:430,y2:closed?110:30,stroke:closed?"var(--pen)":"var(--muted)","stroke-width":5,"stroke-linecap":"round"},s);
+  el("text",{x:430,y:205,"text-anchor":"middle","font-size":13,fill:"var(--muted)"},s,closed?"닫힘":"열림");
+  // 호출 하나 = 점
+  if(B.calls>0){const ok=!blocked;const x=ok?560:395;
+    const c=el("circle",{cx:ok?560:395,cy:155,r:11,fill:ok?"var(--ink)":"var(--pen)"},s);
+    if(anim&&!reduce){c.style.transition="transform .55s cubic-bezier(.3,.7,.3,1)";c.style.transform="translateX("+(320-x)+"px)";requestAnimationFrame(()=>requestAnimationFrame(()=>{c.style.transform="translateX(0)"}))}
+    el("text",{x:ok?560:395,y:136,"text-anchor":"middle","font-size":13,fill:ok?"var(--ink)":"var(--pen)","font-family":"var(--f-mono)"},s,B.calls+"번째");
+    if(!ok)el("text",{x:300,y:52,"font-size":22,fill:"var(--pen)","font-family":"var(--f-pen)"},s,"칸이 없다. 여기서 끝");
+  }
+  $("#b-cap").textContent=B.calls===0?"버튼을 누를 때마다 모델을 한 번 부른다. 칸이 남아 있으면 구멍을 뚫고 지나간다.":blocked?B.calls+"번째 호출은 개찰구에서 막혔다. 남은 칸 0. 여기서 run 이 끝난다.":B.calls+"번째 호출 통과. 남은 칸 "+left+"개.";
+  $("#b-next").disabled=blocked;$("#b-next").style.opacity=blocked?.4:1;
+}
+$("#b-next").onclick=()=>{if(B.calls<=B.lim){B.calls++;drawB(true)}};
+$("#b-reset").onclick=()=>{B.calls=0;drawB()};
+$("#b-lim").oninput=e=>{B.lim=+e.target.value;$("#b-limv").textContent=B.lim;B.calls=0;drawB()};
+drawB();
+
+/* 03 눈금 */
+function drawC(){const s=$("#c-svg");s.innerHTML="";const run=+$("#c-run").value,thr=+$("#c-thr").value;
+  $("#c-runv").textContent=run;$("#c-thrv").textContent=thr;
+  const x0=40,step=96,y=100;let thread=0,threadDead=false;const ticks=[];
+  for(let r=0;r<2;r++){let runCnt=0,dead=false;for(let i=0;i<3;i++){const x=x0+(r*3+i)*step+(r?40:0);let st;
+      if(dead||threadDead)st="never";else if(runCnt>=run){st="cut-run";dead=true}else if(thread>=thr){st="cut-thr";threadDead=true;dead=true}else{st="ok";runCnt++;thread++}
+      ticks.push({x,st,r,i})}}
+  el("line",{x1:x0-20,y1:y,x2:x0+5*step+60,y2:y,stroke:"var(--hair)","stroke-width":1},s);
+  // 실행 경계
+  [0,1].forEach(r=>{const a=x0+r*3*step+(r?40:0)-14,b=a+2*step+28;
+    el("path",{d:`M${a} ${y+44} v6 H${b} v-6`,fill:"none",stroke:"var(--muted)"},s);
+    el("text",{x:(a+b)/2,y:y+70,"text-anchor":"middle","font-size":13,fill:"var(--muted)"},s,(r+1)+"번째 질문 (run)")});
+  let cutDrawn=false;
+  ticks.forEach(t=>{const tall=t.st==="ok";
+    el("line",{x1:t.x,y1:y-(tall?34:22),x2:t.x,y2:y,stroke:tall?"var(--ink)":"var(--muted)","stroke-width":tall?4:1.5,"stroke-dasharray":tall?"":"3 3","stroke-linecap":"round"},s);
+    el("text",{x:t.x,y:y+22,"text-anchor":"middle","font-size":12,fill:tall?"var(--ink)":"var(--muted)","font-family":"var(--f-mono)"},s,"#"+(t.i+1));
+    if(t.st==="cut-run"||t.st==="cut-thr"){const cx=t.x-step/2+6;
+      el("line",{x1:cx,y1:y-62,x2:cx,y2:y+10,stroke:"var(--pen)","stroke-width":2.5},s);
+      el("text",{x:cx+6,y:y-48,"font-size":21,fill:"var(--pen)","font-family":"var(--f-pen)"},s,t.st==="cut-run"?"run_limit":"thread_limit")}});
+  el("text",{x:x0-20,y:24,"font-size":13,fill:"var(--muted)"},s,"대화 전체에서 나간 호출 "+thread+" / "+thr);
+}
+["#c-run","#c-thr"].forEach(q=>$(q).oninput=drawC);drawC();
+
+/* 05 생명선 */
+function drawE(v){const s=$("#e-svg");s.innerHTML="";const X=[80,330,580];const names=["사용자","PIIMiddleware","모델"];
+  X.forEach((x,i)=>{el("text",{x,y:28,"text-anchor":"middle","font-size":14,"font-weight":i===1?700:500,fill:"var(--ink)","font-family":i===1?"var(--f-mono)":"var(--f-body)"},s,names[i]);
+    el("line",{x1:x,y1:42,x2:x,y2:262,stroke:"var(--ink)","stroke-width":1},s)});
+  const defs=el("defs",{},s);const mk=el("marker",{id:"ah",viewBox:"0 0 10 10",refX:9,refY:5,markerWidth:10,markerHeight:10,markerUnits:"userSpaceOnUse",orient:"auto"},defs);el("path",{d:"M0 0 L10 5 L0 10 z",fill:"var(--ink)"},mk);
+  const mk2=el("marker",{id:"ahp",viewBox:"0 0 10 10",refX:9,refY:5,markerWidth:10,markerHeight:10,markerUnits:"userSpaceOnUse",orient:"auto"},defs);el("path",{d:"M0 0 L10 5 L0 10 z",fill:"var(--pen)"},mk2);
+  function msg(x1,x2,y,parts,color){el("line",{x1:x1+(x2>x1?6:-6),y1:y,x2:x2-(x2>x1?6:-6),y2:y,stroke:color||"var(--ink)","stroke-width":1.5,"marker-end":color?"url(#ahp)":"url(#ah)"},s);
+    const t=el("text",{x:(x1+x2)/2,y:y-10,"text-anchor":"middle","font-size":13,fill:"var(--ink)"},s);parts.forEach(p=>{const ts=el("tspan",{},t,p[0]);if(p[1])ts.setAttribute("style",p[1])})}
+  msg(X[0],X[1],90,[["내 이메일은 "],["kim@corp.com","font-family:var(--f-mono);fill:var(--pen);font-weight:600"],[" 이고…"]]);
+  if(v==="block"){
+    el("text",{x:X[1]+12,y:140,"font-size":21,fill:"var(--pen)","font-family":"var(--f-pen)"},s,"이메일 발견. 모델로 안 넘김");
+    msg(X[1],X[0],190,[["PIIDetectionError","font-family:var(--f-mono);fill:var(--pen)"]],"var(--pen)");
+    el("line",{x1:X[1]+20,y1:226,x2:X[2]-20,y2:226,stroke:"var(--muted)","stroke-dasharray":"4 5"},s);
+    el("text",{x:(X[1]+X[2])/2,y:216,"text-anchor":"middle","font-size":13,fill:"var(--muted)"},s,"이 길은 쓰이지 않음");
+  }else{
+    const rep=v==="redact"?"[REDACTED_EMAIL]":"<email_hash:9f2c1a7e>";
+    el("text",{x:X[1]+12,y:140,"font-size":21,fill:"var(--pen)","font-family":"var(--f-pen)"},s,v==="redact"?"주소를 이름표로":"주소를 지문으로");
+    msg(X[1],X[2],190,[["내 이메일은 "],[rep,"font-family:var(--f-mono);fill:var(--accent);font-weight:600"],[" 이고…"]]);
+    msg(X[2],X[0],245,[["티켓 #4821 은 대기 중이에요","fill:var(--muted)"]]);
+  }}
+toggle("e",drawE);drawE("redact");
+
+/* 07 손그림 양파 */
+function drawG(){const s=$("#g-svg");s.innerHTML="";const css=getComputedStyle(document.documentElement);
+  const ink=css.getPropertyValue("--ink").trim(),pen=css.getPropertyValue("--pen").trim(),muted=css.getPropertyValue("--muted").trim();
+  const cx=380,cy=150;const layers=[[300,250,"PIIMiddleware",muted],[200,160,"ModelCallLimit",muted],[96,72,"모델",ink]];
+  const label=(x,y,t,c,size)=>el("text",{x,y,"text-anchor":"middle","font-size":size||24,fill:c,"font-family":"var(--f-pen)"},s,t);
+  if(window.rough){const rc=rough.svg(s);const seed=Math.floor(Math.random()*1e4);
+    layers.forEach(([w,h,,c],i)=>s.appendChild(rc.ellipse(cx,cy,w*(1.5-i*.05),h,{stroke:c,strokeWidth:i===2?2.2:1.5,roughness:1.6,seed:seed+i,fill:i===2?ink:undefined,fillStyle:"hachure",hachureGap:7,fillWeight:.6})));
+    s.appendChild(rc.line(30,cy-18,cx-60,cy-18,{stroke:pen,strokeWidth:2,roughness:1.4,seed}));
+    s.appendChild(rc.linearPath([[cx-60,cy-26],[cx-48,cy-18],[cx-60,cy-10]],{stroke:pen,strokeWidth:2,seed}));
+    s.appendChild(rc.line(cx-60,cy+18,30,cy+18,{stroke:ink,strokeWidth:1.5,roughness:1.4,seed:seed+9}));
+    s.appendChild(rc.linearPath([[42,cy+10],[30,cy+18],[42,cy+26]],{stroke:ink,strokeWidth:1.5,seed:seed+3}));
+  }else{layers.forEach(([w,h,,c],i)=>el("ellipse",{cx,cy,rx:w*(1.5-i*.05)/2,ry:h/2,fill:"none",stroke:c,"stroke-width":1.5},s))}
+  label(cx,cy-112,"PIIMiddleware",muted,22);label(cx,cy-66,"ModelCallLimit",muted,22);
+  const m=label(cx,cy+8,"모델",getComputedStyle(document.documentElement).getPropertyValue("--paper").trim(),28);
+  el("rect",{x:cx-28,y:cy-14,width:56,height:30,fill:"var(--ink)",rx:6},s).after(m);
+  label(70,cy-28,"요청",pen,22);label(70,cy+46,"응답",ink,22);
+  label(100,296,"들어갈 땐 바깥 층부터,",pen,21);label(100,320,"나올 땐 안쪽 층부터",pen,21);
+}
+$("#g-redraw").onclick=drawG;(document.fonts?document.fonts.ready:Promise.resolve()).then(drawG);
+
+/* 08 노선도 */
+function drawH(){const s=$("#h-svg");s.innerHTML="";
+  const P={start:[40,150],bm:[150,150],model:[260,150],am:[370,150],tool:[480,80],end:[600,220]};
+  // 본선: 시작→bm→모델→am→(도구로 위로 꺾여 돌아오는 루프)→am…→끝
+  el("path",{d:"M40 150 H370 L440 80 H520 L560 120 V150 H560",fill:"none",stroke:"var(--ink)","stroke-width":7,"stroke-linejoin":"round","stroke-linecap":"round"},s);
+  el("path",{d:"M520 80 C 600 80, 600 30, 450 30 H190 C150 30, 150 60, 150 150",fill:"none",stroke:"var(--ink)","stroke-width":7,"stroke-dasharray":"1 13","stroke-linecap":"round"},s);
+  el("path",{d:"M370 150 L440 220 H600",fill:"none",stroke:"var(--ink)","stroke-width":7,"stroke-linecap":"round","stroke-linejoin":"round"},s);
+  // 미들웨어 노선
+  el("path",{d:"M150 262 V160",fill:"none",stroke:"var(--line2)","stroke-width":5,"stroke-linecap":"round"},s);
+  el("path",{d:"M140 262 V160 M150 160",fill:"none",stroke:"none"},s);
+  el("path",{d:"M160 262 C160 230,160 200,160 162 M370 162 C370 200,370 262,370 262",fill:"none",stroke:"var(--line3)","stroke-width":5,"stroke-linecap":"round"},s);
+  el("text",{x:150,y:282,"font-size":12,fill:"var(--line2)","text-anchor":"end","font-family":"var(--f-mono)"},s,"CallLimit");
+  el("text",{x:165,y:282,"font-size":12,fill:"var(--line3)","font-family":"var(--f-mono)"},s,"PII");
+  el("text",{x:375,y:282,"font-size":12,fill:"var(--line3)","font-family":"var(--f-mono)"},s,"PII (응답 검사 시)");
+  const big=(k,t,dy)=>{const[x,y]=P[k];el("circle",{cx:x,cy:y,r:11,fill:"var(--ink)"},s);el("text",{x,y:y+(dy||-20),"text-anchor":"middle","font-size":15,"font-weight":700,fill:"var(--ink)"},s,t)};
+  const hook=(k,t)=>{const[x,y]=P[k];el("circle",{cx:x,cy:y,r:10,fill:"var(--paper)",stroke:"var(--ink)","stroke-width":3},s);el("text",{x,y:y-20,"text-anchor":"middle","font-size":12,fill:"var(--muted)","font-family":"var(--f-mono)"},s,t)};
+  big("start","시작",30);hook("bm","before_model");big("model","모델");hook("am","after_model");big("tool","도구");big("end","답",28);
+  el("text",{x:300,y:22,"font-size":20,fill:"var(--pen)","font-family":"var(--f-pen)","text-anchor":"middle"},s,"도구를 부르면 다시 모델로 (루프)");
+}
+drawH();
+
+/* 09 흐르는 글자 */
+const SENT="내 이메일은 kim@corp.com 이고 티켓 상태 알려줘";const E0=SENT.indexOf("kim"),E1=E0+"kim@corp.com".length;
+function setupI(){const inn=$("#i-in");inn.innerHTML="";[...SENT].forEach(c=>{const sp=document.createElement("span");sp.className="ch";sp.textContent=c;inn.appendChild(sp)});$("#i-out").textContent="";}
+let iT=null;
+$("#i-play").onclick=()=>{clearInterval(iT);setupI();const chs=[...$("#i-in").children],out=$("#i-out");let i=0,box=null;
+  const stepFn=()=>{if(i>=chs.length){clearInterval(iT);return}chs[i].classList.add("gone");
+    if(i>=E0&&i<E1){if(!box){box=document.createElement("span");box.className="sq";out.appendChild(box)}box.textContent+="■";if(i===E1-1){setTimeout(()=>{box.className="caught";box.textContent="[REDACTED_EMAIL]"},reduce?0:260)}}
+    else out.appendChild(document.createTextNode(SENT[i]));i++};
+  if(reduce){while(i<chs.length)stepFn()}else iT=setInterval(stepFn,70)};
+setupI();
+// 처음부터 결과가 보이게: 한 번 끝난 상태로 시작
+(()=>{const chs=[...$("#i-in").children];chs.forEach(c=>c.classList.add("gone"));const out=$("#i-out");out.append(SENT.slice(0,E0));const b=document.createElement("span");b.className="caught";b.textContent="[REDACTED_EMAIL]";out.append(b,SENT.slice(E1))})();
+
+/* 10 코드 메모 */
+document.querySelectorAll("#j-code .nt").forEach(n=>{const k=n.dataset.k;const m=document.querySelector('#j-code mark[data-k="'+k+'"]');
+  n.addEventListener("mouseenter",()=>m.classList.add("on"));n.addEventListener("mouseleave",()=>m.classList.remove("on"))});
+
+// 테마 바뀌면 손그림 색 다시
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",drawG);
+new MutationObserver(drawG).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>

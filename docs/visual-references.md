@@ -240,6 +240,24 @@
 - **같은 질문 세 개를 두 검색 방식에 흘려 보기** (agentic-rag-search-as-tool-langchain) — 질문 토글 하나로 2-Step(검색 항상 1번)과 Agentic(0·1·2번)의 사건 줄이 함께 바뀌고 아래에 검색·모델 호출 횟수가 쓰인다. "다시 흘려 보기"를 누르면 두 줄이 같은 박자로 한 칸씩 나타난다. 검색이 필요 없는 질문에서 2-Step이 불필요하게 검색하는 것을 첫 질문으로 보였다
 - **실제로 나눠 본 청크를 카드로, 잘린 청크에 경고 표시** (agentic-rag-search-as-tool-langchain) — splitter 결과 둘째 청크에 VPN이라는 말이 사라진 것을 그대로 카드에 옮겼다. Contextual Retrieval의 필요성을 만든 예시 없이 보이는 방법
 
+## 그림 문법 견본
+
+그림 한 장을 **어떤 문법으로** 그릴지 고를 때 본다. 기준은 `POSTING.md` 5-9, 견본은 `docs/visual-grammar-specimens.html`
+(2026-10-20, AI Agent 시리즈 미들웨어 그림을 상자 없이 다시 그린 열 가지). 레퍼런스 링크는 이 세션에서 열어 보지 않고 알던 것으로 적었다 — 쓸 때 연다.
+
+| 문법 | 레퍼런스 | 맞는 개념 | 쓴 글 |
+|---|---|---|---|
+| 원문에 직접 표시 | NYT 뮬러 보고서 검열 표시, Genius 주석 | 마스킹·토큰화·템플릿 치환 | |
+| 실물 은유(구멍 뚫는 표·개찰구) | Ciechanowski Mechanical Watch, Nicky Case The Evolution of Trust | rate limit·토큰 예산·재시도 | |
+| 눈금 한 줄 | Tufte 스파크라인, Gapminder | 루프 횟수·요청 타임라인 | |
+| 로그가 곧 그림 | Julia Evans 진, Stripe API 문서 | 에이전트 루프·도구 호출 | |
+| 생명선 | MDN CORS 흐름도, 시퀀스 다이어그램 | MCP·OAuth·미들웨어 전후 | |
+| 작은 그림 여러 장 | Tufte small multiples, The Pudding | 옵션 비교 | |
+| 손그림 층 | Excalidraw, Maggie Appleton, Rough.js | 미들웨어·하네스·샌드박스 | |
+| 노선도 | Harry Beck 지하철 노선도, Transit Maps | hook·CI 파이프라인 | |
+| 흐르는 글자 | Red Blob Games, Ciechanowski Internet | 스트리밍·필터·토크나이저 | |
+| 코드에 직접 메모 | Code Hike, Josh W. Comeau | 설정값이 동작을 정할 때 | |
+
 ## 페이지 레이아웃
 
 그림 하나가 아니라 **페이지 구조**를 고를 때 본다. `/study` 3단계 스토리보드에서 글마다 하나를 고르고,
