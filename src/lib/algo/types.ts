@@ -22,6 +22,8 @@ export type StageState = {
   values?: number[];
   /** 레인(스택·큐·힙)에 담긴 값. 없으면 그리지 않는다 */
   queue?: number[];
+  /** 칸 트랙 아래에 붙는 두 번째 줄(누적합처럼 원래 배열과 파생 배열을 같이 볼 때). 값이 모자란 칸은 빈 칸으로 그린다 */
+  below?: { values: number[]; cells: CellState[]; flags: Record<string, number> };
   /** 호출 탑 — 아래가 먼저 부른 층이다. `ret` 이 있으면 그 층이 값을 돌려주며 걷히는 중이다 */
   frames?: { n: number; ret?: number }[];
 };

@@ -61,7 +61,7 @@ export const registry: AlgoEntry[] = [
     signals: ["연속한 구간", "길이가 k 로 정해져 있다", "최대·최소 구간 합"],
     status: "ready",
   },
-  plan("prefix-sum", "누적합", "구간의 합을 한 번 빼기로", "기초 개념", ["prefix sum"], ["구간 합을 여러 번"]),
+  { slug: "prefix-sum", title: "누적합", lede: "구간의 합을 한 번 빼기로", category: "기초 개념", tier: 1, aliases: ["prefix sum", "구간 합", "부분합", "psum"], signals: ["구간의 합을 여러 번", "값은 안 바뀐다", "칸 수와 질문 수가 둘 다 크다"], status: "ready" },
 
   // ── 자료구조
   plan("array-list", "배열과 리스트", "왜 맨 앞에 끼우면 느릴까", "자료구조", ["list"], []),
