@@ -30,11 +30,17 @@ type CategoryRow = {
   sort_order: number;
 };
 
+// 카드·목록용 컬럼 — body_md 를 뺀다. 글 한 편이 평균 37KB 라 목록·관련 글·시리즈를 select("*") 로 읽으면
+// 빌드 한 번에 수백 MB 가 Supabase egress 로 나간다(2026-10 무료 한도 초과의 원인). 본문이 필요한 곳
+// (상세·에디터·검색 스니펫)만 select("*") 를 쓴다. 새 컬럼을 posts 에 더하면 여기에도 넣어야 카드에 보인다.
+const POST_CARD_COLUMNS =
+  "slug,title,excerpt,category_slug,tags,thumb_kind,cover_image,cover_brightness,reading_min,is_featured,featured_chips,status,published_at,source_date,series_slug,series_order";
+
 type PostRow = {
   slug: string;
   title: string;
   excerpt: string | null;
-  body_md: string | null;
+  body_md?: string | null; // 목록·카드 질의(POST_CARD_COLUMNS)는 본문을 읽지 않는다
   category_slug: string | null;
   tags: string[];
   thumb_kind: string;
@@ -157,7 +163,7 @@ export async function getFeaturedPosts(): Promise<Post[]> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .eq("is_featured", true)
     .order("published_at", { ascending: false });
@@ -175,7 +181,7 @@ export async function getRecentPosts(
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .eq("is_featured", false)
     .order("published_at", { ascending: false })
@@ -195,7 +201,7 @@ export async function getAllPosts(): Promise<Post[]> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -347,7 +353,7 @@ export async function getRelatedPosts(post: Post, limit = 3): Promise<Post[]> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .neq("slug", post.slug)
     .order("published_at", { ascending: false })
@@ -391,7 +397,7 @@ export async function getPostsByTag(tag: string): Promise<Post[]> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .contains("tags", [tag])
     .order("updated_at", { ascending: false });
@@ -460,7 +466,7 @@ export async function getPostsByCategorySlug(slug: string): Promise<Post[]> {
 
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select(POST_CARD_COLUMNS)
     .eq("status", "published")
     .in("category_slug", slugs)
     .order("updated_at", { ascending: false });
@@ -492,7 +498,7 @@ export async function getAllSeries(): Promise<SeriesSummary[]> {
     if (error || !series) return [];
     const { data: posts } = await sb
       .from("posts")
-      .select("*")
+      .select(POST_CARD_COLUMNS)
       .eq("status", "published")
       .not("series_slug", "is", null)
       .order("series_order", { ascending: true, nullsFirst: false });
@@ -574,7 +580,7 @@ export async function getSeriesPosts(seriesSlug: string): Promise<Post[]> {
   try {
     const { data, error } = await sb
       .from("posts")
-      .select("*")
+      .select(POST_CARD_COLUMNS)
       .eq("status", "published")
       .eq("series_slug", seriesSlug)
       .order("series_order", { ascending: true, nullsFirst: false });
