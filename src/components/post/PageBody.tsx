@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { optimizeHtmlImages } from "@/lib/img";
 import { INERT_SCRIPT_TYPE, ORIG_SCRIPT_TYPE, lockScripts } from "@/lib/page-html";
 
 // HTML 페이지형 글의 본문. HTML 은 서버 렌더에 그대로 실려 검색엔진이 읽는다.
@@ -20,7 +21,7 @@ declare global {
 
 export function PageBody({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const locked = useMemo(() => lockScripts(html), [html]);
+  const locked = useMemo(() => lockScripts(optimizeHtmlImages(html)), [html]);
   // React 19 는 dangerouslySetInnerHTML 을 객체 동일성으로 비교한다. 렌더마다 새 객체를 주면
   // 부모가 다시 그려질 때마다 innerHTML 이 다시 들어가, 글 스크립트가 붙든 요소와 인터랙션 상태가 날아간다.
   const inner = useMemo(() => ({ __html: locked }), [locked]);

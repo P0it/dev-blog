@@ -1,5 +1,6 @@
 import { Thumb } from "@/components/diagram/Thumb";
 import type { Post } from "@/lib/types";
+import { imageProps } from "@/lib/img";
 
 // 카드 썸네일 — 직접 지정한 커버 이미지가 있으면 그 이미지를,
 // 없으면 thumb_kind 해시 패턴(Thumb)으로 폴백한다.
@@ -11,11 +12,14 @@ export function CoverThumb({ post, fill = false }: { post: Post; fill?: boolean 
       : undefined;
     return (
       <div className={fill ? undefined : "thumb"} style={wrapperStyle}>
-        {/* Storage 외부 URL — next/image 설정 없이 단순 img (본문 이미지와 동일) */}
+        {/* Storage 원본을 직접 받으면 egress 가 쌓인다 — /_next/image 로 줄인 변환본을 받는다.
+            fill(히어로)은 첫 화면이라 바로 받고, 카드 목록은 화면에 들어올 때 받는다. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={post.coverImage}
+          {...imageProps(post.coverImage, fill ? "100vw" : "(min-width: 1080px) 400px, 100vw")}
           alt=""
+          loading={fill ? "eager" : "lazy"}
+          decoding="async"
           style={{
             position: "absolute",
             inset: 0,

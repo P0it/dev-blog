@@ -60,6 +60,7 @@ async function upload(path, body, contentType) {
   const { error } = await sb.storage.from(BUCKET).upload(path, body, {
     contentType,
     upsert: true,
+    cacheControl: "31536000", // 파일명에 타임스탬프가 들어가 내용이 바뀌면 주소도 바뀐다
   });
   if (error) throw error;
   const { data } = sb.storage.from(BUCKET).getPublicUrl(path);

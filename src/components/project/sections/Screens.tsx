@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { LabModal } from "../LabModal";
 import type { ProjectPlatform } from "@/lib/types";
+import { imageProps } from "@/lib/img";
 
 export type Shot = { title: string; src: string; caption: string };
 
@@ -136,9 +137,10 @@ function ShotFigure({
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={shot.src}
+            {...imageProps(shot.src, "(min-width: 1080px) 720px, 100vw")}
             alt={shot.title}
             loading="lazy"
+            decoding="async"
             onLoad={(e) => {
               const img = e.currentTarget;
               if (img.naturalHeight) setRatio(img.naturalWidth / img.naturalHeight);

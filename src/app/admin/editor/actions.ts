@@ -326,7 +326,7 @@ export async function uploadImage(
   const sb = supabaseServer();
   const { error } = await sb.storage
     .from("post-images")
-    .upload(path, body, { contentType, upsert: false });
+    .upload(path, body, { contentType, upsert: false, cacheControl: "31536000" });
   if (error) throw error;
 
   const { data } = sb.storage.from("post-images").getPublicUrl(path);

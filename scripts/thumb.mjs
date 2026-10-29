@@ -74,7 +74,7 @@ if (upload) {
   const { createClient } = await import("@supabase/supabase-js");
   const sb = createClient(url, key, { auth: { persistSession: false } });
   const path = `thumbs/${slug}-${Date.now().toString(36)}.jpg`;
-  const { error } = await sb.storage.from("post-images").upload(path, readFileSync(file), { contentType: "image/jpeg", upsert: false });
+  const { error } = await sb.storage.from("post-images").upload(path, readFileSync(file), { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" });
   if (error) throw error;
   const pub = sb.storage.from("post-images").getPublicUrl(path).data.publicUrl;
   // 원고 프런트매터의 cover_image 를 바꾸거나 넣는다

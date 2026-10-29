@@ -145,7 +145,7 @@ async function upload(file) {
   const sb = createClient(url, key, { auth: { persistSession: false } });
   const { error } = await sb.storage
     .from("post-images")
-    .upload(path, body, { contentType: "image/webp", upsert: false });
+    .upload(path, body, { contentType: "image/webp", upsert: false, cacheControl: "31536000" });
   if (error) throw error;
 
   const { data } = sb.storage.from("post-images").getPublicUrl(path);

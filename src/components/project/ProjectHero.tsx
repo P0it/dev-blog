@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import type { Project } from "@/lib/types";
+import { imageProps } from "@/lib/img";
 
 export function ProjectHero({ project: p }: { project: Project }) {
   // 표지에는 이름과 한 줄 소개(프런트매터 `tagline`)만 둔다. 설명 문단을 여기 깔면
@@ -12,7 +13,7 @@ export function ProjectHero({ project: p }: { project: Project }) {
         {/* 히어로는 정지 화면이다. 움직이는 배경은 제목을 읽는 데 방해가 된다. */}
         {p.heroPoster ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.heroPoster} alt="" />
+          <img {...imageProps(p.heroPoster)} alt="" />
         ) : (
           <div className="lab-hero-fallback" style={{ background: p.logoBg }}>
             <ProjectMark p={p} variant="hero" />

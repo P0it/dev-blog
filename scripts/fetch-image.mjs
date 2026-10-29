@@ -63,7 +63,7 @@ async function rehost(srcUrl) {
   const id = crypto.randomUUID().slice(0, 8);
   const path = `${stamp}/${id}.${ext}`;
 
-  const { error } = await sb.storage.from(BUCKET).upload(path, body, { contentType, upsert: false });
+  const { error } = await sb.storage.from(BUCKET).upload(path, body, { contentType, upsert: false, cacheControl: "31536000" });
   if (error) throw error;
 
   const { data } = sb.storage.from(BUCKET).getPublicUrl(path);

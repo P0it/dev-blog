@@ -1,4 +1,5 @@
 import type { ProjectPlatform } from "@/lib/types";
+import { imageProps } from "@/lib/img";
 
 // 판은 상세 갤러리와 같은 비율로 선다.
 //  - 폰: 실기기(390×844). 근사치로 두면 캡처 밑동(탭 바)이 잘린다
@@ -51,7 +52,7 @@ export function CardShot({
         />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" />
+        <img {...imageProps(src, "(min-width: 1080px) 400px, 100vw")} alt="" loading="lazy" decoding="async" />
       )}
     </div>
   );
