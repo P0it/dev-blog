@@ -213,7 +213,7 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select("*") // body-ok: 상세 화면 본문
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
@@ -228,7 +228,7 @@ export async function getPostForEditor(slug: string): Promise<Post | null> {
   const labels = await categoryLabelMap();
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select("*") // body-ok: 에디터 본문
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
@@ -424,7 +424,7 @@ export async function searchPosts(rawQuery: string): Promise<Post[]> {
   const pattern = quote(`%${q.replace(/[%_\\]/g, "\\$&")}%`);
   const { data, error } = await sb
     .from("posts")
-    .select("*")
+    .select("*") // body-ok: 검색 스니펫에 본문 필요
     .eq("status", "published")
     .or(
       [

@@ -19,6 +19,17 @@
 - 리팩터링·문서 수정도 같은 규칙을 따른다. 한 덩어리가 끝나면 바로 커밋한다.
 - 커밋 후에는 무엇을 커밋했는지 한 줄로 알린다.
 
+## Supabase 질의 — `posts` 를 `select("*")` 로 읽지 않는다
+
+`posts.body_md` 는 글 한 편에 평균 37KB 다. 목록·관련 글·시리즈·태그·카테고리를 `select("*")` 로
+읽으면 본문까지 따라와 빌드 한 번에 수백 MB 가 Supabase egress 로 나간다. 2026-10 에 이걸로
+무료 한도(5GB)를 넘겨 서비스가 막히고 Vercel 배포가 계속 실패했다.
+
+- 목록·카드는 `src/lib/queries.ts` 의 `POST_CARD_COLUMNS` 를 쓴다. 새 컬럼을 `posts` 에 더하면 거기에도 넣는다.
+- 본문이 꼭 필요한 질의(상세·에디터·검색 스니펫)만 `select("*")` 를 쓰고, 질의 안에 `// body-ok: 이유` 를 적는다.
+- `npm run check:select` 가 이를 검사하고, `npm run build` 앞에서도 자동으로 돈다(`prebuild`). 걸리면 고친다 — 검사를 끄지 않는다.
+- 스크립트(`scripts/*.mjs`)·새 라우트도 같은 규칙이다. 로컬 검증(`/internal/page/<slug>`, `check:page`)은 DB 를 읽지 않는 파일 기준으로 한다.
+
 ## AI 글 작성 — 두 가지 경로
 
 글 초안/개선에는 두 경로가 있다:
