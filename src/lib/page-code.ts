@@ -56,6 +56,8 @@ const STYLE = `<style data-pg-code>
   display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; border-radius: 50%;
   background: var(--mint-600); color: #fff !important; font-family: var(--font-sans); font-size: 0.75em; font-weight: 700;
   vertical-align: 0.1em;
+  /* 좁은 화면의 .line 음수 text-indent 를 물려받으면 숫자가 줄번호 칸으로 밀려난다 */
+  text-indent: 0;
 }
 .post-page ol.pg-code-notes { list-style: none; counter-reset: pgc; padding: 0; margin: 4px 0 28px; }
 .post-page ol.pg-code-notes > li { counter-increment: pgc; position: relative; padding-left: 2.1em; margin: 10px 0; line-height: 1.7; }
