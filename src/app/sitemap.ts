@@ -5,7 +5,7 @@ import {
   getAllCategoriesFlat,
   getAllSeries,
   getAllTags,
-  getProjects,
+  getAllProjectSlugs,
 } from "@/lib/queries";
 import { isoDate } from "@/lib/seo";
 import { registry } from "@/content/algo/registry";
@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAllCategoriesFlat(),
     getAllSeries(),
     getAllTags(),
-    getProjects(),
+    getAllProjectSlugs(),
   ]);
 
   // 글이 하나라도 올라오면 목록 페이지도 같이 바뀐다. 가장 최근 글 날짜를 목록의 lastmod 로 쓴다.
@@ -57,8 +57,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  const projectRoutes: MetadataRoute.Sitemap = projects.map((p) => ({
-    url: `${base}/lab/${p.slug}`,
+  // 사이트맵은 slug 만 필요하다 — getProjects() 는 프로젝트 본문까지 읽는다.
+  const projectRoutes: MetadataRoute.Sitemap = projects.map((slug) => ({
+    url: `${base}/lab/${slug}`,
     changeFrequency: "monthly",
     priority: 0.6,
   }));
