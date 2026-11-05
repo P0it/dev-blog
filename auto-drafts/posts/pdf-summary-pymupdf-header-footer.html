@@ -1,0 +1,784 @@
+---
+title: 논문 요약 AI가 쪽 번호부터 지우는 이유
+slug: pdf-summary-pymupdf-header-footer
+excerpt: PDF 안에는 문장이 아니라 글자를 찍을 좌표가 들어 있어서, 그대로 꺼내면 쪽 번호와 학술지 이름이 문장 사이에 끼고 2단 편집은 순서까지 섞입니다. PyMuPDF 2.0으로 머리말·꼬리말을 걸러 내고, Responses API에 요약할 칸을 정해 주는 논문 요약기를 그림과 코드로 만듭니다.
+tags: [PDF, PyMuPDF, 문서 요약, 전처리, OpenAI API, Responses API, Structured Outputs, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 3
+---
+<!-- page -->
+<!-- layout: 비교 나란히 히어로(겉 채팅 | 안 꺼낸 글) + 글|그림 2단 좌우 교대 + 펼쳐 놓기(2장·3장 전폭) + 코드|해설 짝(좌우 뒤집기) + 제목|글 머리 | 글의 성격: 같은 PDF 한 쪽이 방법마다 다르게 꺼내지는 걸 나란히 견주는 글 | 버린 후보: 옆 조작판(2026-10-30 접음), 장 표지 띠(1편이 씀), 분할 히어로(1·2편 연속), 그림 고정 스크롤리텔링(단계가 자라는 과정이 아니라 상태 비교라서) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .ps {
+  --ps-red: rgb(204, 52, 40); --ps-ok: rgb(14, 138, 108); --ps-pen: rgb(196, 50, 38);
+  --ps-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --ps-bar: color-mix(in srgb, var(--fg-neutral) 30%, var(--bg-base));
+  --ps-ink: var(--fg-strong);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ps { --ps-red: rgb(255, 118, 102); --ps-ok: rgb(70, 205, 165); --ps-pen: rgb(255, 128, 110); --ps-bar: color-mix(in srgb, var(--fg-neutral) 42%, var(--bg-base)); }
+.post-page .ps * { box-sizing: border-box; }
+.post-page .ps-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .ps h1, .post-page .ps h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .ps h1 { font-size: clamp(34px, 5.4vw, 60px); line-height: 1.22; margin-bottom: 28px; }
+.post-page .ps h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .ps p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .ps b { color: var(--fg-strong); }
+.post-page .ps a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ps code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .ps p.ps-cap { font-size: 15px; color: var(--fg-neutral); margin: 16px 0 0; line-height: 1.7; }
+.post-page .ps-sec { padding: clamp(96px, 11vw, 150px) 0 0; }
+.post-page .ps-num { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
+.post-page .ps-pen { font-family: var(--ps-penf); color: var(--ps-pen); font-size: 21px; line-height: 1.1; }
+
+/* 배치 */
+.post-page .ps-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: center; }
+.post-page .ps-two.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .ps-two.rev > .ps-fig { order: -1; }
+.post-page .ps-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .ps-head > div > p:last-child { margin-bottom: 0; }
+.post-page .ps-spread { display: grid; gap: clamp(20px, 3vw, 40px); margin: clamp(40px, 5vw, 60px) 0 0; }
+.post-page .ps-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .ps-spread.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .ps-spread > figure { margin: 0; min-width: 0; }
+.post-page .ps-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 12px !important; line-height: 1.5 !important; }
+.post-page .ps-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .ps-fh code { font-size: 13px; }
+.post-page .ps-verdict { display: block; margin-top: 12px; font-size: 15px; line-height: 1.6; color: var(--fg-normal); }
+.post-page .ps-verdict.bad b { color: var(--ps-red); }
+.post-page .ps-verdict.ok b { color: var(--ps-ok); }
+
+/* 미니 페이지 SVG */
+.post-page .ps-pg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .ps-pg .paper { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 3; }
+.post-page .ps-pg .bar { fill: var(--ps-bar); }
+.post-page .ps-pg .ink-bar { fill: color-mix(in srgb, var(--fg-strong) 55%, var(--bg-base)); }
+.post-page .ps-pg .noise-bar { fill: var(--ps-red); opacity: .75; }
+.post-page .ps-pg .rule { stroke: var(--line-strong); stroke-width: 2; }
+.post-page .ps-pg .tick { stroke: var(--fg-alternative); stroke-width: 3; }
+.post-page .ps-pg .t { font-family: var(--font-sans); }
+.post-page .ps-pg .t.ink { fill: var(--fg-strong); }
+.post-page .ps-pg .t.noise { fill: var(--ps-red); font-weight: 700; }
+.post-page .ps-pg .t.left { fill: var(--ps-red); font-weight: 700; }
+.post-page .ps-pg .t.tag { fill: var(--fg-strong); font-family: var(--font-mono); font-weight: 700; paint-order: stroke; stroke: var(--bg-base); stroke-width: 8px; }
+.post-page .ps-pg .pin { fill: var(--ps-pen); }
+.post-page .ps-pg .axis { fill: none; stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .ps-pg .lead { stroke: var(--ps-pen); stroke-width: 2.5; stroke-dasharray: 6 6; }
+.post-page .ps-pg .pent { font-family: var(--ps-penf); fill: var(--ps-pen); }
+.post-page .ps-pg .path { fill: none; stroke-width: 4; stroke-dasharray: 2 9; stroke-linecap: round; }
+.post-page .ps-pg .path.ok { stroke: var(--ps-ok); } .post-page .ps-pg .path.bad { stroke: var(--ps-red); }
+.post-page .ps-pg .num.l { fill: var(--fg-strong); } .post-page .ps-pg .num.r { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .ps-pg .numt { font-family: var(--font-mono); font-weight: 700; } .post-page .ps-pg .numt.l { fill: var(--bg-base); } .post-page .ps-pg .numt.r { fill: var(--fg-strong); }
+.post-page .ps-pg .path.bad { stroke-dasharray: 3 10; } .post-page .ps-pg .path.ok { stroke-dasharray: none; stroke-width: 5; opacity: .8; }
+.post-page .ps-pg .shade { fill: var(--fg-strong); opacity: .16; }
+.post-page .ps-pg .shade-edge { stroke: var(--fg-strong); stroke-width: 3; stroke-dasharray: 10 8; opacity: .6; }
+.post-page .ps-pg .cut { fill: var(--ps-red); }
+.post-page .ps-pg .lb { fill: none; stroke-width: 4; }
+.post-page .ps-pg .lb.keep { stroke: var(--ps-ok); }
+.post-page .ps-pg .lb.drop { stroke: var(--ps-red); stroke-dasharray: 12 8; }
+.post-page .ps-pg .lbt { font-family: var(--font-mono); font-weight: 700; paint-order: stroke; stroke: var(--bg-base); stroke-width: 8px; }
+.post-page .ps-pg .lbt.keep { fill: var(--ps-ok); } .post-page .ps-pg .lbt.drop { fill: var(--ps-red); }
+
+/* 히어로: 겉 화면 | 화면 뒤 */
+.post-page .ps-hero { padding: clamp(56px, 9vw, 112px) 0 0; }
+.post-page .ps-hero-t { max-width: 820px; }
+.post-page .ps-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .ps-lede { font-size: 18px !important; }
+.post-page .ps-duo { margin-top: clamp(32px, 4vw, 44px); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(20px, 3vw, 40px); align-items: start; }
+.post-page .ps-side-h { font-size: 15px !important; font-weight: 700; color: var(--fg-neutral); margin: 0 0 12px !important; line-height: 1.5 !important; }
+.post-page .ps-chat { padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--line-subtle); display: flex; flex-direction: column; gap: 14px; }
+.post-page .ps-m { max-width: 88%; padding: 11px 15px; border-radius: 18px; font-size: 15.5px; line-height: 1.6; }
+.post-page .ps-m.u { align-self: flex-end; background: var(--fg-strong); color: var(--bg-base); border-bottom-right-radius: 6px; }
+.post-page .ps-m.a { align-self: flex-start; background: var(--bg-base); color: var(--fg-strong); border: 1px solid var(--line-subtle); border-bottom-left-radius: 6px; }
+.post-page .ps-leak { text-decoration: underline wavy var(--ps-red); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.post-page .ps-file { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 8px; border-radius: 12px; background: color-mix(in srgb, var(--bg-base) 16%, transparent); font-size: 14px; }
+.post-page .ps-file span { font-size: 22px; }
+.post-page .ps-file small { display: block; opacity: .75; font-size: 12.5px; }
+.post-page .ps-raw { margin: 0; padding: 16px 18px; border-radius: var(--radius-md); border: 1px solid var(--line-subtle); background: var(--bg-base); font-family: var(--font-mono); font-size: 15px; line-height: 1.75; list-style: none; }
+.post-page .ps-raw li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.post-page .ps-raw li.x > span { color: var(--ps-red); text-decoration: line-through; text-decoration-thickness: 2px; }
+.post-page .ps-raw li.gap { color: var(--fg-alternative); }
+.post-page .ps-raw .ps-pen { font-size: 20px; }
+
+/* 그림 2: 꺼낸 순서 띠 */
+.post-page .ps-pages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 3vw, 44px); max-width: 760px; margin: clamp(40px, 5vw, 56px) auto 0; }
+.post-page .ps-pages figure { margin: 0; }
+.post-page .ps-pages figcaption { text-align: center; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); margin-top: 8px; }
+.post-page .ps-tape-h { margin: 36px 0 10px !important; font-size: 15px !important; color: var(--fg-neutral); text-align: center; }
+.post-page .ps-tape { display: flex; gap: 4px; }
+.post-page .ps-tape ol { flex: 1 1 0; display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; min-width: 0; }
+.post-page .ps-tape li { min-width: 0; padding: 10px 6px; border-radius: 8px; font-size: 13.5px; line-height: 1.35; text-align: center; display: flex; align-items: center; justify-content: center; }
+.post-page .ps-tape .body { flex: 5 1 0; background: var(--ps-bar); color: var(--fg-strong); }
+.post-page .ps-tape .nz { flex: 1.1 1 0; background: color-mix(in srgb, var(--ps-red) 14%, var(--bg-base)); color: var(--ps-red); font-weight: 700; border: 2px solid var(--ps-red); }
+.post-page .ps-tape-x { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); padding: 6px 2px 0; }
+
+/* 그림 3: 읽은 결과 */
+.post-page .ps-out { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--bg-subtle); font-family: var(--font-mono); font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg-strong); }
+.post-page .ps-out i { font-style: normal; text-decoration: underline dashed var(--ps-red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.post-page .ps-out em { font-style: normal; }
+.post-page .ps-ordfig { max-width: 340px; }
+
+/* 그림 6: 요약 모양 비교 */
+.post-page .ps-runs { display: grid; gap: 14px; }
+.post-page .ps-run { padding: 14px 16px; border-radius: 12px; border: 1.5px solid var(--line-normal); background: var(--bg-base); }
+.post-page .ps-run > small { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .ps-run p { font-size: 14.5px !important; line-height: 1.65 !important; margin: 0 !important; }
+.post-page .ps-run ul { margin: 0; padding-left: 1.1em; font-size: 14.5px; line-height: 1.65; }
+.post-page .ps-run .leak { color: var(--ps-red); font-weight: 700; }
+.post-page .ps-slots { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 7px 10px; align-items: center; font-size: 14px; }
+.post-page .ps-slots dt { font-weight: 700; color: var(--ps-ok); margin: 0; }
+.post-page .ps-slots dd { margin: 0; color: var(--fg-strong); line-height: 1.5; }
+
+
+/* 그림 6: 답의 모양 */
+.post-page .ps-shape2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.post-page .ps-ans { display: flex; flex-direction: column; gap: 9px; padding-top: 4px; }
+.post-page .ps-ans small, .post-page .ps-form-l { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); }
+.post-page .ps-ans i, .post-page .ps-form i { display: block; height: 11px; border-radius: 4px; background: var(--ps-bar); }
+.post-page .ps-ans i.leak { background: var(--ps-red); }
+.post-page .ps-ans .li { display: flex; align-items: center; gap: 8px; }
+.post-page .ps-ans .li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--fg-neutral); }
+.post-page .ps-ans .li i { flex: none; }
+.post-page .ps-form { display: grid; grid-template-columns: 3em minmax(0, 1fr); gap: 0; margin: 0; border-top: 1.5px solid var(--line-strong); }
+.post-page .ps-form dt, .post-page .ps-form dd { margin: 0; padding: 10px 0; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .ps-form dt { font-size: 14px; font-weight: 700; color: var(--ps-ok); }
+.post-page .ps-form dd { display: grid; gap: 6px; }
+.post-page .ps-form i { background: color-mix(in srgb, var(--fg-strong) 55%, var(--bg-base)); }
+.post-page .ps-form i.b { background: transparent; border: 1.5px dashed var(--fg-neutral); }
+.post-page .ps-pen-note { font-size: 22px !important; margin: 14px 0 0 !important; line-height: 1.25 !important; }
+.post-page .ps-gauge { margin-top: 26px; }
+.post-page .ps-gauge-bar { position: relative; height: 22px; border-radius: 4px; border: 1.5px solid var(--line-strong); overflow: hidden; }
+.post-page .ps-gauge-bar span { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--fg-strong) 45%, var(--bg-base)); }
+.post-page .ps-gauge-bar span.maybe { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--fg-strong) 45%, var(--bg-base)) 0 4px, transparent 4px 9px); }
+.post-page .ps-mrsvg { display: block; width: 100%; height: auto; }
+.post-page .ps-mrsvg .pg { fill: var(--ps-bar); }
+.post-page .ps-mrsvg .note { fill: color-mix(in srgb, var(--ps-ok) 14%, var(--bg-base)); stroke: var(--ps-ok); stroke-width: 2; }
+.post-page .ps-mrsvg .note.f { stroke-width: 3; }
+.post-page .ps-mrsvg .nl { fill: var(--ps-ok); opacity: .55; }
+.post-page .ps-mrsvg .wire { fill: none; stroke: var(--fg-alternative); stroke-width: 2; stroke-dasharray: 5 6; }
+.post-page .ps-mrsvg text { font-family: var(--font-sans); font-size: 20px; fill: var(--fg-neutral); }
+
+/* 그림 7: 보내는 것 비교 */
+.post-page .ps-twosvg { display: block; width: 100%; height: auto; max-width: 600px; }
+.post-page .ps-twosvg .paper { fill: var(--bg-base); stroke: var(--line-strong); stroke-width: 2; }
+.post-page .ps-twosvg .bar { fill: var(--ps-bar); }
+.post-page .ps-twosvg .hd { fill: var(--ps-red); }
+.post-page .ps-twosvg .num { font-family: var(--font-mono); font-size: 17px; fill: var(--fg-strong); }
+.post-page .ps-twosvg .ax { stroke: var(--fg-neutral); stroke-width: 2; }
+.post-page .ps-twosvg .ln { fill: none; stroke: var(--ps-ok); stroke-width: 4; }
+.post-page .ps-twosvg .pt { fill: var(--ps-ok); }
+.post-page .ps-twosvg .cap { font-family: var(--font-sans); font-size: 19px; font-weight: 700; fill: var(--fg-strong); }
+.post-page .ps-twosvg .sub { font-family: var(--font-sans); font-size: 16px; fill: var(--fg-neutral); }
+.post-page .ps-twosvg .pent { font-family: var(--ps-penf); font-size: 22px; fill: var(--ps-pen); }
+.post-page .ps-lane { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 14px; align-items: center; padding: 18px 0; border-top: 1px solid var(--line-subtle); }
+.post-page .ps-lane:first-of-type { border-top: 0; }
+.post-page .ps-lane > b { font-size: 15px; line-height: 1.45; }
+.post-page .ps-lane > b small { display: block; font-weight: 400; color: var(--fg-neutral); font-size: 13px; }
+.post-page .ps-pk { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.post-page .ps-pk > span { display: inline-flex; gap: 4px; align-items: center; }
+.post-page .ps-pk i { display: inline-block; border-radius: 4px; }
+.post-page .ps-pk .tx { width: 40px; height: 54px; background: repeating-linear-gradient(var(--ps-bar) 0 4px, transparent 4px 8px); border: 1.5px solid var(--line-strong); }
+.post-page .ps-pk .im { width: 40px; height: 54px; border: 1.5px solid var(--line-strong); background: linear-gradient(160deg, transparent 52%, color-mix(in srgb, var(--ps-ok) 55%, var(--bg-base)) 52%), color-mix(in srgb, var(--fg-neutral) 12%, var(--bg-base)); }
+.post-page .ps-pk .pl { font-family: var(--font-mono); font-size: 14px; color: var(--fg-neutral); }
+.post-page .ps-pk .tx.hd { box-shadow: inset 0 6px 0 var(--ps-red); }
+.post-page .ps-lane-n { grid-column: 2; font-size: 14px; color: var(--fg-neutral); line-height: 1.6; }
+
+/* 그림 8: 긴 문서 */
+.post-page .ps-long { display: flex; align-items: flex-end; gap: 2px; height: 96px; padding: 0 2px; border-bottom: 2px solid var(--line-strong); position: relative; }
+.post-page .ps-long i { flex: 1 1 0; height: 100%; background: var(--ps-bar); border-radius: 2px 2px 0 0; }
+.post-page .ps-long i.mid { opacity: .3; }
+.post-page .ps-long-x { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-alternative); padding-top: 6px; }
+.post-page .ps-mr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.post-page .ps-mr > div { display: flex; align-items: flex-end; gap: 2px; height: 56px; border-bottom: 2px solid var(--line-strong); }
+.post-page .ps-mr > div i { flex: 1 1 0; height: 100%; background: var(--ps-bar); border-radius: 2px 2px 0 0; }
+.post-page .ps-mr-n { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.post-page .ps-mr-n span { height: 26px; border-radius: 6px; border: 1.5px solid var(--ps-ok); background: color-mix(in srgb, var(--ps-ok) 14%, var(--bg-base)); font-size: 12.5px; color: var(--fg-strong); display: flex; align-items: center; justify-content: center; }
+.post-page .ps-mr-f { margin: 10px auto 0; width: 44%; min-height: 34px; border-radius: 8px; border: 2px solid var(--ps-ok); background: color-mix(in srgb, var(--ps-ok) 22%, var(--bg-base)); font-size: 13.5px; font-weight: 700; color: var(--fg-strong); display: flex; align-items: center; justify-content: center; }
+.post-page .ps-mr-a { text-align: center; color: var(--fg-alternative); font-size: 14px; line-height: 1; margin-top: 8px; }
+
+/* 코드 | 해설, 터미널 */
+.post-page .ps-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(44px, 5vw, 64px) 0 0; }
+.post-page .ps-cp > .cp-code { grid-column: 1; grid-row: 1; } .post-page .ps-cp > .cp-term { grid-column: 1; grid-row: 2; } .post-page .ps-cp > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .ps-cp.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .ps-cp.rev > .cp-code, .post-page .ps-cp.rev > .cp-term { grid-column: 2; } .post-page .ps-cp.rev > .cp-notes { grid-column: 1; }
+.post-page .ps .pg-code { margin-top: 0; }
+.post-page .ps ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .ps ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .ps-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .ps-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .ps-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--code-fg, #abb2bf); background: transparent; color: var(--code-fg, #abb2bf); cursor: pointer; }
+.post-page .ps-act { white-space: nowrap; flex: none; }
+.post-page .ps-act::before { content: "▶ "; font-size: 11px; }
+.post-page .ps-act:disabled { opacity: .4; cursor: default; }
+.post-page .ps-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .ps-term-out .nz { color: #ff8a7a; }
+.post-page .ps-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-ps-blink 1s steps(1) infinite; }
+@keyframes pg-ps-blink { 50% { opacity: 0; } }
+
+/* 접기 · 정리 · 참고 */
+.post-page .ps details { margin: 22px 0 0; }
+.post-page .ps summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .ps details > .ps-in { padding-top: 14px; }
+.post-page .ps-todo { margin: 0; padding-left: 1.3em; list-style: decimal; display: grid; gap: 14px; font-size: 16.5px; line-height: 1.75; }
+.post-page .ps-todo li::marker { font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
+.post-page .ps-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .ps-after { max-width: 780px; margin: 28px 0 0 !important; }
+.post-page .ps-end { height: clamp(80px, 10vw, 140px); }
+
+@media (max-width: 960px) {
+  .post-page .ps-wrap { padding: 0 20px; }
+  .post-page .ps-head, .post-page .ps-two, .post-page .ps-two.rev, .post-page .ps-duo { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ps-two.rev > .ps-fig { order: 0; }
+  .post-page .ps-cp, .post-page .ps-cp.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ps-cp > .cp-code, .post-page .ps-cp > .cp-term, .post-page .ps-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .ps-cp > .cp-notes { order: 2; } .post-page .ps-cp > .cp-term { order: 3; }
+  .post-page .ps-fig1 { max-width: 480px; margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .post-page .ps p { font-size: 16px; }
+  .post-page .ps-spread.n2, .post-page .ps-spread.n3 { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ps-spread .ps-pg, .post-page .ps-ordfig { max-width: 230px; }
+  .post-page .ps-pages { grid-template-columns: minmax(0, 1fr); max-width: 260px; }
+  .post-page .ps-pages figure:not(:first-child) { display: none; }
+  .post-page .ps-term-bar span { font-size: 12px; }
+  .post-page .ps-fig1 .tag { font-size: 40px; }
+  .post-page .ps-fig1 .pent { font-size: 50px; }
+  .post-page .ps-tape { flex-direction: column; gap: 8px; }
+  .post-page .ps-tape li { font-size: 12.5px; padding: 8px 3px; }
+  .post-page .ps-tape-x { display: none; }
+  .post-page .ps-raw { font-size: 13px; padding: 14px; }
+  .post-page .ps-lane { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ps-lane-n { grid-column: 1; }
+  .post-page .ps-mr-f { width: 70%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .ps *, .post-page .ps *::before { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="ps" data-ps>
+  <header class="ps-hero">
+    <div class="ps-wrap">
+      <div class="ps-hero-t">
+        <div class="ps-eyebrow">AI Service Track · 03</div>
+        <h1>논문 요약 AI가 쪽 번호부터 지우는 이유</h1>
+        <p class="ps-lede">논문 PDF를 ChatGPT나 Claude에 올리고 "요약해 줘"라고 하면 몇 초 뒤 요약이 나옵니다. 그 몇 초 사이에 AI가 받는 글은, PDF 뷰어에서 보는 반듯한 문단과 꽤 다르게 생겼습니다.</p>
+        <p>아래에 채팅 화면과, 같은 PDF에서 프로그램으로 글자를 꺼낸 결과를 나란히 놓았습니다. 요약에 학술지 이름과 쪽 번호가 끼어든 까닭이 꺼낸 글에 보입니다. 빨간 줄이 그어진 글자는 논문 내용과 상관없고 요약기를 만든다면 이것부터 걸러 내야 합니다.</p>
+      </div>
+      <div class="ps-duo" data-figure data-thumb>
+        <div>
+          <p class="ps-side-h">우리가 보는 화면</p>
+          <div class="ps-chat" aria-label="PDF를 올리고 요약을 받은 채팅 화면">
+            <div class="ps-m u">
+              <div class="ps-file"><span>📄</span><div>wheat-paper.pdf<small>PDF · 3쪽</small></div></div>
+              이 논문 요약해 줘
+            </div>
+            <div class="ps-m a"><span class="ps-leak">「농업기술연구 제12권 3호」의 「웹 기반 밀 재배관리 시스템」</span> 논문은 밀 생육 모형을 웹으로 옮겨, 농가가 휴대폰으로 물 줄 날을 정하게 한 연구입니다. <span class="ps-leak">101~103쪽에 걸쳐</span> 시험 결과를 설명합니다.</div>
+            <p class="ps-pen ps-pen-note" style="margin:0 !important">밑줄 친 곳은 머리말과 쪽 번호에서 옮겨 온 말</p>
+          </div>
+        </div>
+        <div>
+          <p class="ps-side-h">화면 뒤에서 PDF를 펼쳐 꺼낸 글</p>
+          <ol class="ps-raw" aria-label="PDF에서 꺼낸 글, 1쪽 끝과 2쪽 처음">
+            <li class="x"><span>농업기술연구 제12권 3호</span><em class="ps-pen">학술지 이름</em></li>
+            <li class="x"><span>웹 기반 밀 재배관리 시스템</span><em class="ps-pen">논문 제목</em></li>
+            <li>1. 서론</li>
+            <li>작물 생육 모형은 날씨와 흙 자료로 밀이</li>
+            <li class="gap">⋮</li>
+            <li>연구는 모형을 웹으로 옮겨 누구나 쓰게</li>
+            <li>했다.</li>
+            <li class="x"><span>- 101 -</span><em class="ps-pen">쪽 번호</em></li>
+            <li class="x"><span>농업기술연구 제12권 3호</span><em class="ps-pen">2쪽에서 또 나옴</em></li>
+            <li class="x"><span>웹 기반 밀 재배관리 시스템</span></li>
+            <li>2. 방법. 웹 서버가 기상청 날씨 자료를</li>
+          </ol>
+        </div>
+      </div>
+      <p class="ps-cap">설명을 위해 만든 3쪽짜리 예시 논문이고 채팅 답도 설명을 위해 지은 예시입니다. 꺼낸 글은 PDF를 다루는 파이썬 라이브러리 PyMuPDF로 이 PDF를 실제로 꺼낸 결과에서 1쪽 끝과 2쪽 처음만 옮겼습니다.</p>
+    </div>
+  </header>
+
+  <section class="ps-sec">
+    <div class="ps-wrap ps-two">
+      <div>
+        <span class="ps-num">01</span>
+        <h2>PDF에는 문장 대신 글자를 찍을 자리가 적혀 있습니다</h2>
+        <p>PDF를 열면 화면에는 반듯한 문단이 보입니다. 하지만 파일 안에 "여기부터 문단, 이건 쪽 번호" 같은 표시는 없습니다. 적혀 있는 것은 <b>어느 좌표에 어떤 글자를 어떤 크기로 찍을지</b>입니다.</p>
+        <p>좌표(coordinate)는 종이 위 위치를 가로·세로 두 숫자로 적은 것입니다. 그림처럼 학술지 이름도, 본문 첫 줄도, 맨 아래 쪽 번호도 똑같이 "이 자리에 이 글자"라는 명령 하나입니다.</p>
+        <p>도장 찍는 순서를 적은 쪽지와 비슷합니다. 쪽지만 봐서는 어느 도장이 제목이고 어느 도장이 쪽 번호인지 알 수 없습니다. 실제 PDF에는 글꼴·선·그림 명령도 섞여 있고 글자를 단어나 줄 단위로 묶어 두는 경우도 많습니다.</p>
+        <details>
+          <summary>스캔한 PDF는 왜 글자가 안 나올까요?</summary>
+          <div class="ps-in">
+            <p>종이를 스캐너로 찍은 PDF에는 글자 명령이 없고 쪽마다 사진 한 장만 들어 있습니다. 그래서 글자를 꺼내면 빈 문자열이 나옵니다. 이럴 때는 사진 속 글자 모양을 읽어 글자로 바꾸는 OCR(Optical Character Recognition)을 먼저 거쳐야 합니다. 마우스로 문장을 드래그해서 선택되지 않는 PDF라면 스캔본일 가능성이 큽니다.</p>
+          </div>
+        </details>
+      </div>
+      <figure class="ps-fig ps-fig1" data-figure style="margin:0">
+        <svg class="ps-pg" viewBox="-70 -70 970 912" role="img" aria-label="PDF 첫 쪽에 글자가 찍힌 좌표를 표시한 그림"><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><circle class="pin" cx="0" cy="0" r="8"/><text class="t tag" x="-62" y="-30" font-size="26">(0, 0)</text><path class="axis" d="M20 -24 H220"/><path class="axis" d="M208 -32 L222 -24 L208 -16"/><text class="t tag" x="232" y="-15" font-size="26">x</text><path class="axis" d="M-24 20 V220"/><path class="axis" d="M-32 208 L-24 222 L-16 208"/><text class="t tag" x="-34" y="258" font-size="26">y</text><text class="t ink" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="ink-bar" x="420" y="36" width="125" height="14" rx="3"/><line class="rule" x1="50" y1="76" x2="545" y2="76"/><text class="t ink" x="50" y="136" font-size="34" font-weight="700">1. 서론</text><rect class="bar" x="50" y="170" width="228" height="10" rx="3"/><rect class="bar" x="50" y="194" width="228" height="10" rx="3"/><rect class="bar" x="50" y="218" width="228" height="10" rx="3"/><rect class="bar" x="50" y="242" width="141" height="10" rx="3"/><rect class="bar" x="50" y="266" width="228" height="10" rx="3"/><rect class="bar" x="50" y="290" width="228" height="10" rx="3"/><rect class="bar" x="50" y="314" width="228" height="10" rx="3"/><rect class="bar" x="50" y="338" width="141" height="10" rx="3"/><rect class="bar" x="50" y="362" width="228" height="10" rx="3"/><rect class="bar" x="50" y="386" width="228" height="10" rx="3"/><rect class="bar" x="50" y="410" width="228" height="10" rx="3"/><rect class="bar" x="50" y="434" width="141" height="10" rx="3"/><rect class="bar" x="50" y="458" width="228" height="10" rx="3"/><rect class="bar" x="50" y="482" width="228" height="10" rx="3"/><rect class="bar" x="50" y="506" width="228" height="10" rx="3"/><rect class="bar" x="50" y="530" width="141" height="10" rx="3"/><rect class="bar" x="50" y="554" width="228" height="10" rx="3"/><rect class="bar" x="50" y="578" width="228" height="10" rx="3"/><rect class="bar" x="50" y="602" width="228" height="10" rx="3"/><rect class="bar" x="50" y="626" width="141" height="10" rx="3"/><rect class="bar" x="50" y="650" width="228" height="10" rx="3"/><rect class="bar" x="50" y="674" width="228" height="10" rx="3"/><rect class="bar" x="50" y="698" width="228" height="10" rx="3"/><rect class="bar" x="50" y="722" width="141" height="10" rx="3"/><rect class="bar" x="317" y="170" width="228" height="10" rx="3"/><rect class="bar" x="317" y="194" width="228" height="10" rx="3"/><rect class="bar" x="317" y="218" width="228" height="10" rx="3"/><rect class="bar" x="317" y="242" width="141" height="10" rx="3"/><rect class="bar" x="317" y="266" width="228" height="10" rx="3"/><rect class="bar" x="317" y="290" width="228" height="10" rx="3"/><rect class="bar" x="317" y="314" width="228" height="10" rx="3"/><rect class="bar" x="317" y="338" width="141" height="10" rx="3"/><rect class="bar" x="317" y="362" width="228" height="10" rx="3"/><rect class="bar" x="317" y="386" width="228" height="10" rx="3"/><rect class="bar" x="317" y="410" width="228" height="10" rx="3"/><rect class="bar" x="317" y="434" width="141" height="10" rx="3"/><rect class="bar" x="317" y="458" width="228" height="10" rx="3"/><rect class="bar" x="317" y="482" width="228" height="10" rx="3"/><rect class="bar" x="317" y="506" width="228" height="10" rx="3"/><rect class="bar" x="317" y="530" width="141" height="10" rx="3"/><rect class="bar" x="317" y="554" width="228" height="10" rx="3"/><rect class="bar" x="317" y="578" width="228" height="10" rx="3"/><rect class="bar" x="317" y="602" width="228" height="10" rx="3"/><rect class="bar" x="317" y="626" width="141" height="10" rx="3"/><rect class="bar" x="317" y="650" width="228" height="10" rx="3"/><rect class="bar" x="317" y="674" width="228" height="10" rx="3"/><rect class="bar" x="317" y="698" width="228" height="10" rx="3"/><rect class="bar" x="317" y="722" width="141" height="10" rx="3"/><text class="t ink" x="297" y="820" font-size="38" text-anchor="middle">- 101 -</text><circle class="pin" cx="46" cy="46" r="7"/><line class="lead" x1="382" y1="46" x2="612" y2="46"/><text class="t tag" x="622" y="55" font-size="30">(50, 40)</text><circle class="pin" cx="46" cy="126" r="7"/><line class="lead" x1="182" y1="126" x2="612" y2="126"/><text class="t tag" x="622" y="135" font-size="30">(50, 92)</text><circle class="pin" cx="250" cy="808" r="7"/><line class="lead" x1="345" y1="808" x2="612" y2="808"/><text class="t tag" x="622" y="817" font-size="30">(280, 815)</text><text class="pent" x="622" y="690" font-size="42">쪽 번호라는</text><text class="pent" x="622" y="734" font-size="42">표시는</text><text class="pent" x="622" y="778" font-size="42">어디에도 없다</text></svg>
+        <p class="ps-cap">PyMuPDF는 쪽의 왼쪽 위를 (0, 0)으로 잡고 단위는 포인트(1/72인치)를 씁니다. A4 한 쪽은 가로 595, 세로 842포인트입니다. 회색 막대는 본문 줄을 줄여 그린 것입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <span class="ps-num">02</span>
+          <h2>그대로 꺼내면 쪽이 바뀔 때마다 잡음이 끼어듭니다</h2>
+        </div>
+        <div>
+          <p>글자를 꺼내는 프로그램은 파일에 적힌 순서대로 글자를 이어 붙입니다. 그러면 1쪽 마지막 문장 다음에 1쪽 쪽 번호가 오고 이어서 2쪽 머리말이 오고 그다음에야 2쪽 본문이 옵니다.</p>
+          <p>머리말(header)은 쪽 위쪽에 반복해서 찍는 학술지 이름·논문 제목이고 꼬리말(footer)은 아래쪽의 쪽 번호 같은 글입니다. 책을 넘기는 사람에게는 길잡이지만 글을 이어 읽는 AI에게는 문장 사이에 끼어든 군말입니다.</p>
+        </div>
+      </div>
+      <div class="ps-pages" data-figure>
+        <figure><svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="1쪽"><title>1쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t noise" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="noise-bar" x="420" y="36" width="125" height="14" rx="3"/><line class="rule" x1="50" y1="76" x2="545" y2="76"/><text class="t ink" x="50" y="136" font-size="34" font-weight="700">1. 서론</text><rect class="bar" x="50" y="170" width="228" height="10" rx="3"/><rect class="bar" x="50" y="194" width="228" height="10" rx="3"/><rect class="bar" x="50" y="218" width="228" height="10" rx="3"/><rect class="bar" x="50" y="242" width="141" height="10" rx="3"/><rect class="bar" x="50" y="266" width="228" height="10" rx="3"/><rect class="bar" x="50" y="290" width="228" height="10" rx="3"/><rect class="bar" x="50" y="314" width="228" height="10" rx="3"/><rect class="bar" x="50" y="338" width="141" height="10" rx="3"/><rect class="bar" x="50" y="362" width="228" height="10" rx="3"/><rect class="bar" x="50" y="386" width="228" height="10" rx="3"/><rect class="bar" x="50" y="410" width="228" height="10" rx="3"/><rect class="bar" x="50" y="434" width="141" height="10" rx="3"/><rect class="bar" x="50" y="458" width="228" height="10" rx="3"/><rect class="bar" x="50" y="482" width="228" height="10" rx="3"/><rect class="bar" x="50" y="506" width="228" height="10" rx="3"/><rect class="bar" x="50" y="530" width="141" height="10" rx="3"/><rect class="bar" x="50" y="554" width="228" height="10" rx="3"/><rect class="bar" x="50" y="578" width="228" height="10" rx="3"/><rect class="bar" x="50" y="602" width="228" height="10" rx="3"/><rect class="bar" x="50" y="626" width="141" height="10" rx="3"/><rect class="bar" x="50" y="650" width="228" height="10" rx="3"/><rect class="bar" x="50" y="674" width="228" height="10" rx="3"/><rect class="bar" x="50" y="698" width="228" height="10" rx="3"/><rect class="bar" x="50" y="722" width="141" height="10" rx="3"/><rect class="bar" x="317" y="170" width="228" height="10" rx="3"/><rect class="bar" x="317" y="194" width="228" height="10" rx="3"/><rect class="bar" x="317" y="218" width="228" height="10" rx="3"/><rect class="bar" x="317" y="242" width="141" height="10" rx="3"/><rect class="bar" x="317" y="266" width="228" height="10" rx="3"/><rect class="bar" x="317" y="290" width="228" height="10" rx="3"/><rect class="bar" x="317" y="314" width="228" height="10" rx="3"/><rect class="bar" x="317" y="338" width="141" height="10" rx="3"/><rect class="bar" x="317" y="362" width="228" height="10" rx="3"/><rect class="bar" x="317" y="386" width="228" height="10" rx="3"/><rect class="bar" x="317" y="410" width="228" height="10" rx="3"/><rect class="bar" x="317" y="434" width="141" height="10" rx="3"/><rect class="bar" x="317" y="458" width="228" height="10" rx="3"/><rect class="bar" x="317" y="482" width="228" height="10" rx="3"/><rect class="bar" x="317" y="506" width="228" height="10" rx="3"/><rect class="bar" x="317" y="530" width="141" height="10" rx="3"/><rect class="bar" x="317" y="554" width="228" height="10" rx="3"/><rect class="bar" x="317" y="578" width="228" height="10" rx="3"/><rect class="bar" x="317" y="602" width="228" height="10" rx="3"/><rect class="bar" x="317" y="626" width="141" height="10" rx="3"/><rect class="bar" x="317" y="650" width="228" height="10" rx="3"/><rect class="bar" x="317" y="674" width="228" height="10" rx="3"/><rect class="bar" x="317" y="698" width="228" height="10" rx="3"/><rect class="bar" x="317" y="722" width="141" height="10" rx="3"/><text class="t noise" x="297" y="820" font-size="38" text-anchor="middle">- 101 -</text></svg><figcaption>1쪽</figcaption></figure>
+        <figure><svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="2쪽"><title>2쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t noise" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="noise-bar" x="420" y="36" width="125" height="14" rx="3"/><line class="rule" x1="50" y1="76" x2="545" y2="76"/><rect class="bar" x="50" y="112" width="228" height="10" rx="3"/><rect class="bar" x="50" y="136" width="228" height="10" rx="3"/><rect class="bar" x="50" y="160" width="228" height="10" rx="3"/><rect class="bar" x="50" y="184" width="141" height="10" rx="3"/><rect class="bar" x="50" y="208" width="228" height="10" rx="3"/><rect class="bar" x="50" y="232" width="228" height="10" rx="3"/><rect class="bar" x="50" y="256" width="228" height="10" rx="3"/><rect class="bar" x="50" y="280" width="141" height="10" rx="3"/><rect class="bar" x="50" y="304" width="228" height="10" rx="3"/><rect class="bar" x="50" y="328" width="228" height="10" rx="3"/><rect class="bar" x="50" y="352" width="228" height="10" rx="3"/><rect class="bar" x="50" y="376" width="141" height="10" rx="3"/><rect class="bar" x="50" y="400" width="228" height="10" rx="3"/><rect class="bar" x="50" y="424" width="228" height="10" rx="3"/><rect class="bar" x="50" y="448" width="228" height="10" rx="3"/><rect class="bar" x="50" y="472" width="141" height="10" rx="3"/><rect class="bar" x="50" y="496" width="228" height="10" rx="3"/><rect class="bar" x="50" y="520" width="228" height="10" rx="3"/><rect class="bar" x="50" y="544" width="228" height="10" rx="3"/><rect class="bar" x="50" y="568" width="141" height="10" rx="3"/><rect class="bar" x="50" y="592" width="228" height="10" rx="3"/><rect class="bar" x="50" y="616" width="228" height="10" rx="3"/><rect class="bar" x="50" y="640" width="228" height="10" rx="3"/><rect class="bar" x="50" y="664" width="141" height="10" rx="3"/><rect class="bar" x="50" y="688" width="228" height="10" rx="3"/><rect class="bar" x="50" y="712" width="228" height="10" rx="3"/><rect class="bar" x="50" y="736" width="228" height="10" rx="3"/><rect class="bar" x="317" y="112" width="228" height="10" rx="3"/><rect class="bar" x="317" y="136" width="228" height="10" rx="3"/><rect class="bar" x="317" y="160" width="228" height="10" rx="3"/><rect class="bar" x="317" y="184" width="141" height="10" rx="3"/><rect class="bar" x="317" y="208" width="228" height="10" rx="3"/><rect class="bar" x="317" y="232" width="228" height="10" rx="3"/><rect class="bar" x="317" y="256" width="228" height="10" rx="3"/><rect class="bar" x="317" y="280" width="141" height="10" rx="3"/><rect class="bar" x="317" y="304" width="228" height="10" rx="3"/><rect class="bar" x="317" y="328" width="228" height="10" rx="3"/><rect class="bar" x="317" y="352" width="228" height="10" rx="3"/><rect class="bar" x="317" y="376" width="141" height="10" rx="3"/><rect class="bar" x="317" y="400" width="228" height="10" rx="3"/><rect class="bar" x="317" y="424" width="228" height="10" rx="3"/><rect class="bar" x="317" y="448" width="228" height="10" rx="3"/><rect class="bar" x="317" y="472" width="141" height="10" rx="3"/><rect class="bar" x="317" y="496" width="228" height="10" rx="3"/><rect class="bar" x="317" y="520" width="228" height="10" rx="3"/><rect class="bar" x="317" y="544" width="228" height="10" rx="3"/><rect class="bar" x="317" y="568" width="141" height="10" rx="3"/><rect class="bar" x="317" y="592" width="228" height="10" rx="3"/><rect class="bar" x="317" y="616" width="228" height="10" rx="3"/><rect class="bar" x="317" y="640" width="228" height="10" rx="3"/><rect class="bar" x="317" y="664" width="141" height="10" rx="3"/><rect class="bar" x="317" y="688" width="228" height="10" rx="3"/><rect class="bar" x="317" y="712" width="228" height="10" rx="3"/><rect class="bar" x="317" y="736" width="228" height="10" rx="3"/><text class="t noise" x="297" y="820" font-size="38" text-anchor="middle">- 102 -</text></svg><figcaption>2쪽</figcaption></figure>
+        <figure><svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="3쪽"><title>3쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t noise" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="noise-bar" x="420" y="36" width="125" height="14" rx="3"/><line class="rule" x1="50" y1="76" x2="545" y2="76"/><rect class="bar" x="50" y="112" width="228" height="10" rx="3"/><rect class="bar" x="50" y="136" width="228" height="10" rx="3"/><rect class="bar" x="50" y="160" width="228" height="10" rx="3"/><rect class="bar" x="50" y="184" width="141" height="10" rx="3"/><rect class="bar" x="50" y="208" width="228" height="10" rx="3"/><rect class="bar" x="50" y="232" width="228" height="10" rx="3"/><rect class="bar" x="50" y="256" width="228" height="10" rx="3"/><rect class="bar" x="50" y="280" width="141" height="10" rx="3"/><rect class="bar" x="50" y="304" width="228" height="10" rx="3"/><rect class="bar" x="50" y="328" width="228" height="10" rx="3"/><rect class="bar" x="50" y="352" width="228" height="10" rx="3"/><rect class="bar" x="50" y="376" width="141" height="10" rx="3"/><rect class="bar" x="50" y="400" width="228" height="10" rx="3"/><rect class="bar" x="50" y="424" width="228" height="10" rx="3"/><rect class="bar" x="50" y="448" width="228" height="10" rx="3"/><rect class="bar" x="50" y="472" width="141" height="10" rx="3"/><rect class="bar" x="50" y="496" width="228" height="10" rx="3"/><rect class="bar" x="50" y="520" width="228" height="10" rx="3"/><rect class="bar" x="50" y="544" width="228" height="10" rx="3"/><rect class="bar" x="50" y="568" width="141" height="10" rx="3"/><rect class="bar" x="50" y="592" width="228" height="10" rx="3"/><rect class="bar" x="50" y="616" width="228" height="10" rx="3"/><rect class="bar" x="50" y="640" width="228" height="10" rx="3"/><rect class="bar" x="50" y="664" width="141" height="10" rx="3"/><rect class="bar" x="50" y="688" width="228" height="10" rx="3"/><rect class="bar" x="50" y="712" width="228" height="10" rx="3"/><rect class="bar" x="50" y="736" width="228" height="10" rx="3"/><rect class="bar" x="317" y="112" width="228" height="10" rx="3"/><rect class="bar" x="317" y="136" width="228" height="10" rx="3"/><rect class="bar" x="317" y="160" width="228" height="10" rx="3"/><rect class="bar" x="317" y="184" width="141" height="10" rx="3"/><rect class="bar" x="317" y="208" width="228" height="10" rx="3"/><rect class="bar" x="317" y="232" width="228" height="10" rx="3"/><rect class="bar" x="317" y="256" width="228" height="10" rx="3"/><rect class="bar" x="317" y="280" width="141" height="10" rx="3"/><rect class="bar" x="317" y="304" width="228" height="10" rx="3"/><rect class="bar" x="317" y="328" width="228" height="10" rx="3"/><rect class="bar" x="317" y="352" width="228" height="10" rx="3"/><rect class="bar" x="317" y="376" width="141" height="10" rx="3"/><rect class="bar" x="317" y="400" width="228" height="10" rx="3"/><rect class="bar" x="317" y="424" width="228" height="10" rx="3"/><rect class="bar" x="317" y="448" width="228" height="10" rx="3"/><rect class="bar" x="317" y="472" width="141" height="10" rx="3"/><rect class="bar" x="317" y="496" width="228" height="10" rx="3"/><rect class="bar" x="317" y="520" width="228" height="10" rx="3"/><rect class="bar" x="317" y="544" width="228" height="10" rx="3"/><rect class="bar" x="317" y="568" width="141" height="10" rx="3"/><rect class="bar" x="317" y="592" width="228" height="10" rx="3"/><rect class="bar" x="317" y="616" width="228" height="10" rx="3"/><rect class="bar" x="317" y="640" width="228" height="10" rx="3"/><rect class="bar" x="317" y="664" width="141" height="10" rx="3"/><rect class="bar" x="317" y="688" width="228" height="10" rx="3"/><rect class="bar" x="317" y="712" width="228" height="10" rx="3"/><rect class="bar" x="317" y="736" width="228" height="10" rx="3"/><text class="t noise" x="297" y="820" font-size="38" text-anchor="middle">- 103 -</text></svg><figcaption>3쪽</figcaption></figure>
+      </div>
+      <p class="ps-tape-h">꺼낸 글은 1쪽 → 2쪽 → 3쪽 순서로 한 줄에 이어 붙습니다.</p>
+      <div class="ps-tape" data-figure aria-label="꺼낸 글의 순서">
+        <ol><li class="nz">학술지</li><li class="nz">제목</li><li class="body">1쪽 본문</li><li class="nz">101</li></ol>
+        <ol><li class="nz">학술지</li><li class="nz">제목</li><li class="body">2쪽 본문</li><li class="nz">102</li></ol>
+        <ol><li class="nz">학술지</li><li class="nz">제목</li><li class="body">3쪽 본문</li><li class="nz">103</li></ol>
+      </div>
+      <div class="ps-tape-x"><span>처음</span><span>끝</span></div>
+      <p class="ps-cap">빨간 칸이 잡음입니다. 세 쪽짜리 논문에 아홉 군데, 20쪽 논문이면 60군데가 끼어듭니다. 문장이 쪽을 넘어가면 "쓰게 / - 101 - / 농업기술연구… / 했다"처럼 한 문장이 잡음을 사이에 두고 갈라집니다.</p>
+
+      <div class="ps-cp">
+        <div class="cp-code">
+<pre data-title="extract_naive.py" data-hl="4,9"><code class="language-python">import pymupdf
+
+# ① PDF 파일 열기
+doc = pymupdf.open("data/paper.pdf")
+
+full_text = ""
+for page in doc:
+    # ② 쪽마다 글자를 꺼내 이어 붙인다
+    full_text += page.get_text()
+
+print(full_text)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ps-term" data-ps-term>
+  <div class="ps-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="ps-act" data-ps-run>실행해 보기</button></div>
+  <div class="ps-term-out" data-ps-out aria-live="polite">$ python extract_naive.py
+<span class="nz">농업기술연구 제12권 3호</span>
+<span class="nz">웹 기반 밀 재배관리 시스템</span>
+1. 서론
+작물 생육 모형은 날씨와 흙 자료로 밀이
+얼마나 자랄지 계산한다. 농가는 이 계산을
+⋮
+연구는 모형을 웹으로 옮겨 누구나 쓰게
+했다.
+<span class="nz">- 101 -</span>
+<span class="nz">농업기술연구 제12권 3호</span>
+<span class="nz">웹 기반 밀 재배관리 시스템</span>
+2. 방법. 웹 서버가 기상청 날씨 자료를</div>
+</div>
+<p class="ps-cap">예시 PDF로 실제로 돌린 출력에서 1쪽 처음과 끝, 2쪽 처음만 남겼습니다. 빨간 글자가 잡음입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>pymupdf</code>는 PDF를 여는 파이썬 라이브러리입니다. <code>pip install pymupdf</code>로 설치하고 이 글은 PyMuPDF 2.0(2026-10 공개) 기준입니다. 옛 예제에 나오는 <code>import fitz</code>도 같은 라이브러리의 옛 이름입니다.</li>
+  <li><code>get_text()</code>는 그 쪽의 글자를 파일에 적힌 순서대로 꺼냅니다. 줄바꿈도 종이 위 줄 끝에서 그대로 들어가서 한 문장이 여러 줄로 쪼개져 나옵니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <span class="ps-num">03</span>
+          <h2>2단 논문은 읽는 순서까지 섞일 수 있습니다</h2>
+        </div>
+        <div>
+          <p>논문은 한 쪽을 왼쪽 단과 오른쪽 단으로 나눠 싣는 경우가 많습니다. 사람은 왼쪽 단을 끝까지 읽고 오른쪽 단으로 넘어갑니다. 프로그램은 그 사실을 모릅니다.</p>
+          <p>위에서 아래로 줄을 맞춰 정렬하라고 하면 왼쪽 단 한 줄, 오른쪽 단 한 줄을 번갈아 이어 붙입니다. 아래 두 그림은 같은 쪽을 두 가지로 읽은 경로와 실제로 나온 글입니다.</p>
+        </div>
+      </div>
+      <div class="ps-spread n2">
+        <figure data-figure>
+          <p class="ps-fh">단마다 위에서 아래로 <small><code>page.get_text()</code></small></p>
+          <div class="ps-ordfig"><svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="2단 쪽을 읽는 순서를 번호로 표시한 그림"><title>2단 쪽을 읽는 순서를 번호로 표시한 그림</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><rect class="ink-bar" x="50" y="40" width="200" height="14" rx="3"/><rect class="bar" x="50" y="140" width="228" height="22" rx="4"/><rect class="bar" x="317" y="140" width="228" height="22" rx="4"/><rect class="bar" x="50" y="250" width="228" height="22" rx="4"/><rect class="bar" x="317" y="250" width="228" height="22" rx="4"/><rect class="bar" x="50" y="360" width="228" height="22" rx="4"/><rect class="bar" x="317" y="360" width="228" height="22" rx="4"/><rect class="bar" x="50" y="470" width="228" height="22" rx="4"/><rect class="bar" x="317" y="470" width="228" height="22" rx="4"/><rect class="bar" x="50" y="580" width="228" height="22" rx="4"/><rect class="bar" x="317" y="580" width="228" height="22" rx="4"/><polyline class="path ok" points="164,151 164,261 164,371 164,481 164,591 431,151 431,261 431,371 431,481 431,591"/><circle class="num l" cx="164" cy="151" r="22"/><text class="t numt l" x="164" y="160" font-size="26" text-anchor="middle">1</text><circle class="num l" cx="164" cy="261" r="22"/><text class="t numt l" x="164" y="270" font-size="26" text-anchor="middle">2</text><circle class="num l" cx="164" cy="371" r="22"/><text class="t numt l" x="164" y="380" font-size="26" text-anchor="middle">3</text><circle class="num l" cx="164" cy="481" r="22"/><text class="t numt l" x="164" y="490" font-size="26" text-anchor="middle">4</text><circle class="num l" cx="164" cy="591" r="22"/><text class="t numt l" x="164" y="600" font-size="26" text-anchor="middle">5</text><circle class="num r" cx="431" cy="151" r="22"/><text class="t numt r" x="431" y="160" font-size="26" text-anchor="middle">6</text><circle class="num r" cx="431" cy="261" r="22"/><text class="t numt r" x="431" y="270" font-size="26" text-anchor="middle">7</text><circle class="num r" cx="431" cy="371" r="22"/><text class="t numt r" x="431" y="380" font-size="26" text-anchor="middle">8</text><circle class="num r" cx="431" cy="481" r="22"/><text class="t numt r" x="431" y="490" font-size="26" text-anchor="middle">9</text><circle class="num r" cx="431" cy="591" r="22"/><text class="t numt r" x="431" y="600" font-size="26" text-anchor="middle">10</text></svg></div>
+          <div class="ps-out"><em>작물 생육 모형은 날씨와 흙 자료로 밀이
+얼마나 자랄지 계산한다. 농가는 이 계산을</em></div>
+          <p class="ps-cap">두 줄 모두 왼쪽 단에서 온 글입니다. 채운 점은 왼쪽 단, 빈 점은 오른쪽 단입니다.</p>
+          <span class="ps-verdict ok"><b>문장이 이어집니다.</b> 다만 이 예시 PDF가 단 순서대로 글자를 적어 둔 덕분입니다. 파일마다 적힌 순서가 달라서 늘 이렇게 나오지는 않습니다.</span>
+        </figure>
+        <figure data-figure>
+          <p class="ps-fh">가로줄 순서로 정렬 <small><code>page.get_text(sort=True)</code></small></p>
+          <div class="ps-ordfig"><svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="2단 쪽을 읽는 순서를 번호로 표시한 그림"><title>2단 쪽을 읽는 순서를 번호로 표시한 그림</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><rect class="ink-bar" x="50" y="40" width="200" height="14" rx="3"/><rect class="bar" x="50" y="140" width="228" height="22" rx="4"/><rect class="bar" x="317" y="140" width="228" height="22" rx="4"/><rect class="bar" x="50" y="250" width="228" height="22" rx="4"/><rect class="bar" x="317" y="250" width="228" height="22" rx="4"/><rect class="bar" x="50" y="360" width="228" height="22" rx="4"/><rect class="bar" x="317" y="360" width="228" height="22" rx="4"/><rect class="bar" x="50" y="470" width="228" height="22" rx="4"/><rect class="bar" x="317" y="470" width="228" height="22" rx="4"/><rect class="bar" x="50" y="580" width="228" height="22" rx="4"/><rect class="bar" x="317" y="580" width="228" height="22" rx="4"/><polyline class="path bad" points="164,151 431,151 164,261 431,261 164,371 431,371 164,481 431,481 164,591 431,591"/><circle class="num l" cx="164" cy="151" r="22"/><text class="t numt l" x="164" y="160" font-size="26" text-anchor="middle">1</text><circle class="num r" cx="431" cy="151" r="22"/><text class="t numt r" x="431" y="160" font-size="26" text-anchor="middle">2</text><circle class="num l" cx="164" cy="261" r="22"/><text class="t numt l" x="164" y="270" font-size="26" text-anchor="middle">3</text><circle class="num r" cx="431" cy="261" r="22"/><text class="t numt r" x="431" y="270" font-size="26" text-anchor="middle">4</text><circle class="num l" cx="164" cy="371" r="22"/><text class="t numt l" x="164" y="380" font-size="26" text-anchor="middle">5</text><circle class="num r" cx="431" cy="371" r="22"/><text class="t numt r" x="431" y="380" font-size="26" text-anchor="middle">6</text><circle class="num l" cx="164" cy="481" r="22"/><text class="t numt l" x="164" y="490" font-size="26" text-anchor="middle">7</text><circle class="num r" cx="431" cy="481" r="22"/><text class="t numt r" x="431" y="490" font-size="26" text-anchor="middle">8</text><circle class="num l" cx="164" cy="591" r="22"/><text class="t numt l" x="164" y="600" font-size="26" text-anchor="middle">9</text><circle class="num r" cx="431" cy="591" r="22"/><text class="t numt r" x="431" y="600" font-size="26" text-anchor="middle">10</text></svg></div>
+          <div class="ps-out"><em>작물 생육 모형은 날씨와 흙 자료로 밀이</em> <i>그런데 지금까지의 모형은 컴퓨터에 따로</i>
+<em>얼마나 자랄지 계산한다. 농가는 이 계산을</em> <i>설치해야 해서 농가가 쓰기 어려웠다. 이</i></div>
+          <p class="ps-cap">밑줄 없는 글은 왼쪽 단, 점선 밑줄 글은 오른쪽 단에서 온 글입니다.</p>
+          <span class="ps-verdict bad"><b>두 단이 줄마다 섞입니다.</b> 왼쪽 단 첫 줄 뒤에 오른쪽 단 첫 줄이 바로 붙어서 읽는 쪽은 두 문단을 한 문단처럼 받습니다.</span>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <span class="ps-num">04</span>
+          <h2>위아래를 똑같이 잘라 내면 학술지마다 결과가 다릅니다</h2>
+        </div>
+        <div>
+          <p>가장 쉬운 방법은 쪽의 위아래 띠를 가리고 가운데만 꺼내는 것입니다. 책을 복사할 때 머리말 자리를 종이로 덮고 복사하는 것과 같습니다. </p>
+          <p>그런데 가리는 높이는 숫자 하나로 정해야 합니다. 아래 세 쪽은 모두 위아래 80포인트를 가렸습니다. 회색으로 덮인 띠가 가린 곳입니다.</p>
+        </div>
+      </div>
+      <div class="ps-spread n3">
+        <figure data-figure>
+          <p class="ps-fh">머리말이 한 줄인 학술지</p>
+          <svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="위아래 80포인트를 가린 쪽"><title>위아래 80포인트를 가린 쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t noise" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="bar" x="50" y="112" width="228" height="10" rx="3"/><rect class="bar" x="50" y="136" width="228" height="10" rx="3"/><rect class="bar" x="50" y="160" width="228" height="10" rx="3"/><rect class="bar" x="50" y="184" width="141" height="10" rx="3"/><rect class="bar" x="50" y="208" width="228" height="10" rx="3"/><rect class="bar" x="50" y="232" width="228" height="10" rx="3"/><rect class="bar" x="50" y="256" width="228" height="10" rx="3"/><rect class="bar" x="50" y="280" width="141" height="10" rx="3"/><rect class="bar" x="50" y="304" width="228" height="10" rx="3"/><rect class="bar" x="50" y="328" width="228" height="10" rx="3"/><rect class="bar" x="50" y="352" width="228" height="10" rx="3"/><rect class="bar" x="50" y="376" width="141" height="10" rx="3"/><rect class="bar" x="50" y="400" width="228" height="10" rx="3"/><rect class="bar" x="50" y="424" width="228" height="10" rx="3"/><rect class="bar" x="50" y="448" width="228" height="10" rx="3"/><rect class="bar" x="50" y="472" width="141" height="10" rx="3"/><rect class="bar" x="50" y="496" width="228" height="10" rx="3"/><rect class="bar" x="50" y="520" width="228" height="10" rx="3"/><rect class="bar" x="50" y="544" width="228" height="10" rx="3"/><rect class="bar" x="50" y="568" width="141" height="10" rx="3"/><rect class="bar" x="50" y="592" width="228" height="10" rx="3"/><rect class="bar" x="50" y="616" width="228" height="10" rx="3"/><rect class="bar" x="50" y="640" width="228" height="10" rx="3"/><rect class="bar" x="50" y="664" width="141" height="10" rx="3"/><rect class="bar" x="50" y="688" width="228" height="10" rx="3"/><rect class="bar" x="50" y="712" width="228" height="10" rx="3"/><rect class="bar" x="317" y="112" width="228" height="10" rx="3"/><rect class="bar" x="317" y="136" width="228" height="10" rx="3"/><rect class="bar" x="317" y="160" width="228" height="10" rx="3"/><rect class="bar" x="317" y="184" width="141" height="10" rx="3"/><rect class="bar" x="317" y="208" width="228" height="10" rx="3"/><rect class="bar" x="317" y="232" width="228" height="10" rx="3"/><rect class="bar" x="317" y="256" width="228" height="10" rx="3"/><rect class="bar" x="317" y="280" width="141" height="10" rx="3"/><rect class="bar" x="317" y="304" width="228" height="10" rx="3"/><rect class="bar" x="317" y="328" width="228" height="10" rx="3"/><rect class="bar" x="317" y="352" width="228" height="10" rx="3"/><rect class="bar" x="317" y="376" width="141" height="10" rx="3"/><rect class="bar" x="317" y="400" width="228" height="10" rx="3"/><rect class="bar" x="317" y="424" width="228" height="10" rx="3"/><rect class="bar" x="317" y="448" width="228" height="10" rx="3"/><rect class="bar" x="317" y="472" width="141" height="10" rx="3"/><rect class="bar" x="317" y="496" width="228" height="10" rx="3"/><rect class="bar" x="317" y="520" width="228" height="10" rx="3"/><rect class="bar" x="317" y="544" width="228" height="10" rx="3"/><rect class="bar" x="317" y="568" width="141" height="10" rx="3"/><rect class="bar" x="317" y="592" width="228" height="10" rx="3"/><rect class="bar" x="317" y="616" width="228" height="10" rx="3"/><rect class="bar" x="317" y="640" width="228" height="10" rx="3"/><rect class="bar" x="317" y="664" width="141" height="10" rx="3"/><rect class="bar" x="317" y="688" width="228" height="10" rx="3"/><rect class="bar" x="317" y="712" width="228" height="10" rx="3"/><text class="t noise" x="297" y="818" font-size="30" text-anchor="middle">- 101 -</text><rect class="shade" x="0" y="0" width="595" height="80"/><rect class="shade" x="0" y="762" width="595" height="80"/><line class="shade-edge" x1="0" y1="80" x2="595" y2="80"/><line class="shade-edge" x1="0" y1="762" x2="595" y2="762"/></svg>
+          <span class="ps-verdict ok"><b>잘 빠집니다.</b> 머리말과 쪽 번호가 모두 띠 안에 들어 있습니다.</span>
+        </figure>
+        <figure data-figure>
+          <p class="ps-fh">논문 제목이 한 줄 더 있는 학술지</p>
+          <svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="위아래 80포인트를 가린 쪽"><title>위아래 80포인트를 가린 쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t noise" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><text class="t left" x="50" y="112" font-size="30">웹 기반 밀 재배관리</text><rect class="bar" x="50" y="150" width="228" height="10" rx="3"/><rect class="bar" x="50" y="174" width="228" height="10" rx="3"/><rect class="bar" x="50" y="198" width="228" height="10" rx="3"/><rect class="bar" x="50" y="222" width="141" height="10" rx="3"/><rect class="bar" x="50" y="246" width="228" height="10" rx="3"/><rect class="bar" x="50" y="270" width="228" height="10" rx="3"/><rect class="bar" x="50" y="294" width="228" height="10" rx="3"/><rect class="bar" x="50" y="318" width="141" height="10" rx="3"/><rect class="bar" x="50" y="342" width="228" height="10" rx="3"/><rect class="bar" x="50" y="366" width="228" height="10" rx="3"/><rect class="bar" x="50" y="390" width="228" height="10" rx="3"/><rect class="bar" x="50" y="414" width="141" height="10" rx="3"/><rect class="bar" x="50" y="438" width="228" height="10" rx="3"/><rect class="bar" x="50" y="462" width="228" height="10" rx="3"/><rect class="bar" x="50" y="486" width="228" height="10" rx="3"/><rect class="bar" x="50" y="510" width="141" height="10" rx="3"/><rect class="bar" x="50" y="534" width="228" height="10" rx="3"/><rect class="bar" x="50" y="558" width="228" height="10" rx="3"/><rect class="bar" x="50" y="582" width="228" height="10" rx="3"/><rect class="bar" x="50" y="606" width="141" height="10" rx="3"/><rect class="bar" x="50" y="630" width="228" height="10" rx="3"/><rect class="bar" x="50" y="654" width="228" height="10" rx="3"/><rect class="bar" x="50" y="678" width="228" height="10" rx="3"/><rect class="bar" x="50" y="702" width="141" height="10" rx="3"/><rect class="bar" x="50" y="726" width="228" height="10" rx="3"/><rect class="bar" x="317" y="150" width="228" height="10" rx="3"/><rect class="bar" x="317" y="174" width="228" height="10" rx="3"/><rect class="bar" x="317" y="198" width="228" height="10" rx="3"/><rect class="bar" x="317" y="222" width="141" height="10" rx="3"/><rect class="bar" x="317" y="246" width="228" height="10" rx="3"/><rect class="bar" x="317" y="270" width="228" height="10" rx="3"/><rect class="bar" x="317" y="294" width="228" height="10" rx="3"/><rect class="bar" x="317" y="318" width="141" height="10" rx="3"/><rect class="bar" x="317" y="342" width="228" height="10" rx="3"/><rect class="bar" x="317" y="366" width="228" height="10" rx="3"/><rect class="bar" x="317" y="390" width="228" height="10" rx="3"/><rect class="bar" x="317" y="414" width="141" height="10" rx="3"/><rect class="bar" x="317" y="438" width="228" height="10" rx="3"/><rect class="bar" x="317" y="462" width="228" height="10" rx="3"/><rect class="bar" x="317" y="486" width="228" height="10" rx="3"/><rect class="bar" x="317" y="510" width="141" height="10" rx="3"/><rect class="bar" x="317" y="534" width="228" height="10" rx="3"/><rect class="bar" x="317" y="558" width="228" height="10" rx="3"/><rect class="bar" x="317" y="582" width="228" height="10" rx="3"/><rect class="bar" x="317" y="606" width="141" height="10" rx="3"/><rect class="bar" x="317" y="630" width="228" height="10" rx="3"/><rect class="bar" x="317" y="654" width="228" height="10" rx="3"/><rect class="bar" x="317" y="678" width="228" height="10" rx="3"/><rect class="bar" x="317" y="702" width="141" height="10" rx="3"/><rect class="bar" x="317" y="726" width="228" height="10" rx="3"/><text class="t noise" x="297" y="818" font-size="30" text-anchor="middle">- 101 -</text><rect class="shade" x="0" y="0" width="595" height="80"/><rect class="shade" x="0" y="762" width="595" height="80"/><line class="shade-edge" x1="0" y1="80" x2="595" y2="80"/><line class="shade-edge" x1="0" y1="762" x2="595" y2="762"/></svg>
+          <span class="ps-verdict bad"><b>제목 줄이 남습니다.</b> 둘째 줄이 80포인트보다 아래에 찍혀서 쪽마다 본문 앞에 붙어 나옵니다.</span>
+        </figure>
+        <figure data-figure>
+          <p class="ps-fh">머리말 없이 위까지 꽉 찬 쪽</p>
+          <svg class="ps-pg " viewBox="0 0 595 842" role="img" aria-label="위아래 80포인트를 가린 쪽"><title>위아래 80포인트를 가린 쪽</title><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><rect class="ink-bar" x="50" y="40" width="228" height="12" rx="3"/><rect class="ink-bar" x="317" y="40" width="228" height="12" rx="3"/><rect class="ink-bar" x="50" y="64" width="228" height="12" rx="3"/><rect class="ink-bar" x="317" y="64" width="200" height="12" rx="3"/><rect class="bar" x="50" y="88" width="228" height="10" rx="3"/><rect class="bar" x="50" y="112" width="228" height="10" rx="3"/><rect class="bar" x="50" y="136" width="228" height="10" rx="3"/><rect class="bar" x="50" y="160" width="141" height="10" rx="3"/><rect class="bar" x="50" y="184" width="228" height="10" rx="3"/><rect class="bar" x="50" y="208" width="228" height="10" rx="3"/><rect class="bar" x="50" y="232" width="228" height="10" rx="3"/><rect class="bar" x="50" y="256" width="141" height="10" rx="3"/><rect class="bar" x="50" y="280" width="228" height="10" rx="3"/><rect class="bar" x="50" y="304" width="228" height="10" rx="3"/><rect class="bar" x="50" y="328" width="228" height="10" rx="3"/><rect class="bar" x="50" y="352" width="141" height="10" rx="3"/><rect class="bar" x="50" y="376" width="228" height="10" rx="3"/><rect class="bar" x="50" y="400" width="228" height="10" rx="3"/><rect class="bar" x="50" y="424" width="228" height="10" rx="3"/><rect class="bar" x="50" y="448" width="141" height="10" rx="3"/><rect class="bar" x="50" y="472" width="228" height="10" rx="3"/><rect class="bar" x="50" y="496" width="228" height="10" rx="3"/><rect class="bar" x="50" y="520" width="228" height="10" rx="3"/><rect class="bar" x="50" y="544" width="141" height="10" rx="3"/><rect class="bar" x="50" y="568" width="228" height="10" rx="3"/><rect class="bar" x="50" y="592" width="228" height="10" rx="3"/><rect class="bar" x="50" y="616" width="228" height="10" rx="3"/><rect class="bar" x="50" y="640" width="141" height="10" rx="3"/><rect class="bar" x="50" y="664" width="228" height="10" rx="3"/><rect class="bar" x="50" y="688" width="228" height="10" rx="3"/><rect class="bar" x="50" y="712" width="228" height="10" rx="3"/><rect class="bar" x="50" y="736" width="141" height="10" rx="3"/><rect class="bar" x="317" y="88" width="228" height="10" rx="3"/><rect class="bar" x="317" y="112" width="228" height="10" rx="3"/><rect class="bar" x="317" y="136" width="228" height="10" rx="3"/><rect class="bar" x="317" y="160" width="141" height="10" rx="3"/><rect class="bar" x="317" y="184" width="228" height="10" rx="3"/><rect class="bar" x="317" y="208" width="228" height="10" rx="3"/><rect class="bar" x="317" y="232" width="228" height="10" rx="3"/><rect class="bar" x="317" y="256" width="141" height="10" rx="3"/><rect class="bar" x="317" y="280" width="228" height="10" rx="3"/><rect class="bar" x="317" y="304" width="228" height="10" rx="3"/><rect class="bar" x="317" y="328" width="228" height="10" rx="3"/><rect class="bar" x="317" y="352" width="141" height="10" rx="3"/><rect class="bar" x="317" y="376" width="228" height="10" rx="3"/><rect class="bar" x="317" y="400" width="228" height="10" rx="3"/><rect class="bar" x="317" y="424" width="228" height="10" rx="3"/><rect class="bar" x="317" y="448" width="141" height="10" rx="3"/><rect class="bar" x="317" y="472" width="228" height="10" rx="3"/><rect class="bar" x="317" y="496" width="228" height="10" rx="3"/><rect class="bar" x="317" y="520" width="228" height="10" rx="3"/><rect class="bar" x="317" y="544" width="141" height="10" rx="3"/><rect class="bar" x="317" y="568" width="228" height="10" rx="3"/><rect class="bar" x="317" y="592" width="228" height="10" rx="3"/><rect class="bar" x="317" y="616" width="228" height="10" rx="3"/><rect class="bar" x="317" y="640" width="141" height="10" rx="3"/><rect class="bar" x="317" y="664" width="228" height="10" rx="3"/><rect class="bar" x="317" y="688" width="228" height="10" rx="3"/><rect class="bar" x="317" y="712" width="228" height="10" rx="3"/><rect class="bar" x="317" y="736" width="141" height="10" rx="3"/><rect class="shade" x="0" y="0" width="595" height="80"/><rect class="shade" x="0" y="762" width="595" height="80"/><line class="shade-edge" x1="0" y1="80" x2="595" y2="80"/><line class="shade-edge" x1="0" y1="762" x2="595" y2="762"/></svg>
+          <span class="ps-verdict bad"><b>본문이 잘립니다.</b> 띠에 덮인 진한 두 줄은 머리말이 아니라 본문 첫 줄입니다.</span>
+        </figure>
+      </div>
+      <p class="ps-cap">PyMuPDF에서는 <code>get_text(clip=…)</code>에 꺼낼 사각형을 넘기면 이렇게 가립니다. 한 학술지의 논문만 다룬다면 이 방법으로도 충분합니다.</p>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap ps-two" style="align-items:start">
+      <div>
+        <span class="ps-num">05</span>
+        <h2>PyMuPDF 2.0은 덩어리마다 이름표를 붙여 머리말을 찾습니다</h2>
+        <p>여러 학술지의 논문을 받는 요약기라면 높이 숫자 하나로는 요약에 학술지 이름이 계속 섞여 나옵니다. 높이를 사람이 정하는 대신, 쪽 모양을 보고 덩어리마다 무엇인지 맞히는 방법이 있습니다. 이것을 레이아웃 분석(layout analysis)이라고 합니다. 쪽 맨 위에 작게, 쪽마다 같은 자리에 찍힌 글이면 머리말일 가능성이 큽니다.</p>
+        <p>PyMuPDF 2.0은 이 일을 하는 분석 모델을 기본으로 품었습니다. 여기서 모델은 수많은 쪽을 보고 덩어리 종류를 맞히도록 학습한 프로그램입니다. 그림처럼 덩어리마다 <code>page-header</code>, <code>text</code>, <code>page-footer</code> 같은 이름표를 붙이고 우리는 이름표를 보고 뺄 것을 고릅니다. 모델이 쪽 모양을 보고 고르니, 학술지마다 높이를 맞출 필요가 없습니다.</p>
+        <p>사람이 신문을 훑어보고 "이건 광고 이건 기사"라고 가르는 것과 비슷합니다. 다만 모델은 모양만 보고 고르기 때문에 틀릴 때도 있습니다.</p>
+      </div>
+      <figure class="ps-fig ps-fig1" data-figure style="margin:0">
+        <svg class="ps-pg" viewBox="0 -96 595 938" role="img" aria-label="레이아웃 분석이 쪽의 덩어리마다 붙인 이름표"><text class="pent" x="20" y="-48" font-size="40">맨 위 · 작은 글씨 · 쪽마다 같은 자리</text><text class="pent" x="20" y="-8" font-size="40">→ 머리말로 본다</text><rect class="paper" x="1.5" y="1.5" width="592" height="839" rx="10"/><text class="t ink" x="50" y="56" font-size="28">농업기술연구 제12권 3호</text><rect class="ink-bar" x="420" y="36" width="125" height="14" rx="3"/><line class="rule" x1="50" y1="76" x2="545" y2="76"/><text class="t ink" x="50" y="136" font-size="34" font-weight="700">1. 서론</text><rect class="bar" x="50" y="170" width="228" height="10" rx="3"/><rect class="bar" x="50" y="194" width="228" height="10" rx="3"/><rect class="bar" x="50" y="218" width="228" height="10" rx="3"/><rect class="bar" x="50" y="242" width="141" height="10" rx="3"/><rect class="bar" x="50" y="266" width="228" height="10" rx="3"/><rect class="bar" x="50" y="290" width="228" height="10" rx="3"/><rect class="bar" x="50" y="314" width="228" height="10" rx="3"/><rect class="bar" x="50" y="338" width="141" height="10" rx="3"/><rect class="bar" x="50" y="362" width="228" height="10" rx="3"/><rect class="bar" x="50" y="386" width="228" height="10" rx="3"/><rect class="bar" x="50" y="410" width="228" height="10" rx="3"/><rect class="bar" x="50" y="434" width="141" height="10" rx="3"/><rect class="bar" x="50" y="458" width="228" height="10" rx="3"/><rect class="bar" x="50" y="482" width="228" height="10" rx="3"/><rect class="bar" x="50" y="506" width="228" height="10" rx="3"/><rect class="bar" x="50" y="530" width="141" height="10" rx="3"/><rect class="bar" x="50" y="554" width="228" height="10" rx="3"/><rect class="bar" x="50" y="578" width="228" height="10" rx="3"/><rect class="bar" x="50" y="602" width="228" height="10" rx="3"/><rect class="bar" x="50" y="626" width="141" height="10" rx="3"/><rect class="bar" x="50" y="650" width="228" height="10" rx="3"/><rect class="bar" x="50" y="674" width="228" height="10" rx="3"/><rect class="bar" x="50" y="698" width="228" height="10" rx="3"/><rect class="bar" x="50" y="722" width="141" height="10" rx="3"/><rect class="bar" x="317" y="170" width="228" height="10" rx="3"/><rect class="bar" x="317" y="194" width="228" height="10" rx="3"/><rect class="bar" x="317" y="218" width="228" height="10" rx="3"/><rect class="bar" x="317" y="242" width="141" height="10" rx="3"/><rect class="bar" x="317" y="266" width="228" height="10" rx="3"/><rect class="bar" x="317" y="290" width="228" height="10" rx="3"/><rect class="bar" x="317" y="314" width="228" height="10" rx="3"/><rect class="bar" x="317" y="338" width="141" height="10" rx="3"/><rect class="bar" x="317" y="362" width="228" height="10" rx="3"/><rect class="bar" x="317" y="386" width="228" height="10" rx="3"/><rect class="bar" x="317" y="410" width="228" height="10" rx="3"/><rect class="bar" x="317" y="434" width="141" height="10" rx="3"/><rect class="bar" x="317" y="458" width="228" height="10" rx="3"/><rect class="bar" x="317" y="482" width="228" height="10" rx="3"/><rect class="bar" x="317" y="506" width="228" height="10" rx="3"/><rect class="bar" x="317" y="530" width="141" height="10" rx="3"/><rect class="bar" x="317" y="554" width="228" height="10" rx="3"/><rect class="bar" x="317" y="578" width="228" height="10" rx="3"/><rect class="bar" x="317" y="602" width="228" height="10" rx="3"/><rect class="bar" x="317" y="626" width="141" height="10" rx="3"/><rect class="bar" x="317" y="650" width="228" height="10" rx="3"/><rect class="bar" x="317" y="674" width="228" height="10" rx="3"/><rect class="bar" x="317" y="698" width="228" height="10" rx="3"/><rect class="bar" x="317" y="722" width="141" height="10" rx="3"/><text class="t ink" x="297" y="820" font-size="38" text-anchor="middle">- 101 -</text><rect class="lb drop" x="42" y="24" width="352" height="44" rx="6"/><rect class="lb drop" x="412" y="24" width="141" height="44" rx="6"/><rect class="lb keep" x="42" y="102" width="140" height="48" rx="6"/><rect class="lb keep" x="42" y="160" width="244" height="604" rx="6"/><rect class="lb keep" x="309" y="160" width="244" height="604" rx="6"/><rect class="lb drop" x="232" y="784" width="130" height="50" rx="6"/><text class="t lbt drop" x="553" y="100" font-size="24" text-anchor="end">page-header</text><text class="t lbt keep" x="196" y="136" font-size="24" text-anchor="start">section-header</text><text class="t lbt keep" x="54" y="756" font-size="24" text-anchor="start">text</text><text class="t lbt keep" x="321" y="756" font-size="24" text-anchor="start">text</text><text class="t lbt drop" x="220" y="818" font-size="24" text-anchor="end">page-footer</text></svg>
+        <p class="ps-cap">예시 PDF 1쪽을 분석해 나온 덩어리 위치를 그대로 그렸습니다. 초록 실선은 남기는 덩어리이고 빨간 점선은 <code>header=False</code>, <code>footer=False</code>로 빼는 덩어리입니다.</p>
+      </figure>
+    </div>
+    <div class="ps-wrap">
+      <div class="ps-cp">
+        <div class="cp-code">
+<pre data-title="extract_clean.py" data-hl="6"><code class="language-python">import pymupdf
+
+doc = pymupdf.open("data/paper.pdf")
+
+# ① 머리말·꼬리말을 빼고 마크다운으로
+text = doc.to_markdown(header=False, footer=False)
+
+print(text)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ps-term" data-ps-term>
+  <div class="ps-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="ps-act" data-ps-run>실행해 보기</button></div>
+  <div class="ps-term-out" data-ps-out aria-live="polite">$ python extract_clean.py
+# 1. 서론
+
+작물 생육 모형은 날씨와 흙 자료로 밀이 얼마나 자랄지 계산한다. 농가는 이 계산을 보고 물 줄 날과 비료 줄 날을 정한다. …
+
+그런데 지금까지의 모형은 컴퓨터에 따로 설치해야 해서 농가가 쓰기 어려웠다. 이 연구는 모형을 웹으로 옮겨 누구나 쓰게 했다. …
+
+2. 방법. 웹 서버가 기상청 날씨 자료를 매일 받아 와 모형을 다시 계산한다. …</div>
+</div>
+<p class="ps-cap">예시 PDF로 실제로 돌린 출력입니다. 문단이 길어 뒷부분은 …로 줄였습니다. 머리말과 쪽 번호가 없고 쪽 위 줄바꿈 대신 문단 단위로 이어집니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>to_markdown</code>은 쪽 전체를 마크다운(Markdown)으로 바꿉니다. 마크다운은 <code>#</code>로 제목을 표시하는 간단한 글 형식입니다. 덕분에 "1. 서론"이 제목이라는 정보가 AI에게 함께 넘어갑니다. <code>header=False</code>와 <code>footer=False</code>가 머리말·꼬리말 덩어리를 뺍니다. 마크다운 기호 없이 글만 필요하면 같은 옵션을 받는 <code>to_text</code>를 씁니다.</li>
+</ol>
+<details>
+  <summary>설치가 onnxruntime에서 멈춘다면</summary>
+  <div class="ps-in"><p>PyMuPDF 2.0은 레이아웃 분석 모델을 돌리려고 onnxruntime이라는 패키지를 함께 설치합니다. 막 나온 Python 판에는 이 패키지가 아직 없을 수 있습니다. 2026-10-30에 Python 3.15에서는 설치가 실패했고, 3.13으로 만든 가상 환경에서는 잘 깔렸습니다.</p></div>
+</details>
+<details>
+  <summary>꺼낸 결과는 왜 눈으로 확인해야 할까요?</summary>
+  <div class="ps-in"><p>단 길이가 몇 줄뿐인 쪽에서는 모델이 두 단을 한 덩어리로 묶어서 "웹 서버가 기상청 날씨 자료를 3. 결과. 세 지역 밭에서 두 해 동안 매일 받아 와…"처럼 섞어 낸 적이 있습니다. 같은 쪽을 단마다 꽉 채우자 바르게 나왔습니다. 요약을 맡기기 전에 꺼낸 글을 한 번 훑어보면 이런 사고를 미리 잡을 수 있습니다.</p></div>
+</details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <span class="ps-num">06</span>
+          <h2>요약을 시킬 때는 무엇을 뽑을지 칸으로 정해 줍니다</h2>
+        </div>
+        <div>
+          <p>깨끗한 글을 얻었으면 이제 LLM(Large Language Model)에게 요약을 맡깁니다. LLM은 ChatGPT 같은 서비스 안에서 글을 읽고 쓰는 AI 모델입니다. "요약해 줘"만 보내면 부탁할 때마다 요약의 모양이 달라집니다. 어떤 때는 긴 문단 하나, 어떤 때는 목록이 나옵니다. 앞에서 못 걸러 낸 머리말을 논문 내용처럼 적기도 합니다.</p>
+          <p>그래서 실제 서비스는 <b>무엇을 뽑을지</b>를 미리 정합니다. 학교 독후감 양식에 "줄거리·인상 깊은 장면·느낀 점" 칸이 있는 것과 같습니다. 논문이라면 저자가 본 문제, 주장, 방법, 결과, 한계 다섯 칸이 흔히 쓰입니다.</p>
+        </div>
+      </div>
+      <div class="ps-spread n2">
+        <figure data-figure>
+          <p class="ps-fh">"요약해 줘"만 보냈을 때</p>
+          <div class="ps-shape2">
+            <div class="ps-ans"><small>첫 번째 답</small><i style="width:78%"></i><i style="width:96%"></i><i style="width:92%"></i><i style="width:98%"></i><i style="width:88%"></i><i style="width:60%"></i></div>
+            <div class="ps-ans"><small>두 번째 답</small><span class="li"><i style="width:70%"></i></span><span class="li"><i style="width:52%"></i></span><span class="li"><i style="width:40%"></i></span></div>
+          </div>
+          <p class="ps-pen ps-pen-note">긴 문단 한 번, 짧은 목록 한 번. 모양도 길이도 매번 다르다</p>
+        </figure>
+        <figure data-figure>
+          <p class="ps-fh">다섯 칸을 정해 줬을 때</p>
+          <dl class="ps-form">
+            <dt>문제</dt><dd><i style="width:82%"></i><i class="b" style="width:74%"></i></dd>
+            <dt>주장</dt><dd><i style="width:64%"></i><i class="b" style="width:70%"></i></dd>
+            <dt>방법</dt><dd><i style="width:76%"></i><i class="b" style="width:68%"></i></dd>
+            <dt>결과</dt><dd><i style="width:88%"></i><i class="b" style="width:80%"></i></dd>
+            <dt>한계</dt><dd><i style="width:58%"></i><i class="b" style="width:62%"></i></dd>
+          </dl>
+          <p class="ps-pen ps-pen-note">문장 길이는 달라도 칸은 늘 다섯 개</p>
+        </figure>
+      </div>
+      <p class="ps-cap">막대 하나가 답의 한 줄입니다. 다섯 칸 양식의 진한 막대는 첫 번째 답, 점선 막대는 두 번째 답입니다. 칸이 정해져 있으면 프로그램이 칸마다 꺼내 화면에 늘어놓을 수 있습니다. 설명을 위해 그린 예시입니다.</p>
+
+      <div class="ps-cp">
+        <div class="cp-code">
+<pre data-title="summarize_pdf.py" data-hl="8,18"><code class="language-python">import pymupdf
+from openai import OpenAI
+from pydantic import BaseModel
+
+client = OpenAI()
+
+# ① 요약에 꼭 들어갈 칸
+class PaperSummary(BaseModel):
+    problem: str        # 저자가 본 문제
+    claim: str          # 저자의 주장
+    method: str         # 어떻게 했나
+    results: list[str]  # 주요 결과
+    limits: str         # 남은 과제
+
+def pdf_to_text(path: str) -> str:
+    doc = pymupdf.open(path)
+    # ② 머리말·꼬리말을 빼고 마크다운으로
+    return doc.to_markdown(header=False, footer=False)</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>클래스(class)는 데이터의 모양을 정해 두는 틀입니다. <code>BaseModel</code>을 물려받은 클래스가 곧 요약 양식이 되고 칸 이름과 칸에 들어갈 값의 종류(글자 하나, 글자 목록)를 적습니다. 이런 모양 정의를 스키마(schema)라고 부릅니다.</li>
+  <li>05번 섹션에서 만든 깨끗한 글을 그대로 씁니다. 잡음을 먼저 걸러야 요약에 학술지 이름이 섞이지 않습니다.</li>
+</ol>
+        </div>
+      </div>
+
+      <div class="ps-cp">
+        <div class="cp-code">
+<pre data-title="summarize_pdf.py" data-hl="5,11,14" data-start="20"><code class="language-python">def summarize(text: str) -> PaperSummary:
+    response = client.responses.parse(
+        model="gpt-6.1-sol",
+        # ③ 무엇을 어떻게 뽑을지
+        instructions=(
+            "너는 논문을 정리하는 연구원이다. "
+            "본문에 없는 내용은 지어내지 말고 '본문에 없음'이라고 써라."
+        ),
+        input=text,
+        # ④ 답의 모양을 칸으로 고정
+        text_format=PaperSummary,
+    )
+    # ⑤ 칸이 채워진 객체로 받는다
+    return response.output_parsed
+
+s = summarize(pdf_to_text("data/paper.pdf"))
+print("문제:", s.problem)
+print("주장:", s.claim)
+print("방법:", s.method)
+for r in s.results:
+    print("결과:", r)
+print("한계:", s.limits)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="ps-term" data-ps-term>
+  <div class="ps-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="ps-act" data-ps-run>실행해 보기</button></div>
+  <div class="ps-term-out" data-ps-out aria-live="polite">$ python summarize_pdf.py
+문제: 작물 생육 모형은 쓸모가 크지만 설치형 프로그램이라 농가가 쓰기 어려웠다.
+주장: 모형을 웹으로 옮기면 누구나 물 주는 날을 정하는 데 쓸 수 있다.
+방법: 밀 생육 모형을 웹 서버에 올리고 날씨 자료를 매일 받아 다시 계산했다.
+결과: 웹 시스템의 수확량 예측이 실제 수확량과 잘 맞았다.
+결과: 물 사용량이 줄었다.
+한계: 다른 작물로 넓히려면 지역마다 다른 흙 자료가 필요하다.</div>
+</div>
+<p class="ps-cap">출력은 예시 답입니다. 문장은 부를 때마다 달라지지만 칸의 이름과 개수는 바뀌지 않습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes" start="3" style="counter-reset: pgc 2">
+  <li><code>instructions</code>는 모델이 지킬 규칙입니다. LLM은 그럴듯하지만 사실이 아닌 내용을 지어낼 때가 있습니다. 이것을 환각(hallucination)이라고 합니다. "없으면 없다고 써라"를 적어 두면 빈칸을 상상으로 채우는 일이 줄어듭니다.</li>
+  <li><code>text_format</code>에 양식 클래스를 넘기면 모델이 그 칸에 맞춘 JSON으로만 답합니다. JSON은 <code>{"problem": "…"}</code>처럼 이름과 값을 짝지어 적는 글 형식입니다. OpenAI는 이 기능을 Structured Outputs라고 부르고 칸이 빠지거나 이름이 바뀐 답은 나오지 않습니다.</li>
+  <li><code>output_parsed</code>에는 글자가 아니라 <code>PaperSummary</code> 객체가 들어 있어서 <code>s.problem</code>처럼 칸 이름으로 바로 꺼냅니다. 모델 이름 <code>gpt-6.1-sol</code>은 OpenAI 모델 문서(2026-10-30 확인)에 나온 이름이고 코드는 <code>openai</code> 3.41 기준입니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap ps-two">
+      <div>
+        <span class="ps-num">07</span>
+        <h2>PDF 파일을 통째로 모델에 넣는 방법도 있습니다</h2>
+        <p>ChatGPT에 PDF를 올리면 본문뿐 아니라 그래프와 표까지 설명해 줍니다. API(프로그램이 다른 서비스의 기능을 빌려 쓰는 창구)에서도 PDF 파일을 그대로 보내면, OpenAI가 쪽마다 <b>꺼낸 글과 쪽 사진을 함께</b> 모델에 넣습니다.</p>
+        <p>쪽 사진 덕분에 모델은 그래프의 선과 표의 칸까지 봅니다. 대신 사진도 토큰으로 계산되어 입력이 커집니다. 토큰은 모델이 글과 그림을 읽는 단위입니다. 서버가 꺼내 주는 글에는 머리말과 쪽 번호도 그대로 들어 있으니, 파일째 보낼 때는 지시문에 "머리말과 쪽 번호는 요약에 넣지 마라"를 적어 둡니다.</p>
+        <p>그림이 요점인 논문은 파일째로, 글 중심 논문을 많이 요약할 때는 직접 꺼낸 깨끗한 글로 보내는 쪽이 낫습니다.</p>
+      </div>
+      <figure class="ps-fig" data-figure style="margin:0">
+<svg class="ps-twosvg" viewBox="0 0 600 372" role="img" aria-label="같은 쪽을 꺼낸 글로 보낼 때와 PDF 파일째 보낼 때 모델이 받는 것"><g transform="translate(20 0)"><rect class="paper" x="0" y="0" width="250" height="300" rx="8"/><rect class="bar" x="18" y="38" width="214" height="8" rx="3"/><rect class="bar" x="18" y="54" width="214" height="8" rx="3"/><rect class="bar" x="18" y="70" width="214" height="8" rx="3"/><rect class="bar" x="18" y="86" width="140" height="8" rx="3"/><text class="num" x="22" y="152">12  18  25  31</text><text class="num" x="22" y="180">2023 2024 2025</text><rect class="bar" x="18" y="226" width="214" height="8" rx="3"/><rect class="bar" x="18" y="242" width="214" height="8" rx="3"/><rect class="bar" x="18" y="258" width="120" height="8" rx="3"/></g><g transform="translate(330 0)"><rect class="paper" x="0" y="0" width="250" height="300" rx="8"/><rect class="hd" x="18" y="14" width="140" height="9" rx="3"/><rect class="bar" x="18" y="38" width="214" height="8" rx="3"/><rect class="bar" x="18" y="54" width="214" height="8" rx="3"/><rect class="bar" x="18" y="70" width="214" height="8" rx="3"/><rect class="bar" x="18" y="86" width="140" height="8" rx="3"/><line class="ax" x1="30" y1="200" x2="232" y2="200"/><line class="ax" x1="30" y1="120" x2="30" y2="200"/><polyline class="ln" points="40,188 100,170 160,150 220,128"/><circle class="pt" cx="40" cy="188" r="5"/><circle class="pt" cx="100" cy="170" r="5"/><circle class="pt" cx="160" cy="150" r="5"/><circle class="pt" cx="220" cy="128" r="5"/><rect class="bar" x="18" y="226" width="214" height="8" rx="3"/><rect class="bar" x="18" y="242" width="214" height="8" rx="3"/><rect class="bar" x="18" y="258" width="120" height="8" rx="3"/></g><text class="cap" x="145" y="332" text-anchor="middle">꺼낸 글만</text><text class="sub" x="145" y="358" text-anchor="middle">그래프는 숫자 몇 개만 남음</text><text class="cap" x="455" y="332" text-anchor="middle">PDF 파일째</text><text class="sub" x="455" y="358" text-anchor="middle">쪽 사진으로 선 모양까지 봄</text><text class="pent" x="500" y="22">머리말도 함께</text></svg>
+        <p class="ps-cap">같은 쪽을 두 방식으로 보냈을 때 모델이 받는 것입니다. 빨간 줄은 걸러지지 않은 머리말입니다. OpenAI 문서 기준으로 파일은 하나에 50MB 미만, 한 요청 안의 파일을 합쳐도 50MB까지입니다.</p>
+      </figure>
+    </div>
+    <div class="ps-wrap">
+      <div class="ps-cp">
+        <div class="cp-code">
+<pre data-title="pdf_direct.py" data-hl="15,16"><code class="language-python">import base64
+from openai import OpenAI
+
+client = OpenAI()
+
+with open("data/paper.pdf", "rb") as f:
+    data = base64.b64encode(f.read()).decode("utf-8")
+
+response = client.responses.create(
+    model="gpt-6.1-sol",
+    input=[{
+        "role": "user",
+        "content": [
+            # ① PDF 파일을 통째로
+            {"type": "input_file", "filename": "paper.pdf",
+             "file_data": f"data:application/pdf;base64,{data}"},
+            {"type": "input_text",
+             "text": "이 논문의 문제·주장·결과를 세 줄로 요약해 줘."},
+        ],
+    }],
+)
+print(response.output_text)</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>input_file</code> 칸에 PDF를 넣습니다. 여기서는 파일을 base64로 바꿔 실어 보냈습니다. base64는 PDF 같은 파일을 영문자와 숫자만으로 바꿔 적는 방식입니다. 같은 PDF를 여러 번 쓴다면 파일을 OpenAI 서버에 미리 올려 두는 Files API로 한 번 올리고 <code>file_id</code>로 가리켜도 됩니다.</li>
+</ol>
+<details>
+  <summary>쪽 사진은 얼마나 자세히 볼까요?</summary>
+  <div class="ps-in"><p><code>input_file</code>에 <code>detail</code>을 <code>low</code>나 <code>high</code>로 줄 수 있습니다. 기본값 <code>auto</code>는 GPT-5.6 이후 모델에서 <code>high</code>로 동작한다고 OpenAI 문서에 적혀 있습니다. 작은 글씨 표가 많은 논문이 아니라면 <code>low</code>로 입력을 줄여 볼 만합니다.</p></div>
+</details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <span class="ps-num">08</span>
+          <h2>아주 긴 문서는 나눠 요약한 뒤 합칩니다</h2>
+        </div>
+        <div>
+          <p>수백 쪽짜리 보고서를 통째로 올려 요약을 받으면, 가운데 장의 내용이 요약에서 빠질 수 있습니다. 모델이 한 번에 읽는 양을 컨텍스트 창(context window)이라고 하는데, 요즘은 창이 커서 300쪽도 들어가기는 합니다.</p>
+          <p>들어간다고 고르게 읽는 것은 아닙니다. 긴 입력의 가운데에 놓인 정보를 앞이나 끝보다 잘 쓰지 못한다는 연구가 있습니다("Lost in the Middle", 2023). 그래서 긴 문서는 조각으로 나눠 따로 요약하고 그 요약들을 모아 한 번 더 요약합니다. 조각마다 처리하는 단계를 map, 모아서 줄이는 단계를 reduce라고 해서 map-reduce 요약이라고 부릅니다.</p>
+        </div>
+      </div>
+      <div class="ps-spread n2">
+        <figure data-figure>
+          <p class="ps-fh">한 번에 넣기</p>
+          <div class="ps-long" aria-label="300쪽을 한 번에 넣은 모습, 가운데 쪽은 흐리게">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i class="mid"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="ps-long-x"><span>1쪽</span><span>가운데</span><span>300쪽</span></div>
+          <p class="ps-pen ps-pen-note">흐린 가운데 쪽은 상대적으로 덜 쓰인다</p>
+          <div class="ps-gauge" aria-label="컨텍스트 창 105만 토큰 가운데 300쪽이 차지하는 범위">
+            <div class="ps-gauge-bar"><span style="left:0;width:43%"></span><span class="maybe" style="left:43%;width:43%"></span></div>
+            <div class="ps-long-x"><span>0</span><span>300쪽이 차는 범위 45만~90만</span><span>창 105만</span></div>
+          </div>
+        </figure>
+        <figure data-figure>
+          <p class="ps-fh">나눠 요약한 뒤 합치기</p>
+          <svg class="ps-mrsvg" viewBox="0 0 560 300" role="img" aria-label="문서를 네 조각으로 나눠 각각 요약한 뒤 오른쪽에서 하나로 합치는 그림"><rect class="pg" x="10" y="14" width="12" height="44" rx="2"/><rect class="pg" x="26" y="14" width="12" height="44" rx="2"/><rect class="pg" x="42" y="14" width="12" height="44" rx="2"/><rect class="pg" x="58" y="14" width="12" height="44" rx="2"/><rect class="pg" x="74" y="14" width="12" height="44" rx="2"/><path class="wire" d="M96 36 H150"/><rect class="note" x="156" y="18" width="110" height="36" rx="7"/><rect class="nl" x="168" y="28" width="80" height="6" rx="3"/><rect class="nl" x="168" y="40" width="56" height="6" rx="3"/><path class="wire" d="M272 36 C330 36, 330 140, 380 140"/><rect class="pg" x="10" y="76" width="12" height="44" rx="2"/><rect class="pg" x="26" y="76" width="12" height="44" rx="2"/><rect class="pg" x="42" y="76" width="12" height="44" rx="2"/><rect class="pg" x="58" y="76" width="12" height="44" rx="2"/><rect class="pg" x="74" y="76" width="12" height="44" rx="2"/><path class="wire" d="M96 98 H150"/><rect class="note" x="156" y="80" width="110" height="36" rx="7"/><rect class="nl" x="168" y="90" width="80" height="6" rx="3"/><rect class="nl" x="168" y="102" width="56" height="6" rx="3"/><path class="wire" d="M272 98 C330 98, 330 140, 380 140"/><rect class="pg" x="10" y="138" width="12" height="44" rx="2"/><rect class="pg" x="26" y="138" width="12" height="44" rx="2"/><rect class="pg" x="42" y="138" width="12" height="44" rx="2"/><rect class="pg" x="58" y="138" width="12" height="44" rx="2"/><rect class="pg" x="74" y="138" width="12" height="44" rx="2"/><path class="wire" d="M96 160 H150"/><rect class="note" x="156" y="142" width="110" height="36" rx="7"/><rect class="nl" x="168" y="152" width="80" height="6" rx="3"/><rect class="nl" x="168" y="164" width="56" height="6" rx="3"/><path class="wire" d="M272 160 C330 160, 330 140, 380 140"/><rect class="pg" x="10" y="200" width="12" height="44" rx="2"/><rect class="pg" x="26" y="200" width="12" height="44" rx="2"/><rect class="pg" x="42" y="200" width="12" height="44" rx="2"/><rect class="pg" x="58" y="200" width="12" height="44" rx="2"/><rect class="pg" x="74" y="200" width="12" height="44" rx="2"/><path class="wire" d="M96 222 H150"/><rect class="note" x="156" y="204" width="110" height="36" rx="7"/><rect class="nl" x="168" y="214" width="80" height="6" rx="3"/><rect class="nl" x="168" y="226" width="56" height="6" rx="3"/><path class="wire" d="M272 222 C330 222, 330 140, 380 140"/><rect class="note f" x="386" y="104" width="150" height="72" rx="10"/><rect class="nl" x="402" y="122" width="116" height="8" rx="3"/><rect class="nl" x="402" y="140" width="96" height="8" rx="3"/><rect class="nl" x="402" y="158" width="70" height="8" rx="3"/><text x="10" y="290">조각 4개</text><text x="156" y="290">조각마다 요약</text><text x="386" y="290">최종 요약</text></svg>
+          <p class="ps-pen ps-pen-note">조각마다 고르게 읽고 동시에 돌려서 빠르다</p>
+        </figure>
+      </div>
+      <p class="ps-cap">창 크기는 OpenAI 주력 모델 기준(2026-10)이고 쪽당 토큰은 Anthropic 문서의 어림값(쪽당 1,500~3,000토큰)으로 쳤습니다.</p>
+      <p class="ps-after">모둠 과제처럼 나눠 읽으면 조각 경계에 걸친 내용이나 앞 장을 알아야 이해되는 뒷장을 놓칠 수 있습니다. 그래서 조각을 조금씩 겹쳐 자르거나, 앞 요약을 다음 조각과 함께 넣어 차례로 다듬는 방법(iterative refinement)도 씁니다.</p>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap ps-head">
+      <div>
+        <span class="ps-num">09</span>
+        <h2>PDF 요약기를 만들기 전에 정할 네 가지</h2>
+      </div>
+      <div>
+        <ol class="ps-todo">
+          <li>드래그해도 글자가 선택되지 않는 PDF라면 스캔본입니다. OCR부터 붙입니다.</li>
+          <li>한 학술지의 논문만 다루면 <code>clip</code>으로 위아래를 가려도 됩니다. 여러 곳의 PDF를 받는다면 <code>to_markdown(header=False, footer=False)</code>를 쓰고 꺼낸 결과를 한 번 열어 봅니다.</li>
+          <li>그래프와 표가 요점이면 PDF 파일째로, 글이 중심이고 양이 많으면 꺼낸 글로 보냅니다.</li>
+          <li>요약할 칸은 스키마로 고정합니다. 창에 들어가더라도 수백 쪽이 넘으면 나눠 요약한 뒤 합칩니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-wrap ps-head">
+      <div><h2>참고 자료</h2></div>
+      <div>
+        <ul class="ps-refs">
+          <li><a href="https://pymupdf.readthedocs.io/en/latest/recipes-text.html">PyMuPDF, Text recipes</a> — <code>get_text</code>, <code>sort</code>, 텍스트 블록</li>
+          <li><a href="https://pymupdf.readthedocs.io/en/latest/document.html">PyMuPDF, Document — to_markdown·to_text</a> — <code>header</code>·<code>footer</code>·<code>page_chunks</code></li>
+          <li><a href="https://artifex.com/blog/pymupdf-layout-tutorial">Artifex, PyMuPDF Layout tutorial</a> — 덩어리 이름표(page-header·page-footer 등)</li>
+          <li><a href="https://pypi.org/project/PyMuPDF/">PyPI, PyMuPDF</a> — 2.0 (2026-10-19)</li>
+          <li><a href="https://pypdf.readthedocs.io/en/stable/user/extract-text.html">pypdf, Extract text from a PDF</a> — PDF에 문단·머리말 정보가 없는 이유</li>
+          <li><a href="https://developers.openai.com/api/docs/guides/file-inputs">OpenAI, File inputs</a> — PDF를 글과 쪽 사진으로 넣기, 50MB 한도, <code>detail</code></li>
+          <li><a href="https://developers.openai.com/api/docs/guides/structured-outputs">OpenAI, Structured Outputs</a> — <code>responses.parse</code>, <code>text_format</code></li>
+          <li><a href="https://developers.openai.com/api/docs/models">OpenAI, Models</a> — 모델 이름과 컨텍스트 창 (2026-10-30 확인)</li>
+          <li><a href="https://platform.claude.com/docs/en/build-with-claude/pdf-support">Anthropic, PDF support</a> — 쪽당 토큰 어림값, 쪽을 사진과 글로 함께 넣는 방식</li>
+          <li><a href="https://arxiv.org/abs/2307.03172">Liu 외, Lost in the Middle: How Language Models Use Long Contexts (2023)</a></li>
+          <li><a href="https://cloud.google.com/blog/products/ai-machine-learning/long-document-summarization-with-workflows-and-gemini-models/">Google Cloud, Long document summarization</a> — map-reduce와 반복 다듬기 비교</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="ps-end"></div>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  $$("[data-ps-term]").forEach((term) => {
+    const out = term.querySelector("[data-ps-out]"), btn = term.querySelector("[data-ps-run]");
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 160);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+})();
+</script>
