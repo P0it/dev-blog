@@ -120,7 +120,7 @@
 | [Murphy-Hill 외, Microsoft CLI 에이전트 배포 연구(arXiv 2607.01418)](https://arxiv.org/abs/2607.01418) | 동료를 리뷰 동료·스킵 레벨 동료·직속 팀장 세 묶음으로 나눠 "써 본 비율 0% 대비 25%+"의 오즈 상승을 행마다 막대로(+54/+216/+82%) | 도입이 공지보다 관계를 타고 퍼지는 것을 실제 수치로 보일 때 | 2026-10-15 | ai-native-team-capabilities-developer-skills (예시 조직도 + 실제 오즈 막대) |
 | [Nicky Case, The Wisdom and/or Madness of Crowds](https://ncase.me/crowds/) | (다른 분야·사회 연결망) 문턱·결속·다리로 퍼지다 멈추는 확산 | 확산 시뮬레이션 — 실제 확률이 없으면 지어내게 되므로 이번엔 접음 | 2026-10-15 | |
 | [Karpathy, Sequoia Ascent 2026](https://karpathy.bearblog.dev/sequoia-ascent-2026/) | MenuGen 결제 사례: "그럴듯한 코드지만 나쁜 시스템 설계" — 이메일로 짝짓기 vs 영구 사용자 ID | 이해를 맡길 수 없는 이유를 버그 하나로 보일 때 | 2026-10-15 | ai-native-team-capabilities-developer-skills (이메일/ID 토글 그림) |
-| [OpenAI, Function calling](https://developers.openai.com/api/docs/guides/function-calling) | 왕복을 요청 → 호출 받기 → 내 코드 실행 → 두 번째 요청 → 최종 답 다섯 걸음으로 쪼개고, 도구 정의가 system 메시지에 들어가 입력 토큰이 된다고 적는다(20개 미만 권고, strict 규칙) | Tool Calling 왕복과 메뉴판 비용을 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
+| [OpenAI, Function calling](https://developers.openai.com/api/docs/guides/function-calling) | 왕복을 요청 → 호출 받기 → 내 코드 실행 → 두 번째 요청 → 최종 답 다섯 걸음으로 쪼개고, 도구 정의가 system 메시지에 들어가 입력 토큰이 된다고 적는다(20개 미만 권고, strict 규칙) | Tool Calling 왕복과 메뉴판 비용을 보일 때 | 2026-10-16 | llm-tool-calling-json-schema, stock-chatbot-function-calling-streaming |
 | [Hugging Face Transformers, Tool use](https://huggingface.co/docs/transformers/main/en/chat_extras) · [Qwen2.5 chat_template](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/tokenizer_config.json) | 모델이 실제로 읽고 쓰는 글(&lt;tools&gt; 블록, &lt;tool_call&gt; 표시)을 그대로 보여 "도구 호출도 결국 글"을 드러낸다 | "글만 쓰는 모델이 어떻게 tool_calls 를 내나"를 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (읽는 글 → 이어 쓰는 글 → 응답 세 칸, 질문 토글) |
 | [Anthropic, Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) | 서버별 도구 수와 토큰(GitHub 35개 ~26K, 5개 서버 58개 ~55K, 사내 134K)을 나열 | 도구 정의가 context window 를 먹는 양을 실제 값으로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (20만 토큰 막대) |
 | [LangChain, INVALID_TOOL_RESULTS](https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS) | tool_call_id 짝이 빠졌을 때 OpenAI 가 내는 400 문장을 그대로 싣는다 | 번호표가 빠지면 요청 전체가 거절된다는 것을 실제 오류로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
@@ -225,6 +225,8 @@
 - 알고리즘 레퍼런스 조사(2026-10-19~20)에서 열지 못했거나 화면을 확인하지 못한 곳: VisuAlgo 2026-05 블로그·Coddy 재귀/DFS 시각화(403), hello-algo.com 병합·이분·삽입 페이지(429), search-visualized.onrender.com·Codeforces 이분 탐색 글(503), Oakland 퀵 정렬(404), Avik Das 그림으로 하는 DP 입문(403), USFCA Galles 시각화 전체(캔버스라 화면 확인 불가), sorting-algorithms.com 원본, Bornat Visualizer(IP 호스트), TUM 완전탐색 슬라이드, MrAech DP Visualizer(Vercel 로그인), Mvidia(본문 비어 있음), HF Ultra-Scale Playbook(로딩 중), AnimatedLLM·ViT-Explainer 라이브 화면, samwho.dev 개별 글(Big O·Bloom Filters 등), Virtual Labs 시뮬레이션 화면, GeoGebra Pool Table, ravensmove 해시·selfboot 해시·스택 도구(요약만)
 
 ## 잘 먹힌 기법
+- **V자 왕복 + 자라는 목록** (stock-chatbot-function-calling-streaming) — 화면·내 코드·모델 세 줄을 오가는 길이 스크롤로 켜지고, 그 아래 실제 `input` 목록이 한 줄씩 자란다. "호출 2는 세 줄을 모두 보낸다"를 목록 위에 직접 적으니 Critic 이 가장 잘 읽히는 그림으로 꼽았다
+- **같은 데이터로 틀린 답 보이기** (stock-chatbot-function-calling-streaming) — 실제 TSLA 종가를 `tail(10)`과 전체 요약으로 나란히 그려 +2.83%와 +1.71%를 맞세웠다. 예시 값이 아니라 실측이라 함정이 바로 믿긴다
 - **가능한 답을 점 구름으로** (prompt-structure-hallucination-clean-data) — 요청서 칸이 늘 때마다 진한 점이 줄어드는 작은 그림 여섯 장. "구체적으로 써라"를 말 대신 범위 축소로 보였다. 점 수는 예시 값이라고 밝힌다
 - **같은 정제 함수를 분야별로 돌린 실제 결과** (prompt-structure-hallucination-clean-data) — 혈압 120/80 이 12080 이 되는 사례 하나를 크게 두니 다섯 칸 표일 때보다 바로 읽혔다. Critic 이 표 같다고 한 첫 판(2.5점)에서 고친 것
 - **겹침 없이 점수판부터** (prompt-structure-hallucination-clean-data) — 4장 형식 설명을 앞세웠더니 질문의 답이 늦게 나온다는 지적을 받았다. 점수판 → 형식 → 파일 → 코드 순서로 바꿨다
@@ -334,8 +336,8 @@
 | 작은 그림 여러 장 | Tufte small multiples, The Pudding | 옵션 비교 | langchain-middleware-hooks-guardrails |
 | 손그림 층 | Excalidraw, Maggie Appleton, Rough.js | 미들웨어·하네스·샌드박스 | langchain-middleware-hooks-guardrails |
 | 노선도 | Harry Beck 지하철 노선도, Transit Maps | hook·CI 파이프라인 | langchain-middleware-hooks-guardrails |
-| 흐르는 글자 | Red Blob Games, Ciechanowski Internet | 스트리밍·필터·토크나이저 | |
-| 코드에 직접 메모 | Code Hike, Josh W. Comeau | 설정값이 동작을 정할 때 | |
+| 흐르는 글자 | Red Blob Games, Ciechanowski Internet | 스트리밍·필터·토크나이저 | stock-chatbot-function-calling-streaming(모인 글자와 json.loads 성공 여부를 줄마다) |
+| 코드에 직접 메모 | Code Hike, Josh W. Comeau | 설정값이 동작을 정할 때 | stock-chatbot-function-calling-streaming |
 
 ## 페이지 레이아웃
 
@@ -367,7 +369,7 @@
 | ~~옆에 붙어 다니는 조작판~~ (2026-10-30 접음: 조작이 읽기를 끊고 모바일에서 본문을 가림. 펼쳐 놓기로 대신) | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 쓰지 않음 | llm-temperature-sampling |
 | 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스), coding-agent-security-prompt-injection-owasp(스위스 치즈 네 층), sllm-self-hosted-coding-agent-2026(고르는 순서도), ai-pr-review-bottleneck-verification(정거장 위 PR 한 장, 모바일은 정거장만 고정) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
-| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot, prompt-structure-hallucination-clean-data |
+| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot, prompt-structure-hallucination-clean-data, stock-chatbot-function-calling-streaming |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, agent-skills-subagents-hooks, coding-agent-security-prompt-injection-owasp(오늘 할 일·참고 자료), sllm-self-hosted-coding-agent-2026(참고 자료), ai-pr-review-bottleneck-verification(참고 자료), ai-native-team-capabilities-developer-skills |
