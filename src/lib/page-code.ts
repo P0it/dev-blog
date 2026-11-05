@@ -33,6 +33,8 @@ const STYLE = `<style data-pg-code>
 .post-page .pg-code pre {
   margin: 0; padding: 16px 0; overflow-x: auto; background: transparent !important;
   font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; tab-size: 4;
+  /* 코드 글꼴이 != 를 ≠ 로 이어 그리면 처음 보는 사람이 그대로 옮겨 치다 막힌다 */
+  font-variant-ligatures: none;
 }
 .post-page .pg-code pre code { font-family: inherit; font-size: inherit; background: none; padding: 0; color: inherit; }
 /* One Dark Pro 는 주석·매개변수를 기울이는데, 한글은 기울임 글꼴이 없어 찌그러져 보인다 */
