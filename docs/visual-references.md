@@ -202,6 +202,12 @@
 | [Visnos, Interactive Sieve of Eratosthenes](https://www.visnos.com/demos/sieve-of-eratosthenes) | 격자 크기를 슬라이더로 바꾸고 수동·배수(숫자를 누르면 배수가 칠해짐)·자동 모드를 쓴다. 분할 색 모드는 12가 4와 6의 배수로 두 색이 되는 걸 보인다 | 배수를 눌러 지우는 ①을 만들 때 | 2026-10-20 | algo/sieve(예정) |
 | [Math Mammoth, Sieve of Eratosthenes](https://www.mathmammoth.com/practice/sieve-of-eratosthenes) | 범위(1~100~1000)를 고르고 파란 숫자 타일을 누르면 그 배수가 검게 지워지고 반복하면 소수만 남는다 | 가장 단순한 클릭해서 지우기 원형이 필요할 때 | 2026-10-20 | algo/sieve(예정) |
 | [Singapore MOE, Sieve of Eratosthenes 시뮬레이션 (일부만 확인)](https://iwant2study.org/lookangejss/math/ejss_model_SieveofEratosthenes/index.html) | 상한값을 정하면 합성수가 단계별로 지워지고 소수가 남는다 | 상한 하나만 받는 단순 체를 볼 때 | 2026-10-20 | algo/sieve(예정) |
+| [OpenAI, Why language models hallucinate](https://openai.com/index/why-language-models-hallucinate/) | 정답·오답·기권 표로 "정답률이 비슷해도 오답은 세 배"를 보이고, 틀린 답에 벌점을 주는 채점표로 기권이 합리적인 조건을 계산한다 | 정답률만 보는 평가의 함정을 보일 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (100칸 답안지 두 장 + 열 번 답한 채점 줄로 다시 그림) |
+| [Anthropic, Tracing the thoughts](https://www.anthropic.com/research/tracing-thoughts-language-model) | 같은 회로도를 두 벌 놓고 입력 이름만 바꿔 쓰지 않은 경로를 흐리게 한다. 거절이 기본이고 "아는 답" 특징이 이를 억제 | 입력 하나 차이로 결과가 갈릴 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (선로 분기 세 장으로 다시 그리고 오작동 칸 추가, 원 그림은 접기) |
+| [Giskard, Phare](https://www.giskard.ai/knowledge/good-answers-are-not-necessarily-factual-answers-an-analysis-of-hallucination-in-leading-llms) | 같은 모델을 지시·말투만 바꿔 열로 늘어놓은 히트맵 | 지시 한 줄의 효과를 모델별로 견줄 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (기울기 + 원 그림 접기) |
+| [Dhuliawala 외, Chain-of-Verification](https://arxiv.org/abs/2309.11495) | 초안 → 검증 질문 → 답 → 수정 네 칸에 실제 예문을 넣고, 초안을 빼는 설계 차이를 정밀도로 비교 | 검증 절차를 단계로 보일 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (치킨 리뷰 세 장 + 수직선, 원 그림 접기) |
+| [UAX #15 Normalization Forms](https://www.unicode.org/reports/tr15/) | 행 = 글자, 열 = 변환으로 정규형 차이를 한 표에 둔다 | 규칙 여러 개의 결과를 견줄 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (글자 타일 + 토큰 막대) |
+| [Zhang 외, cAST](https://arxiv.org/abs/2506.15655) | 같은 코드에 구문 무시·구문 인지 청크를 겹쳐 그리고 생성 결과의 성공·실패까지 잇는다 | 자르는 위치가 결과를 바꾸는 것을 보일 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (경계선 코드 두 장, 원 그림 접기) |
 
 ## 미확인
 
@@ -219,6 +225,9 @@
 - 알고리즘 레퍼런스 조사(2026-10-19~20)에서 열지 못했거나 화면을 확인하지 못한 곳: VisuAlgo 2026-05 블로그·Coddy 재귀/DFS 시각화(403), hello-algo.com 병합·이분·삽입 페이지(429), search-visualized.onrender.com·Codeforces 이분 탐색 글(503), Oakland 퀵 정렬(404), Avik Das 그림으로 하는 DP 입문(403), USFCA Galles 시각화 전체(캔버스라 화면 확인 불가), sorting-algorithms.com 원본, Bornat Visualizer(IP 호스트), TUM 완전탐색 슬라이드, MrAech DP Visualizer(Vercel 로그인), Mvidia(본문 비어 있음), HF Ultra-Scale Playbook(로딩 중), AnimatedLLM·ViT-Explainer 라이브 화면, samwho.dev 개별 글(Big O·Bloom Filters 등), Virtual Labs 시뮬레이션 화면, GeoGebra Pool Table, ravensmove 해시·selfboot 해시·스택 도구(요약만)
 
 ## 잘 먹힌 기법
+- **가능한 답을 점 구름으로** (prompt-structure-hallucination-clean-data) — 요청서 칸이 늘 때마다 진한 점이 줄어드는 작은 그림 여섯 장. "구체적으로 써라"를 말 대신 범위 축소로 보였다. 점 수는 예시 값이라고 밝힌다
+- **같은 정제 함수를 분야별로 돌린 실제 결과** (prompt-structure-hallucination-clean-data) — 혈압 120/80 이 12080 이 되는 사례 하나를 크게 두니 다섯 칸 표일 때보다 바로 읽혔다. Critic 이 표 같다고 한 첫 판(2.5점)에서 고친 것
+- **겹침 없이 점수판부터** (prompt-structure-hallucination-clean-data) — 4장 형식 설명을 앞세웠더니 질문의 답이 늦게 나온다는 지적을 받았다. 점수판 → 형식 → 파일 → 코드 순서로 바꿨다
 
 - **온도계 하나로 모든 그림 연동** (llm-temperature-sampling) — 같은 변수 하나가 확률표·수직선·샘플링·물리 비유를 동시에 바꾸니, 그림 여러 개가 한 원리로 묶여 보였다
 - **값을 색으로 섞기** (self-attention-qkv) — Value 를 색으로 두면 가중 평균 결과가 "섞인 색"으로 바로 보인다
@@ -358,7 +367,7 @@
 | ~~옆에 붙어 다니는 조작판~~ (2026-10-30 접음: 조작이 읽기를 끊고 모바일에서 본문을 가림. 펼쳐 놓기로 대신) | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 쓰지 않음 | llm-temperature-sampling |
 | 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스), coding-agent-security-prompt-injection-owasp(스위스 치즈 네 층), sllm-self-hosted-coding-agent-2026(고르는 순서도), ai-pr-review-bottleneck-verification(정거장 위 PR 한 장, 모바일은 정거장만 고정) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
-| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot |
+| 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot, prompt-structure-hallucination-clean-data |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
 | 비교 나란히 | 같은 입력, 두 결과 / 탭·위아래(세 칸이면 옆으로 밀기) | 방식 A vs B | utf8-encoding-mojibake, ai-agent-vs-chatbot, llm-parameters-7b-explained, transformer-attention-how-llm-reads |
 | 제목 \| 글 머리 | 왼쪽 큰 h2, 오른쪽 본문 / 위아래 | 그림 없이 글로 여는 섹션, 참고 자료 | ai-agent-vs-chatbot, transformer-attention-how-llm-reads, prefill-decode-kv-cache, gpu-vram-fp16-int4-quantization, agent-skills-subagents-hooks, coding-agent-security-prompt-injection-owasp(오늘 할 일·참고 자료), sllm-self-hosted-coding-agent-2026(참고 자료), ai-pr-review-bottleneck-verification(참고 자료), ai-native-team-capabilities-developer-skills |

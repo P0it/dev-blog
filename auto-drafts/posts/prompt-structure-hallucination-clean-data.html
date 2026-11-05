@@ -1,0 +1,1206 @@
+---
+title: 같은 AI인데 왜 내 답만 쓸모없을까요?
+slug: prompt-structure-hallucination-clean-data
+excerpt: 같은 모델에게 물어도 누구는 뻔한 답을, 누구는 바로 쓸 표를 받습니다. 치킨집 리뷰 요약을 만들면서 프롬프트 다섯 칸과 템플릿, 할루시네이션을 막는 겹, 한글 정제와 토큰화, JSONL 문제집으로 프롬프트를 채점하는 법까지 그림과 코드로 봅니다.
+tags: [프롬프트 엔지니어링, 할루시네이션, 토큰화, 텍스트 정제, JSONL, OpenAI API, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 8
+---
+<!-- page -->
+<!-- layout: 장 표지 띠 4개 + 글|그림 2단(글은 늘 왼쪽) + 펼쳐 놓기(2·3·6장) + 전폭 띠(도메인 다섯 칸) + 코드|해설 짝(코드 늘 왼쪽) | 글의 성격: 입력의 네 층(요청서·근거·재료·채점)을 차례로 고치는 글 | 버린 후보: 그림 고정 스크롤리텔링(상태 비교가 대부분이라 펼쳐 놓기가 맞음), 옆 조작판(2026-10-30 접음), 가로 스크롤 띠(모바일에서 네 장이 숨음) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .pe {
+  --pe-red: rgb(204, 52, 40); --pe-ok: rgb(14, 138, 108); --pe-pen: rgb(196, 50, 38);
+  --pe-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --pe-hit: color-mix(in srgb, var(--pe-ok) 20%, var(--bg-base));
+  --pe-miss: color-mix(in srgb, var(--pe-red) 16%, var(--bg-base));
+  --pe-soft: color-mix(in srgb, var(--fg-neutral) 16%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .pe { --pe-red: rgb(255, 118, 102); --pe-ok: rgb(70, 205, 165); --pe-pen: rgb(255, 128, 110); }
+.post-page .pe * { box-sizing: border-box; }
+.post-page .pe-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .pe h1, .post-page .pe h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .pe h1 { font-size: clamp(34px, 5.4vw, 60px); line-height: 1.22; margin-bottom: 28px; }
+.post-page .pe h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .pe p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .pe b { color: var(--fg-strong); }
+.post-page .pe a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .pe code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .pe p.pe-cap { font-size: 15px; color: var(--fg-neutral); margin: 16px 0 0; line-height: 1.7; }
+.post-page .pe-sec { padding: clamp(96px, 11vw, 150px) 0 0; }
+.post-page .pe-pen { font-family: var(--pe-penf); color: var(--pe-pen); font-size: 22px; line-height: 1.15; }
+.post-page .pe ul.pe-list { list-style: disc; margin: 0 0 1.5em; padding-left: 1.2em; font-size: 17px; line-height: 1.8; }
+.post-page .pe ul.pe-list li { margin: 6px 0; }
+
+/* 배치 */
+.post-page .pe-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.post-page .pe-two.top { align-items: start; }
+.post-page .pe-two > * { min-width: 0; }
+.post-page .pe-two > div > p:last-child { margin-bottom: 0; }
+.post-page .pe h2 + .pe-two.sf { margin-top: 4px; }
+.post-page .pe-intro, .post-page .pe-aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(32px, 5vw, 64px); align-items: start; }
+.post-page .pe-intro > h2, .post-page .pe .pe-aside > p.pe-asl, .post-page .pe-intro > details, .post-page .pe-aside > details { grid-column: 1 / -1; }
+.post-page .pe-intro > p, .post-page .pe-aside > p { margin-bottom: 0; min-width: 0; }
+.post-page .pe .pe-aside > p.pe-asl { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.5; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .pe p.pe-penb { font-size: 25px; margin: 14px 0 0; }
+.post-page .pe .pe-after { margin-top: clamp(40px, 5vw, 60px); }
+.post-page .pe-spread { display: grid; gap: clamp(20px, 3vw, 40px); margin: clamp(40px, 5vw, 60px) 0 0; }
+.post-page .pe-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .pe-spread.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .pe-spread > figure, .post-page .pe figure { margin: 0; min-width: 0; }
+.post-page .pe-after { margin-top: clamp(40px, 5vw, 60px); }
+.post-page .pe-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 12px !important; line-height: 1.5 !important; }
+.post-page .pe-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .pe-fv { display: block; margin-top: 12px; font-size: 15px; line-height: 1.6; }
+.post-page .pe-fv.bad b { color: var(--pe-red); }
+.post-page .pe-fv.ok b { color: var(--pe-ok); }
+.post-page .pe-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .pe-svg text { font-family: var(--font-sans); fill: var(--fg-normal); }
+.post-page .pe-svg text.st { fill: var(--fg-strong); font-weight: 700; }
+.post-page .pe-svg text.dim { fill: var(--fg-neutral); }
+.post-page .pe-svg text.bad { fill: var(--pe-red); font-weight: 700; }
+.post-page .pe-svg text.ok { fill: var(--pe-ok); font-weight: 700; }
+.post-page .pe-svg text.pen { font-family: var(--pe-penf); fill: var(--pe-pen); }
+.post-page .pe-svg .ax { stroke: var(--line-strong); stroke-width: 1.5; fill: none; }
+.post-page .pe-svg .gr { stroke: var(--line-subtle); stroke-width: 1; }
+.post-page .pe-svg .ln { stroke: var(--fg-strong); stroke-width: 3; fill: none; }
+.post-page .pe-svg .ln.soft { stroke: var(--fg-alternative); }
+.post-page .pe-svg .pt.soft { fill: var(--fg-alternative); }
+.post-page .pe-svg .ln.bad { stroke: var(--pe-red); }
+.post-page .pe-svg .ln.ok { stroke: var(--pe-ok); }
+.post-page .pe-svg .pt { fill: var(--fg-strong); }
+.post-page .pe-svg .pt.bad { fill: var(--pe-red); }
+.post-page .pe-svg .pt.ok { fill: var(--pe-ok); }
+.post-page .pe-svg .off { fill: var(--pe-soft); }
+.post-page .pe-svg .on { fill: var(--fg-strong); }
+.post-page .pe-narrow { max-width: 420px; }
+.post-page .pe-img { display: block; width: 100%; height: auto; border: 1px solid var(--line-subtle); border-radius: 12px; background: #fff; }
+[data-theme="dark"] .post-page .pe-img { filter: brightness(.9); }
+
+/* 히어로 */
+.post-page .pe-hero { padding: clamp(56px, 9vw, 112px) 0 0; }
+.post-page .pe-hero-t { max-width: 820px; }
+.post-page .pe-hero-t > p { font-size: 19px; }
+.post-page .pe-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 3vw, 36px); margin-top: 44px; }
+.post-page .pe-chat { min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--line-subtle); border-radius: 18px; background: var(--bg-base); }
+.post-page .pe-chat-h { font-size: 13.5px; font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .pe-u { align-self: flex-end; max-width: 92%; background: var(--bg-muted); color: var(--fg-strong); border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 15.5px; line-height: 1.6; }
+.post-page .pe-u.long { width: 100%; max-width: 100%; }
+.post-page .pe-a { font-size: 15.5px; line-height: 1.7; }
+.post-page .pe-a mark { background: var(--pe-miss); color: var(--pe-red); font-weight: 700; padding: 0 3px; border-radius: 4px; }
+.post-page .pe-slot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
+.post-page .pe-slot + .pe-slot { margin-top: 4px; }
+.post-page .pe-tb { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.5; }
+.post-page .pe-tb th { text-align: left; font-weight: 700; color: var(--fg-strong); border-bottom: 1.5px solid var(--line-strong); padding: 5px 8px 5px 0; }
+.post-page .pe-tb td { border-bottom: 1px solid var(--line-subtle); padding: 6px 8px 6px 0; }
+.post-page .pe-rail { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 44px; list-style: none; padding: 0; }
+.post-page .pe-rail::before { content: ""; position: absolute; left: 7px; right: 12%; top: 7px; height: 2px; background: var(--line-strong); }
+.post-page .pe-rail li { position: relative; padding-top: 28px; font-size: 15px; line-height: 1.55; }
+.post-page .pe-rail li::before { content: ""; position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); }
+.post-page .pe-rail b { display: block; font-size: 17px; margin-bottom: 2px; }
+.post-page .pe-rail a { text-decoration: none; }
+.post-page .pe-rail span { color: var(--fg-neutral); }
+
+/* 장 표지 */
+.post-page .pe-ch { margin-top: clamp(96px, 11vw, 150px); background: var(--fg-strong); padding: clamp(40px, 5vw, 64px) 0; }
+.post-page .pe-ch-n { font-family: var(--font-mono); font-size: 14px; color: color-mix(in srgb, var(--bg-base) 70%, var(--fg-strong)); display: block; margin-bottom: 8px; }
+.post-page .pe p.pe-ch-t { font-family: var(--font-display); font-size: clamp(30px, 4.2vw, 44px); color: var(--bg-base); font-weight: 700; line-height: 1.4; margin: 0 !important; }
+.post-page .pe-ch + .pe-sec { padding-top: clamp(64px, 7vw, 96px); }
+
+/* 심부름 메모 */
+.post-page .pe-memo { min-width: 0; }
+.post-page .pe-note { background: var(--bg-base); border: 1px solid var(--line-strong); padding: 16px 16px 20px; font-family: var(--pe-penf); font-size: 25px; line-height: 1.25; color: var(--fg-strong); min-height: 128px; transform: rotate(-.6deg); }
+.post-page .pe-memo:nth-child(2) .pe-note { transform: rotate(.5deg); }
+.post-page .pe-got { font-size: 32px; line-height: 1.3; margin-top: 14px; letter-spacing: 2px; }
+
+/* 점 구름 */
+.post-page .pe-cloud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px clamp(20px, 3vw, 36px); margin-top: clamp(40px, 5vw, 60px); }
+.post-page .pe-cloud figure { min-width: 0; }
+.post-page .pe-cloud .k { font-weight: 700; color: var(--fg-strong); font-size: 15.5px; }
+.post-page .pe-cloud .q { display: block; font-size: 15px; line-height: 1.55; margin-top: 8px; color: var(--fg-normal); min-height: 3.1em; }
+.post-page .pe-cloud .n { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); float: right; }
+
+/* 캐시 줄 */
+.post-page .pe-req { display: flex; gap: 2px; height: 44px; margin-top: 8px; font-size: 13.5px; font-family: var(--font-mono); }
+.post-page .pe-req > span { display: flex; align-items: center; justify-content: center; border-radius: 4px; white-space: nowrap; overflow: hidden; padding: 0 4px; min-width: 0; }
+.post-page .pe-req .hit { flex: 5; background: var(--pe-hit); color: var(--fg-strong); }
+.post-page .pe-req .new { flex: 2; background: var(--bg-muted); color: var(--fg-normal); }
+.post-page .pe-req .miss { flex: 5; background: var(--pe-miss); color: var(--fg-strong); }
+.post-page .pe-req .first { flex: 5; background: var(--pe-soft); color: var(--fg-strong); }
+.post-page .pe-req .t { flex: 2; background: var(--pe-miss); color: var(--pe-red); font-weight: 700; }
+
+/* 답안지 */
+.post-page .pe-sheet { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; max-width: 300px; }
+.post-page .pe-sheet i { aspect-ratio: 1; border-radius: 3px; display: block; }
+.post-page .pe-sheet .a { background: var(--pe-ok); }
+.post-page .pe-sheet .b { background: var(--pe-red); }
+.post-page .pe-sheet .c { background: transparent; border: 1.5px dashed var(--fg-alternative); }
+.post-page .pe-tally { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 15px; }
+.post-page .pe-tally b { font-size: 20px; font-family: var(--font-mono); }
+.post-page .pe-tally .a b { color: var(--pe-ok); } .post-page .pe-tally .b b { color: var(--pe-red); }
+
+/* 리뷰 표시 */
+.post-page .pe-rv { font-size: 16px; line-height: 2; word-break: break-word; }
+.post-page .pe-rv del { color: var(--pe-red); text-decoration: line-through; text-decoration-thickness: 2px; }
+.post-page .pe-rv ins { text-decoration: none; background: var(--pe-hit); color: var(--fg-strong); border-radius: 4px; padding: 1px 4px; }
+.post-page .pe-rv u { text-decoration: none; background: var(--fg-strong); color: var(--bg-base); padding: 1px 5px; border-radius: 3px; font-size: 14px; }
+
+/* 글자 타일 */
+.post-page .pe-tiles { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.post-page .pe-tiles span { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 1.5px solid var(--line-strong); border-radius: 8px; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .pe-tiles.nfd span { width: 42px; height: 54px; border-color: var(--pe-red); color: var(--pe-red); }
+.post-page .pe-meter { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pe-meter i { display: block; height: 12px; background: var(--fg-strong); border-radius: 3px; }
+.post-page .pe-meter.bad i { background: var(--pe-red); }
+.post-page .pe-eq { font-family: var(--font-mono); font-size: 14.5px; margin-top: 18px; }
+.post-page .pe-eq b { color: var(--pe-red); }
+.post-page .pe-nf { width: 100%; border-collapse: collapse; font-size: 16px; margin-top: 8px; }
+.post-page .pe-nf th { font-size: 14px; color: var(--fg-neutral); font-weight: 600; text-align: left; padding: 6px 10px 6px 0; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .pe-nf td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-subtle); }
+.post-page .pe-nf td.ch { color: var(--pe-red); font-weight: 700; }
+
+/* 토큰 띠 */
+.post-page .pe-tok { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; font-size: 17px; }
+.post-page .pe-tok span { display: inline-block; padding: 5px 7px; background: var(--pe-soft); border-radius: 5px; white-space: pre; color: var(--fg-strong); line-height: 1.3; min-height: 34px; }
+.post-page .pe-tok span.sp { background: var(--pe-miss); color: var(--pe-red); font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; }
+.post-page .pe-tok span.unk { background: var(--pe-red); color: #fff; font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+.post-page .pe-tok em { font-style: normal; font-family: var(--font-mono); font-size: 14px; color: var(--fg-neutral); margin-left: 8px; }
+.post-page .pe-tokrow { margin-top: 18px; }
+.post-page .pe-tokrow:first-child { margin-top: 0; }
+.post-page .pe-tokrow small { display: block; font-size: 14px; color: var(--fg-neutral); margin-bottom: 5px; line-height: 1.5; }
+
+/* 검색 */
+.post-page .pe-q { font-size: 15.5px; line-height: 1.7; list-style: none; margin: 0; padding: 0; }
+.post-page .pe-q li { padding: 8px 2px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .pe-q li.miss { color: var(--fg-alternative); }
+.post-page .pe-q li.hit mark { background: var(--pe-hit); color: var(--fg-strong); font-weight: 700; padding: 1px 4px; border-radius: 4px; }
+.post-page .pe-q .m { color: var(--fg-alternative); }
+
+/* 도메인 띠 */
+.post-page .pe-band { padding: 0; margin-top: clamp(40px, 5vw, 60px); }
+.post-page .pe-dom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 24px; }
+.post-page .pe-dom > figure { min-width: 0; }
+.post-page .pe-dom .k { font-weight: 700; color: var(--fg-strong); font-size: 15.5px; margin-bottom: 6px; display: block; }
+.post-page .pe-dom .o { font-family: var(--font-mono); font-size: 14px; line-height: 1.6; word-break: break-word; white-space: pre-wrap; display: block; }
+.post-page .pe-dom .o.res { color: var(--pe-red); font-weight: 600; margin-top: 4px; }
+.post-page .pe-dom .r { display: block; font-size: 14px; line-height: 1.5; margin-top: 6px; color: var(--fg-neutral); }
+.post-page .pe-bp { font-family: var(--font-mono); font-size: clamp(26px, 3.2vw, 36px); color: var(--fg-strong); line-height: 1.3; }
+.post-page .pe-bp.bad { color: var(--pe-red); font-weight: 700; }
+.post-page .pe-bpa { font-size: 26px; color: var(--fg-alternative); margin: 4px 0; }
+.post-page .pe-raw { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; margin: 0 0 14px; white-space: pre-wrap; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; color: var(--fg-normal); }
+.post-page .pe code { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+.post-page .pe-file .x em { display: inline-block; white-space: nowrap; font-size: 19px; font-style: normal; font-weight: 400; }
+
+/* 세 벌 옷 */
+.post-page .pe-wear pre.w em { font-style: normal; color: var(--fg-strong); font-weight: 600; }
+.post-page .pe-wear pre.w { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; margin: 0; background: transparent; padding: 0; color: var(--fg-alternative); }
+.post-page .pe-wear pre.w b { color: var(--fg-strong); background: var(--pe-hit); padding: 1px 3px; border-radius: 3px; font-weight: 600; }
+
+/* 파일 줄 */
+.post-page .pe-file { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.55; border-top: 1.5px solid var(--line-strong); }
+.post-page .pe-file > div { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line-subtle); word-break: break-all; }
+.post-page .pe-file > div > i { font-style: normal; color: var(--fg-alternative); text-align: right; }
+.post-page .pe-file .x { background: var(--pe-miss); }
+.post-page .pe-file .x span { color: var(--pe-red); font-weight: 600; }
+.post-page .pe-file .w { background: var(--bg-muted); }
+.post-page .pe-file .gone { opacity: .35; text-decoration: line-through; }
+
+/* 눈금 */
+.post-page .pe-time { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; list-style: none; margin: clamp(32px, 4vw, 48px) 0 0; padding: 0; }
+.post-page .pe-time::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: var(--line-strong); }
+.post-page .pe-time li { position: relative; padding-top: 28px; font-size: 14.5px; line-height: 1.55; }
+.post-page .pe-time li::before { content: ""; position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--pe-red); }
+.post-page .pe-time li.now::before { background: var(--fg-strong); border-color: var(--fg-strong); }
+.post-page .pe-time b { display: block; font-family: var(--font-mono); font-size: 13.5px; margin-bottom: 4px; }
+
+/* 점수판 */
+.post-page .pe-score { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 56px); column-gap: 2px; font-size: 15px; align-items: center; }
+.post-page .pe-score > * { padding: 7px 4px; border-bottom: 1px solid var(--line-subtle); min-width: 0; }
+.post-page .pe-score .h { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); font-size: 14px; text-align: center; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .pe-score .h.l { text-align: left; }
+.post-page .pe-score .c { text-align: center; font-weight: 700; }
+.post-page .pe-score .y { background: var(--pe-hit); color: var(--pe-ok); }
+.post-page .pe-score .n { background: var(--pe-miss); color: var(--pe-red); }
+.post-page .pe-score .re { outline: 2.5px solid var(--pe-red); outline-offset: -2.5px; }
+.post-page .pe-score .sum { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); text-align: center; border-bottom: 0; font-size: 16px; }
+.post-page .pe-score .sum.l { text-align: left; }
+.post-page .pe-score small { color: var(--fg-neutral); font-size: 13px; margin-right: 6px; }
+
+/* 그림 추가 */
+.post-page .pe-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 3vw, 40px); }
+.post-page .pe-steps > figure { min-width: 0; }
+.post-page .pe ul.pe-claims, .post-page .pe ul.pe-checks { list-style: none; margin: 0; padding: 0; font-size: 15.5px; line-height: 1.55; }
+.post-page .pe-claims li, .post-page .pe-checks li { padding: 9px 2px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .pe-claims li.cut, .post-page .pe-claims del { color: var(--pe-red); }
+.post-page .pe-checks b { display: block; font-size: 14.5px; }
+.post-page .pe-checks b.ok { color: var(--pe-ok); } .post-page .pe-checks b.bad { color: var(--pe-red); }
+.post-page .pe-veil { display: flex; align-items: center; justify-content: center; height: 44px; margin-bottom: 8px; border-radius: 6px; font-size: 14px; color: var(--bg-base); background: repeating-linear-gradient(135deg, var(--fg-strong) 0 8px, color-mix(in srgb, var(--fg-strong) 72%, var(--bg-base)) 8px 16px); }
+.post-page .pe-src { font-family: var(--font-mono); font-size: 14px; line-height: 1.8; }
+.post-page .pe-src span { display: block; white-space: pre; overflow: hidden; }
+.post-page .pe-src .cutline { font-family: var(--font-sans); font-size: 13px; font-weight: 700; color: var(--pe-red); border-top: 2.5px dashed var(--pe-red); margin: 6px 0; line-height: 1.5; }
+.post-page .pe-src .cutline.ok { color: var(--pe-ok); border-color: var(--pe-ok); }
+.post-page .pe-sbox { border: 1px solid var(--line-strong); border-radius: 16px; padding: 16px; }
+.post-page .pe-sq { display: block; border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 14px; font-size: 16px; color: var(--fg-strong); }
+.post-page .pe-sn { display: block; font-size: 13.5px; color: var(--fg-neutral); margin: 12px 2px 6px; }
+.post-page .pe-sr { font-size: 15.5px; padding: 8px 2px; }
+.post-page .pe-layers { display: grid; gap: 4px; }
+.post-page .pe-layers > div { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr); gap: 8px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line-subtle); font-size: 16.5px; }
+.post-page .pe-layers .ar { height: 2px; background: var(--line-strong); position: relative; }
+.post-page .pe-layers .ar::after { content: ""; position: absolute; right: 0; top: -4px; border-left: 8px solid var(--line-strong); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.post-page .pe-layers a { text-decoration: none; }
+
+.post-page .pe-odds { margin-top: 36px; }
+.post-page .pe-odds > div { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-subtle); font-size: 14.5px; }
+.post-page .pe-odds .ds { font-family: var(--font-mono); letter-spacing: 1px; color: var(--pe-ok); white-space: nowrap; overflow: hidden; }
+.post-page .pe-odds .ds b { color: var(--pe-red); }
+.post-page .pe-odds .ds.dim { color: var(--fg-neutral); letter-spacing: 0; font-family: var(--font-sans); }
+.post-page .pe-odds .sc { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); }
+.post-page .pe-odds .sc.bad { color: var(--pe-red); } .post-page .pe-odds .sc.ok { color: var(--pe-ok); }
+.post-page .pe-narrow2 { max-width: 760px; margin-left: auto; margin-right: auto; }
+.post-page .pe-why { font-family: var(--pe-penf); color: var(--pe-pen); font-size: 21px; padding: 2px 0 4px 34px !important; display: block !important; border-bottom: 1px solid var(--line-subtle); }
+
+/* 코드|해설 */
+.post-page .pe-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px clamp(28px, 4vw, 56px); margin-top: clamp(40px, 5vw, 60px); align-items: start; }
+.post-page .pe-cp > * { min-width: 0; }
+.post-page .pe-cp > .cp-code { grid-column: 1; grid-row: 1; } .post-page .pe-cp > .cp-term { grid-column: 1; grid-row: 2; } .post-page .pe-cp > .cp-notes { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.post-page .pe ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .pe ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .pe-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .pe-term-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .pe-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--code-fg, #abb2bf); background: transparent; color: var(--code-fg, #abb2bf); cursor: pointer; white-space: nowrap; flex: none; }
+.post-page .pe-act::before { content: "▶ "; font-size: 11px; }
+.post-page .pe-act:disabled { opacity: .4; cursor: default; }
+.post-page .pe-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .pe-term-out .nz { color: #ff8a7a; }
+.post-page .pe-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-pe-blink 1s steps(1) infinite; }
+@keyframes pg-pe-blink { 50% { opacity: 0; } }
+.post-page .pe details { margin: 22px 0 0; }
+.post-page .pe summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .pe details > .pe-in { padding-top: 14px; }
+.post-page .pe details > .pe-in p { font-size: 16px; }
+.post-page .pe-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .pe-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .pe-head > * { min-width: 0; }
+.post-page .pe-four { list-style: decimal; margin: 0; padding-left: 1.3em; font-size: 17px; line-height: 1.8; }
+.post-page .pe-four li { margin-bottom: 14px; }
+.post-page .pe-end { height: clamp(90px, 10vw, 140px); }
+
+@media (max-width: 960px) {
+  .post-page .pe-two, .post-page .pe-head, .post-page .pe-steps { grid-template-columns: minmax(0, 1fr); }
+  .post-page .pe-intro, .post-page .pe-aside { grid-template-columns: minmax(0, 1fr); row-gap: 1.2em; }
+  .post-page .pe .pe-aside > p.pe-asl { margin-bottom: 0; }
+  .post-page .pe-two.sf > figure, .post-page .pe-two.sf > .pe-spread { order: -1; }
+  .post-page .pe-cp { grid-template-columns: minmax(0, 1fr); }
+  .post-page .pe-cp > .cp-code, .post-page .pe-cp > .cp-term, .post-page .pe-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .pe-cp > .cp-term { order: 2; } .post-page .pe-cp > .cp-notes { order: 3; }
+  .post-page .pe-time { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 26px; }
+  .post-page .pe-time::before { display: none; }
+  .post-page .pe-cloud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .post-page .pe-wrap { padding: 0 20px; }
+  .post-page .pe-duo, .post-page .pe-spread.n2, .post-page .pe-spread.n3 { grid-template-columns: minmax(0, 1fr); }
+  .post-page .pe-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .pe-rail::before { display: none; }
+  .post-page .pe-dom { grid-template-columns: minmax(0, 1fr); }
+  .post-page .pe-time { grid-template-columns: minmax(0, 1fr); row-gap: 18px; padding-left: 26px; }
+  .post-page .pe-time::before { display: block; left: 7px; right: auto; top: 6px; bottom: 6px; width: 2px; height: auto; }
+  .post-page .pe-time li { padding-top: 0; }
+  .post-page .pe-time li::before { left: -26px; top: 2px; }
+  .post-page .pe-term-bar span { font-size: 12px; }
+  .post-page .pe-score { grid-template-columns: minmax(0, 1fr) repeat(3, 44px); font-size: 14px; }
+  .post-page .pe-narrow { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .pe-term-out .cur { animation: none; }
+}
+</style>
+<div class="pe">
+
+<section class="pe-hero">
+  <div class="pe-wrap">
+    <div class="pe-hero-t">
+      <h1>같은 AI인데 왜 내 답만 쓸모없을까요?</h1>
+      <p>ChatGPT에 "리뷰 정리해 줘"라고 치면 그럴듯하지만 쓸모없는 답이 옵니다. 가게에 없는 메뉴를 칭찬하기도 합니다. 옆 사람은 같은 모델에게서 바로 쓸 수 있는 표를 받습니다. 모델은 화면 뒤에서 답을 만드는 AI 프로그램입니다.</p>
+      <p>화면 뒤로 들어가 그 차이가 어디서 생기는지 봅니다. AI에게 보내는 글 전체를 프롬프트(prompt)라고 합니다. 치킨집 리뷰 요약 기능을 만들면서 프롬프트와 그 바깥의 데이터까지 고쳐 봅니다.</p>
+    </div>
+    
+<div class="pe-duo" data-figure data-thumb>
+  <div class="pe-chat">
+    <div class="pe-chat-h">같은 모델 · 짧게 물었을 때</div>
+    <div class="pe-u">리뷰 정리해 줘</div>
+    <div class="pe-a">전반적으로 맛과 배달에 만족하는 고객이 많습니다. 일부 불만이 있으니 서비스 개선을 권합니다. 특히 <mark>마라 치킨</mark>에 대한 호평이 두드러집니다.</div>
+    <div class="pe-pen">우리 가게엔 마라 치킨이 없는데?</div>
+  </div>
+  <div class="pe-chat">
+    <div class="pe-chat-h">같은 모델 · 요청서를 채웠을 때</div>
+    <div class="pe-u long">
+      <div class="pe-slot"><span>리뷰 분석가로서</span><span class="pe-pen">누구</span></div>
+      <div class="pe-slot"><span>치킨집 사장님이 내일 할 일을 정하도록</span><span class="pe-pen">상황</span></div>
+      <div class="pe-slot"><span>불만을 많은 순서로 3개 뽑아 줘.</span><span class="pe-pen">할 일</span></div>
+      <div class="pe-slot"><span>리뷰에 없는 내용은 쓰지 마.</span><span class="pe-pen">조건</span></div>
+      <div class="pe-slot"><span>표로 답해 줘.</span><span class="pe-pen">형식</span></div>
+    </div>
+    <table class="pe-tb"><tr><th>불만</th><th>건수</th><th>대표 리뷰</th></tr><tr><td>배달 지연</td><td>12</td><td>[2]</td></tr><tr><td>음식 온도</td><td>7</td><td>[5]</td></tr><tr><td>포장 누락</td><td>3</td><td>[9]</td></tr></table>
+  </div>
+</div>
+<p class="pe-cap">설명을 위해 만든 예시 대화입니다. 두 칸의 모델은 같습니다.</p>
+<ol class="pe-rail">
+  <li><a href="#pe-ch1"><b>요청서</b><span>무엇을 원하는지 적지 않았습니다</span></a></li>
+  <li><a href="#pe-ch2"><b>근거</b><span>모르면 멈추라고 하지 않았습니다</span></a></li>
+  <li><a href="#pe-ch3"><b>재료</b><span>넣은 글이 지저분했습니다</span></a></li>
+  <li><a href="#pe-ch4"><b>채점</b><span>나아졌는지 잴 문제가 없었습니다</span></a></li>
+</ol>
+  </div>
+</section>
+
+<div id="pe-ch1"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">1장 · 요청서</span><p class="pe-ch-t">무엇을 원하는지 적습니다</p></div></div></div>
+
+<section class="pe-sec">
+  <div class="pe-wrap"><!--sf--><h2>AI는 비어 있는 칸을 가장 흔한 답으로 채웁니다</h2><div class="pe-two sf">
+    <div>
+      
+      <p>심부름을 "마실 것 좀 사 와"라고 시키면 무엇이 올지 모릅니다. Claude를 만든 회사 Anthropic의 문서도 모델을 똑똑하지만 우리 사정은 전혀 모르는 새 직원에 빗댑니다.</p>
+      <p>LLM(Large Language Model)은 앞 글에 이어질 말을 계산하는 프로그램입니다. 누가 읽을지, 어떤 모양이 좋은지 적혀 있지 않으면 학습 때 많이 본 무난한 글로 이어 씁니다. 그래서 "리뷰 정리해 줘"에는 뻔한 답이 옵니다.</p>
+      <p>요즘 모델은 부탁하지 않은 일을 알아서 더 해 주지도 않습니다. Claude Opus 4.8 안내서는 지시를 글자 그대로 따르니 범위를 직접 적으라고 합니다.</p>
+    </div>
+    <figure data-figure>
+  <div class="pe-spread n2" style="margin-top:0">
+    <div class="pe-memo"><div class="pe-note">마실 것 좀 사 와</div><div class="pe-got" aria-label="주스, 우유, 커피, 맥주 가운데 아무거나">🧃 🥛 ☕ 🍺</div><span class="pe-fv bad"><b>뭐가 올지 모릅니다</b></span></div>
+    <div class="pe-memo"><div class="pe-note">편의점에서 제로 콜라 500ml 2병. 5천 원 안에서. 없으면 탄산수.</div><div class="pe-got" aria-label="콜라 두 병">🥤 🥤</div><span class="pe-fv ok"><b>한 가지로 정해집니다</b></span></div>
+  </div>
+  <p class="pe-cap">비유입니다. 사람은 "뭐 마실 건데?" 하고 되묻지만 모델은 대개 묻지 않고 그냥 채웁니다.</p>
+</figure>
+  </div></div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>요청서 다섯 칸을 채울수록 가능한 답이 줄어듭니다</h2>
+      <p>칸을 하나 채울 때마다 모델이 쓸 수 있는 답의 범위가 좁아집니다. 역할(Persona)은 누구의 눈으로 볼지, 상황(Context)은 어떤 배경인지, 할 일(Task)은 무엇을 할지 정합니다.</p>
+      <p>여기에 조건(Constraint)과 결과 형식(Output Format)을 더하면 답의 모양까지 정해집니다. 아래 그림에서 칸이 늘수록 진한 점이 줄어듭니다.</p>
+    </div>
+    <div class="pe-cloud" data-figure><figure><span class="n">150개</span><span class="k">빈 요청</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 150개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="on" cx="212" cy="82" r="4.5"/><circle class="on" cx="225" cy="76" r="4.5"/><circle class="on" cx="204" cy="87" r="4.5"/><circle class="on" cx="181" cy="76" r="4.5"/><circle class="on" cx="223" cy="84" r="4.5"/><circle class="on" cx="212" cy="32" r="4.5"/><circle class="on" cx="171" cy="62" r="4.5"/><circle class="on" cx="172" cy="69" r="4.5"/><circle class="on" cx="175" cy="44" r="4.5"/><circle class="on" cx="239" cy="47" r="4.5"/><circle class="on" cx="181" cy="29" r="4.5"/><circle class="on" cx="244" cy="72" r="4.5"/><circle class="on" cx="240" cy="37" r="4.5"/><circle class="on" cx="192" cy="19" r="4.5"/><circle class="on" cx="160" cy="58" r="4.5"/><circle class="on" cx="199" cy="17" r="4.5"/><circle class="on" cx="249" cy="48" r="4.5"/><circle class="on" cx="231" cy="101" r="4.5"/><circle class="on" cx="241" cy="31" r="4.5"/><circle class="on" cx="254" cy="51" r="4.5"/><circle class="on" cx="244" cy="28" r="4.5"/><circle class="on" cx="192" cy="114" r="4.5"/><circle class="on" cx="238" cy="106" r="4.5"/><circle class="on" cx="150" cy="79" r="4.5"/><circle class="on" cx="158" cy="29" r="4.5"/><circle class="on" cx="154" cy="90" r="4.5"/><circle class="on" cx="264" cy="68" r="4.5"/><circle class="on" cx="250" cy="101" r="4.5"/><circle class="on" cx="167" cy="109" r="4.5"/><circle class="on" cx="163" cy="18" r="4.5"/><circle class="on" cx="205" cy="124" r="4.5"/><circle class="on" cx="165" cy="112" r="4.5"/><circle class="on" cx="153" cy="100" r="4.5"/><circle class="on" cx="162" cy="14" r="4.5"/><circle class="on" cx="141" cy="73" r="4.5"/><circle class="on" cx="159" cy="111" r="4.5"/><circle class="on" cx="247" cy="115" r="4.5"/><circle class="on" cx="184" cy="127" r="4.5"/><circle class="on" cx="228" cy="127" r="4.5"/><circle class="on" cx="238" cy="122" r="4.5"/><circle class="on" cx="137" cy="49" r="4.5"/><circle class="on" cx="156" cy="12" r="4.5"/><circle class="on" cx="272" cy="44" r="4.5"/><circle class="on" cx="137" cy="79" r="4.5"/><circle class="on" cx="276" cy="57" r="4.5"/><circle class="on" cx="253" cy="114" r="4.5"/><circle class="on" cx="143" cy="96" r="4.5"/><circle class="on" cx="276" cy="68" r="4.5"/><circle class="on" cx="173" cy="128" r="4.5"/><circle class="on" cx="185" cy="133" r="4.5"/><circle class="on" cx="260" cy="111" r="4.5"/><circle class="on" cx="280" cy="61" r="4.5"/><circle class="on" cx="164" cy="125" r="4.5"/><circle class="on" cx="263" cy="112" r="4.5"/><circle class="on" cx="133" cy="34" r="4.5"/><circle class="on" cx="262" cy="115" r="4.5"/><circle class="on" cx="157" cy="124" r="4.5"/><circle class="on" cx="276" cy="30" r="4.5"/><circle class="on" cx="191" cy="139" r="4.5"/><circle class="on" cx="275" cy="100" r="4.5"/><circle class="on" cx="166" cy="133" r="4.5"/><circle class="on" cx="244" cy="133" r="4.5"/><circle class="on" cx="280" cy="94" r="4.5"/><circle class="on" cx="236" cy="138" r="4.5"/><circle class="on" cx="157" cy="131" r="4.5"/><circle class="on" cx="283" cy="95" r="4.5"/><circle class="on" cx="120" cy="62" r="4.5"/><circle class="on" cx="283" cy="25" r="4.5"/><circle class="on" cx="246" cy="139" r="4.5"/><circle class="on" cx="158" cy="137" r="4.5"/><circle class="on" cx="281" cy="16" r="4.5"/><circle class="on" cx="127" cy="108" r="4.5"/><circle class="on" cx="144" cy="132" r="4.5"/><circle class="on" cx="118" cy="97" r="4.5"/><circle class="on" cx="114" cy="84" r="4.5"/><circle class="on" cx="129" cy="117" r="4.5"/><circle class="on" cx="132" cy="123" r="4.5"/><circle class="on" cx="110" cy="70" r="4.5"/><circle class="on" cx="109" cy="81" r="4.5"/><circle class="on" cx="113" cy="26" r="4.5"/><circle class="on" cx="107" cy="44" r="4.5"/><circle class="on" cx="271" cy="138" r="4.5"/><circle class="on" cx="128" cy="129" r="4.5"/><circle class="on" cx="102" cy="77" r="4.5"/><circle class="on" cx="103" cy="39" r="4.5"/><circle class="on" cx="120" cy="123" r="4.5"/><circle class="on" cx="110" cy="14" r="4.5"/><circle class="on" cx="101" cy="30" r="4.5"/><circle class="on" cx="123" cy="133" r="4.5"/><circle class="on" cx="106" cy="17" r="4.5"/><circle class="on" cx="99" cy="86" r="4.5"/><circle class="on" cx="111" cy="125" r="4.5"/><circle class="on" cx="104" cy="114" r="4.5"/><circle class="on" cx="89" cy="64" r="4.5"/><circle class="on" cx="97" cy="116" r="4.5"/><circle class="on" cx="84" cy="58" r="4.5"/><circle class="on" cx="84" cy="64" r="4.5"/><circle class="on" cx="82" cy="55" r="4.5"/><circle class="on" cx="82" cy="48" r="4.5"/><circle class="on" cx="81" cy="46" r="4.5"/><circle class="on" cx="84" cy="100" r="4.5"/><circle class="on" cx="79" cy="85" r="4.5"/><circle class="on" cx="78" cy="86" r="4.5"/><circle class="on" cx="76" cy="73" r="4.5"/><circle class="on" cx="75" cy="77" r="4.5"/><circle class="on" cx="73" cy="39" r="4.5"/><circle class="on" cx="70" cy="31" r="4.5"/><circle class="on" cx="66" cy="37" r="4.5"/><circle class="on" cx="62" cy="86" r="4.5"/><circle class="on" cx="60" cy="72" r="4.5"/><circle class="on" cx="61" cy="40" r="4.5"/><circle class="on" cx="58" cy="25" r="4.5"/><circle class="on" cx="54" cy="74" r="4.5"/><circle class="on" cx="61" cy="113" r="4.5"/><circle class="on" cx="58" cy="110" r="4.5"/><circle class="on" cx="52" cy="25" r="4.5"/><circle class="on" cx="48" cy="42" r="4.5"/><circle class="on" cx="46" cy="67" r="4.5"/><circle class="on" cx="46" cy="39" r="4.5"/><circle class="on" cx="47" cy="30" r="4.5"/><circle class="on" cx="52" cy="117" r="4.5"/><circle class="on" cx="48" cy="12" r="4.5"/><circle class="on" cx="41" cy="83" r="4.5"/><circle class="on" cx="40" cy="57" r="4.5"/><circle class="on" cx="41" cy="92" r="4.5"/><circle class="on" cx="48" cy="128" r="4.5"/><circle class="on" cx="34" cy="68" r="4.5"/><circle class="on" cx="35" cy="96" r="4.5"/><circle class="on" cx="36" cy="23" r="4.5"/><circle class="on" cx="32" cy="41" r="4.5"/><circle class="on" cx="32" cy="97" r="4.5"/><circle class="on" cx="28" cy="76" r="4.5"/><circle class="on" cx="31" cy="22" r="4.5"/><circle class="on" cx="28" cy="37" r="4.5"/><circle class="on" cx="29" cy="101" r="4.5"/><circle class="on" cx="29" cy="19" r="4.5"/><circle class="on" cx="22" cy="66" r="4.5"/><circle class="on" cx="28" cy="110" r="4.5"/><circle class="on" cx="23" cy="97" r="4.5"/><circle class="on" cx="20" cy="46" r="4.5"/><circle class="on" cx="18" cy="70" r="4.5"/><circle class="on" cx="13" cy="64" r="4.5"/><circle class="on" cx="12" cy="30" r="4.5"/><circle class="on" cx="19" cy="124" r="4.5"/><circle class="on" cx="13" cy="114" r="4.5"/><circle class="on" cx="18" cy="134" r="4.5"/></svg><span class="q">리뷰 정리해 줘</span></figure><figure><span class="n">95개</span><span class="k">+ 역할 Persona</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 95개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="on" cx="212" cy="82" r="4.5"/><circle class="on" cx="225" cy="76" r="4.5"/><circle class="on" cx="204" cy="87" r="4.5"/><circle class="on" cx="181" cy="76" r="4.5"/><circle class="on" cx="223" cy="84" r="4.5"/><circle class="on" cx="212" cy="32" r="4.5"/><circle class="on" cx="171" cy="62" r="4.5"/><circle class="on" cx="172" cy="69" r="4.5"/><circle class="on" cx="175" cy="44" r="4.5"/><circle class="on" cx="239" cy="47" r="4.5"/><circle class="on" cx="181" cy="29" r="4.5"/><circle class="on" cx="244" cy="72" r="4.5"/><circle class="on" cx="240" cy="37" r="4.5"/><circle class="on" cx="192" cy="19" r="4.5"/><circle class="on" cx="160" cy="58" r="4.5"/><circle class="on" cx="199" cy="17" r="4.5"/><circle class="on" cx="249" cy="48" r="4.5"/><circle class="on" cx="231" cy="101" r="4.5"/><circle class="on" cx="241" cy="31" r="4.5"/><circle class="on" cx="254" cy="51" r="4.5"/><circle class="on" cx="244" cy="28" r="4.5"/><circle class="on" cx="192" cy="114" r="4.5"/><circle class="on" cx="238" cy="106" r="4.5"/><circle class="on" cx="150" cy="79" r="4.5"/><circle class="on" cx="158" cy="29" r="4.5"/><circle class="on" cx="154" cy="90" r="4.5"/><circle class="on" cx="264" cy="68" r="4.5"/><circle class="on" cx="250" cy="101" r="4.5"/><circle class="on" cx="167" cy="109" r="4.5"/><circle class="on" cx="163" cy="18" r="4.5"/><circle class="on" cx="205" cy="124" r="4.5"/><circle class="on" cx="165" cy="112" r="4.5"/><circle class="on" cx="153" cy="100" r="4.5"/><circle class="on" cx="162" cy="14" r="4.5"/><circle class="on" cx="141" cy="73" r="4.5"/><circle class="on" cx="159" cy="111" r="4.5"/><circle class="on" cx="247" cy="115" r="4.5"/><circle class="on" cx="184" cy="127" r="4.5"/><circle class="on" cx="228" cy="127" r="4.5"/><circle class="on" cx="238" cy="122" r="4.5"/><circle class="on" cx="137" cy="49" r="4.5"/><circle class="on" cx="156" cy="12" r="4.5"/><circle class="on" cx="272" cy="44" r="4.5"/><circle class="on" cx="137" cy="79" r="4.5"/><circle class="on" cx="276" cy="57" r="4.5"/><circle class="on" cx="253" cy="114" r="4.5"/><circle class="on" cx="143" cy="96" r="4.5"/><circle class="on" cx="276" cy="68" r="4.5"/><circle class="on" cx="173" cy="128" r="4.5"/><circle class="on" cx="185" cy="133" r="4.5"/><circle class="on" cx="260" cy="111" r="4.5"/><circle class="on" cx="280" cy="61" r="4.5"/><circle class="on" cx="164" cy="125" r="4.5"/><circle class="on" cx="263" cy="112" r="4.5"/><circle class="on" cx="133" cy="34" r="4.5"/><circle class="on" cx="262" cy="115" r="4.5"/><circle class="on" cx="157" cy="124" r="4.5"/><circle class="on" cx="276" cy="30" r="4.5"/><circle class="on" cx="191" cy="139" r="4.5"/><circle class="on" cx="275" cy="100" r="4.5"/><circle class="on" cx="166" cy="133" r="4.5"/><circle class="on" cx="244" cy="133" r="4.5"/><circle class="on" cx="280" cy="94" r="4.5"/><circle class="on" cx="236" cy="138" r="4.5"/><circle class="on" cx="157" cy="131" r="4.5"/><circle class="on" cx="283" cy="95" r="4.5"/><circle class="on" cx="120" cy="62" r="4.5"/><circle class="on" cx="283" cy="25" r="4.5"/><circle class="on" cx="246" cy="139" r="4.5"/><circle class="on" cx="158" cy="137" r="4.5"/><circle class="on" cx="281" cy="16" r="4.5"/><circle class="on" cx="127" cy="108" r="4.5"/><circle class="on" cx="144" cy="132" r="4.5"/><circle class="on" cx="118" cy="97" r="4.5"/><circle class="on" cx="114" cy="84" r="4.5"/><circle class="on" cx="129" cy="117" r="4.5"/><circle class="on" cx="132" cy="123" r="4.5"/><circle class="on" cx="110" cy="70" r="4.5"/><circle class="on" cx="109" cy="81" r="4.5"/><circle class="on" cx="113" cy="26" r="4.5"/><circle class="on" cx="107" cy="44" r="4.5"/><circle class="on" cx="271" cy="138" r="4.5"/><circle class="on" cx="128" cy="129" r="4.5"/><circle class="on" cx="102" cy="77" r="4.5"/><circle class="on" cx="103" cy="39" r="4.5"/><circle class="on" cx="120" cy="123" r="4.5"/><circle class="on" cx="110" cy="14" r="4.5"/><circle class="on" cx="101" cy="30" r="4.5"/><circle class="on" cx="123" cy="133" r="4.5"/><circle class="on" cx="106" cy="17" r="4.5"/><circle class="on" cx="99" cy="86" r="4.5"/><circle class="off" cx="111" cy="125" r="3.5"/><circle class="off" cx="104" cy="114" r="3.5"/><circle class="off" cx="89" cy="64" r="3.5"/><circle class="off" cx="97" cy="116" r="3.5"/><circle class="off" cx="84" cy="58" r="3.5"/><circle class="off" cx="84" cy="64" r="3.5"/><circle class="off" cx="82" cy="55" r="3.5"/><circle class="off" cx="82" cy="48" r="3.5"/><circle class="off" cx="81" cy="46" r="3.5"/><circle class="off" cx="84" cy="100" r="3.5"/><circle class="off" cx="79" cy="85" r="3.5"/><circle class="off" cx="78" cy="86" r="3.5"/><circle class="off" cx="76" cy="73" r="3.5"/><circle class="off" cx="75" cy="77" r="3.5"/><circle class="off" cx="73" cy="39" r="3.5"/><circle class="off" cx="70" cy="31" r="3.5"/><circle class="off" cx="66" cy="37" r="3.5"/><circle class="off" cx="62" cy="86" r="3.5"/><circle class="off" cx="60" cy="72" r="3.5"/><circle class="off" cx="61" cy="40" r="3.5"/><circle class="off" cx="58" cy="25" r="3.5"/><circle class="off" cx="54" cy="74" r="3.5"/><circle class="off" cx="61" cy="113" r="3.5"/><circle class="off" cx="58" cy="110" r="3.5"/><circle class="off" cx="52" cy="25" r="3.5"/><circle class="off" cx="48" cy="42" r="3.5"/><circle class="off" cx="46" cy="67" r="3.5"/><circle class="off" cx="46" cy="39" r="3.5"/><circle class="off" cx="47" cy="30" r="3.5"/><circle class="off" cx="52" cy="117" r="3.5"/><circle class="off" cx="48" cy="12" r="3.5"/><circle class="off" cx="41" cy="83" r="3.5"/><circle class="off" cx="40" cy="57" r="3.5"/><circle class="off" cx="41" cy="92" r="3.5"/><circle class="off" cx="48" cy="128" r="3.5"/><circle class="off" cx="34" cy="68" r="3.5"/><circle class="off" cx="35" cy="96" r="3.5"/><circle class="off" cx="36" cy="23" r="3.5"/><circle class="off" cx="32" cy="41" r="3.5"/><circle class="off" cx="32" cy="97" r="3.5"/><circle class="off" cx="28" cy="76" r="3.5"/><circle class="off" cx="31" cy="22" r="3.5"/><circle class="off" cx="28" cy="37" r="3.5"/><circle class="off" cx="29" cy="101" r="3.5"/><circle class="off" cx="29" cy="19" r="3.5"/><circle class="off" cx="22" cy="66" r="3.5"/><circle class="off" cx="28" cy="110" r="3.5"/><circle class="off" cx="23" cy="97" r="3.5"/><circle class="off" cx="20" cy="46" r="3.5"/><circle class="off" cx="18" cy="70" r="3.5"/><circle class="off" cx="13" cy="64" r="3.5"/><circle class="off" cx="12" cy="30" r="3.5"/><circle class="off" cx="19" cy="124" r="3.5"/><circle class="off" cx="13" cy="114" r="3.5"/><circle class="off" cx="18" cy="134" r="3.5"/></svg><span class="q">너는 배달 앱 리뷰 분석가야</span></figure><figure><span class="n">55개</span><span class="k">+ 상황 Context</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 55개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="on" cx="212" cy="82" r="4.5"/><circle class="on" cx="225" cy="76" r="4.5"/><circle class="on" cx="204" cy="87" r="4.5"/><circle class="on" cx="181" cy="76" r="4.5"/><circle class="on" cx="223" cy="84" r="4.5"/><circle class="on" cx="212" cy="32" r="4.5"/><circle class="on" cx="171" cy="62" r="4.5"/><circle class="on" cx="172" cy="69" r="4.5"/><circle class="on" cx="175" cy="44" r="4.5"/><circle class="on" cx="239" cy="47" r="4.5"/><circle class="on" cx="181" cy="29" r="4.5"/><circle class="on" cx="244" cy="72" r="4.5"/><circle class="on" cx="240" cy="37" r="4.5"/><circle class="on" cx="192" cy="19" r="4.5"/><circle class="on" cx="160" cy="58" r="4.5"/><circle class="on" cx="199" cy="17" r="4.5"/><circle class="on" cx="249" cy="48" r="4.5"/><circle class="on" cx="231" cy="101" r="4.5"/><circle class="on" cx="241" cy="31" r="4.5"/><circle class="on" cx="254" cy="51" r="4.5"/><circle class="on" cx="244" cy="28" r="4.5"/><circle class="on" cx="192" cy="114" r="4.5"/><circle class="on" cx="238" cy="106" r="4.5"/><circle class="on" cx="150" cy="79" r="4.5"/><circle class="on" cx="158" cy="29" r="4.5"/><circle class="on" cx="154" cy="90" r="4.5"/><circle class="on" cx="264" cy="68" r="4.5"/><circle class="on" cx="250" cy="101" r="4.5"/><circle class="on" cx="167" cy="109" r="4.5"/><circle class="on" cx="163" cy="18" r="4.5"/><circle class="on" cx="205" cy="124" r="4.5"/><circle class="on" cx="165" cy="112" r="4.5"/><circle class="on" cx="153" cy="100" r="4.5"/><circle class="on" cx="162" cy="14" r="4.5"/><circle class="on" cx="141" cy="73" r="4.5"/><circle class="on" cx="159" cy="111" r="4.5"/><circle class="on" cx="247" cy="115" r="4.5"/><circle class="on" cx="184" cy="127" r="4.5"/><circle class="on" cx="228" cy="127" r="4.5"/><circle class="on" cx="238" cy="122" r="4.5"/><circle class="on" cx="137" cy="49" r="4.5"/><circle class="on" cx="156" cy="12" r="4.5"/><circle class="on" cx="272" cy="44" r="4.5"/><circle class="on" cx="137" cy="79" r="4.5"/><circle class="on" cx="276" cy="57" r="4.5"/><circle class="on" cx="253" cy="114" r="4.5"/><circle class="on" cx="143" cy="96" r="4.5"/><circle class="on" cx="276" cy="68" r="4.5"/><circle class="on" cx="173" cy="128" r="4.5"/><circle class="on" cx="185" cy="133" r="4.5"/><circle class="on" cx="260" cy="111" r="4.5"/><circle class="off" cx="280" cy="61" r="3.5"/><circle class="off" cx="164" cy="125" r="3.5"/><circle class="off" cx="263" cy="112" r="3.5"/><circle class="off" cx="133" cy="34" r="3.5"/><circle class="off" cx="262" cy="115" r="3.5"/><circle class="off" cx="157" cy="124" r="3.5"/><circle class="off" cx="276" cy="30" r="3.5"/><circle class="off" cx="191" cy="139" r="3.5"/><circle class="off" cx="275" cy="100" r="3.5"/><circle class="off" cx="166" cy="133" r="3.5"/><circle class="off" cx="244" cy="133" r="3.5"/><circle class="off" cx="280" cy="94" r="3.5"/><circle class="off" cx="236" cy="138" r="3.5"/><circle class="off" cx="157" cy="131" r="3.5"/><circle class="off" cx="283" cy="95" r="3.5"/><circle class="off" cx="120" cy="62" r="3.5"/><circle class="off" cx="283" cy="25" r="3.5"/><circle class="off" cx="246" cy="139" r="3.5"/><circle class="off" cx="158" cy="137" r="3.5"/><circle class="off" cx="281" cy="16" r="3.5"/><circle class="off" cx="127" cy="108" r="3.5"/><circle class="off" cx="144" cy="132" r="3.5"/><circle class="off" cx="118" cy="97" r="3.5"/><circle class="off" cx="114" cy="84" r="3.5"/><circle class="off" cx="129" cy="117" r="3.5"/><circle class="off" cx="132" cy="123" r="3.5"/><circle class="off" cx="110" cy="70" r="3.5"/><circle class="off" cx="109" cy="81" r="3.5"/><circle class="off" cx="113" cy="26" r="3.5"/><circle class="off" cx="107" cy="44" r="3.5"/><circle class="off" cx="271" cy="138" r="3.5"/><circle class="off" cx="128" cy="129" r="3.5"/><circle class="off" cx="102" cy="77" r="3.5"/><circle class="off" cx="103" cy="39" r="3.5"/><circle class="off" cx="120" cy="123" r="3.5"/><circle class="off" cx="110" cy="14" r="3.5"/><circle class="off" cx="101" cy="30" r="3.5"/><circle class="off" cx="123" cy="133" r="3.5"/><circle class="off" cx="106" cy="17" r="3.5"/><circle class="off" cx="99" cy="86" r="3.5"/><circle class="off" cx="111" cy="125" r="3.5"/><circle class="off" cx="104" cy="114" r="3.5"/><circle class="off" cx="89" cy="64" r="3.5"/><circle class="off" cx="97" cy="116" r="3.5"/><circle class="off" cx="84" cy="58" r="3.5"/><circle class="off" cx="84" cy="64" r="3.5"/><circle class="off" cx="82" cy="55" r="3.5"/><circle class="off" cx="82" cy="48" r="3.5"/><circle class="off" cx="81" cy="46" r="3.5"/><circle class="off" cx="84" cy="100" r="3.5"/><circle class="off" cx="79" cy="85" r="3.5"/><circle class="off" cx="78" cy="86" r="3.5"/><circle class="off" cx="76" cy="73" r="3.5"/><circle class="off" cx="75" cy="77" r="3.5"/><circle class="off" cx="73" cy="39" r="3.5"/><circle class="off" cx="70" cy="31" r="3.5"/><circle class="off" cx="66" cy="37" r="3.5"/><circle class="off" cx="62" cy="86" r="3.5"/><circle class="off" cx="60" cy="72" r="3.5"/><circle class="off" cx="61" cy="40" r="3.5"/><circle class="off" cx="58" cy="25" r="3.5"/><circle class="off" cx="54" cy="74" r="3.5"/><circle class="off" cx="61" cy="113" r="3.5"/><circle class="off" cx="58" cy="110" r="3.5"/><circle class="off" cx="52" cy="25" r="3.5"/><circle class="off" cx="48" cy="42" r="3.5"/><circle class="off" cx="46" cy="67" r="3.5"/><circle class="off" cx="46" cy="39" r="3.5"/><circle class="off" cx="47" cy="30" r="3.5"/><circle class="off" cx="52" cy="117" r="3.5"/><circle class="off" cx="48" cy="12" r="3.5"/><circle class="off" cx="41" cy="83" r="3.5"/><circle class="off" cx="40" cy="57" r="3.5"/><circle class="off" cx="41" cy="92" r="3.5"/><circle class="off" cx="48" cy="128" r="3.5"/><circle class="off" cx="34" cy="68" r="3.5"/><circle class="off" cx="35" cy="96" r="3.5"/><circle class="off" cx="36" cy="23" r="3.5"/><circle class="off" cx="32" cy="41" r="3.5"/><circle class="off" cx="32" cy="97" r="3.5"/><circle class="off" cx="28" cy="76" r="3.5"/><circle class="off" cx="31" cy="22" r="3.5"/><circle class="off" cx="28" cy="37" r="3.5"/><circle class="off" cx="29" cy="101" r="3.5"/><circle class="off" cx="29" cy="19" r="3.5"/><circle class="off" cx="22" cy="66" r="3.5"/><circle class="off" cx="28" cy="110" r="3.5"/><circle class="off" cx="23" cy="97" r="3.5"/><circle class="off" cx="20" cy="46" r="3.5"/><circle class="off" cx="18" cy="70" r="3.5"/><circle class="off" cx="13" cy="64" r="3.5"/><circle class="off" cx="12" cy="30" r="3.5"/><circle class="off" cx="19" cy="124" r="3.5"/><circle class="off" cx="13" cy="114" r="3.5"/><circle class="off" cx="18" cy="134" r="3.5"/></svg><span class="q">치킨집 사장님이 이번 주 리뷰로 내일 할 일을 정해</span></figure><figure><span class="n">26개</span><span class="k">+ 할 일 Task</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 26개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="on" cx="212" cy="82" r="4.5"/><circle class="on" cx="225" cy="76" r="4.5"/><circle class="on" cx="204" cy="87" r="4.5"/><circle class="on" cx="181" cy="76" r="4.5"/><circle class="on" cx="223" cy="84" r="4.5"/><circle class="on" cx="212" cy="32" r="4.5"/><circle class="on" cx="171" cy="62" r="4.5"/><circle class="on" cx="172" cy="69" r="4.5"/><circle class="on" cx="175" cy="44" r="4.5"/><circle class="on" cx="239" cy="47" r="4.5"/><circle class="on" cx="181" cy="29" r="4.5"/><circle class="on" cx="244" cy="72" r="4.5"/><circle class="on" cx="240" cy="37" r="4.5"/><circle class="on" cx="192" cy="19" r="4.5"/><circle class="on" cx="160" cy="58" r="4.5"/><circle class="on" cx="199" cy="17" r="4.5"/><circle class="on" cx="249" cy="48" r="4.5"/><circle class="on" cx="231" cy="101" r="4.5"/><circle class="on" cx="241" cy="31" r="4.5"/><circle class="on" cx="254" cy="51" r="4.5"/><circle class="on" cx="244" cy="28" r="4.5"/><circle class="on" cx="192" cy="114" r="4.5"/><circle class="off" cx="238" cy="106" r="3.5"/><circle class="off" cx="150" cy="79" r="3.5"/><circle class="off" cx="158" cy="29" r="3.5"/><circle class="off" cx="154" cy="90" r="3.5"/><circle class="off" cx="264" cy="68" r="3.5"/><circle class="off" cx="250" cy="101" r="3.5"/><circle class="off" cx="167" cy="109" r="3.5"/><circle class="off" cx="163" cy="18" r="3.5"/><circle class="off" cx="205" cy="124" r="3.5"/><circle class="off" cx="165" cy="112" r="3.5"/><circle class="off" cx="153" cy="100" r="3.5"/><circle class="off" cx="162" cy="14" r="3.5"/><circle class="off" cx="141" cy="73" r="3.5"/><circle class="off" cx="159" cy="111" r="3.5"/><circle class="off" cx="247" cy="115" r="3.5"/><circle class="off" cx="184" cy="127" r="3.5"/><circle class="off" cx="228" cy="127" r="3.5"/><circle class="off" cx="238" cy="122" r="3.5"/><circle class="off" cx="137" cy="49" r="3.5"/><circle class="off" cx="156" cy="12" r="3.5"/><circle class="off" cx="272" cy="44" r="3.5"/><circle class="off" cx="137" cy="79" r="3.5"/><circle class="off" cx="276" cy="57" r="3.5"/><circle class="off" cx="253" cy="114" r="3.5"/><circle class="off" cx="143" cy="96" r="3.5"/><circle class="off" cx="276" cy="68" r="3.5"/><circle class="off" cx="173" cy="128" r="3.5"/><circle class="off" cx="185" cy="133" r="3.5"/><circle class="off" cx="260" cy="111" r="3.5"/><circle class="off" cx="280" cy="61" r="3.5"/><circle class="off" cx="164" cy="125" r="3.5"/><circle class="off" cx="263" cy="112" r="3.5"/><circle class="off" cx="133" cy="34" r="3.5"/><circle class="off" cx="262" cy="115" r="3.5"/><circle class="off" cx="157" cy="124" r="3.5"/><circle class="off" cx="276" cy="30" r="3.5"/><circle class="off" cx="191" cy="139" r="3.5"/><circle class="off" cx="275" cy="100" r="3.5"/><circle class="off" cx="166" cy="133" r="3.5"/><circle class="off" cx="244" cy="133" r="3.5"/><circle class="off" cx="280" cy="94" r="3.5"/><circle class="off" cx="236" cy="138" r="3.5"/><circle class="off" cx="157" cy="131" r="3.5"/><circle class="off" cx="283" cy="95" r="3.5"/><circle class="off" cx="120" cy="62" r="3.5"/><circle class="off" cx="283" cy="25" r="3.5"/><circle class="off" cx="246" cy="139" r="3.5"/><circle class="off" cx="158" cy="137" r="3.5"/><circle class="off" cx="281" cy="16" r="3.5"/><circle class="off" cx="127" cy="108" r="3.5"/><circle class="off" cx="144" cy="132" r="3.5"/><circle class="off" cx="118" cy="97" r="3.5"/><circle class="off" cx="114" cy="84" r="3.5"/><circle class="off" cx="129" cy="117" r="3.5"/><circle class="off" cx="132" cy="123" r="3.5"/><circle class="off" cx="110" cy="70" r="3.5"/><circle class="off" cx="109" cy="81" r="3.5"/><circle class="off" cx="113" cy="26" r="3.5"/><circle class="off" cx="107" cy="44" r="3.5"/><circle class="off" cx="271" cy="138" r="3.5"/><circle class="off" cx="128" cy="129" r="3.5"/><circle class="off" cx="102" cy="77" r="3.5"/><circle class="off" cx="103" cy="39" r="3.5"/><circle class="off" cx="120" cy="123" r="3.5"/><circle class="off" cx="110" cy="14" r="3.5"/><circle class="off" cx="101" cy="30" r="3.5"/><circle class="off" cx="123" cy="133" r="3.5"/><circle class="off" cx="106" cy="17" r="3.5"/><circle class="off" cx="99" cy="86" r="3.5"/><circle class="off" cx="111" cy="125" r="3.5"/><circle class="off" cx="104" cy="114" r="3.5"/><circle class="off" cx="89" cy="64" r="3.5"/><circle class="off" cx="97" cy="116" r="3.5"/><circle class="off" cx="84" cy="58" r="3.5"/><circle class="off" cx="84" cy="64" r="3.5"/><circle class="off" cx="82" cy="55" r="3.5"/><circle class="off" cx="82" cy="48" r="3.5"/><circle class="off" cx="81" cy="46" r="3.5"/><circle class="off" cx="84" cy="100" r="3.5"/><circle class="off" cx="79" cy="85" r="3.5"/><circle class="off" cx="78" cy="86" r="3.5"/><circle class="off" cx="76" cy="73" r="3.5"/><circle class="off" cx="75" cy="77" r="3.5"/><circle class="off" cx="73" cy="39" r="3.5"/><circle class="off" cx="70" cy="31" r="3.5"/><circle class="off" cx="66" cy="37" r="3.5"/><circle class="off" cx="62" cy="86" r="3.5"/><circle class="off" cx="60" cy="72" r="3.5"/><circle class="off" cx="61" cy="40" r="3.5"/><circle class="off" cx="58" cy="25" r="3.5"/><circle class="off" cx="54" cy="74" r="3.5"/><circle class="off" cx="61" cy="113" r="3.5"/><circle class="off" cx="58" cy="110" r="3.5"/><circle class="off" cx="52" cy="25" r="3.5"/><circle class="off" cx="48" cy="42" r="3.5"/><circle class="off" cx="46" cy="67" r="3.5"/><circle class="off" cx="46" cy="39" r="3.5"/><circle class="off" cx="47" cy="30" r="3.5"/><circle class="off" cx="52" cy="117" r="3.5"/><circle class="off" cx="48" cy="12" r="3.5"/><circle class="off" cx="41" cy="83" r="3.5"/><circle class="off" cx="40" cy="57" r="3.5"/><circle class="off" cx="41" cy="92" r="3.5"/><circle class="off" cx="48" cy="128" r="3.5"/><circle class="off" cx="34" cy="68" r="3.5"/><circle class="off" cx="35" cy="96" r="3.5"/><circle class="off" cx="36" cy="23" r="3.5"/><circle class="off" cx="32" cy="41" r="3.5"/><circle class="off" cx="32" cy="97" r="3.5"/><circle class="off" cx="28" cy="76" r="3.5"/><circle class="off" cx="31" cy="22" r="3.5"/><circle class="off" cx="28" cy="37" r="3.5"/><circle class="off" cx="29" cy="101" r="3.5"/><circle class="off" cx="29" cy="19" r="3.5"/><circle class="off" cx="22" cy="66" r="3.5"/><circle class="off" cx="28" cy="110" r="3.5"/><circle class="off" cx="23" cy="97" r="3.5"/><circle class="off" cx="20" cy="46" r="3.5"/><circle class="off" cx="18" cy="70" r="3.5"/><circle class="off" cx="13" cy="64" r="3.5"/><circle class="off" cx="12" cy="30" r="3.5"/><circle class="off" cx="19" cy="124" r="3.5"/><circle class="off" cx="13" cy="114" r="3.5"/><circle class="off" cx="18" cy="134" r="3.5"/></svg><span class="q">불만을 많은 순서로 3개 뽑아</span></figure><figure><span class="n">11개</span><span class="k">+ 조건 Constraint</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 11개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="on" cx="212" cy="82" r="4.5"/><circle class="on" cx="225" cy="76" r="4.5"/><circle class="on" cx="204" cy="87" r="4.5"/><circle class="on" cx="181" cy="76" r="4.5"/><circle class="on" cx="223" cy="84" r="4.5"/><circle class="on" cx="212" cy="32" r="4.5"/><circle class="on" cx="171" cy="62" r="4.5"/><circle class="off" cx="172" cy="69" r="3.5"/><circle class="off" cx="175" cy="44" r="3.5"/><circle class="off" cx="239" cy="47" r="3.5"/><circle class="off" cx="181" cy="29" r="3.5"/><circle class="off" cx="244" cy="72" r="3.5"/><circle class="off" cx="240" cy="37" r="3.5"/><circle class="off" cx="192" cy="19" r="3.5"/><circle class="off" cx="160" cy="58" r="3.5"/><circle class="off" cx="199" cy="17" r="3.5"/><circle class="off" cx="249" cy="48" r="3.5"/><circle class="off" cx="231" cy="101" r="3.5"/><circle class="off" cx="241" cy="31" r="3.5"/><circle class="off" cx="254" cy="51" r="3.5"/><circle class="off" cx="244" cy="28" r="3.5"/><circle class="off" cx="192" cy="114" r="3.5"/><circle class="off" cx="238" cy="106" r="3.5"/><circle class="off" cx="150" cy="79" r="3.5"/><circle class="off" cx="158" cy="29" r="3.5"/><circle class="off" cx="154" cy="90" r="3.5"/><circle class="off" cx="264" cy="68" r="3.5"/><circle class="off" cx="250" cy="101" r="3.5"/><circle class="off" cx="167" cy="109" r="3.5"/><circle class="off" cx="163" cy="18" r="3.5"/><circle class="off" cx="205" cy="124" r="3.5"/><circle class="off" cx="165" cy="112" r="3.5"/><circle class="off" cx="153" cy="100" r="3.5"/><circle class="off" cx="162" cy="14" r="3.5"/><circle class="off" cx="141" cy="73" r="3.5"/><circle class="off" cx="159" cy="111" r="3.5"/><circle class="off" cx="247" cy="115" r="3.5"/><circle class="off" cx="184" cy="127" r="3.5"/><circle class="off" cx="228" cy="127" r="3.5"/><circle class="off" cx="238" cy="122" r="3.5"/><circle class="off" cx="137" cy="49" r="3.5"/><circle class="off" cx="156" cy="12" r="3.5"/><circle class="off" cx="272" cy="44" r="3.5"/><circle class="off" cx="137" cy="79" r="3.5"/><circle class="off" cx="276" cy="57" r="3.5"/><circle class="off" cx="253" cy="114" r="3.5"/><circle class="off" cx="143" cy="96" r="3.5"/><circle class="off" cx="276" cy="68" r="3.5"/><circle class="off" cx="173" cy="128" r="3.5"/><circle class="off" cx="185" cy="133" r="3.5"/><circle class="off" cx="260" cy="111" r="3.5"/><circle class="off" cx="280" cy="61" r="3.5"/><circle class="off" cx="164" cy="125" r="3.5"/><circle class="off" cx="263" cy="112" r="3.5"/><circle class="off" cx="133" cy="34" r="3.5"/><circle class="off" cx="262" cy="115" r="3.5"/><circle class="off" cx="157" cy="124" r="3.5"/><circle class="off" cx="276" cy="30" r="3.5"/><circle class="off" cx="191" cy="139" r="3.5"/><circle class="off" cx="275" cy="100" r="3.5"/><circle class="off" cx="166" cy="133" r="3.5"/><circle class="off" cx="244" cy="133" r="3.5"/><circle class="off" cx="280" cy="94" r="3.5"/><circle class="off" cx="236" cy="138" r="3.5"/><circle class="off" cx="157" cy="131" r="3.5"/><circle class="off" cx="283" cy="95" r="3.5"/><circle class="off" cx="120" cy="62" r="3.5"/><circle class="off" cx="283" cy="25" r="3.5"/><circle class="off" cx="246" cy="139" r="3.5"/><circle class="off" cx="158" cy="137" r="3.5"/><circle class="off" cx="281" cy="16" r="3.5"/><circle class="off" cx="127" cy="108" r="3.5"/><circle class="off" cx="144" cy="132" r="3.5"/><circle class="off" cx="118" cy="97" r="3.5"/><circle class="off" cx="114" cy="84" r="3.5"/><circle class="off" cx="129" cy="117" r="3.5"/><circle class="off" cx="132" cy="123" r="3.5"/><circle class="off" cx="110" cy="70" r="3.5"/><circle class="off" cx="109" cy="81" r="3.5"/><circle class="off" cx="113" cy="26" r="3.5"/><circle class="off" cx="107" cy="44" r="3.5"/><circle class="off" cx="271" cy="138" r="3.5"/><circle class="off" cx="128" cy="129" r="3.5"/><circle class="off" cx="102" cy="77" r="3.5"/><circle class="off" cx="103" cy="39" r="3.5"/><circle class="off" cx="120" cy="123" r="3.5"/><circle class="off" cx="110" cy="14" r="3.5"/><circle class="off" cx="101" cy="30" r="3.5"/><circle class="off" cx="123" cy="133" r="3.5"/><circle class="off" cx="106" cy="17" r="3.5"/><circle class="off" cx="99" cy="86" r="3.5"/><circle class="off" cx="111" cy="125" r="3.5"/><circle class="off" cx="104" cy="114" r="3.5"/><circle class="off" cx="89" cy="64" r="3.5"/><circle class="off" cx="97" cy="116" r="3.5"/><circle class="off" cx="84" cy="58" r="3.5"/><circle class="off" cx="84" cy="64" r="3.5"/><circle class="off" cx="82" cy="55" r="3.5"/><circle class="off" cx="82" cy="48" r="3.5"/><circle class="off" cx="81" cy="46" r="3.5"/><circle class="off" cx="84" cy="100" r="3.5"/><circle class="off" cx="79" cy="85" r="3.5"/><circle class="off" cx="78" cy="86" r="3.5"/><circle class="off" cx="76" cy="73" r="3.5"/><circle class="off" cx="75" cy="77" r="3.5"/><circle class="off" cx="73" cy="39" r="3.5"/><circle class="off" cx="70" cy="31" r="3.5"/><circle class="off" cx="66" cy="37" r="3.5"/><circle class="off" cx="62" cy="86" r="3.5"/><circle class="off" cx="60" cy="72" r="3.5"/><circle class="off" cx="61" cy="40" r="3.5"/><circle class="off" cx="58" cy="25" r="3.5"/><circle class="off" cx="54" cy="74" r="3.5"/><circle class="off" cx="61" cy="113" r="3.5"/><circle class="off" cx="58" cy="110" r="3.5"/><circle class="off" cx="52" cy="25" r="3.5"/><circle class="off" cx="48" cy="42" r="3.5"/><circle class="off" cx="46" cy="67" r="3.5"/><circle class="off" cx="46" cy="39" r="3.5"/><circle class="off" cx="47" cy="30" r="3.5"/><circle class="off" cx="52" cy="117" r="3.5"/><circle class="off" cx="48" cy="12" r="3.5"/><circle class="off" cx="41" cy="83" r="3.5"/><circle class="off" cx="40" cy="57" r="3.5"/><circle class="off" cx="41" cy="92" r="3.5"/><circle class="off" cx="48" cy="128" r="3.5"/><circle class="off" cx="34" cy="68" r="3.5"/><circle class="off" cx="35" cy="96" r="3.5"/><circle class="off" cx="36" cy="23" r="3.5"/><circle class="off" cx="32" cy="41" r="3.5"/><circle class="off" cx="32" cy="97" r="3.5"/><circle class="off" cx="28" cy="76" r="3.5"/><circle class="off" cx="31" cy="22" r="3.5"/><circle class="off" cx="28" cy="37" r="3.5"/><circle class="off" cx="29" cy="101" r="3.5"/><circle class="off" cx="29" cy="19" r="3.5"/><circle class="off" cx="22" cy="66" r="3.5"/><circle class="off" cx="28" cy="110" r="3.5"/><circle class="off" cx="23" cy="97" r="3.5"/><circle class="off" cx="20" cy="46" r="3.5"/><circle class="off" cx="18" cy="70" r="3.5"/><circle class="off" cx="13" cy="64" r="3.5"/><circle class="off" cx="12" cy="30" r="3.5"/><circle class="off" cx="19" cy="124" r="3.5"/><circle class="off" cx="13" cy="114" r="3.5"/><circle class="off" cx="18" cy="134" r="3.5"/></svg><span class="q">리뷰에 없는 내용은 쓰지 마</span></figure><figure><span class="n">4개</span><span class="k">+ 형식 Output</span><svg class="pe-svg" viewBox="0 0 300 150" role="img" aria-label="가능한 답 150개 중 4개가 남은 점 그림"><circle class="on" cx="200" cy="66" r="4.5"/><circle class="on" cx="213" cy="47" r="4.5"/><circle class="on" cx="188" cy="58" r="4.5"/><circle class="on" cx="219" cy="72" r="4.5"/><circle class="off" cx="212" cy="82" r="3.5"/><circle class="off" cx="225" cy="76" r="3.5"/><circle class="off" cx="204" cy="87" r="3.5"/><circle class="off" cx="181" cy="76" r="3.5"/><circle class="off" cx="223" cy="84" r="3.5"/><circle class="off" cx="212" cy="32" r="3.5"/><circle class="off" cx="171" cy="62" r="3.5"/><circle class="off" cx="172" cy="69" r="3.5"/><circle class="off" cx="175" cy="44" r="3.5"/><circle class="off" cx="239" cy="47" r="3.5"/><circle class="off" cx="181" cy="29" r="3.5"/><circle class="off" cx="244" cy="72" r="3.5"/><circle class="off" cx="240" cy="37" r="3.5"/><circle class="off" cx="192" cy="19" r="3.5"/><circle class="off" cx="160" cy="58" r="3.5"/><circle class="off" cx="199" cy="17" r="3.5"/><circle class="off" cx="249" cy="48" r="3.5"/><circle class="off" cx="231" cy="101" r="3.5"/><circle class="off" cx="241" cy="31" r="3.5"/><circle class="off" cx="254" cy="51" r="3.5"/><circle class="off" cx="244" cy="28" r="3.5"/><circle class="off" cx="192" cy="114" r="3.5"/><circle class="off" cx="238" cy="106" r="3.5"/><circle class="off" cx="150" cy="79" r="3.5"/><circle class="off" cx="158" cy="29" r="3.5"/><circle class="off" cx="154" cy="90" r="3.5"/><circle class="off" cx="264" cy="68" r="3.5"/><circle class="off" cx="250" cy="101" r="3.5"/><circle class="off" cx="167" cy="109" r="3.5"/><circle class="off" cx="163" cy="18" r="3.5"/><circle class="off" cx="205" cy="124" r="3.5"/><circle class="off" cx="165" cy="112" r="3.5"/><circle class="off" cx="153" cy="100" r="3.5"/><circle class="off" cx="162" cy="14" r="3.5"/><circle class="off" cx="141" cy="73" r="3.5"/><circle class="off" cx="159" cy="111" r="3.5"/><circle class="off" cx="247" cy="115" r="3.5"/><circle class="off" cx="184" cy="127" r="3.5"/><circle class="off" cx="228" cy="127" r="3.5"/><circle class="off" cx="238" cy="122" r="3.5"/><circle class="off" cx="137" cy="49" r="3.5"/><circle class="off" cx="156" cy="12" r="3.5"/><circle class="off" cx="272" cy="44" r="3.5"/><circle class="off" cx="137" cy="79" r="3.5"/><circle class="off" cx="276" cy="57" r="3.5"/><circle class="off" cx="253" cy="114" r="3.5"/><circle class="off" cx="143" cy="96" r="3.5"/><circle class="off" cx="276" cy="68" r="3.5"/><circle class="off" cx="173" cy="128" r="3.5"/><circle class="off" cx="185" cy="133" r="3.5"/><circle class="off" cx="260" cy="111" r="3.5"/><circle class="off" cx="280" cy="61" r="3.5"/><circle class="off" cx="164" cy="125" r="3.5"/><circle class="off" cx="263" cy="112" r="3.5"/><circle class="off" cx="133" cy="34" r="3.5"/><circle class="off" cx="262" cy="115" r="3.5"/><circle class="off" cx="157" cy="124" r="3.5"/><circle class="off" cx="276" cy="30" r="3.5"/><circle class="off" cx="191" cy="139" r="3.5"/><circle class="off" cx="275" cy="100" r="3.5"/><circle class="off" cx="166" cy="133" r="3.5"/><circle class="off" cx="244" cy="133" r="3.5"/><circle class="off" cx="280" cy="94" r="3.5"/><circle class="off" cx="236" cy="138" r="3.5"/><circle class="off" cx="157" cy="131" r="3.5"/><circle class="off" cx="283" cy="95" r="3.5"/><circle class="off" cx="120" cy="62" r="3.5"/><circle class="off" cx="283" cy="25" r="3.5"/><circle class="off" cx="246" cy="139" r="3.5"/><circle class="off" cx="158" cy="137" r="3.5"/><circle class="off" cx="281" cy="16" r="3.5"/><circle class="off" cx="127" cy="108" r="3.5"/><circle class="off" cx="144" cy="132" r="3.5"/><circle class="off" cx="118" cy="97" r="3.5"/><circle class="off" cx="114" cy="84" r="3.5"/><circle class="off" cx="129" cy="117" r="3.5"/><circle class="off" cx="132" cy="123" r="3.5"/><circle class="off" cx="110" cy="70" r="3.5"/><circle class="off" cx="109" cy="81" r="3.5"/><circle class="off" cx="113" cy="26" r="3.5"/><circle class="off" cx="107" cy="44" r="3.5"/><circle class="off" cx="271" cy="138" r="3.5"/><circle class="off" cx="128" cy="129" r="3.5"/><circle class="off" cx="102" cy="77" r="3.5"/><circle class="off" cx="103" cy="39" r="3.5"/><circle class="off" cx="120" cy="123" r="3.5"/><circle class="off" cx="110" cy="14" r="3.5"/><circle class="off" cx="101" cy="30" r="3.5"/><circle class="off" cx="123" cy="133" r="3.5"/><circle class="off" cx="106" cy="17" r="3.5"/><circle class="off" cx="99" cy="86" r="3.5"/><circle class="off" cx="111" cy="125" r="3.5"/><circle class="off" cx="104" cy="114" r="3.5"/><circle class="off" cx="89" cy="64" r="3.5"/><circle class="off" cx="97" cy="116" r="3.5"/><circle class="off" cx="84" cy="58" r="3.5"/><circle class="off" cx="84" cy="64" r="3.5"/><circle class="off" cx="82" cy="55" r="3.5"/><circle class="off" cx="82" cy="48" r="3.5"/><circle class="off" cx="81" cy="46" r="3.5"/><circle class="off" cx="84" cy="100" r="3.5"/><circle class="off" cx="79" cy="85" r="3.5"/><circle class="off" cx="78" cy="86" r="3.5"/><circle class="off" cx="76" cy="73" r="3.5"/><circle class="off" cx="75" cy="77" r="3.5"/><circle class="off" cx="73" cy="39" r="3.5"/><circle class="off" cx="70" cy="31" r="3.5"/><circle class="off" cx="66" cy="37" r="3.5"/><circle class="off" cx="62" cy="86" r="3.5"/><circle class="off" cx="60" cy="72" r="3.5"/><circle class="off" cx="61" cy="40" r="3.5"/><circle class="off" cx="58" cy="25" r="3.5"/><circle class="off" cx="54" cy="74" r="3.5"/><circle class="off" cx="61" cy="113" r="3.5"/><circle class="off" cx="58" cy="110" r="3.5"/><circle class="off" cx="52" cy="25" r="3.5"/><circle class="off" cx="48" cy="42" r="3.5"/><circle class="off" cx="46" cy="67" r="3.5"/><circle class="off" cx="46" cy="39" r="3.5"/><circle class="off" cx="47" cy="30" r="3.5"/><circle class="off" cx="52" cy="117" r="3.5"/><circle class="off" cx="48" cy="12" r="3.5"/><circle class="off" cx="41" cy="83" r="3.5"/><circle class="off" cx="40" cy="57" r="3.5"/><circle class="off" cx="41" cy="92" r="3.5"/><circle class="off" cx="48" cy="128" r="3.5"/><circle class="off" cx="34" cy="68" r="3.5"/><circle class="off" cx="35" cy="96" r="3.5"/><circle class="off" cx="36" cy="23" r="3.5"/><circle class="off" cx="32" cy="41" r="3.5"/><circle class="off" cx="32" cy="97" r="3.5"/><circle class="off" cx="28" cy="76" r="3.5"/><circle class="off" cx="31" cy="22" r="3.5"/><circle class="off" cx="28" cy="37" r="3.5"/><circle class="off" cx="29" cy="101" r="3.5"/><circle class="off" cx="29" cy="19" r="3.5"/><circle class="off" cx="22" cy="66" r="3.5"/><circle class="off" cx="28" cy="110" r="3.5"/><circle class="off" cx="23" cy="97" r="3.5"/><circle class="off" cx="20" cy="46" r="3.5"/><circle class="off" cx="18" cy="70" r="3.5"/><circle class="off" cx="13" cy="64" r="3.5"/><circle class="off" cx="12" cy="30" r="3.5"/><circle class="off" cx="19" cy="124" r="3.5"/><circle class="off" cx="13" cy="114" r="3.5"/><circle class="off" cx="18" cy="134" r="3.5"/></svg><span class="q">불만·건수·대표 리뷰 번호를 표로</span></figure></div>
+    <p class="pe-cap">점 하나를 모델이 쓸 수 있는 답 하나로 그렸습니다. 점의 개수는 설명을 위한 예시 값이고 실제로 잰 값은 아닙니다.</p>
+    <div class="pe-aside pe-after"><p class="pe-asl">빠진 칸을 찾는 법</p><p>다섯 칸을 언제나 다 채울 필요는 없습니다. 결과를 보고 답이 흔들리는 칸부터 채우면 됩니다.</p><p>Anthropic은 맥락을 모르는 동료에게 프롬프트를 보여 주라고 권합니다. 그 사람이 헷갈리면 모델도 헷갈립니다.</p></div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>"너는 전문가야"를 넣어도 정답률은 오르지 않습니다</h2>
+      <p>프롬프트 팁에 빠지지 않는 첫 줄이 "너는 10년 차 전문가야"입니다. 모델에게 주는 이런 역할을 페르소나(persona)라고 합니다. 페르소나가 사실을 더 잘 맞히게 하지는 못한다는 연구가 쌓였습니다. 162개 역할로 사실 질문 2,410개를 풀게 한 실험(Zheng 외)과 2025년 12월 연구(Basil 외) 모두 전문가 역할의 뚜렷한 효과를 찾지 못했습니다. 그림의 세 모델도 정답률이 오르지 않았고, 떨어지는 폭은 Llama처럼 모델마다 크게 달랐습니다.</p>
+      <p>모델의 지식은 학습이 끝날 때 이미 정해져 있습니다. "너는 영양사야"라고 해도 없던 지식이 생기지 않습니다. 대신 말투와 관점, 무엇을 강조할지는 바뀝니다. Anthropic 문서도 역할이 행동과 어조를 잡아 준다고만 적습니다.</p>
+      <p>그래서 역할은 한 줄로 끝내고 힘은 상황과 자료에 씁니다. 정확도가 걱정이면 다음 장의 근거를 넣어야 합니다.</p>
+    </div>
+    <figure data-figure><p class="pe-fh">사실 시험 정답률(%)<small>역할을 줘도 오르지 않습니다</small></p><div class="pe-narrow"><svg class="pe-svg" viewBox="0 0 370 330" role="img" aria-label="역할 없음에서 전문가 역할로 바뀐 값을 잇는 선 그림"><line class="ax" x1="62" y1="32" x2="62" y2="296"/><line class="ax" x1="212" y1="32" x2="212" y2="296"/><text class="dim" x="62" y="24" font-size="14" text-anchor="middle">역할 없음</text><text class="dim" x="212" y="24" font-size="14" text-anchor="middle">전문가 역할</text><line class="ln " x1="62" y1="67.2" x2="212" y2="86.2"/><circle class="pt " cx="62" cy="67.2" r="5.5"/><circle class="pt " cx="212" cy="86.2" r="5.5"/><text class="st" x="51" y="73.19428571428568" font-size="16" text-anchor="end">71.7</text><text class="st" x="223" y="88.17142857142855" font-size="16" text-anchor="start">69.0</text><text x="274" y="88.17142857142855" font-size="15" text-anchor="start">Qwen</text><line class="ln bad" x1="62" y1="90.4" x2="212" y2="245.7"/><circle class="pt bad" cx="62" cy="90.4" r="5.5"/><circle class="pt bad" cx="212" cy="245.7" r="5.5"/><text class="st" x="51" y="102.3885714285714" font-size="16" text-anchor="end">68.4</text><text class="st" x="223" y="251.72000000000003" font-size="16" text-anchor="start">46.3</text><text x="274" y="251.72000000000003" font-size="15" text-anchor="start">Llama</text><line class="ln " x1="62" y1="150.8" x2="212" y2="160.7"/><circle class="pt " cx="62" cy="150.8" r="5.5"/><circle class="pt " cx="212" cy="160.7" r="5.5"/><text class="st" x="51" y="156.83428571428573" font-size="16" text-anchor="end">59.8</text><text class="st" x="223" y="166.67428571428573" font-size="16" text-anchor="start">58.4</text><text x="274" y="166.67428571428573" font-size="15" text-anchor="start">Mistral</text></svg></div>
+<p class="pe-cap">누구나 받아서 돌릴 수 있는 오픈 모델 세 개에 분야별 전문가 역할을 주고 여러 과목 객관식 시험 MMLU를 풀게 했습니다. 표 값: Hu 외(2026-03).</p></figure>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>템플릿은 코드에 두고 안 바뀌는 칸을 앞에 둡니다</h2>
+      <p>잘 나온 프롬프트를 메모장에서 복사해 쓰다 보면 조금씩 달라지고 결과도 흔들립니다. 그래서 칸은 고정하고 빈칸만 바꿔 끼우는 서식을 만듭니다. 이 서식이 템플릿(template)입니다.</p>
+      <p>칸의 순서에 따라 요금도 달라집니다. 프롬프트 캐싱(prompt caching)은 앞부분이 똑같은 요청의 계산 결과를 다시 쓰는 기능입니다. 앞에서부터 글자가 같아야 하므로 안 바뀌는 칸을 앞에, 리뷰처럼 바뀌는 칸을 맨 뒤에 둡니다.</p>
+      <p>요금은 토큰(token)으로 셉니다. 토큰은 모델이 글을 읽는 단위로, 낱말보다 조금 작은 조각입니다. 캐싱은 1,024토큰 이상인 요청부터 적용됩니다.</p>
+      <p>OpenAI 기준으로 재사용한 부분은 원래 값의 10%만 받고(<code>gpt-6.1-sol</code>은 5%), 처음 저장할 때는 1.25배를 받습니다. 같은 앞부분을 여러 번 쓸 때 이득입니다.</p>
+    </div>
+    <figure data-figure>
+  <p class="pe-fh">고정 칸을 앞에 둔 요청 세 개</p>
+  <div class="pe-req"><span class="first">지시문 2,000토큰</span><span class="new">리뷰 A</span></div>
+  <div class="pe-req"><span class="hit">그대로 재사용</span><span class="new">리뷰 B</span></div>
+  <div class="pe-req"><span class="hit">그대로 재사용</span><span class="new">리뷰 C</span></div>
+  <span class="pe-fv ok"><b>둘째 요청부터 앞부분을 다시 계산하지 않습니다</b></span>
+  <p class="pe-fh" style="margin-top:34px !important">맨 앞에 지금 시각을 넣은 요청 세 개</p>
+  <div class="pe-req"><span class="t">11:02</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 A</span></div>
+  <div class="pe-req"><span class="t">11:03</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 B</span></div>
+  <div class="pe-req"><span class="t">11:04</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 C</span></div>
+  <span class="pe-fv bad"><b>첫 글자가 달라서 재사용이 하나도 안 됩니다</b></span>
+</figure>
+  </div>
+  <div class="pe-wrap">
+    <div class="pe-cp">
+      <div class="cp-code"><pre data-title="summarize.py" data-hl="6,27,29" data-start="1"><code class="language-python">from openai import OpenAI
+
+client = OpenAI()
+
+# ① 바뀌지 않는 칸: 역할·상황·할 일·조건·형식
+INSTRUCTIONS = """\
+# 역할
+너는 배달 앱 리뷰를 읽는 분석가다.
+# 상황
+치킨집 사장님이 이번 주 리뷰를 보고 내일 할 일을 정한다.
+# 할 일
+불만을 많은 순서로 3개 뽑는다.
+# 조건
+- 리뷰에 없는 내용은 쓰지 않는다.
+- 근거가 모자라면 "리뷰에 없음"이라고 쓴다.
+# 형식
+불만 | 건수 | 대표 리뷰 번호
+"""
+
+def summarize(reviews: list[str]) -&gt; str:
+    lines = [f"[{i}] {r}" for i, r in enumerate(reviews, 1)]
+    numbered = "\n".join(lines)
+    response = client.responses.create(
+        model="gpt-6.1-sol",
+        instructions=INSTRUCTIONS,
+        # ② 매번 바뀌는 칸은 맨 뒤에
+        input=f"&lt;reviews&gt;\n{numbered}\n&lt;/reviews&gt;",
+        # ③ 얼마나 오래 생각할지
+        reasoning={"effort": "low"},
+    )
+    return response.output_text
+
+reviews = open("reviews.txt", encoding="utf-8")
+print(summarize(reviews.read().splitlines()))</code></pre></div>
+      <div class="cp-term"><div class="pe-term" data-pe-term>
+  <div class="pe-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="pe-act" data-pe-run>실행해 보기</button></div>
+  <div class="pe-term-out" data-pe-out aria-live="polite">$ python summarize.py
+배달 지연 | 12 | [2]
+음식 온도 | 7 | [5]
+포장 누락 | 3 | [9]</div>
+</div>
+<p class="pe-cap">reviews.txt에 리뷰 120개를 넣었다고 가정한 예시 답입니다. 파이썬 라이브러리 openai 3.46과 Responses API 기준입니다.</p></div>
+      <div class="cp-notes">
+        <ol class="pg-code-notes">
+          <li><code>client.responses.create</code>는 OpenAI의 API, 곧 프로그램끼리 요청을 주고받는 창구를 부릅니다. <code>instructions</code>에 다섯 칸을 넣으면 이번 요청에 한해 모델이 사용자 글보다 먼저 지킵니다.</li>
+          <li>리뷰는 <code>input</code>으로 보내고 <code>&lt;reviews&gt;</code> 같은 표시(태그)로 감쌉니다. 어디까지가 자료인지 알려 주면 리뷰 속 글이 지시로 읽힐 위험이 줄어듭니다.</li>
+          <li>추론 모델(reasoning model)은 답하기 전에 스스로 따져 보는 모델이고 <code>effort</code>는 그 정도입니다. OpenAI 문서는 품질이 낮으면 이 값보다 프롬프트를 먼저 고치라고 적습니다.</li>
+        </ol>
+        <details>
+          <summary>"단계별로 생각해"는 아직 써야 할까요?</summary>
+          <div class="pe-in"><p>분석 → 아이디어 → 결론처럼 단계를 적어 주는 지시는 옛 모델에서 효과가 컸습니다. OpenAI의 추론 모델 안내(o 시리즈 기준)는 think step by step 같은 지시가 필요 없다고 적습니다. 다만 결과에 그 단계가 보이길 원한다면 형식 칸에 적으면 됩니다.</p></div>
+        </details>
+        <details>
+          <summary>저장형 프롬프트 기능은 어떻게 됐나요?</summary>
+          <div class="pe-in"><p>대시보드에 프롬프트를 저장하고 ID로 부르는 기능(<code>prompt={"id": ...}</code>)은 2026-11-30에 종료됩니다. OpenAI도 프롬프트를 앱 코드로 옮기라고 안내합니다. 코드에 두면 Git으로 바뀐 내역을 볼 수 있습니다.</p></div>
+        </details>
+      </div>
+    </div>
+    <p class="pe-cap">형식 칸을 코드로 강제하는 방법은 <a href="/posts/llm-structured-output-pydantic-langchain">Structured Output 글</a>에, 예시를 넣는 방법은 <a href="/posts/prompt-engineering-roles-few-shot">퓨샷 글</a>에 있습니다.</p>
+  </div>
+</section>
+
+<div id="pe-ch2"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">2장 · 근거</span><p class="pe-ch-t">모르면 멈추게 하고 맞는지 확인합니다</p></div></div></div>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>AI는 왜 없는 메뉴를 자신 있게 칭찬할까요?</h2>
+      <p>처음 화면의 "마라 치킨"처럼 사실이 아닌 내용을 사실처럼 말하는 것을 할루시네이션(hallucination), 우리말로 환각이라고 합니다. 원인 가운데 하나는 찍기가 유리한 시험과 같습니다. 모르는 사람의 생일을 찍으면 365분의 1로 맞히지만 "모릅니다"는 언제나 0점입니다.</p>
+      <p>정답 수만 보면 o4-mini가 2개 앞섭니다. 하지만 틀린 답을 낸 횟수는 세 배 가까이 됩니다. OpenAI 연구진은 틀린 답에 감점을 주는 채점표를 쓰면 모델도 모를 때 멈추는 쪽을 배우게 된다고 제안합니다.</p>
+      <p>맞으면 +1, 틀리면 −9로 매겨 봅니다. 열 번 중 아홉 번 맞히는 사람은 9점을 얻고 한 번 틀려 9점을 잃어 0점입니다. 그보다 자신이 없으면 답할수록 손해이니 "모릅니다"가 낫습니다.</p>
+    </div>
+    <div><div class="pe-spread n2" style="margin-top:0" data-figure>
+  <figure><p class="pe-fh">o4-mini<small>거의 언제나 답합니다</small></p><div class="pe-sheet" aria-hidden="true"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="c"></i></div>
+    <div class="pe-tally"><span class="a"><b>24</b> 정답</span><span class="b"><b>75</b> 오답</span><span><b>1</b> 답 안 함</span></div></figure>
+  <figure><p class="pe-fh">gpt-5-thinking-mini<small>모르면 자주 멈춥니다</small></p><div class="pe-sheet" aria-hidden="true"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="c"></i></div>
+    <div class="pe-tally"><span class="a"><b>22</b> 정답</span><span class="b"><b>26</b> 오답</span><span><b>52</b> 답 안 함</span></div></figure>
+</div>
+<p class="pe-cap">짧은 사실 질문 시험 SimpleQA 결과를 100칸에 칠했습니다. 값: OpenAI, Why language models hallucinate(2025-09).</p>
+  <div class="pe-odds" data-figure>
+    <p class="pe-fh">+1 / −9 채점표에서 열 번 답하면</p>
+    <div><span class="lb">90% 확신</span><span class="ds">✓✓✓✓✓✓✓✓✓<b>✕</b></span><span class="sc">9 − 9 = 0</span></div>
+    <div><span class="lb">70% 확신</span><span class="ds">✓✓✓✓✓✓✓<b>✕✕✕</b></span><span class="sc bad">7 − 27 = −20</span></div>
+    <div><span class="lb">"모릅니다"</span><span class="ds dim">답하지 않음</span><span class="sc ok">0</span></div>
+  </div></div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>모델 안에는 거절 쪽으로 깔린 선로가 있습니다</h2>
+      <p>모델에 따라 "모르겠습니다"라고 답할 때도 많습니다. Anthropic이 2025년 3월에 Claude 한 모델의 내부 회로를 들여다봤습니다. 회로는 어떤 계산을 함께 맡는 모델 속 부분들의 연결입니다.</p>
+      <p>Claude에서는 답을 거절하는 회로가 기본으로 켜져 있었습니다. 잘 아는 대상을 만나면 "아는 이름" 신호가 그 회로를 눌러 답하게 합니다.</p>
+    </div>
+    <div class="pe-spread n3" data-figure>
+  <figure><svg class="pe-svg" viewBox="0 0 330 285" role="img" aria-label="Michael Jordan을 물었을 때 선로가 답하기 쪽으로 이어진 그림"><text class="st" x="0" y="24" font-size="18" text-anchor="start">Michael Jordan</text><text class="dim" x="0" y="49" font-size="15" text-anchor="start">잘 아는 이름</text><path class="ln" d="M6 170 H112"/><path class="ax" d="M112 170 C150 170 150 222 188 222 H250" stroke-dasharray="6 7"/><path class="ln ok" d="M112 170 C150 170 150 118 188 118 H250" /><circle class="pt" cx="6" cy="170" r="6"/><line class="ax" x1="112" y1="170" x2="112" y2="92"/><circle class="pt ok" cx="112" cy="84" r="11"/><text class="st" x="128" y="89" font-size="15" text-anchor="start">아는 이름 신호 켜짐</text><text class="ok" x="258" y="124" font-size="17" text-anchor="start">답하기</text><text class="dim" x="258" y="228" font-size="17" text-anchor="start">거절(기본)</text><text class="ok" x="0" y="272" font-size="17" text-anchor="start">농구 선수입니다.</text></svg></figure>
+  <figure><svg class="pe-svg" viewBox="0 0 330 285" role="img" aria-label="Michael Batkin을 물었을 때 선로가 거절 쪽으로 이어진 그림"><text class="st" x="0" y="24" font-size="18" text-anchor="start">Michael Batkin</text><text class="dim" x="0" y="49" font-size="15" text-anchor="start">지어낸 이름</text><path class="ln" d="M6 170 H112"/><path class="ln" d="M112 170 C150 170 150 222 188 222 H250" /><path class="ax" d="M112 170 C150 170 150 118 188 118 H250" stroke-dasharray="6 7"/><circle class="pt" cx="6" cy="170" r="6"/><line class="ax" x1="112" y1="170" x2="112" y2="92"/><circle class="off" cx="112" cy="84" r="11"/><text x="128" y="89" font-size="15" text-anchor="start">아는 이름 신호 꺼짐</text><text class="dim" x="258" y="124" font-size="17" text-anchor="start">답하기</text><text class="st" x="258" y="228" font-size="17" text-anchor="start">거절(기본)</text><text class="st" x="0" y="272" font-size="17" text-anchor="start">모르겠습니다.</text></svg></figure>
+  <figure><svg class="pe-svg" viewBox="0 0 330 285" role="img" aria-label="이름만 들어 본 사람을 물었을 때 선로가 답하기 쪽으로 이어진 그림"><text class="st" x="0" y="24" font-size="18" text-anchor="start">이름만 들어 본 사람</text><text class="dim" x="0" y="49" font-size="15" text-anchor="start">아는 내용은 없음</text><path class="ln" d="M6 170 H112"/><path class="ax" d="M112 170 C150 170 150 222 188 222 H250" stroke-dasharray="6 7"/><path class="ln bad" d="M112 170 C150 170 150 118 188 118 H250" /><circle class="pt" cx="6" cy="170" r="6"/><line class="ax" x1="112" y1="170" x2="112" y2="92"/><circle class="pt bad" cx="112" cy="84" r="11"/><text class="st" x="128" y="89" font-size="15" text-anchor="start">아는 이름 신호 켜짐</text><text class="bad" x="258" y="124" font-size="17" text-anchor="start">답하기</text><text class="dim" x="258" y="228" font-size="17" text-anchor="start">거절(기본)</text><text class="bad" x="0" y="272" font-size="17" text-anchor="start">지어낸 답이 나옵니다.</text></svg></figure>
+</div>
+<p class="pe-cap">Anthropic이 Claude 안에서 찾은 회로를 선로로 쉽게 다시 그렸습니다. 신호가 없으면 선로는 거절 쪽으로 이어집니다. 실제 회로는 훨씬 복잡합니다.</p>
+    <div class="pe-aside pe-after"><p class="pe-asl">잘못 켜진 신호</p>
+      <p>할루시네이션은 "이름만 들어 본 사람" 그림에서 생깁니다. 이름은 익숙한데 내용을 모를 때 신호가 잘못 켜지면 거절이 풀립니다. 그다음 모델은 하던 대로 그럴듯한 문장을 이어 씁니다.</p>
+      <p>Anthropic은 이 신호를 일부러 켜서 가짜 인물 Michael Batkin이 체스 선수라고 답하게 만들기도 했습니다. 이 한 가지로 모든 할루시네이션을 설명할 수는 없습니다.</p>
+      <details>
+        <summary>Anthropic의 원본 회로 그림 보기</summary>
+        <div class="pe-in"><figure><img class="pe-img" src="/post-assets/prompt-structure-hallucination-clean-data/tracing-circuit.webp" alt="Michael Jordan 질문은 답을 말하는 경로가, Michael Batkin 질문은 거절 경로가 켜지는 회로 그림" loading="lazy"><p class="pe-cap">왼쪽은 아는 이름, 오른쪽은 모르는 이름입니다. Known Answer는 아는 답, Can't Answer는 답할 수 없음, inhibition은 억제입니다. 출처: <a href="https://www.anthropic.com/research/tracing-thoughts-language-model">Anthropic, Tracing the thoughts of a large language model</a></p></figure></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>"모르면 모른다고 해"는 첫 겹입니다</h2>
+      <p>먼저 모르겠다고 말해도 된다고 허락합니다. 지시에 이 세 줄을 넣습니다.</p>
+      <ul class="pe-list">
+        <li>모르면 "모르겠습니다"라고 쓴다.</li>
+        <li>불확실한 내용은 "불확실"이라고 표시한다.</li>
+        <li>주어진 자료에 없는 내용은 쓰지 않는다.</li>
+      </ul>
+      <p>Anthropic 문서도 이 방법을 맨 앞에 두지만 할루시네이션을 완전히 없애지는 못한다고 적습니다. 그래서 겹을 쌓습니다. 안전 분야의 스위스 치즈 모델(Swiss cheese model)처럼 겹마다 구멍이 있어도 구멍이 겹치지 않으면 막힙니다.</p>
+      <p>자료는 모델이 그대로 옮길 원문을 줍니다. 인용은 문장마다 근거 위치를 달아 사람이 따라가 보게 합니다. 마지막 겹에서는 코드와 사람이 숫자·이름을 원문과 대조합니다.</p>
+    </div>
+    <figure data-figure>
+      <svg class="pe-svg" viewBox="0 0 640 305" role="img" aria-label="지어낸 답이 네 겹의 치즈를 지나는 그림. 구멍을 지난 답도 마지막 겹에서 막힌다"><rect x="78" y="28" width="96" height="196" rx="12" fill="color-mix(in srgb, #e0a83a 34%, var(--bg-base))" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.5"/><circle cx="126" cy="132" r="15" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="106" cy="196" r="12" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="148" cy="72" r="11" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><text class="st" x="126.0" y="254" font-size="24" text-anchor="middle">지시</text><text class="dim" x="126.0" y="284" font-size="21" text-anchor="middle">규칙 세 줄</text><rect x="216" y="28" width="96" height="196" rx="12" fill="color-mix(in srgb, #e0a83a 34%, var(--bg-base))" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.5"/><circle cx="264" cy="132" r="15" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="238" cy="68" r="11" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="284" cy="188" r="15" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><text class="st" x="264.0" y="254" font-size="24" text-anchor="middle">자료</text><text class="dim" x="264.0" y="284" font-size="21" text-anchor="middle">근거 주기</text><rect x="354" y="28" width="96" height="196" rx="12" fill="color-mix(in srgb, #e0a83a 34%, var(--bg-base))" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.5"/><circle cx="402" cy="132" r="15" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="426" cy="68" r="12" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="380" cy="198" r="12" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><text class="st" x="402.0" y="254" font-size="24" text-anchor="middle">인용</text><text class="dim" x="402.0" y="284" font-size="21" text-anchor="middle">출처 달기</text><rect x="492" y="28" width="96" height="196" rx="12" fill="color-mix(in srgb, #e0a83a 34%, var(--bg-base))" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.5"/><circle cx="516" cy="72" r="10" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><circle cx="564" cy="204" r="11" fill="var(--bg-base)" stroke="color-mix(in srgb, #b98a2a 60%, var(--bg-base))" stroke-width="1.2"/><text class="st" x="540.0" y="254" font-size="24" text-anchor="middle">확인</text><text class="dim" x="540.0" y="284" font-size="21" text-anchor="middle">코드·사람</text><path class="ln bad" d="M14 132 H524.0"/><path class="ln" stroke-dasharray="5 6" d="M14 88 H72"/><path class="pt" d="M74 88 l-11 -7 v14 z"/><path class="ln" stroke-dasharray="5 6" d="M14 196 H210"/><path class="pt" d="M212 196 l-11 -7 v14 z"/><text class="bad" x="596" y="140" font-size="21" text-anchor="start">막힘</text><path class="ln bad" d="M526.0 118 l28 28 M554.0 118 l-28 28" /><text class="bad" x="10" y="18" font-size="20" text-anchor="start">지어낸 답</text></svg>
+      <p class="pe-cap">비유 그림입니다. 겹 하나로 막힌다는 뜻이 아니라 지나가는 답을 다음 겹이 잡는다는 뜻입니다.</p>
+    </figure>
+  </div>
+  <div class="pe-wrap"><div class="pe-aside pe-after"><p class="pe-asl">자료를 넣어도 한 겹입니다</p>
+    <p>RAG(Retrieval-Augmented Generation)는 질문과 관련된 문서를 찾아 프롬프트에 넣어 주는 방식입니다. 이것도 한 겹일 뿐입니다.</p>
+    <p>법률 RAG 도구를 조사한 Stanford 연구(Magesh 외)에서 유명 도구들도 질문의 17~33%에서 할루시네이션을 냈습니다. "자료를 붙였으니 믿어도 된다"는 생각은 위험합니다.</p>
+  </div></div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>"자세히"도 "짧게"도 각자 다른 거짓을 부릅니다</h2>
+      <p>"자세히 써 줘"와 "한 줄로 답해 줘"는 누구나 치는 말입니다. 이 분량 지시에 따라 정확도도 달라집니다.</p>
+      <p>길게 쓰게 하면 아는 사실이 바닥나 뒤쪽이 지어낸 내용으로 채워집니다. 너무 짧게 시키면 질문에 숨은 틀린 사실(거짓 전제)을 반박할 공간이 없어 그대로 받아 버립니다.</p>
+    </div>
+    <div class="pe-spread n2" data-figure>
+  <figure><p class="pe-fh">길게 쓰게 하면<small>GPT-4o가 쓴 인물 소개의 사실 정확도</small></p><div class="pe-narrow"><svg class="pe-svg" viewBox="0 0 345 305" role="img" aria-label="답이 100단어에서 500단어로 길어질수록 사실 정확도가 94.5퍼센트에서 90.5퍼센트로 내려가는 선 그래프"><line class="ax" x1="62" y1="35" x2="62" y2="270"/><line class="ax" x1="62" y1="270" x2="330" y2="270"/><line class="gr" x1="62" y1="270" x2="330" y2="270"/><text class="dim" x="52" y="275.0" font-size="15" text-anchor="end">90%</text><line class="gr" x1="62" y1="195" x2="330" y2="195"/><text class="dim" x="52" y="200.0" font-size="15" text-anchor="end">92%</text><line class="gr" x1="62" y1="120" x2="330" y2="120"/><text class="dim" x="52" y="125.0" font-size="15" text-anchor="end">94%</text><line class="gr" x1="62" y1="45" x2="330" y2="45"/><text class="dim" x="52" y="50.0" font-size="15" text-anchor="end">96%</text><text class="dim" x="62.0" y="294" font-size="15" text-anchor="middle">100단어</text><text class="dim" x="124.5" y="294" font-size="15" text-anchor="middle">200단어</text><text class="dim" x="312.0" y="294" font-size="15" text-anchor="middle">500단어</text><path class="ln bad" d="M62 101 L124 187 L312 251"/><circle class="pt bad" cx="62" cy="101" r="6"/><text class="st" x="70.0" y="88.25" font-size="16" text-anchor="start">94.5%</text><circle class="pt bad" cx="124" cy="187" r="6"/><text class="st" x="132.5" y="174.4999999999999" font-size="16" text-anchor="start">92.2%</text><circle class="pt bad" cx="312" cy="251" r="6"/><text class="st" x="312.0" y="235.25" font-size="16" text-anchor="middle">90.5%</text></svg></div></figure>
+  <figure><p class="pe-fh">짧게 답하라고 하면<small>틀린 전제에 넘어가지 않는 점수</small></p><div class="pe-narrow"><svg class="pe-svg" viewBox="0 0 370 330" role="img" aria-label="기본 지시에서 짧게 답해로 바뀐 값을 잇는 선 그림"><line class="ax" x1="62" y1="32" x2="62" y2="296"/><line class="ax" x1="212" y1="32" x2="212" y2="296"/><text class="dim" x="62" y="24" font-size="14" text-anchor="middle">기본 지시</text><text class="dim" x="212" y="24" font-size="14" text-anchor="middle">짧게 답해</text><line class="ln " x1="62" y1="73.5" x2="212" y2="112.9"/><circle class="pt " cx="62" cy="73.5" r="5.5"/><circle class="pt " cx="212" cy="112.9" r="5.5"/><text class="st" x="51" y="79.52000000000004" font-size="16" text-anchor="end">0.94</text><text class="st" x="223" y="116.88" font-size="16" text-anchor="start">0.86</text><text x="274" y="116.88" font-size="15" text-anchor="start">Claude 3.7</text><line class="ln bad" x1="62" y1="122.7" x2="212" y2="221.1"/><circle class="pt bad" cx="62" cy="122.7" r="5.5"/><circle class="pt bad" cx="212" cy="221.1" r="5.5"/><text class="st" x="51" y="128.72000000000003" font-size="16" text-anchor="end">0.84</text><text class="st" x="223" y="227.12" font-size="16" text-anchor="start">0.64</text><text x="274" y="227.12" font-size="15" text-anchor="start">Gemini 1.5</text><line class="ln bad" x1="62" y1="162.1" x2="212" y2="245.7"/><circle class="pt bad" cx="62" cy="162.1" r="5.5"/><circle class="pt bad" cx="212" cy="245.7" r="5.5"/><text class="st" x="51" y="168.07999999999998" font-size="16" text-anchor="end">0.76</text><text class="st" x="223" y="251.72000000000003" font-size="16" text-anchor="start">0.59</text><text x="274" y="251.72000000000003" font-size="15" text-anchor="start">Mistral L</text></svg></div></figure>
+</div>
+<p class="pe-cap">앞 그래프의 세로축은 90%부터 시작해 차이를 크게 보여 줍니다. 값: Zhao 외(2025), Giskard Phare(2025-04). 서로 다른 시험이라 두 값을 직접 비교하면 안 됩니다.</p>
+    <div class="pe-aside pe-after"><p class="pe-asl">길이보다 범위를 좁힙니다</p>
+      <p>길이만 지시하기보다 범위를 좁히는 쪽이 낫습니다. "AI 역사 설명해 줘" 대신 "2020년 이후 변화 3가지"라고 묻습니다.</p>
+      <p>그러면 모델이 아는 범위 안에서 답하기 쉬워지고 채워 넣을 공간이 줄어듭니다. 다만 답할 내용이 없을 때 "모르겠습니다"를 허용하는 규칙은 그대로 둡니다.</p>
+      <details>
+        <summary>말투도 영향을 줄까요?</summary>
+        <div class="pe-in"><p>"100% 확실한데요"처럼 자신 있게 물으면 모델이 틀린 주장을 반박하는 능력이 중립적으로 물을 때보다 최대 15% 떨어졌습니다. 영향이 거의 없는 모델도 있습니다. 질문할 때 답을 미리 정해 두지 않는 편이 안전합니다.</p>
+        <figure><img class="pe-img" src="/post-assets/prompt-structure-hallucination-clean-data/phare-heatmap.webp" alt="모델별로 말투에 따른 반박 정확도와 짧은 답 지시에 따른 할루시네이션 내성을 칠한 표" loading="lazy"><p class="pe-cap">왼쪽은 사용자 말투별 반박 정확도, 오른쪽은 지시별 할루시네이션 내성입니다. 초록일수록 좋습니다. 출처: <a href="https://www.giskard.ai/knowledge/good-answers-are-not-necessarily-factual-answers-an-analysis-of-hallucination-in-leading-llms">Giskard, Phare (2025)</a></p></figure></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>자기 답을 보면서 고치면 같은 실수를 반복합니다</h2>
+      <p>"다 쓴 뒤 스스로 검토해"라는 지시는 절반만 맞습니다. 자기 시험지를 보며 채점하면 틀린 답도 맞아 보입니다. 문제만 보고 다시 풀어야 틀린 곳이 드러납니다.</p>
+      <p>Chain-of-Verification(CoVe)이 이 방법입니다. 초안에서 확인할 질문을 뽑고 초안을 가린 채 그 질문에 답한 뒤 어긋나는 주장을 지웁니다.</p>
+    </div>
+    <div class="pe-after"><div class="pe-steps" data-figure>
+  <figure><p class="pe-fh">1. 초안을 씁니다</p>
+    <ul class="pe-claims"><li>배달이 늦다는 불만이 있다</li><li>치킨이 식었다는 불만이 있다</li><li>마라 치킨 호평이 많다</li></ul></figure>
+  <figure><p class="pe-fh">2. 초안을 가리고 다시 확인합니다</p>
+    <div class="pe-veil" aria-label="초안은 가려져 있습니다">초안 가림</div>
+    <ul class="pe-checks"><li>배달이 늦다는 리뷰가 있나? <b class="ok">[1] 있음</b></li><li>치킨이 식었다는 리뷰가 있나? <b class="ok">[2] 있음</b></li><li>마라 치킨 리뷰가 있나? <b class="bad">리뷰에 없음</b></li></ul></figure>
+  <figure><p class="pe-fh">3. 어긋난 주장을 지웁니다</p>
+    <ul class="pe-claims"><li>배달이 늦다는 불만이 있다</li><li>치킨이 식었다는 불만이 있다</li><li class="cut"><del>마라 치킨 호평이 많다</del></li></ul></figure>
+</div><p class="pe-cap">치킨집 리뷰 두 개로 만든 예시입니다. 리뷰에 없는 "마라 치킨"이 2번에서 드러납니다.</p></div>
+    <div class="pe-two pe-after">
+      <div>
+        <p>2023년 논문에서 답한 것 중 맞은 비율이 초안 그대로일 때 0.17, 초안을 보며 검증하면 0.29, 초안을 가리고 검증하면 0.36이었습니다. 지어낸 항목은 답변 하나에 2.95개에서 0.68개로 줄었습니다. 옛 모델이라 0.36 자체는 낮지만 방향은 분명합니다.</p>
+        <p>대가도 있습니다. 검증을 거치면 쓰는 사실 수가 함께 줄어듭니다. 인물 소개 시험에서는 16.6개가 12.3개로 줄었습니다.</p>
+      </div>
+      <figure data-figure><svg class="pe-svg" viewBox="0 0 440 208" role="img" aria-label="초안 그대로 0.17, 초안을 보며 검증 0.29, 초안을 가리고 검증 0.36을 수직선에 찍은 그림" style="max-width:520px"><line class="ax" x1="30" y1="132" x2="410" y2="132"/><line class="ax" x1="30" y1="126" x2="30" y2="138"/><text class="dim" x="30.0" y="162" font-size="15" text-anchor="middle">0.0</text><line class="ax" x1="220" y1="126" x2="220" y2="138"/><text class="dim" x="220.0" y="162" font-size="15" text-anchor="middle">0.2</text><line class="ax" x1="410" y1="126" x2="410" y2="138"/><text class="dim" x="410.0" y="162" font-size="15" text-anchor="middle">0.4</text><circle class="pt " cx="192" cy="132" r="10"/><circle class="pt " cx="305" cy="132" r="10"/><circle class="pt ok" cx="372" cy="132" r="10"/><text class="st" x="191.5" y="76" font-size="18" text-anchor="middle">초안 그대로</text><text class="st" x="191.5" y="104" font-size="20" text-anchor="middle">0.17</text><text class="st" x="297.49999999999994" y="30" font-size="18" text-anchor="middle">초안을 보며</text><text class="st" x="305.49999999999994" y="104" font-size="20" text-anchor="middle">0.29</text><line class="gr" x1="305" y1="38" x2="305" y2="84"/><text class="ok" x="377.99999999999994" y="62" font-size="18" text-anchor="middle">초안을 가리고</text><text class="ok" x="375.99999999999994" y="104" font-size="20" text-anchor="middle">0.36</text><text class="dim" x="220" y="196" font-size="16" text-anchor="middle">답한 것 중 맞은 비율</text></svg><p class="pe-cap">목록을 답하는 시험의 Llama 65B 결과입니다. 값: Dhuliawala 외(2023).</p></figure>
+    </div>
+    <details>
+      <summary>논문의 원래 흐름 그림 보기</summary>
+      <div class="pe-in"><figure><img class="pe-img" src="/post-assets/prompt-structure-hallucination-clean-data/cove-flow.webp" alt="질문, 초안, 검증 질문 계획, 검증 실행, 최종 답 순서를 그린 CoVe 흐름도" loading="lazy" style="max-width:680px"><p class="pe-cap">Baseline은 초안, Plan은 질문 짜기, Execute는 답하기, Final은 최종 답입니다. 출처: <a href="https://arxiv.org/abs/2309.11495">Dhuliawala 외, Chain-of-Verification (2023)</a></p></figure></div>
+    </details>
+    <div class="pe-cp">
+      <div class="cp-code"><pre data-title="verify.py" data-hl="17,19,24" data-start="1"><code class="language-python">from openai import OpenAI
+
+client = OpenAI()
+
+def ask(rule: str, text: str) -&gt; str:
+    response = client.responses.create(
+        model="gpt-6.1-sol",
+        instructions=rule,
+        input=text,
+    )
+    return response.output_text
+
+reviews = "[1] 배달이 늦었어요\n[2] 치킨이 식었어요"
+
+draft = ask("리뷰를 한 줄로 요약한다.", reviews)
+# ① 초안에서 확인할 질문만 뽑는다
+questions = ask("주장을 확인할 질문만 쓴다.", draft)
+# ② 초안을 빼고 원문과 질문만 준다
+answers = ask(
+    "리뷰만 보고 답한다. 없으면 '리뷰에 없음'이라고 쓴다.",
+    f"{reviews}\n\n{questions}",
+)
+# ③ 확인 결과와 어긋나는 주장을 지운다
+final = ask(
+    "확인 결과와 다른 주장을 지운다.",
+    f"{draft}\n\n{answers}",
+)
+
+print("초안:", draft)
+print("확인:", answers)
+print("최종:", final)</code></pre></div>
+      <div class="cp-term"><div class="pe-term" data-pe-term>
+  <div class="pe-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="pe-act" data-pe-run>실행해 보기</button></div>
+  <div class="pe-term-out" data-pe-out aria-live="polite">$ python verify.py
+초안: 배달 지연과 식은 치킨 불만. <span class="nz">마라 치킨 호평.</span>
+확인: 배달 [1] 있음
+치킨 온도 [2] 있음
+<span class="nz">마라 치킨 리뷰에 없음</span>
+최종: 배달 지연과 식은 치킨 불만.</div>
+</div>
+<p class="pe-cap">출력은 예시 답입니다.</p></div>
+      <div class="cp-notes">
+        <ol class="pg-code-notes">
+          <li>초안을 주고 확인할 질문만 받습니다.</li>
+          <li>이 줄이 핵심입니다. <code>draft</code>를 넣지 않고 리뷰와 질문만 보냅니다. API 호출은 앞 호출을 기억하지 못하니 초안이 끼어들지 않습니다.</li>
+          <li>확인 결과와 어긋나는 주장을 지웁니다. 호출이 네 번이라 비용도 그만큼 늘어납니다. 틀리면 곤란한 답에만 씁니다.</li>
+        </ol>
+        <details>
+          <summary>웹에서 찾고 출처까지 받으려면</summary>
+          <div class="pe-in"><pre data-title="sources.py" data-hl="" data-start="1"><code class="language-python">from openai import OpenAI
+
+client = OpenAI()
+
+response = client.responses.create(
+    model="gpt-6.1-sol",
+    tools=[{"type": "web_search"}],
+    instructions="출처에서 확인한 사실만 쓴다.",
+    input="올해 배달 포장 규정이 바뀌었나요?",
+    include=["web_search_call.action.sources"],
+)
+
+print(response.output_text)
+for item in response.output:
+    if item.type != "message":
+        continue
+    for note in item.content[0].annotations:
+        if note.type == "url_citation":
+            print(note.start_index, note.end_index, note.url)</code></pre><p class="pe-cap">답 안의 몇 번째 글자부터 어떤 URL에서 왔는지가 <code>annotations</code>에 들어 있습니다. OpenAI는 이 링크를 화면에 눌러 볼 수 있게 표시하라고 요구합니다. 파일에서 찾는 <code>file_search</code>도 같은 자리에 <code>file_citation</code>을 줍니다. 출처가 있어도 내용이 맞는지는 따로 확인해야 합니다.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="pe-ch3"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">3장 · 재료</span><p class="pe-ch-t">모델에 넣는 글을 목적에 맞게 다듬습니다</p></div></div></div>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <h2>같은 리뷰도 목적에 따라 남길 글자가 다릅니다</h2><div class="pe-two sf">
+      <div>
+        
+        <p>앱에서 "배달"로 검색했는데 리뷰가 안 나오거나 요약이 엉뚱하면 프롬프트만 탓하기 쉽습니다. 원인이 넣은 글에 있을 때가 많습니다. 쓰레기를 넣으면 쓰레기가 나온다(Garbage In, Garbage Out)는 오래된 말 그대로입니다.</p>
+        <p>글을 다듬는 정제(text cleaning)는 많이 지운다고 좋아지지 않습니다. 이 글로 무엇을 할지가 기준입니다.</p>
+      </div>
+      <figure data-figure><div class="pe-sbox"><span class="pe-sq">🔍 배달</span><span class="pe-sn">검색 결과 1건</span>
+  <div class="pe-sr">늦은 <b>배달</b> 때문에 화났습니다</div></div>
+  <p class="pe-pen pe-penb">배달이 늦었다는 리뷰가 잔뜩 있는데?</p></figure>
+    </div>
+    <div class="pe-spread n3" data-figure>
+  <figure><p class="pe-fh">감정을 분류할 때<small>이모지가 감정 신호입니다</small></p>
+  <div class="pe-rv">배달이 안 늦었어요!!<del>!!</del> <ins>😍😍</ins><del>😍</del> <del>https://bit.ly/3xYz</del> 문의 <u>전화번호</u></div></figure>
+  <figure><p class="pe-fh">키워드로 검색할 때<small>낱말만 있으면 됩니다</small></p>
+  <div class="pe-rv"><ins>배달</ins><del>이</del> <ins>안</ins> <ins>늦</ins><del>었어요!!!!</del> <del>😍😍😍</del> <del>https://bit.ly/3xYz</del> <ins>문의</ins> <u>전화번호</u></div></figure>
+  <figure><p class="pe-fh">다른 회사 AI로 보낼 때<small>개인정보가 먼저입니다</small></p>
+  <div class="pe-rv">배달이 안 늦었어요!!!! 😍😍😍 <del>https://bit.ly/3xYz</del> 문의 <del>010-1234-5678</del> <u>전화번호</u></div></figure>
+</div>
+<p class="pe-cap">같은 리뷰입니다. 빨간 줄은 지운 글자, 초록은 일부러 남긴 글자, "전화번호" 칩은 바꿔 넣은 글자입니다.</p>
+  </div>
+  <div class="pe-wrap pe-two pe-after">
+    <div>
+      <p>지운 뒤에 뜻이 그대로인지 먼저 봅니다. 자주 나오는 낱말을 지우는 불용어(stopword) 제거가 대표적입니다. '안'이나 '못'은 흔하지만 뜻을 뒤집습니다.</p>
+      <p>정제 원칙은 세 가지면 됩니다. 분야와 목적을 먼저 정하고 뜻은 바꾸지 않습니다. 되돌릴 수 있게 원문은 따로 보관합니다.</p>
+    </div>
+    <figure data-figure><p class="pe-fh">자주 나오는 낱말이라며 '안'을 지우면</p>
+<div class="pe-rv" style="font-size:22px">배달 <del>안</del> 늦었어요</div>
+<span class="pe-fv bad"><b>칭찬이 불만으로 뒤집힙니다</b></span>
+<p class="pe-fh" style="margin-top:28px !important">대문자를 전부 소문자로 바꾸면</p>
+<div class="pe-rv" style="font-size:22px"><del>MS</del> <ins>ms</ins> 납품 건</div>
+<span class="pe-fv bad"><b>회사 이름이 시간 단위처럼 읽힙니다</b></span></figure>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two top">
+    <div>
+      <h2>"배달"이 안 잡힌 이유는 조사입니다</h2>
+      <p>앞의 검색창에서 1건만 나온 이유가 여기 있습니다. 검색은 글을 낱말로 잘라 목록으로 저장해 둡니다. 한국어는 낱말 뒤에 조사가 붙어서 공백으로 자르면 '배달이'와 '배달'이 다른 낱말이 됩니다.</p>
+      <p>이때 형태소(morpheme) 분석기를 씁니다. 형태소는 뜻을 가진 가장 작은 말 단위로, '배달이'는 '배달'과 '이'로 나뉩니다. 파이썬에서는 Kiwi를, 검색 서버 Elasticsearch에서는 Nori를 많이 씁니다. 낱말 검색과 뜻으로 찾는 검색을 함께 쓰는 방법은 <a href="/posts/rag-retrieval-pipeline">RAG 글</a>에 있습니다.</p>
+      
+    </div>
+    <div><div class="pe-spread n2" data-figure style="margin-top:0"><figure><p class="pe-fh">공백으로 나누면<small>검색어 '배달' → 1개 찾음</small></p><ul class="pe-q"><li class="miss">배달이 늦었어요</li><li class="miss">배달은 빨랐어요</li><li class="miss">치킨이 식었어요</li><li class="hit">늦은 <mark>배달</mark> 때문에 화났습니다</li></ul></figure><figure><p class="pe-fh">Kiwi로 형태소를 나누면<small>검색어 '배달' → 3개 찾음</small></p><ul class="pe-q"><li class="hit"><mark>배달</mark>이 늦었어요</li><li class="hit"><mark>배달</mark>은 빨랐어요</li><li class="miss">치킨이 식었어요</li><li class="hit">늦은 <mark>배달</mark> 때문에 화났습니다</li></ul></figure></div><p class="pe-cap">kiwipiepy 0.24.1로 직접 돌린 결과입니다.</p></div>
+  </div>
+  <div class="pe-wrap"><div class="pe-aside pe-after"><p class="pe-asl">분석기도 틀립니다</p><p>'256기가'를 그냥 넣으면 '256', '기', '가'로 나뉘어 '가'가 조사로 처리됩니다.</p><p>업종 낱말은 사전에 직접 넣어야 합니다. 뒤에 나오는 코드에서 한 줄로 처리합니다.</p></div></div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two top">
+    <div>
+      <h2>눈에는 같아도 컴퓨터에게는 다른 글자입니다</h2>
+      <p>맥에서 받은 한글 파일 이름이 'ㅊㅣㅋㅣㄴ'처럼 풀려 보인 적이 있다면 이 문제를 이미 본 것입니다. 전 세계 글자에 번호를 매긴 표준인 유니코드는 '치'를 한 글자(NFC)로도, 자음과 모음의 조합(NFD)으로도 저장할 수 있습니다.</p>
+      <p>이 글을 쓴 맥북의 다운로드 폴더를 세 보니 한글 이름 파일 83개 중 23개가 NFD였습니다. 본문 글에도 NFD가 섞이면 검색이 빗나가고 토큰 수도 불어납니다. 낱자 자모는 드물어서 한 칸이 세 토큰으로 쪼개지기 때문입니다.</p>
+      <p>그래서 정제 맨 앞에 정규화(normalization)를 둡니다. 표현이 여럿인 글자를 하나로 맞추는 일입니다. 기본은 NFC입니다.</p>
+      <details>
+        <summary>NFKC는 언제 쓸까요?</summary>
+        <div class="pe-in"><p>NFKC는 더 세게 합칩니다. 폭이 넓은 숫자 １을 1로 바꾸는 식이라 상품 검색에는 쓸모가 있습니다. 대신 x²가 x2가 되고 ①이 1이 됩니다. 유니코드 표준(UAX #15)도 아무 글에나 적용하지 말라고 경고합니다.</p>
+        <table class="pe-nf">
+        <tr><th>원문</th><th>NFKC</th><th>잃는 것</th></tr>
+        <tr><td>１２３</td><td class="ch">123</td><td>없음, 검색에 유리</td></tr>
+        <tr><td>①</td><td class="ch">1</td><td>조항 번호라는 표시</td></tr>
+        <tr><td>x²</td><td class="ch">x2</td><td>제곱이라는 뜻</td></tr>
+        <tr><td>㈜</td><td class="ch">(주)</td><td>원문 그대로의 표기</td></tr>
+      </table></div>
+      </details>
+    </div>
+    <figure data-figure>
+<p class="pe-fh">NFC<small>한 글자가 한 칸</small></p>
+<div class="pe-tiles"><span>치</span><span>킨</span></div>
+<div class="pe-meter"><i style="width:9%"></i>2토큰</div>
+<p class="pe-fh" style="margin-top:28px !important">NFD<small>자음과 모음이 따로따로</small></p>
+<div class="pe-tiles nfd"><span>ᄎ</span><span>ᅵ</span><span>ᄏ</span><span>ᅵ</span><span>ᆫ</span></div>
+<div class="pe-meter bad"><i style="width:68%"></i>15토큰 (5칸 × 3조각)</div>
+<div class="pe-eq">"치킨"(NFC) == "치킨"(NFD) → <b>False</b></div>
+</figure>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two top">
+    <div>
+      <h2>모델은 글자가 아니라 토큰을 읽습니다</h2>
+      <p>챗봇에 긴 글을 붙여 넣으면 "메시지가 너무 깁니다"라는 오류가 나옵니다. 그 길이를 재는 단위가 앞에서 본 토큰입니다. 글을 토큰으로 자르는 일을 토큰화(tokenization)라고 합니다. 같은 내용이라도 한글은 영어보다 대개 토큰이 많습니다.</p>
+      <p>모델의 토크나이저(tokenizer)는 모델과 한 벌이라 우리가 바꿀 수 없습니다. 우리는 세어 보기만 합니다. 정확한 수는 <code>client.responses.input_tokens.count()</code>로 받습니다. <code>tiktoken</code>은 일반 글을 어림할 때 씁니다.</p>
+      <details>
+        <summary>사전에 없는 낱말은 어떻게 처리할까요?</summary>
+        <div class="pe-in"><p>사전에 없는 말을 뜻하는 OOV(Out-Of-Vocabulary)는 단어 사전을 쓰던 시절의 큰 골칫거리였습니다. BPE(Byte Pair Encoding)는 자주 붙어 나오는 조각끼리 합쳐 사전을 만드는 방식입니다. 바이트 단위로 시작하면 어떤 글자든 끝까지 쪼개 처리합니다. 바이트는 컴퓨터가 글자를 저장할 때 쓰는 단위입니다.</p><div class="pe-spread" data-figure style="margin-top:12px">
+  <figure><p class="pe-fh">단어 사전<small>사전에 없으면 통째로 잃습니다</small></p><div class="pe-tok"><span>치킨집</span><span class="unk">[UNK]</span></div><span class="pe-fv bad"><b>'뷁맛'이 사라집니다</b></span></figure>
+  <figure><p class="pe-fh">서브워드(BPE·WordPiece)<small>아는 조각으로 나눕니다</small></p><div class="pe-tok"><span>치킨</span><span>##집</span><span>뷁</span><span>##맛</span></div><span class="pe-fv ok"><b>자주 본 조각이면 살아납니다</b></span></figure>
+  <figure><p class="pe-fh">바이트 단위 BPE<small>마지막에는 바이트로 내려갑니다</small></p><div class="pe-tok"><span>치</span><span>킨</span><span>집</span><span class="sp">뷁 1</span><span class="sp">뷁 2</span><span class="sp">뷁 3</span><span>맛</span></div><span class="pe-fv ok"><b>모르는 글자가 없습니다</b></span></figure>
+</div>
+<p class="pe-cap">입력은 "치킨집 뷁맛"입니다. 위 두 줄은 방식을 보여 주려고 만든 예시, 마지막 줄은 <code>o200k_base</code>로 실제 자른 결과입니다.</p></div>
+      </details>
+    </div>
+    <figure data-figure><div class="pe-tokrow"><small>영어는 낱말이 곧 토큰일 때가 많습니다</small><div class="pe-tok"><span>The</span><span> chicken</span><span> was</span><span> great</span><em>4토큰</em></div></div><div class="pe-tokrow"><small>한글은 더 잘게 나뉩니다</small><div class="pe-tok"><span>치</span><span>킨</span><span>이</span><span> 정말</span><span> 맛</span><span>있</span><span>어요</span><em>7토큰</em></div></div><div class="pe-tokrow"><small>글자 '늦' 하나가 두 조각으로 쪼개지기도 합니다</small><div class="pe-tok"><span>배</span><span>달</span><span>이</span><span> 너무</span><span class="sp">늦 앞</span><span class="sp">늦 뒤</span><span>었</span><span>어요</span><em>8토큰</em></div></div><p class="pe-cap">tiktoken 0.14의 <code>o200k_base</code>로 직접 잘랐습니다. 이모지도 😍는 한 토큰, 😡는 두 토큰으로 다릅니다. tiktoken에 GPT-6 항목이 아직 없어 gpt-5 계열 값으로 어림했습니다.</p></figure>
+  </div>
+</section>
+
+
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>같은 정제 함수가 분야마다 다른 것을 망가뜨립니다</h2>
+      <p>"특수문자를 지운다"는 정제 코드의 흔한 첫 줄입니다. 리뷰에서는 큰 탈이 없어 보입니다.</p>
+      <p>분야가 바뀌면 지운 글자가 곧 내용일 수 있습니다. 같은 함수를 다섯 분야의 글에 돌려 봤습니다. 빨간 글자가 결과입니다.</p>
+    </div>
+  </div>
+  <div class="pe-band"><div class="pe-wrap"><div class="pe-two" data-figure>
+  <figure class="pe-big"><p class="pe-fh">의료 기록에 돌리면</p>
+    <div class="pe-bp">BP 120/80mmHg</div><div class="pe-bpa" aria-hidden="true">↓</div><div class="pe-bp bad">BP 12080mmHg</div>
+    <span class="pe-fv bad"><b>혈압 120에 80이 한 숫자가 됩니다</b></span></figure>
+  <div class="pe-dom"><figure><span class="k">SNS</span><span class="o">존맛 ㅋㅋㅋㅋ 😍😍 또 시킬게요!!</span><span class="o res">존맛 또 시킬게요</span><span class="r">감정 표시가 전부 사라집니다</span></figure><figure><span class="k">법률</span><span class="o">제3조 ① 임차인은 2년 이내에</span><span class="o res">제3조 임차인은 2년 이내에</span><span class="r">항 번호가 사라집니다</span></figure><figure><span class="k">코드</span><span class="o">if x == 1:
+    y = x**2</span><span class="o res">if x 1 y x2</span><span class="r">문법이 사라집니다</span></figure><figure><span class="k">쇼핑</span><span class="o">아이폰15 256GB (5% 할인)</span><span class="o res">아이폰15 256GB 5 할인</span><span class="r">5%가 5가 됩니다</span></figure></div>
+</div><p class="pe-after">한글·영문·숫자만 남기는 함수 하나를 그대로 돌린 실제 결과입니다. 그래서 분야마다 규칙이 다릅니다. 의료는 기호와 단위를, 법률은 원문 전체를, 코드는 공백과 기호를 남깁니다. SNS는 반복만 줄이고 쇼핑은 256기가와 256GB 같은 표기를 맞춥니다.</p></div></div>
+  <div class="pe-wrap pe-two pe-after">
+    <div>
+      <p>글을 자르는 위치도 분야를 따릅니다. 긴 문서를 나눈 토막을 청크(chunk)라고 합니다. 글자 수로만 자르면 함수와 조항이 중간에 끊깁니다. 코드를 문법 구조로 자르는 방법을 실험한 cAST 연구에서 상위 5개 결과 안에 정답 코드가 든 비율(Recall@5)이 4.3포인트 올랐습니다.</p>
+      <p>법률도 비슷합니다. 독일 민법으로 실험한 2026년 연구에서 조항 단위 자르기가 글자 수 자르기보다 앞섰습니다. 개인정보는 Microsoft Presidio 같은 도구로 찾을 수 있습니다. 다만 Presidio 문서도 전부 찾는다고 보장하지 않으니 사람이 표본을 확인해야 합니다.</p>
+      <details>
+        <summary>cAST 논문의 원래 그림 보기</summary>
+        <div class="pe-in"><figure><img class="pe-img" src="/post-assets/prompt-structure-hallucination-clean-data/cast-chunks.webp" alt="함수 중간을 자른 청크와 함수를 온전히 남긴 청크로 코드 생성 결과가 달라지는 그림" loading="lazy"><p class="pe-cap">파란 청크는 함수 중간에서 잘려 틀린 코드(위)로, 주황 청크는 함수를 온전히 담아 맞는 코드(아래)로 이어집니다. 출처: <a href="https://arxiv.org/abs/2506.15655">Zhang 외, cAST (2025)</a></p></figure></div>
+      </details>
+    </div>
+    <div><div class="pe-spread n2" style="margin-top:0" data-figure>
+  <figure><p class="pe-fh">글자 수로 자르면</p>
+    <div class="pe-src"><span>def compute_stats(vals):</span><span>    total = sum(vals)</span><span class="cutline">청크 경계</span><span>    n = len(vals)</span><span>    return total / n</span></div>
+    <span class="pe-fv bad"><b>함수가 둘로 끊겨 앞뒤 뜻이 사라집니다</b></span></figure>
+  <figure><p class="pe-fh">문법 구조로 자르면</p>
+    <div class="pe-src"><span>def compute_stats(vals):</span><span>    total = sum(vals)</span><span>    n = len(vals)</span><span>    return total / n</span><span class="cutline ok">청크 경계</span></div>
+    <span class="pe-fv ok"><b>함수 하나가 통째로 들어갑니다</b></span></figure>
+</div></div>
+  </div>
+  <div class="pe-wrap">
+    <div class="pe-cp">
+      <div class="cp-code"><pre data-title="clean.py" data-hl="11,15,19,26" data-start="1"><code class="language-python">import re
+import unicodedata
+from kiwipiepy import Kiwi
+
+URL = re.compile(r"https?://\S+")
+PHONE = re.compile(r"01[016789]-?\d{3,4}-?\d{4}")
+REPEAT = re.compile(r"(.)\1{2,}")
+
+kiwi = Kiwi()
+# ① 이 가게·이 업종의 낱말을 사전에 넣는다
+kiwi.add_user_word("256기가", "NNP")
+
+def clean_review(text: str) -&gt; str:
+    # ② 글자 표현부터 하나로 맞춘다
+    text = unicodedata.normalize("NFC", text)
+    text = PHONE.sub("[전화번호]", text)
+    text = URL.sub("", text)
+    # ③ 세 번 넘는 반복만 두 번으로 줄인다
+    text = REPEAT.sub(r"\1\1", text)
+    return " ".join(text.split())
+
+KEEP = ("NN", "VV", "VA", "MAG", "SN", "SL")
+
+def search_tokens(text: str) -&gt; list[str]:
+    # ④ 조사·어미를 떼고 검색에 쓸 말만 남긴다
+    tokens = kiwi.tokenize(text)
+    return [t.form for t in tokens if t.tag.startswith(KEEP)]
+
+raw = ("배달이 안 늦었어요!!!! 😍😍😍 "
+       "https://bit.ly/3xYz 문의 010-1234-5678")
+print(clean_review(raw))
+print(search_tokens(clean_review(raw)))
+print(search_tokens("아이폰 256기가 배달"))</code></pre></div>
+      <div class="cp-term"><div class="pe-term" data-pe-term>
+  <div class="pe-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="pe-act" data-pe-run>실행해 보기</button></div>
+  <div class="pe-term-out" data-pe-out aria-live="polite">$ python clean.py
+배달이 안 늦었어요!! 😍😍 문의 [전화번호]
+['배달', '안', '늦', '문의', '전화', '번호']
+['아이폰', '256기가', '배달']</div>
+</div>
+<p class="pe-cap">직접 돌린 출력입니다. kiwipiepy 0.24.1 기준입니다.</p></div>
+      <div class="cp-notes">
+        <ol class="pg-code-notes">
+          <li>사전에 넣으면 '256기가'가 한 낱말이 됩니다. 업종이 바뀌면 이 목록을 다시 만듭니다. 위쪽 <code>re.compile</code>은 URL처럼 정해진 글자 패턴을 찾는 도구(정규식)를 만듭니다.</li>
+          <li>NFC로 맞추는 일은 언제나 맨 앞입니다. 뒤에 나오는 규칙이 모두 이 글자 모양을 기준으로 돌아가기 때문입니다.</li>
+          <li>감정 표현은 완전히 지우지 않습니다. '!!!!'를 '!!'로 줄이면 토큰을 아끼면서 강조는 남습니다.</li>
+          <li><code>tag</code>는 품사 표시입니다. 낱말의 종류를 나타내는 약자입니다. 여기서는 조사와 어미만 뺐습니다. 부사(<code>MAG</code>)를 남겼기 때문에 '안'이 살아 있습니다.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="pe-ch4"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">4장 · 채점</span><p class="pe-ch-t">문제집을 만들어 나아졌는지 잽니다</p></div></div></div>
+
+<section class="pe-sec">
+  <div class="pe-wrap"><!--sf--><h2>프롬프트를 고쳤는데 정말 나아졌는지 어떻게 알까요?</h2><div class="pe-two sf">
+    <div>
+      
+      <p>챗봇을 고친 다음 날 어제까지 잘 되던 질문이 틀리는 일은 흔합니다. 질문 몇 개를 눈으로 봐서는 알 수 없습니다.</p>
+      <p>지시·입력·정답을 묶은 문제를 모아 두고 프롬프트 버전마다 전부 돌려 봅니다. 이렇게 재는 일을 평가(evaluation)라고 합니다. 결과를 모으면 점수판이 나옵니다.</p>
+    </div>
+    <div class="pe-spread n2" style="margin-top:0" data-figure>
+  <figure class="pe-chat"><div class="pe-chat-h">어제 · 프롬프트 v1</div><div class="pe-u">두 번은 안 시켜요</div><div class="pe-a"><b>부정</b></div></figure>
+  <figure class="pe-chat"><div class="pe-chat-h">오늘 · 프롬프트 v2</div><div class="pe-u">두 번은 안 시켜요</div><div class="pe-a"><b style="color:var(--pe-red)">긍정</b></div><div class="pe-pen">다른 걸 고쳤을 뿐인데</div></figure>
+</div>
+  </div></div>
+  <div class="pe-wrap pe-two pe-after">
+    <div>
+      <p>좋은 문제집에는 쉬운 문제만 있지 않습니다. 돌려 말한 표현, 경계에 있는 예외, 답이 없어야 하는 질문도 넣습니다. "옆집 마라 치킨"의 정답을 "모르겠습니다"로 두면 앞서 넣은 규칙이 통하는지 잴 수 있습니다.</p>
+      <p>틀린 칸을 보면 고칠 칸도 보입니다. 답이 뻔하면 상황을, 없는 말을 지어내면 조건을, 모양이 틀리면 형식을 고칩니다. 그리고 다시 전체를 돌립니다. 고치다가 잘 되던 문제를 망가뜨리는 회귀(regression)를 잡으려면 일부만 돌리면 안 됩니다.</p>
+    </div>
+    <figure data-figure><div class="pe-score"><div class="h l">문제</div><div class="h">v1</div><div class="h">v2</div><div class="h">v3</div><div><small>쉬움</small>치킨이 바삭해요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>쉬움</small>배달이 늦었어요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>쉬움</small>또 시킬게요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>섞임</small>맛은 좋은데 늦었어요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>섞임</small>빠른데 식었어요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>돌려 말함</small>이 집만 시켜요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>돌려 말함</small>두 번은 안 시켜요</div><div class="c y">○</div><div class="c n re">×</div><div class="c y">○</div><div><small>예외</small>ㅋㅋㅋ</div><div class="c n">×</div><div class="c n">×</div><div class="c y">○</div><div><small>예외</small>쿠폰 언제 줘요?</div><div class="c n">×</div><div class="c n">×</div><div class="c n">×</div><div><small>모름</small>옆집 마라 치킨 어때요?</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div class="sum l">맞힌 개수</div><div class="sum">4</div><div class="sum">7</div><div class="sum">9</div></div>
+<p class="pe-pen pe-penb">v2의 테두리 칸: 고치다가 새로 망가뜨렸습니다</p>
+<p class="pe-cap">설명을 위한 예시 값입니다. v1에서 v2로 '섞임' 칸과 판단 규칙을, v2에서 v3로 예외 규칙을 더했다고 가정했습니다.</p></figure>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>문제 하나는 지시와 입력, 정답으로 적습니다</h2>
+      <p>이런 문제 묶음을 Instruction 데이터라고 부릅니다. 데이터는 JSON으로 적습니다. JSON은 이름과 값을 중괄호로 묶어 적는 형식입니다.</p>
+      <p>이 문제집은 모델을 더 학습시키는 파인튜닝(fine-tuning)의 재료로도 쓰여서 그쪽 형식을 따릅니다. 2023년 Stanford 연구진이 모델 Alpaca를 학습시키며 쓴 세 칸 형식이 널리 퍼졌습니다. 지금 표준은 대화 그대로 적는 <code>messages</code>입니다. <code>system</code>은 지시, <code>user</code>는 사용자 입력, <code>assistant</code>는 모델이 해야 할 답입니다.</p>
+      <details>
+        <summary>모델이 학습할 때는 어떤 글로 보일까요?</summary>
+        <div class="pe-in"><pre class="pe-raw">&lt;|system|&gt;
+리뷰를 긍정·부정·섞임으로 분류해&lt;/s&gt;
+&lt;|user|&gt;
+맛은 좋은데 늦었어요&lt;/s&gt;
+&lt;|assistant|&gt;
+섞임&lt;/s&gt;</pre><p>칸들이 이런 표시가 붙은 글 한 줄로 이어집니다. 표시는 모델마다 달라서 손으로 쓰지 않고 Hugging Face의 <code>apply_chat_template</code>에 맡깁니다. 공식 문서는 표시가 어긋나면 성능이 크게 떨어진다고 경고합니다. 파인튜닝 자체는 <a href="/posts/fine-tuning-lora-qlora-peft">따로 다룬 글</a>에서 볼 수 있습니다.</p></div>
+      </details>
+    </div>
+    <div><div class="pe-spread n2 pe-wear" style="margin-top:0" data-figure>
+  <figure><p class="pe-fh">Alpaca 형식<small>2023년에 퍼진 세 칸</small></p><pre class="w">{
+ "instruction":
+  "<b>긍정·부정·섞임으로 분류해</b>",
+ "input":
+  "<b>맛은 좋은데 늦었어요</b>",
+ "output":
+  "<b>섞임</b>"
+}</pre></figure>
+  <figure><p class="pe-fh">messages 형식<small>지금 표준인 대화 칸</small></p><pre class="w">{"messages": [
+ {"role": <em>"system"</em>, "content":
+  "<b>긍정·부정·섞임으로 분류해</b>"},
+ {"role": <em>"user"</em>, "content":
+  "<b>맛은 좋은데 늦었어요</b>"},
+ {"role": <em>"assistant"</em>, "content":
+  "<b>섞임</b>"}
+]}</pre></figure>
+</div>
+<p class="pe-cap">같은 문제 하나입니다. 초록 글자는 그대로이고 바깥 포장만 바뀝니다.</p></div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>JSONL은 한 줄이 문제 하나인 파일입니다</h2>
+      <p>학습 데이터를 다운받으면 확장자가 <code>.jsonl</code>인 파일이 많습니다. JSONL(JSON Lines)은 JSON 한 덩어리를 한 줄에 하나씩 쌓은 파일입니다.</p>
+      <p>규칙은 세 가지입니다. 글자는 가장 널리 쓰는 저장 방식인 UTF-8로 씁니다. 줄마다 그 자체로 완전한 JSON입니다. 줄 끝은 줄바꿈입니다.</p>
+    </div>
+    <div class="pe-spread n2" data-figure>
+  <figure><p class="pe-fh">JSON 배열 한 덩어리<small>전체를 대괄호로 묶어 파일이 한 값입니다</small></p>
+  <div class="pe-file">
+    <div><i>1</i><span class="gone">[{"text": "치킨 맛있어요", "label": "긍정"},</span></div>
+    <div class="x"><i>2</i><span>{"text": "배달 늦음", "label": "부정"<em class="pe-pen"> ← 닫는 괄호 없음</em></span></div>
+    <div><i>3</i><span class="gone">{"text": "섞였어요", "label": "섞임"}]</span></div>
+  </div><span class="pe-fv bad"><b>괄호 하나 빠지면 3건 모두 못 읽습니다</b></span></figure>
+  <figure><p class="pe-fh">JSONL<small>줄마다 따로 읽습니다</small></p>
+  <div class="pe-file">
+    <div><i>1</i><span>{"text": "치킨 맛있어요", "label": "긍정"}</span></div>
+    <div class="x"><i>2</i><span>{"text": "배달 늦음", "label": "부정"<em class="pe-pen"> ← 닫는 괄호 없음</em></span></div>
+    <div><i>3</i><span>{"text": "섞였어요", "label": "섞임"}</span></div>
+  </div><span class="pe-fv ok"><b>2번 줄만 버리고 2건을 살립니다</b></span></figure>
+</div>
+<p class="pe-cap">줄이 길어지지 않게 text·label 두 칸으로 줄여 그렸습니다. 실제 파일의 한 줄은 앞에서 본 messages 형식입니다.</p>
+  </div>
+  <div class="pe-wrap pe-two pe-after">
+    <div>
+      <p>한 줄씩 읽으니 파일이 커도 메모리를 적게 쓰고 깨진 줄만 버릴 수 있습니다. 대신 형식을 손으로 맞추면 금방 깨집니다.</p>
+      <p>파일은 언제나 코드로 만듭니다. 아래 코드도 messages 형식으로 저장합니다. 지시는 문제마다 같으니 <code>system</code> 칸을 빼고 채점 코드의 <code>PROMPT</code>에 한 번만 둡니다. 일부러 나쁜 행도 넣었습니다. 잘못된 라벨(label, 정답 표시)과 중복을 걸러 내고 저장한 파일을 다시 읽어 봅니다.</p>
+    </div>
+    <div><figure data-figure><p class="pe-fh">손으로 쓰면 생기는 세 가지 문제</p>
+<div class="pe-file">
+  <div class="x"><i>1</i><span>{"text": ""1시간" 늦음"}</span></div>
+  <div class="x"><i>2</i><span>{"text": "첫째 줄<br>둘째 줄"}</span></div>
+  <div class="w"><i>3</i><span>{"text": "\uce58\ud0a8"}</span></div>
+</div>
+<p class="pe-cap">빨간 줄의 따옴표와 진짜 줄바꿈은 읽다가 오류가 납니다. 회색 줄은 읽히지만 "치킨"을 눈으로 확인할 수 없습니다. <code>json.dumps</code>의 기본값이 이렇게 저장합니다.</p></figure></div>
+  </div>
+  <div class="pe-wrap pe-after"><figure data-figure><p class="pe-fh">코드가 하는 일: 6줄이 들어가 4줄이 저장됩니다</p>
+<div class="pe-file">
+  <div><i>1</i><span>치킨이 바삭하고 배달도 빨랐어요 → 긍정</span></div>
+  <div><i>2</i><span>배달이 "1시간" 늦었어요 … → 부정</span></div>
+  <div><i>3</i><span>맛은 좋은데 배달이 늦었어요 → 섞임</span></div>
+  <div class="x"><i>4</i><span class="gone">맛은 좋은데 배달이 늦었어요 → 섞임</span></div><div class="pe-why">앞줄과 같은 문제라 버림</div>
+  <div><i>5</i><span>ㅋㅋㅋ → 모르겠습니다</span></div>
+  <div class="x"><i>6</i><span class="gone">존맛탱 → 좋음</span></div><div class="pe-why">약속에 없는 라벨이라 버림</div>
+</div></figure></div>
+  <div class="pe-wrap">
+    <div class="pe-cp">
+      <div class="cp-code"><pre data-title="build_dataset.py" data-hl="17,21,37,40" data-start="1"><code class="language-python">import json
+from pathlib import Path
+
+LABELS = {"긍정", "부정", "섞임", "모르겠습니다"}
+rows = [
+    ("치킨이 바삭하고 배달도 빨랐어요", "긍정", "easy"),
+    ("배달이 \"1시간\" 늦었어요\n치킨도 식었고요", "부정", "easy"),
+    ("맛은 좋은데 배달이 늦었어요", "섞임", "medium"),
+    ("맛은 좋은데 배달이 늦었어요", "섞임", "medium"),
+    ("ㅋㅋㅋ", "모르겠습니다", "edge"),
+    ("존맛탱", "좋음", "easy"),
+]
+
+seen, kept = set(), []
+for text, label, level in rows:
+    # ① 정답이 약속한 값인지 본다
+    if label not in LABELS:
+        print("버림(라벨):", repr(text), label)
+        continue
+    # ② 같은 문제가 두 번 들어가지 않게 한다
+    if text in seen:
+        print("버림(중복):", repr(text))
+        continue
+    seen.add(text)
+    kept.append({
+        "messages": [
+            {"role": <em>"user"</em>, "content": text},
+            {"role": <em>"assistant"</em>, "content": label},
+        ],
+        "metadata": {"difficulty": level},
+    })
+
+path = Path("reviews.jsonl")
+with path.open("w", encoding="utf-8") as f:
+    for item in kept:
+        # ③ 한 줄에 하나, 한글은 그대로
+        f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+# ④ 다시 읽어서 깨진 줄이 없는지 확인한다
+lines = path.read_text(encoding="utf-8").splitlines()
+print(len([json.loads(line) for line in lines]), "줄 저장")
+print(lines[1])</code></pre></div>
+      <div class="cp-term"><div class="pe-term" data-pe-term>
+  <div class="pe-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="pe-act" data-pe-run>실행해 보기</button></div>
+  <div class="pe-term-out" data-pe-out aria-live="polite">$ python build_dataset.py
+<span class="nz">버림(중복): '맛은 좋은데 배달이 늦었어요'</span>
+<span class="nz">버림(라벨): '존맛탱' 좋음</span>
+4 줄 저장
+{&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;배달이 \&quot;1시간\&quot; 늦었어요\n치킨도 식었고요&quot;}, {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;부정&quot;}], &quot;metadata&quot;: {&quot;difficulty&quot;: &quot;easy&quot;}}</div>
+</div>
+<p class="pe-cap">직접 돌린 출력입니다. 따옴표와 줄바꿈이 한 줄 안에 안전하게 들어갔습니다.</p></div>
+      <div class="cp-notes">
+        <ol class="pg-code-notes">
+          <li>정답 목록을 미리 정해 두면 '좋음'처럼 약속에 없는 라벨을 바로 찾습니다. 일관성이 깨진 데이터는 모델도 헷갈리게 합니다.</li>
+          <li>같은 문제가 학습용과 시험용에 함께 들어가면 점수가 실제보다 좋게 나옵니다.</li>
+          <li><code>ensure_ascii=False</code>가 없으면 한글이 <code>치</code>처럼 저장됩니다. 따옴표와 줄바꿈은 <code>dumps</code>가 알아서 처리합니다.</li>
+          <li>저장 직후 다시 읽는 두 줄이 가장 값싼 검사입니다. 깨진 줄이 있으면 여기서 오류가 납니다.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>채점 코드는 서른 줄이면 됩니다</h2>
+      <p>채점 도구가 따로 없어도 시작할 수 있습니다. 파일을 한 줄씩 읽어 모델에 묻고 정답과 견주면 됩니다. 난이도별로 나눠 세면 어디가 약한지 드러납니다.</p>
+      <p>글자가 정확히 같은지 보는 채점은 분류처럼 답이 정해진 문제에만 맞습니다. 요약처럼 답이 여럿이면 기준을 정해 사람이나 다른 모델이 채점합니다. Anthropic은 문제의 질보다 양을 먼저 늘리라고 권합니다.</p>
+    </div>
+    <div class="pe-cp">
+      <div class="cp-code"><pre data-title="evaluate.py" data-hl="" data-start="1"><code class="language-python">import json
+from collections import Counter
+from openai import OpenAI
+
+client = OpenAI()
+
+PROMPT = """\
+리뷰를 긍정, 부정, 섞임 중 하나로 분류한다.
+근거가 없으면 '모르겠습니다'라고 쓴다.
+다른 말은 쓰지 않는다."""
+
+score, total = Counter(), Counter()
+with open("reviews.jsonl", encoding="utf-8") as f:
+    for line in f:
+        item = json.loads(line)
+        user, assistant = item["messages"]
+        review, answer = user["content"], assistant["content"]
+        level = item["metadata"]["difficulty"]
+        response = client.responses.create(
+            model="gpt-6.1-sol",
+            instructions=PROMPT,
+            input=review,
+        )
+        total[level] += 1
+        # 정답과 글자가 같으면 맞은 것으로 센다
+        guess = response.output_text.strip()
+        score[level] += guess == answer
+
+for level in total:
+    print(f"{level:&lt;8}{score[level]}/{total[level]}")
+print("합계", sum(score.values()), "/", sum(total.values()))</code></pre></div>
+      <div class="cp-term"><div class="pe-term" data-pe-term>
+  <div class="pe-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="pe-act" data-pe-run>실행해 보기</button></div>
+  <div class="pe-term-out" data-pe-out aria-live="polite">$ python evaluate.py
+easy    2/2
+medium  0/1
+edge    0/1
+합계 2 / 4</div>
+</div>
+<p class="pe-cap">출력은 예시 답입니다. reviews.jsonl은 앞 코드에서 만든 4줄입니다.</p></div>
+      <div class="cp-notes">
+        <p><code>item["messages"]</code>에서 문제와 정답을 꺼냅니다. 프롬프트를 고치면 <code>PROMPT</code>만 바꿔 다시 돌립니다.</p>
+        <p>문제가 많아지면 Promptfoo 같은 프롬프트 채점 전용 도구로 옮기면 됩니다. OpenAI도 자사 평가 기능의 대안으로 이 도구의 이전 안내서를 냈습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap">
+    <div class="pe-intro">
+      <h2>문제집과 프롬프트는 내 Git 저장소에 둡니다</h2>
+      <p>쓰던 기능이 공지 한 줄로 사라지는 일이 실제로 벌어지고 있습니다. 내 코드와 함께 Git에 둔 파일은 그럴 걱정이 없고, 쓸 곳도 세 군데입니다. 프롬프트를 채점할 때, 오픈 모델을 학습시킬 때, 한꺼번에 처리하는 Batch API의 입력을 만들 때입니다. Batch는 모아 둔 요청을 한꺼번에 처리하는 기능으로, 비용이 절반입니다.</p>
+      <p>반대로 서비스 회사의 기능에 맡긴 것은 사라질 수 있습니다. OpenAI만 해도 파인튜닝과 평가 기능(Evals), 대시보드에 저장하는 프롬프트를 차례로 닫고 있습니다. "JSONL을 모으면 OpenAI에서 학습시키면 된다"는 설명은 이제 맞지 않습니다.</p>
+    </div>
+    <ol class="pe-time" data-figure>
+  <li><b>2026-05-07</b>파인튜닝을 해 본 적 없는 조직은 새로 시작 불가</li>
+  <li><b>2026-07-02</b>최근 60일 안 쓴 조직(회사 계정)도 새 작업 불가</li>
+  <li><b>2026-10-31</b>Evals 읽기 전용</li>
+  <li class="now"><b>2026-11-05</b>이 글을 쓴 날</li>
+  <li><b>2026-11-30</b>Evals와 대시보드에 저장하는 프롬프트(<code>v1/prompts</code>) 종료</li>
+  <li><b>2027-01-06</b>기존 고객도 새 파인튜닝 작업 불가</li>
+</ol>
+<p class="pe-cap">OpenAI 지원 중단 안내 기준이고 칸 간격은 실제 기간과 다릅니다. 이미 만든 파인튜닝 모델은 그 바탕이 된 모델이 종료될 때까지 쓸 수 있습니다.</p>
+  </div>
+</section>
+
+
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-two">
+    <div>
+      <h2>답이 이상할 때 어디부터 고칠까요?</h2>
+      <p>치킨집 리뷰 요약은 프롬프트 한 줄로 끝나지 않았습니다. 무엇을 원하는지 적고 모르면 멈추게 했습니다. 넣는 글을 다듬고 문제집으로 쟀습니다.</p>
+      <p>답이 이상하면 프롬프트부터 다시 쓰고 싶어집니다. 그 전에 증상을 보고 어느 쪽 문제인지 고릅니다. 문제 스무 개짜리 JSONL 하나면 고친 뒤 나아졌는지 바로 확인할 수 있습니다.</p>
+    </div>
+    <div class="pe-layers" data-figure>
+  <div><span class="sym">답이 뻔합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch1"><b>요청서</b>를 고칩니다</a></div>
+  <div><span class="sym">없는 말을 지어냅니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch2"><b>근거</b>를 넣습니다</a></div>
+  <div><span class="sym">검색과 요약이 엉뚱합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch3"><b>재료</b>를 다듬습니다</a></div>
+  <div><span class="sym">나아졌는지 모르겠습니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch4">문제집으로 <b>채점</b>합니다</a></div>
+</div>
+  </div>
+</section>
+
+<section class="pe-sec">
+  <div class="pe-wrap pe-head">
+    <div><h2>참고 자료</h2></div>
+    <div>
+      <ul class="pe-refs">
+        <li><a href="https://developers.openai.com/api/docs/guides/prompt-engineering">OpenAI, Prompt engineering</a> — 메시지 구성, instructions, 저장형 프롬프트 폐기</li>
+        <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">Anthropic, Prompting best practices</a> — 새 직원 비유, 역할, XML 태그</li>
+        <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8">Anthropic, Prompting Claude Opus 4.8</a> — 지시를 글자 그대로 따르는 동작</li>
+        <li><a href="https://arxiv.org/abs/2311.10054">Zheng 외, When "A Helpful Assistant" Is Not Really Helpful</a></li>
+        <li><a href="https://arxiv.org/abs/2512.05858">Basil 외, Playing Pretend: Expert Personas Don't Improve Factual Accuracy (2025)</a></li>
+        <li><a href="https://arxiv.org/html/2603.18507">Hu 외, Expert Personas Improve LLM Alignment but Damage Accuracy (2026)</a> — 역할 프롬프트의 모델별 정답률·거절률 표</li>
+        <li><a href="https://developers.openai.com/api/docs/guides/prompt-caching">OpenAI, Prompt caching</a> · <a href="https://developers.openai.com/api/docs/guides/reasoning">Reasoning</a> · <a href="https://developers.openai.com/api/docs/guides/reasoning-best-practices">Reasoning best practices</a> · <a href="https://developers.openai.com/api/docs/models">Models</a> (2026-11-05 확인)</li>
+        <li><a href="https://openai.com/index/why-language-models-hallucinate/">OpenAI, Why language models hallucinate</a> · <a href="https://arxiv.org/abs/2509.04664">Kalai 외 논문</a></li>
+        <li><a href="https://www.anthropic.com/research/tracing-thoughts-language-model">Anthropic, Tracing the thoughts of a large language model</a></li>
+        <li><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations">Anthropic, Reduce hallucinations</a></li>
+        <li><a href="https://arxiv.org/abs/2405.20362">Magesh 외, Hallucination-Free? (Stanford)</a></li>
+        <li><a href="https://arxiv.org/abs/2505.23295">Zhao 외, How Does Response Length Affect Long-Form Factuality (2025)</a></li>
+        <li><a href="https://www.giskard.ai/knowledge/good-answers-are-not-necessarily-factual-answers-an-analysis-of-hallucination-in-leading-llms">Giskard, Phare</a></li>
+        <li><a href="https://arxiv.org/abs/2309.11495">Dhuliawala 외, Chain-of-Verification</a></li>
+        <li><a href="https://developers.openai.com/api/docs/guides/tools-web-search">OpenAI, Web search</a> · <a href="https://developers.openai.com/api/docs/guides/tools-file-search">File search</a></li>
+        <li><a href="https://www.unicode.org/reports/tr15/">Unicode, UAX #15 Normalization Forms</a> · <a href="https://docs.python.org/3/library/unicodedata.html">Python unicodedata</a></li>
+        <li><a href="https://developers.openai.com/api/docs/guides/token-counting">OpenAI, Token counting</a> · <a href="https://github.com/openai/tiktoken">tiktoken</a> · <a href="https://huggingface.co/docs/tokenizers/en/components">Hugging Face, Tokenizers components</a></li>
+        <li><a href="https://github.com/bab2min/kiwipiepy">kiwipiepy</a> · <a href="https://www.elastic.co/docs/reference/elasticsearch/plugins/analysis-nori-tokenizer">Elasticsearch, Nori</a></li>
+        <li><a href="https://arxiv.org/abs/2506.15655">cAST (2025)</a> · <a href="https://arxiv.org/html/2605.19806">독일 민법 청킹 실험 (2026)</a> · <a href="https://microsoft.github.io/presidio/">Microsoft Presidio</a></li>
+        <li><a href="https://jsonlines.org/">JSON Lines</a> · <a href="https://github.com/tatsu-lab/stanford_alpaca">Stanford Alpaca</a> · <a href="https://huggingface.co/docs/trl/dataset_formats">TRL, Dataset formats</a> · <a href="https://huggingface.co/docs/transformers/chat_templating">Transformers, Chat templates</a></li>
+        <li><a href="https://developers.openai.com/api/docs/deprecations">OpenAI, Deprecations</a> · <a href="https://developers.openai.com/api/docs/guides/batch">Batch</a> · <a href="https://developers.openai.com/cookbook/examples/evaluation/moving-from-openai-evals-to-promptfoo">Evals에서 Promptfoo로</a></li>
+        <li><a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Anthropic, Create strong empirical evaluations</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+<div class="pe-end"></div>
+</div>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  root.querySelectorAll("[data-pe-term]").forEach((term) => {
+    const out = term.querySelector("[data-pe-out]"), btn = term.querySelector("[data-pe-run]");
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 200);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+})();
+</script>
