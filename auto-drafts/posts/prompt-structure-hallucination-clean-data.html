@@ -1,14 +1,14 @@
 ---
 title: 같은 AI인데 왜 내 답만 쓸모없을까요?
 slug: prompt-structure-hallucination-clean-data
-excerpt: 같은 모델에게 물어도 누구는 뻔한 답을, 누구는 바로 쓸 표를 받습니다. 치킨집 리뷰 요약을 만들면서 프롬프트 다섯 칸과 템플릿, 할루시네이션을 막는 레이어, 한글 정제와 토큰화, JSONL 문제집으로 프롬프트를 채점하는 법까지 그림과 코드로 봅니다.
+excerpt: 같은 모델에게 물어도 누구는 뻔한 답을, 누구는 바로 쓸 표를 받습니다. 치킨집 리뷰 요약을 만들면서 프롬프트 다섯 칸과 템플릿, 할루시네이션을 막는 레이어, 한글 정제와 토큰화, JSONL eval 데이터셋으로 프롬프트를 평가하는 법까지 그림과 코드로 봅니다.
 tags: [프롬프트 엔지니어링, 할루시네이션, 토큰화, 텍스트 정제, JSONL, OpenAI API, Python, AI Service Track]
 category: ai
 series: ai-service-track
 series_order: 8
 ---
 <!-- page -->
-<!-- layout: 장 표지 띠 4개 + 글|그림 2단(글은 늘 왼쪽) + 펼쳐 놓기(2·3·6장) + 전폭 띠(도메인 다섯 칸) + 코드|해설 짝(코드 늘 왼쪽) | 글의 성격: 입력의 네 층(요청서·근거·재료·채점)을 차례로 고치는 글 | 버린 후보: 그림 고정 스크롤리텔링(상태 비교가 대부분이라 펼쳐 놓기가 맞음), 옆 조작판(2026-10-30 접음), 가로 스크롤 띠(모바일에서 네 장이 숨음) -->
+<!-- layout: 장 표지 띠 4개 + 글|그림 2단(글은 늘 왼쪽) + 펼쳐 놓기(2·3·6장) + 전폭 띠(도메인 다섯 칸) + 코드|해설 짝(코드 늘 왼쪽) | 글의 성격: 입력의 네 층(프롬프트·근거·데이터·Eval)을 차례로 고치는 글 | 버린 후보: 그림 고정 스크롤리텔링(상태 비교가 대부분이라 펼쳐 놓기가 맞음), 옆 조작판(2026-10-30 접음), 가로 스크롤 띠(모바일에서 네 장이 숨음) -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 <style>
 .post-page .pe {
@@ -346,19 +346,19 @@ series_order: 8
     
 <div class="pe-duo" data-figure data-thumb>
   <div class="pe-chat"><div class="pe-bar"><span>짧게 물었을 때</span><small>같은 모델 · 예시 화면</small></div><div class="pe-log"><div class="pe-u">리뷰 정리해 줘</div><div class="pe-a"><div class="pe-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>전반적으로 맛과 배달에 만족하는 고객이 많습니다. 일부 불만이 있으니 서비스 개선을 권합니다. 특히 <mark>마라 치킨</mark>에 대한 호평이 두드러집니다.<div class="pe-pen">우리 가게엔 마라 치킨이 없는데?</div><div class="pe-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="pe-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="pe-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
-  <div class="pe-chat"><div class="pe-bar"><span>요청서를 채웠을 때</span><small>같은 모델 · 예시 화면</small></div><div class="pe-log"><div class="pe-slots"><div class="pe-slot"><span class="pe-pen">누구</span><span>리뷰 분석가로서</span></div><div class="pe-slot"><span class="pe-pen">상황</span><span>치킨집 사장님이 내일 할 일을 정하도록</span></div><div class="pe-slot"><span class="pe-pen">할 일</span><span>불만을 많은 순서로 3개 뽑아 줘.</span></div><div class="pe-slot"><span class="pe-pen">조건</span><span>리뷰에 없는 내용은 쓰지 마.</span></div><div class="pe-slot"><span class="pe-pen">형식</span><span>표로 답해 줘.</span></div></div><div class="pe-a"><div class="pe-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><table class="pe-tb"><tr><th>불만</th><th>건수</th><th>대표 리뷰</th></tr><tr><td>배달 지연</td><td>12</td><td>[2]</td></tr><tr><td>음식 온도</td><td>7</td><td>[5]</td></tr><tr><td>포장 누락</td><td>3</td><td>[9]</td></tr></table><div class="pe-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="pe-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="pe-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+  <div class="pe-chat"><div class="pe-bar"><span>프롬프트를 채웠을 때</span><small>같은 모델 · 예시 화면</small></div><div class="pe-log"><div class="pe-slots"><div class="pe-slot"><span class="pe-pen">Persona</span><span>리뷰 분석가로서</span></div><div class="pe-slot"><span class="pe-pen">Context</span><span>치킨집 사장님이 내일 할 일을 정하도록</span></div><div class="pe-slot"><span class="pe-pen">Task</span><span>불만을 많은 순서로 3개 뽑아 줘.</span></div><div class="pe-slot"><span class="pe-pen">Constraint</span><span>리뷰에 없는 내용은 쓰지 마.</span></div><div class="pe-slot"><span class="pe-pen">Output</span><span>표로 답해 줘.</span></div></div><div class="pe-a"><div class="pe-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><table class="pe-tb"><tr><th>불만</th><th>건수</th><th>대표 리뷰</th></tr><tr><td>배달 지연</td><td>12</td><td>[2]</td></tr><tr><td>음식 온도</td><td>7</td><td>[5]</td></tr><tr><td>포장 누락</td><td>3</td><td>[9]</td></tr></table><div class="pe-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="pe-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="pe-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
 </div>
 <p class="pe-cap">설명을 위해 만든 예시 대화입니다. 두 칸의 모델은 같습니다.</p>
 <ol class="pe-rail">
-  <li><a href="#pe-ch1"><b>요청서</b><span>무엇을 원하는지 적지 않았습니다</span></a></li>
+  <li><a href="#pe-ch1"><b>프롬프트</b><span>무엇을 원하는지 적지 않았습니다</span></a></li>
   <li><a href="#pe-ch2"><b>근거</b><span>모르면 멈추라고 하지 않았습니다</span></a></li>
-  <li><a href="#pe-ch3"><b>재료</b><span>넣은 글이 지저분했습니다</span></a></li>
-  <li><a href="#pe-ch4"><b>채점</b><span>나아졌는지 잴 문제가 없었습니다</span></a></li>
+  <li><a href="#pe-ch3"><b>데이터</b><span>넣은 글이 지저분했습니다</span></a></li>
+  <li><a href="#pe-ch4"><b>Eval</b><span>나아졌는지 잴 문제가 없었습니다</span></a></li>
 </ol>
   </div>
 </section>
 
-<div id="pe-ch1"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">1장 · 요청서</span><p class="pe-ch-t">무엇을 원하는지 적습니다</p></div></div></div>
+<div id="pe-ch1"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">1장 · 프롬프트</span><p class="pe-ch-t">무엇을 원하는지 적습니다</p></div></div></div>
 
 <section class="pe-sec">
   <div class="pe-wrap"><!--sf--><h2>AI는 비어 있는 칸을 가장 흔한 답으로 채웁니다</h2><div class="pe-two sf">
@@ -381,7 +381,7 @@ series_order: 8
 <section class="pe-sec">
   <div class="pe-wrap">
     <div class="pe-intro">
-      <h2>요청서 다섯 칸을 채울수록 가능한 답이 줄어듭니다</h2>
+      <h2>프롬프트 다섯 칸을 채울수록 가능한 답이 줄어듭니다</h2>
       <p>칸을 하나 채울 때마다 모델이 쓸 수 있는 답의 범위가 좁아집니다. 역할(Persona)은 누구의 눈으로 볼지, 상황(Context)은 어떤 배경인지, 할 일(Task)은 무엇을 할지 정합니다.</p>
       <p>여기에 조건(Constraint)과 결과 형식(Output Format)을 더하면 답의 모양까지 정해집니다. 아래 그림에서 칸이 늘수록 진한 점이 줄어듭니다.</p>
     </div>
@@ -415,14 +415,14 @@ series_order: 8
     </div>
     <figure data-figure>
   <p class="pe-fh">고정 칸을 앞에 둔 요청 세 개</p>
-  <div class="pe-req"><span class="first">지시문 2,000토큰</span><span class="new">리뷰 A</span></div>
+  <div class="pe-req"><span class="first">instructions 2,000토큰</span><span class="new">리뷰 A</span></div>
   <div class="pe-req"><span class="hit">그대로 재사용</span><span class="new">리뷰 B</span></div>
   <div class="pe-req"><span class="hit">그대로 재사용</span><span class="new">리뷰 C</span></div>
   <span class="pe-fv ok"><b>둘째 요청부터 앞부분을 다시 계산하지 않습니다</b></span>
   <p class="pe-fh" style="margin-top:34px !important">맨 앞에 지금 시각을 넣은 요청 세 개</p>
-  <div class="pe-req"><span class="t">11:02</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 A</span></div>
-  <div class="pe-req"><span class="t">11:03</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 B</span></div>
-  <div class="pe-req"><span class="t">11:04</span><span class="miss">지시문 다시 계산</span><span class="new">리뷰 C</span></div>
+  <div class="pe-req"><span class="t">11:02</span><span class="miss">instructions 다시 계산</span><span class="new">리뷰 A</span></div>
+  <div class="pe-req"><span class="t">11:03</span><span class="miss">instructions 다시 계산</span><span class="new">리뷰 B</span></div>
+  <div class="pe-req"><span class="t">11:04</span><span class="miss">instructions 다시 계산</span><span class="new">리뷰 C</span></div>
   <span class="pe-fv bad"><b>첫 글자가 달라서 재사용이 하나도 안 됩니다</b></span>
 </figure>
   </div>
@@ -691,7 +691,7 @@ for item in response.output:
   </div>
 </section>
 
-<div id="pe-ch3"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">3장 · 재료</span><p class="pe-ch-t">모델에 넣는 글을 목적에 맞게 다듬습니다</p></div></div></div>
+<div id="pe-ch3"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">3장 · 데이터</span><p class="pe-ch-t">모델에 넣는 글을 목적에 맞게 다듬습니다</p></div></div></div>
 
 <section class="pe-sec">
   <div class="pe-wrap">
@@ -883,14 +883,14 @@ print(search_tokens("아이폰 256기가 배달"))</code></pre></div>
   </div>
 </section>
 
-<div id="pe-ch4"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">4장 · 채점</span><p class="pe-ch-t">문제집을 만들어 나아졌는지 잽니다</p></div></div></div>
+<div id="pe-ch4"><div class="pe-ch"><div class="pe-wrap"><span class="pe-ch-n">4장 · Eval</span><p class="pe-ch-t">eval 데이터셋을 만들어 나아졌는지 잽니다</p></div></div></div>
 
 <section class="pe-sec">
   <div class="pe-wrap"><!--sf--><h2>프롬프트를 고쳤는데 정말 나아졌는지 어떻게 알까요?</h2><div class="pe-two sf">
     <div>
       
       <p>챗봇을 고친 다음 날 어제까지 잘 되던 질문이 틀리는 일은 흔합니다. 질문 몇 개를 눈으로 봐서는 알 수 없습니다.</p>
-      <p>지시·입력·정답을 묶은 문제를 모아 두고 프롬프트 버전마다 전부 돌려 봅니다. 이렇게 재는 일을 평가(evaluation)라고 합니다. 결과를 모으면 점수판이 나옵니다.</p>
+      <p>지시·입력·정답을 묶은 문제를 모은 것이 eval 데이터셋(eval dataset)입니다. 프롬프트 버전마다 이것을 전부 돌려 봅니다. 이렇게 재는 일을 평가(evaluation)라고 합니다. 결과를 모으면 eval 리포트가 나옵니다.</p>
     </div>
     <div class="pe-spread n2" style="margin-top:0" data-figure>
   <figure class="pe-chat"><div class="pe-bar"><span>어제 · 프롬프트 v1</span><small>예시 화면</small></div><div class="pe-log"><div class="pe-u">두 번은 안 시켜요</div><div class="pe-a"><div class="pe-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><b>부정</b><div class="pe-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="pe-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="pe-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></figure>
@@ -899,7 +899,7 @@ print(search_tokens("아이폰 256기가 배달"))</code></pre></div>
   </div></div>
   <div class="pe-wrap pe-two pe-after">
     <div>
-      <p>좋은 문제집에는 쉬운 문제만 있지 않습니다. 돌려 말한 표현, 경계에 있는 예외, 답이 없어야 하는 질문도 넣습니다. "옆집 마라 치킨"의 정답을 "모르겠습니다"로 두면 앞서 넣은 규칙이 통하는지 잴 수 있습니다.</p>
+      <p>좋은 eval 데이터셋에는 쉬운 문제만 있지 않습니다. 돌려 말한 표현, 경계에 있는 예외, 답이 없어야 하는 질문도 넣습니다. "옆집 마라 치킨"의 정답을 "모르겠습니다"로 두면 앞서 넣은 규칙이 통하는지 잴 수 있습니다.</p>
       <p>틀린 칸을 보면 고칠 칸도 보입니다. 답이 뻔하면 상황을, 없는 말을 지어내면 조건을, 모양이 틀리면 형식을 고칩니다. 그리고 다시 전체를 돌립니다. 고치다가 잘 되던 문제를 망가뜨리는 회귀(regression)를 잡으려면 일부만 돌리면 안 됩니다.</p>
     </div>
     <figure data-figure><div class="pe-score"><div class="h l">문제</div><div class="h">v1</div><div class="h">v2</div><div class="h">v3</div><div><small>쉬움</small>치킨이 바삭해요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>쉬움</small>배달이 늦었어요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>쉬움</small>또 시킬게요</div><div class="c y">○</div><div class="c y">○</div><div class="c y">○</div><div><small>섞임</small>맛은 좋은데 늦었어요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>섞임</small>빠른데 식었어요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>돌려 말함</small>이 집만 시켜요</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div><small>돌려 말함</small>두 번은 안 시켜요</div><div class="c y">○</div><div class="c n re">×</div><div class="c y">○</div><div><small>예외</small>ㅋㅋㅋ</div><div class="c n">×</div><div class="c n">×</div><div class="c y">○</div><div><small>예외</small>쿠폰 언제 줘요?</div><div class="c n">×</div><div class="c n">×</div><div class="c n">×</div><div><small>모름</small>옆집 마라 치킨 어때요?</div><div class="c n">×</div><div class="c y">○</div><div class="c y">○</div><div class="sum l">맞힌 개수</div><div class="sum">4</div><div class="sum">7</div><div class="sum">9</div></div>
@@ -913,7 +913,7 @@ print(search_tokens("아이폰 256기가 배달"))</code></pre></div>
     <div>
       <h2>문제 하나는 지시와 입력, 정답으로 적습니다</h2>
       <p>이런 문제 묶음을 Instruction 데이터라고 부릅니다. 데이터는 JSON으로 적습니다. JSON은 이름과 값을 중괄호로 묶어 적는 형식입니다.</p>
-      <p>이 문제집은 모델을 더 학습시키는 파인튜닝(fine-tuning)의 재료로도 쓰여서 그쪽 형식을 따릅니다. 2023년 Stanford 연구진이 모델 Alpaca를 학습시키며 쓴 세 칸 형식이 널리 퍼졌습니다. 지금 표준은 대화 그대로 적는 <code>messages</code>입니다. <code>system</code>은 지시, <code>user</code>는 사용자 입력, <code>assistant</code>는 모델이 해야 할 답입니다.</p>
+      <p>이 데이터셋은 모델을 더 학습시키는 파인튜닝(fine-tuning)의 학습 데이터로도 쓰여서 그쪽 형식을 따릅니다. 2023년 Stanford 연구진이 모델 Alpaca를 학습시키며 쓴 세 칸 형식이 널리 퍼졌습니다. 지금 표준은 대화 그대로 적는 <code>messages</code>입니다. <code>system</code>은 지시, <code>user</code>는 사용자 입력, <code>assistant</code>는 모델이 해야 할 답입니다.</p>
       <details>
         <summary>모델이 학습할 때는 어떤 글로 보일까요?</summary>
         <div class="pe-in"><pre class="pe-raw">&lt;|system|&gt;
@@ -972,7 +972,7 @@ print(search_tokens("아이폰 256기가 배달"))</code></pre></div>
   <div class="pe-wrap pe-two pe-after">
     <div>
       <p>한 줄씩 읽으니 파일이 커도 메모리를 적게 쓰고 깨진 줄만 버릴 수 있습니다. 대신 형식을 손으로 맞추면 금방 깨집니다.</p>
-      <p>파일은 언제나 코드로 만듭니다. 아래 코드도 messages 형식으로 저장합니다. 지시는 문제마다 같으니 <code>system</code> 칸을 빼고 채점 코드의 <code>PROMPT</code>에 한 번만 둡니다. 일부러 나쁜 행도 넣었습니다. 잘못된 라벨(label, 정답 표시)과 중복을 걸러 내고 저장한 파일을 다시 읽어 봅니다.</p>
+      <p>파일은 언제나 코드로 만듭니다. 아래 코드도 messages 형식으로 저장합니다. 지시는 문제마다 같으니 <code>system</code> 칸을 빼고 eval 코드의 <code>PROMPT</code>에 한 번만 둡니다. 일부러 나쁜 행도 넣었습니다. 잘못된 라벨(label, 정답 표시)과 중복을 걸러 내고 저장한 파일을 다시 읽어 봅니다.</p>
     </div>
     <div><figure data-figure><p class="pe-fh">손으로 쓰면 생기는 세 가지 문제</p>
 <div class="pe-file">
@@ -1059,9 +1059,9 @@ print(lines[1])</code></pre></div>
 <section class="pe-sec">
   <div class="pe-wrap">
     <div class="pe-intro">
-      <h2>채점 코드는 서른 줄이면 됩니다</h2>
-      <p>채점 도구가 따로 없어도 시작할 수 있습니다. 파일을 한 줄씩 읽어 모델에 묻고 정답과 견주면 됩니다. 난이도별로 나눠 세면 어디가 약한지 드러납니다.</p>
-      <p>글자가 정확히 같은지 보는 채점은 분류처럼 답이 정해진 문제에만 맞습니다. 요약처럼 답이 여럿이면 기준을 정해 사람이나 다른 모델이 채점합니다. Anthropic은 문제의 질보다 양을 먼저 늘리라고 권합니다.</p>
+      <h2>eval 코드는 서른 줄이면 됩니다</h2>
+      <p>eval 도구가 따로 없어도 시작할 수 있습니다. 파일을 한 줄씩 읽어 모델에 묻고 정답과 견주면 됩니다. 난이도별로 나눠 세면 어디가 약한지 드러납니다.</p>
+      <p>글자가 정확히 같은지 보는 평가는 분류처럼 답이 정해진 문제에만 맞습니다. 요약처럼 답이 여럿이면 기준을 정해 사람이나 다른 모델이 평가합니다. Anthropic은 문제의 질보다 양을 먼저 늘리라고 권합니다.</p>
     </div>
     <div class="pe-cp">
       <div class="cp-code"><pre data-title="evaluate.py" data-hl="" data-start="1"><code class="language-python">import json
@@ -1106,7 +1106,7 @@ edge    0/1
 <p class="pe-cap">출력은 예시 답입니다. reviews.jsonl은 앞 코드에서 만든 4줄입니다.</p></div>
       <div class="cp-notes">
         <p><code>item["messages"]</code>에서 문제와 정답을 꺼냅니다. 프롬프트를 고치면 <code>PROMPT</code>만 바꿔 다시 돌립니다.</p>
-        <p>문제가 많아지면 Promptfoo 같은 프롬프트 채점 전용 도구로 옮기면 됩니다. OpenAI도 자사 평가 기능의 대안으로 이 도구의 이전 안내서를 냈습니다.</p>
+        <p>문제가 많아지면 Promptfoo 같은 프롬프트 eval 전용 도구로 옮기면 됩니다. OpenAI도 자사 평가 기능의 대안으로 이 도구의 이전 안내서를 냈습니다.</p>
       </div>
     </div>
   </div>
@@ -1115,8 +1115,8 @@ edge    0/1
 <section class="pe-sec">
   <div class="pe-wrap">
     <div class="pe-intro">
-      <h2>문제집과 프롬프트는 내 Git 저장소에 둡니다</h2>
-      <p>쓰던 기능이 공지 한 줄로 사라지는 일이 실제로 벌어지고 있습니다. 내 코드와 함께 Git에 둔 파일은 그럴 걱정이 없고, 쓸 곳도 세 군데입니다. 프롬프트를 채점할 때, 오픈 모델을 학습시킬 때, 한꺼번에 처리하는 Batch API의 입력을 만들 때입니다. Batch는 모아 둔 요청을 한꺼번에 처리하는 기능으로, 비용이 절반입니다.</p>
+      <h2>eval 데이터셋과 프롬프트는 내 Git 저장소에 둡니다</h2>
+      <p>쓰던 기능이 공지 한 줄로 사라지는 일이 실제로 벌어지고 있습니다. 내 코드와 함께 Git에 둔 파일은 그럴 걱정이 없고, 쓸 곳도 세 군데입니다. 프롬프트를 평가할 때, 오픈 모델을 학습시킬 때, 한꺼번에 처리하는 Batch API의 입력을 만들 때입니다. Batch는 모아 둔 요청을 한꺼번에 처리하는 기능으로, 비용이 절반입니다.</p>
       <p>반대로 서비스 회사의 기능에 맡긴 것은 사라질 수 있습니다. OpenAI만 해도 파인튜닝과 평가 기능(Evals), 대시보드에 저장하는 프롬프트를 차례로 닫고 있습니다. "JSONL을 모으면 OpenAI에서 학습시키면 된다"는 설명은 이제 맞지 않습니다.</p>
     </div>
     <ol class="pe-time" data-figure>
@@ -1137,14 +1137,14 @@ edge    0/1
   <div class="pe-wrap pe-two">
     <div>
       <h2>답이 이상할 때 어디부터 고칠까요?</h2>
-      <p>치킨집 리뷰 요약은 프롬프트 한 줄로 끝나지 않았습니다. 무엇을 원하는지 적고 모르면 멈추게 했습니다. 넣는 글을 다듬고 문제집으로 쟀습니다.</p>
+      <p>치킨집 리뷰 요약은 프롬프트 한 줄로 끝나지 않았습니다. 무엇을 원하는지 적고 모르면 멈추게 했습니다. 넣는 글을 다듬고 eval 데이터셋으로 쟀습니다.</p>
       <p>답이 이상하면 프롬프트부터 다시 쓰고 싶어집니다. 그 전에 증상을 보고 어느 쪽 문제인지 고릅니다. 문제 스무 개짜리 JSONL 하나면 고친 뒤 나아졌는지 바로 확인할 수 있습니다.</p>
     </div>
     <div class="pe-layers" data-figure>
-  <div><span class="sym">답이 뻔합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch1"><b>요청서</b>를 고칩니다</a></div>
+  <div><span class="sym">답이 뻔합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch1"><b>프롬프트</b>를 고칩니다</a></div>
   <div><span class="sym">없는 말을 지어냅니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch2"><b>근거</b>를 넣습니다</a></div>
-  <div><span class="sym">검색과 요약이 엉뚱합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch3"><b>재료</b>를 다듬습니다</a></div>
-  <div><span class="sym">나아졌는지 모르겠습니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch4">문제집으로 <b>채점</b>합니다</a></div>
+  <div><span class="sym">검색과 요약이 엉뚱합니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch3"><b>데이터</b>를 다듬습니다</a></div>
+  <div><span class="sym">나아졌는지 모르겠습니다</span><span class="ar" aria-hidden="true"></span><a href="#pe-ch4">eval 데이터셋으로 <b>평가</b>합니다</a></div>
 </div>
   </div>
 </section>
