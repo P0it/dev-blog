@@ -26,6 +26,9 @@
 | [charset-normalizer (Ousret)](https://github.com/Ousret/charset_normalizer) | 모호함을 chaos(깨진 정도)·coherence(언어다움) 두 수치로 재고 `alternative_encodings` 를 같이 준다. "두 표가 같은 글자를 만들 수 있다"를 전제로 "덜 깨진 쪽 고르기"임을 드러낸다 | 추측에 눈금을 달 때 | 2026-10-13 | |
 | [Morse Code Visualizer (Berkanktk)](https://github.com/Berkanktk/morse-code) | (다른 분야·모스 부호) 코드북을 7단 이진 결정트리로 그리고, 입력하는 동안 경로에 실시간으로 불이 들어온다. 조회표가 아니라 "지금 어디까지 왔는지" 보이는 상태 기계로 제시한다 | 해독 과정을 단계별 경로로 보일 때 | 2026-10-13 | |
 | [Enigma Forge (systemslibrarian)](https://github.com/systemslibrarian/crypto-lab-enigma-forge) | (다른 분야·암호) 키 하나를 누를 때마다 lampboard·로터창·신호경로 세 뷰가 동시에 갱신된다. 독자가 만지는 것은 코드북 설정 자체(로터·링·플러그보드)라, 같은 입력이 설정에 따라 다른 출력이 되는 것을 조작으로 겪는다 | 같은 입력에 다른 약속을 끼우는 구조를 보일 때 | 2026-10-13 | utf8-encoding-mojibake |
+| [Wikipedia, Base64](https://en.wikipedia.org/wiki/Base64) | 예시 하나를 비트까지 풀어 8칸 묶음과 6칸 묶음을 위아래로 맞댄다 | 인코딩·직렬화처럼 "묶음만 바뀌는" 변환 | 2026-11-05 | gpt-vision-image-quiz-tts |
+| [Bartosz Ciechanowski, Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/) | 실패한 결과 → 원인 → 고치는 법 순서로 같은 장면을 여러 번 보인다 | 입력 크기·해상도처럼 결과가 눈에 보이는 설정 | 2026-11-05 | gpt-vision-image-quiz-tts |
+| 실제 사진을 공식 규칙으로 줄여 세 장 나란히(직접 만듦) | 설정값마다 모델에 들어가는 실제 픽셀을 같은 자리로 잘라 비교하고, 그 위에 칸 격자를 얹어 숫자가 쓰는 칸을 칠한다 | 이미지·음성처럼 입력을 직접 보여 줄 수 있는 설정값 | 2026-11-05 | gpt-vision-image-quiz-tts |
 
 | [Anthropic, Redesigning source control](https://www.anthropic.com/engineering/redesigning-source-control) | Scion 의 설계 원칙을 "클라이언트는 늘 온라인", "모든 데이터는 내용 주소이고 불변 → 어느 서버든 조율 없이 캐시" 처럼 한 줄 원칙으로 먼저 세우고 구조를 뒤에 푼다 | 시스템 설계를 원칙 → 구조 순으로 설명할 때 | 2026-10-14 | content-addressing-merkle-tree |
 | [Pro Git 10.2 Git Objects](https://raw.githubusercontent.com/progit/progit2/main/book/10-git-internals/sections/objects.asc) | `blob <크기>\0` 헤더를 붙여 SHA-1 을 손으로 계산하고 `git hash-object` 결과와 맞춰 보인다 | 이름이 내용에서 계산된다는 것을 처음 납득시킬 때 | 2026-10-14 | content-addressing-merkle-tree |

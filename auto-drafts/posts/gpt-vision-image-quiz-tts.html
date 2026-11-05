@@ -1,0 +1,1246 @@
+---
+title: 사진 설명은 잘하는 AI가 그래프 숫자를 틀리는 이유
+slug: gpt-vision-image-quiz-tts
+excerpt: AI는 빵집 사진을 술술 설명하다가도 그래프의 숫자 하나를 틀립니다. 사진이 base64 글자로 바뀌어 요청에 실리고 32픽셀 칸으로 잘려 모델에 들어가는 과정, detail 값에 따라 달라지는 픽셀과 토큰, 사진 한 장을 영어 듣기 문제로 만드는 Structured Outputs와 음성 합성까지 그림과 코드로 봅니다.
+tags: [Vision, 이미지 분석, TTS, Structured Outputs, OpenAI API, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 6
+---
+<!-- page -->
+<!-- layout: 왼쪽 시작 글 + 전폭 펼쳐 놓기 + 그림 고정 스크롤 한 곳 + 장 표지 띠 한 번 + 코드|해설 짝(코드 늘 왼쪽) | 글의 성격: 사진 한 장이 글자 → 칸 → 토큰으로 바뀌는 과정을 따라간 뒤, 같은 사진으로 듣기 문제를 만드는 2부 구성 | 버린 후보: 레일(4편과 같은 구조), 분할 히어로(1·2편), 슬라이더(값을 바꿔 보는 그림은 상태 세 장을 펼치는 편이 낫다) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .vi {
+  --vi-red: rgb(204, 52, 40); --vi-ok: rgb(14, 138, 108); --vi-pen: rgb(196, 50, 38); --vi-a: rgb(37, 112, 235);
+  --vi-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --vi-bar: color-mix(in srgb, var(--fg-neutral) 30%, var(--bg-base));
+  --vi-ink: color-mix(in srgb, var(--fg-strong) 62%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .vi { --vi-red: rgb(255, 118, 102); --vi-ok: rgb(70, 205, 165); --vi-pen: rgb(255, 128, 110); --vi-a: rgb(110, 165, 255); --vi-bar: color-mix(in srgb, var(--fg-neutral) 42%, var(--bg-base)); }
+.post-page .vi * { box-sizing: border-box; }
+.post-page .vi-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .vi h1, .post-page .vi h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .vi h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.24; margin-bottom: 28px; max-width: 900px; }
+.post-page .vi h2 { font-size: clamp(24px, 3.1vw, 34px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .vi p { font-size: 17px; line-height: 1.85; margin: 0 0 1.4em; }
+.post-page .vi b { color: var(--fg-strong); }
+.post-page .vi a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .vi code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .vi pre code { background: none; padding: 0; }
+.post-page .vi figure { margin: 0; min-width: 0; }
+.post-page .vi img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.post-page .vi p.vi-cap { font-size: 15px; color: var(--fg-neutral); margin: 14px 0 0; line-height: 1.7; }
+.post-page .vi-sec { padding: clamp(100px, 11vw, 150px) 0 0; }
+.post-page .vi-text > p, .post-page .vi-text > details { max-width: 720px; }
+.post-page .vi-text > p:last-child { margin-bottom: 0; }
+.post-page .vi-pen { font-family: var(--vi-penf); color: var(--vi-pen); font-size: 23px; line-height: 1.15; font-style: normal; }
+.post-page .vi figure.vi-wide, .post-page .vi-wide { margin-top: clamp(36px, 4vw, 52px); }
+.post-page .vi-after { margin-top: clamp(32px, 4vw, 48px); }
+.post-page .vi-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.post-page .vi-row > .vi-text > p:last-child { margin-bottom: 0; }
+.post-page .vi-spread { display: grid; gap: clamp(20px, 3vw, 36px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .vi-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .vi-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 10px !important; line-height: 1.5 !important; }
+.post-page .vi-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .vi-eq .vi-fh { min-height: 3.2em; }
+.post-page .vi-who { display: block; font-size: 12.5px; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .vi-attn { position: relative; }
+.post-page .vi-attn svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.post-page .vi-attn .ln path { fill: none; stroke: #fff; stroke-width: 3; }
+.post-page .vi-attn .c rect { fill: rgba(255,255,255,.25); stroke: #fff; stroke-width: 3; }
+.post-page .vi-attn .me { fill: rgba(255,60,45,.35); stroke: rgb(255,60,45); stroke-width: 4; }
+.post-page .vi-gates svg { display: block; width: 100%; height: auto; }
+.post-page .vi-gates text { font-family: var(--font-mono); font-size: 15px; fill: var(--fg-strong); }
+.post-page .vi-gates .l { fill: none; stroke: var(--fg-neutral); stroke-width: 2; }
+.post-page .vi-gates .ax { stroke: var(--line-strong); stroke-width: 1; }
+.post-page .vi-gates .off { opacity: .45; }
+.post-page .vi-gates .bad { fill: none; stroke: var(--vi-red); stroke-width: 3; }
+.post-page .vi-gates .good { fill: var(--fg-strong); }
+.post-page .vi-gates .wrong { color: var(--vi-red); font-weight: 700; }
+.post-page .vi-route { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(20px, 3vw, 36px); position: relative; }
+.post-page .vi-route > div { position: relative; min-width: 0; }
+.post-page .vi-route > div:not(:last-child)::after { content: "→"; position: absolute; right: calc(-1 * clamp(20px, 3vw, 36px)); width: clamp(20px, 3vw, 36px); top: 42px; text-align: center; color: var(--fg-strong); font-size: 18px; }
+.post-page .vi-route .th { height: 104px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; border: 1px solid var(--line-subtle); }
+.post-page .vi-route .th img { height: 100%; object-fit: cover; border-radius: 0; }
+.post-page .vi-route .th canvas { width: 100%; height: 100%; }
+.post-page .vi-route .th.tx { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; color: var(--fg-strong); padding: 12px; display: flex; flex-direction: column; justify-content: center; }
+.post-page .vi-route .th.tx { display: block; }
+.post-page .vi-route b { display: block; font-size: 16px; }
+.post-page .vi-route small { font-size: 14px; color: var(--fg-neutral); }
+.post-page .vi-scr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; }
+.post-page .vi-ring { position: relative; }
+.post-page .vi-ring i { position: absolute; left: 36.2%; top: 72.7%; width: 13%; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2.5px solid rgb(226, 60, 45); border-radius: 50%; }
+.post-page .vi-shapes .vi-spread { align-items: end; }
+.post-page .vi-mono { font-family: var(--font-mono); }
+
+/* 히어로: 채팅 화면 두 개 + 들어간 모습 */
+.post-page .vi-hero { padding: clamp(56px, 9vw, 104px) 0 0; }
+.post-page .vi-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .vi-lede { font-size: 18px !important; max-width: 720px; }
+.post-page .vi-chat { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.post-page .vi-me { align-self: flex-end; width: min(86%, 400px); background: color-mix(in srgb, var(--vi-a) 11%, var(--bg-base)); border-radius: 16px 16px 4px 16px; padding: 10px; }
+.post-page .vi-me img { border-radius: 10px; aspect-ratio: 16 / 10; object-fit: cover; background: #fff; }
+.post-page .vi-me span { display: block; margin: 9px 4px 2px; font-size: 15.5px; color: var(--fg-strong); line-height: 1.5; }
+.post-page .vi-ai { align-self: flex-start; max-width: 94%; font-size: 15.5px; line-height: 1.65; color: var(--fg-strong); padding: 2px 4px; }
+.post-page .vi-ai .vi-pen { display: block; margin-top: 6px; }
+.post-page .vi-x { text-decoration: underline wavy var(--vi-red); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.post-page .vi-inside { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 28px); margin-top: clamp(32px, 4vw, 44px); }
+.post-page .vi-inside img { border: 1px solid var(--line-subtle); }
+.post-page .vi-pix { image-rendering: pixelated; }
+
+/* 그림: 비트 다시 묶기 */
+.post-page .vi-bits { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; }
+.post-page .vi-bits .b { aspect-ratio: 1 / 1.45; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: clamp(10px, 1.35vw, 16px); border-radius: 3px; background: var(--bg-muted); color: var(--fg-strong); }
+.post-page .vi-bits .b.one { background: color-mix(in srgb, var(--fg-strong) 76%, var(--bg-base)); color: var(--bg-base); }
+.post-page .vi-bgrp { display: grid; gap: 2px; margin: 6px 0; font-family: var(--font-mono); text-align: center; }
+.post-page .vi-bgrp.g8 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .vi-bgrp.g6 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.post-page .vi-bgrp > div { border: 2px solid var(--fg-neutral); padding: 3px 2px; font-size: 14.5px; color: var(--fg-strong); }
+.post-page .vi-bgrp.g8 > div { border-bottom: 0; border-radius: 7px 7px 0 0; }
+.post-page .vi-bgrp.g6 > div { border-top: 0; border-radius: 0 0 7px 7px; border-color: var(--vi-a); }
+.post-page .vi-bgrp.g6 b { display: block; font-size: clamp(22px, 3vw, 34px); line-height: 1.2; color: var(--vi-a); }
+.post-page .vi-bgrp small { font-size: 12.5px; color: var(--fg-neutral); }
+
+/* 막대 */
+.post-page .vi-bars { display: grid; gap: 14px; }
+.post-page .vi-bars > div { display: grid; grid-template-columns: 7.8em minmax(0, 1fr); gap: 12px; align-items: center; font-size: 15px; color: var(--fg-strong); }
+.post-page .vi-track { position: relative; height: 26px; }
+.post-page .vi-fill { position: absolute; left: 0; top: 0; bottom: 0; min-width: 2px; border-radius: 4px; background: var(--vi-ink); }
+.post-page .vi-fill.warn { background: var(--vi-red); opacity: .82; }
+.post-page .vi-fill.mute { background: var(--vi-bar); }
+.post-page .vi-val { position: absolute; top: 3px; z-index: 2; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); white-space: nowrap; }
+
+/* 그림: 택배 세 가지 */
+.post-page .vi-way svg { display: block; width: 100%; height: auto; }
+.post-page .vi-way svg text { font-family: var(--font-sans); font-size: 19px; fill: var(--fg-strong); }
+.post-page .vi-way svg text.s { font-size: 17px; fill: var(--fg-neutral); }
+.post-page .vi-way svg text.m { font-family: var(--font-mono); font-size: 16px; }
+.post-page .vi-way .env { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 2.5; }
+.post-page .vi-way .fld { fill: var(--vi-ink); }
+.post-page .vi-way .lbl { fill: color-mix(in srgb, var(--vi-a) 16%, var(--bg-base)); stroke: var(--vi-a); stroke-width: 2; }
+
+/* 스크롤 그림 */
+.post-page .vi-sc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: start; margin-top: clamp(28px, 3vw, 40px); }
+.post-page .vi-steps { padding-bottom: 12vh; }
+.post-page .vi-step { min-height: 62vh; display: flex; flex-direction: column; justify-content: flex-start; opacity: .36; transition: opacity .25s; }
+.post-page .vi-step:first-child { justify-content: flex-start; min-height: 58vh; }
+.post-page .vi-step.on { opacity: 1; }
+.post-page .vi-step p { margin: 0 0 .8em; }
+.post-page .vi-step h3 { font-size: 19px; margin: 0 0 10px; color: var(--fg-strong); font-family: var(--font-display); line-height: 1.45; }
+.post-page .vi-stick { position: sticky; top: 84px; }
+.post-page .vi-stage { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--bg-muted); }
+.post-page .vi-stage > * { position: absolute; inset: 0; transition: opacity .3s, transform .35s; }
+.post-page .vi-stage > img { border-radius: 0; height: 100%; object-fit: cover; }
+.post-page .vi-stage svg { width: 100%; height: 100%; }
+.post-page .vi-lay { opacity: 0; pointer-events: none; }
+.post-page .vi-stage[data-s="0"] .s0, .post-page .vi-stage[data-s="1"] .s1, .post-page .vi-stage[data-s="2"] .s2, .post-page .vi-stage[data-s="3"] .s3, .post-page .vi-stage[data-s="4"] .s4 { opacity: 1; }
+.post-page .vi-stage .grid line { stroke: #fff; stroke-width: 1.5; opacity: .9; }
+.post-page .vi-stage .hit { fill: none; stroke: var(--vi-red); stroke-width: 3; }
+.post-page .vi-stage .big { fill: #fff; }
+.post-page .vi-board { background: var(--bg-base); display: flex; flex-direction: column; justify-content: flex-start; gap: 14px; padding: 0; }
+.post-page .vi-board img { outline: 4px solid rgb(226, 60, 45); outline-offset: -4px; }
+.post-page .vi-board img { width: min(62%, 270px); image-rendering: pixelated; }
+.post-page .vi-nums { font-family: var(--font-mono); font-size: clamp(12px, 1.25vw, 15px); line-height: 1.6; color: var(--fg-strong); }
+.post-page .vi-nums i { font-style: normal; }
+.post-page .vi-nums .r { color: rgb(200, 60, 50); } .post-page .vi-nums .g { color: var(--vi-ok); } .post-page .vi-nums .bl { color: var(--vi-a); }
+.post-page .vi-seq { display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; }
+.post-page .vi-seq span { font-size: 13px; padding: 3px 6px; border: 1.5px solid var(--line-strong); border-radius: 5px; color: var(--fg-strong); background: var(--bg-base); }
+.post-page .vi-seq i { width: 30px; height: 30px; border-radius: 3px; background-image: url(/post-assets/gpt-vision-image-quiz-tts/bakery.webp); background-size: 570px auto; }
+.post-page .vi p.vi-stepl { font-family: var(--font-mono); font-size: 14px; color: var(--fg-strong); margin: 0 0 8px; line-height: 1.5; min-height: 1.5em; }
+
+/* 그림: 공식 도형 세 개 */
+.post-page .vi-shapes svg { display: block; width: 100%; height: auto; }
+.post-page .vi-shapes text { font-family: var(--font-sans); font-size: 17px; fill: var(--fg-strong); }
+.post-page .vi-shapes text.s { font-family: var(--font-mono); font-size: 15px; fill: var(--fg-neutral); }
+.post-page .vi-shapes .ghost { fill: none; stroke: var(--fg-neutral); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.post-page .vi-shapes .solid { fill: color-mix(in srgb, var(--fg-strong) 13%, var(--bg-base)); stroke: var(--fg-strong); stroke-width: 2; }
+.post-page .vi-shapes .pen { font-family: var(--vi-penf); font-size: 23px; fill: var(--vi-pen); }
+
+/* detail 세 장 */
+.post-page .vi-det .vi-track { height: 18px; margin-top: 10px; }
+.post-page .vi-det .vi-num { font-family: var(--font-mono); font-size: 14px; color: var(--fg-strong); margin-top: 8px; line-height: 1.6; }
+.post-page .vi-det .vi-num small { display: block; color: var(--fg-strong); font-size: 14px; }
+
+/* 한계 여섯 장 */
+.post-page .vi-lim { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(28px, 3vw, 40px) clamp(20px, 3vw, 36px); }
+.post-page .vi-lim svg { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line-subtle); }
+.post-page .vi-lim text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .vi-lim .l { stroke: var(--fg-strong); fill: none; stroke-width: 2.5; }
+.post-page .vi-lim .f { fill: var(--fg-strong); }
+.post-page .vi-mini { aspect-ratio: 300 / 120; display: flex; align-items: center; justify-content: center; gap: 28px; color: var(--fg-strong); font-weight: 700; font-size: clamp(38px, 4.4vw, 56px); border-bottom: 1px solid var(--line-subtle); line-height: 1; position: relative; }
+.post-page .vi-mini .up { display: inline-block; transform: rotate(180deg); }
+.post-page .vi-mini.two { flex-direction: column; gap: 12px; align-items: flex-start; font-size: clamp(22px, 2.3vw, 28px); font-weight: 400; padding-left: 8px; }
+.post-page .vi-mini.two b { font-weight: 700; }
+.post-page .vi-mini.tiny { justify-content: space-between; gap: 12px; }
+.post-page .vi-mini.tiny svg { flex: 1 1 0; min-width: 0; border: 0; padding: 0; width: 60%; height: auto; }
+.post-page .vi-lim .t { font-size: 15.5px !important; line-height: 1.65 !important; margin: 10px 0 0 !important; }
+.post-page .vi-lim .t b { display: block; }
+
+/* 벤치마크 */
+.post-page .vi-bm .grp { font-size: 14px; color: var(--fg-neutral); margin: 26px 0 8px; line-height: 1.5; }
+.post-page .vi-bm .grp:first-child { margin-top: 0; }
+.post-page .vi-bm .vi-bars > div { grid-template-columns: 11em minmax(0, 1fr); }
+.post-page .vi-bm .vi-track { height: 22px; }
+.post-page .vi-bm .vi-val { top: 1px; }
+
+/* 입력 줄 */
+.post-page .vi-line { display: flex; align-items: stretch; gap: 8px; }
+.post-page .vi-line > div { min-width: 0; }
+.post-page .vi-line .tx { flex: 2 1 0; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); display: flex; align-items: center; padding-left: 8px; }
+.post-page .vi p.tag { font-family: var(--font-mono); font-size: 14px; color: var(--fg-strong); margin: 0 0 8px; line-height: 1.4; }
+.post-page .vi-line .im { flex: 3 1 0; }
+.post-page .vi-line .im img { border: 1px solid var(--line-subtle); background: #fff; }
+.post-page .vi-line small { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); margin-top: 6px; }
+
+/* 장 표지 */
+.post-page .vi-band { margin-top: clamp(110px, 12vw, 170px); padding: clamp(44px, 6vw, 72px) 0; background: var(--bg-muted); }
+.post-page .vi-band p { font-family: var(--font-display); font-size: clamp(22px, 3vw, 32px); line-height: 1.45; color: var(--fg-strong); margin: 0; max-width: 820px; font-weight: 700; }
+
+/* 듣기 시험 화면 */
+.post-page .vi-sheet { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(20px, 3vw, 32px); align-items: start; }
+.post-page .vi-opts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.post-page .vi-opts li { display: grid; grid-template-columns: 1.8em minmax(0, 1fr); gap: 4px; font-size: 15.5px; line-height: 1.55; padding: 8px 10px; border-radius: 8px; color: var(--fg-strong); border: 1px solid var(--line-subtle); }
+.post-page .vi-opts li.ans { border: 2px solid var(--vi-ok); }
+.post-page .vi-play { display: flex; align-items: center; gap: 10px; }
+.post-page .vi-play b { font-size: 15.5px; }
+.post-page .vi-play svg { flex: 1 1 0; min-width: 0; height: 40px; }
+.post-page .vi-ev { font-size: 15px !important; line-height: 1.7 !important; margin: 12px 0 0 !important; }
+
+/* 노선도 */
+
+
+/* 답 세 개 */
+.post-page .vi-reply { font-family: var(--font-mono); font-size: 14px; line-height: 1.65; color: var(--fg-strong); background: var(--bg-subtle); border-radius: 8px; padding: 12px 14px; min-height: 8.6em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .vi-reply mark { background: color-mix(in srgb, var(--vi-ok) 22%, transparent); color: inherit; border-radius: 3px; }
+.post-page .vi p.vi-res { font-family: var(--font-mono); font-size: 13.5px; margin: 10px 0 0 !important; line-height: 1.55 !important; }
+.post-page .vi p.vi-res.bad { color: var(--vi-red); }
+.post-page .vi p.vi-res.ok { color: var(--vi-ok); }
+
+/* 소리 */
+.post-page .vi-script { font-family: var(--font-mono); font-size: 15px; line-height: 1.9; color: var(--fg-strong); margin: 0; white-space: pre-wrap; }
+.post-page .vi-script mark { background: color-mix(in srgb, var(--vi-a) 20%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; }
+.post-page .vi-cv { display: block; width: 100%; height: auto; }
+.post-page .vi-saxis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); margin-top: 4px; }
+.post-page .vi-zoom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 28px); }
+
+/* 일정표 */
+.post-page .vi-dates svg { display: block; width: 100%; height: auto; }
+.post-page .vi-dates text { font-family: var(--font-sans); font-size: 18px; fill: var(--fg-strong); }
+.post-page .vi-dates text.s { font-family: var(--font-mono); font-size: 15px; fill: var(--fg-neutral); }
+.post-page .vi-dates .ax { stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .vi-dates .now { fill: var(--fg-strong); }
+.post-page .vi-dates .end { fill: var(--vi-red); }
+
+.post-page .vi-gridded { position: relative; }
+.post-page .vi-gridded svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.post-page .vi-gridded line { stroke: rgb(226, 60, 45); stroke-width: 1.6; opacity: .7; }
+.post-page .vi-gridded .hitc { fill: rgba(226,60,45,.32); stroke: rgb(226,60,45); stroke-width: 3; }
+.post-page .vi-gridded img { border: 1px solid var(--line-subtle); }
+.post-page .vi-tl .line { position: relative; height: 3px; background: var(--fg-strong); margin: 14px 8px 18px; }
+.post-page .vi-tl .line i { position: absolute; top: -8px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--fg-strong); }
+.post-page .vi-tl .line i.end { background: var(--vi-red); }
+.post-page .vi-tl .lab { display: flex; justify-content: space-between; gap: 12px; font-size: 14.5px; color: var(--fg-strong); line-height: 1.5; }
+.post-page .vi-tl .lab em { font-family: var(--vi-penf); font-style: normal; font-size: 24px; color: var(--vi-pen); }
+.post-page .vi-tl .lab .r { text-align: right; }
+.post-page .vi-tl .lab b { display: block; font-family: var(--font-mono); font-weight: 400; font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .vi-chunks .row { display: grid; grid-template-columns: 8em minmax(0, 1fr); gap: 12px; align-items: center; margin-bottom: 14px; font-size: 15px; }
+.post-page .vi-chunks .row b { font-weight: 600; }
+.post-page .vi-chunks .pieces { display: flex; gap: 8px; }
+.post-page .vi-chunks .pieces span, .post-page .vi-chunks .whole { display: flex; align-items: center; gap: 2px; height: 44px; border: 1.5px solid var(--fg-strong); border-radius: 5px; padding: 0 3px; overflow: hidden; min-width: 0; }
+.post-page .vi-chunks .pieces span { flex: 1 1 0; }
+.post-page .vi-chunks i { flex: 1 1 0; background: var(--vi-ink); border-radius: 1px; min-width: 1px; }
+
+/* 코드 | 해설, 터미널 */
+.post-page .vi-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-template-rows: auto 1fr; gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(40px, 5vw, 60px) 0 0; }
+.post-page .vi-cp > .cp-code { grid-column: 1; grid-row: 1 / span 2; } .post-page .vi-cp > .cp-notes { grid-column: 2; grid-row: 1; } .post-page .vi-cp > .cp-term { grid-column: 2; grid-row: 2; }
+.post-page .vi .pg-code { margin-top: 0; }
+.post-page .vi ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .vi ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .vi-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .vi-term-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .vi-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--code-fg, #abb2bf); background: transparent; color: var(--code-fg, #abb2bf); cursor: pointer; white-space: nowrap; flex: none; }
+.post-page .vi-act::before { content: "▶ "; font-size: 11px; }
+.post-page .vi-act:disabled { opacity: .4; cursor: default; }
+.post-page .vi-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .vi-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-vi-blink 1s steps(1) infinite; }
+@keyframes pg-vi-blink { 50% { opacity: 0; } }
+
+.post-page .vi details { margin: 22px 0 0; max-width: 720px; }
+.post-page .vi details.vi-full { max-width: none; }
+.post-page .vi summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .vi details > .vi-in { padding-top: 14px; overflow-x: auto; }
+.post-page .vi-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.post-page .vi-tbl th, .post-page .vi-tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .vi-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .vi-todo { margin: 0; padding-left: 1.3em; list-style: decimal; display: grid; gap: 14px; font-size: 16.5px; line-height: 1.75; max-width: 720px; }
+.post-page .vi-todo li::marker { font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
+.post-page .vi-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; max-width: 800px; }
+.post-page .vi-refs a { overflow-wrap: anywhere; }
+.post-page .vi-end { height: clamp(80px, 10vw, 140px); }
+
+@media (max-width: 960px) {
+  .post-page .vi-wrap { padding: 0 20px; }
+  .post-page .vi-row, .post-page .vi-cp, .post-page .vi-sheet { grid-template-columns: minmax(0, 1fr); }
+  .post-page .vi-cp > .cp-code, .post-page .vi-cp > .cp-term, .post-page .vi-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .vi-cp > .cp-notes { order: 2; } .post-page .vi-cp > .cp-term { order: 3; }
+  .post-page .vi-sc { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .vi-stick { top: 60px; z-index: 3; background: var(--bg-base); padding: 8px 0; grid-row: 1; }
+  .post-page .vi-steps { grid-row: 2; padding-top: 20px; }
+  .post-page .vi-step, .post-page .vi-step:first-child { min-height: 58vh; justify-content: flex-start; }
+}
+@media (max-width: 640px) {
+  .post-page .vi p { font-size: 16px; }
+  .post-page .vi-spread, .post-page .vi-spread.n2, .post-page .vi-lim, .post-page .vi-zoom { grid-template-columns: minmax(0, 1fr); }
+  .post-page .vi-bits { gap: 1px; }
+  .post-page .vi-bgrp > div { font-size: 12px; padding: 2px 0; }
+  .post-page .vi-bgrp small { font-size: 10px; }
+  .post-page .vi-bgrp.g8 small { display: none; }
+  .post-page .vi-inside { grid-template-columns: minmax(0, 1fr); }
+  .post-page .vi-chunks .pieces { gap: 4px; }
+  .post-page .vi-chunks .row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .post-page .vi-tl .lab { font-size: 13.5px; }
+  .post-page .vi-route, .post-page .vi-scr { grid-template-columns: minmax(0, 1fr); }
+  .post-page .vi-route > div:not(:last-child)::after { content: "↓"; right: auto; left: 0; width: auto; top: auto; bottom: -24px; }
+  .post-page .vi-bars > div, .post-page .vi-bm .vi-bars > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .post-page .vi-line { flex-direction: column; }
+  .post-page .vi-reply { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .vi-stage > *, .post-page .vi-step { transition: none; }
+  .post-page .vi-term-out .cur { animation: none; }
+}
+</style>
+<div class="vi">
+  <header class="vi-hero">
+    <div class="vi-wrap">
+      <p class="vi-eyebrow">AI Service Track · 06</p>
+      <h1>사진 설명은 잘하는 AI가 그래프 숫자를 틀리는 이유</h1>
+      <p class="vi-lede">ChatGPT에 빵집 사진을 올리면 바게트와 베이글을 척척 구분합니다. 그런데 리뷰 그래프를 올리고 숫자 하나를 물으면 틀린 값을 자신 있게 말할 때가 있습니다. 화면 뒤로 내려가 사진이 어떤 모양으로 모델에 들어가는지 보고 사진 한 장을 영어 듣기 문제로 만드는 데까지 가 봅니다.</p>
+      <figure class="vi-wide" data-thumb>
+        <div class="vi-spread n2">
+          <div class="vi-chat">
+            <div class="vi-me"><img src="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" alt="금속 선반에 바게트와 시골빵, 베이글이 진열된 빵집 사진"><span>이 사진 설명해 줘</span></div>
+            <div class="vi-ai"><small class="vi-who">AI · 예시 답</small>빵집 진열대입니다. 위 칸에 바게트와 큰 시골빵이, 아래 칸에 베이글과 가격표가 놓여 있습니다.</div>
+          </div>
+          <div class="vi-chat">
+            <div class="vi-me"><div class="vi-ring"><img src="/post-assets/gpt-vision-image-quiz-tts/chart.webp" alt="8주 동안의 긍정, 부정, 섞임 리뷰 수를 그린 꺾은선 그래프"><i></i></div><span>3주차 부정 리뷰는 몇 건이야?</span></div>
+            <div class="vi-ai"><small class="vi-who">AI · 예시 답</small>3주차 부정 리뷰는 <span class="vi-x">35건</span>입니다.<em class="vi-pen">그래프에 적힌 값은 38건</em></div>
+          </div>
+        </div>
+        <div class="vi-inside">
+          <div><p class="vi-fh">빨간 동그라미를 확대하면<small>원본 3200×2000 그대로</small></p><img src="/post-assets/gpt-vision-image-quiz-tts/corner-sharp.webp" alt="숫자 38이 또렷하게 보이는 그래프 일부"></div>
+          <div><p class="vi-fh">가장 작게 넣었을 때 같은 자리<small>512×320으로 줄인 뒤 확대</small></p><img src="/post-assets/gpt-vision-image-quiz-tts/corner-low.webp" alt="같은 자리를 줄였다가 늘린 모습. 숫자가 번져 3인지 8인지 알기 어렵다"></div>
+        </div>
+        <p class="vi-cap">확대한 두 장은 실제로 줄여 만든 픽셀입니다. 그래프 값은 예시입니다. 채팅 서비스가 사진을 어떤 크기로 모델(답을 만드는 AI 본체)에 넣는지는 공개되어 있지 않아 크기를 직접 고를 수 있는 API(프로그램이 모델을 부르는 창구) 기준으로 설명합니다. 사진: Linm KWOU Zhsuwomg, <a href="https://commons.wikimedia.org/wiki/File:HK_WC_%E7%81%A3%E4%BB%94_Wan_Chai_%E5%A4%AA%E5%92%8C%E8%A1%97_20_Tai_Wo_Street_%E7%A6%8F%E5%92%8C%E5%A4%A7%E5%BB%88_Fook_Wo_Building_shop_Concept_%E5%93%81%E7%A9%80_Big_Grains_November_2021_SS2_13.jpg">Wikimedia Commons</a>, CC BY-SA 4.0.</p>
+      </figure>
+    </div>
+  </header>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>사진은 모델에 얼마나 크게 들어갈까요?</h2>
+        <p>정해진 크기로 줄어든 뒤 32픽셀 격자로 나뉘어 세어집니다. 픽셀(pixel)은 사진을 이루는 작은 색 점 하나입니다. 격자 한 칸을 <b>패치(patch)</b>라고 부르고 요금도 이 칸 수로 정해집니다. OpenAI가 모델 내부를 공개하지는 않았지만 크기와 요금 계산은 문서에 있습니다. 앞의 빵집 사진으로 계산하면 이렇습니다.</p>
+      </div>
+      <div class="vi-sc" data-vi-sc>
+        <div class="vi-steps">
+          <div class="vi-step on" data-s="0"><h3>휴대폰으로 찍은 사진은 생각보다 큽니다</h3><p>이 사진은 가로 4128, 세로 3096픽셀로, 점이 1,278만 개입니다. 32픽셀 칸으로 나누면 12,513칸입니다.</p></div>
+          <div class="vi-step" data-s="1"><h3>먼저 정해진 크기로 줄입니다</h3><p>API에는 사진을 얼마나 크게 넣을지 정하는 <code>detail</code> 값이 있습니다. <code>"high"</code>로 보내면 <code>gpt-5.6-luna</code> 모델은 긴 변을 2048픽셀 안에, 칸 수를 2,500칸 안에 맞춥니다. 왼쪽 위 사진이 줄어든 1824×1368이고 점선이 원래 크기입니다.</p></div>
+          <div class="vi-step" data-s="2"><h3>32픽셀 칸으로 자릅니다</h3><p>가로 57칸, 세로 43칸으로 모두 2,451칸입니다. 격자는 빵의 생김새를 모르고 일정한 간격으로 자를 뿐입니다. 빨간 동그라미 속 한 칸에는 빵 껍질 한 조각만 들어 있습니다.</p></div>
+          <div class="vi-step" data-s="3"><h3>한 칸은 숫자 뭉치입니다</h3><p>빨간 동그라미 속 칸을 확대했습니다. 픽셀마다 빨강·초록·파랑 세 숫자이니, 한 칸에는 32×32×3으로 숫자 3,072개가 들어 있습니다. 함께 적은 숫자는 이 칸의 실제 첫 픽셀들입니다.</p></div>
+          <div class="vi-step" data-s="4"><h3>칸과 글이 한 줄로 이어집니다</h3><p>토큰(token)은 모델이 입력을 세는 단위이자 요금의 단위입니다. 칸 수에 모델마다 정해진 수를 곱하면 사진의 토큰이 나옵니다. <code>gpt-5.6-luna</code>는 1.2를 곱합니다. 왜 1.2인지는 문서에 없습니다. 모델에게 사진은 아주 긴 문장과 비슷합니다.</p></div>
+        </div>
+        <figure class="vi-stick">
+          <p class="vi-stepl" data-vi-label>4128 × 3096 · 12,513칸</p>
+          <div class="vi-stage" data-vi-stage data-s="0">
+            <img class="vi-lay s0" src="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" alt="원본 빵집 사진" loading="lazy">
+            <svg class="vi-lay s1" viewBox="0 0 4128 3096" aria-hidden="true"><rect x="10" y="10" width="4108" height="3076" fill="none" stroke="currentColor" stroke-width="14" stroke-dasharray="60 44" opacity=".6"/><image href="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" x="0" y="0" width="1824" height="1368"/></svg>
+            <svg class="vi-lay s2" viewBox="0 0 1824 1368" role="img" aria-label="사진 위에 57칸, 43칸 격자"><image href="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" x="0" y="0" width="1824" height="1368"/><g class="grid" data-vi-grid></g><rect class="big-hit" x="1216" y="448" width="32" height="32" fill="none" stroke="rgb(255,60,45)" stroke-width="10"/><circle cx="1232" cy="464" r="78" fill="none" stroke="rgb(255,60,45)" stroke-width="9"/></svg>
+            <div class="vi-lay s3 vi-board">
+              <img src="/post-assets/gpt-vision-image-quiz-tts/patch.png" alt="32픽셀 칸 하나를 크게 늘린 모습" loading="lazy">
+              <div class="vi-nums"><i class="r">96</i> <i class="g">57</i> <i class="bl">42</i> · <i class="r">115</i> <i class="g">73</i> <i class="bl">55</i> · <i class="r">116</i> <i class="g">71</i> <i class="bl">51</i> · …</div>
+            </div>
+            <div class="vi-lay s4 vi-board">
+              <div class="vi-seq" data-vi-seq></div>
+            </div>
+          </div>
+          
+        </figure>
+      </div>
+      <div class="vi-text">
+        <p>칸 하나는 빵을 모르는데 어떻게 빵을 알아볼까요? 공개된 연구가 실마리입니다. 2020년 논문의 <b>ViT</b>(Vision Transformer)는 사진 칸에 번호를 달아 문장의 낱말처럼 한 줄로 넣습니다. 그러면 칸마다 다른 칸을 함께 살펴 껍질 무늬가 이어지면 "빵"이라는 뜻을 만듭니다.</p>
+        <p>이 논문은 16픽셀 칸을 썼고 GPT 모델이 똑같이 만들어졌는지는 공개되어 있지 않습니다. "숫자 3,072개"도 칸을 이해하려고 세어 본 값입니다.</p>
+      </div>
+      <figure class="vi-wide">
+        <div class="vi-spread n2">
+          <div><p class="vi-fh">칸이 다른 칸을 함께 봅니다<small>선은 설명을 위한 그림입니다</small></p>
+            <div class="vi-attn"><img src="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" alt="빵집 사진에서 빵 껍질 칸 하나가 같은 빵의 다른 칸들과 선으로 이어진 그림" loading="lazy"><svg viewBox="0 0 640 480" aria-hidden="true">
+              <g class="ln"><path d="M500 110 Q 460 60 420 70"/><path d="M500 110 Q 560 80 600 120"/><path d="M500 110 Q 470 170 440 190"/><path d="M500 110 Q 560 170 590 210"/><path d="M500 110 Q 520 190 520 240"/></g>
+              <g class="c"><rect x="400" y="50" width="40" height="40"/><rect x="580" y="100" width="40" height="40"/><rect x="420" y="170" width="40" height="40"/><rect x="570" y="190" width="40" height="40"/><rect x="500" y="220" width="40" height="40"/></g>
+              <rect class="me" x="480" y="90" width="40" height="40"/></svg></div></div>
+          <div><p class="vi-fh">논문의 원래 그림<small>아래에서 위로 읽습니다</small></p>
+            <img src="/post-assets/gpt-vision-image-quiz-tts/vit-figure1.webp" alt="사진을 칸으로 잘라 번호를 붙이고 Transformer Encoder에 넣어 분류하는 ViT 구조도" loading="lazy" style="background:#fff;padding:8px">
+            <p class="vi-cap">Linear Projection은 칸을 숫자 줄로 바꾸고 Position Embedding은 번호를 답니다. Transformer Encoder가 칸들의 관계를 계산하고 MLP Head가 답을 고릅니다. 출처: <a href="https://arxiv.org/abs/2010.11929">Dosovitskiy 외 (2020), Figure 1</a></p></div>
+        </div>
+      </figure>
+      <div class="vi-text vi-after"><p>다시 요금으로 돌아옵니다. 사진 모양에 따라 칸 수가 이렇게 달라집니다.</p></div>
+      <figure class="vi-wide vi-shapes vi-det" style="margin-top:24px">
+        <p class="vi-fh">모양이 다른 사진 세 장의 칸과 토큰<small>gpt-5.6-luna, detail: high. 네모는 같은 축척입니다</small></p>
+        <div class="vi-spread"><div><svg viewBox="0 132 516 132" role="img" aria-label="1024 정사각형"><rect class="solid" x="2" y="134" width="128" height="128"/></svg><p class="vi-num"><b>1024×1024</b><br>1,024칸 · 1,229토큰</p></div><div><svg viewBox="0 4 516 260" role="img" aria-label="2048 정사각형이 1600으로 줄어든 모습"><rect class="ghost" x="2" y="6" width="256" height="256"/><rect class="solid" x="2" y="62" width="200" height="200"/></svg><p class="vi-num"><b>2048×2048 → 1600×1600</b><br>칸 한도에 걸려 줄어듭니다. 2,500칸 · 3,000토큰</p></div><div><svg viewBox="0 196 516 68" role="img" aria-label="4096×512가 2048×256으로 줄어든 모습"><rect class="ghost" x="2" y="198" width="512" height="64"/><rect class="solid" x="2" y="230" width="256" height="32"/></svg><p class="vi-num"><b>4096×512 → 2048×256</b><br>긴 변 한도에 걸립니다. 512칸 · 615토큰</p></div></div>
+        <p class="vi-cap">앞의 두 값은 공식 문서의 예시와 같고 세 번째는 같은 규칙으로 계산했습니다. 점선은 원래 크기입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>사진 크기를 안 정하면 어떻게 될까요?</h2>
+        <p>큰 사진이 줄지 않고 그대로 들어갑니다. <code>detail</code>을 안 적으면 <code>auto</code>가 되는데, <code>gpt-5.6</code> 계열에서 <code>auto</code>는 원본 크기인 <code>original</code>과 같습니다. 빵집 사진의 가격표를 세 값으로 줄여 나란히 놓았습니다.</p>
+      </div>
+      <figure class="vi-wide vi-det" data-figure>
+        <div class="vi-spread">
+          <div>
+            <p class="vi-fh">low<small>512×384로 줄임</small></p>
+            <img class="vi-pix" src="/post-assets/gpt-vision-image-quiz-tts/tag-low.webp" alt="low 크기의 가격표. 큰 22만 겨우 보이고 작은 글자는 뭉개졌다" loading="lazy">
+            <div class="vi-track"><span class="vi-fill" style="width:1.5%"></span></div>
+            <p class="vi-num">231토큰<small>가격표 폭 98픽셀</small></p>
+          </div>
+          <div>
+            <p class="vi-fh">high<small>1824×1368로 줄임</small></p>
+            <img src="/post-assets/gpt-vision-image-quiz-tts/tag-high.webp" alt="high 크기의 가격표. 영어 이름과 22달러가 읽힌다" loading="lazy">
+            <div class="vi-track"><span class="vi-fill" style="width:19.6%"></span></div>
+            <p class="vi-num">2,942토큰<small>가격표 폭 349픽셀</small></p>
+          </div>
+          <div>
+            <p class="vi-fh">original <span class="vi-pen" style="font-size:21px;line-height:1">안 적으면 이쪽</span><small>4128×3096 그대로</small></p>
+            <img src="/post-assets/gpt-vision-image-quiz-tts/tag-original.webp" alt="original 크기의 가격표. 작은 설명 글자까지 또렷하다" loading="lazy">
+            <div class="vi-track"><span class="vi-fill warn" style="width:100%"></span></div>
+            <p class="vi-num">15,016토큰<small>가격표 폭 790픽셀</small></p>
+          </div>
+        </div>
+        <p class="vi-cap">공식 규칙으로 계산한 크기로 실제 사진을 줄였습니다. 보이는 것은 모델의 답이 아닌 입력 픽셀입니다. low의 칸 한도는 문서에 따로 없어 같은 계산식으로 어림했습니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>이 가격표는 high만 돼도 이름과 값이 읽힙니다. high와 original의 요금 차이는 5배입니다. low는 사진 분위기를 물을 때는 충분해도 글자를 물으면 안 됩니다.</p>
+        <p>큰 사진은 아예 거절됩니다. 한 장의 한도가 30,000칸이고 original은 넘어도 줄여 주지 않습니다. 4800만 픽셀 사진(8000×6000)은 47,000칸이라 <code>detail</code>을 안 적으면 요청이 실패합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>그래프 숫자는 왜 유독 틀릴까요?</h2>
+        <p>빵집 사진은 "대체로 무엇이 있나"만 맞히면 되지만 그래프 값은 작은 숫자 하나를 정확히 읽어야 맞습니다. 앞의 격자를 그래프의 숫자 38 위에 얹어 보면 차이가 보입니다. 사진을 작게 넣을수록 칸 하나가 넓은 자리를 덮어서 숫자가 쓸 칸이 줄어듭니다.</p>
+      </div>
+      <figure class="vi-wide vi-det" data-figure>
+        <div class="vi-spread">
+          <div><p class="vi-fh">low<small>그래프 전체 192토큰</small></p><div class="vi-gridded"><img src="/post-assets/gpt-vision-image-quiz-tts/corner-low.webp" alt="격자 한 칸이 매우 넓고 숫자가 번진 모습" loading="lazy"><svg viewBox="0 0 640 400" data-vi-cell="228.6,140.6,188.6" aria-hidden="true"></svg></div><p class="vi-num">숫자 38이 칸 1개를 함께 씁니다</p></div>
+          <div><p class="vi-fh">high<small>그래프 전체 2,949토큰</small></p><div class="vi-gridded"><img src="/post-assets/gpt-vision-image-quiz-tts/corner-high.webp" alt="격자 칸이 작아지고 숫자가 읽히는 모습" loading="lazy"><svg viewBox="0 0 640 400" data-vi-cell="58.63,53,54.3" aria-hidden="true"></svg></div><p class="vi-num">칸 2개</p></div>
+          <div><p class="vi-fh">original<small>그래프 전체 7,560토큰</small></p><div class="vi-gridded"><img src="/post-assets/gpt-vision-image-quiz-tts/corner-sharp.webp" alt="격자 칸이 더 작고 숫자가 또렷한 모습" loading="lazy"><svg viewBox="0 0 640 400" data-vi-cell="36.57,21.7,14.9" aria-hidden="true"></svg></div><p class="vi-num">칸 4개</p></div>
+        </div>
+        <p class="vi-cap">3200×2000 예시 그래프의 같은 자리에 32픽셀 칸을 공식 규칙으로 계산해 그렸습니다. 빨갛게 칠한 칸에 숫자가 들어 있습니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>크게 넣어도 틀릴 수 있습니다. 그래프의 값 하나를 읽으려면 <b>어느 선인지, 어느 주차인지, 무슨 숫자인지</b> 세 번을 모두 맞혀야 하고 하나만 어긋나도 답이 틀립니다. 빵집 사진을 설명할 때는 이런 관문이 없습니다.</p>
+      </div>
+      <figure class="vi-wide vi-gates" data-figure>
+        <div class="vi-spread">
+          <div><p class="vi-fh">① 어느 선인가요?<small>부정은 점선인데 실선을 읽으면</small></p><svg viewBox="0 0 360 230" data-vi-gate="line" role="img" aria-label="실선을 잘못 읽어 131을 답한 그림"></svg><p class="vi-num"><span class="wrong">131건</span> 긍정 리뷰 값</p></div>
+          <div><p class="vi-fh">② 어느 주차인가요?<small>3주차인데 옆 칸을 읽으면</small></p><svg viewBox="0 0 360 230" data-vi-gate="week" role="img" aria-label="2주차를 잘못 읽어 52를 답한 그림"></svg><p class="vi-num"><span class="wrong">52건</span> 2주차 값</p></div>
+          <div><p class="vi-fh">③ 무슨 숫자인가요?<small>자리는 맞는데 글자를 잘못 읽으면</small></p><svg viewBox="0 0 360 230" data-vi-gate="digit" role="img" aria-label="38을 35로 잘못 읽은 그림"></svg><p class="vi-num"><span class="wrong">35건</span> 8을 5로 읽음</p></div>
+        </div>
+        <p class="vi-cap">앞의 그래프를 다시 그린 그림이고 빨간 표시는 틀릴 수 있는 경우를 예로 든 것입니다. 정답은 38건입니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>OpenAI 문서도 모델이 약한 곳으로 이런 일을 직접 적어 두었습니다.</p>
+      </div>
+      <figure class="vi-wide vi-lim" style="margin-top:32px">
+        <div><div class="vi-mini tiny"><svg viewBox="0 0 200 120" aria-hidden="true"><g data-vi-tiny></g></svg><span>$22</span></div><p class="t"><b>작은 글자</b>큰 글자는 읽어도 깨알 같은 글자는 놓칩니다.</p></div>
+        <div><div class="vi-mini"><span>38</span><span class="up">38</span></div><p class="t"><b>돌아간 글자</b>사진이 옆으로 눕거나 뒤집혀 있으면 잘못 읽을 수 있습니다.</p></div>
+        <div><svg viewBox="0 0 300 120" role="img" aria-label="실선, 파선, 점선이 겹친 그래프"><path class="l" d="M6 90 L80 60 L150 78 L220 34 L294 50"/><path class="l" stroke-dasharray="10 7" d="M6 70 L80 82 L150 50 L220 62 L294 24"/><path class="l" stroke-dasharray="2 6" d="M6 40 L80 48 L150 92 L220 88 L294 76"/></svg><p class="t"><b>선 모양 구분</b>색이나 점선 모양으로 나뉜 선을 헷갈립니다.</p></div>
+        <div><svg viewBox="0 0 300 120" role="img" aria-label="흩어진 점 여러 개"><g data-vi-dots></g></svg><p class="t"><b>개수 세기</b>많은 것을 셀 때 답이 어림값입니다.</p></div>
+        <div><svg viewBox="0 0 300 120" role="img" aria-label="체스판 위의 말"><g data-vi-chess></g></svg><p class="t"><b>정확한 위치</b>체스판처럼 어느 칸에 있는지가 중요한 그림에 약합니다.</p></div>
+        <div><div class="vi-mini two"><span>Fast delivery</span><b>배달이 빨라요</b></div><p class="t"><b>로마자가 아닌 글자</b>한글도 여기에 들어갑니다. 최적이 아니라고 적혀 있습니다.</p></div>
+      </figure>
+      <div class="vi-row vi-after">
+        <div class="vi-text">
+          <p>연구 결과도 비슷합니다. 그래프 문제 1,162개로 잰 ChartMuseum에서 사람은 93%를 맞혔는데 당시 최고 모델은 63%였습니다. 다만 2025년 모델 기준입니다. 다른 시험인 PlotChain에서 GPT-4o는 61.59점, GPT-4.1은 79.84점으로 세대마다 나아지고 있어 내 그래프로 직접 재 봐야 합니다.</p>
+        </div>
+        <figure class="vi-bm" data-figure>
+          <p class="vi-fh">ChartMuseum (2025)<small>그래프 추론 문제, 정답률</small></p><div class="vi-bars">
+            <div><span>사람</span><span class="vi-track"><span class="vi-fill" style="width:75%"></span><span class="vi-val" style="left:calc(75% + 6px)">93%</span></span></div>
+            <div><span>Gemini-2.5-Pro</span><span class="vi-track"><span class="vi-fill mute" style="width:50.8%"></span><span class="vi-val" style="left:calc(50.8% + 6px)">63.0%</span></span></div>
+            <div><span>Qwen2.5-VL-72B</span><span class="vi-track"><span class="vi-fill mute" style="width:31%"></span><span class="vi-val" style="left:calc(31% + 6px)">38.5%</span></span></div>
+          </div>
+        </figure>
+      </div>
+      <div class="vi-text vi-after">
+        <p>요금을 더 내지 않고 그래프를 잘 읽히는 방법이 있습니다. <b>물어볼 부분만 잘라서 보내는 것</b>입니다. 사진은 정해진 크기로 줄어드니, 잘라 낸 작은 조각은 같은 요금에 훨씬 많은 칸을 차지합니다.</p>
+      </div>
+      <figure class="vi-wide vi-det" data-figure>
+        <div class="vi-spread n2">
+          <div>
+            <p class="vi-fh">그래프 전체를 low로<small>192토큰. 이 자리에 쓰인 칸은 약 6칸</small></p>
+            <img src="/post-assets/gpt-vision-image-quiz-tts/corner-low.webp" alt="전체를 줄여서 번진 숫자" loading="lazy" style="border:1px solid var(--line-subtle)">
+            <div class="vi-track"><span class="vi-fill mute" style="width:5%"></span><span class="vi-val" style="left:calc(5% + 6px);top:-1px">6칸</span></div>
+          </div>
+          <div>
+            <p class="vi-fh">이 자리만 잘라서 low로<small>192토큰. 이 자리에 쓰인 칸은 160칸</small></p>
+            <img src="/post-assets/gpt-vision-image-quiz-tts/corner-crop-low.webp" alt="잘라서 줄이니 또렷한 숫자 38" loading="lazy" style="border:1px solid var(--line-subtle)">
+            <div class="vi-track"><span class="vi-fill" style="width:88%"></span><span class="vi-val" style="left:calc(88% + 6px);top:-1px">160칸</span></div>
+          </div>
+        </div>
+        <p class="vi-cap">3200×2000 예시 그래프에서 560×350 부분을 실제로 잘라 계산했습니다. 여기서 센 칸은 숫자만이 아니라 이 범위 전체가 쓰는 칸입니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>그림을 거치지 않으면 더 확실합니다. 숫자의 원본 표나 CSV(쉼표로 칸을 나눈 표 파일)가 있으면 그것을 글로 보냅니다. 사진밖에 없다면 더 크게 넣거나 잘라 보내고 "안 보이는 숫자는 '안 보임'이라고 적으세요"라고 지시합니다. 없는 값을 물으면 지어내는 경향이 보고되었기 때문입니다(ChartHal, 2025). 어느 쪽이든 돈이 걸린 숫자는 원본과 맞춰 봐야 합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>사진은 어떻게 요청에 실려 갈까요?</h2>
+        <p>앱에서 사진을 올리면 화면에는 작은 미리보기만 보이지만 프로그램은 그 사진을 어떻게든 요청에 실어 보내야 합니다. 가장 쉬운 길은 사진을 글자로 바꾸는 것입니다. API 요청은 프로그램끼리 주고받는 글자 양식인 JSON이라 사진 파일의 숫자를 그대로 넣을 수 없습니다. 이 변환을 <b>base64</b>라고 합니다. 컴퓨터 파일은 0과 1을 8개씩 묶은 바이트(byte)로 되어 있는데, base64는 이것을 6개씩 다시 묶어 글자 64종 가운데 하나로 적습니다.</p>
+      </div>
+      <figure class="vi-wide" data-figure>
+        <p class="vi-fh">JPEG 파일의 맨 앞 3바이트가 글자 4개가 됩니다</p>
+        <div class="vi-bgrp g8"><div>FF <small>바이트 1</small></div><div>D8 <small>바이트 2</small></div><div>FF <small>바이트 3</small></div></div>
+        <div class="vi-bits" data-vi-bits></div>
+        <div class="vi-bgrp g6"><div><b>/</b><small>111111</small></div><div><b>9</b><small>111101</small></div><div><b>j</b><small>100011</small></div><div><b>/</b><small>111111</small></div></div>
+        <p class="vi-cap">JPEG 사진을 base64로 바꾼 글자는 그래서 언제나 <code>/9j/</code>로 시작합니다. 어려운 계산 없이 묶음만 바꾼 것이라 열쇠 없이 누구나 원래 사진으로 되돌립니다. 암호가 아닙니다.</p>
+      </figure>
+      <div class="vi-row vi-after">
+        <div class="vi-text">
+          <p>3바이트가 4글자가 되니 크기는 3분의 1만큼 늘어납니다. 위 빵집 사진의 원본 파일로 재면 4.5MB가 6.0MB가 됩니다. 사진 여러 장을 이렇게 실으면 요청 하나가 금세 수십 MB로 불어납니다.</p>
+        </div>
+        <figure data-figure>
+          <div class="vi-bars">
+            <div><span>원본 JPEG</span><span class="vi-track"><span class="vi-fill mute" style="width:62.5%"></span><span class="vi-val" style="left:calc(62.5% + 8px)">4.5MB</span></span></div>
+            <div><span>base64 글자</span><span class="vi-track"><span class="vi-fill" style="width:83.3%"></span><span class="vi-val" style="left:calc(83.3% + 8px)">6.0MB</span></span></div>
+          </div>
+        </figure>
+      </div>
+      <div class="vi-text vi-after">
+        <p>그래서 사진을 보내는 길은 세 가지입니다. 어느 길이든 모델이 보는 사진은 같고 요청에 실리는 무게만 달라집니다.</p>
+      </div>
+      <figure class="vi-wide vi-way">
+        <div class="vi-spread">
+          <div>
+            <svg viewBox="0 0 360 270" role="img" aria-label="주소만 적힌 얇은 상자">
+              <text x="2" y="20" font-weight="700">공개 주소</text>
+              <rect class="env" x="2" y="148" width="356" height="42" rx="8"/>
+              <text class="m" x="16" y="175">https://…/bakery.jpg</text>
+              <text class="s" x="2" y="222">요청 약 0.2KB</text>
+              <text class="s" x="2" y="250">OpenAI 서버가 주소에서 가져갑니다</text>
+            </svg>
+            <p class="vi-cap" style="margin-top:0">누구나 열 수 있는 주소여야 합니다. 로그인이 필요한 사진은 이 길로 못 보냅니다.</p>
+          </div><div>
+            <svg viewBox="0 0 360 270" role="img" aria-label="글자로 꽉 찬 두꺼운 상자">
+              <text x="2" y="20" font-weight="700">data URL</text>
+              <rect class="env" x="2" y="40" width="356" height="150" rx="8"/>
+              <g data-vi-fillbars></g>
+              <text class="s" x="2" y="222">요청 약 6MB</text>
+              <text class="s" x="2" y="250">사진 전체가 글자로 실립니다</text>
+            </svg>
+            <p class="vi-cap" style="margin-top:0">사진을 글자로 직접 적은 주소로, <code>data:image/jpeg;base64,/9j/…</code> 꼴입니다. 내 컴퓨터 사진을 보내는 가장 쉬운 길이지만 물을 때마다 다시 실립니다.</p>
+          </div><div>
+            <svg viewBox="0 0 360 270" role="img" aria-label="파일 번호만 적힌 얇은 상자">
+              <text x="2" y="20" font-weight="700">file_id</text>
+              <rect class="env" x="2" y="148" width="356" height="42" rx="8"/>
+              <text class="m" x="16" y="175">file-abc123</text>
+              <text class="s" x="2" y="222">요청 약 0.1KB</text>
+              <text class="s" x="2" y="250">파일은 먼저 한 번 올려 둡니다</text>
+            </svg>
+            <p class="vi-cap" style="margin-top:0">파일을 OpenAI에 맡기는 Files API에 올리고 받은 번호만 적습니다. 같은 사진을 여러 번 물을 때 좋습니다.</p>
+          </div>
+        </div>
+        <p class="vi-cap">상자 두께는 요청 크기를 나타낸 그림이고 실제 차이는 3만 배쯤입니다. 0.2KB와 0.1KB는 어림값입니다.</p>
+      </figure>
+      <div class="vi-cp">
+        <div class="cp-code">
+<pre data-title="describe.py" data-hl="7,17,27"><code class="language-python">import base64
+from openai import OpenAI
+
+client = OpenAI()
+
+# ① 사진 파일을 data URL 글자로 바꿉니다
+def to_data_url(path, mime="image/jpeg"):
+    with open(path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+    return f"data:{mime};base64,{encoded}"
+
+response = client.responses.create(
+    model="gpt-5.6-luna",
+    input=[{"role": "user", "content": [
+        {"type": "input_text", "text": "이 사진을 두 문장으로 설명하세요."},
+        # ② 글과 사진을 한 content 줄에 나란히 놓습니다
+        {
+            "type": "input_image",
+            "image_url": to_data_url("bakery.jpg"),
+            "detail": "high",
+        },
+    ]}],
+)
+
+print(response.output_text)
+# ③ 사진 값까지 합친 입력 토큰
+print("입력 토큰:", response.usage.input_tokens)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="vi-term" data-vi-term>
+  <div class="vi-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="vi-act" data-vi-run>실행해 보기</button></div>
+  <div class="vi-term-out" data-vi-out aria-live="polite">$ python describe.py
+빵집 진열대 사진입니다. 위 칸에는 바게트와 큰 시골빵이, 아래 칸에는 베이글과 가격표가 놓여 있습니다.
+입력 토큰: 2970</div>
+</div>
+<p class="vi-cap">출력은 예시 답입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>base64.b64encode</code>는 위 그림의 묶음 바꾸기를 파일 전체에 합니다. 앞의 <code>data:image/jpeg;base64,</code>는 "이 글자는 JPEG 사진"이라는 표시입니다. PNG, JPEG, WEBP, 움직이지 않는 GIF를 쓸 수 있습니다.</li>
+  <li>글과 사진을 같은 <code>content</code> 목록에 넣고 <code>type</code>으로 종류만 구분합니다. <code>detail</code>은 앞에서 본 크기 값입니다.</li>
+  <li>앞에서 계산한 사진 토큰이 글 토큰과 합산되어 나옵니다. <code>gpt-5.6-luna</code>는 입력 100만 토큰에 0.2달러입니다(2026-11 확인).</li>
+</ol>
+        </div>
+      </div>
+<details>
+  <summary>이전 방식(chat.completions)으로 된 코드를 고치려면</summary>
+  <div class="vi-in">
+    <table class="vi-tbl">
+      <tr><th>옛 코드</th><th>지금</th></tr>
+      <tr><td><code>chat.completions.create</code></td><td><code>responses.create</code></td></tr>
+      <tr><td><code>messages</code></td><td><code>input</code></td></tr>
+      <tr><td><code>{"type": "text"}</code></td><td><code>{"type": "input_text"}</code></td></tr>
+      <tr><td><code>{"type": "image_url", "image_url": {"url": …}}</code></td><td><code>{"type": "input_image", "image_url": …}</code></td></tr>
+      <tr><td><code>choices[0].message.content</code></td><td><code>output_text</code></td></tr>
+      <tr><td><code>gpt-5-nano</code> (2026-12-11 종료)</td><td><code>gpt-5.6-luna</code></td></tr>
+    </table>
+  </div>
+</details>
+
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>사진 두 장의 차이는 어떻게 물을까요?</h2>
+        <p>입력 줄에 글과 사진을 번갈아 놓고 사진마다 글로 이름표를 붙입니다. 모델은 파일 이름이나 촬영 정보를 보지 못하기 때문입니다. <code>reviews_jan.png</code>라고 저장해 둬도 모델에게는 그냥 사진 한 장입니다. "첫 번째 사진" 같은 말보다 A·B 이름표가 답을 읽기도 쉽습니다.</p>
+      </div>
+      <figure class="vi-wide" data-figure>
+        <p class="vi-fh">모델이 순서대로 읽는 입력 한 줄</p>
+        <div class="vi-line">
+          <div class="im"><p class="tag">[사진 A] 1월 리뷰 그래프</p><img src="/post-assets/gpt-vision-image-quiz-tts/chart.webp" alt="1월 예시 그래프" loading="lazy"><small>7,560토큰</small></div>
+          <div class="im"><p class="tag">[사진 B] 2월 리뷰 그래프</p><img src="/post-assets/gpt-vision-image-quiz-tts/chart-feb.webp" alt="2월 예시 그래프. 부정 리뷰가 늘고 있다" loading="lazy"><small>7,560토큰</small></div>
+          <div class="tx"><span>A와 B의 차이를 적어 주세요. 안 보이는 숫자는 '안 보임'이라고 적으세요.</span></div>
+        </div>
+        <p class="vi-cap">이번에는 숫자를 읽어야 하니 3200×2000 그래프를 <code>detail: "original"</code>로 보낼 때의 토큰입니다. 대괄호 이름표와 오른쪽 문장도 입력에 들어가는 글입니다. 그래프 값은 예시입니다.</p>
+      </figure>
+      <details class="vi-full"><summary>코드로 보기: 사진 두 장 비교하기</summary><div class="vi-in">
+<div class="vi-cp">
+        <div class="cp-code">
+<pre data-title="compare.py" data-hl="7,20,25"><code class="language-python">from openai import OpenAI
+
+client = OpenAI()
+
+def upload(path):
+    # ① 파일을 먼저 올리고 번호를 받습니다
+    with open(path, "rb") as f:
+        return client.files.create(file=f, purpose="vision").id
+
+jan, feb = upload("reviews_jan.png"), upload("reviews_feb.png")
+
+def image(file_id):
+    return {"type": "input_image", "file_id": file_id,
+            "detail": "original"}
+
+response = client.responses.create(
+    model="gpt-5.6-luna",
+    input=[{"role": "user", "content": [
+        # ② 사진 앞에 글로 이름표를 붙입니다
+        {"type": "input_text", "text": "[사진 A] 1월 리뷰 그래프"},
+        image(jan),
+        {"type": "input_text", "text": "[사진 B] 2월 리뷰 그래프"},
+        image(feb),
+        # ③ 안 보일 때 어떻게 할지까지 적습니다
+        {"type": "input_text", "text": "A와 B의 차이를 적어 주세요. "
+                                       "안 보이는 숫자는 '안 보임'이라고 적으세요."},
+    ]}],
+)
+
+print(response.output_text)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="vi-term" data-vi-term>
+  <div class="vi-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="vi-act" data-vi-run>실행해 보기</button></div>
+  <div class="vi-term-out" data-vi-out aria-live="polite">$ python compare.py
+A는 부정 리뷰가 30~50건에서 오르내리고, B는 36건에서 81건까지 꾸준히 늘었습니다.
+긍정 리뷰는 A에서 늘다가 B에서 줄었습니다.
+섞임 리뷰의 B 값은 안 보임.</div>
+</div>
+<p class="vi-cap">출력은 예시 답입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>같은 사진을 여러 번 물을 계획이면 <code>file_id</code>가 낫습니다. 사진을 요청마다 다시 싣지 않아도 됩니다.</li>
+  <li>이름표 글자는 사진 바로 앞에 둡니다. 순서가 곧 사진과 이름의 짝입니다.</li>
+  <li>"안 보임"이라는 빠져나갈 길을 줍니다. 터미널의 마지막 줄처럼, 모르는 값은 모른다고 적을 자리가 있어야 합니다.</li>
+</ol>
+        </div>
+      </div>
+</div></details>
+    </div>
+  </section>
+
+  <div class="vi-band"><div class="vi-wrap"><p>여기까지가 사진을 읽는 일입니다. 이제 같은 사진 한 장으로 영어 듣기 문제를 만듭니다.</p></div></div>
+
+  <section class="vi-sec" style="padding-top:clamp(64px,8vw,96px)">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>사진 한 장이 듣기 문제가 되면 어떤 화면일까요?</h2>
+        <p>학습 앱이 사진을 보여 주고 문장 네 개를 영어로 읽어 준 뒤, 사진과 맞지 않는 문장을 고르게 합니다. 이 화면 뒤에는 사진을 보고 문제를 쓰는 일과 글을 소리로 바꾸는 일이 차례로 있습니다.</p>
+      </div>
+      <figure class="vi-wide vi-sheet">
+        <img src="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" alt="듣기 문제에 쓴 빵집 사진" loading="lazy">
+        <div>
+          <div class="vi-play"><b>음성으로 듣는 부분</b><svg viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><g data-vi-minwave></g></svg></div>
+          <p class="vi-ev" lang="en" style="margin-top:12px !important">Which description does not match the picture?</p>
+          <ol class="vi-opts">
+            <li><span>1</span><span>Several baguettes are lying side by side.</span></li>
+            <li class="ans"><span>2</span><span>A customer is slicing a loaf of bread.</span></li>
+            <li><span>3</span><span>Loaves of bread are displayed on a metal shelf.</span></li>
+            <li><span>4</span><span>A price tag is attached to the edge of the shelf.</span></li>
+          </ol>
+          <p class="vi-ev"><b>정답 2번.</b> 사진에 빵을 자르는 손님은 없습니다.</p>
+        </div>
+      </figure>
+      <p class="vi-cap">문제는 설명을 위한 예시입니다.</p>
+      <figure class="vi-wide vi-route" data-figure>
+        <div><div class="th"><img src="/post-assets/gpt-vision-image-quiz-tts/bakery.webp" alt="" loading="lazy"></div><b>사진</b><small>bakery.jpg</small></div>
+        <div><div class="th tx">{ "choices": [ … ],<br>&nbsp;&nbsp;"answer_index": 1 }</div><b>문제 데이터</b><small>모델이 사진을 보고 씁니다</small></div>
+        <div><div class="th tx">Number 1. …<br>One. Several …<br>Two. A customer …</div><b>읽을 대본</b><small>파이썬 함수가 잇습니다</small></div>
+        <div><div class="th"><canvas class="vi-cv" width="400" height="180" data-vi-wave="far" aria-label="음성 파형"></canvas></div><b>음성 파일</b><small>TTS 모델이 읽습니다</small></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>문제를 글로 받으면 왜 프로그램이 깨질까요?</h2>
+        <p>모델이 답을 쓰는 모양이 매번 조금씩 달라서입니다. "질문은 <code>Listening:</code> 뒤에 적어 주세요"라고 부탁하고 그 글자를 기준으로 답을 자르는 <code>split("Listening:")</code> 코드를 생각해 봅니다. 사람 눈에는 셋 다 멀쩡한 답이지만 코드의 결과는 다릅니다.</p>
+      </div>
+      <figure class="vi-wide">
+        <div class="vi-spread">
+          <div><p class="vi-fh">시키는 대로 쓴 답</p><div class="vi-reply"><mark>Listening:</mark> Which description does not match the picture?</div><p class="vi-res ok">✓ 질문을 잘 꺼냅니다</p></div>
+          <div><p class="vi-fh">강조 표시를 붙인 답</p><div class="vi-reply">**<mark>Listening:</mark>** Which description does not match the picture?</div><p class="vi-res bad">✗ 질문 앞에 ** 가 붙어 음성으로 읽힙니다</p></div>
+          <div><p class="vi-fh">말을 바꾼 답</p><div class="vi-reply">다음은 듣기 문제입니다.
+1. Which description does not match the picture?</div><p class="vi-res bad">✗ 잘린 조각이 하나뿐이라 오류(IndexError)가 납니다</p></div>
+        </div>
+        <p class="vi-cap">세 답 모두 설명을 위한 예시입니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>그래서 답의 모양을 말로 부탁하지 않고 <b>스키마(schema)</b>로 못박습니다. 스키마는 "항목 이름과 종류"를 적은 양식입니다. 이 양식을 지키도록 모델의 출력을 제한하는 기능이 <b>Structured Outputs</b>입니다. 파이썬에서는 Pydantic이라는 라이브러리(남이 만들어 둔 코드 묶음)로 양식을 적습니다. 받은 답은 글자가 아니라 항목 이름으로 꺼내 쓰는 값(객체)이 됩니다.</p>
+      </div>
+      <div class="vi-cp">
+        <div class="cp-code">
+<pre data-title="quiz.py 핵심" data-hl="7,12,22,25"><code class="language-python">from pydantic import BaseModel, Field
+# ... client, RULES(지시문), url(사진)은 전체 코드에 있습니다
+
+class Quiz(BaseModel):
+    question: str
+    # ① 보기는 정확히 4개, 정답 번호는 0~3
+    choices: list[str] = Field(min_length=4, max_length=4)
+    answer_index: int = Field(ge=0, le=3)
+    evidence: str
+
+# ② text_format 에 양식을 넘깁니다
+response = client.responses.parse(
+    model="gpt-5.6-luna",
+    instructions=RULES,
+    input=[{"role": "user", "content": [
+        {"type": "input_image", "image_url": url,
+         "detail": "high"},
+    ]}],
+    text_format=Quiz,
+)
+# ③ 거절하면 비어 있습니다
+quiz = response.output_parsed
+
+# ④ 정답 자리는 코드가 섞습니다
+answer = quiz.choices[quiz.answer_index]
+random.shuffle(quiz.choices)
+quiz.answer_index = quiz.choices.index(answer)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="vi-term" data-vi-term>
+  <div class="vi-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="vi-act" data-vi-run>실행해 보기</button></div>
+  <div class="vi-term-out" data-vi-out aria-live="polite">$ python quiz.py
+{
+  "question": "Which description does not match the picture?",
+  "choices": [
+    "Several baguettes are lying side by side.",
+    "A customer is slicing a loaf of bread.",
+    "Loaves of bread are displayed on a metal shelf.",
+    "A price tag is attached to the edge of the shelf."
+  ],
+  "answer_index": 1,
+  "evidence": "사진에 빵을 자르는 손님은 없습니다."
+}</div>
+</div>
+<p class="vi-cap">출력은 예시 답입니다. <code>answer_index</code>는 0부터 세니 1은 위 화면의 2번입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>min_length</code>는 최소 개수, <code>ge</code>는 이상, <code>le</code>는 이하입니다. 이런 조건은 스키마에 그대로 담겨 모델에 전달됩니다. 이제 <code>split</code> 없이 <code>quiz.choices[0]</code>으로 꺼냅니다.</li>
+  <li><code>create</code> 대신 <code>parse</code>를 부르고 양식을 넘기면, 답이 <code>output_parsed</code>에 객체로 담겨 옵니다.</li>
+  <li>모델이 답을 거절하거나 길이 한도로 잘리면 이 값이 비어 있을 수 있습니다. 전체 코드는 비어 있을 때 다시 시도합니다.</li>
+  <li>모델이 정답을 어느 자리에 몰아 두더라도 상관없도록, 자리를 코드가 다시 정합니다. 섞은 뒤 번호를 다시 찾는 줄이 중요합니다.</li>
+</ol>
+        </div>
+      </div>
+    <div class="vi-text vi-after"><p>스키마는 모양만 보장합니다. "맞지 않는 보기가 정말 하나뿐인가"는 보장하지 않습니다. 그래서 <code>evidence</code> 항목을 두고 내보내기 전에 사람이 근거를 확인합니다.</p>
+<details><summary>quiz.py 전체 코드</summary><div class="vi-in"><pre data-title="quiz.py" data-hl=""><code class="language-python">import base64, random
+from openai import OpenAI
+from pydantic import BaseModel, Field
+
+client = OpenAI()
+
+class Quiz(BaseModel):
+    question: str
+    # 보기는 정확히 4개, 정답 번호는 0~3
+    choices: list[str] = Field(min_length=4, max_length=4)
+    answer_index: int = Field(ge=0, le=3)
+    evidence: str
+
+RULES = """사진을 보고 영어 듣기 문제를 만드세요.
+보기는 4개, 사진과 맞지 않는 설명은 정확히 1개입니다.
+evidence에는 그 보기가 틀린 이유를 사진에서 찾아 한국어로 적으세요."""
+
+def shuffle(quiz):
+    # 정답 자리는 코드가 섞습니다
+    answer = quiz.choices[quiz.answer_index]
+    random.shuffle(quiz.choices)
+    quiz.answer_index = quiz.choices.index(answer)
+    return quiz
+
+def image_quiz(path, max_trial=3):
+    with open(path, "rb") as f:
+        url = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+    for trial in range(max_trial):
+        # text_format 에 양식을 넘깁니다
+        response = client.responses.parse(
+            model="gpt-5.6-luna",
+            instructions=RULES,
+            input=[{"role": "user", "content": [
+                {"type": "input_image", "image_url": url,
+                 "detail": "high"},
+            ]}],
+            text_format=Quiz,
+        )
+        # 거절하면 비어 있으니 확인합니다
+        if response.output_parsed:
+            return shuffle(response.output_parsed)
+    raise RuntimeError(f"{path}: {max_trial}번 모두 실패")
+
+if __name__ == "__main__":
+    print(image_quiz("bakery.jpg").model_dump_json(indent=2))</code></pre></div></details>
+</div>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+        <div class="vi-text">
+          <h2>글자는 어떻게 목소리가 될까요?</h2>
+          <p>글을 음성으로 바꾸는 <b>TTS</b>(text-to-speech)는 적힌 글자를 읽습니다. 그러니 먼저 귀로 들을 대본을 만들어야 합니다. 화면에는 번호표면 충분해도, 듣기 문제에서는 "One."이라고 소리 내어 말해야 합니다. 데이터를 대본으로 잇는 일은 모델 없이 파이썬 함수로 합니다.</p>
+        </div>
+        <figure class="vi-wide vi-scr">
+          <div>
+<pre data-title="to_script" data-hl=""><code class="language-python">WORDS = ["One", "Two", "Three", "Four"]
+
+def to_script(no, quiz):
+    lines = [f"Number {no}. {quiz.question}"]
+    lines += [f"{w}. {c}"
+              for w, c in zip(WORDS, quiz.choices)]
+    return "\n".join(lines)</code></pre>
+          </div>
+          <div>
+          <p class="vi-fh">이 함수가 만든 대본</p>
+          <pre class="vi-script"><mark>Number 1.</mark> Which description does not match the picture?
+<mark>One.</mark> Several baguettes are lying side by side.
+<mark>Two.</mark> A customer is slicing a loaf of bread.
+<mark>Three.</mark> Loaves of bread are displayed on a metal shelf.
+<mark>Four.</mark> A price tag is attached to the edge of the shelf.</pre>
+          <p class="vi-cap">파랗게 칠한 말이 함수가 끼워 넣은 부분입니다.</p>
+          </div>
+        </figure>
+      <div class="vi-text vi-after">
+        <p>모델이 돌려주는 소리도 사진처럼 결국 숫자입니다. 음성 앱의 소리 그림(파형)을 확대하면 공기의 떨림을 일정한 간격으로 잰 점이 보입니다. 이 점 하나가 <b>샘플(sample)</b>입니다. 24kHz(킬로헤르츠) 음성은 1초에 24,000번 재고 한 번에 2바이트를 쓰니 1초가 48,000바이트입니다.</p>
+      </div>
+      <figure class="vi-wide vi-zoom">
+        <div><p class="vi-fh">문장 하나<small>약 4초</small></p><canvas class="vi-cv" width="600" height="240" data-vi-wave="far" aria-label="문장 하나의 파형. 낱말마다 덩어리가 있다"></canvas></div>
+        <div><p class="vi-fh">낱말 하나<small>약 0.1초</small></p><canvas class="vi-cv" width="600" height="240" data-vi-wave="mid" aria-label="파형을 확대하니 물결이 보인다"></canvas></div>
+        <div><p class="vi-fh">샘플<small>1/24,000초 간격의 점</small></p><canvas class="vi-cv" width="600" height="240" data-vi-wave="near" aria-label="더 확대하니 점 하나하나가 보인다"></canvas></div>
+      </figure>
+      <p class="vi-cap">설명을 위해 계산으로 그린 파형입니다. 실제 음성을 잰 값이 아닙니다.</p>
+          </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <div class="vi-text">
+        <h2>음성 모델은 무엇을 써야 할까요?</h2>
+        <p>새로 만든다면 <code>gpt-realtime-2.1-mini</code>입니다. 글을 보내면 음성 파일을 돌려주는 Speech API의 모델 <code>gpt-4o-mini-tts</code>, <code>tts-1</code>, <code>tts-1-hd</code>가 2027년 1월 6일에 종료되고 이 모델이 공식 대체 모델이기 때문입니다. 이 모델은 Speech API에서 쓸 수 없어 호출 방식까지 바뀝니다.</p>
+      </div>
+      <figure class="vi-wide vi-tl" data-figure>
+        <div class="line"><i style="left:0"></i><i class="end" style="left:100%"></i></div>
+        <div class="lab"><span><b>2026-11-05</b>이 글을 쓴 날</span><em>62일 뒤</em><span class="r"><b>2027-01-06</b>음성 모델 3종 종료</span></div>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>Realtime API는 음성 비서처럼 말을 주고받는 서비스에 쓰는 API입니다. 전화처럼 연결을 열어 두고 소리 조각을 이어서 받습니다. 파일 하나를 만들려면 조각을 모아 붙여야 합니다.</p>
+      </div>
+      <figure class="vi-wide vi-chunks" data-figure>
+        <div class="row"><b>도착한 조각</b><div class="pieces" data-vi-pieces></div></div>
+        <div class="row"><b>이어 붙인 wav</b><div class="whole" data-vi-whole></div></div>
+        <p class="vi-cap">조각 수와 길이는 설명을 위한 예시입니다. 조각마다 샘플이 base64 글자로 옵니다.</p>
+      </figure>
+      <div class="vi-text vi-after">
+        <p>대화용 모델이라 대본을 글자 그대로 읽는다는 보장을 문서에서 찾지 못했습니다. 그래서 모델이 실제로 읽은 글을 함께 받아 대본과 맞춰 봅니다.</p>
+      </div>
+      <div class="vi-cp">
+        <div class="cp-code">
+<pre data-title="tts_realtime.py 핵심" data-hl="6,15,26,33"><code class="language-python"># ... import 와 script(대본)는 전체 코드에
+SESSION = {
+    "type": "realtime",
+    "output_modalities": ["audio"],
+    # ① 덧붙이지 말고 그대로 읽으라고 지시합니다
+    "instructions": "Read the user's text aloud exactly as written. "
+                    "Add nothing.",
+    "audio": {"output": {
+        "format": {"type": "audio/pcm", "rate": 24000},
+        "voice": "marin",
+    }},
+}
+pcm, spoken = bytearray(), ""
+# ② 요청 대신 연결을 엽니다
+with client.realtime.connect(
+    model="gpt-realtime-2.1-mini",
+) as conn:
+    conn.session.update(session=SESSION)
+    conn.conversation.item.create(item={
+        "type": "message", "role": "user",
+        "content": [{"type": "input_text", "text": script}],
+    })
+    conn.response.create()
+    for event in conn:
+        # ③ 소리 조각이 base64 글자로 옵니다
+        if event.type == "response.output_audio.delta":
+            pcm += base64.b64decode(event.delta)
+        elif event.type.endswith("audio_transcript.done"):
+            spoken = event.transcript
+        elif event.type == "response.done":
+            break
+# ④ 읽은 글이 대본과 같은지 확인합니다
+print("대본과 같음:", spoken.split() == script.split())</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="vi-term" data-vi-term>
+  <div class="vi-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="vi-act" data-vi-run>실행해 보기</button></div>
+  <div class="vi-term-out" data-vi-out aria-live="polite">$ python tts_realtime.py
+대본과 같음: True
+길이(초): 18.4</div>
+</div>
+<p class="vi-cap">출력은 예시 답입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>세션(연결 하나에 적용되는 설정)에 지시와 형식, 목소리를 적습니다. <code>audio/pcm</code>은 압축하지 않은 샘플 그대로이고 목소리는 문서가 권하는 <code>marin</code>입니다.</li>
+  <li>이 연결은 WebSocket입니다. 한 번 묻고 끝나는 요청과 달리 한 번 연결한 뒤 양쪽이 계속 메시지를 주고받는 통로입니다.</li>
+  <li>사진을 보낼 때 본 base64가 소리에서도 쓰입니다. 조각(delta)을 풀어 차례대로 이어 붙입니다.</li>
+  <li><code>False</code>면 그 문제만 다시 만듭니다. 듣기 시험에서는 낱말 하나가 바뀌면 답이 바뀔 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+<div class="vi-text vi-after">
+        <p><b>듣는 사람에게 AI 음성임을 알려야 합니다.</b> OpenAI 정책이 요구하는 사항으로, 앱 화면에 한 줄 적어 두면 됩니다. 요금은 오디오 출력 100만 토큰에 20달러로 <code>gpt-4o-mini-tts</code>의 12달러보다 비쌉니다(2026-11 확인). 문제를 대량으로 만들기 전에 몇 개로 재 보세요.</p>
+        <p><code>pcm</code>에는 샘플만 있어 재생기가 형식을 모릅니다. 전체 코드는 소리 통로 1개, 샘플당 2바이트, 초당 24,000번을 적어 소리 파일 형식인 wav로 저장합니다.</p>
+      </div>
+<details><summary>tts_realtime.py 전체 코드</summary><div class="vi-in"><pre data-title="tts_realtime.py" data-hl=""><code class="language-python">import base64, wave
+from quiz import client, image_quiz
+from tts_speech import to_script
+
+SESSION = {
+    "type": "realtime",
+    "output_modalities": ["audio"],
+    # 덧붙이지 말고 그대로 읽으라고 지시합니다
+    "instructions": "Read the user's text aloud exactly as written. Add nothing.",
+    "audio": {"output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": "marin"}},
+}
+
+script = to_script(1, image_quiz("bakery.jpg"))
+pcm, spoken = bytearray(), ""
+# 요청 대신 연결을 엽니다
+with client.realtime.connect(model="gpt-realtime-2.1-mini") as conn:
+    conn.session.update(session=SESSION)
+    conn.conversation.item.create(item={"type": "message", "role": "user",
+        "content": [{"type": "input_text", "text": script}]})
+    conn.response.create()
+    for event in conn:
+        # 소리 조각이 base64 글자로 옵니다
+        if event.type == "response.output_audio.delta":
+            pcm += base64.b64decode(event.delta)
+        elif event.type == "response.output_audio_transcript.done":
+            spoken = event.transcript
+        elif event.type == "response.done":
+            break
+
+# 숫자 뭉치에 머리표를 붙여 wav 파일로 저장합니다
+with wave.open("1.wav", "wb") as w:
+    w.setnchannels(1); w.setsampwidth(2); w.setframerate(24000)
+    w.writeframes(bytes(pcm))
+# 읽은 글이 대본과 같은지 확인합니다
+print("대본과 같음:", spoken.split() == script.split())
+print("길이(초):", len(pcm) / 48000)</code></pre></div></details>
+<details class="vi-full"><summary>2027년 1월까지 더 간단하게: Speech API 코드</summary><div class="vi-in">
+<div class="vi-cp">
+        <div class="cp-code">
+<pre data-title="tts_speech.py" data-hl="6,13,17,22"><code class="language-python">from quiz import client, image_quiz
+
+WORDS = ["One", "Two", "Three", "Four"]
+def to_script(no, quiz):
+    # ① 데이터 칸을 귀로 들을 대본으로 잇습니다
+    lines = [f"Number {no}. {quiz.question}"]
+    lines += [f"{w}. {c}" for w, c in zip(WORDS, quiz.choices)]
+    return "\n".join(lines)
+
+def speak(script, path, voice="marin"):
+    with client.audio.speech.with_streaming_response.create(
+        # ② 2027-01-06 종료 예정인 모델입니다
+        model="gpt-4o-mini-tts",
+        voice=voice,
+        input=script,
+        # ③ 읽는 방식을 영어로 지시합니다
+        instructions="Read like an English listening test. "
+                     "Speak slowly. Pause after each option.",
+        response_format="mp3",
+    ) as response:
+        # ④ 받는 대로 파일에 씁니다
+        response.stream_to_file(path)
+
+if __name__ == "__main__":
+    speak(to_script(1, image_quiz("bakery.jpg")), "1.mp3")</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>quiz.choices</code>를 앞서 섞었으니 대본의 One, Two 순서와 <code>answer_index</code>가 그대로 맞습니다. <code>image_quiz</code>는 앞의 quiz.py에서 가져옵니다.</li>
+  <li>2027-01-06에 사라지는 모델입니다. 그 전까지 짧은 작업에 쓸 수 있습니다.</li>
+  <li>목소리는 <code>marin</code>과 <code>cedar</code>를 문서가 권합니다. <code>instructions</code>는 4,096자까지이고 입력은 2,000토큰까지입니다.</li>
+  <li>기본 형식은 mp3이고 opus, aac, flac, wav, pcm도 고를 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+</div></details>
+
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+        <div class="vi-text">
+          <h2>사진 기능을 붙이기 전에 정할 것</h2>
+          <ol class="vi-todo">
+            <li><code>detail</code>을 꼭 적습니다. 기본값은 원본 크기라 요금이 많이 나오고 큰 사진은 거절됩니다.</li>
+            <li>숫자를 물을 거라면 원본 표나 CSV를 먼저 찾습니다. 없으면 잘라서 보내고 "안 보임"을 허락합니다.</li>
+            <li>사진 속 얼굴, 차 번호판, 영수증을 확인합니다. 응답은 기본으로 30일 저장되니 필요하면 저장하지 않는 옵션 <code>store=False</code>를 답니다.</li>
+            <li>만든 문제와 음성을 사람이 검토하는 단계를 둡니다. 듣는 사람에게는 AI 음성임을 알립니다.</li>
+            <li>당장 답이 필요 없는 일은 요청을 모아 맡기는 Batch API로 보내 요금을 절반으로 줄입니다. 24시간 안에 결과를 돌려줍니다.</li>
+          </ol>
+        </div>
+        <figure class="vi-wide" data-figure>
+          <p class="vi-fh">사진 100장의 입력 요금<small>4128×3096, gpt-5.6-luna, 사진 입력만</small></p>
+          <div class="vi-bars">
+            <div><span>low</span><span class="vi-track"><span class="vi-fill" style="width:1.3%"></span><span class="vi-val" style="left:calc(1.3% + 8px)">$0.005</span></span></div>
+            <div><span>high</span><span class="vi-track"><span class="vi-fill" style="width:16%"></span><span class="vi-val" style="left:calc(16% + 8px)">$0.059</span></span></div>
+            <div><span>original</span><span class="vi-track"><span class="vi-fill warn" style="width:80%"></span><span class="vi-val" style="left:calc(80% + 8px)">$0.30</span></span></div>
+          </div>
+          <p class="vi-cap">입력 100만 토큰에 0.2달러로 계산했습니다. 1만 장이면 low는 0.46달러, original은 30달러이고 더 비싼 모델에서는 그만큼 더 커집니다.</p>
+        </figure>
+        <div class="vi-text vi-after"><p>첫 화면의 38건으로 돌아가 보면, 그 숫자를 틀리지 않게 하는 일은 모델을 믿는 데서 끝나지 않습니다. 숫자가 쓸 칸을 넉넉히 주고 모르면 모른다고 적게 합니다. 돈이 걸린 값은 원본과 맞춰 봅니다.</p></div>
+    </div>
+  </section>
+
+  <section class="vi-sec">
+    <div class="vi-wrap">
+      <h2>참고 자료</h2>
+      <ul class="vi-refs">
+        <li><a href="https://developers.openai.com/api/docs/guides/images-vision">OpenAI, Images and vision</a> — 입력 방식, detail 크기 규칙, 32픽셀 칸 계산, 3만 칸 한도, 모델이 약한 곳</li>
+        <li><a href="https://developers.openai.com/api/docs/models/gpt-5.6-luna">OpenAI, gpt-5.6-luna</a> — 요금과 지원 기능</li>
+        <li><a href="https://developers.openai.com/api/docs/guides/structured-outputs">OpenAI, Structured Outputs</a> — responses.parse, 지원 조건</li>
+        <li><a href="https://developers.openai.com/api/docs/guides/text-to-speech">OpenAI, Text to speech</a> — 목소리, 형식, instructions, AI 음성 고지</li>
+        <li><a href="https://developers.openai.com/api/docs/deprecations">OpenAI, Deprecations</a> — gpt-5-nano, gpt-4o-mini-tts, tts-1, tts-1-hd 종료일과 대체 모델</li>
+        <li><a href="https://developers.openai.com/api/docs/guides/batch">OpenAI, Batch API</a> — 요금 50%, 24시간</li>
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc4648">RFC 4648</a> — base64 규격</li>
+        <li><a href="https://arxiv.org/abs/2010.11929">Dosovitskiy 외, An Image is Worth 16x16 Words (2020)</a> — ViT</li>
+        <li><a href="https://arxiv.org/abs/2505.13444">ChartMuseum (2025)</a> — 그래프 문제 1,162개</li>
+        <li><a href="https://arxiv.org/abs/2602.13232">PlotChain (2026)</a> — 그래프 읽기 점수</li>
+        <li><a href="https://arxiv.org/abs/2509.17481">ChartHal (2025)</a> — 없는 값을 물을 때 지어내는 경향</li>
+        <li>빵집 사진: Linm KWOU Zhsuwomg, <a href="https://commons.wikimedia.org/wiki/File:HK_WC_%E7%81%A3%E4%BB%94_Wan_Chai_%E5%A4%AA%E5%92%8C%E8%A1%97_20_Tai_Wo_Street_%E7%A6%8F%E5%92%8C%E5%A4%A7%E5%BB%88_Fook_Wo_Building_shop_Concept_%E5%93%81%E7%A9%80_Big_Grains_November_2021_SS2_13.jpg">Wikimedia Commons</a>, CC BY-SA 4.0. 크기를 줄이고 일부를 잘라 썼습니다.</li>
+      </ul>
+    </div>
+  </section>
+  <div class="vi-end"></div>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const $ = (s, el = root) => el.querySelector(s);
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+  const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+  /* 값이 늘 같도록 고정 씨앗 난수 */
+  const rng = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  /* FF D8 FF 의 24비트 */
+  $("[data-vi-bits]").innerHTML = "111111111101100011111111".split("").map((b) => `<span class="b ${b === "1" ? "one" : ""}">${b}</span>`).join("");
+
+  /* data URL 봉투: 글자로 꽉 찬 줄 */
+  const fb = $("[data-vi-fillbars]"), rf = rng(7);
+  for (let y = 52; y < 182; y += 11) { let x = 14; while (x < 340) { const w = Math.min(4 + rf() * 22, 346 - x); svgEl("rect", { class: "fld", x, y, width: w, height: 6, rx: 1 }, fb); x += w + 3; } }
+
+  /* 사진 위 격자 57칸 × 43칸 */
+  const grid = $("[data-vi-grid]");
+  for (let i = 1; i < 57; i++) svgEl("line", { x1: i * 32, x2: i * 32, y1: 0, y2: 1368 }, grid);
+  for (let i = 1; i < 43; i++) svgEl("line", { y1: i * 32, y2: i * 32, x1: 0, x2: 1824 }, grid);
+
+  /* 글 토큰과 사진 칸이 이어진 한 줄 */
+  const seq = $("[data-vi-seq]"), T = 30;
+  const words = ["이", "사진을", "두", "문장으로", "설명해", "주세요"];
+  seq.innerHTML = words.map((w) => `<span>${w}</span>`).join("") + Array.from({ length: 66 }, (_, i) => {
+    const gx = 18 + i % 20, gy = 8 + Math.floor(i / 20);
+    return `<i style="background-size:${57 * T}px auto;background-position:${-gx * T}px ${-gy * T}px"></i>`;
+  }).join("") + `<span>… 2,451칸</span>`;
+
+  /* 스크롤 단계 */
+  const stage = $("[data-vi-stage]"), label = $("[data-vi-label]"), steps = $$("[data-vi-sc] .vi-step");
+  const LABELS = ["4128 × 3096 · 12,513칸", "1824 × 1368로 줄임", "57 × 43 = 2,451칸", "빨강·초록·파랑 × 32 × 32 = 숫자 3,072개", "사진 2,451칸 × 1.2 = 2,942토큰 (글 토큰은 따로 더합니다)"];
+  const setStep = (el) => {
+    steps.forEach((s) => s.classList.toggle("on", s === el));
+    stage.dataset.s = el.dataset.s; label.textContent = LABELS[+el.dataset.s];
+  };
+  /* 화면 가운데를 지난 마지막 단계. 맨 위로 돌아오면 첫 단계 */
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    const mid = innerHeight * (innerWidth > 960 ? 0.42 : 0.55);
+    let cur = steps[0];
+    steps.forEach((st) => { if (st.getBoundingClientRect().top < mid) cur = st; });
+    setStep(cur);
+  };
+  addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true, signal });
+  update();
+
+  /* 격자 겹치기 */
+  $$("[data-vi-cell]").forEach((svg) => {
+    const [c, ox, oy] = svg.dataset.viCell.split(",").map(Number);
+    for (let x = ox; x < 640; x += c) svgEl("line", { x1: x, x2: x, y1: 0, y2: 400 }, svg);
+    for (let y = oy; y < 400; y += c) svgEl("line", { y1: y, y2: y, x1: 0, x2: 640 }, svg);
+    /* 숫자 38 이 걸친 칸을 칠한다 */
+    const B = [291.5, 193, 348.6, 218];
+    const start = (o) => o - Math.ceil(o / c) * c;
+    for (let x = start(ox); x < 640; x += c) for (let y = start(oy); y < 400; y += c)
+      if (x < B[2] && x + c > B[0] && y < B[3] && y + c > B[1]) svgEl("rect", { class: "hitc", x, y, width: c, height: c }, svg);
+  });
+  /* 값 하나를 읽는 세 관문 */
+  const POS = [118, 126, 131, 122, 140, 136, 149, 143], NEG = [41, 52, 38, 47, 33, 44, 29, 36], MIX = [14, 19, 16, 22, 18, 21, 17, 24];
+  const X = (i) => 28 + i * 44, Y = (v) => 200 - v * 1.08;
+  const pathOf = (a) => a.map((v, i) => `${i ? "L" : "M"}${X(i)} ${Y(v).toFixed(1)}`).join(" ");
+  $$("[data-vi-gate]").forEach((svg) => {
+    const k = svg.dataset.viGate;
+    svgEl("line", { class: "ax", x1: 10, x2: 350, y1: 200, y2: 200 }, svg);
+    [[POS, ""], [NEG, "6 5"], [MIX, "2 5"]].forEach(([a, d]) => svgEl("path", { class: "l", d: pathOf(a), "stroke-dasharray": d }, svg));
+    [[POS, "긍정"], [NEG, "부정"], [MIX, "섞임"]].forEach(([a, n]) => { const t = svgEl("text", { x: 346, y: Y(a[7]) + (n === "섞임" ? 18 : -8), "text-anchor": "end" }, svg); t.textContent = n; });
+    [1, 2, 3].forEach((w) => { const t = svgEl("text", { x: X(w - 1), y: 222, "text-anchor": "middle" }, svg); t.textContent = `${w}주`; });
+    const mark = (i, v, label) => {
+      svgEl("circle", { class: "bad", cx: X(i), cy: Y(v), r: 11 }, svg);
+      const t = svgEl("text", { x: X(i), y: Y(v) - 16, "text-anchor": "middle", "font-weight": 700 }, svg); t.textContent = label; t.style.fill = "var(--vi-red)";
+    };
+    if (k === "line") { mark(2, POS[2], "131"); }
+    if (k === "week") { mark(1, NEG[1], "52"); }
+    if (k === "digit") { mark(2, NEG[2], "35"); }
+  });
+
+  /* 소리 조각 */
+  const rc = rng(41), hs = Array.from({ length: 96 }, (_, i) => (i % 12 > 9 ? 6 : 18 + rc() * 78));
+  const bars = (a) => a.map((v) => `<i style="height:${v.toFixed(0)}%"></i>`).join("");
+  $("[data-vi-pieces]").innerHTML = [0, 1, 2, 3, 4, 5].map((i) => `<span>${bars(hs.slice(i * 16, i * 16 + 16))}</span>`).join("");
+  $("[data-vi-whole]").innerHTML = bars(hs);
+
+  /* 작은 그림: 깨알 글자, 점, 체스판 */
+  const tiny = $("[data-vi-tiny]"), rt = rng(11);
+  for (let y = 16; y < 110; y += 9) { let x = 4; while (x < 190) { const w = Math.min(3 + rt() * 13, 194 - x); svgEl("rect", { class: "f", x, y, width: w, height: 3, rx: 1 }, tiny); x += w + 3; } }
+  const dots = $("[data-vi-dots]"), rd = rng(23);
+  for (let i = 0; i < 37; i++) svgEl("circle", { class: "f", cx: 10 + rd() * 280, cy: 10 + rd() * 100, r: 5 }, dots);
+  const chess = $("[data-vi-chess]");
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if ((r + c) % 2) svgEl("rect", { class: "f", x: 90 + c * 15, y: r * 14.5 + 2, width: 15, height: 14.5, opacity: 0.28 }, chess);
+  [[2, 1], [5, 3], [4, 6], [1, 5]].forEach(([c, r]) => svgEl("circle", { class: "f", cx: 97.5 + c * 15, cy: r * 14.5 + 9.25, r: 5 }, chess));
+
+  /* 재생 줄 */
+  const mw = $("[data-vi-minwave]"), rm = rng(31);
+  for (let i = 0; i < 100; i++) { const gap = i % 20 > 16, h = gap ? 1.5 : 4 + rm() * 15; svgEl("rect", { x: i * 4, y: 20 - h, width: 2.6, height: h * 2, fill: "currentColor", opacity: 0.6 }, mw); }
+
+  /* 파형: 계산으로 그린 설명용 그림 */
+  const ink = () => getComputedStyle(root).getPropertyValue("--fg-strong").trim() || "#222";
+  const voice = (t) => (Math.sin(t * 2 * Math.PI * 180) + 0.5 * Math.sin(t * 2 * Math.PI * 360 + 1) + 0.25 * Math.sin(t * 2 * Math.PI * 720 + 2)) / 1.75;
+  /* 낱말 덩어리: 쉼이 있는 시간 축 */
+  function bursts(n, on, off, seed) { const r = rng(seed), out = []; let t = 0.1; for (let i = 0; i < n; i++) { const d = on * (0.6 + r() * 0.8); out.push([t, t + d]); t += d + off; } return out; }
+  const envAt = (b, t) => { for (const [a, z] of b) if (t >= a && t <= z) return Math.sin(Math.PI * (t - a) / (z - a)) ** 0.6; return 0; };
+  function drawBars(cv, b, total) {
+    const g = cv.getContext("2d"), W = cv.width, H = cv.height, r = rng(5);
+    g.clearRect(0, 0, W, H); g.fillStyle = ink();
+    for (let x = 0; x < W; x += 4) { const e = envAt(b, (x / W) * total), h = Math.max(1, e * (0.45 + r() * 0.55) * H * 0.46); g.fillRect(x, H / 2 - h, 2.6, h * 2); }
+  }
+  function draw() {
+    $$("[data-vi-wave]").forEach((cv) => {
+      const k = cv.dataset.viWave, g = cv.getContext("2d"), W = cv.width, H = cv.height;
+      if (k === "far") return drawBars(cv, bursts(9, 0.3, 0.13, 3), 4);
+      g.clearRect(0, 0, W, H); g.strokeStyle = g.fillStyle = ink(); g.lineWidth = 2.5;
+      const dur = k === "mid" ? 0.1 : 0.0016;
+      const y = (x) => { const t = 0.012 + (x / W) * dur, e = k === "mid" ? Math.sin(Math.PI * x / W) ** 0.7 : 1; return H / 2 - voice(t) * e * H * 0.42; };
+      g.beginPath(); g.globalAlpha = k === "near" ? 0.3 : 1;
+      for (let x = 0; x <= W; x += 2) g.lineTo(x, y(x)); g.stroke(); g.globalAlpha = 1;
+      if (k === "near") { const n = Math.round(dur * 24000); for (let i = 0; i <= n; i++) { const x = (i / n) * W; g.beginPath(); g.arc(Math.min(W - 6, Math.max(6, x)), y(x), 6, 0, 7); g.fill(); } }
+    });
+  }
+  draw();
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+  signal.addEventListener("abort", () => {});
+
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  $$("[data-vi-term]").forEach((term) => {
+    const out = $("[data-vi-out]", term), btn = $("[data-vi-run]", term);
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 120);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+})();
+</script>
