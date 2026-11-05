@@ -27,3 +27,11 @@ test("highlightPageCode — 모르는 언어는 색 없이 줄 번호만", async
   const out = await highlightPageCode('<pre><code class="language-nope-lang">a\nb</code></pre>');
   assert.match(out, /data-ln="1">a<\/span>/);
 });
+
+test("highlightPageCode — 들여쓴 줄에만 들여쓰기 칸 수를 남긴다(모바일에서 접힌 줄 내어쓰기)", async () => {
+  const html = '<pre><code class="language-python">def f(x):\n    return x\n\treturn y</code></pre>';
+  const out = await highlightPageCode(html);
+  assert.match(out, /data-ln="2"[^>]*--pg-i:4|--pg-i:4[^>]*data-ln="2"/);
+  assert.match(out, /data-ln="3"[^>]*--pg-i:4|--pg-i:4[^>]*data-ln="3"/);
+  assert.doesNotMatch(out, /data-ln="1"[^>]*--pg-i|--pg-i[^>]*data-ln="1"/);
+});

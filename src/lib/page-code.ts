@@ -48,10 +48,11 @@ const STYLE = `<style data-pg-code>
 @media (max-width: 640px) {
   .post-page .pg-code pre { font-size: 12.5px; }
 }
-/* 좁은 화면에서는 가로로 밀지 않고 줄을 접는다. 이어지는 줄은 번호 칸 옆에 들여써서 한 줄이 둘로 쪼개져 보이지 않게 한다 */
+/* 좁은 화면에서는 가로로 밀지 않고 줄을 접는다. 이어지는 줄은 그 줄의 코드 들여쓰기(--pg-i)보다 2칸 더 들여써서 구조가 무너져 보이지 않게 한다 */
 @media (max-width: 760px) {
-  .post-page .pg-code .line { display: inline-block; vertical-align: top; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px); text-indent: calc(-3ch - 28px); }
-  .post-page .pg-code .line::before { text-indent: 0; }
+  .post-page .pg-code .line { --pg-hang: calc((var(--pg-i, 0) + 2) * 1ch); position: relative; display: inline-block; vertical-align: top; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px + var(--pg-hang)); text-indent: calc(var(--pg-hang) * -1); }
+  /* 번호를 글 흐름에서 빼야 긴 토큰이 번호만 남기고 다음 줄로 밀리지 않는다 */
+  .post-page .pg-code .line::before { position: absolute; left: 0; top: 0; text-indent: 0; }
 }
 /* 해설 표지 ①② — 코드 안 배지와 해설 목록(ol.pg-code-notes)이 같은 모양 */
 .post-page .pg-code .pg-code-mark, .post-page ol.pg-code-notes > li::before {
@@ -71,6 +72,11 @@ const attr = (s: string, name: string) => new RegExp(`\\b${name}\\s*=\\s*"([^"]*
 const decode = (s: string) =>
   s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+/** 줄 앞 공백 칸 수. 접힌 줄을 코드 들여쓰기에 맞춰 내어 쓰는 데 쓴다(탭은 4칸, pre 의 tab-size 와 같다) */
+const indentOf = (line: string) => {
+  const lead = /^[ \t]*/.exec(line)![0];
+  return lead.length + (lead.split("\t").length - 1) * 3;
+};
 
 function lineSet(spec: string | undefined): Set<number> {
   const out = new Set<number>();
@@ -88,6 +94,7 @@ async function renderBlock(preAttrs: string, codeAttrs: string, raw: string): Pr
   const hl = lineSet(attr(preAttrs, "data-hl"));
   const start = Number(attr(preAttrs, "data-start")) || 1;
   const code = decode(raw).replace(/^\n/, "").replace(/\n\s*$/, "");
+  const lines = code.split("\n");
   let html: string;
   try {
     html = await codeToHtml(code, {
@@ -98,12 +105,14 @@ async function renderBlock(preAttrs: string, codeAttrs: string, raw: string): Pr
         line(node, n) {
           node.properties["data-ln"] = String(start + n - 1);
           if (hl.has(n)) node.properties["data-hl"] = "";
+          const indent = indentOf(lines[n - 1] ?? "");
+          if (indent) node.properties.style = `--pg-i:${indent}`;
         },
       }],
     });
   } catch {
     // 모르는 언어면 색 없이 그대로 둔다
-    html = `<pre class="shiki"><code>${code.split("\n").map((l, i) => `<span class="line" data-ln="${start + i}">${esc(l)}</span>`).join("\n")}</code></pre>`;
+    html = `<pre class="shiki"><code>${lines.map((l, i) => `<span class="line" data-ln="${start + i}"${indentOf(l) ? ` style="--pg-i:${indentOf(l)}"` : ""}>${esc(l)}</span>`).join("\n")}</code></pre>`;
   }
   html = html.replace(/[①-⑳]/g, (m) => `<span class="pg-code-mark" aria-label="${m}">${m.charCodeAt(0) - 0x245f}</span>`);
   const label = lang === "text" ? "" : lang;
