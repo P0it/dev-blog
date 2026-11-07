@@ -64,6 +64,7 @@ AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 �
 클라우드 루틴은 레포 밖 플러그인을 설치하지 않아서다(2026-10-13). 에이전트 이름은 `humanize-monolith` —
 `humanize-korean:` 접두어를 붙이지 않는다. 갱신법은 `.claude/.claude-plugin/VENDORED.md`.
 윤문을 건너뛰지 않는다. 에이전트가 안 보이면 멈추고 알린다.
+실험실 포트폴리오 원고도 같다(2026-11-07). `/project` 2-1 절차대로 `scripts/humanize-project.mjs` 로 문장만 뽑아 돌린다.
 
 ## 스킬·커맨드를 고칠 때
 

@@ -171,6 +171,25 @@ description: 다른 레포에서 /portfolio 로 뽑아온 portfolio.md 를 규�
 정황을 문장으로 편다("에러도 경고도 없이", "어디에도 표시가 안 났다").
 `우아하게`·`공격적으로`·`무겁게`도 같다.
 
+### 2-1. 윤문한다 — 생략하지 않는다 (2026-11-07 사용자 지시)
+
+규약 대조가 끝난 원고를 `humanize-monolith` 에이전트로 윤문한다. 에이전트가 안 보이면 멈추고 알린다.
+`##` 제목·구조도·화면 이름·칩 라벨은 렌더러가 글자 그대로 읽으므로 **원고 파일을 통째로 넘기지 않는다.**
+
+```
+node scripts/humanize-project.mjs extract projects/<slug>/portfolio.md <작업폴더>
+  → 조각마다 humanize-monolith 에 01_input.txt 를 주고 같은 폴더 final.md 로 받는다
+node scripts/humanize-project.mjs apply projects/<slug>/portfolio.md <작업폴더>
+```
+
+프롬프트에 적을 것: 장르(블로그), `[[번호]]` 줄을 합치거나 빼지 말 것, 해요체·`~합니다` 보존,
+`~죠`·비유·메타 도입어 금지, 숫자·고유명사·영어 토큰 불변, 업계 용어 영어·음차 유지,
+**사람이 직접 쓴 듯한 짧은 문장은 살릴 것**. 검사에서 탈락한 줄은 원문으로 남으니 보고에 적는다.
+작업폴더는 레포 밖 임시 폴더를 쓴다.
+
+**이미 발행된 프로젝트는 `npm run project -- pull <slug>` 로 받은 DB 원고를 윤문한다.**
+어드민 에디터가 source of truth 라, 로컬 파일을 윤문해 올리면 어드민에서 고친 내용이 사라진다.
+
 ### 3. 파일을 놓는다
 
 **저쪽 레포의 `portfolio/` 폴더를 통째로 `projects/<slug>/` 로 옮긴다.**
