@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getPostBySlug } from "@/lib/queries";
+import { getPostCardBySlug } from "@/lib/queries";
 import { SITE } from "@/lib/site";
 
 export const alt = "Post";
@@ -7,7 +7,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function PostOG({ params }: { params: { slug: string } }) {
-  const post = await getPostBySlug(params.slug);
+  const post = await getPostCardBySlug(params.slug);
   const title = post?.title ?? "Untitled";
   const excerpt = post?.excerpt ?? "";
   const category = post?.category ?? "";

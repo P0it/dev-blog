@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import type {
   Post,
@@ -208,7 +209,8 @@ export async function getAllPosts(): Promise<Post[]> {
   return (data as PostRow[]).map((r) => rowToPost(r, labels));
 }
 
-export async function getPostBySlug(slug: string): Promise<Post | null> {
+// cache: generateMetadata 와 페이지가 같은 글을 읽으므로 본문을 두 번 받지 않게 묶는다.
+export const getPostBySlug = cache(async (slug: string): Promise<Post | null> => {
   const sb = supabaseServer();
   const labels = await categoryLabelMap();
   const { data, error } = await sb
@@ -220,6 +222,21 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   if (error) throw error;
   if (!data) return null;
   return rowToPost(data as PostRow, labels);
+});
+
+// OG 이미지처럼 제목·요약만 쓰는 곳용 — 본문을 받지 않는다.
+export async function getPostCardBySlug(slug: string): Promise<Post | null> {
+  const sb = supabaseServer();
+  const labels = await categoryLabelMap();
+  const { data, error } = await sb
+    .from("posts")
+    .select(POST_CARD_COLUMNS)
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return rowToPost(data as unknown as PostRow, labels);
 }
 
 // 어드민 에디터용: status 필터 없음 (draft도 가져옴)

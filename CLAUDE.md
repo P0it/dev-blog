@@ -30,6 +30,12 @@
 - `npm run check:select` 가 이를 검사하고, `npm run build` 앞에서도 자동으로 돈다(`prebuild`). 걸리면 고친다 — 검사를 끄지 않는다.
 - 스크립트(`scripts/*.mjs`)·새 라우트도 같은 규칙이다. 로컬 검증(`/internal/page/<slug>`, `check:page`)은 DB 를 읽지 않는 파일 기준으로 한다.
 
+## Vercel 빌드 생략
+
+Vercel 은 `[skip ci]` 를 무시한다. `vercel.json` 의 `ignoreCommand` 가 돌리는 `scripts/vercel-ignore.mjs` 가 마지막 성공 배포와
+비교해 `src`·`public`·설정 파일이 안 바뀌었으면 빌드를 생략한다. 글 내용은 ISR 로 반영되므로 원고·문서 커밋은 빌드가 필요 없다.
+빌드 결과에 영향을 주는 경로를 새로 만들면 그 스크립트의 `BUILD_PATHS` 도 고친다.
+
 ## AI 글 작성 — 두 가지 경로
 
 글 초안/개선에는 두 경로가 있다:
