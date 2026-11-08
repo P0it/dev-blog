@@ -1,0 +1,1204 @@
+---
+title: 챗봇 답변이 화면에 나오기까지 LangChain이 잇는 세 칸
+slug: langchain-lcel-prompt-model-parser
+excerpt: 챗봇 화면에 보이는 답 한 줄 뒤에서는 프롬프트, 모델, 출력 파서가 데이터 모양을 바꿔 가며 일합니다. LangChain의 파이프(|)로 세 칸을 잇는 법을 최신 코드로 만들고 스트리밍이 끊기는 조건, KeyError와 ValueError가 나는 이유, 체인을 이을 때 입력이 사라지는 함정을 그림으로 확인합니다.
+tags: [LangChain, LCEL, 프롬프트, 출력 파서, Streaming, LangSmith, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 9
+---
+<!-- page -->
+<!-- layout: 전폭 히어로(겉 채팅 + 데이터 띠) + 그림 고정 스크롤리텔링 1곳 + 글 왼쪽|그림 오른쪽 고정 + 펼쳐 놓기 + 코드 왼쪽|해설 오른쪽 + 제목|글 머리 | 글의 성격: 한 덩어리 데이터가 칸마다 모양을 바꾸는 과정을 따라가고, 칸마다 함정을 보는 글 | 버린 후보: 옆 조작판(2026-10-30 접음), 비교 나란히 히어로(3편), 가로 스크롤 띠(모바일에서 코드와 함께 쓰면 읽기 힘듦) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .lc {
+  --lc-red: rgb(204, 52, 40); --lc-ok: rgb(14, 138, 108); --lc-pen: rgb(196, 50, 38);
+  --lc-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --lc-soft: color-mix(in srgb, var(--fg-strong) 7%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .lc { --lc-red: rgb(255, 118, 102); --lc-ok: rgb(70, 205, 165); --lc-pen: rgb(255, 128, 110); --lc-soft: color-mix(in srgb, var(--fg-strong) 11%, var(--bg-base)); }
+.post-page .lc * { box-sizing: border-box; }
+.post-page .lc-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .lc h1, .post-page .lc h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .lc h1 { font-size: clamp(34px, 5.2vw, 58px); line-height: 1.22; margin-bottom: 28px; }
+.post-page .lc h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .lc p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .lc b { color: var(--fg-strong); }
+.post-page .lc a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .lc code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .lc figure { margin: 0; min-width: 0; }
+.post-page .lc p.lc-cap { font-size: 15px; color: var(--fg-neutral); margin: 16px 0 0; line-height: 1.7; }
+.post-page .lc-sec { padding: clamp(96px, 11vw, 150px) 0 0; }
+.post-page .lc-pen { font-family: var(--lc-penf); color: var(--lc-pen); font-size: 22px; line-height: 1.15; }
+.post-page .lc-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .lc-lede { font-size: 18px !important; max-width: 780px; }
+.post-page .lc-ty { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); }
+
+/* 배치 */
+.post-page .lc-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: center; }
+.post-page .lc-two.rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .lc-two.rev > figure { order: -1; }
+.post-page .lc-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .lc-head > div > p:last-child { margin-bottom: 0; }
+.post-page .lc-spread { display: grid; gap: clamp(20px, 3vw, 40px); margin: clamp(40px, 5vw, 60px) 0 0; }
+.post-page .lc-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .lc-spread.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .lc-spread.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.post-page .lc-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 12px !important; line-height: 1.5 !important; }
+.post-page .lc-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .lc-gap, .post-page .lc p.lc-gap { margin-top: clamp(40px, 5vw, 64px); }
+.post-page .lc-mid { max-width: 780px; }
+
+/* 데이터 실물: 메모 · 말풍선 묶음 · 쟁반 · 글자 띠 */
+.post-page .lc-memo { font-family: var(--font-mono); font-size: 14px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .lc-memo i { font-style: normal; color: var(--fg-alternative); }
+.post-page .lc-msgs { display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+.post-page .lc-msgs > span { display: block; padding: 6px 10px; border-radius: 12px; background: var(--lc-soft); color: var(--fg-strong); }
+.post-page .lc-msgs > span small { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-neutral); }
+.post-page .lc-tray { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; color: var(--fg-alternative); overflow-wrap: anywhere; }
+.post-page .lc-tray b { display: block; font-family: var(--font-sans); font-size: 14.5px; font-weight: 700; padding: 6px 10px; margin: 4px 0; border-radius: 10px; background: var(--lc-soft); }
+.post-page .lc-str { font-size: 15px; line-height: 1.6; color: var(--fg-strong); font-weight: 600; }
+
+/* 히어로 */
+.post-page .lc-hero { padding: clamp(56px, 9vw, 112px) 0 0; }
+/* 대화 예시: 채팅 앱 창 (.claude/commands/study.md) */
+.post-page .lc-cw { display: flex; flex-direction: column; min-width: 0; margin: 0; background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.28); }
+.post-page .lc-cw-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line-subtle); font-size: 14px; font-weight: 600; color: var(--fg-strong); }
+.post-page .lc-cw-bar small { flex: none; font-size: 12.5px; font-weight: 400; color: var(--fg-neutral); }
+.post-page .lc-cw-log { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 20px 16px 22px; }
+.post-page .lc-cw-u { align-self: flex-end; max-width: 88%; background: var(--bg-muted); color: var(--fg-strong); border-radius: 18px; padding: 8px 15px; font-size: 15px; line-height: 1.5; }
+.post-page .lc-cw-a { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; font-size: 15px; line-height: 1.65; color: var(--fg-strong); }
+.post-page .lc-cw-a > div { min-width: 0; }
+.post-page .lc-cw-a .lc-cw-av { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-subtle); display: grid; place-items: center; color: var(--fg-neutral); }
+.post-page .lc-cw svg.ic, .post-page .lc-cw-av svg, .post-page .lc-cw-acts svg, .post-page .lc-cw-box svg { display: block; width: auto; max-width: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .lc-cw-acts { display: flex; gap: 12px; margin-top: 8px; color: var(--fg-neutral); }
+.post-page .lc-cw-box { display: flex; align-items: center; gap: 10px; margin: 0 12px 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-subtle); border-radius: 24px; color: var(--fg-neutral); font-size: 14.5px; }
+.post-page .lc-cw-box span { flex: 1; min-width: 0; }
+.post-page .lc-cw-send { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--fg-strong); color: var(--bg-base); }
+.post-page .lc-cw-a .lc-m.a { background: none; padding: 0; border-radius: 0; max-width: 100%; }
+.post-page .lc-cw-a .lc-think { padding: 0 0 4px; }
+.post-page .lc-m { max-width: 86%; padding: 11px 15px; border-radius: 18px; font-size: 15.5px; line-height: 1.6; }
+.post-page .lc-m.u { align-self: flex-end; background: var(--fg-strong); color: var(--bg-base); border-bottom-right-radius: 6px; }
+.post-page .lc-m.a { align-self: flex-start; background: var(--lc-soft); color: var(--fg-strong); border-bottom-left-radius: 6px; }
+.post-page .lc-behind { display: flex; align-items: center; gap: 14px; margin: 30px 0 22px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .lc-behind::before, .post-page .lc-behind::after { content: ""; flex: 1; border-top: 1.5px dashed var(--line-strong); }
+.post-page .lc-strip { display: grid; grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1.25fr) 62px minmax(0, 1.25fr) 62px minmax(0, 1fr); align-items: start; }
+.post-page .lc-strip > div > .lc-ty { display: block; margin-bottom: 10px; }
+.post-page .lc-joint { display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: var(--font-mono); color: var(--fg-strong); }
+.post-page .lc-joint b { font-size: 44px; line-height: 1; font-weight: 400; }
+.post-page .lc-joint small { font-size: 12.5px; color: var(--fg-neutral); }
+
+/* 그림 1: 화면에 펜 메모 */
+.post-page .lc-shot { display: grid; gap: 14px; }
+.post-page .lc-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 14px; align-items: center; }
+.post-page .lc-row .lc-pen { text-align: left; }
+.post-page .lc-cite { display: inline-block; font-size: 12.5px; padding: 1px 8px; margin-left: 4px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--fg-neutral); }
+.post-page .lc-mini-chart { display: flex; align-items: flex-end; gap: 6px; height: 62px; padding: 0 6px; border-bottom: 1.5px solid var(--line-strong); }
+.post-page .lc-mini-chart i { flex: 1; background: var(--fg-strong); opacity: .7; border-radius: 3px 3px 0 0; }
+.post-page .lc-tool { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); }
+
+/* 스크롤리텔링 */
+.post-page .lc-story { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(32px, 4vw, 48px); align-items: start; }
+.post-page .lc-steps p { margin: 0; }
+.post-page .lc-step { padding: 8px 0 clamp(40px, 7vh, 80px); }
+.post-page .lc.js .lc-step { min-height: 52vh; transition: opacity .5s cubic-bezier(.2,.7,.2,1); opacity: .32; }
+.post-page .lc.js .lc-step.on { opacity: 1; }
+.post-page .lc-step .k { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .lc-stage-wrap { background: var(--bg-base); }
+.post-page .lc.js .lc-stage-wrap { position: sticky; top: 90px; }
+.post-page .lc-stages { display: grid; gap: 16px; }
+.post-page .lc-stage { padding: 12px 0 14px; border-top: 1.5px solid var(--line-normal); }
+.post-page .lc-stage > .lc-ty { display: block; margin-bottom: 8px; }
+.post-page .lc-stage > .lc-ty b { font-weight: 700; }
+.post-page .lc.js .lc-stage { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); opacity: .16; transform: translateY(12px); }
+.post-page .lc.js .lc-stage.seen { opacity: .5; transform: none; }
+.post-page .lc.js .lc-stage.on { opacity: 1; transform: none; border-top-color: var(--fg-strong); }
+
+/* 코드 | 해설, 터미널 */
+.post-page .lc-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(44px, 5vw, 64px) 0 0; }
+.post-page .lc-cp > .cp-code { grid-column: 1; grid-row: 1; } .post-page .lc-cp > .cp-term { grid-column: 1; grid-row: 2; } .post-page .lc-cp > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .lc-cp.rev { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .lc-cp.rev > .cp-code, .post-page .lc-cp.rev > .cp-term { grid-column: 2; } .post-page .lc-cp.rev > .cp-notes { grid-column: 1; }
+.post-page .lc .pg-code { margin-top: 0; }
+.post-page .lc ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .lc ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .lc-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .lc-term-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-head-fg, #9da5b4); }
+.post-page .lc-act { font: inherit; font-size: 13px; color: #e6e9ef; background: transparent; border: 1px solid rgba(255,255,255,.28); border-radius: 8px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.post-page .lc-act:disabled { opacity: .5; cursor: default; }
+.post-page .lc-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .lc-term-out .nz { color: #ff8a7a; }
+.post-page .lc-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-lc-blink 1s steps(1) infinite; }
+@keyframes pg-lc-blink { 50% { opacity: 0; } }
+
+/* 그림: invoke·stream 필름 */
+.post-page .lc-film { display: grid; grid-template-columns: 76px repeat(3, minmax(0, 1fr)); gap: 12px clamp(10px, 2vw, 22px); align-items: stretch; margin-top: clamp(32px, 4vw, 48px); }
+.post-page .lc-film .h { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); align-self: end; }
+.post-page .lc-film .l { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--fg-strong); align-self: center; }
+.post-page .lc-film .f { padding: 12px 14px; min-height: 92px; border-radius: 14px 14px 14px 5px; background: var(--lc-soft); font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .lc-film .f.wait { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--fg-alternative); }
+
+/* 그림: 시간표 */
+.post-page .lc-time { display: grid; gap: 22px; margin-top: 36px; }
+.post-page .lc-tr .n { display: block; font-size: 15px; font-family: var(--font-mono); color: var(--fg-strong); font-weight: 700; margin-bottom: 8px; overflow-wrap: anywhere; }
+.post-page .lc-tr .n small { font-family: var(--font-sans); font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-left: 6px; }
+.post-page .lc-rail { position: relative; display: flex; gap: 5px; flex-wrap: wrap; min-height: 36px; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
+.post-page .lc-rail.end { justify-content: flex-end; }
+.post-page .lc-rail span { font-size: 13.5px; line-height: 1.3; padding: 5px 9px; border-radius: 7px; background: var(--fg-strong); color: var(--bg-base); white-space: nowrap; }
+.post-page .lc-rail.even { justify-content: space-between; }
+.post-page .lc-rail.bad span { background: var(--lc-red); color: #fff; white-space: normal; }
+.post-page .lc-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); }
+
+/* 그림: 빈칸·오류 */
+.post-page .lc-tmpl { font-size: 18px; line-height: 2.1; color: var(--fg-strong); }
+.post-page .lc-slot { font-family: var(--font-mono); font-size: .88em; padding: 2px 8px; border-radius: 7px; background: var(--lc-soft); }
+.post-page .lc-slot.ok { color: var(--lc-ok); }
+.post-page .lc-slot.bad { color: var(--lc-red); border: 2px dashed var(--lc-red); background: transparent; }
+.post-page .lc code.lc-err { display: block; margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--code-bg, #282c34); color: #ff8a7a; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.post-page .lc-peg { display: block; width: 100%; max-width: 620px; height: auto; overflow: visible; }
+.post-page .lc-peg .part { fill: color-mix(in srgb, var(--fg-strong) 13%, var(--bg-base)); stroke: var(--fg-strong); stroke-width: 2; }
+.post-page .lc-peg .sock { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 2; }
+.post-page .lc-peg .peg { fill: var(--fg-strong); }
+.post-page .lc-peg .peg.bad { fill: var(--lc-red); }
+.post-page .lc-peg .sock.bad { stroke: var(--lc-red); stroke-width: 3; }
+.post-page .lc-peg text { font-family: var(--font-mono); font-size: 21px; fill: var(--fg-strong); text-anchor: middle; }
+.post-page .lc-peg text.s { fill: var(--fg-neutral); font-size: 20px; }
+.post-page .lc-peg text.pent { font-family: var(--lc-penf); fill: var(--lc-pen); font-size: 28px; }
+.post-page .lc-peg .xm { stroke: var(--lc-red); stroke-width: 4; stroke-linecap: round; }
+
+/* 그림: 빈칸 채우는 시점 */
+.post-page .lc-when { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 8px; }
+.post-page .lc-when > div { padding: 14px 16px 4px 0; border-top: 3px solid var(--fg-strong); position: relative; }
+.post-page .lc-when > div::before { content: ""; position: absolute; top: -8px; left: 0; width: 13px; height: 13px; border-radius: 50%; background: var(--fg-strong); }
+.post-page .lc-when .n { display: block; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); margin-bottom: 8px; }
+.post-page .lc-when .v { display: block; font-size: 15px; line-height: 1.6; color: var(--fg-strong); }
+
+/* 그림: 대화 칸 늘어나기 */
+.post-page .lc-frame { display: grid; gap: 6px; align-content: start; font-size: 14px; line-height: 1.5; }
+.post-page .lc-frame > span { display: block; padding: 7px 11px; border-radius: 10px; background: var(--lc-soft); color: var(--fg-strong); }
+.post-page .lc-frame > span.ph { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--fg-strong); }
+.post-page .lc-frame > span.ph.empty { color: var(--fg-alternative); }
+.post-page .lc-frame small { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-neutral); }
+
+/* 그림: 요청서 */
+.post-page .lc-req { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .lc-req .l { display: block; padding: 0 8px; border-radius: 5px; }
+.post-page .lc-req .i { padding-left: 24px; }
+.post-page .lc-req .d { background: var(--lc-soft); font-weight: 700; }
+.post-page .lc-req .x { color: var(--lc-red); text-decoration: line-through; text-decoration-thickness: 2px; }
+
+/* 그림: 파서 세 쟁반 */
+.post-page .lc-out { font-family: var(--font-mono); font-size: 14px; line-height: 1.7; color: var(--fg-strong); overflow-wrap: anywhere; padding-top: 10px; border-top: 2px solid var(--fg-strong); min-height: 96px; }
+.post-page .lc-verdict { display: block; margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--fg-normal); }
+.post-page .lc-verdict.bad b { color: var(--lc-red); }
+.post-page .lc-verdict.ok b { color: var(--lc-ok); }
+.post-page .lc-said { font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); padding: 10px 12px; border-radius: 12px 12px 12px 4px; background: var(--lc-soft); overflow-wrap: anywhere; min-height: 92px; }
+.post-page .lc-said u { text-decoration: underline wavy var(--lc-red); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.post-page .lc-said code { background: transparent; padding: 0; }
+
+/* 그림: 양식 칸 채워지기 */
+.post-page .lc-form { display: grid; gap: 8px; font-size: 14.5px; }
+.post-page .lc-form > span { display: grid; grid-template-columns: 66px minmax(0, 1fr); align-items: baseline; gap: 6px; padding-bottom: 6px; border-bottom: 1.5px solid var(--line-strong); min-height: 34px; color: var(--fg-strong); }
+.post-page .lc-form small { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+
+/* 그림: 보따리 */
+.post-page .lc-bag { display: grid; grid-template-columns: minmax(0, 1fr) 108px minmax(0, 1fr) 108px minmax(0, 1fr); align-items: center; gap: 6px; }
+.post-page .lc-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 40px; }
+.post-page .lc-chip { font-family: var(--font-mono); font-size: 13.5px; padding: 4px 10px; border-radius: 99px; background: var(--fg-strong); color: var(--bg-base); white-space: nowrap; }
+.post-page .lc-chip.gone { background: transparent; color: var(--lc-red); border: 2px dashed var(--lc-red); text-decoration: line-through; }
+.post-page .lc-chip.new { background: var(--lc-ok); color: #fff; }
+.post-page .lc-bag .op { font-family: var(--font-mono); font-size: 13px; line-height: 1.4; color: var(--fg-neutral); text-align: center; overflow-wrap: anywhere; }
+.post-page .lc-bag .op b { display: block; font-size: 22px; font-weight: 400; color: var(--fg-strong); }
+.post-page .lc-bag-t { grid-column: 1 / -1; font-size: 15px; font-weight: 700; color: var(--fg-strong); margin: 0 0 2px; }
+.post-page .lc-bag-v { grid-column: 1 / -1; font-size: 15px; margin-top: 2px; }
+.post-page .lc-bag-v.bad { color: var(--lc-red); font-weight: 700; } .post-page .lc-bag-v.ok { color: var(--lc-ok); font-weight: 700; }
+.post-page .lc-bags { display: grid; gap: 38px; margin-top: clamp(32px, 4vw, 48px); }
+
+/* 그림: 재시도 눈금 */
+.post-page .lc-ticks { display: flex; align-items: flex-start; gap: 0; margin-top: 8px; border-top: 3px solid var(--fg-strong); }
+.post-page .lc-ticks > div { flex: 1; position: relative; padding: 16px 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--fg-strong); min-width: 0; }
+.post-page .lc-ticks > div::before { content: ""; position: absolute; top: -9px; left: 0; width: 15px; height: 15px; border-radius: 50%; background: var(--lc-red); }
+.post-page .lc-ticks > div.ok::before { background: var(--lc-ok); }
+.post-page .lc-ticks small { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); overflow-wrap: anywhere; }
+
+/* 그림: 추적 막대 */
+.post-page .lc-gantt { display: grid; gap: 7px; font-size: 14px; }
+.post-page .lc-g { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 10px; align-items: center; }
+.post-page .lc-g > span:first-child { font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-page .lc-g.c1 > span:first-child { padding-left: 14px; } .post-page .lc-g.c2 > span:first-child { padding-left: 28px; }
+.post-page .lc-g .tr { position: relative; height: 24px; }
+.post-page .lc-g .b { position: absolute; top: 2px; bottom: 2px; min-width: 3px; border-radius: 4px; background: color-mix(in srgb, var(--fg-strong) 42%, var(--bg-base)); }
+.post-page .lc-g .b.hot { background: var(--lc-red); }
+.post-page .lc-g .v { position: absolute; top: 2px; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+
+/* 그림: 길 모양 */
+.post-page .lc-road { display: block; width: 100%; height: auto; overflow: visible; }
+.post-page .lc-road .rd { fill: none; stroke: var(--fg-strong); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .lc-road .rd2 { fill: none; stroke: var(--fg-strong); stroke-width: 4; stroke-dasharray: 3 10; stroke-linecap: round; }
+.post-page .lc-road .st { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 4; }
+.post-page .lc-road .tp { font-family: var(--lc-penf); fill: var(--lc-pen); font-size: 27px; text-anchor: middle; }
+.post-page .lc-road-n { font-size: 15.5px !important; font-weight: 700; color: var(--fg-strong); margin: 10px 0 2px !important; line-height: 1.5 !important; }
+.post-page .lc-road-d { font-size: 15px !important; line-height: 1.65 !important; margin: 0 !important; }
+
+.post-page .lc details { margin-top: 24px; }
+.post-page .lc summary { cursor: pointer; font-size: 15.5px; color: var(--fg-strong); font-weight: 600; }
+.post-page .lc details > div { padding-top: 12px; }
+.post-page .lc table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.6; }
+.post-page .lc th, .post-page .lc td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.post-page .lc th { color: var(--fg-strong); }
+.post-page .lc-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; }
+.post-page .lc-end { height: clamp(80px, 10vw, 140px); }
+
+@media (max-width: 960px) {
+  .post-page .lc-wrap { padding: 0 20px; }
+  .post-page .lc-head, .post-page .lc-two, .post-page .lc-two.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-two.rev > figure { order: 0; }
+  .post-page .lc-cp, .post-page .lc-cp.rev { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-cp > .cp-code, .post-page .lc-cp > .cp-term, .post-page .lc-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .lc-cp > .cp-notes { order: 2; } .post-page .lc-cp > .cp-term { order: 3; }
+  .post-page .lc-spread.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .lc-strip { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .post-page .lc-joint { flex-direction: row; gap: 10px; justify-content: flex-start; }
+  .post-page .lc-joint b { font-size: 28px; }
+  .post-page .lc-story { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-stage-wrap { order: -1; z-index: 2; }
+  .post-page .lc.js .lc-stage-wrap { top: 60px; padding-bottom: 12px; border-bottom: 1px solid var(--line-normal); }
+  .post-page .lc.js .lc-stages { display: grid; gap: 0; min-height: 216px; }
+  .post-page .lc.js .lc-stage { grid-area: 1 / 1; opacity: 0; border-top: 0; padding-top: 0; }
+  .post-page .lc.js .lc-stage.seen { opacity: 0; }
+  .post-page .lc.js .lc-stage.on { opacity: 1; }
+  .post-page .lc.js .lc-step { min-height: 56vh; }
+}
+@media (max-width: 640px) {
+  .post-page .lc p { font-size: 16px; }
+  .post-page .lc-spread.n2, .post-page .lc-spread.n3, .post-page .lc-spread.n4 { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-term-bar span { font-size: 12px; }
+  .post-page .lc-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .post-page .lc-film { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .post-page .lc-film .h.sp { display: none; }
+  .post-page .lc-film .l { grid-column: 1 / -1; margin-top: 8px; }
+  .post-page .lc-film .f { padding: 8px 9px; font-size: 13px; min-height: 104px; }
+  .post-page .lc-when { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .post-page .lc-bag { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-bag .op { text-align: left; }
+  .post-page .lc-bag .op b { display: inline; margin-right: 6px; }
+  .post-page .lc-ticks { flex-direction: column; border-top: 0; border-left: 3px solid var(--fg-strong); margin-left: 7px; }
+  .post-page .lc-ticks > div { padding: 0 0 16px 18px; }
+  .post-page .lc-ticks > div::before { top: 3px; left: -9px; }
+  .post-page .lc-g { grid-template-columns: 136px minmax(0, 1fr); gap: 6px; }
+  .post-page .lc-g > span:first-child { font-size: 12px; }
+  .post-page .lc-g.c1 > span:first-child { padding-left: 8px; } .post-page .lc-g.c2 > span:first-child { padding-left: 14px; }
+  .post-page .lc-road { max-width: 280px; }
+  .post-page .lc table { font-size: 13.5px; }
+}
+
+/* 2차: 칸·값 통일 */
+.post-page .lc-pill { display: inline-block; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.3; padding: 6px 12px; border-radius: 99px; background: var(--fg-strong); color: var(--bg-base); white-space: nowrap; }
+.post-page .lc-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.25fr) auto minmax(0, 1.25fr) auto minmax(0, 1fr); gap: clamp(10px, 1.4vw, 18px); align-items: center; }
+.post-page .lc-flow .v > .lc-ty { display: block; margin-bottom: 10px; }
+.post-page .lc-codeline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-top: 28px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .lc-codeline code { font-size: 15px; color: var(--fg-strong); }
+.post-page .lc-codeline span code { font-size: 13px; }
+.post-page .lc-shop { margin-top: clamp(32px, 4vw, 44px); text-align: center; }
+.post-page .lc-shop .v > .lc-ty { margin: 4px 0 0; }
+.post-page .lc-shop .e { display: block; font-size: 52px; line-height: 1.2; }
+.post-page .lc-shop .n { display: block; font-size: 15px; font-weight: 700; color: var(--fg-strong); margin-top: 6px; }
+.post-page .lc-shop .k { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.post-page .lc-shop .k small { font-size: 13.5px; color: var(--fg-neutral); }
+.post-page .lc-prog { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-bottom: 14px; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); }
+.post-page .lc-prog span { padding: 3px 8px; border-radius: 6px; border: 1.5px solid var(--line-strong); transition: background .4s, color .4s, border-color .4s; }
+.post-page .lc-prog i { font-style: normal; }
+.post-page .lc-prog i { padding: 3px 8px; border-radius: 99px; background: color-mix(in srgb, var(--fg-strong) 70%, var(--bg-base)); color: var(--bg-base); }
+.post-page .lc-prog span.seen { color: var(--fg-strong); }
+.post-page .lc-prog span.on { background: var(--fg-strong); border-color: var(--fg-strong); color: var(--bg-base); }
+.post-page .lc-fcode { display: inline-block; margin-bottom: 12px; font-size: 13px !important; overflow-wrap: anywhere; }
+.post-page .lc-m-err { color: var(--lc-red); font-weight: 600; }
+.post-page .lc-mode { display: grid; gap: 10px; align-content: start; }
+.post-page .lc-mode .lc-fcode { margin: 0; }
+.post-page .lc-tog { display: flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--bg-muted); font-size: 13px; }
+.post-page .lc-tog b, .post-page .lc-tog i { flex: 1; font-style: normal; text-align: center; padding: 4px 6px; border-radius: 99px; }
+.post-page .lc-tog b { background: var(--bg-base); }
+.post-page .lc-tog i { color: var(--fg-neutral); }
+.post-page .lc-think { font-size: 14px; color: var(--fg-neutral); padding-left: 4px; }
+.post-page .lc-screen { display: flex; flex-wrap: wrap; align-content: center; gap: 6px; padding: 14px; min-height: 118px; margin-bottom: 14px; border-radius: 14px; border: 1.5px solid var(--line-normal); }
+.post-page .lc-screen > .lc-form { width: 100%; }
+.post-page .lc-screen .lc-m.a { background: var(--lc-soft); }
+.post-page .lc-tagchip { font-size: 14.5px; padding: 5px 13px; border-radius: 99px; background: var(--lc-soft); color: var(--fg-strong); }
+.post-page .lc-subh { font-size: clamp(20px, 2.4vw, 24px) !important; font-weight: 700; color: var(--fg-strong); margin-bottom: 0 !important; }
+.post-page .lc-fh { overflow-wrap: anywhere; }
+.post-page .lc-said { margin-top: 6px; }
+.post-page .lc-rw { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1.2fr); gap: clamp(10px, 1.4vw, 18px); align-items: center; margin-top: clamp(28px, 4vw, 40px); }
+.post-page .lc-rw > div > .lc-ty { display: block; margin-bottom: 8px; }
+.post-page .lc-rw .lc-m.u { width: fit-content; margin-left: auto; }
+.post-page .lc-bag { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr) auto minmax(0, 1.5fr); gap: 12px; }
+.post-page .lc-bag-t code { overflow-wrap: anywhere; }
+.post-page .lc-bag-v { display: inline-block; grid-column: auto; margin: 0; font-size: 14.5px; }
+.post-page .lc-g { grid-template-columns: 170px minmax(0, 1fr); }
+@media (max-width: 960px) {
+  .post-page .lc-flow { grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 12px; }
+  .post-page .lc-shop { text-align: left; }
+  .post-page .lc-shop .k { flex-direction: row; }
+  .post-page .lc-rw { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .post-page .lc-rw > div { width: 100%; }
+  .post-page .lc-two.sp > div { display: contents; }
+  .post-page .lc-two.sp > figure { order: 2; }
+  .post-page .lc-two.sp > div > h2, .post-page .lc-two.sp > div > p:first-of-type { order: 1; margin-bottom: 0; }
+  .post-page .lc-two.sp > div > p { order: 3; margin-bottom: 0; }
+  .post-page .lc.js .lc-stage-wrap { top: 64px; padding-top: 10px; }
+  .post-page .lc.js .lc-stages { min-height: 188px; }
+  .post-page .lc.js .lc-step { min-height: 46vh; }
+}
+@media (max-width: 640px) {
+  .post-page .lc-shop .e { font-size: 42px; }
+  .post-page .lc-prog { font-size: 11.5px; }
+  .post-page .lc-prog span { padding: 2px 5px; }
+  .post-page .lc-g { grid-template-columns: 138px minmax(0, 1fr); }
+  .post-page .lc-g > span:first-child { font-size: 11.5px; }
+  .post-page .lc-bag { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 3차 */
+.post-page .lc-head:not(.two) { display: block; }
+.post-page .lc-head:not(.two) p { max-width: 860px; }
+.post-page .lc-film, .post-page .lc-rw, .post-page .lc-bags { margin-top: clamp(44px, 5vw, 60px); }
+.post-page .lc-tag { display: inline-block; font-family: var(--font-mono); font-size: 13px; padding: 3px 8px; border-radius: 4px; background: var(--lc-soft); border: 1.5px solid var(--fg-strong); color: var(--fg-strong); white-space: nowrap; }
+.post-page .lc-tag.gone { background: transparent; color: var(--lc-red); border: 2px dashed var(--lc-red); text-decoration: line-through; }
+.post-page .lc-tag.new { background: color-mix(in srgb, var(--lc-ok) 16%, var(--bg-base)); border-color: var(--lc-ok); color: var(--lc-ok); font-weight: 700; }
+.post-page .lc-bag .op { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.post-page .lc-bag .op small { font-family: var(--font-sans); font-size: 12.5px; color: var(--fg-neutral); white-space: nowrap; }
+.post-page .lc-bag-t code { font-size: 13px; overflow-wrap: normal !important; }
+.post-page .lc-rail span { background: var(--lc-soft); color: var(--fg-strong); border: 1.5px solid var(--line-strong); border-radius: 5px; }
+.post-page .lc-rail.bad span { background: color-mix(in srgb, var(--lc-red) 14%, var(--bg-base)); color: var(--lc-red); border-color: var(--lc-red); font-weight: 600; }
+.post-page .lc-prog span.on { background: var(--lc-soft); border-color: var(--fg-strong); border-width: 2px; color: var(--fg-strong); font-weight: 700; }
+.post-page .lc-stage > div { max-height: 240px; }
+.post-page .lc.js .lc-stage > div { transition: max-height .55s cubic-bezier(.2,.7,.2,1), opacity .4s; overflow: hidden; }
+.post-page .lc.js .lc-stage.seen > div { max-height: 0; opacity: 0; }
+.post-page .lc.js .lc-stage { padding-bottom: 6px; }
+.post-page .lc-screen, .post-page .lc-frame > span.ph { border-color: var(--line-strong); }
+.post-page .lc-peg text.pent { font-size: 36px; }
+@media (max-width: 960px) {
+  .post-page .lc-prog i { display: none; }
+  .post-page .lc-prog span { padding: 2px 7px; }
+  .post-page .lc-bag .op { flex-direction: row; gap: 8px; }
+  .post-page .lc-bag .op::before { content: "↓"; color: var(--fg-neutral); }
+  .post-page .lc.js .lc-stage.seen > div { max-height: 240px; opacity: 0; }
+}
+@media (max-width: 640px) {
+  .post-page .lc-when { gap: 0; border-left: 3px solid var(--fg-strong); margin-left: 6px; }
+  .post-page .lc-when > div { border-top: 0; padding: 0 0 18px 18px; }
+  .post-page .lc-when > div::before { top: 2px; left: -8px; }
+  .post-page .lc-shot { gap: 20px; }
+  .post-page .lc-row .lc-pen { margin-top: 2px; }
+}
+.post-page .lc-sum { display: none; font-style: normal; margin-left: 8px; color: var(--fg-neutral); }
+.post-page .lc.js .lc-stage.seen .lc-sum { display: inline; }
+
+/* 4차 */
+.post-page .lc-film, .post-page .lc-rw, .post-page .lc-bags { margin-top: clamp(52px, 6vw, 76px); }
+.post-page .lc-slot.fix { background: var(--fg-strong); color: var(--bg-base); }
+.post-page .lc-slot.call { background: transparent; border: 1.5px dashed var(--fg-strong); }
+.post-page .lc-when.two { grid-template-columns: 1fr 1.3fr; }
+.post-page .lc-g { --slow: rgb(190, 118, 8); }
+[data-theme="dark"] .post-page .lc-g { --slow: rgb(240, 170, 70); }
+.post-page .lc-g .b.hot { background: var(--slow); }
+.post-page .lc-g > span:first-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; }
+@media (max-width: 960px) {
+  .post-page .lc-prog { flex-wrap: nowrap; gap: 3px; font-size: 10px; }
+  .post-page .lc-prog i { display: inline; padding: 1px 4px; }
+  .post-page .lc-prog span { padding: 1px 4px; white-space: nowrap; }
+  .post-page .lc.js .lc-stages { min-height: 160px; }
+}
+@media (max-width: 640px) {
+  .post-page .lc-when.two { grid-template-columns: minmax(0, 1fr); }
+  .post-page .lc-rail.even { flex-wrap: nowrap; gap: 3px; }
+  .post-page .lc-rail.even span { font-size: 11.5px; padding: 3px 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .lc *, .post-page .lc *::before { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="lc" data-lc>
+  <header class="lc-hero">
+    <div class="lc-wrap">
+      <div class="lc-eyebrow">AI Service Track 09</div>
+      <h1>챗봇 답변이 화면에 나오기까지 LangChain이 잇는 세 칸</h1>
+      <p class="lc-lede">챗봇에 질문을 넣으면 답이 말풍선 하나로 돌아옵니다. 그 말풍선 뒤에서 질문은 세 칸을 지나며 모양을 바꿉니다. LangChain은 이 세 칸을 <code>|</code> 기호로 이어 주는 파이썬 도구입니다.</p>
+      <figure data-figure data-thumb role="img" aria-label="위에는 채팅 화면의 질문과 답이 있고, 아래에는 같은 내용이 dict, 메시지 묶음, AIMessage, 문자열로 모양을 바꾸는 띠가 있습니다. 네 모양 사이에 prompt, model, parser 세 칸이 놓입니다.">
+        <div class="lc-cw" style="max-width:620px;margin:clamp(32px,4vw,44px) auto 0"><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-u">양자역학을 중학생 눈높이로 설명해 줘</div><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>양자역학은 아주 작은 세계의 규칙입니다.<div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+        <div class="lc-behind">화면 뒤에서 같은 내용이 지나가는 모양</div>
+        <div class="lc-flow">
+          <div class="v"><span class="lc-ty">입력 dict</span><div class="lc-memo">{ <i>"topic":</i> "양자역학",<br>&nbsp;&nbsp;<i>"level":</i> "중학생" }</div><span class="lc-pen">질문을 나눠 담은 값</span></div>
+          <span class="lc-pill">prompt</span>
+          <div class="v"><span class="lc-ty">메시지 묶음</span><div class="lc-msgs"><span><small>system</small>친절한 과학 선생님입니다.</span><span><small>human</small>양자역학을 중학생 눈높이로…</span></div></div>
+          <span class="lc-pill">model</span>
+          <div class="v"><span class="lc-ty">AIMessage</span><div class="lc-tray">content=<b>양자역학은 아주 작은 세계의 규칙입니다.</b>usage_metadata={…} id=…</div></div>
+          <span class="lc-pill">parser</span>
+          <div class="v"><span class="lc-ty">문자열(글자)</span><div class="lc-str">양자역학은 아주 작은 세계의 규칙입니다.</div><span class="lc-pen">화면에 보이는 건 이것뿐</span></div>
+        </div>
+        <div class="lc-codeline"><code>chain = prompt | model | parser</code><span>검은 알약이 칸이고 <code>|</code>는 칸 사이 이음새입니다. 값은 이음새를 지나 다음 칸으로 갑니다.</span></div>
+      </figure>
+    </div>
+  </header>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap lc-two sp">
+      <div>
+        <h2>ChatGPT 화면 한 장에 모인 기능들</h2>
+        <p>ChatGPT는 검색해서 출처를 달고 지난 대화를 기억합니다. 표를 차트로 그리고 달력 같은 외부 앱도 부릅니다. 그런데 모델의 API(프로그램끼리 요청을 주고받는 창구)를 한 번 부르면 돌아오는 것은 글 한 덩어리입니다.</p>
+        <p>나머지 기능은 개발자가 모델 호출 앞뒤에 코드를 붙여 만듭니다. 붙일 부품이 늘수록 잇는 코드가 복잡해집니다. 이 연결을 도와주는 뼈대 코드가 <b>프레임워크</b>(framework)이고, <b>LangChain</b>은 LLM(Large Language Model, 글을 만드는 AI 모델) 서비스용 프레임워크입니다.</p>
+        <p>이름은 Language와 Chain을 합친 말입니다. 체인(chain)은 앞 칸의 결과가 다음 칸의 입력이 되도록 줄줄이 이어 붙인 묶음입니다.</p>
+      </div>
+      <figure data-figure role="img" aria-label="채팅 답변 화면 그림. 출처 표시, 지난 대화 언급, 차트, 달력 도구 실행 기록마다 펜으로 무슨 기능인지 적었습니다.">
+        <div class="lc-cw"><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><div class="lc-shot">
+        <div class="lc-row"><div class="lc-m a" style="max-width:100%">아이 눈 건강은 2시간마다 쉬는 게 좋습니다.<span class="lc-cite">출처 2</span></div><span class="lc-pen">검색 + 출처</span></div>
+        <div class="lc-row"><div class="lc-m a" style="max-width:100%">지난번에 말씀하신 3살 강아지도 같습니다.</div><span class="lc-pen">지난 대화</span></div>
+        <div class="lc-row"><div class="lc-mini-chart" aria-hidden="true"><i style="height:30%"></i><i style="height:52%"></i><i style="height:88%"></i><i style="height:66%"></i><i style="height:40%"></i></div><span class="lc-pen">코드 실행</span></div>
+        <div class="lc-row"><div class="lc-tool">calendar.create("동물병원 예약") ✓</div><span class="lc-pen">외부 도구</span></div>
+        </div><div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+        <p class="lc-cap">화면 내용은 설명을 위해 만든 예시입니다. 실제 서비스 내부 구조는 회사마다 다릅니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-head">
+        <h2>분식집 주문으로 보는 프롬프트·모델·파서</h2>
+        <div>
+          <p>답 한 번을 만드는 체인은 세 칸입니다. 분식집에서 떡볶이를 시킬 때와 구조가 비슷합니다. 메모를 전표로 옮겨 적고 주방이 요리를 쟁반에 내면 음식만 덜어 상에 놓습니다.</p>
+        </div>
+      </div>
+      <figure data-figure role="img" aria-label="분식집 비유 그림. 메모, 전표, 쟁반, 음식 네 가지 물건 사이에 옮겨 적기, 주방, 덜어 내기 세 칸이 있습니다. 아래에 각각 dict, 메시지 묶음, AIMessage, 문자열과 prompt, model, parser라고 적었습니다.">
+        <div class="lc-flow lc-shop">
+          <div class="v"><span class="e">📝</span><span class="n">손님 메모</span><span class="lc-ty">dict</span></div>
+          <div class="k"><span class="lc-pill">prompt</span><small>옮겨 적기</small></div>
+          <div class="v"><span class="e">🧾</span><span class="n">주문 전표</span><span class="lc-ty">메시지 묶음</span></div>
+          <div class="k"><span class="lc-pill">model</span><small>주방</small></div>
+          <div class="v"><span class="e">🍽️</span><span class="n">쟁반(음식+영수증)</span><span class="lc-ty">AIMessage</span></div>
+          <div class="k"><span class="lc-pill">parser</span><small>음식만 덜기</small></div>
+          <div class="v"><span class="e">🍢</span><span class="n">음식</span><span class="lc-ty">문자열</span></div>
+        </div>
+      </figure>
+      <p class="lc-cap lc-mid">비유가 맞지 않는 부분도 있습니다. 주방은 같은 전표에 같은 음식을 내지만 모델은 같은 프롬프트에도 답이 조금씩 달라질 수 있습니다.</p>
+      <div class="lc-mid lc-gap">
+        <p><b>프롬프트</b>(prompt)는 모델에게 주는 지시문입니다. <b>모델</b>(model)은 지시문을 읽고 글을 만듭니다. <b>출력 파서</b>(output parser)는 모델이 돌려준 결과에서 필요한 부분만 꺼내 프로그램이 쓰기 좋은 모양으로 바꿉니다.</p>
+        <p>세 칸을 <code>|</code>로 잇는 문법을 <b>LCEL</b>(LangChain Expression Language)이라고 부릅니다. 터미널 명령을 이을 때 쓰는 파이프(pipe) 기호에서 가져왔습니다. 정원 호스 여러 개를 이어 물을 보내는 장면을 떠올리면 됩니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <h2>파이프를 지날 때마다 바뀌는 데이터 모양</h2>
+      <p class="lc-mid">체인을 이해하는 가장 빠른 방법은 값을 따라가는 것입니다. 칸의 이름보다 이음새를 지나는 값의 모양을 봐 주세요.</p>
+      <div class="lc-story" data-lc-story>
+        <div class="lc-steps">
+          <div class="lc-step" data-lc-step="0"><span class="k">입력</span><p>처음 넣는 값은 <b>딕셔너리</b>(dictionary)입니다. 파이썬에서 이름표와 값을 짝지어 담는 자료형으로 줄여서 dict라고 씁니다. 주문 메모에 "메뉴: 떡볶이, 맵기: 보통"이라고 적는 것과 같습니다.</p></div>
+          <div class="lc-step" data-lc-step="1"><span class="k">prompt 칸을 지난 뒤</span><p>프롬프트 칸이 <code>{topic}</code> 같은 빈칸에 값을 채웁니다. 결과는 메시지 묶음(<code>ChatPromptValue</code>)입니다. system 메시지는 모델의 역할, human 메시지는 사용자의 말입니다.</p></div>
+          <div class="lc-step" data-lc-step="2"><span class="k">model 칸을 지난 뒤</span><p>모델 칸은 묶음을 API로 보내고 <code>AIMessage</code>를 받습니다. 쟁반처럼 답 말고도 많은 것이 실려 옵니다. <code>usage_metadata</code>는 토큰(token, 모델이 글을 읽고 쓰는 단위) 사용량입니다. 요금이 이 숫자로 정해집니다.</p></div>
+          <div class="lc-step" data-lc-step="3"><span class="k">parser 칸을 지난 뒤</span><p><code>StrOutputParser</code>가 쟁반에서 <b>문자열</b>(string, 글자를 이어 놓은 값)만 꺼냅니다. 이제 화면에 바로 찍을 수 있고 다음 체인에 넘기기도 쉽습니다. 파서를 빼면 체인은 <code>AIMessage</code>까지만 돌려줍니다. 파서가 꼭 필요한 칸은 아닙니다.</p></div>
+        </div>
+        <figure class="lc-stage-wrap" data-figure data-lc-stagewrap role="img" aria-label="네 단계 데이터 그림. 위쪽 진행 줄에 현재 위치가 표시되고 딕셔너리, ChatPromptValue, AIMessage, 문자열을 실제 출력 모양으로 보여 줍니다.">
+          <div class="lc-prog" aria-hidden="true"><span data-lc-prog="0">dict</span><i>prompt</i><span data-lc-prog="1">메시지</span><i>model</i><span data-lc-prog="2">AIMessage</span><i>parser</i><span data-lc-prog="3">str</span></div>
+          <div class="lc-stages">
+            <div class="lc-stage" data-lc-stage="0"><span class="lc-ty"><b>dict</b> · chain.invoke( … )<em class="lc-sum">빈칸에 넣을 값 2개</em></span><div class="lc-memo">{"topic": "양자역학", "level": "중학생"}</div></div>
+            <div class="lc-stage" data-lc-stage="1"><span class="lc-ty"><b>ChatPromptValue</b><em class="lc-sum">메시지 2개</em></span><div class="lc-msgs"><span><small>SystemMessage</small>친절한 과학 선생님입니다.</span><span><small>HumanMessage</small>양자역학을 중학생 눈높이로 설명해 주세요.</span></div></div>
+            <div class="lc-stage" data-lc-stage="2"><span class="lc-ty"><b>AIMessage</b><em class="lc-sum">답 + 토큰 사용량 + id</em></span><div class="lc-tray">content=<b>양자역학은 아주 작은 세계의 규칙입니다.</b>usage_metadata={'input_tokens': 16, 'output_tokens': 12, 'total_tokens': 28}<br>id='lc_run--01a1…'</div></div>
+            <div class="lc-stage" data-lc-stage="3"><span class="lc-ty"><b>str</b> · 최종 결과</span><div class="lc-str">양자역학은 아주 작은 세계의 규칙입니다.</div></div>
+          </div>
+        </figure>
+      </div>
+
+      <p class="lc-cap lc-mid">그림 속 답과 토큰 수는 예시 값입니다.</p>
+      <p class="lc-mid lc-gap">코드로는 세 칸을 만들어 <code>|</code>로 잇습니다.</p>
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="chain.py" data-hl="6-9,11-14,18,22"><code class="language-python">from langchain.chat_models import init_chat_model
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
+# ① 빈칸이 있는 프롬프트
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "친절한 과학 선생님입니다."),
+    ("human", "{topic}을 {level} 눈높이로 설명해 주세요."),
+])
+# ② 어느 회사의 어떤 모델인지
+model = init_chat_model(
+    "openai:gpt-6.1-sol",
+    use_responses_api=True,
+)
+parser = StrOutputParser()
+
+# ③ 잇기만 합니다. 아직 아무것도 실행되지 않습니다
+chain = prompt | model | parser
+print(type(chain).__name__)
+
+# ④ 빈칸 이름과 같은 키로 값을 넘겨 실행
+answer = chain.invoke({"topic": "양자역학", "level": "중학생"})
+print(answer)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lc-term" data-lc-term>
+  <div class="lc-term-bar"><span>터미널 · 누르면 출력이 다시 찍힙니다</span><button type="button" class="lc-act" data-lc-run>실행해 보기</button></div>
+  <div class="lc-term-out" data-lc-out aria-live="polite">$ python chain.py
+RunnableSequence
+양자역학은 아주 작은 세계의 규칙입니다.</div>
+</div>
+<p class="lc-cap">출력은 예시 답입니다. 설치는 <code>pip install langchain langchain-openai</code>이고 <code>langchain 1.4.9</code>, <code>langchain-core 1.7.6</code>, <code>langchain-openai 1.7.4</code>(2026-11-05) 기준입니다. 실행 전에 API 키를 환경 변수(프로그램 밖에서 넣어 주는 설정값) <code>OPENAI_API_KEY</code>에 넣어 둡니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>from_messages</code>는 역할과 문장을 짝지어 받습니다. 중괄호 안 이름이 빈칸입니다. <code>from_template</code>은 human 메시지 하나만 만들 때 쓰는 짧은 형태입니다.</li>
+  <li><code>"openai:gpt-6.1-sol"</code>처럼 회사와 모델 이름을 문자열로 적습니다. <code>"anthropic:claude-sonnet-5-5"</code>로 고치면 Claude를 부릅니다(<code>pip install langchain-anthropic</code> 필요). <code>use_responses_api=True</code>는 OpenAI의 최신 API 창구로 보내라는 옵션입니다.</li>
+  <li><code>|</code>를 쓰면 바로 실행될 것 같지만 <code>RunnableSequence</code>라는 객체(object, 값과 기능을 묶은 것) 하나가 만들어질 뿐입니다. 호스를 연결만 하고 수도꼭지는 아직 열지 않은 상태입니다.</li>
+  <li><code>invoke</code>가 수도꼭지입니다. 넘기는 값의 키(딕셔너리의 이름표)는 빈칸 이름과 같아야 합니다. 칸 세 개가 차례로 실행되고 마지막 칸의 결과가 돌아옵니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-head">
+        <h2>답이 조금씩 나오는 스트리밍</h2>
+        <div>
+          <p>ChatGPT는 답을 조금씩 찍어 줍니다. 모델이 다 쓸 때까지 기다리지 않고 조각을 받는 대로 보여 주는 <b>스트리밍</b>(streaming)입니다. 전체 시간은 같아도 사용자가 빈 화면을 보는 시간이 줄어듭니다.</p>
+          <p>체인에서는 <code>invoke</code>를 <code>stream</code>으로 바꾸면 됩니다. 조각 하나를 <b>청크</b>(chunk)라고 부릅니다.</p>
+        </div>
+      </div>
+      <figure data-figure class="lc-film" role="img" aria-label="같은 순간의 채팅 화면 비교. invoke는 끝날 때까지 빈 화면이고, stream은 시작 직후부터 글자가 나타나 끝에 같은 답이 완성됩니다.">
+        <span class="h sp"></span><span class="h">시작 직후</span><span class="h">중간</span><span class="h">끝</span>
+        <span class="l">invoke</span><div class="f wait">기다리는 중…</div><div class="f wait">기다리는 중…</div><div class="f">양자역학은 아주 작은 세계의 규칙입니다.</div>
+        <span class="l">stream</span><div class="f">양자역학</div><div class="f">양자역학은 아주 작은</div><div class="f">양자역학은 아주 작은 세계의 규칙입니다.</div>
+      </figure>
+
+      <div class="lc-two lc-gap">
+        <div>
+          <p>답 끝에 "AI가 쓴 답입니다" 안내를 붙이려고 체인 끝에 함수(function, 입력을 받아 결과를 돌려주는 코드 묶음)를 더하면 스트리밍이 사라지기도 합니다. 일반 함수는 입력이 다 모여야 실행되기 때문입니다. 앞에서 조각이 흘러와도 이 칸이 전부 모아 둔 뒤 한 번에 내보냅니다.</p>
+          <p>해결법은 함수를 <b>제너레이터</b>(generator)로 바꾸는 것입니다. 제너레이터는 <code>yield</code>로 값을 하나씩 내보내는 함수입니다. 조각 하나를 받으면 바로 내보내고 다음 조각을 기다립니다. 앞선 조각은 이미 화면에 찍혀 있으니 흐름이 끊기지 않습니다.</p>
+        </div>
+        <figure data-figure role="img" aria-label="세 줄의 시간표. 파서까지인 체인은 조각이 시간 내내 나오고, 일반 함수를 붙이면 마지막에 한 덩어리만 나오고, 제너레이터를 붙이면 다시 조각이 시간 내내 나오고 끝에 안내 문구가 붙습니다.">
+          <div class="lc-axis"><span>시작</span><span>답 완성</span></div>
+          <div class="lc-time" style="margin-top:14px">
+            <div class="lc-tr"><span class="n">prompt | model | parser</span><div class="lc-rail even"><span>양자역학</span><span>은 아주</span><span>작은</span><span>세계의</span><span>규칙입니다.</span></div></div>
+            <div class="lc-tr"><span class="n">… | 일반 함수<small>끝까지 모읍니다</small></span><div class="lc-rail end bad"><span>양자역학은 아주 작은 세계의 규칙입니다. (AI 안내)</span></div></div>
+            <div class="lc-tr"><span class="n">… | 제너레이터<small>받는 대로 넘깁니다</small></span><div class="lc-rail even"><span>양자역학</span><span>은 아주</span><span>작은</span><span>세계의</span><span>규칙입니다.</span><span>(AI 안내)</span></div></div>
+          </div>
+          <p class="lc-cap">일반 함수 줄은 실제로 조각 1개만 나오는 것을 실행해 확인했습니다. 조각을 끊는 위치는 모델마다 다릅니다.</p>
+        </figure>
+      </div>
+
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="stream.py" data-hl="3-4,7,10-13"><code class="language-python"># chain 은 앞 코드의 prompt | model | parser 입니다
+# ① 메서드 이름만 stream 으로
+for chunk in chain.stream({"topic": "양자역학", "level": "중학생"}):
+    print(chunk, end="", flush=True)
+
+# ② 일반 함수: 스트리밍이 끝까지 막힙니다
+blocked = chain | (lambda text: text + "\n(AI가 쓴 답입니다)")
+
+# ③ 제너레이터: 조각을 받자마자 넘깁니다
+def add_notice(chunks):
+    for chunk in chunks:
+        yield chunk
+    yield "\n(AI가 쓴 답입니다)"
+kept = chain | add_notice</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>메서드(method)는 객체에 딸린 함수입니다. <code>stream</code>은 청크를 <code>for</code> 문(반복문)으로 하나씩 꺼내게 해 줍니다. <code>flush=True</code>를 빼면 터미널이 글자를 모아 뒀다가 찍어서 효과가 줄어듭니다.</li>
+  <li><code>lambda</code>는 이름 없는 짧은 함수입니다. <code>|</code> 옆에 함수를 두면 LangChain이 칸(<code>RunnableLambda</code>)으로 감쌉니다. 오류 없이 한 덩어리로 바뀌어서 눈치채기 어렵습니다.</li>
+  <li>입력으로 청크 묶음을 받고 <code>yield</code>로 내보냅니다. 답이 끝난 뒤 안내 문구를 덧붙이는 처리도 이렇게 하면 스트리밍을 유지합니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-two">
+        <div>
+          <h2>챗봇이 답 대신 오류로 멈추는 두 가지 이유</h2>
+          <p>사용자에게는 "오류가 발생했습니다" 한 줄로 보이는 일이 개발 중에는 대개 <code>KeyError</code>나 <code>ValueError</code>입니다. 체인을 처음 만들면 이 둘을 가장 먼저 만납니다.</p>
+          <p>원인은 하나입니다. 앞 칸이 내놓은 모양이 다음 칸이 받는 모양과 다릅니다.</p>
+        </div>
+        <figure class="lc-cw" data-figure role="img" aria-label="채팅 화면. 사용자의 질문 아래에 빨간 글씨로 오류가 발생했다는 안내가 나옵니다."><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-u">양자역학을 설명해 줘</div><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><span class="lc-m-err">오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</span></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></figure>
+      </div>
+      <div class="lc-spread n2">
+        <figure data-figure role="img" aria-label="프롬프트 문장에서 topic 빈칸은 채워졌고 level 빈칸은 비어 빨간 점선으로 표시됐습니다. 아래에 실제 KeyError 문구가 있습니다.">
+          <p class="lc-fh">빈칸 하나가 안 채워졌을 때</p>
+          <code class="lc-fcode">chain.invoke({"topic": "양자역학"})</code>
+          <div class="lc-tmpl"><span class="lc-slot ok">양자역학</span>을 <span class="lc-slot bad">{level} ?</span> 눈높이로 설명해 주세요.</div>
+          <code class="lc-err">KeyError: Input to ChatPromptTemplate is missing variables {'level'}. Expected: ['level', 'topic'] Received: ['topic']</code>
+          <span class="lc-verdict">KeyError는 없는 이름표를 찾을 때 나는 오류입니다. 문구가 빠진 빈칸과 받은 값을 그대로 알려 줍니다. <b>Expected와 Received를 비교하면</b> 됩니다.</span>
+        </figure>
+        <figure data-figure role="img" aria-label="레고처럼 생긴 부품 그림. 위 줄은 dict 둥근 돌기가 prompt 둥근 홈에, prompt 네모 돌기가 model 네모 홈에, model 세모 돌기가 parser 세모 홈에 맞습니다. 아래 줄은 dict 둥근 돌기가 model 네모 홈에 맞지 않습니다.">
+          <p class="lc-fh">칸 순서가 바뀌었을 때</p>
+          <code class="lc-fcode">chain = model | prompt | parser</code>
+          <svg class="lc-peg" viewBox="0 0 640 262" aria-hidden="true">
+            <text class="s" x="4" y="22" style="text-anchor:start">맞는 순서</text>
+            <rect class="part" x="8" y="40" width="92" height="56" rx="8"/><text x="50" y="75">dict</text>
+            <rect class="part" x="104" y="40" width="150" height="56" rx="8"/><circle class="sock" cx="102" cy="68" r="15"/><circle class="peg" cx="102" cy="68" r="10"/><text x="180" y="75">prompt</text>
+            <rect class="part" x="258" y="40" width="150" height="56" rx="8"/><rect class="sock" x="242" y="54" width="28" height="28"/><rect class="peg" x="247" y="59" width="18" height="18"/><text x="338" y="75">model</text>
+            <rect class="part" x="412" y="40" width="150" height="56" rx="8"/><polygon class="sock" points="394,50 428,68 394,86"/><polygon class="peg" points="400,58 418,68 400,78"/><text x="494" y="75">parser</text>
+            <text class="s" x="4" y="150" style="text-anchor:start">바뀐 순서</text>
+            <rect class="part" x="8" y="168" width="92" height="56" rx="8"/><text x="50" y="203">dict</text><circle class="peg bad" cx="100" cy="196" r="12"/>
+            <line class="xm" x1="130" y1="182" x2="156" y2="210"/><line class="xm" x1="156" y1="182" x2="130" y2="210"/>
+            <rect class="part" x="186" y="168" width="150" height="56" rx="8"/><rect class="sock bad" x="172" y="182" width="28" height="28"/><text x="272" y="203">model</text>
+            <text class="pent" x="464" y="202">둥근 돌기, 네모 홈</text>
+          </svg>
+          <code class="lc-err">ValueError: Invalid input type &lt;class 'dict'&gt;. Must be a PromptValue, str, or list of BaseMessages.</code>
+          <span class="lc-verdict">ValueError는 받을 수 없는 종류의 값이 들어왔을 때 나는 오류입니다. 모델 칸은 메시지나 문자열만 받아서 dict를 거절합니다.</span>
+        </figure>
+      </div>
+      <p class="lc-cap">오류 문구는 <code>langchain-core 1.7.6</code>에서 직접 실행해 옮겼고 안내 링크 부분만 줄였습니다. 돌기 모양은 값의 종류를 나타내려고 그린 것입니다.</p>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-two sp">
+        <div>
+          <h2>프롬프트의 빈칸은 언제 채워질까요?</h2>
+          <p>챗봇이 오늘 날짜를 알고 늘 같은 말투로 답하는 것은 대개 개발자가 프롬프트에 미리 적어 두기 때문입니다. 빈칸마다 채우는 때가 다릅니다. 말투는 처음 한 번 정하고 날짜는 부를 때마다 계산하고 질문은 사용자가 줍니다.</p>
+          <p>앞의 두 가지를 미리 정하는 메서드가 <code>partial</code>입니다. 값을 넘기면 고정되고 함수를 넘기면 부를 때마다 다시 계산합니다. 전표에 "매장 식사"가 미리 인쇄돼 있고 주문 번호만 그때그때 찍히는 것과 비슷합니다.</p>
+          <p>전표와 달리 인쇄한 값도 바꿀 수 있습니다. <code>invoke</code>에 같은 이름의 값을 주면 그 값이 <code>partial</code> 값을 덮어씁니다.</p>
+        </div>
+        <figure data-figure role="img" aria-label="챗봇 말풍선 아래 프롬프트 문장과 시간 줄 두 시점. 코드를 작성할 때 tone을 고정하고, 체인을 부를 때 today를 계산하고 question을 입력으로 받습니다.">
+          <div class="lc-cw" style="margin:0 0 24px"><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>11월 5일 기준으로 친절하게 안내해 드릴게요.<div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+          <div class="lc-tmpl" style="margin-bottom:24px">오늘은 <span class="lc-slot call">{today}</span>입니다. <span class="lc-slot fix">{tone}</span> 말투로 답합니다. <span class="lc-slot call">{question}</span></div>
+          <div class="lc-when two">
+            <div><span class="n">코드를 작성할 때 한 번</span><span class="v"><span class="lc-slot fix">{tone}</span> → 친절한</span></div>
+            <div><span class="n">체인을 부를 때마다</span><span class="v"><span class="lc-slot call">{today}</span> → 함수가 계산<br><span class="lc-slot call">{question}</span> → 사용자 입력</span></div>
+          </div>
+          <p class="lc-cap">말풍선은 설명을 위한 예시입니다.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-head">
+        <h2>챗봇이 지난 말을 기억하게 하는 빈칸</h2>
+        <div>
+          <p>"3살이에요"라고만 답해도 챗봇은 무슨 이야기인지 압니다. 모델의 API는 앞 요청을 기억하지 않으니 서비스가 앞선 말을 매번 프롬프트에 넣어 보내는 덕분입니다. <code>("placeholder", "{history}")</code>는 메시지가 몇 개든 통째로 들어가는 빈칸을 만듭니다.</p>
+        </div>
+      </div>
+      <div class="lc-spread n3">
+        <figure data-figure role="img" aria-label="첫 질문에서는 대화 기록 빈칸이 비어 있습니다.">
+          <p class="lc-fh">첫 질문 (예시 대화)<small>history 를 안 넘겨도 됩니다</small></p>
+          <div class="lc-frame"><span><small>system</small>오늘은 2026-11-05입니다. 친절한 말투로 답합니다.</span><span class="ph empty"><small>history</small>비어 있음</span><span><small>human</small>강아지가 눈을 긁어요</span></div>
+        </figure>
+        <figure data-figure role="img" aria-label="두 번째 질문에서는 대화 기록 빈칸에 메시지 두 개가 들어갑니다.">
+          <p class="lc-fh">두 번째 차례<small>앞선 말 2개</small></p>
+          <div class="lc-frame"><span><small>system</small>오늘은 2026-11-05입니다. 친절한 말투로 답합니다.</span><span class="ph"><small>history</small>강아지가 눈을 긁어요<br>몇 살인가요?</span><span><small>human</small>3살이에요</span></div>
+        </figure>
+        <figure data-figure role="img" aria-label="세 번째 질문에서는 대화 기록 빈칸에 메시지 네 개가 들어갑니다.">
+          <p class="lc-fh">세 번째 차례<small>앞선 말 4개</small></p>
+          <div class="lc-frame"><span><small>system</small>오늘은 2026-11-05입니다. 친절한 말투로 답합니다.</span><span class="ph"><small>history</small>강아지가 눈을 긁어요<br>몇 살인가요?<br>3살이에요<br>언제부터 긁었나요?</span><span><small>human</small>어제부터요</span></div>
+        </figure>
+      </div>
+
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="prompt.py" data-hl="6,8,12,14"><code class="language-python">from datetime import date
+from langchain_core.prompts import ChatPromptTemplate
+
+prompt = ChatPromptTemplate.from_messages([
+    # ① 두 빈칸은 아래 partial 로 미리 채웁니다
+    ("system", "오늘은 {today}입니다. {tone} 말투로 답합니다."),
+    # ② 메시지 여러 개가 들어가는 빈칸
+    ("placeholder", "{history}"),
+    ("human", "{question}"),
+]).partial(
+    # ③ 함수: 부를 때마다 계산
+    today=lambda: date.today().isoformat(),
+    # ④ 값: 고정
+    tone="친절한",
+)
+
+print(prompt.input_variables)
+print(prompt.invoke({
+    "question": "3살이에요",
+    "history": [("human", "강아지가 눈을 긁어요"), ("ai", "몇 살인가요?")],
+}).to_messages())</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lc-term" data-lc-term>
+  <div class="lc-term-bar"><span>터미널 · 누르면 출력이 다시 찍힙니다</span><button type="button" class="lc-act" data-lc-run>실행해 보기</button></div>
+  <div class="lc-term-out" data-lc-out aria-live="polite">$ python prompt.py
+['question']
+[SystemMessage('오늘은 2026-11-05입니다. 친절한 말투로 답합니다.'),
+ HumanMessage('강아지가 눈을 긁어요'),
+ AIMessage('몇 살인가요?'),
+ HumanMessage('3살이에요')]</div>
+</div>
+<p class="lc-cap">읽기 쉽게 메시지의 부가 정보는 줄였습니다. 프롬프트에 JSON(JavaScript Object Notation, 이름표와 값을 글자로 적는 형식) 예시를 그대로 적으면 중괄호까지 빈칸으로 읽혀 <code>KeyError</code>가 납니다. 글자 중괄호는 <code>{{ }}</code>로 두 번 적습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>두 빈칸은 코드 아래쪽 <code>partial</code>이 채우므로 호출할 때 넘기지 않아도 됩니다.</li>
+  <li><code>placeholder</code>는 값을 안 넘겨도 오류가 나지 않습니다. 그래서 필수 입력 목록(<code>input_variables</code>)에 <code>history</code>가 없습니다.</li>
+  <li>함수는 입력값 없이 호출됩니다. 프롬프트를 만들 때가 아니라 부를 때 실행되므로 서버(서비스를 계속 돌리는 컴퓨터)를 오래 켜 둬도 날짜가 낡지 않습니다.</li>
+  <li>이 값이 입력 목록에서 빠져서 호출하는 쪽 코드가 짧아집니다. 필요하면 <code>invoke</code>에서 덮어쓸 수 있습니다.</li>
+</ol>
+        </div>
+      </div>
+      <details class="lc-mid">
+        <summary>다른 코드에서 만나는 프롬프트 표기</summary>
+        <div>
+          <table>
+            <tr><th>표기</th><th>뜻</th></tr>
+            <tr><td><code>PromptTemplate.from_template("…")</code></td><td>역할 구분 없는 문자열 프롬프트입니다. 챗 모델에 보내면 human 메시지 하나로 바뀝니다.</td></tr>
+            <tr><td><code>PromptTemplate(template=…, partial_variables=…)</code></td><td>생성자로 직접 만드는 형태입니다. 하는 일은 <code>.partial()</code>과 같습니다.</td></tr>
+            <tr><td><code>MessagesPlaceholder("history")</code></td><td><code>("placeholder", "{history}")</code>와 비슷하지만 기본값은 필수 입력입니다. <code>optional=True</code>를 주면 같아집니다.</td></tr>
+          </table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-two">
+        <div>
+          <h2>"깊게 생각하기" 버튼 뒤의 모델 옵션</h2>
+          <p>챗봇 화면의 "빠른 답"과 "깊게 생각하기"는 코드에서 모델 옵션 하나입니다. 모델이 답을 쓰기 전에 생각하는 양을 <code>reasoning_effort</code>로 정합니다. 많이 생각할수록 답은 늦게 나오고 토큰도 더 씁니다.</p>
+          <p>낡은 예제에서 자주 부딪히는 옵션은 <code>temperature</code>입니다. 답에 우연을 얼마나 섞을지 정하는 값입니다. OpenAI 문서는 GPT-6 계열에서 생각하는 양이 <code>none</code>이 아니면 이 옵션을 빼라고 안내합니다. 그림의 GPT-6.1 Sol은 <code>none</code>을 지원하지 않아 쓸 수 없습니다.</p>
+        </div>
+        <figure data-figure role="img" aria-label="두 채팅 화면. 빠른 답은 곧바로 짧게 답하고 reasoning_effort low가 요청에 나갑니다. 깊게 생각하기는 생각 중 표시 뒤에 답하고 reasoning_effort high가 나갑니다.">
+          <div class="lc-spread n2" style="margin-top:0;gap:18px">
+            <div class="lc-mode">
+              <div class="lc-cw"><div class="lc-cw-bar"><span>빠른 답을 고른 화면</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>금방 답이 나옵니다.<div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+              <code class="lc-fcode">reasoning_effort="low"</code>
+            </div>
+            <div class="lc-mode">
+              <div class="lc-cw"><div class="lc-cw-bar"><span>깊게 생각하기를 고른 화면</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><div class="lc-think">생각하는 중…</div>더 늦게 답이 나옵니다.<div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+              <code class="lc-fcode">reasoning_effort="high"</code>
+            </div>
+          </div>
+          <div class="lc-req" style="margin-top:28px">
+            <span class="l">model = init_chat_model("openai:gpt-6.1-sol",</span>
+            <span class="l i x">temperature=0.8,</span>
+            <span class="l i d">reasoning_effort="low",</span>
+            <span class="l i">max_tokens=2048,</span>
+            <span class="l i">max_retries=2)</span>
+          </div>
+          <span class="lc-pen" style="display:block;margin-top:10px">지운 줄은 이 모델에서 못 씀</span>
+          <p class="lc-cap">화면은 예시입니다. <code>max_tokens</code>는 답 길이의 상한, <code>max_retries</code>는 실패했을 때 다시 시도하는 횟수입니다.</p>
+        </figure>
+      </div>
+      <details class="lc-mid">
+        <summary><code>use_responses_api</code>를 켜면 달라지는 요청</summary>
+        <div>
+          <p>OpenAI의 GPT-6 안내 문서는 Responses API로 시작하라고 적어 두었고 GPT-6.1 Sol의 도구 호출도 이쪽에서만 됩니다. 그래서 이 글의 코드에는 옵션을 켜 두었습니다. 같은 코드를 모의 서버로 받아 본 요청 본문은 아래와 같습니다.</p>
+          <div class="lc-spread n2" style="margin-top:12px">
+            <div><p class="lc-fh">옵션 없음<small>POST /v1/chat/completions</small></p>
+              <div class="lc-req"><span class="l">{ "model": "gpt-6.1-sol",</span><span class="l i d">"messages": [{ "role": "user", "content": "hi" }],</span><span class="l i d">"max_completion_tokens": 300,</span><span class="l i d">"reasoning_effort": "low" }</span></div></div>
+            <div><p class="lc-fh"><code>use_responses_api=True</code><small>POST /v1/responses</small></p>
+              <div class="lc-req"><span class="l">{ "model": "gpt-6.1-sol",</span><span class="l i d">"input": [{ "role": "user", "content": "hi" }],</span><span class="l i d">"max_output_tokens": 300,</span><span class="l i d">"reasoning": { "effort": "low" } }</span></div></div>
+          </div>
+          <p style="margin-top:20px">옵션을 켜면 <code>AIMessage.content</code>가 문자열에서 블록 목록으로 바뀝니다. <code>StrOutputParser</code>와 <code>.text</code>는 두 경우 모두 글자만 돌려줍니다. 회사마다 제약이 달라 모델을 바꿀 때는 <a href="/posts/langchain-init-chat-model-switch-provider">모델 교체를 다룬 글</a>처럼 요청까지 확인하는 편이 안전합니다.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <h2>출력 파서가 만드는 세 가지 모양</h2>
+      <p class="lc-mid">반려동물 앱이 AI 답을 칩이나 입력 양식으로 보여 주려면 프로그램이 답을 항목별로 읽을 수 있어야 합니다. 출력 파서는 글자로 온 답을 파이썬 값으로 바꿉니다. 아래는 같은 질문을 세 파서로 받은 결과와 그 값으로 그릴 수 있는 화면입니다.</p>
+      <div class="lc-spread n3">
+        <figure data-figure role="img" aria-label="StrOutputParser 결과 문자열은 화면에서 문단 하나가 됩니다.">
+          <div class="lc-screen"><div class="lc-m a" style="max-width:100%">결막염 증상은 충혈, 눈곱, 가려움, 눈물입니다.</div></div>
+          <p class="lc-fh">StrOutputParser<small>문장 하나로 보여 줄 때</small></p>
+          <div class="lc-out">'결막염 증상은 충혈, 눈곱, 가려움, 눈물입니다.'</div>
+        </figure>
+        <figure data-figure role="img" aria-label="CommaSeparatedListOutputParser 결과 리스트는 화면에서 칩 네 개가 됩니다.">
+          <div class="lc-screen"><span class="lc-tagchip">충혈</span><span class="lc-tagchip">눈곱</span><span class="lc-tagchip">가려움</span><span class="lc-tagchip">눈물</span></div>
+          <p class="lc-fh">CommaSeparatedListOutputParser<small>항목을 하나씩 그릴 때</small></p>
+          <div class="lc-out">['충혈', '눈곱', '가려움', '눈물']</div>
+        </figure>
+        <figure data-figure role="img" aria-label="JsonOutputParser 결과 딕셔너리는 화면에서 항목별 입력 양식이 됩니다.">
+          <div class="lc-screen"><div class="lc-form"><span><small>name</small>결막염</span><span><small>symptoms</small>충혈, 눈곱, 가려움, 눈물</span></div></div>
+          <p class="lc-fh">JsonOutputParser<small>이름표별로 꺼내 쓸 때</small></p>
+          <div class="lc-out">{'name': '결막염',<br>&nbsp;'symptoms': ['충혈', '눈곱', '가려움', '눈물']}</div>
+        </figure>
+      </div>
+      <p class="lc-cap">답은 예시입니다. 값 모양은 파서를 직접 실행해 확인했습니다.</p>
+      <div class="lc-mid lc-gap">
+        <p>여기서 많이 오해하는 부분이 있습니다. 파서는 모델이 그 모양으로 쓰게 만들지 못합니다. 이미 나온 글을 읽기만 합니다. 그래서 모델에게 원하는 형식을 프롬프트로 알려 줘야 합니다. <code>get_format_instructions()</code>가 그 지시문을 만들어 주지만 <code>JsonOutputParser()</code>가 주는 문장은 <code>Return a JSON object.</code> 한 줄이라 항목 이름까지 정해 주지 못합니다.</p>
+      </div>
+
+      <p class="lc-gap lc-subh">파서가 답을 읽다가 겪는 네 가지 상황</p>
+      <div class="lc-spread n4" style="margin-top:20px">
+        <figure data-figure role="img" aria-label="JSON만 있는 답은 정상으로 읽힙니다.">
+          <span class="lc-ty">JSON 파서</span>
+          <div class="lc-said"><code>{"name": "결막염"}</code></div>
+          <span class="lc-verdict ok"><b>성공</b> → {'name': '결막염'}</span>
+        </figure>
+        <figure data-figure role="img" aria-label="코드 울타리로 감싼 JSON도 정상으로 읽힙니다.">
+          <span class="lc-ty">JSON 파서</span>
+          <div class="lc-said"><code>```json<br>{"name": "결막염"}<br>```</code></div>
+          <span class="lc-verdict ok"><b>성공</b> → 코드 표시는 파서가 벗겨 냅니다</span>
+        </figure>
+        <figure data-figure role="img" aria-label="앞뒤에 인사말이 붙은 JSON은 예외가 납니다.">
+          <span class="lc-ty">JSON 파서</span>
+          <div class="lc-said"><u>네, 물론입니다!</u> <code>{"name": "결막염"}</code> <u>도움이 되었으면 합니다.</u></div>
+          <span class="lc-verdict bad"><b>OutputParserException</b> → 프로그램이 멈춥니다</span>
+        </figure>
+        <figure data-figure role="img" aria-label="쉼표 리스트 파서는 문장이 섞여도 오류 없이 잘못 나눕니다.">
+          <span class="lc-ty">쉼표 리스트 파서</span>
+          <div class="lc-said"><u>증상은</u> 충혈, 눈곱, 가려움, 눈물<u>입니다.</u></div>
+          <span class="lc-verdict bad"><b>오류 없이 틀림</b> → ['증상은 충혈', '눈곱', '가려움', '눈물입니다.']</span>
+        </figure>
+      </div>
+      <p class="lc-cap">네 경우 모두 <code>langchain-core 1.7.6</code>의 파서에 직접 넣어 확인했습니다. 넷째가 가장 위험합니다. 오류가 나지 않아 화면에 잘못된 값이 그대로 나갑니다.</p>
+
+      <div class="lc-mid lc-gap">
+        <p>그래서 지금은 항목 이름과 타입이 정해진 답이 필요하면 <code>with_structured_output</code>을 먼저 씁니다. 원하는 모양을 <b>스키마</b>(schema, 항목 이름과 타입을 적은 양식)로 요청에 실어 보내고 지원하는 모델은 그 양식대로 답합니다. 답안을 빈 종이가 아니라 OMR 카드에 쓰게 하는 것과 비슷합니다. OMR 카드와 달리 내용이 맞는지까지 보장하지는 않습니다.</p>
+      </div>
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="symptoms.py" data-hl="5-7,11"><code class="language-python">from pydantic import BaseModel
+from langchain_core.prompts import ChatPromptTemplate
+
+# ① 받고 싶은 답의 양식
+class Disease(BaseModel):
+    name: str
+    symptoms: list[str]
+
+prompt = ChatPromptTemplate.from_template("{name} 증상을 알려 주세요.")
+# ② 모델 + 파서가 한 칸으로 합쳐집니다
+chain = prompt | model.with_structured_output(Disease)
+
+result = chain.invoke({"name": "결막염"})
+print(result.symptoms)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lc-term" data-lc-term>
+  <div class="lc-term-bar"><span>터미널 · 누르면 출력이 다시 찍힙니다</span><button type="button" class="lc-act" data-lc-run>실행해 보기</button></div>
+  <div class="lc-term-out" data-lc-out aria-live="polite">$ python symptoms.py
+['충혈', '눈곱', '가려움', '눈물']</div>
+</div>
+<p class="lc-cap">출력은 예시 답입니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>Pydantic은 클래스(데이터 모양을 정하는 틀)로 양식을 적고 값을 검사해 주는 라이브러리(가져다 쓰는 코드 묶음)입니다. 항목 이름과 타입이 그대로 스키마가 됩니다.</li>
+  <li>실제 요청을 받아 보면 OpenAI에는 <code>json_schema</code> 형식과 <code>"strict": true</code>가 함께 나갑니다. 결과는 문자열이 아니라 <code>Disease</code> 객체라서 <code>result.symptoms</code>처럼 바로 꺼내 씁니다. 양식 설계와 검증은 <a href="/posts/llm-structured-output-pydantic-langchain">구조화 출력을 다룬 글</a>에서 다룹니다.</li>
+</ol>
+        </div>
+      </div>
+      <div class="lc-two lc-gap">
+        <div>
+          <p>파서가 쓸모없어진 것은 아닙니다. <code>JsonOutputParser</code>를 <code>stream</code>과 함께 쓰면 지금까지 도착한 항목을 계속 내줍니다. 답을 기다리는 동안 양식이 위에서부터 채워지는 화면을 만들 수 있습니다.</p>
+        </div>
+        <figure data-figure role="img" aria-label="JSON 스트리밍 세 장면. 첫 장면은 name 항목이 일부만, 둘째는 name이 완성되고 symptoms에 두 개, 셋째는 네 개가 모두 채워집니다.">
+          <p class="lc-fh">JsonOutputParser 로 stream 한 결과<small>여러 번 나오는 출력 중 3개를 시간 순서로 골랐습니다</small></p>
+          <div class="lc-spread n3" style="margin-top:0;gap:14px">
+            <div><span class="lc-ty">① 처음</span><div class="lc-form"><span><small>name</small>결</span><span><small>symptoms</small></span></div></div>
+            <div><span class="lc-ty">② 중간</span><div class="lc-form"><span><small>name</small>결막염</span><span><small>symptoms</small>충혈, 눈곱</span></div></div>
+            <div><span class="lc-ty">③ 끝</span><div class="lc-form"><span><small>name</small>결막염</span><span><small>symptoms</small>충혈, 눈곱, 가려움, 눈물</span></div></div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-head">
+        <h2>체인을 이을 때 입력이 사라지는 함정</h2>
+        <div>
+          <p>"강아지 눈이 좀 이상해요"처럼 짧게 물어도 어떤 서비스는 질문을 먼저 또렷하게 다듬은 뒤 답합니다. 사용자는 평소처럼 쓰고 답의 품질만 좋아집니다. 체인 둘을 이으면 이런 구조를 만들 수 있습니다.</p>
+        </div>
+      </div>
+      <figure data-figure class="lc-rw" role="img" aria-label="왼쪽에서 오른쪽으로 말풍선 세 개. 사용자의 짧은 질문, 첫 체인이 다듬은 질문, 둘째 체인의 답입니다.">
+        <div><span class="lc-ty">사용자가 쓴 말 + 등록된 나이</span><div class="lc-m u" style="max-width:100%">강아지 눈이 좀 이상해요</div><span class="lc-tag" style="margin-top:8px">question</span> <span class="lc-tag">age: 3살</span></div>
+        <span class="lc-pill">첫 체인</span>
+        <div><span class="lc-ty">화면에 안 보이는 질문</span><div class="lc-said" style="min-height:0">강아지 눈이 충혈됐을 때 원인과 병원에 가야 하는 기준은 무엇인가요?</div></div>
+        <span class="lc-pill">둘째 체인</span>
+        <div><span class="lc-ty">사용자가 보는 답</span><div class="lc-m a" style="max-width:100%">3살이면 결막염일 수 있습니다. 눈곱이 늘면 병원에 가 보세요.</div></div>
+      </figure>
+      <p class="lc-cap">대화 내용은 설명을 위해 만든 예시입니다. 수의학 조언이 아닙니다.</p>
+      <p class="lc-mid lc-gap">첫 체인의 답을 다음 프롬프트의 빈칸에 넣으려면 딕셔너리로 이름표를 붙여야 합니다. 여기서 많이 틀립니다. <code>{"better": rewrite}</code>는 결과에 이름표를 붙이지만 <b>원래 입력을 버립니다.</b></p>
+      <figure class="lc-bags" data-figure role="img" aria-label="입력 보따리 두 줄. 위 줄에서 question과 age를 넣으면 이름표 칸을 지난 뒤 better만 남아 age가 사라지고 KeyError가 납니다. 아래 줄의 assign은 question, age가 그대로 있고 better가 추가되어 다음 프롬프트가 성공합니다.">
+        <div class="lc-bag">
+          <p class="lc-bag-t"><code>{"better": rewrite}</code></p>
+          <div class="lc-chips"><span class="lc-tag">question</span><span class="lc-tag">age</span></div>
+          <div class="op"><span class="lc-pill">이름표 칸</span><small>적은 이름표만 남김</small></div>
+          <div class="lc-chips"><span class="lc-tag gone">question</span><span class="lc-tag gone">age</span><span class="lc-tag new">better</span></div>
+          <div class="op"><span class="lc-pill">answer_prompt</span><small>age 와 better 가 필요</small></div>
+          <div class="lc-chips"><span class="lc-slot bad">{age} ?</span><span class="lc-bag-v bad">KeyError: missing variables {'age'}</span></div>
+        </div>
+        <div class="lc-bag">
+          <p class="lc-bag-t"><code>RunnablePassthrough.assign(better=rewrite)</code></p>
+          <div class="lc-chips"><span class="lc-tag">question</span><span class="lc-tag">age</span></div>
+          <div class="op"><span class="lc-pill">assign 칸</span><small>그대로 두고 하나 추가</small></div>
+          <div class="lc-chips"><span class="lc-tag">question</span><span class="lc-tag">age</span><span class="lc-tag new">better</span></div>
+          <div class="op"><span class="lc-pill">answer_prompt</span><small>age 와 better 가 필요</small></div>
+          <div class="lc-chips"><span class="lc-slot ok">3살</span><span class="lc-slot ok">다듬은 질문</span><span class="lc-bag-v ok">빈칸이 모두 채워집니다</span></div>
+        </div>
+      </figure>
+
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="rewrite.py" data-hl="4-7,9-11,14" data-start="1"><code class="language-python">from langchain_core.runnables import RunnablePassthrough
+
+# ① 앞 체인: 질문을 다듬습니다
+rewrite_prompt = ChatPromptTemplate.from_template(
+    "수의사가 답하기 좋게 다시 쓰세요: {question}"
+)
+rewrite = rewrite_prompt | model | StrOutputParser()
+# ② 뒤 프롬프트: 원래 입력과 앞 결과가 모두 필요합니다
+answer_prompt = ChatPromptTemplate.from_template(
+    "강아지 나이: {age}\n질문: {better}\n답해 주세요."
+)
+# ③ 입력은 두고 better 만 추가
+chain = (
+    RunnablePassthrough.assign(better=rewrite)
+    | answer_prompt | model | StrOutputParser()
+)
+print(chain.invoke({
+    "question": "강아지 눈이 좀 이상해요",
+    "age": "3살",
+}))</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="lc-term" data-lc-term>
+  <div class="lc-term-bar"><span>터미널 · 누르면 출력이 다시 찍힙니다</span><button type="button" class="lc-act" data-lc-run>실행해 보기</button></div>
+  <div class="lc-term-out" data-lc-out aria-live="polite">$ python rewrite.py
+3살이면 결막염일 수 있습니다. 눈곱이 늘면 병원에 가 보세요.</div>
+</div>
+<p class="lc-cap">출력은 예시 답입니다. 수의학 조언이 아닙니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>체인 하나를 통째로 다른 체인의 칸으로 쓸 수 있습니다. 따로 테스트하기 쉽고 프롬프트 하나가 지나치게 길어지는 것을 막습니다.</li>
+  <li>앞 체인의 결과만 필요하면 <code>{"better": rewrite}</code>로 충분합니다. 원래 입력도 필요한 경우에만 아래 방식을 씁니다.</li>
+  <li><code>assign</code>은 입력 딕셔너리에 새 키를 더해서 그대로 넘깁니다. 대신 모델을 두 번 부르므로 토큰 비용과 기다리는 시간도 함께 늘어납니다.</li>
+</ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap lc-two">
+      <div>
+        <h2>모델이 실패해도 답을 내는 재시도와 대체 모델</h2>
+        <p>모델 칸이 실패하면 어떻게 될까요? 대비해 두면 사용자는 답이 조금 늦게 나온다고만 느낍니다. 체인의 모든 칸은 <b>Runnable</b>이라는 같은 약속을 따라서 <code>invoke</code>, <code>stream</code>, <code>batch</code>(여러 입력을 한 번에 처리)를 똑같이 쓸 수 있고 실패 대책도 칸에 붙입니다.</p>
+        <p><code>model.with_retry(stop_after_attempt=3)</code>은 같은 칸을 다시 시도하고 <code>.with_fallbacks([claude])</code>는 그래도 안 되면 다른 모델로 넘어갑니다. 모델 옵션 <code>max_retries</code>는 모델 호출에만 쓰고 <code>with_retry</code>는 어떤 칸에든 붙일 수 있습니다. 재시도는 그만큼 시간이 더 걸리므로 횟수를 작게 잡습니다.</p>
+      </div>
+      <figure data-figure role="img" aria-label="시간 눈금 네 개. 1번째와 2번째와 3번째 시도는 빨간 점으로 실패, 마지막 대체 모델은 초록 점으로 성공합니다.">
+        <div class="lc-cw" style="margin:0 0 26px"><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-u">강아지 눈이 이상해요</div><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div><div class="lc-think">답을 준비하는 중… 평소보다 조금 늦습니다</div>눈곱이 늘었는지 먼저 봐 주세요.<div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+        <p class="lc-fh">같은 순간 화면 뒤의 호출<small>설명을 위한 예시</small></p>
+        <div class="lc-ticks">
+          <div>1번째<small>gpt-6.1-sol 실패</small></div>
+          <div>2번째<small>gpt-6.1-sol 실패</small></div>
+          <div>3번째<small>gpt-6.1-sol 실패</small></div>
+          <div class="ok">대체 모델<small>claude-sonnet-5-5 성공</small></div>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap lc-two">
+      <div>
+        <h2>LangSmith로 체인 안쪽을 보는 법</h2>
+        <p>"답이 이상해요" 하는 문의를 받으면 어느 칸이 문제였는지 찾아야 합니다. <code>print</code>로 찾기는 어렵습니다. <b>LangSmith</b>는 칸마다 입력, 출력, 시간, 토큰을 기록해 웹 화면으로 보여 주는 서비스입니다. 이런 기록을 <b>트레이스</b>(trace)라고 합니다. 택배 조회처럼 어디를 언제 지났는지 나옵니다.</p>
+        <p>코드는 고치지 않습니다. 환경 변수 <code>LANGSMITH_TRACING=true</code>와 <code>LANGSMITH_API_KEY</code>만 설정하면 기록이 시작됩니다. 사용자의 입력도 함께 저장되므로 개인 정보가 들어가는 서비스는 저장 범위를 먼저 정해야 합니다.</p>
+      </div>
+      <figure data-figure role="img" aria-label="트레이스 막대 그림. 전체 체인 3.8초 중 첫 모델 호출이 1.1초, 두 번째 모델 호출이 2.6초이고 프롬프트와 파서 칸은 거의 시간을 쓰지 않습니다.">
+        <div class="lc-gantt">
+          <div class="lc-g"><span>RunnableSequence</span><span class="tr"><span class="b" style="left:0;width:80%"></span><span class="v" style="left:81%">3.8초</span></span></div>
+          <div class="lc-g c1"><span>rewrite</span><span class="tr"><span class="b" style="left:0;width:24%"></span></span></div>
+          <div class="lc-g c2"><span>ChatPromptTemplate</span><span class="tr"><span class="b" style="left:0;width:0"></span></span></div>
+          <div class="lc-g c2"><span>ChatOpenAI (model)</span><span class="tr"><span class="b" style="left:0;width:23%"></span><span class="v" style="left:25%">1.1초</span></span></div>
+          <div class="lc-g c1"><span>answer_prompt</span><span class="tr"><span class="b" style="left:24%;width:0"></span></span></div>
+          <div class="lc-g c1"><span>ChatOpenAI (model)</span><span class="tr"><span class="b hot" style="left:24%;width:55%"></span><span class="v" style="left:81%">2.6초</span></span></div>
+          <div class="lc-g c1"><span>StrOutputParser</span><span class="tr"><span class="b" style="left:79%;width:0"></span></span></div>
+        </div>
+        <p class="lc-cap">트레이스를 줄여 다시 그린 예시 값입니다. 가로 길이가 시간, 들여쓰기는 어느 묶음 안의 칸인지를 뜻합니다. 진한 막대가 가장 오래 걸린 칸입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <div class="lc-two sp">
+        <div>
+          <h2>남이 만든 프롬프트를 가져올 때</h2>
+          <p>어느 날 챗봇 말투가 갑자기 달라진다면 프롬프트 칸이 바뀐 것일 수 있습니다. 질문을 다듬는 프롬프트처럼 잘 만든 프롬프트는 LangSmith 허브(hub)에서 받아 쓸 수 있습니다. 편리하지만 공개 프롬프트는 검증되지 않은 사용자 글이고 그대로 시스템 메시지에 들어갑니다. 그 안에 모델을 속이는 지시가 숨어 있으면 프롬프트 인젝션(prompt injection)이 됩니다.</p>
+          <p>이름만 적으면 늘 최신 판을 받습니다. 게시자가 내용을 고치면 내 서비스의 답도 함께 바뀝니다. 그래서 내용을 읽고 확인한 판의 번호(커밋)까지 적어 고정합니다.</p>
+        </div>
+        <figure data-figure role="img" aria-label="두 줄의 시간 눈금. 이름만 적은 줄은 게시자가 고친 뒤 빨간 점으로 내 서비스의 프롬프트가 바뀝니다. 판 번호를 적은 줄은 게시자가 고쳐도 초록 점으로 같은 판을 유지합니다.">
+          <div class="lc-cw" style="margin:0 0 26px"><div class="lc-cw-bar"><span>새 채팅</span><small>예시 화면</small></div><div class="lc-cw-log"><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>화요일: 네, 확인해 드릴게요.</div></div><div class="lc-cw-a"><div class="lc-cw-av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>수요일: ㅇㅋ 알겠음!<span class="lc-pen" style="display:block;margin-top:8px">코드를 안 고쳤는데 말투가 바뀜 (예시)</span><div class="lc-cw-acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div></div></div></div><div class="lc-cw-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="lc-cw-send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div></div>
+          <p class="lc-fh"><code>owner/name</code><small>최신 판을 따라갑니다</small></p>
+          <div class="lc-ticks"><div class="ok">월요일<small>판 A 받음</small></div><div class="ok">화요일<small>게시자가 판 B 공개</small></div><div>수요일<small>내 서비스도 판 B</small></div></div>
+          <p class="lc-fh" style="margin-top:32px !important"><code>owner/name:abc1234</code><small>확인한 판에 고정합니다</small></p>
+          <div class="lc-ticks"><div class="ok">월요일<small>판 A 받음</small></div><div class="ok">화요일<small>게시자가 판 B 공개</small></div><div class="ok">수요일<small>내 서비스는 판 A</small></div></div>
+        </figure>
+      </div>
+      <div class="lc-cp">
+        <div class="cp-code">
+<pre data-title="hub.py" data-hl="6,8,10,12"><code class="language-python">from langsmith import Client
+
+client = Client()
+prompt = client.pull_prompt(
+    # ① 판 번호까지 고정
+    "owner/prompt-name:abc1234",
+    # ② 남의 공개 프롬프트 허용
+    dangerously_pull_public_prompt=True,
+    # ③ 모델 설정은 받지 않기
+    include_model=False,
+    # ④ 환경 변수의 비밀값 잠금
+    secrets_from_env=False,
+)
+chain = prompt | model | StrOutputParser()</code></pre>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>콜론 뒤에 커밋 해시(판마다 붙는 고유 번호)를 붙입니다. <code>owner/prompt-name</code>은 예시 이름입니다.</li>
+  <li>기본값은 <code>False</code>라서 켜지 않으면 다른 사람의 공개 프롬프트를 받지 못합니다. 게시자의 평판이 아니라 내용을 직접 읽고 켭니다.</li>
+  <li>켜면 내가 고르지 않은 모델 설정이 프롬프트에 딸려 옵니다. 끄고 모델은 내 코드에서 정합니다.</li>
+  <li><code>True</code>면 남이 적은 설정이 내 컴퓨터의 API 키 같은 비밀값을 읽어 갈 수 있습니다. 문서도 내려받은 프롬프트를 글이 아니라 실행되는 설정처럼 다루라고 적어 두었습니다.</li>
+</ol>
+        </div>
+      </div>
+      <details class="lc-mid">
+        <summary>이 설정들이 생긴 배경, 보안 취약점 두 건</summary>
+        <div>
+          <p><a href="https://github.com/advisories/GHSA-3644-q5cj-c5c7">CVE-2026-45134</a>(2026년 5월 공개)는 내려받은 프롬프트를 객체로 복원하는 과정의 취약점입니다. <code>langsmith</code> 0.8.0에서 고쳐졌고 위 ②~④가 공식 권고입니다. <a href="https://github.com/advisories/GHSA-c67j-w6g6-q2cm">CVE-2025-68664</a>(2025년 12월 공개)는 <code>langchain-core</code> 직렬화 기능의 취약점으로 1.2.5에서 고쳐졌습니다. 둘 다 프레임워크를 최신으로 유지하면 막을 수 있습니다.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap">
+      <h2>2026년에 LCEL을 쓰는 곳과 넘어갈 곳</h2>
+      <p class="lc-mid">LCEL은 2023년 8월에 나왔고 LangChain 1.0은 2025년 10월에 나왔습니다. 지금 공식 문서의 첫 화면은 에이전트(agent, 도구를 골라 쓰며 스스로 여러 단계를 진행하는 AI 프로그램) 중심이어서 LCEL 설명은 거의 보이지 않습니다. 그렇다고 사라진 것은 아닙니다. <code>Runnable</code>과 <code>|</code>는 <code>langchain-core</code>에서 그대로 동작합니다.</p>
+      <p class="lc-mid">공식 문서가 LCEL의 사용 범위를 정해 주지는 않습니다. 아래는 이 글을 쓰며 정리한 제 기준입니다. <b>흐름이 어떤 모양인지</b>를 먼저 봅니다.</p>
+      <div class="lc-spread n4">
+        <figure>
+          <svg class="lc-road" viewBox="0 0 280 170" aria-hidden="true"><circle class="st" cx="60" cy="86" r="13"/><path class="rd" d="M78 86 H202"/><circle class="st" cx="220" cy="86" r="13"/><text class="tp" x="140" y="56">한 번 호출</text></svg>
+          <p class="lc-road-n">SDK 직접 호출</p>
+          <p class="lc-road-d">SDK(회사가 제공하는 호출 라이브러리)로 모델을 한 번 부르고 끝이면 충분합니다. 코드가 더 짧고 오류도 읽기 쉽습니다.</p>
+        </figure>
+        <figure>
+          <svg class="lc-road" viewBox="0 0 280 170" aria-hidden="true"><path class="rd" d="M28 86 H252"/><circle class="st" cx="50" cy="86" r="12"/><circle class="st" cx="140" cy="86" r="12"/><circle class="st" cx="230" cy="86" r="12"/><text class="tp" x="140" y="52">돌아오는 길 없음</text></svg>
+          <p class="lc-road-n">LCEL 파이프</p>
+          <p class="lc-road-d">변환이 일직선으로 몇 칸 이어지고 스트리밍이나 회사 교체가 필요할 때 잘 맞습니다.</p>
+        </figure>
+        <figure>
+          <svg class="lc-road" viewBox="0 0 280 170" aria-hidden="true"><path class="rd" d="M28 110 H104"/><path class="rd" d="M104 110 C140 110 140 54 180 54 H252"/><path class="rd" d="M104 110 C140 110 150 138 190 138 H252"/><path class="rd2" d="M210 124 C214 88 170 78 132 96"/><circle class="st" cx="104" cy="110" r="12"/><circle class="st" cx="196" cy="54" r="12"/><circle class="st" cx="196" cy="138" r="12"/><text class="tp" x="88" y="56">갈림 + 되돌아옴</text></svg>
+          <p class="lc-road-n">LangGraph</p>
+          <p class="lc-road-d">LangChain 팀이 만든 흐름 도구입니다. 조건에 따라 갈라지거나 되돌아가고 중간 상태를 저장해야 할 때 씁니다. <a href="/posts/langgraph-state-node-edge-intro">자세한 글</a></p>
+        </figure>
+        <figure>
+          <svg class="lc-road" viewBox="0 0 280 170" aria-hidden="true"><circle class="rd" cx="140" cy="98" r="44"/><path class="rd2" d="M140 54 V26"/><path class="rd2" d="M184 98 H246"/><path class="rd2" d="M96 98 H34"/><circle class="st" cx="140" cy="54" r="11"/><circle class="st" cx="184" cy="98" r="11"/><circle class="st" cx="96" cy="98" r="11"/><text class="tp" x="222" y="46">길은 모델이</text></svg>
+          <p class="lc-road-n">create_agent</p>
+          <p class="lc-road-d">어떤 도구를 몇 번 쓸지 모델이 정하는 일에 씁니다. <a href="/posts/langchain-create-agent-loop-anatomy">자세한 글</a></p>
+        </figure>
+      </div>
+      <p class="lc-mid lc-gap">비판도 함께 봐 둘 만합니다. 2024년에는 AI 테스트 회사 Octomind의 LangChain 중단 글이 개발자 커뮤니티 Hacker News에서 크게 논의됐습니다. 추상화 층이 많아 안쪽 코드를 직접 고치기 어렵다는 비판이었습니다. 저는 칸마다 무엇이 지나가는지 이 글처럼 직접 찍어 보면 그런 답답함이 꽤 줄어든다고 봅니다.</p>
+    </div>
+  </section>
+
+  <section class="lc-sec" data-lc-sec>
+    <div class="lc-wrap lc-head">
+      <h2>다음 글과 참고 자료</h2>
+      <div>
+        <p>이번 글의 체인은 입력을 받아 답을 내면 끝납니다. 다음 글에서는 체인에 사내 문서 같은 바깥 지식을 연결하는 방법을 알아보겠습니다.</p>
+        <ul class="lc-refs">
+          <li><a href="https://docs.langchain.com/oss/python/langchain/overview">LangChain 문서, Overview</a></li>
+          <li><a href="https://reference.langchain.com/python/langchain-core/runnables/base/Runnable">LangChain 레퍼런스, Runnable</a></li>
+          <li><a href="https://reference.langchain.com/python/langchain-core/runnables/passthrough/RunnablePassthrough">LangChain 레퍼런스, RunnablePassthrough</a></li>
+          <li><a href="https://reference.langchain.com/python/langchain-core/prompts/chat/ChatPromptTemplate">LangChain 레퍼런스, ChatPromptTemplate</a></li>
+          <li><a href="https://reference.langchain.com/python/langchain-core/output_parsers/json/JsonOutputParser">LangChain 레퍼런스, JsonOutputParser</a></li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/structured-output">LangChain 문서, Structured output</a></li>
+          <li><a href="https://docs.langchain.com/oss/python/integrations/chat/openai">LangChain 문서, ChatOpenAI</a></li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/observability">LangChain 문서, Observability</a></li>
+          <li><a href="https://reference.langchain.com/python/langsmith/client/Client/pull_prompt">LangSmith 레퍼런스, pull_prompt</a></li>
+          <li><a href="https://github.com/advisories/GHSA-3644-q5cj-c5c7">GitHub Advisory, CVE-2026-45134</a></li>
+          <li><a href="https://github.com/advisories/GHSA-c67j-w6g6-q2cm">GitHub Advisory, CVE-2025-68664</a></li>
+          <li><a href="https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra">OpenAI 문서, Using GPT-6</a></li>
+          <li><a href="https://www.langchain.com/blog/langchain-expression-language">LangChain 블로그, LCEL 발표(2023-08-01)</a></li>
+          <li><a href="https://www.langchain.com/blog/langchain-langgraph-1dot0">LangChain 블로그, v1.0 발표(2025-10-22)</a></li>
+          <li><a href="https://hn.jakechampion.name/item/40739982">Hacker News, Octomind의 LangChain 중단 글 토론</a></li>
+          <li><a href="https://dspinellis.github.io/oral-history-of-unix/frs122/unixhist/tools.htm">Unix 구술사, 파이프와 정원 호스 비유</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="lc-end"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const lc = root.querySelector("[data-lc]");
+  if (!lc) return;
+  lc.classList.add("js");
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  $$("[data-lc-term]").forEach((term) => {
+    const out = term.querySelector("[data-lc-out]"), btn = term.querySelector("[data-lc-run]");
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 260);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+
+  /* 그림 고정 스크롤: 화면 가운데에 가장 가까운 단계 글을 켠다 */
+  const story = root.querySelector("[data-lc-story]");
+  const steps = $$("[data-lc-step]", story), stages = $$("[data-lc-stage]", story);
+  const wrap = root.querySelector("[data-lc-stagewrap]");
+  const isMobile = () => innerWidth <= 960;
+  let cur = -1;
+  const setStep = (n) => {
+    if (n === cur) return; cur = n;
+    steps.forEach((s, i) => s.classList.toggle("on", i === n));
+    $$("[data-lc-prog]", story).forEach((s, i) => { s.classList.toggle("on", i === n); s.classList.toggle("seen", i < n); });
+    stages.forEach((s, i) => { s.classList.toggle("on", i === n); s.classList.toggle("seen", i < n); });
+  };
+  const place = () => {
+    if (!isMobile()) wrap.style.top = Math.max(76, (innerHeight - wrap.offsetHeight) / 2) + "px";
+    else wrap.style.top = "";
+  };
+  const onScroll = () => {
+    const line = innerHeight * (isMobile() ? 0.52 : 0.5);
+    let best = 0, bd = Infinity;
+    steps.forEach((s, i) => {
+      const r = s.querySelector("p").getBoundingClientRect();
+      const d = Math.abs((r.top + r.bottom) / 2 - line);
+      if (d < bd) { bd = d; best = i; }
+    });
+    setStep(best);
+  };
+  setStep(0); place(); onScroll();
+  addEventListener("scroll", onScroll, { passive: true, signal });
+  addEventListener("resize", () => { place(); onScroll(); }, { passive: true, signal });
+})();
+</script>

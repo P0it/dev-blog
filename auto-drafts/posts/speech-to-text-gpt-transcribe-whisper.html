@@ -1,0 +1,715 @@
+---
+title: AI 받아쓰기는 왜 'Supabase'를 '슈파베이스'로 적을까요?
+slug: speech-to-text-gpt-transcribe-whisper
+excerpt: 회의 녹음을 AI에게 맡기면 몇 초 만에 받아쓴 글이 나오지만 처음 듣는 낱말은 엉뚱하게 적힙니다. 소리가 숫자와 그림으로 바뀌어 모델에 들어가는 과정, 2026년 권장 모델 gpt-transcribe의 keywords 힌트와 25MB 한도, 회의 내용이 밖으로 나가지 않는 로컬 Whisper와 타임스탬프까지 그림과 코드로 봅니다.
+tags: [STT, 음성 인식, Whisper, gpt-transcribe, OpenAI API, Hugging Face, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 4
+---
+<!-- page -->
+<!-- layout: 레일(왼쪽 칸 번호·제목, 글·그림은 늘 오른쪽 본문 칸에서 시작, 넓은 그림·코드는 두 칸 전체) + 펼쳐 놓기(3장) + 코드|해설 짝(코드 늘 왼쪽) | 글의 성격: 녹음 한 개가 숫자 → 그림 → 글 → 시간 조각으로 바뀌는 과정을 차례로 따라가는 글 | 버린 후보: 글|그림 2단과 제목|글 머리 섞기(3편·4편 1회차 Critic: 섹션마다 글 시작 위치가 튀고 한 생각이 두 칸으로 갈림), 그림 고정 스크롤리텔링(상태 비교가 많아 펼쳐 놓기가 맞음), 분할 히어로(1·2편) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .st {
+  --st-red: rgb(204, 52, 40); --st-ok: rgb(14, 138, 108); --st-pen: rgb(196, 50, 38);
+  --st-a: rgb(37, 112, 235); --st-b: rgb(226, 106, 28);
+  --st-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --st-bar: color-mix(in srgb, var(--fg-neutral) 30%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .st { --st-red: rgb(255, 118, 102); --st-ok: rgb(70, 205, 165); --st-pen: rgb(255, 128, 110); --st-a: rgb(110, 165, 255); --st-b: rgb(255, 150, 80); --st-bar: color-mix(in srgb, var(--fg-neutral) 42%, var(--bg-base)); }
+.post-page .st * { box-sizing: border-box; }
+.post-page .st-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .st h1, .post-page .st h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .st h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.24; margin-bottom: 28px; }
+.post-page .st h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .st p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .st b { color: var(--fg-strong); }
+.post-page .st a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .st code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .st p.st-cap { font-size: 15px; color: var(--fg-neutral); margin: 16px 0 0; line-height: 1.7; }
+.post-page .st-sec { padding: clamp(96px, 11vw, 150px) 0 0; }
+.post-page .st-num { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
+.post-page .st-pen { font-family: var(--st-penf); color: var(--st-pen); font-size: 22px; line-height: 1.15; }
+.post-page .st-text { max-width: 700px; }
+.post-page .st-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.post-page .st-row > figure { margin: 0; min-width: 0; }
+.post-page .st-wide { margin: clamp(36px, 4vw, 52px) 0 0; }
+.post-page .st-spread { display: grid; gap: clamp(20px, 3vw, 36px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .st-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .st-spread > figure { margin: 0; min-width: 0; }
+.post-page .st-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 10px !important; line-height: 1.5 !important; }
+.post-page .st-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+
+/* 히어로: 녹음 앱 받아쓰기 화면 */
+.post-page .st-hero { padding: clamp(56px, 9vw, 112px) 0 0; }
+.post-page .st-hero-t { max-width: 820px; }
+.post-page .st-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .st-lede { font-size: 18px !important; }
+.post-page .st-app { margin-top: clamp(32px, 4vw, 44px); border-radius: var(--radius-md); border: 1px solid var(--line-subtle); background: var(--bg-subtle); padding: clamp(16px, 2.4vw, 28px); }
+.post-page .st-app-h { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--fg-strong); font-weight: 700; margin-bottom: 14px; }
+.post-page .st-app-h span { font-size: 22px; }
+.post-page .st-app-h small { font-weight: 400; color: var(--fg-neutral); font-family: var(--font-mono); font-size: 13px; }
+.post-page .st-wave { display: flex; align-items: center; gap: 1px; height: 48px; margin-bottom: 4px; }
+.post-page .st-wave i { flex: 1 1 0; background: var(--st-bar); border-radius: 2px; min-width: 1px; }
+.post-page .st-wave i.on { background: color-mix(in srgb, var(--fg-strong) 55%, var(--bg-base)); }
+.post-page .st-tl { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); margin-bottom: 18px; }
+.post-page .st-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.post-page .st-lines li { display: grid; grid-template-columns: 4.2em minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 6px 10px; border-radius: 8px; background: var(--bg-base); font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .st-lines time { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); }
+.post-page .st-x { color: var(--st-red); text-decoration: line-through; text-decoration-thickness: 2px; }
+.post-page .st-lines .st-pen { margin-left: 8px; white-space: nowrap; }
+.post-page .st-swap { text-decoration: underline wavy var(--st-red); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+
+/* 그림 1: 소리 그림 세 장 */
+.post-page .st-cv { display: block; width: 100%; height: auto; aspect-ratio: 11 / 6; border-radius: 8px; background: var(--bg-subtle); }
+
+/* 그림 2: 30초 창 */
+.post-page .st-win { display: grid; grid-template-columns: repeat(120, minmax(0, 1fr)); gap: 1px; height: 26px; }
+.post-page .st-win i { background: var(--st-bar); border-radius: 1px; }
+.post-page .st-win i.hl { background: color-mix(in srgb, var(--fg-strong) 60%, var(--bg-base)); }
+.post-page .st-win-x { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); margin: 6px 0 22px; }
+.post-page .st-chain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.post-page .st-chain > div { position: relative; padding: 0 22px 0 0; }
+.post-page .st-chain .w { height: 40px; border-radius: 6px; border: 2px solid var(--fg-strong); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-chain .t { margin-top: 10px; font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); min-height: 4.8em; }
+.post-page .st-chain .t mark { background: color-mix(in srgb, var(--st-a) 20%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; }
+.post-page .st-chain .carry { margin-top: 6px; font-size: 13px; color: var(--st-a); font-family: var(--font-mono); }
+.post-page .st-chain > div:not(:last-child)::after { content: "→"; position: absolute; right: 2px; top: 8px; font-size: 18px; color: var(--fg-alternative); }
+
+/* 그림 3: 후보 막대 */
+.post-page .st-cand { display: grid; gap: 12px; }
+.post-page .st-cand > div { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 12px; align-items: center; font-size: 16px; }
+.post-page .st-cand b { font-weight: 700; color: var(--fg-strong); font-size: 18px; }
+.post-page .st-cand .track { position: relative; height: 18px; }
+.post-page .st-cand span.bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--st-bar); }
+.post-page .st-cand .good span.bar { background: var(--st-ok); }
+.post-page .st-cand small { position: absolute; top: -1px; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-neutral); white-space: nowrap; }
+.post-page .st-cand .pick small { color: var(--fg-strong); font-weight: 700; }
+.post-page .st-sound { display: inline-block; font-family: var(--font-mono); font-size: 13.5px; padding: 3px 10px; border-radius: 999px; border: 1.5px dashed var(--fg-neutral); color: var(--fg-strong); margin-bottom: 14px; }
+
+/* 그림 5: 파일 크기 막대 */
+.post-page .st-size { position: relative; display: grid; gap: 14px; padding-top: 26px; }
+.post-page .st-size > div { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 12px; align-items: center; font-size: 14.5px; }
+.post-page .st-size .track { position: relative; height: 22px; }
+.post-page .st-size .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg-strong) 55%, var(--bg-base)); }
+.post-page .st-size .over .fill { background: var(--st-red); opacity: .8; }
+.post-page .st-size .ok .fill { background: var(--st-ok); }
+.post-page .st-size .v { position: absolute; top: 1px; z-index: 2; background: var(--bg-base); padding: 0 4px; border-radius: 3px; font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); white-space: nowrap; }
+.post-page .st-limit { position: absolute; top: 0; bottom: -6px; border-left: 2.5px dashed var(--st-red); z-index: 1; }
+.post-page .st-limit span { position: absolute; top: 0; left: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--st-red); white-space: nowrap; }
+
+/* 그림 6: 녹음이 가는 길 */
+.post-page .st-route { display: block; width: 100%; height: auto; }
+.post-page .st-route .box { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 2.5; }
+.post-page .st-route .far { fill: var(--bg-base); stroke: var(--fg-neutral); stroke-width: 2.5; stroke-dasharray: 8 6; }
+.post-page .st-route .road { fill: none; stroke: var(--st-red); stroke-width: 3; stroke-dasharray: 3 8; stroke-linecap: round; }
+.post-page .st-route .stay { fill: none; stroke: var(--st-ok); stroke-width: 3.5; }
+.post-page .st-route text { font-family: var(--font-sans); font-size: 19px; fill: var(--fg-strong); }
+.post-page .st-route text.s { font-size: 16px; fill: var(--fg-neutral); }
+.post-page .st-route .pen { font-family: var(--st-penf); font-size: 24px; fill: var(--st-pen); }
+.post-page .st-route .file { fill: color-mix(in srgb, var(--st-a) 20%, var(--bg-base)); stroke: var(--st-a); stroke-width: 2; }
+
+/* 그림 7: 실제 구간 vs 조각 */
+.post-page .st-tl2 { display: grid; grid-template-columns: 7.2em minmax(0, 1fr); gap: 10px 14px; align-items: center; }
+.post-page .st-tl2 > b { font-size: 14.5px; line-height: 1.4; }
+.post-page .st-track { position: relative; height: 34px; border-bottom: 1px solid var(--line-normal); }
+.post-page .st-track span { position: absolute; top: 5px; bottom: 5px; border-radius: 5px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; color: var(--bg-base); font-weight: 700; }
+.post-page .st-track .a { background: var(--st-a); } .post-page .st-track .b { background: var(--st-b); }
+.post-page .st-track .c { background: var(--st-bar); color: var(--fg-strong); font-weight: 400; }
+.post-page .st-track .bad { background: color-mix(in srgb, var(--st-red) 16%, var(--bg-base)); border: 2px solid var(--st-red); color: var(--st-red); }
+.post-page .st-track .tick { top: -2px; bottom: -2px; width: 3px; background: var(--st-red); border-radius: 2px; }
+.post-page .st-axis { position: relative; height: 22px; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); }
+.post-page .st-axis span { position: absolute; transform: translateX(-50%); }
+.post-page .st-notes7 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; margin-top: 18px; }
+.post-page .st-notes7 p { margin: 0 !important; font-size: 15px !important; line-height: 1.65 !important; }
+.post-page .st-notes7 .st-pen { font-size: 22px; display: block; }
+
+/* 코드 | 해설, 터미널 */
+.post-page .st-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(44px, 5vw, 64px) 0 0; }
+.post-page .st-cp > .cp-code { grid-column: 1; grid-row: 1; } .post-page .st-cp > .cp-term { grid-column: 1; grid-row: 2; } .post-page .st-cp > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .st .pg-code { margin-top: 0; }
+.post-page .st ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .st ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .st-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .st-term-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .st-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--code-fg, #abb2bf); background: transparent; color: var(--code-fg, #abb2bf); cursor: pointer; white-space: nowrap; flex: none; }
+.post-page .st-act::before { content: "▶ "; font-size: 11px; }
+.post-page .st-act:disabled { opacity: .4; cursor: default; }
+.post-page .st-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .st-term-out .nz { color: #ff8a7a; }
+.post-page .st-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-st-blink 1s steps(1) infinite; }
+@keyframes pg-st-blink { 50% { opacity: 0; } }
+
+.post-page .st details { margin: 22px 0 0; max-width: 700px; }
+.post-page .st summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .st details > .st-in { padding-top: 14px; }
+.post-page .st-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.post-page .st-tbl th, .post-page .st-tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .st-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .st-todo { margin: 0; padding-left: 1.3em; list-style: decimal; display: grid; gap: 14px; font-size: 16.5px; line-height: 1.75; max-width: 700px; }
+.post-page .st-todo li::marker { font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
+.post-page .st-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; max-width: 760px; }
+.post-page .st-end { height: clamp(80px, 10vw, 140px); }
+
+/* 레일 배치: 왼쪽은 번호·제목만, 글과 그림은 늘 오른쪽 본문 칸에서 시작 */
+.post-page .st-rail { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 0 clamp(32px, 5vw, 72px); align-items: start; }
+.post-page .st-rail > .st-rh { grid-column: 1; }
+.post-page .st-rail > .st-main { grid-column: 2; min-width: 0; }
+.post-page .st-rail > .st-full { grid-column: 1 / -1; min-width: 0; }
+.post-page .st-main > p:last-child { margin-bottom: 0; }
+.post-page .st-main > figure { margin: 36px 0 0; }
+.post-page .st-full { margin-top: clamp(36px, 4vw, 52px); }
+.post-page .st-full > figure { margin: 0; }
+.post-page .st-note { font-size: 13.5px; color: var(--fg-neutral); font-style: normal; margin-left: 8px; white-space: nowrap; }
+.post-page .st-note::before { content: "↳ "; }
+
+/* 그림 2-1: 글자 조각을 하나씩 고른다 */
+.post-page .st-tok { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 5fr); gap: 20px; align-items: center; }
+.post-page .st-tok canvas { width: 100%; }
+.post-page .st-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.post-page .st-chips span { font-size: 15px; padding: 4px 9px; border-radius: 6px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-strong); }
+.post-page .st-chips span.now { border-color: var(--st-a); background: color-mix(in srgb, var(--st-a) 14%, var(--bg-base)); font-weight: 700; }
+.post-page .st-chips span.q { border-style: dashed; color: var(--fg-alternative); }
+.post-page .st-loop { font-size: 14px; color: var(--fg-neutral); margin-top: 10px; line-height: 1.6; }
+.post-page .st-loop b { color: var(--st-a); }
+
+/* 그림 2-2: 41초 녹음 위 30초 창 두 개 */
+.post-page .st-wins { position: relative; }
+.post-page .st-wins .band { position: relative; height: 26px; }
+.post-page .st-wins .band span { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: var(--st-bar); }
+.post-page .st-wins .frames { position: relative; height: 54px; margin-top: 6px; }
+.post-page .st-wins .frames div { position: absolute; top: 0; bottom: 0; border: 2.5px solid var(--fg-strong); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--fg-strong); background: transparent; }
+.post-page .st-wins .frames div.w2 { border-style: dashed; top: 14px; align-items: flex-end; padding-bottom: 6px; }
+.post-page .st-wins .frames { height: 68px !important; }
+.post-page .st-wtext { display: grid; grid-template-columns: 73.2fr 26.8fr; gap: 12px; margin-top: 12px; }
+.post-page .st-wtext p { font-size: 14.5px !important; line-height: 1.65 !important; margin: 0 !important; color: var(--fg-strong); }
+.post-page .st-wtext mark { background: color-mix(in srgb, var(--st-a) 20%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; }
+.post-page .st-wtext small { display: block; font-size: 13px; font-weight: 700; color: var(--fg-alternative); margin-bottom: 4px; }
+.post-page .st-carry { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; color: var(--fg-neutral); }
+.post-page .st-carry b { color: var(--st-a); font-weight: 700; }
+
+/* 그림 2-1: 멜 그림 위 낱말 구간 + 고르는 순서 */
+.post-page .st-tokcv { position: relative; }
+.post-page .st-hl { position: absolute; top: 0; bottom: 0; border: 2.5px solid var(--st-a); border-radius: 6px; background: color-mix(in srgb, var(--st-a) 12%, transparent); }
+.post-page .st-hl i { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); font-style: normal; font-size: 14px; font-weight: 700; color: var(--st-a); white-space: nowrap; }
+.post-page .st-tokcv { margin-top: 30px; }
+.post-page .st-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 16px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .st-flow span:last-child { color: var(--st-a); font-weight: 700; }
+.post-page .st-flow i { font-style: normal; color: var(--fg-alternative); }
+.post-page .st p.st-said { margin: 14px 0 0; font-size: 22px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .st-said span + span { margin-left: 4px; padding-left: 6px; border-left: 1px dotted var(--line-strong); }
+.post-page .st-said .now { color: var(--st-a); font-weight: 700; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; }
+.post-page .st-said .q { color: var(--fg-alternative); font-size: 15px; }
+/* 그림 7: 표시 바로 아래 설명 */
+.post-page .st-lab { font-size: 14.5px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 6px !important; line-height: 1.5 !important; }
+.post-page .st-lab .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin: 0 4px 0 8px; }
+.post-page .st-lab .sw:first-child { margin-left: 0; }
+.post-page .st-lab .sw.a { background: var(--st-a); } .post-page .st-lab .sw.b { background: var(--st-b); }
+.post-page .st-f7 .st-track { height: 42px; }
+.post-page .st-f7 .st-track span { font-size: 14.5px; }
+.post-page .st-f7 .st-axis { font-size: 13.5px; }
+.post-page .st-ann { margin-top: 2px; }
+.post-page .st-ann .r { position: relative; padding: 12px 0 6px; }
+.post-page .st-ann .v { position: absolute; top: 0; bottom: 0; left: calc(var(--x) - 1px); width: 2px; background: var(--st-red); }
+.post-page .st-ann .r > .v:first-child { bottom: auto; height: 34px; }
+.post-page .st-ann .r > .v:first-child::after { content: ""; position: absolute; left: -10px; top: 32px; width: 10px; height: 2px; background: var(--st-red); }
+.post-page .st-ann p { margin: 0 calc(100% - var(--x) + 12px) 0 0 !important; text-align: left; font-size: 14.5px !important; line-height: 1.6 !important; color: var(--fg-strong); }
+.post-page .st-ann .st-pen { font-size: 24px; }
+.post-page .st-ann .hd { display: block; text-align: right; font-weight: 700; }
+.post-page .st-ann u { text-decoration: underline wavy var(--st-red); text-underline-offset: 4px; }
+/* 코드 묶음이 본문 칸 안에 들어갈 때: 코드 → 해설 → 터미널 한 줄로 */
+.post-page .st-main .st-cp { grid-template-columns: minmax(0, 1fr); }
+.post-page .st-main .st-cp > .cp-code, .post-page .st-main .st-cp > .cp-term, .post-page .st-main .st-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+.post-page .st-main .st-cp > .cp-notes { order: 2; } .post-page .st-main .st-cp > .cp-term { order: 3; }
+
+/* 그림 6: 녹음이 노트북 경계를 넘는가 */
+.post-page .st-route2 { display: block; width: 100%; height: auto; }
+.post-page .st-route2 .lap { fill: none; stroke: var(--fg-strong); stroke-width: 5; }
+.post-page .st-route2 .cloud { fill: none; stroke: var(--fg-neutral); stroke-width: 3; stroke-dasharray: 9 7; }
+.post-page .st-route2 .wv { fill: none; stroke: var(--st-a); stroke-width: 4; stroke-linecap: round; }
+.post-page .st-route2 .out { fill: none; stroke: var(--st-red); stroke-width: 4; stroke-dasharray: 2 10; stroke-linecap: round; }
+.post-page .st-route2 .ln { fill: var(--st-ok); }
+.post-page .st-route2 text { font-family: var(--font-sans); font-size: 26px; fill: var(--fg-strong); }
+.post-page .st-route2 text.h { font-weight: 700; font-size: 22px; fill: var(--fg-neutral); }
+.post-page .st-route2 .pen { font-family: var(--st-penf); font-size: 40px; fill: var(--st-pen); }
+.post-page .st-route2 .chip { fill: color-mix(in srgb, var(--st-a) 12%, var(--bg-base)); stroke: var(--fg-strong); stroke-width: 4; }
+.post-page .st-route2 .pin { fill: none; stroke: var(--fg-strong); stroke-width: 4; stroke-linecap: round; }
+.post-page .st-route2 text.chipt { font-weight: 700; font-size: 28px; }
+
+/* 3회차: 축, 조각 간격, 제목 고정, 합자 */
+.post-page .st-ax { position: relative; }
+.post-page .st-ax > span { position: absolute; left: 6px; font-size: 12.5px; font-weight: 600; color: var(--fg-strong); background: color-mix(in srgb, var(--bg-base) 82%, transparent); padding: 0 4px; border-radius: 3px; }
+.post-page .st-ax > .y1 { top: 6px; } .post-page .st-ax > .y0 { bottom: 6px; }
+.post-page .st-ax > .ym { right: 6px; left: auto; bottom: calc(50% - 22px); color: var(--st-a); }
+.post-page .st-ax > i.mid { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--st-a); }
+.post-page .st-xax { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); margin-top: 4px; }
+.post-page .st-f7 .st-track span.c, .post-page .st-f7 .st-track span.bad { border: 2px solid var(--bg-base); }
+.post-page .st-f7 .st-track span.bad { outline: 2px solid var(--st-red); outline-offset: -4px; border-color: var(--bg-base); }
+.post-page .st-track .tick { overflow: visible !important; }
+.post-page .st-track .tick em { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 13px; font-weight: 700; color: var(--st-red); }
+.post-page .st-ann .hd { text-align: left !important; }
+.post-page .st .st-full > p.st-cap { margin-left: calc((100% - clamp(32px, 5vw, 72px)) * 4 / 11 + clamp(32px, 5vw, 72px)); }
+.post-page .st-carry b { white-space: nowrap; }
+@media (min-width: 961px) { .post-page .st-rail > .st-rh { position: sticky; top: 88px; } }
+@media (max-width: 960px) { .post-page .st .st-full > p.st-cap { margin-left: 0; } }
+@media (max-width: 640px) { .post-page .st-ax > .ym { font-size: 11px; } }
+
+@media (max-width: 960px) {
+  .post-page .st-rail { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-rail > .st-rh, .post-page .st-rail > .st-main, .post-page .st-rail > .st-full { grid-column: 1; }
+  .post-page .st-tok { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-wrap { padding: 0 20px; }
+  .post-page .st-row { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-cp { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-cp > .cp-code, .post-page .st-cp > .cp-term, .post-page .st-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .st-cp > .cp-notes { order: 2; } .post-page .st-cp > .cp-term { order: 3; }
+}
+@media (max-width: 640px) {
+  .post-page .st p { font-size: 16px; }
+  .post-page .st-spread, .post-page .st-spread.n2 { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-lines li { grid-template-columns: minmax(0, 1fr); gap: 0; font-size: 15px; }
+  .post-page .st-chain { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .post-page .st-chain > div { padding: 0; }
+  .post-page .st-chain > div:not(:last-child)::after { content: "↓"; position: static; display: block; text-align: center; margin-top: 4px; }
+  .post-page .st-cand > div { grid-template-columns: 3.6em minmax(0, 1fr); font-size: 14px; }
+  .post-page .st-size > div { grid-template-columns: 6.6em minmax(0, 1fr); font-size: 13px; }
+  .post-page .st-tl2 { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .post-page .st-wtext { grid-template-columns: minmax(0, 1fr); }
+  .post-page .st-wins .frames div { font-size: 12px; }
+  .post-page .st-ann p { font-size: 14px !important; }
+  .post-page .st p.st-said { font-size: 19px; }
+  .post-page .st-term-bar span { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .st *, .post-page .st *::before { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="st" data-st>
+  <header class="st-hero">
+    <div class="st-wrap">
+      <div class="st-hero-t">
+        <div class="st-eyebrow">AI Service Track · 04</div>
+        <h1>AI 받아쓰기는 왜 'Supabase'를 '슈파베이스'로 적을까요?</h1>
+        <p class="st-lede">회의를 녹음해 받아쓰기 앱에 올리면 몇 초 뒤 시간이 붙은 글이 나옵니다. 그런데 다시 읽어 보면 처음 듣는 낱말이나 제품 이름이 엉뚱하게 적혀 있을 때가 많습니다.</p>
+        <p>아래는 41초짜리 회의 녹음을 받아쓰기 모델에 넣고 실제로 받은 결과입니다. 빨간 줄이 틀린 곳이고 손글씨가 원래 한 말입니다. 이 글은 녹음이 글이 되기까지 화면 뒤에서 일어나는 일을 따라가며 왜 이렇게 틀리는지 봅니다.</p>
+      </div>
+      <figure class="st-app" data-figure data-thumb style="margin-left:0;margin-right:0">
+        <div class="st-app-h"><span>🎙️</span>리뷰 분류기 출시 회의<small>00:41</small></div>
+        <div class="st-wave" data-st-wave aria-hidden="true"></div>
+        <div class="st-tl"><span>0초</span><span>10초</span><span>20초</span><span>30초</span><span>41초</span></div>
+        <ol class="st-lines" aria-label="받아쓰기 결과">
+          <li><time>00:00</time><span>오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다.</span></li>
+          <li><time>00:04</time><span>도윤님, <span class="st-x">정화돈은</span><em class="st-pen">정확도는</em> 어떻게 됐나요?</span></li>
+          <li><time>00:07</time><span>지난주에 92%까지 올렸습니다.</span></li>
+          <li><time>00:11</time><span><span class="st-x">슈파베이스의 사인</span><em class="st-pen">Supabase에 쌓인</em> 리뷰 3000개로 확인했어요.</span></li>
+          <li><time>00:16</time><span>좋네요. 그럼 다음주 수요일에 출시해도 될까요?</span></li>
+          <li><time>00:32</time><span>그건 도윤님이 금요일까지 예시를 더 모아주세요 <span class="st-swap">알겠습니다</span><em class="st-note">여기서 말한 사람이 바뀜</em></span></li>
+        </ol>
+      </figure>
+      <p class="st-cap">설명하려고 두 목소리로 만든 예시 회의를 OpenAI가 공개한 받아쓰기 모델 whisper-large-v3-turbo로 받아쓴 실제 결과입니다. 가운데 몇 줄은 생략했습니다. 물결 밑줄 친 곳은 07번에서 다시 보고 누가 말했는지 가려내는 일은 다음 글에서 다룹니다.</p>
+    </div>
+  </header>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">01</span><h2>소리는 숫자 줄이 되고 숫자 줄은 그림이 됩니다</h2></div>
+      <div class="st-main">
+        <p>왜 틀리는지 보려면 모델이 소리를 어떤 모양으로 받는지부터 알아야 합니다. 말소리는 공기의 떨림이고 마이크는 이 떨림의 세기를 아주 짧은 간격으로 재서 숫자로 적습니다.</p>
+        <p>받아쓰기 모델이 쓰는 녹음은 1초에 16,000번을 잽니다. 이것을 16kHz(킬로헤르츠)라고 부릅니다. 41초 회의라면 숫자 65만 개쯤의 긴 줄입니다. 모델은 이 줄을 그대로 읽지 않고 아래처럼 그림으로 바꿔서 읽습니다.</p>
+      </div>
+      <div class="st-full">
+        <div class="st-spread">
+          <figure data-figure>
+            <p class="st-fh">① 파형<small>시간에 따른 떨림의 세기</small></p>
+            <div class="st-ax"><canvas class="st-cv" width="440" height="240" data-st-cv="wf" aria-label="녹음 첫 3초의 파형"></canvas><span class="ym" style="left:6px;right:auto;bottom:calc(50% + 6px)">가운데 줄 = 조용함, 위아래로 길수록 큰 소리</span></div><div class="st-xax"><span>0초</span><span>3.3초</span></div>
+          </figure>
+          <figure data-figure>
+            <p class="st-fh">② 스펙트로그램<small>가로는 시간, 세로는 소리 높낮이, 진할수록 셈</small></p>
+            <div class="st-ax"><canvas class="st-cv" width="440" height="240" data-st-cv="lin" aria-label="같은 3초의 스펙트로그램"></canvas><span class="y1">높은 소리 8000Hz</span><span class="y0">낮은 소리 0Hz</span></div><div class="st-xax"><span>0초</span><span>3.3초</span></div>
+          </figure>
+          <figure data-figure>
+            <p class="st-fh">③ 멜 스펙트로그램<small>낮은 소리 칸을 촘촘히 다시 나눠, 아래쪽 줄무늬가 위로 넓게 펼쳐짐</small></p>
+            <div class="st-ax"><canvas class="st-cv" width="440" height="240" data-st-cv="mel" aria-label="같은 3초의 멜 스펙트로그램"></canvas><span class="y1">높은 소리</span><span class="y0">낮은 소리</span><i class="mid" style="bottom:50%"></i><span class="ym">↓ 0~1700Hz가 아래 절반을 차지</span></div><div class="st-xax"><span>0초</span><span>3.3초</span></div>
+          </figure>
+        </div>
+        <p class="st-cap">녹음 첫 3초("오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다")에서 실제로 계산한 그림입니다. ③은 whisper-large-v3-turbo가 실제로 읽는 설정과 같습니다. 높낮이를 128칸으로 나누고 0.01초마다 한 줄씩 그립니다.</p>
+      </div>
+      <div class="st-main" style="margin-top:40px">
+        <p>②의 스펙트로그램(spectrogram)은 소리를 높낮이별로 쪼개 시간 순서로 늘어놓은 그림입니다. 악보에서 위아래가 음 높이, 왼쪽에서 오른쪽이 시간인 것과 비슷합니다. 악보에는 음이 하나씩 적히지만 말소리는 여러 높이가 한꺼번에 섞여 번진 띠로 보입니다.</p>
+        <p>세로축의 Hz는 1초에 몇 번 떠는 소리인지, 곧 소리 높이입니다. 앞의 16kHz는 1초에 몇 번 재는지를 뜻하니 서로 다릅니다. 1초에 16,000번 재면 8000Hz 소리까지 담을 수 있어서 그림 위쪽 끝이 8000Hz입니다.</p>
+        <p>③의 멜(mel)은 높낮이 칸을 사람 귀가 느끼는 간격에 맞춰 다시 나눈 것입니다. 사람은 낮은 소리의 차이는 잘 듣고 높은 소리의 차이는 덜 느껴서 낮은 쪽 칸을 더 촘촘하게 둡니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">02</span><h2>모델은 그림을 보며 글자 조각을 하나씩 고릅니다</h2></div>
+      <div class="st-main">
+        <p>멜 스펙트로그램을 받은 모델은 글을 한 번에 쓰지 않습니다. 그림 전체를 보면서 글자 조각을 하나 고르고 고른 조각을 붙인 다음 그다음 조각을 고릅니다. 이 글자 조각을 토큰(token)이라고 부릅니다.</p>
+        <p>다음 조각을 고를 때는 그림과 함께 지금까지 쓴 글도 봅니다. ChatGPT 같은 LLM(대형 언어 모델, 글을 이어 쓰도록 학습한 큰 모델)이 다음 낱말을 고르는 방식과 같습니다. 그래서 앞에서 "배달"이라고 썼다면 다음에는 "앱"처럼 이어지기 좋은 조각이 뽑히기 쉽습니다.</p>
+        <figure data-figure>
+          <p class="st-fh">"오늘은 배달" 다음 조각을 고르는 순간</p>
+          <div class="st-tokcv">
+            <canvas class="st-cv" width="440" height="240" data-st-cv="mel" aria-label="첫 3.3초의 멜 스펙트로그램, 배달앱 구간 표시"></canvas>
+            <span class="st-hl" style="left:8.5%;width:17.6%"><i>"배달앱"을 말한 구간</i></span>
+          </div>
+          <div class="st-flow" aria-label="조각 하나를 고르는 순서"><span>멜 그림</span><i>→</i><span>숫자 묶음(모델이 그림을 읽고 만든 요약)</span><i>→</i><span>후보 조각마다 점수</span><i>→</i><span>가장 높은 조각</span></div>
+          <p class="st-said" aria-label="지금까지 쓴 글과 이번에 고른 조각"><span>오늘</span><span>은</span><span>배달</span><span class="now">앱</span><span class="q">다음 조각</span></p>
+          <p class="st-cap">표시한 칸은 "배달앱"을 말한 0.28~0.86초입니다(실제 출력의 낱말 시간). 모델은 이 그림과 "오늘은 배달"까지 쓴 글을 함께 보고 <b>앱</b>을 붙입니다. 조각을 나눈 모양은 설명을 위한 예시이고 실제 토큰은 낱말보다 잘게 쪼개지기도 합니다.</p>
+        </figure>
+        <p style="margin-top:40px">모델이 한 번에 보는 그림은 30초 분량입니다. 그보다 긴 녹음은 30초짜리 창(window)으로 잘라 차례로 읽습니다. 창은 녹음 위를 미끄러지는 30초 틀입니다. 41초 회의는 창 두 개, 1시간 회의는 창 120개쯤이 됩니다.</p>
+        <figure class="st-wins" data-figure>
+          <p class="st-fh">41초 회의를 30초 창 두 개로 읽기</p>
+          <div class="band" data-st-band aria-label="실제로 말한 구간"></div>
+          <div class="frames"><div style="left:0;width:73.2%;align-items:flex-start;padding-top:6px">창 1 · 0~30초</div><div class="w2" style="left:67.3%;width:32.7%">창 2 · 27.6초~</div></div>
+          <div class="st-wtext">
+            <p><small>창 1이 쓴 글의 끝</small>…하나 걸리는 게 있습니다. <mark>칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다.</mark></p>
+            <p><small>창 2가 쓴 글</small>그건 도윤님이 금요일까지 예시를 더 모아주세요 알겠습니다 출시는 수요일로 하고…</p>
+          </div>
+          <div class="st-carry"><b>↘ 창 2 입구로</b>Whisper가 처음 소개된 방식에서는 창 2가 파란 바탕 글을 힌트로 들고 시작합니다.</div>
+          <p class="st-cap">회색 띠는 실제로 말한 구간이고 두 창이 쓴 글은 06번의 실제 출력에서 가져왔습니다. 창 2는 30초에서 딱 시작하지 않고 창 1이 마지막으로 끝낸 문장 뒤에서 시작합니다.</p>
+        </figure>
+      </div>
+      <div class="st-main" style="margin-top:40px">
+        <p>앞 글을 힌트로 받으면 창이 바뀌어도 말투와 낱말 표기가 이어집니다. 대신 창 1에서 잘못 적은 낱말이 창 2에서도 같은 모양으로 되풀이되기 쉽습니다. 그래서 받아쓰기 라이브러리에 따라 이 이어받기를 끄는 설정을 따로 두기도 합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">03</span><h2>처음 듣는 낱말은 귀에 익은 말로 바뀝니다</h2></div>
+      <div class="st-main">
+        <p>원래 한 말은 "Supabase에 쌓인"입니다. 귀에는 "수파베이스에 싸인"처럼 들리고 모델은 "슈파베이스의 사인"을 골랐습니다. 모델이 들린 소리에 맞는 후보 여럿에 점수를 매기고 그중 높은 쪽을 고르기 때문입니다.</p>
+        <p>이 점수는 확률(probability), 곧 "이 글이 맞을 가능성"입니다. 학습 때 많이 본 말일수록 점수가 높습니다. 제품 이름이나 팀 안에서만 쓰는 말은 거의 본 적이 없으니, 비슷하게 들리는 흔한 말에 밀립니다.</p>
+        <figure data-figure>
+          <p class="st-fh">"…확인했어요" 앞, 첫 조각을 고르는 순간<small>지금까지 쓴 글: "지난주에 92%까지 올렸습니다." · 들린 소리: "수파…"</small></p>
+          <div class="st-cand">
+            <div class="pick"><b>슈</b><span class="track"><span class="bar" style="width:46%"></span><small style="left:calc(46% + 8px)">0.46 ◀ 고름</small></span></div>
+            <div class=""><b>수</b><span class="track"><span class="bar" style="width:31%"></span><small style="left:calc(31% + 8px)">0.31</small></span></div>
+            <div class="good"><b>Supa</b><span class="track"><span class="bar" style="width:12%"></span><small style="left:calc(12% + 8px)">0.12</small></span></div>
+          </div>
+          <p class="st-fh" style="margin-top:26px !important">keywords에 "Supabase"를 넣었을 때</p>
+          <div class="st-cand">
+            <div class=""><b>슈</b><span class="track"><span class="bar" style="width:14%"></span><small style="left:calc(14% + 8px)">0.14</small></span></div>
+            <div class=""><b>수</b><span class="track"><span class="bar" style="width:11%"></span><small style="left:calc(11% + 8px)">0.11</small></span></div>
+            <div class="pick good"><b>Supa</b><span class="track"><span class="bar" style="width:71%"></span><small style="left:calc(71% + 8px)">0.71 ◀ 고름</small></span></div>
+          </div>
+          <p class="st-cap">숫자는 설명을 위한 예시 값입니다. 초록 막대가 맞는 조각이고 ◀ 표시가 모델이 고른 조각입니다. 첫 조각이 "슈"로 정해지면 뒤 조각도 그 글에 잘 이어지는 "파베이스의"로 따라가서 "슈파베이스의 사인"이 됩니다.</p>
+        </figure>
+        <p style="margin-top:40px">받아쓰기 시험에서 처음 듣는 외국 이름을 아는 말로 적어 버리는 것과 같습니다. 선생님이 칠판에 이름을 써 주면 맞힙니다. 04번에서 볼 받아쓰기 API의 <code>keywords</code>(꼭 맞게 적어야 할 낱말 목록)가 그 칠판입니다. 02번 순서의 "후보 조각마다 점수" 단계에서 그 낱말 쪽 점수가 올라간다고 생각하면 됩니다. 다만 모델이 뜻을 따져 고치는 것은 아니어서 힌트를 줘도 틀릴 수 있습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">04</span><h2>API로 받아쓸 때는 gpt-transcribe에 힌트를 같이 보냅니다</h2></div>
+      <div class="st-main">
+        <p>API(Application Programming Interface)는 내 프로그램이 다른 회사 서비스의 기능을 빌려 쓰는 창구입니다. OpenAI는 2026년 현재 녹음 파일 받아쓰기에 <code>gpt-transcribe</code>를 권합니다. 예전에 쓰던 <code>whisper-1</code>, <code>gpt-4o-transcribe</code>는 2027-02-26에 서비스를 끝낸다고 공지돼 있습니다.</p>
+        <p>보내는 것은 녹음 파일과 힌트 세 가지입니다. 회의가 어떤 자리인지 적은 <code>prompt</code>, 꼭 그렇게 적혀야 하는 낱말 목록 <code>keywords</code>, 들릴 언어 목록 <code>languages</code>입니다.</p>
+      <div class="st-cp">
+        <div class="cp-code">
+<pre data-title="transcribe_api.py" data-hl="8,11,14,16"><code class="language-python">from openai import OpenAI
+
+client = OpenAI()
+
+with open("meeting.m4a", "rb") as audio:
+    result = client.audio.transcriptions.create(
+        # ① 2026 년 권장 받아쓰기 모델
+        model="gpt-transcribe",
+        file=audio,
+        # ② 녹음이 어떤 자리인지 한두 문장
+        prompt="배달 앱 리뷰 분류기 출시 회의. 참석자 김서연, 박도윤.",
+        extra_body={
+            # ③ 꼭 이렇게 적혀야 하는 낱말
+            "keywords": ["Supabase", "리뷰 분류기", "도윤"],
+            # ④ 들릴 언어
+            "languages": ["ko", "en"],
+        },
+    )
+
+print(result.text)</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="st-term" data-st-term>
+  <div class="st-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="st-act" data-st-run>실행해 보기</button></div>
+  <div class="st-term-out" data-st-out aria-live="polite">$ python transcribe_api.py
+오늘은 배달 앱 리뷰 분류기 출시 일정을 정하겠습니다. 도윤 님, 정확도는 어떻게 됐나요? 지난주에 92%까지 올렸습니다. Supabase에 쌓인 리뷰 3,000개로 확인했어요. …</div>
+</div>
+<p class="st-cap">출력은 예시 답입니다. gpt-transcribe는 받아쓴 글을 통째로 돌려주고 문장마다 시간을 붙여 주지는 않습니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>gpt-transcribe</code>는 OpenAI가 녹음 파일 받아쓰기에 권하는 모델입니다. 값은 1분에 0.0045달러라 1시간 회의는 약 0.27달러입니다(2026-11 모델 문서 기준). 코드는 파이썬 라이브러리 <code>openai</code> 3.46 기준입니다.</li>
+  <li><code>prompt</code>에는 녹음의 배경을 문장으로 적습니다. 참석자 이름과 회의 주제를 적어 두면 비슷한 소리 가운데 맞는 쪽을 고르기 쉬워집니다.</li>
+  <li><code>keywords</code>가 03번의 칠판입니다. 파이썬 라이브러리(SDK)에 아직 이 칸의 이름이 없어서 정해지지 않은 값을 그대로 실어 보내는 <code>extra_body</code>에 담습니다. 힌트일 뿐 꼭 그대로 나온다는 보장은 없다고 문서에 적혀 있습니다.</li>
+  <li><code>languages</code>에 한국어와 영어를 함께 주면 "Supabase"처럼 섞여 나오는 영어 낱말을 영어로 적기 쉬워집니다. 예전의 <code>language</code>(언어 하나)와 함께 보내면 안 됩니다.</li>
+</ol>
+<details>
+  <summary>예전 코드는 어떻게 바꾸나요?</summary>
+  <div class="st-in">
+    <table class="st-tbl">
+      <thead><tr><th>예전에 보던 것</th><th>지금 쓰는 것</th></tr></thead>
+      <tbody>
+        <tr><td><code>model="whisper-1"</code></td><td><code>model="gpt-transcribe"</code> (whisper-1은 2027-02-26 종료 예정)</td></tr>
+        <tr><td><code>client.audio.translations</code> (영어로 번역)</td><td>Realtime 번역 <code>gpt-realtime-translate</code> (translations는 2027-02-26 종료 예정)</td></tr>
+        <tr><td><code>language="ko"</code></td><td><code>languages=["ko", ...]</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">05</span><h2>25MB를 넘는 녹음은 줄이거나 나눠서 보냅니다</h2></div>
+      <div class="st-main">
+        <p>받아쓰기 API는 파일 하나에 25MB까지만 받습니다. 녹음 앱이 만든 파일을 그대로 보내면 1시간 회의는 대개 이 한도를 넘습니다. 아래 막대는 같은 1시간 녹음을 형식만 바꿔 저장했을 때의 크기입니다. WAV는 소리를 줄이지 않고 그대로 담은 형식이고 MP3·M4A는 귀에 덜 들리는 부분을 덜어 내 크기를 줄인 형식입니다.</p>
+        <figure data-figure>
+          <p class="st-fh">1시간 회의 녹음의 파일 크기</p>
+          <div class="st-size" data-st-size>
+            <div class="over"><span>WAV 원본</span><div class="track"><span class="fill" style="width:100%"></span><span class="v" style="right:8px;color:var(--bg-base);background:none">115.2MB</span></div></div>
+            <div class="over"><span>MP3 128kbps</span><div class="track"><span class="fill" style="width:50%"></span><span class="v" style="left:calc(50% + 8px)">57.6MB</span></div></div>
+            <div class="over"><span>MP3 64kbps</span><div class="track"><span class="fill" style="width:25%"></span><span class="v" style="left:calc(25% + 8px)">28.8MB</span></div></div>
+            <div class="ok"><span>M4A 32kbps</span><div class="track"><span class="fill" style="width:12.5%"></span><span class="v" style="left:calc(12.5% + 8px)">14.4MB</span></div></div>
+            <i class="st-limit" style="left:calc(8.5em + 12px + (100% - 8.5em - 12px) * 0.217)"><span>25MB 한도</span></i>
+          </div>
+          <p class="st-cap">한 채널 16kHz WAV(115.2MB)를 기준으로 계산한 값입니다. 실제 파일은 머리 정보만큼 조금 더 큽니다. 빨간 막대가 한도를 넘는 형식입니다.</p>
+        </figure>
+        <p style="margin-top:40px">말소리는 음악보다 훨씬 적은 정보로도 알아들을 수 있습니다. 그래서 왼쪽·오른쪽 구분 없는 한 채널(mono), 16kHz, 32kbps로 줄여도 받아쓰기 품질은 거의 그대로입니다. kbps는 1초 분량의 소리를 저장하는 데 쓰는 정보량입니다. 녹음·영상 파일을 바꾸는 무료 도구 ffmpeg로 한 줄이면 됩니다.</p>
+<pre data-title="터미널"><code class="language-bash"># 한 채널 · 16kHz · 32kbps 로 줄이기
+ffmpeg -i meeting.wav -ac 1 -ar 16000 -b:a 32k meeting.m4a</code></pre>
+        <p style="margin-top:28px">그래도 넘는다면 파일을 나눕니다. 말이 잠깐 끊긴 곳에서 자르고 앞 조각에서 받아쓴 끝부분을 다음 조각의 <code>prompt</code>에 넣으면 낱말 표기가 조각마다 달라지지 않습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">06</span><h2>회의 내용을 밖으로 보내기 어렵다면 내 컴퓨터에서 받아씁니다</h2></div>
+      <div class="st-main">
+        <p>API로 받아쓰면 녹음 파일이 인터넷을 거쳐 OpenAI 서버까지 갔다가 글이 되어 돌아옵니다. 회사 회의처럼 밖으로 나가면 안 되는 녹음이라면 이 길 자체가 문제입니다.</p>
+        <figure data-figure>
+          <svg class="st-route2" viewBox="0 0 640 470" role="img" aria-label="녹음이 노트북 경계를 넘어 서버로 가는 경우와 노트북 안에서 끝나는 경우">
+            <text class="h" x="0" y="30">API로 받아쓸 때</text>
+            <rect class="lap" x="0" y="50" width="300" height="140" rx="16"/><text x="20" y="88">내 노트북</text>
+            <path class="wv" d="M40 140 l12 -22 l12 44 l12 -36 l12 28 l12 -18 l12 10"/>
+            <path class="out" d="M140 140 C 250 140, 330 130, 400 120"/>
+            <path class="cloud" d="M420 170 h170 a40 40 0 0 0 0 -80 a50 50 0 0 0 -90 -20 a45 45 0 0 0 -80 30 a35 35 0 0 0 0 70 z"/>
+            <text x="440" y="138">OpenAI 서버</text>
+            <text class="pen" x="120" y="232">녹음이 노트북 밖으로 나감</text>
+            <text class="h" x="0" y="300">내 컴퓨터에서 받아쓸 때</text>
+            <rect class="lap" x="0" y="320" width="640" height="140" rx="16"/><text x="20" y="358">내 노트북</text>
+            <path class="wv" d="M40 410 l12 -22 l12 44 l12 -36 l12 28 l12 -18 l12 10"/>
+            <path class="wv" d="M140 410 H226"/>
+            <rect class="chip" x="240" y="372" width="164" height="76" rx="12"/>
+            <path class="pin" d="M268 372 v-12 M300 372 v-12 M332 372 v-12 M364 372 v-12 M268 448 v12 M300 448 v12 M332 448 v12 M364 448 v12"/>
+            <text x="322" y="419" text-anchor="middle" class="chipt">Whisper</text>
+            <path class="wv" d="M418 410 H472"/>
+            <rect class="ln" x="490" y="386" width="110" height="10" rx="4"/><rect class="ln" x="490" y="404" width="90" height="10" rx="4"/><rect class="ln" x="490" y="422" width="100" height="10" rx="4"/>
+          </svg>
+          <p class="st-cap">굵은 테두리가 노트북의 경계입니다. 파란 물결은 녹음, 초록 줄은 받아쓴 글입니다. 모델 파일을 처음 내려받을 때만 인터넷이 필요합니다(약 1.6GB).</p>
+        </figure>
+        <p style="margin-top:40px">Whisper는 모델 파일이 공개돼 있어서 내 컴퓨터로 내려받아 돌릴 수 있습니다. 모델 파일을 모아 둔 Hugging Face에서 <code>openai/whisper-large-v3-turbo</code>를 받아 쓰면, 녹음은 노트북 밖으로 나가지 않습니다. 요금도 들지 않고 문장마다 시간도 붙여 줍니다.</p>
+        <p>04번에서 본 <code>whisper-1</code> 종료는 OpenAI API 안의 모델 이름이 끝난다는 뜻입니다. 공개된 Whisper 모델 파일은 지금처럼 내려받아 쓸 수 있습니다.</p>
+        <p>대신 컴퓨터가 일을 다 합니다. 이 모델은 파라미터(parameter)가 8억 900만 개입니다. 파라미터는 모델이 학습으로 정해 둔 숫자들이고 많을수록 무겁습니다. GPU가 없으면 회의 길이보다 오래 걸릴 수도 있습니다.</p>
+      <div class="st-cp">
+        <div class="cp-code">
+<pre data-title="local_whisper.py" data-hl="5,13,23"><code class="language-python">import torch
+from transformers import pipeline
+
+# ① GPU 가 있으면 쓰고, 없으면 CPU
+if torch.cuda.is_available():
+    device = "cuda:0"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+
+# ② 받아쓰기 파이프라인 만들기
+asr = pipeline(
+    "automatic-speech-recognition",
+    model="openai/whisper-large-v3-turbo",
+    dtype=torch.float16 if device != "cpu" else torch.float32,
+    device=device,
+)
+
+# ③ 문장 조각마다 시작·끝 시간도 받는다
+result = asr(
+    "meeting.wav",
+    return_timestamps=True,
+    generate_kwargs={"language": "korean"},
+)
+
+for c in result["chunks"]:
+    start, end = c["timestamp"]
+    print(f"[{start:5.1f} ~ {end:5.1f}] {c['text'].strip()}")</code></pre>
+        </div>
+        <div class="cp-term">
+<div class="st-term" data-st-term>
+  <div class="st-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="st-act" data-st-run>실행해 보기</button></div>
+  <div class="st-term-out" data-st-out aria-live="polite">$ python local_whisper.py
+[  0.0 ~   3.3] 오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다.
+[  4.0 ~   6.4] 도윤님, <span class="nz">정화돈은</span> 어떻게 됐나요?
+[  7.2 ~  10.6] 지난주에 92%까지 올렸습니다.
+[ 11.3 ~  14.8] <span class="nz">슈파베이스의 사인</span> 리뷰 3000개로 확인했어요.
+[ 16.3 ~  19.8] 좋네요. 그럼 다음주 수요일에 출시해도 될까요?
+[ 19.8 ~  22.6] 하나 걸리는 게 있습니다.
+[ 23.4 ~  27.6] 칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다.
+<span class="nz">[ 29.0 ~  27.6]</span>
+<span class="nz">[ 32.2 ~  33.9]</span> 그건 도윤님이 금요일까지 예시를 더 모아주세요 알겠습니다
+[ 33.9 ~  36.4] 출시는 수요일로 하고
+[ 36.4 ~  39.5] 섞인 리뷰는 금요일까지 보완하겠습니다</div>
+</div>
+<p class="st-cap">예시 회의 녹음을 Apple 칩 노트북에서 실제로 돌린 출력입니다. 빨간 시간 두 개는 07번에서 봅니다.</p>
+        </div>
+        <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>GPU는 그림·행렬 계산을 한꺼번에 처리하는 칩입니다. NVIDIA GPU면 <code>cuda</code>, Apple 칩 맥이면 <code>mps</code>를 씁니다. 없으면 CPU로 돌지만 많이 느립니다.</li>
+  <li>파이프라인(pipeline)은 여러 단계를 차례로 이어 붙인 작업 줄입니다. <code>transformers</code> 라이브러리의 <code>pipeline</code>은 모델 내려받기·소리를 멜 그림으로 바꾸기·글자 조각 고르기를 한 번에 해 줍니다. 녹음 파일을 읽을 때 ffmpeg를 쓰니 먼저 깔아 둡니다.</li>
+  <li><code>return_timestamps=True</code>면 문장 조각마다 시작·끝 초를 붙여 줍니다. <code>"word"</code>를 주면 낱말마다 붙습니다. 30초가 넘는 녹음은 파이프라인이 02번의 30초 창으로 나눠 읽습니다.</li>
+</ol>
+<details>
+  <summary>숫자 정밀도(<code>dtype</code>)와 라이브러리 버전 메모</summary>
+  <div class="st-in"><p><code>float16</code>은 숫자를 절반 크기로 저장해 GPU 메모리를 아끼는 설정입니다. CPU에서는 느려지거나 오류가 나서 <code>float32</code>를 씁니다. 코드는 <code>transformers</code> 5.22 기준이고 5.x부터는 예전 이름 <code>torch_dtype</code> 대신 <code>dtype</code>을 씁니다.</p></div>
+</details>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">07</span><h2>받아쓴 시간과 실제로 말한 시간은 어긋날 수 있습니다</h2></div>
+      <div class="st-main">
+        <p>앞 터미널의 빨간 시간 두 개를 실제 녹음과 겹쳐 보면 문제가 드러납니다. 아래에서 위쪽 줄은 두 사람이 실제로 말한 구간, 아래쪽 줄은 Whisper가 붙인 시간 조각입니다. 조각마다 번호를 붙여 터미널의 줄과 맞췄습니다.</p>
+        <figure data-figure class="st-f7">
+          <p class="st-lab">실제로 말한 구간: <i class="sw a"></i>서연 <i class="sw b"></i>도윤</p>
+          <div class="st-track" aria-label="실제 발화 구간">
+            <span class="a" style="left:0%;width:15.9%"></span><span class="b" style="left:17.6%;width:20.5%"></span><span class="a" style="left:39.8%;width:8.8%"></span><span class="b" style="left:50.3%;width:18.9%"></span><span class="a" style="left:70.9%;width:8.1%"></span><span class="b" style="left:80.7%;width:18.2%"></span>
+          </div>
+          <p class="st-lab" style="margin-top:14px">Whisper 시간 조각 · 번호는 터미널의 줄 순서</p>
+          <div class="st-track" aria-label="Whisper가 붙인 시간 조각">
+            <span class="c" style="left:0%;width:8%">1</span><span class="c" style="left:9.8%;width:5.8%">2</span><span class="c" style="left:17.6%;width:8.3%">3</span><span class="c" style="left:27.6%;width:8.5%">4</span><span class="c" style="left:39.8%;width:8.5%">5</span><span class="c" style="left:48.3%;width:6.8%">6</span><span class="c" style="left:57.1%;width:10.2%">7</span><span class="tick" style="left:70.7%"><em>8</em></span><span class="bad" style="left:78.5%;width:4.1%">9</span><span class="c" style="left:82.7%;width:6.1%">10</span><span class="c" style="left:88.8%;width:7.6%">11</span>
+          </div>
+          <div class="st-axis"><span style="left:0%;transform:none">0초</span><span style="left:24.4%">10</span><span style="left:48.8%">20</span><span style="left:73.2%">30</span><span style="left:100%;transform:translateX(-100%)">41초</span></div>
+          <div class="st-ann">
+            <div class="r" style="--x:70.7%"><span class="v"></span><span class="v" style="--x:80.6%"></span><p><span class="hd"><b class="st-pen">①</b> 8번째 줄, 29초의 빨간 금</span>끝(27.6초)이 시작(29.0초)보다 앞서고 글자도 없는 조각입니다. 길이가 없어 금으로 그렸습니다.</p></div>
+            <div class="r" style="--x:80.6%"><span class="v"></span><p><span class="hd"><b class="st-pen">②</b> 9번 조각, 32.2~33.9초</span>"그건 도윤님이 금요일까지 예시를 더 모아주세요 <u>알겠습니다</u>" — 서연이 29~32초에 한 말과 도윤의 첫마디가 한 조각에 묶였고 시간은 늦게 붙었습니다.</p></div>
+          </div>
+        </figure>
+      </div>
+      <div class="st-main" style="margin-top:40px">
+        <p>Whisper의 시간은 낱말 하나하나를 정밀하게 잰 값이 아니라, 글을 쓰면서 함께 고른 "대략 이쯤"입니다. 둘 다 30초 창 경계 바로 앞뒤라 창을 이어 붙이는 과정과 관련 있어 보이지만 원인을 하나로 단정하기는 어렵습니다.</p>
+        <p>회의록에 시간만 적는다면 큰 문제가 아닙니다. 하지만 "누가 말했는지"를 붙이려면 이 시간을 말한 사람 구간과 맞춰야 합니다. ②처럼 두 사람 말이 한 조각에 섞이면 한 사람에게 몰아서 붙습니다. 이 맞추기는 다음 글에서 다룹니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><span class="st-num">08</span><h2>받아쓰기를 붙이기 전에 고를 것</h2></div>
+      <div class="st-main">
+        <ol class="st-todo">
+          <li>녹음이 회사 밖으로 나가도 되는지부터 확인합니다. 안 되면 내 컴퓨터에서 Whisper를 돌리고 괜찮으면 <code>gpt-transcribe</code>가 간편합니다.</li>
+          <li>팀 이름·제품 이름·사람 이름처럼 자주 틀릴 낱말을 모아 <code>keywords</code>와 <code>prompt</code>에 넣습니다. 받아쓴 결과에서 틀린 낱말을 찾으면 목록에 더해 갑니다.</li>
+          <li>파일은 한 채널·16kHz·32kbps로 줄여 25MB 안에 넣고 그래도 넘으면 말이 끊긴 곳에서 나눕니다.</li>
+          <li>회의록에 시간이나 말한 사람이 필요하다면 시간 조각을 주는 방식을 고르고 그 시간이 몇 초씩 틀릴 수 있다는 것을 감안합니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-sec">
+    <div class="st-wrap st-rail">
+      <div class="st-rh"><h2>참고 자료</h2></div>
+      <div class="st-main">
+        <ul class="st-refs">
+          <li><a href="https://developers.openai.com/api/docs/guides/speech-to-text">OpenAI, Speech to text</a> — gpt-transcribe, <code>keywords</code>·<code>languages</code>, 25MB 한도, 지원 형식</li>
+          <li><a href="https://developers.openai.com/api/docs/models/gpt-transcribe">OpenAI, gpt-transcribe 모델</a> — 분당 0.0045달러</li>
+          <li><a href="https://developers.openai.com/api/docs/deprecations">OpenAI, Deprecations</a> — whisper-1·gpt-4o-transcribe 2027-02-26 종료</li>
+          <li><a href="https://arxiv.org/abs/2212.04356">Radford 외, Robust Speech Recognition via Large-Scale Weak Supervision (2022)</a> — Whisper, 30초 창과 시간 토큰</li>
+          <li><a href="https://huggingface.co/openai/whisper-large-v3-turbo">Hugging Face, openai/whisper-large-v3-turbo</a> — 8억 900만 파라미터, <code>return_timestamps</code></li>
+          <li><a href="https://huggingface.co/learn/audio-course/chapter1/audio_data">Hugging Face Audio Course, Introduction to audio data</a> — 파형·스펙트로그램·멜 스펙트로그램</li>
+          <li><a href="https://pypi.org/project/transformers/">PyPI, transformers</a> — 5.22</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="st-end"></div>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+
+  /* 예시 녹음에서 계산한 값: 첫 3.3초의 파형, 스펙트로그램(60×110), 멜 스펙트로그램(64×110) */
+  const SPEC = {"wf": [0.477, 0.838, 0.902, 0.891, 0.834, 0.748, 0.696, 0.535, 0.416, 0.407, 0.382, 0.433, 0.516, 0.534, 0.551, 0.453, 0.187, 0.236, 0.521, 0.589, 0.552, 0.5, 0.497, 0.457, 0.428, 0.383, 0.385, 0.388, 0.387, 0.38, 0.345, 0.304, 0.25, 0.116, 0.036, 0.01, 0.002, 0.037, 0.083, 0.283, 0.603, 0.675, 0.809, 0.812, 0.767, 0.791, 0.628, 0.325, 0.136, 0.07, 0.04, 0.112, 0.797, 0.934, 0.886, 0.848, 0.826, 0.862, 0.782, 0.675, 0.653, 0.527, 0.488, 0.452, 0.43, 0.415, 0.331, 0.382, 0.652, 0.727, 0.738, 0.709, 0.7, 0.639, 0.507, 0.131, 0.025, 0.005, 0.016, 0.054, 0.162, 0.14, 0.209, 0.475, 0.627, 0.632, 0.584, 0.59, 0.583, 0.599, 0.573, 0.256, 0.166, 0.127, 0.085, 0.404, 0.554, 0.614, 0.636, 0.643, 0.62, 0.599, 0.555, 0.555, 0.537, 0.501, 0.49, 0.45, 0.172, 0.043, 0.012, 0.002, 0.003, 0.047, 0.053, 0.072, 0.104, 0.447, 0.575, 0.576, 0.566, 0.538, 0.539, 0.535, 0.474, 0.452, 0.469, 0.432, 0.382, 0.376, 0.359, 0.43, 0.558, 0.602, 0.629, 0.626, 0.617, 0.587, 0.581, 0.449, 0.217, 0.151, 0.094, 0.052, 0.07, 0.102, 0.424, 0.551, 0.66, 0.662, 0.586, 0.618, 0.597, 0.626, 0.601, 0.366, 0.194, 0.078, 0.027, 0.013, 0.003, 0.008, 0.019, 0.088, 0.183, 0.215, 0.225, 0.134, 0.082, 0.08, 0.13, 0.48, 0.527, 0.528, 0.527, 0.515, 0.498, 0.464, 0.411, 0.249, 0.241, 0.267, 0.271, 0.254, 0.213, 0.307, 0.279, 0.237, 0.206, 0.409, 0.561, 0.621, 0.562, 0.63, 0.64, 0.627, 0.601, 0.337, 0.197, 0.504, 0.574, 0.666, 0.62, 0.616, 0.614, 0.55, 0.518, 0.508, 0.494, 0.466, 0.266, 0.078, 0.026, 0.008, 0.003, 0.061, 0.089, 0.243, 0.881, 1.0, 0.93, 0.854, 0.789, 0.725, 0.423, 0.355, 0.362, 0.359, 0.357, 0.444, 0.571, 0.618, 0.657, 0.597, 0.585, 0.55, 0.544, 0.534, 0.532, 0.523, 0.481, 0.396, 0.315, 0.181, 0.111, 0.047, 0.023, 0.014, 0.039, 0.065, 0.097, 0.082, 0.195, 0.322, 0.433, 0.568, 0.615, 0.478, 0.351, 0.356, 0.351, 0.331, 0.415, 0.482, 0.593, 0.61, 0.656, 0.705, 0.706, 0.662, 0.616, 0.444, 0.182, 0.114, 0.054, 0.05, 0.08, 0.422, 0.643, 0.779, 0.769, 0.784, 0.801, 0.582, 0.461, 0.322, 0.3, 0.111, 0.061, 0.033, 0.031, 0.025, 0.031, 0.026, 0.022, 0.024, 0.052, 0.218, 0.321, 0.381], "lin": "rLCzpqeZk6GUmIyDbWGhsqWckquckpKjnqaqkWmVsqutoJ2oqqOcjllRjqGspaOrraipmIidpqSshV9IV1eVmqKaYkxvlqammau1r6aLUZ2poK2qo5aQnZh8ZWKHjZ2SiY2YkXyhqa2SYU1Bjqv4/v746Ozk2sjFwMmikuv5+ebP7d/g3ujv+fbQkOT9/vzp4e/j5OrcfpDR9fr59/X6+/rnxOzn4vTFi2hgecfR4dpzSn7h5O3n/f/998l32Pf39Pfn4uLj5MmmftTb49/d3+Dlyuj59uJkP0a38s/Ry8XKydfg4dbf152w0tHNqrfLx9HMycPHzLejqsvGxrG7yMHCyrWMp8HPxcrHvsrJzKikxsnKzKGObZCo2ube0YVhhtrQzcvOx8fBloXAy8K8xM7U2s29n3+bzsbGw9fTzb+VxMzLwIBhY43L7fDfu9/T1MWzo6Spf6vj9O6lsvjr6uTm4vXwtJe80NHWt6vX3uHpvmuwveXbz8TA2OTeopLC2N7hoXNsj6ewvcG2dWF4ytLh1NXh4NGEe9D738vO7N/W3uW1gpbK59bO2N/mzJLJ7OzGf25vi6jezLKbo6GmsLSgoYZQla+4xoutwaivprPIv7eIcpippaeSiJadnaaLU56UpaiimZWotL6OkJWRlK9tTk6MnqawlYJnY22Ni6y1vLKspWZjtdbhsZywo6GVo3dOmKSrno+vsq6TdZqvqZZ+bHR6j7WqnYSvoLO3m3Z5aTeLqa2cbZrk8OPEqqy1tYFXiIqTjHaEqrXCv5NCnJOjnZSLiJ+amHF4la6zkls4UISXi6eqhmFka62/tZCRi46GT1KmxcKOjcjFvrqccF6Ixea3p93y6qZukKuxnYBxaX9xydWgi5yRkY2kfXxqP4mXubhulr+xmn6iq7ywcFt8nqGjfXGDlI+pikSUj6mnnpSOpLO0aoGChpGrUD1QgYuRmXh0X2N0hXilmJ2kppxGT5rb2KqgpnSBhotiWJano5aOq66mhFuPsKGTg3Z0gHm4vI1xlZKjqYN4cHBMjIqFkVubsb67pJGghYdrYIOMbHdwc4GGmJ6DQaOff25bYmZ2gZxjf3yJjIdSQ2+FlYignHlvdYaSpZqWnIqGdURZmaOulpGiqqqYgFNVmKa5qJnL0b6GXX5/h4CJdn2Oe4myl3yLj5B4jndxTD6AlJiMTYS1poZ4lZifn2BcfYCHgGh/jJKft3s5sK2elYJ4bY2TjFtygo2PgkBAYnqNhohlbHiAhHV/ln5zcXZzPFOOqquFh5ZyX36GVVWWmqeXiIiLjHdgjp+dioaDgYFviricdIF6maR1Z144M36Mlp5MlpKVj3uHl5eHWFd1joSJX3pga3uHbDCppZWNf3JvgqGoUWtuZnmINzRZdXqFqZZ1d4SBfHuJdIORkX4sVJS6yZOMh42Sd25JW46alYx0q7GPcl2Cin6ChYV4iFyCjI5jm5aUbn5lbDskh4Z8fUaLu7eMf46Qeo1bYmh6bW9ahIqcs7FnKqSppIhqXFd4hJZNc3SPlng1I1pyiJSRY2V4f4B0f5Zwj3ltXyRVjJindXaffmiOdlROj6fEnomPk6R7W3iAk4eCgXeEUWCDmGOOk5mndz9JNxKJipeRRYijiX5zjJChmVJQboORj1p9am6Kg14jlp6vtY9xZJKqlEhqfGZzhisfT26Al7WjhXt8fndqiIB7fYJ2JEOTw7V4fZaOkHV0PUmDqpl6b6uxjGtTg5eIf3JwaX1PcIqPYZ6bqYiHR0EtEYqRjaFKi7PEpZOVnoiBWVZ3j2+DX4l3maGESR2knoyLb1VmdaKjPHVtipOKKxdVfK2Tlnp6gYSMi5aTfIeVjnciU6XGrmd4q6SLoHlNUZKyqXlxrbPAeVd7bISOfHJve1ZwbYByoqOsuZNKSjALi5qUi1ibzZ+GfaSflKBZVHyLen9ahY+xnIVKGaGZpbSadmqVnoM8hoqGjY4/KVCSs5ivqomKhId4a5mCkHNvbzRes7t+UXKfkKCPnmBPkbx+XWmyqJBvT4aWnpuRg4SFWGJ5iGSblb+XoktAMRqJpri3WqK2x8W1oqy6p15Th6GWoGKUiZWJcEQbo5qRopiFiK28jS19iICUo0oiV5u4mY2FjJ2OmZ+srYaNk6aXQl7Bw5VcZrTItbqjclmhto5sba60vX1Zj6GhqJ+HiI9reIqBV7Ckr9Cya1EvEYSzrMljptq0g4a1pqmvYlKCtoqhdpXC0qeQSA6blp2HgH2JnJiZJnubtri5WjJkmredr6KFnZukmZfCmq7BtqJHULGfkm1tpZqlrK1+Vq2ujHh7raaPhU+amLetlISEj1d5eIN4jI+0nrVlXy4VhMXPuFyarK7KwZ6o2cVpVYKxxbZxkaKgf3dH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xb5/bJ+kpJSDX2KpqqqHb7S/wpFXlb69n5l9gpNNmZdtVpB1mqWjQzgqFm2qu6NKkMmtraeXp7arQ151mImBS4GGgouSTBibkUVhgIyYkImNPZWdoqOxaECg0atlWGSS0dHKtsO3m6WXhoQiZaO/sXNbk5eikIBlYqmypX9gssDJjWOXtbOjkY54gkWGg09Sf3mWnY1FMDYdcqGpnEOMt7q4q5ehqqo/WmaLdXxHgnZrdHpFGYqNSE9wg4l+eXo7kZGdoKtqQqbSoWJFU6LM4Luwra2OnpN3djNsk7OsblyBg5d/gmFurqqXdWahtbmKY5KZsqiZiIaQTHxmQEpqXpeFgT5FLxxzk5qLN5i3s6ekkIybjUJLcIFiZzZ9W0VDUzEjk5k4QnN/g2pvTDWPgoiGgWdHosqqaERDntbZzaKjon+GbVpaOWiboZJwaX57eGtzbW2ol5FsWKClqX9ojpKRqo2Ke4Y9Tkc4QlRhmoBpOTkzM22Hh3UpgqynramMjoeCMFhsiHF0NZFXRjc8GSaTkUc8Yn5/YEU/MpqFeoiGVkyizbJhRUCm09bMmIWPeIBhPUpGdI2QlGVnaHFuVmRObKOOgWhhmJ2dbWiIi4SsjYp1lDlAMThMT2KRf2M5MTAoZIB1byaDmqiknX2CgXopV258fIgwhWZJRj4hK46PPEZue35wSzwvnpJ4gXpiW6vPpVZDR47N1dSQe3ttdVFBVUh0lYeHU2JNSk03VlZyoZSQV12HkZdna5qJgaCcgHmUVUA/N0tKXo6EWzE4MSt3i3pkIIWSmaehgYOLcClVbYeDjzmBfVhAJiAmh4o9Qnt5j3pHPR+jlIV4flxRr9SxbkA+oNbO2oFbcWx/XTtTSGuhfnhHWTpEPD5LUGmahYBRYoabkGZjmoiCkoiLhJhLOz46T0RjiXpHNzssLXSOemcofo+NkZB2fXlvKFppjoqNOIaBUjw6HCuPjzhAhYp8h0k/KZ2KjYJ0XUuaxKhkPkKg0d3Xnl1IeH1wPFNOaKqJf0BHPjZCOTpCY6CPfURkkoyKYHSYhomXmYCHoU5HPTpNVlWKeGIvOTEkbI53cCp9hop9i3Z9eX8nS22Ti4s8dHVTRTwoI4KFPzp8gImESDwlnJCJjH1WTZ/Jp2IzOqLW2s+QZTN1g4E8UjdnpYN4NTY8PDc0NzxzpY6ANmSMiIlZ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", "lin_rc": [60, 110], "mel": "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", "mel_rc": [64, 110]};
+  const dec = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+
+  function draw() {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    const ink = dark ? "232,236,244" : "24,27,34";
+    $$("[data-st-cv]").forEach((cv) => {
+      const k = cv.dataset.stCv, g = cv.getContext("2d"), W = cv.width, H = cv.height;
+      g.clearRect(0, 0, W, H);
+      if (k === "wf") {
+        g.fillStyle = `rgb(${ink})`; const n = SPEC.wf.length, bw = W / n;
+        SPEC.wf.forEach((v, i) => { const h = Math.max(1, v * (H * 0.44)); g.fillRect(i * bw, H / 2 - h, Math.max(1, bw - 0.4), h * 2); });
+        return;
+      }
+      const [R, C] = SPEC[k + "_rc"], d = dec(SPEC[k]), cw = W / C, ch = H / R;
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        const v = d[r * C + c] / 255;
+        g.fillStyle = `rgba(${ink},${(v * v).toFixed(3)})`;
+        g.fillRect(c * cw, H - (r + 1) * ch, cw + 0.5, ch + 0.5);
+      }
+    });
+  }
+  draw();
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+
+  /* 히어로 파형: 실제 발화 구간(초)을 막대로 */
+  const TURNS = [[0, 6.53], [7.23, 15.63], [16.33, 19.92], [20.62, 28.35], [29.05, 32.38], [33.08, 40.55]];
+  const wave = root.querySelector("[data-st-wave]");
+  for (let i = 0; i < 120; i++) {
+    const t = (i + 0.5) * 41 / 120, on = TURNS.some(([a, b]) => t >= a && t <= b);
+    const h = on ? 30 + 60 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.31)) : 6;
+    wave.insertAdjacentHTML("beforeend", `<i class="${on ? "on" : ""}" style="height:${h.toFixed(0)}%"></i>`);
+  }
+  /* 02 창 그림: 실제로 말한 구간 띠 */
+  const band = root.querySelector("[data-st-band]");
+  TURNS.forEach(([a, b]) => band.insertAdjacentHTML("beforeend", `<span style="left:${(a / 41 * 100).toFixed(1)}%;width:${((b - a) / 41 * 100).toFixed(1)}%"></span>`));
+
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  $$("[data-st-term]").forEach((term) => {
+    const out = term.querySelector("[data-st-out]"), btn = term.querySelector("[data-st-run]");
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 160);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+})();
+</script>

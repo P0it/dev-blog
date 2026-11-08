@@ -1,0 +1,834 @@
+---
+title: 회의록 AI는 누가 말했는지 어떻게 알아낼까요?
+slug: speaker-diarization-meeting-minutes
+excerpt: 회의 녹음 앱은 받아쓴 글을 말한 사람별로 나누고 결정 사항과 할 일까지 정리해 줍니다. 녹음에서 말소리를 찾고 목소리 지문으로 사람을 묶는 화자 분리, pyannote community-1, 받아쓴 낱말에 화자를 붙이는 시간 맞추기와 그 경계에서 생기는 실수, LLM으로 오탈자를 고치고 Structured Outputs로 회의록 칸을 채워 Word 파일로 만드는 과정을 그림과 코드로 봅니다.
+tags: [화자 분리, Speaker Diarization, pyannote, Whisper, WhisperX, Structured Outputs, python-docx, OpenAI API, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 5
+---
+<!-- page -->
+<!-- layout: 레일(왼쪽 칸 번호·제목 고정, 글·그림·코드는 오른쪽 본문 칸) + 장 표지 띠 3개(사람 나누기 / 이름 붙이기 / 문서 만들기) + 공통 시간축 위 줄 쌓기 펼쳐 놓기(01) + 위아래 비교(05) | 글의 성격: 한 녹음이 세 단계 장을 거쳐 회의록이 되는 긴 과정 | 버린 후보: 그림 고정 스크롤리텔링(정적 캡처·모바일에서 단계가 안 보임, 같은 시간축 줄 쌓기가 한 화면에 더 잘 보임), 글|그림 2단(4편 1회차 Critic: 섹션마다 글 시작 위치가 튐), 4편과 같은 레일만 쓰기(장 표지 띠로 세 장을 끊어 리듬을 바꿈) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
+<style>
+.post-page .sd {
+  --sd-red: rgb(204, 52, 40); --sd-ok: rgb(14, 138, 108); --sd-pen: rgb(196, 50, 38);
+  --sd-a: rgb(37, 112, 235); --sd-b: rgb(226, 106, 28);
+  --sd-penf: "Nanum Pen Script", "Comic Sans MS", cursive;
+  --sd-bar: color-mix(in srgb, var(--fg-neutral) 30%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .sd { --sd-red: rgb(255, 118, 102); --sd-ok: rgb(70, 205, 165); --sd-pen: rgb(255, 128, 110); --sd-a: rgb(110, 165, 255); --sd-b: rgb(255, 150, 80); --sd-bar: color-mix(in srgb, var(--fg-neutral) 42%, var(--bg-base)); }
+.post-page .sd * { box-sizing: border-box; }
+.post-page .sd-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .sd h1, .post-page .sd h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .sd h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.24; margin-bottom: 28px; }
+.post-page .sd h2 { font-size: clamp(24px, 3.1vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .sd p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .sd b { color: var(--fg-strong); }
+.post-page .sd a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .sd code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .sd p.sd-cap { font-size: 15px; color: var(--fg-neutral); margin: 16px 0 0; line-height: 1.7; }
+.post-page .sd-sec { padding: clamp(96px, 11vw, 150px) 0 0; }
+.post-page .sd-num { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
+.post-page .sd-pen { font-family: var(--sd-penf); color: var(--sd-pen); font-size: 22px; line-height: 1.15; }
+.post-page .sd-text { max-width: 700px; }
+.post-page .sd-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+.post-page .sd-row > figure { margin: 0; min-width: 0; }
+.post-page .sd-intro > div > p:last-child { margin-bottom: 0; }
+.post-page .sd-intro + .sd-wide, .post-page .sd-wide + .sd-intro { margin-top: clamp(36px, 4vw, 52px); }
+.post-page .sd-row > div > .sd-cap:first-child { margin-top: 0; }
+.post-page .sd-wide { margin: clamp(36px, 4vw, 52px) 0 0; }
+.post-page .sd-spread { display: grid; gap: clamp(20px, 3vw, 36px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-page .sd-spread.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.post-page .sd-spread > figure { margin: 0; min-width: 0; }
+.post-page .sd-fh { font-size: 16px !important; font-weight: 700; color: var(--fg-strong); margin: 0 0 10px !important; line-height: 1.5 !important; }
+.post-page .sd-fh small { display: block; font-weight: 400; font-size: 14px; color: var(--fg-neutral); margin-top: 2px; }
+
+/* 히어로: 녹음 앱 받아쓰기 화면 */
+.post-page .sd-hero { padding: clamp(56px, 9vw, 112px) 0 0; }
+.post-page .sd-hero-t { max-width: 820px; }
+.post-page .sd-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
+.post-page .sd-lede { font-size: 18px !important; }
+.post-page .sd-app { margin-top: clamp(32px, 4vw, 44px); border-radius: var(--radius-md); border: 1px solid var(--line-subtle); background: var(--bg-subtle); padding: clamp(16px, 2.4vw, 28px); }
+.post-page .sd-app-h { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--fg-strong); font-weight: 700; margin-bottom: 14px; }
+.post-page .sd-app-h span { font-size: 22px; }
+.post-page .sd-app-h small { font-weight: 400; color: var(--fg-neutral); font-family: var(--font-mono); font-size: 13px; }
+
+
+
+
+
+
+
+/* 코드 | 해설, 터미널 */
+.post-page .sd-cp { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 10px clamp(28px, 4vw, 56px); align-items: start; margin: clamp(44px, 5vw, 64px) 0 0; }
+.post-page .sd-cp > .cp-code { grid-column: 1; grid-row: 1; } .post-page .sd-cp > .cp-term { grid-column: 1; grid-row: 2; } .post-page .sd-cp > .cp-notes { grid-column: 2; grid-row: 1 / span 2; }
+.post-page .sd .pg-code { margin-top: 0; }
+.post-page .sd ol.pg-code-notes { margin: 0 0 20px; }
+.post-page .sd ol.pg-code-notes > li { margin: 14px 0; }
+.post-page .sd-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .sd-term-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
+.post-page .sd-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--code-fg, #abb2bf); background: transparent; color: var(--code-fg, #abb2bf); cursor: pointer; white-space: nowrap; flex: none; }
+.post-page .sd-act::before { content: "▶ "; font-size: 11px; }
+.post-page .sd-act:disabled { opacity: .4; cursor: default; }
+.post-page .sd-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
+.post-page .sd-term-out .nz { color: #ff8a7a; }
+.post-page .sd-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-sd-blink 1s steps(1) infinite; }
+@keyframes pg-sd-blink { 50% { opacity: 0; } }
+
+.post-page .sd details { margin: 22px 0 0; max-width: 700px; }
+.post-page .sd summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
+.post-page .sd details > .sd-in { padding-top: 14px; }
+.post-page .sd-tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.post-page .sd-tbl th, .post-page .sd-tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .sd-tbl th { font-size: 13px; color: var(--fg-neutral); }
+.post-page .sd-todo { margin: 0; padding-left: 1.3em; list-style: decimal; display: grid; gap: 14px; font-size: 16.5px; line-height: 1.75; max-width: 700px; }
+.post-page .sd-todo li::marker { font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
+.post-page .sd-refs { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 15px; line-height: 1.7; max-width: 760px; }
+.post-page .sd-end { height: clamp(80px, 10vw, 140px); }
+
+@media (max-width: 960px) {
+  .post-page .sd-wrap { padding: 0 20px; }
+  .post-page .sd-row { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sd-cp { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sd-cp > .cp-code, .post-page .sd-cp > .cp-term, .post-page .sd-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+  .post-page .sd-cp > .cp-notes { order: 2; } .post-page .sd-cp > .cp-term { order: 3; }
+}
+@media (max-width: 640px) {
+  .post-page .sd p { font-size: 16px; }
+  .post-page .sd-spread, .post-page .sd-spread.n2 { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sd-term-bar span { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .sd *, .post-page .sd *::before { transition: none !important; animation: none !important; }
+}
+
+/* 레일 배치: 왼쪽은 번호·제목만, 글과 그림은 늘 오른쪽 본문 칸에서 시작 */
+.post-page .sd-rail { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 0 clamp(32px, 5vw, 72px); align-items: start; }
+.post-page .sd-rail > .sd-rh { grid-column: 1; }
+.post-page .sd-rail > .sd-main { grid-column: 2; min-width: 0; }
+.post-page .sd-rail > .sd-full { grid-column: 1 / -1; min-width: 0; margin-top: clamp(36px, 4vw, 52px); }
+.post-page .sd-main > p:last-child { margin-bottom: 0; }
+.post-page .sd-main > figure { margin: 36px 0 0; }
+.post-page .sd-full > figure { margin: 0; }
+.post-page .sd-full > .sd-cap { margin-left: calc((100% - clamp(32px, 5vw, 72px)) * 4 / 11 + clamp(32px, 5vw, 72px)); }
+@media (min-width: 961px) { .post-page .sd-rail > .sd-rh { position: sticky; top: 88px; } }
+.post-page .sd .pg-code pre { font-variant-ligatures: none; }
+
+/* 장 표지 띠 */
+.post-page .sd-band { margin-top: clamp(110px, 12vw, 160px); border-top: 3px solid var(--fg-strong); border-bottom: 1px solid var(--line-normal); padding: 22px 0 20px; }
+.post-page .sd-band .sd-wrap { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.post-page .sd-band span { font-family: var(--font-mono); font-size: 14px; color: var(--fg-alternative); }
+.post-page .sd-band b { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 28px); font-weight: 700; color: var(--fg-strong); }
+.post-page .sd-band small { font-size: 15px; color: var(--fg-neutral); }
+.post-page .sd-band + .sd-sec { padding-top: clamp(56px, 6vw, 80px); }
+
+/* 히어로: 받아쓰기만 | 회의록 */
+.post-page .sd-hero .sd-spread { margin-top: clamp(32px, 4vw, 44px); align-items: stretch; }
+.post-page .sd-hero .sd-spread > figure { display: flex; flex-direction: column; }
+.post-page .sd-hero .sd-raw, .post-page .sd-hero .sd-doc { flex: 1 1 auto; height: auto; }
+.post-page .sd-raw { position: relative; height: 100%; border: 1px solid var(--line-subtle); border-radius: var(--radius-md); padding: 22px 22px 52px; background: var(--bg-subtle); }
+.post-page .sd-raw p { font-size: 15.5px !important; line-height: 1.9 !important; margin: 0 !important; color: var(--fg-strong); }
+.post-page .sd-raw .sd-pen { position: absolute; right: 18px; bottom: 10px; font-size: 26px; transform: rotate(-4deg); }
+.post-page .sd-doc { height: 100%; border: 1px solid var(--line-normal); border-radius: 6px; background: var(--bg-base); box-shadow: 0 10px 28px rgba(0,0,0,.08); padding: 26px 26px 22px; font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .sd-doc h3 { font-family: var(--font-display); font-size: 19px; margin: 0 0 12px; color: var(--fg-strong); }
+.post-page .sd-doc h4 { font-size: 13.5px; margin: 14px 0 4px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .sd-doc ul, .post-page .sd-doc ol { margin: 0; padding-left: 1.2em; }
+.post-page .sd-doc table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.post-page .sd-doc td, .post-page .sd-doc th { border: 1px solid var(--line-strong); padding: 4px 8px; text-align: left; }
+.post-page .sd-doc th { background: var(--bg-subtle); font-weight: 700; }
+.post-page .sd-doc .log { font-size: 13.5px; }
+.post-page .sd-doc .log div { display: grid; grid-template-columns: 3.6em 3.4em minmax(0, 1fr); gap: 6px; }
+.post-page .sd-doc .log time { font-family: var(--font-mono); color: var(--fg-alternative); font-size: 12.5px; }
+.post-page .sd-who-a { color: var(--sd-a); font-weight: 700; } .post-page .sd-who-b { color: var(--sd-b); font-weight: 700; }
+
+/* 그림 1: 녹음 한 줄을 세 번 다시 그리기 */
+.post-page .sd-rows { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 14px 18px; align-items: center; }
+.post-page .sd-rows > b { font-size: 15px; line-height: 1.4; }
+.post-page .sd-rows > b small { display: block; font-weight: 400; font-size: 13px; color: var(--fg-neutral); }
+.post-page .sd-lane { position: relative; height: 54px; }
+.post-page .sd-lane.env { display: flex; align-items: center; gap: 1px; }
+.post-page .sd-lane.env i { flex: 1 1 0; min-width: 0; background: color-mix(in srgb, var(--fg-strong) 62%, var(--bg-base)); border-radius: 1px; }
+.post-page .sd-lane span { position: absolute; top: 10px; bottom: 10px; border-radius: 3px; }
+.post-page .sd-lane.vad span { background: var(--fg-strong); }
+.post-page .sd-lane.vad { background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--fg-neutral) 18%, transparent) 6px 7px); }
+.post-page .sd-lane.seg span { top: auto; height: 16px; background: transparent; border: 2px solid color-mix(in srgb, var(--fg-strong) 70%, var(--bg-base)); border-radius: 3px; }
+.post-page .sd-lane.who span { color: #fff; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
+.post-page .sd-axis { position: relative; height: 20px; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .sd-axis span { position: absolute; transform: translateX(-50%); }
+.post-page .sd-axis span:first-child { transform: none; } .post-page .sd-axis span:last-child { transform: translateX(-100%); }
+
+/* 그림 2: 목소리 지문 점 */
+.post-page .sd-scatter { display: block; width: 100%; height: auto; }
+.post-page .sd-scatter .ax { stroke: var(--line-strong); stroke-width: 1.5; }
+.post-page .sd-scatter circle { stroke: var(--bg-base); stroke-width: 1.5; }
+.post-page .sd-scatter .g { fill: none; stroke-width: 2.5; stroke-dasharray: 6 6; }
+.post-page .sd-scatter text { font-family: var(--font-sans); font-size: 22px; font-weight: 700; }
+.post-page .sd-scatter text.s { font-size: 21px; font-weight: 400; fill: var(--fg-neutral); }
+
+/* 그림 3: 겹친 말 */
+.post-page .sd-ov { position: relative; display: grid; gap: 8px; }
+.post-page .sd-ov .ln { position: relative; height: 30px; }
+.post-page .sd-ov .ln span { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; padding-left: 8px; }
+.post-page .sd-ov .hatch { position: absolute; top: -5px; bottom: -5px; z-index: 1; border: 2px dashed var(--sd-red); border-radius: 4px; }
+
+/* 그림 5·6: 확대 */
+.post-page .sd-zoom .ln { position: relative; height: 34px; }
+.post-page .sd-zoom .ln span { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; font-size: 12.5px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; color: #fff; font-weight: 700; border: 1.5px solid var(--bg-base); }
+.post-page .sd-zoom .ln span.e { background: transparent; border: 2px dashed var(--fg-neutral); color: var(--fg-neutral); }
+.post-page .sd-zoom .ln span.bad { outline: 3px solid var(--sd-red); outline-offset: 1px; }
+.post-page .sd-zoom .lab { font-size: 14px; font-weight: 700; color: var(--fg-strong); margin: 12px 0 2px; }
+.post-page .sd-zoom .lab:first-child { margin-top: 0; }
+.post-page .sd-out { margin-top: 14px; display: grid; gap: 6px; font-size: 15px; line-height: 1.6; }
+.post-page .sd-out div { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); gap: 8px; }
+.post-page .sd-out .x { text-decoration: underline wavy var(--sd-red); text-underline-offset: 4px; }
+.post-page .sd-vs { display: grid; gap: clamp(36px, 4vw, 48px); }
+.post-page .sd-vs > div > .sd-fh { margin-bottom: 12px !important; }
+.post-page .sd-mark { color: var(--sd-red); font-weight: 700; }
+.post-page .sd-ruler { position: relative; height: 210px; margin-top: 8px; }
+.post-page .sd-ruler .bar { position: absolute; height: 34px; border-radius: 5px; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; padding: 0 10px; white-space: nowrap; }
+.post-page .sd-ruler .w { position: absolute; top: 100px; height: 40px; border: 3px solid var(--fg-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: var(--fg-strong); background: var(--bg-base); }
+.post-page .sd-ruler .ov { position: absolute; top: 146px; height: 10px; border-radius: 2px; }
+.post-page .sd-ruler .ovt { position: absolute; top: 160px; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.post-page .sd-ruler .gl { position: absolute; top: 0; bottom: 30px; border-left: 1.5px dotted var(--fg-neutral); }
+.post-page .sd-ruler .tk { position: absolute; bottom: 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); transform: translateX(-50%); }
+
+/* 그림 8: 고치기 전 | 후 */
+.post-page .sd-fix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 22px; font-size: 14.5px; line-height: 1.65; }
+.post-page .sd-fix > b { font-size: 13.5px; color: var(--fg-neutral); padding-bottom: 6px; border-bottom: 2px solid var(--fg-strong); }
+.post-page .sd-fix > div { padding: 10px 0; border-bottom: 1px solid var(--line-subtle); color: var(--fg-strong); }
+.post-page .sd-fix .old { background: color-mix(in srgb, var(--sd-red) 16%, transparent); border-radius: 3px; padding: 0 2px; }
+.post-page .sd-fix .new { background: color-mix(in srgb, var(--sd-ok) 20%, transparent); border-radius: 3px; padding: 0 2px; }
+.post-page .sd-fix .spk { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .sd-fix .same { text-decoration: underline wavy var(--sd-red); text-underline-offset: 4px; }
+
+/* 그림 9: 칸 이름 ↔ 문서 자리 */
+.post-page .sd-map { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; align-items: start; }
+.post-page .sd-fields { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; display: grid; gap: 10px; }
+.post-page .sd-fields div { position: relative; padding-left: 22px; }
+.post-page .sd-fields div::before, .post-page .sd-doc [data-c]::before { content: ""; position: absolute; left: 0; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.post-page .sd-fields small { display: block; font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); }
+.post-page .sd-doc [data-c] { position: relative; padding-left: 20px; margin-left: -20px; }
+.post-page .sd .c1 { --c: rgb(124, 92, 230); } .post-page .sd .c2 { --c: var(--sd-a); } .post-page .sd .c3 { --c: var(--sd-ok); } .post-page .sd .c4 { --c: var(--sd-b); }
+
+.post-page .sd .sd-full > p.sd-cap { margin-left: calc((100% - clamp(32px, 5vw, 72px)) * 4 / 11 + clamp(32px, 5vw, 72px)); }
+.post-page .sd p.sd-z9 { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .sd-z9 b { color: var(--sd-red); margin-right: 6px; }
+.post-page .sd-scatter text.s { font-size: 20px; }
+@media (max-width: 960px) { .post-page .sd .sd-full > p.sd-cap { margin-left: 0; } }
+@media (max-width: 640px) {
+  .post-page .sd-fix > b { display: none; }
+  .post-page .sd-fix > div:nth-child(odd)::before, .post-page .sd-fix > div:nth-child(even)::before { display: block; font-weight: 700; font-size: 12.5px; }
+  .post-page .sd-fix > div:nth-child(odd) { padding-top: 14px; }
+}
+@media (max-width: 960px) {
+  .post-page .sd-rail { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sd-rail > .sd-rh, .post-page .sd-rail > .sd-main, .post-page .sd-rail > .sd-full { grid-column: 1; }
+  .post-page .sd-full > .sd-cap { margin-left: 0; }
+  .post-page .sd-map { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .post-page .sd-rows { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .post-page .sd-rows > b { margin-top: 10px; }
+  .post-page .sd-fix { grid-template-columns: minmax(0, 1fr); }
+  .post-page .sd-fix > b:nth-of-type(2) { display: none; }
+  .post-page .sd-fix > div:nth-child(odd) { border-bottom: 0; padding-bottom: 0; }
+  .post-page .sd-fix > div:nth-child(odd)::before { content: "고치기 전 "; font-size: 12px; color: var(--fg-alternative); }
+  .post-page .sd-fix > div:nth-child(even)::before { content: "고친 뒤 "; font-size: 12px; color: var(--fg-alternative); }
+  .post-page .sd-doc { padding: 20px 18px; }
+  .post-page .sd-ruler .ovt { font-size: 12px; }
+  .post-page .sd-out { font-size: 14.5px; }
+}
+/* 코드 묶음이 본문 칸 안에 들어갈 때: 코드 → 해설 → 터미널 한 줄로 */
+.post-page .sd-main .sd-cp { grid-template-columns: minmax(0, 1fr); margin-top: 36px; }
+.post-page .sd-main .sd-cp > .cp-code, .post-page .sd-main .sd-cp > .cp-term, .post-page .sd-main .sd-cp > .cp-notes { grid-column: 1 !important; grid-row: auto !important; }
+.post-page .sd-main .sd-cp > .cp-notes { order: 2; } .post-page .sd-main .sd-cp > .cp-term { order: 3; }
+.post-page .sd-main .sd-cp .pg-code + .pg-code { margin-top: 18px; }
+</style>
+
+<div class="sd" data-sd>
+  <header class="sd-hero">
+    <div class="sd-wrap">
+      <div class="sd-hero-t">
+        <div class="sd-eyebrow">AI Service Track · 05</div>
+        <h1>회의록 AI는 누가 말했는지 어떻게 알아낼까요?</h1>
+        <p class="sd-lede">요즘 회의 녹음 앱은 받아쓴 글을 "참석자 1", "참석자 2"처럼 말한 사람별로 나눠 보여 줍니다. 끝에는 결정 사항과 할 일을 정리한 회의록까지 만들어 줍니다.</p>
+        <p>지난 글의 받아쓰기 모델은 글만 돌려줬습니다. 이 글은 같은 41초 회의 녹음으로 화면 뒤를 따라갑니다. 목소리로 사람을 나누고 글에 이름을 붙여 Word 회의록으로 만드는 과정입니다.</p>
+      </div>
+      <div class="sd-spread n2">
+        <figure data-figure>
+          <p class="sd-fh">받아쓰기만 했을 때</p>
+          <div class="sd-raw">
+            <p>오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다. 도윤님, 정화돈은 어떻게 됐나요? 지난주에 92%까지 올렸습니다. 슈파베이스의 사인 리뷰 3000개로 확인했어요. 좋네요. 그럼 다음주 수요일에 출시해도 될까요? 하나 걸리는 게 있습니다. 칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다. 그건 도윤님이 금요일까지 예시를 더 모아주세요 알겠습니다 출시는 수요일로 하고 섞인 리뷰는 금요일까지 보완하겠습니다</p>
+            <em class="sd-pen">누가 한 말이지?</em>
+          </div>
+        </figure>
+        <figure data-figure data-thumb>
+          <p class="sd-fh">회의록으로 만들었을 때</p>
+          <div class="sd-doc">
+            <h3>배달 앱 리뷰 분류기 출시 일정 회의</h3>
+            <h4>결정 사항</h4>
+            <ol><li>리뷰 분류기는 다음 주 수요일에 출시한다.</li></ol>
+            <h4>할 일</h4>
+            <table><tr><th>담당</th><th>할 일</th><th>기한</th></tr><tr><td>박도윤</td><td>섞인 리뷰 예시를 더 모아 분류기를 보완</td><td>금요일</td></tr></table>
+            <h4>대화 기록</h4>
+            <div class="log">
+              <div><time>00:00</time><span class="sd-who-a">김서연</span><span>오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다. 도윤님, 정확도는 어떻게 됐나요?</span></div>
+              <div><time>00:07</time><span class="sd-who-b">박도윤</span><span>지난주에 92%까지 올렸습니다. Supabase에 쌓인 리뷰 3000개로 확인했어요.</span></div>
+              <div><time>00:16</time><span class="sd-who-a">김서연</span><span>좋네요. 그럼 다음주 수요일에 출시해도 될까요?</span></div>
+              <div><time>…</time><span></span><span></span></div>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <p class="sd-cap">왼쪽은 지난 글에서 예시 회의 녹음을 실제로 받아쓴 결과입니다. 오른쪽은 이 글 끝의 코드가 만드는 Word 파일 내용이고 결정 사항과 할 일은 예시 답입니다.</p>
+    </div>
+  </header>
+
+  <div class="sd-band"><div class="sd-wrap"><span>1장</span><b>목소리로 사람 나누기</b><small>01~04</small></div></div>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">01</span><h2>먼저 녹음에서 말소리가 있는 곳을 찾습니다</h2></div>
+      <div class="sd-main">
+        <p>녹음을 "언제 누가 말했나"로 나누는 일을 화자 분리(speaker diarization)라고 합니다. 화자는 말하는 사람입니다. 이 단계에서는 이름을 모릅니다. 대신 같은 목소리에 같은 번호를 붙입니다.</p>
+        <p>첫걸음은 말소리가 있는 곳과 조용한 곳을 가르는 일입니다. 그다음 말소리를 짧은 조각으로 자릅니다. 아래 세 줄은 같은 41초 녹음을 이 순서대로 다시 그린 것입니다.</p>
+      </div>
+      <div class="sd-full">
+        <figure data-figure>
+          <div class="sd-rows">
+            <b>① 녹음<small>0.1초마다 가장 큰 떨림</small></b>
+            <div class="sd-lane env" data-sd-env aria-label="41초 녹음의 세기"></div>
+            <b>② 말소리 구간<small>조용한 곳을 뺀 나머지</small></b>
+            <div class="sd-lane vad" data-sd-vad aria-label="말소리가 있는 구간"></div>
+            <b>③ 1초 조각<small>위아래 두 줄이 0.5초씩 어긋나 서로 겹침</small></b>
+            <div class="sd-lane seg" data-sd-seg aria-label="1초 조각 65개"></div>
+            <span></span>
+            <div class="sd-axis"><span style="left:0%">0초</span><span style="left:24.4%">10</span><span style="left:48.8%">20</span><span style="left:73.2%">30</span><span style="left:100%">41초</span></div>
+          </div>
+        </figure>
+        <p class="sd-cap">예시 회의 녹음에서 실제로 계산했습니다. ②는 가장 큰 소리보다 35dB(소리 크기 단위) 넘게 작은 곳을 조용하다고 본 간단한 방법입니다. 실제 화자 분리 모델은 말소리를 가려내도록 학습한 모델로 이 일을 합니다. ③은 말한 구간을 1초 길이로 0.5초마다 잘라 겹친 조각 65개입니다.</p>
+      </div>
+      <div class="sd-main" style="margin-top:40px">
+        <p>말소리 구간을 찾는 일을 VAD(Voice Activity Detection, 음성 구간 검출)라고 부릅니다. 조각을 짧게 자르면 한 조각 안에 한 사람 목소리만 들어갑니다. 길게 자르면 두 사람 말이 한 조각에 섞입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">02</span><h2>조각마다 목소리 지문을 만들어 가까운 것끼리 묶습니다</h2></div>
+      <div class="sd-main">
+        <p>눈을 감고 반 친구들 목소리를 들으면, 이름을 몰라도 "아까 그 목소리"는 알아챕니다. 사람마다 목소리 높이와 울림이 달라서입니다. 모델은 조각마다 이런 특징을 숫자 묶음으로 바꿉니다.</p>
+        <p>이 숫자 묶음을 임베딩(embedding)이라고 부릅니다. 목소리 지문이라고 생각하면 됩니다. 비슷한 목소리면 숫자도 비슷해서 점으로 찍으면 가까이 모입니다.</p>
+        <figure data-figure>
+          <p class="sd-fh">1초 조각 65개를 점으로 찍으면</p>
+          <svg class="sd-scatter" viewBox="0 0 640 400" data-sd-scatter role="img" aria-label="조각 65개가 두 무리로 갈린 점 그림"></svg>
+          <p class="sd-fh" style="margin-top:20px !important">무리 번호를 다시 시간 위에 놓으면<small>00은 SPEAKER_00, 01은 SPEAKER_01</small></p>
+          <div class="sd-lane who" data-sd-who aria-label="무리 번호를 시간 위에 칠한 결과"></div>
+          <div class="sd-axis"><span style="left:0%">0초</span><span style="left:24.4%">10</span><span style="left:48.8%">20</span><span style="left:73.2%">30</span><span style="left:100%">41초</span></div>
+          <p class="sd-cap">실제 녹음 조각마다 높낮이별 소리 세기를 숫자 40개로 요약하고(MFCC라는 방법), 그 40개를 가장 차이가 잘 드러나는 두 축으로 줄여 찍었습니다. 진짜 화자 분리 모델의 목소리 지문은 학습으로 만든 수백 개의 숫자지만 이 짧은 녹음에서는 간단한 특징만으로도 65조각이 두 무리로 정확히 갈렸습니다.</p>
+        </figure>
+        <p style="margin-top:40px">점을 무리로 나누는 일을 군집화(clustering)라고 합니다. 몇 명인지 모르면 모델이 점 사이 거리를 보고 무리 수를 정하는데, 미리 알면 알려 주는 편이 정확합니다. 무리 이름은 SPEAKER_00, SPEAKER_01 같은 번호일 뿐이라 누가 서연인지는 아직 모릅니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">03</span><h2>두 사람이 동시에 말한 곳은 한 사람에게 맡깁니다</h2></div>
+      <div class="sd-main">
+        <p>회의에서는 말이 자주 겹칩니다. 화자 분리 모델은 겹친 구간에 두 사람을 다 표시할 수 있습니다. 그런데 받아쓴 글의 낱말 하나에는 말한 사람을 한 명만 붙여야 합니다.</p>
+        <figure data-figure>
+          <div class="sd-spread n2">
+            <div>
+              <p class="sd-fh">있는 그대로<small>겹친 1초에 두 사람 모두 표시</small></p>
+              <div class="sd-ov">
+                <div class="ln"><span style="left:0;width:55%;background:var(--sd-a)">서연</span></div>
+                <div class="ln"><span style="left:44%;width:56%;background:var(--sd-b);padding-left:calc(11% + 14px)">도윤</span></div><i class="hatch" style="left:44%;width:11%"></i>
+              </div>
+            </div>
+            <div>
+              <p class="sd-fh">한 명만 남김 (exclusive)<small>겹친 1초를 통째로 서연에게</small></p>
+              <div class="sd-ov">
+                <div class="ln"><span style="left:0;width:55%;background:var(--sd-a)">서연</span></div>
+                <div class="ln"><span style="left:55%;width:45%;background:var(--sd-b)">도윤</span></div>
+              </div>
+            </div>
+          </div>
+          <p class="sd-cap">설명을 위한 예시 값입니다. 빨간 점선이 두 사람이 함께 말한 곳입니다. 이 글의 예시 회의에는 실제로 겹쳐 말한 곳이 없습니다. 05·06번에 나오는 "겹친 시간"은 말소리가 아니라 Whisper가 붙인 시간과 화자 구간이 겹친 길이입니다.</p>
+        </figure>
+        <p style="margin-top:40px">그래서 겹친 곳마다 한 사람만 남긴 결과를 따로 만들어 받아쓴 글과 맞출 때 씁니다. 겹친 곳의 다른 한 사람 말은 받아쓰기에서도 대개 묻혀서 제대로 적히지 않습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">04</span><h2>pyannote로 내 컴퓨터에서 화자를 나눕니다</h2></div>
+      <div class="sd-main">
+        <p>화자 분리를 직접 돌릴 때 가장 많이 쓰는 공개 도구는 파이썬 라이브러리 <code>pyannote.audio</code>입니다. 4.0 버전과 함께 나온 <code>speaker-diarization-community-1</code> 모델이 01~03의 단계를 한 번에 해 줍니다.</p>
+        <p>모델 파일은 Hugging Face에 있습니다. 쓰기 전에 모델 페이지에서 사용 조건에 동의하고 내 계정의 접근 토큰을 받아 둡니다. 토큰은 "이 계정이 받아 가도 된다"는 확인용 비밀번호 같은 문자열입니다.</p>
+        <div class="sd-cp">
+          <div class="cp-code">
+<pre data-title="diarize.py" data-hl="6,14,17"><code class="language-python">import json, os
+import torch
+from pyannote.audio import Pipeline
+
+# ① 약관에 동의한 계정의 토큰으로 모델 받기
+pipeline = Pipeline.from_pretrained(
+    "pyannote/speaker-diarization-community-1",
+    token=os.environ["HF_TOKEN"],
+)
+if torch.cuda.is_available():
+    pipeline.to(torch.device("cuda"))
+
+# ② 사람 수를 알면 알려 준다
+output = pipeline("meeting.wav", num_speakers=2)
+
+# ③ 겹친 곳은 한 명만 남긴 결과
+turns = output.serialize()["exclusive_diarization"]
+for t in turns:
+    print(f'{t["speaker"]}  {t["start"]:4.1f} ~ {t["end"]:4.1f}')
+json.dump(turns, open("turns.json", "w"))</code></pre>
+          </div>
+          <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li><code>torch.cuda.is_available()</code>은 NVIDIA GPU가 있는지 묻는 줄입니다. 있으면 그쪽에서 계산해 빨라집니다. 토큰은 내 컴퓨터에만 저장해 두는 설정값인 환경 변수 <code>HF_TOKEN</code>에 넣어 두고 읽습니다. 코드에 직접 적으면 코드를 공유할 때 같이 새어 나갑니다. 모델의 사용 허락 조건(라이선스)은 CC-BY-4.0이라 출처를 밝히면 회사 일에도 쓸 수 있습니다.</li>
+  <li>참석자 수를 모르면 <code>num_speakers</code>를 빼거나 <code>min_speakers</code>·<code>max_speakers</code>로 범위만 줍니다.</li>
+  <li>결과에는 겹친 곳을 그대로 둔 것과 한 명만 남긴 것이 함께 들어 있습니다. 03번처럼 받아쓴 글과 맞출 때는 <code>exclusive_diarization</code>을 씁니다.</li>
+</ol>
+          </div>
+          <div class="cp-term">
+<div class="sd-term" data-sd-term>
+  <div class="sd-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="sd-act" data-sd-run>실행해 보기</button></div>
+  <div class="sd-term-out" data-sd-out aria-live="polite">$ python diarize.py
+SPEAKER_00   0.0 ~  6.5
+SPEAKER_01   7.2 ~ 15.6
+SPEAKER_00  16.3 ~ 19.9
+SPEAKER_01  20.6 ~ 28.4
+SPEAKER_00  29.1 ~ 32.4
+SPEAKER_01  33.1 ~ 40.6</div>
+</div>
+<p class="sd-cap">출력은 예시 회의에서 실제로 말한 구간으로 만든 예시 값입니다. 코드는 <code>pyannote.audio</code> 4.0.7 기준입니다.</p>
+          </div>
+        </div>
+        <details>
+          <summary>API에 맡길 수는 없나요?</summary>
+          <div class="sd-in">
+            <p>지난 글의 <code>gpt-transcribe</code>는 화자를 나누지 않습니다. 화자까지 붙여 주던 <code>gpt-4o-transcribe-diarize</code>는 2027-02-26 종료 예정입니다. pyannote를 만든 팀의 유료 서비스 pyannoteAI는 더 정확한 모델을 API로 제공합니다.</p>
+            <p>정확도는 DER(diarization error rate), 곧 녹음 시간 가운데 잘못 나눈 비율로 잽니다. community-1 모델 카드에 따르면 회의 녹음 모음 AMI에서 17.0%로, 이전 모델 3.1의 18.8%보다 낮습니다.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="sd-band"><div class="sd-wrap"><span>2장</span><b>받아쓴 글에 이름 붙이기</b><small>05~07</small></div></div>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">05</span><h2>글 조각째로 붙이면 남의 말이 섞입니다</h2></div>
+      <div class="sd-main">
+        <p>이제 Whisper가 준 글과 pyannote가 준 화자 구간을 시간으로 맞춥니다. 가장 쉬운 방법은 지난 글에서 본 문장 조각마다 시간이 가장 많이 겹치는 화자를 붙이는 것입니다.</p>
+        <p>두 사람 말이 한 조각에 섞이면 문제가 생깁니다. 아래는 회의 뒷부분 23~41초를 크게 늘린 그림입니다. 위 띠가 실제로 말한 사람이고 아래 띠가 받아쓴 조각에 붙은 사람입니다.</p>
+        <figure data-figure class="sd-vs sd-zoom">
+          <div>
+            <p class="sd-fh">문장 조각마다 붙이면</p>
+            <p class="lab">실제로 말한 사람</p><div class="ln" data-sd-zt></div>
+            <p class="lab">조각에 붙은 사람 · 번호는 지난 글 터미널의 줄</p><div class="ln" data-sd-zc></div>
+            <div class="sd-axis" data-sd-zax></div>
+            <p class="sd-z9"><b>9번 조각</b> 서연과 겹친 시간 0.18초, 도윤과 0.82초라 통째로 도윤에게 갔습니다. Whisper가 이 조각에 실제보다 늦은 시간을 붙여 서연 띠 뒤로 밀린 탓입니다. 점선 8은 글자 없는 빈 조각입니다(지난 글 07번).</p>
+            <div class="sd-out">
+              <div><span class="sd-who-b">도윤</span><span>칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다.</span></div>
+              <div><span class="sd-who-b">도윤</span><span><span class="x">그건 도윤님이 금요일까지 예시를 더 모아주세요</span> 알겠습니다</span></div>
+              <div><span class="sd-who-b">도윤</span><span>출시는 수요일로 하고 섞인 리뷰는 금요일까지 보완하겠습니다</span></div>
+            </div>
+          </div>
+          <div>
+            <p class="sd-fh">낱말마다 붙이면</p>
+            <p class="lab">실제로 말한 사람</p><div class="ln" data-sd-zt></div>
+            <p class="lab">낱말에 붙은 사람</p><div class="ln" data-sd-zw></div>
+            <div class="sd-axis" data-sd-zax></div>
+            <div class="sd-out">
+              <div><span class="sd-who-b">도윤</span><span>칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다. <span class="x">그건</span></span></div>
+              <div><span class="sd-who-a">서연</span><span>도윤님이 금요일까지 예시를 더 모아주세요</span></div>
+              <div><span class="sd-who-b">도윤</span><span>알겠습니다 출시는 수요일로 하고 섞인 리뷰는 금요일까지 보완하겠습니다</span></div>
+            </div>
+          </div>
+          <p class="sd-cap">파란색은 서연, 주황색은 도윤입니다. 받아쓴 조각과 낱말의 시간은 실제 Whisper 출력이고 말한 사람 구간은 04번의 예시 값입니다. 물결 밑줄이 잘못 붙은 말입니다.</p>
+        </figure>
+        <p style="margin-top:40px">그래서 지난 글의 코드에 <code>return_timestamps="word"</code>를 줘서 낱말마다 시간을 받고 낱말 하나하나에 화자를 붙입니다. 서연의 지시는 서연에게 돌아왔지만 맨 앞 낱말 "그건" 하나는 여전히 도윤 쪽에 남았습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">06</span><h2>낱말 시간이 조금만 어긋나도 경계의 낱말이 넘어갑니다</h2></div>
+      <div class="sd-main">
+        <p>Whisper가 "그건"에 붙인 시간은 27.6~29.3초입니다. 실제로는 서연이 29초 무렵에 꺼낸 말인데, 시간이 앞으로 1초 넘게 늘어져 도윤 구간과 더 많이 겹쳤습니다.</p>
+        <figure data-figure>
+          <p class="sd-fh">27~30초를 더 크게</p>
+          <div class="sd-ruler">
+            <i class="gl" style="left:0%"></i><i class="gl" style="left:33.3%"></i><i class="gl" style="left:66.7%"></i><i class="gl" style="left:100%"></i>
+            <div class="bar" style="top:8px;left:0;width:45%;background:var(--sd-b)">도윤 ~28.35초</div>
+            <div class="bar" style="top:50px;left:68.3%;width:31.7%;background:var(--sd-a)">서연 29.05초~</div>
+            <div class="w" style="left:20%;width:56.7%">그건 <span style="font-weight:400;font-size:13.5px;margin-left:8px;font-family:var(--font-mono)">27.6~29.3초</span></div>
+            <i class="ov" style="left:20%;width:25%;background:var(--sd-b)"></i><span class="ovt" style="left:20%;color:var(--sd-b)">도윤과 0.75초</span>
+            <i class="ov" style="left:68.3%;width:8.4%;background:var(--sd-a)"></i><span class="ovt" style="left:68.3%;color:var(--sd-a)">서연과 0.25초</span>
+            <span class="tk" style="left:0;transform:none">27초</span><span class="tk" style="left:33.3%">28</span><span class="tk" style="left:66.7%">29</span><span class="tk" style="left:100%;transform:translateX(-100%)">30초</span>
+          </div>
+          <p class="sd-cap">겹친 길이가 긴 쪽(도윤)이 "그건"을 가져갔습니다. 시간은 모두 실제 출력과 04번 예시 값 그대로입니다.</p>
+        </figure>
+        <p style="margin-top:40px">낱말 시간을 소리에 다시 맞추는 강제 정렬(forced alignment)을 거치면 이런 어긋남이 줄어듭니다. 공개 도구 WhisperX가 이렇게 낱말 시간을 다듬은 다음 화자를 붙입니다. 그래도 말이 바뀌는 경계의 한두 낱말은 틀릴 수 있어서 회의록에는 사람이 확인할 자리를 남겨 둡니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">07</span><h2>낱말마다 겹친 시간이 가장 긴 화자를 붙입니다</h2></div>
+      <div class="sd-main">
+        <p>05~06에서 본 규칙을 코드로 옮기면 스무 줄 남짓입니다. 입력은 낱말 시간(<code>words.json</code>)과 화자 구간(<code>turns.json</code>) 두 파일이고 출력은 말한 사람별로 묶은 줄입니다.</p>
+        <div class="sd-cp">
+          <div class="cp-code">
+<pre data-title="merge.py" data-hl="10,16-18,26-28"><code class="language-python">import json
+
+words = json.load(open("words.json"))   # Whisper 가 준 낱말과 시간
+turns = json.load(open("turns.json"))   # 화자 분리가 준 화자 구간
+
+def speaker_of(w_start, w_end):
+    # ① 낱말 구간과 화자 구간이 겹친 길이를 화자별로 더한다
+    overlap = {}
+    for t in turns:
+        o = min(w_end, t["end"]) - max(w_start, t["start"])
+        if o > 0:
+            overlap[t["speaker"]] = overlap.get(t["speaker"], 0) + o
+    if overlap:
+        return max(overlap, key=overlap.get)
+    # ② 겹친 데가 없으면 가운데 시각이 가장 가까운 구간
+    mid = (w_start + w_end) / 2
+    dist = lambda t: min(abs(mid - t["start"]), abs(mid - t["end"]))
+    near = min(turns, key=dist)
+    return near["speaker"]
+
+# ③ 같은 화자가 이어 말한 낱말은 한 줄로 묶는다
+lines = []
+for w in words:
+    start, end = w["timestamp"]
+    spk = speaker_of(start, end)
+    if lines and lines[-1]["speaker"] == spk:
+        lines[-1]["text"] += w["text"]
+        lines[-1]["end"] = end
+    else:
+        lines.append({"speaker": spk, "start": start,
+            "end": end, "text": w["text"]})
+
+for l in lines:
+    print(f'[{l["start"]:5.1f}] {l["speaker"]}:{l["text"]}')
+json.dump(lines, open("lines.json", "w"), ensure_ascii=False)</code></pre>
+          </div>
+          <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>두 구간이 겹친 길이는 "늦게 끝난 시작"부터 "먼저 끝난 끝"까지입니다. 06번의 "그건"은 여기서 도윤 0.75초, 서연 0.25초가 나옵니다.</li>
+  <li>낱말이 화자 구간 사이의 쉼에 걸려 어느 쪽과도 겹치지 않을 때를 위한 대비입니다. 가장 가까운 구간의 화자를 붙입니다.</li>
+  <li>낱말마다 한 줄을 만들면 읽기 어려우니, 화자가 바뀔 때만 새 줄을 엽니다.</li>
+</ol>
+          </div>
+          <div class="cp-term">
+<div class="sd-term" data-sd-term>
+  <div class="sd-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="sd-act" data-sd-run>실행해 보기</button></div>
+  <div class="sd-term-out" data-sd-out aria-live="polite">$ python merge.py
+[  0.0] SPEAKER_00: 오늘은 배달앱 리뷰 분류기 출시 일정을 정하겠습니다. 도윤님, 정화돈은 어떻게 됐나요?
+[  7.2] SPEAKER_01: 지난주에 92%까지 올렸습니다. 슈파베이스의 사인 리뷰 3000개로 확인했어요.
+[ 16.3] SPEAKER_00: 좋네요. 그럼 다음주 수요일에 출시해도 될까요?
+[ 20.6] SPEAKER_01: 하나 걸리는 게 있습니다. 칭찬과 불만이 섞인 리뷰를 아직 자주 틀립니다. <span class="nz">그건</span>
+[ 29.3] SPEAKER_00: 도윤님이 금요일까지 예시를 더 모아주세요
+[ 32.9] SPEAKER_01: 알겠습니다 출시는 수요일로 하고 섞인 리뷰는 금요일까지 보완하겠습니다</div>
+</div>
+<p class="sd-cap">실제로 돌린 출력입니다. 빨간 낱말이 06번의 "그건"입니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sd-band"><div class="sd-wrap"><span>3장</span><b>회의록 문서로 만들기</b><small>08~10</small></div></div>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">08</span><h2>번호를 이름으로 바꾸고 잘못 들은 낱말을 고칩니다</h2></div>
+      <div class="sd-main">
+        <p>SPEAKER_00이 누구인지는 사람이 한 번 알려 줘야 합니다. 회의 녹음 앱이 "참석자 1은 누구인가요?"라고 묻는 것이 이 단계입니다. 이 글의 코드는 번호와 이름을 짝지은 표를 직접 적어 둡니다.</p>
+        <p>그다음 LLM에게 받아쓰기 오탈자만 고치게 합니다. 지난 글에서 본 "정화돈은", "슈파베이스의 사인" 같은 말입니다. 용어집을 함께 주면 무엇으로 고쳐야 할지 알기 쉽습니다.</p>
+        <figure data-figure>
+          <div class="sd-fix">
+            <b>고치기 전</b><b>고친 뒤</b>
+            <div><span class="spk">SPEAKER_00</span> 도윤님, <span class="old">정화돈은</span> 어떻게 됐나요?</div>
+            <div><b class="sd-who-a">김서연</b> 도윤님, <span class="new">정확도는</span> 어떻게 됐나요?</div>
+            <div><span class="spk">SPEAKER_01</span> <span class="old">슈파베이스의 사인</span> 리뷰 3000개로 확인했어요.</div>
+            <div><b class="sd-who-b">박도윤</b> <span class="new">Supabase에 쌓인</span> 리뷰 3000개로 확인했어요.</div>
+            <div><span class="spk">SPEAKER_01</span> …아직 자주 틀립니다. 그건</div>
+            <div><b class="sd-who-b">박도윤</b> …아직 자주 틀립니다. <span class="same">그건</span> <em class="sd-pen" style="font-size:20px">줄 경계는 그대로</em></div>
+          </div>
+          <p class="sd-cap">고친 뒤 칸은 예시 답입니다. 빨간 바탕이 고친 말, 초록 바탕이 고친 결과입니다. "그건"처럼 다른 사람 줄에 붙은 낱말은 LLM이 옮기지 않게 했습니다.</p>
+        </figure>
+        <div class="sd-cp" style="margin-top:44px">
+          <div class="cp-code">
+<pre data-title="minutes.py" data-hl="6,21,28"><code class="language-python">import json
+from openai import OpenAI
+from pydantic import BaseModel
+
+client = OpenAI()
+NAMES = {"SPEAKER_00": "김서연", "SPEAKER_01": "박도윤"}
+lines = json.load(open("lines.json"))
+# ① 기계 번호를 사람 이름으로
+for l in lines:
+    l["name"] = NAMES[l["speaker"]]
+transcript = "\n".join(f'{i}. {l["name"]}: {l["text"].strip()}' for i, l in enumerate(lines))
+
+class Line(BaseModel):
+    i: int
+    text: str
+
+class Corrected(BaseModel):
+    lines: list[Line]
+
+# ② 잘못 들은 낱말만 고친다
+fixed = client.responses.parse(
+    model="gpt-6.1-sol",
+    instructions=(
+        "회의 받아쓰기의 오탈자만 고쳐라. 말투와 뜻은 바꾸지 마라. "
+        "줄 수와 번호는 그대로 둔다. 용어집: Supabase, 리뷰 분류기, 정확도."
+    ),
+    input=transcript,
+    text_format=Corrected,
+).output_parsed
+for row in fixed.lines:
+    lines[row.i]["text"] = row.text</code></pre>
+          </div>
+          <div class="cp-notes">
+<ol class="pg-code-notes">
+  <li>번호와 이름의 짝은 회의마다 달라집니다. 앱이라면 화면에서 사용자가 고른 값을 여기에 넣습니다.</li>
+  <li><code>responses.parse</code>는 3편에서 본 Structured Outputs, 곧 답의 모양을 미리 정해 두고 그 모양대로만 받는 기능입니다. 답은 <code>Corrected</code> 모양으로 받습니다. 줄 번호를 그대로 돌려받으니, LLM이 줄을 합치거나 나눠 화자 경계를 바꿀 수 없습니다.</li>
+</ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">09</span><h2>회의록 칸을 정해 두고 LLM이 채우게 합니다</h2></div>
+      <div class="sd-main">
+        <p>회의록에 들어갈 칸을 먼저 정합니다. 제목, 요약, 결정 사항, 할 일입니다. 칸 모양을 Pydantic 클래스(파이썬으로 데이터 모양을 적는 방법)로 적어 보내면 모델은 그 모양 그대로 답하고 코드는 칸마다 Word 문서의 자리에 옮겨 적습니다.</p>
+        <figure data-figure>
+          <p class="sd-fh">칸 이름과 문서 속 자리</p>
+          <div class="sd-map">
+            <div class="sd-fields">
+              <div class="c1">title<small>회의 제목 한 줄</small></div>
+              <div class="c2">summary<small>요약 문장 목록</small></div>
+              <div class="c3">decisions<small>정해진 것 목록</small></div>
+              <div class="c4">action_items<small>담당·할 일·기한 묶음 목록</small></div>
+            </div>
+            <div class="sd-doc">
+              <h3 data-c class="c1">배달 앱 리뷰 분류기 출시 일정 회의</h3>
+              <div data-c class="c2"><h4>요약</h4><ul><li>정확도는 Supabase에 쌓인 리뷰 3,000개 기준 92%다.</li><li>칭찬과 불만이 섞인 리뷰를 아직 자주 틀린다.</li></ul></div>
+              <div data-c class="c3"><h4>결정 사항</h4><ol><li>리뷰 분류기는 다음 주 수요일에 출시한다.</li></ol></div>
+              <div data-c class="c4"><h4>할 일</h4><table><tr><th>담당</th><th>할 일</th><th>기한</th></tr><tr><td>박도윤</td><td>섞인 리뷰 예시를 더 모아 분류기를 보완</td><td>금요일</td></tr></table></div>
+            </div>
+          </div>
+          <p class="sd-cap">같은 색 점이 같은 칸입니다. 문서 내용은 예시 답입니다. 대화 기록은 08번에서 고친 줄을 그대로 붙입니다.</p>
+        </figure>
+        <div class="sd-cp" style="margin-top:44px">
+          <div class="cp-code">
+<pre data-title="minutes.py (이어서)" data-start="32" data-hl="6-10,17"><code class="language-python">class ActionItem(BaseModel):
+    owner: str
+    task: str
+    due: str
+
+class Minutes(BaseModel):
+    title: str
+    summary: list[str]
+    decisions: list[str]
+    action_items: list[ActionItem]
+
+# ③ 회의록 칸을 채운다
+minutes = client.responses.parse(
+    model="gpt-6.1-sol",
+    instructions="회의 기록을 읽고 회의록을 써라. 기록에 없는 내용은 쓰지 마라.",
+    input="\n".join(f'{l["name"]}: {l["text"]}' for l in lines),
+    text_format=Minutes,
+).output_parsed
+
+json.dump({"lines": lines, "minutes": minutes.model_dump()},
+          open("minutes.json", "w"), ensure_ascii=False)</code></pre>
+
+          </div>
+          <div class="cp-notes">
+<ol class="pg-code-notes" style="counter-reset: pgc 2">
+  <li><code>action_items</code>를 담당·할 일·기한으로 나눠 받아야 표로 옮길 수 있습니다. 한 문장으로 받으면 누가 언제까지인지 다시 뽑아야 합니다. "기록에 없는 내용은 쓰지 마라"는 없던 결정이나 담당자를 지어내지 않게 하는 한 줄입니다.</li>
+  <li><code>python-docx</code>는 Word 파일(.docx)을 만드는 라이브러리입니다. <code>Table Grid</code>는 Word에 들어 있는 기본 표 모양입니다. 코드는 <code>python-docx</code> 1.2.0 기준입니다.</li>
+</ol>
+          </div>
+          <div class="cp-term">
+<details style="margin:0 0 18px"><summary>Word 파일로 옮기는 코드 <code>to_docx.py</code> 보기</summary><div class="sd-in">
+<pre data-title="to_docx.py" data-hl="10,13-15"><code class="language-python">import json
+from docx import Document
+
+data = json.load(open("minutes.json"))
+m, lines = data["minutes"], data["lines"]
+doc = Document()
+doc.add_heading(m["title"], level=1)
+# ④ 할 일은 표로
+doc.add_heading("할 일", level=2)
+table = doc.add_table(rows=1, cols=3, style="Table Grid")
+for cell, head in zip(table.rows[0].cells, ["담당", "할 일", "기한"]):
+    cell.text = head
+for a in m["action_items"]:
+    row = table.add_row().cells
+    row[0].text, row[1].text, row[2].text = a["owner"], a["task"], a["due"]
+# (요약·결정 사항·대화 기록도 같은 방식으로 add_paragraph)
+doc.save("meeting_minutes.docx")
+print("저장: meeting_minutes.docx")</code></pre>
+</div></details>
+<div class="sd-term" data-sd-term>
+  <div class="sd-term-bar"><span>터미널 · 누르면 출력이 처음부터 다시 찍힙니다</span><button type="button" class="sd-act" data-sd-run>실행해 보기</button></div>
+  <div class="sd-term-out" data-sd-out aria-live="polite">$ python minutes.py
+제목: 배달 앱 리뷰 분류기 출시 일정 회의
+결정: 리뷰 분류기는 다음 주 수요일에 출시한다.
+할 일: 박도윤 — 섞인 리뷰 예시를 더 모아 분류기를 보완 (금요일)
+$ python to_docx.py
+저장: meeting_minutes.docx</div>
+</div>
+<p class="sd-cap"><code>minutes.py</code>의 출력은 예시 답입니다. <code>to_docx.py</code>는 실제로 돌려 Word 파일을 만들었습니다. 제목·결정·할 일을 찍는 <code>print</code> 줄은 위 코드에서 생략했습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><span class="sd-num">10</span><h2>회의록 AI를 붙이기 전에 정할 것</h2></div>
+      <div class="sd-main">
+        <ol class="sd-todo">
+          <li>녹음이 회사 밖으로 나가면 안 된다면 Whisper와 pyannote를 내 컴퓨터에서 돌립니다. 둘 다 모델 파일이 공개돼 있습니다.</li>
+          <li>참석자 수를 알면 <code>num_speakers</code>로 알려 줍니다. 모르면 범위만 줍니다.</li>
+          <li>화자는 문장 조각이 아니라 낱말마다 붙입니다. 말이 바뀌는 경계의 낱말은 틀릴 수 있으니 시간과 함께 남겨 사람이 확인하게 합니다.</li>
+          <li>LLM에게는 오탈자 고치기와 회의록 칸 채우기만 맡기고 기록에 없는 내용은 쓰지 말라고 적습니다. 결정 사항과 할 일은 회의 참석자가 마지막에 확인합니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="sd-sec">
+    <div class="sd-wrap sd-rail">
+      <div class="sd-rh"><h2>참고 자료</h2></div>
+      <div class="sd-main">
+        <ul class="sd-refs">
+          <li><a href="https://huggingface.co/pyannote/speaker-diarization-community-1">Hugging Face, pyannote/speaker-diarization-community-1</a> — 사용법, <code>exclusive_diarization</code>, AMI DER 17.0%, CC-BY-4.0</li>
+          <li><a href="https://github.com/pyannote/pyannote-audio">GitHub, pyannote/pyannote-audio</a> — 4.0, <code>num_speakers</code>·<code>min_speakers</code>·<code>max_speakers</code></li>
+          <li><a href="https://github.com/m-bain/whisperX">GitHub, m-bain/whisperX</a> — 강제 정렬로 낱말 시간 다듬기, 낱말별 화자 붙이기</li>
+          <li><a href="https://developers.openai.com/api/docs/guides/structured-outputs">OpenAI, Structured Outputs</a> — <code>responses.parse</code>, Pydantic 모양으로 답 받기</li>
+          <li><a href="https://developers.openai.com/api/docs/deprecations">OpenAI, Deprecations</a> — gpt-4o-transcribe-diarize 2027-02-26 종료</li>
+          <li><a href="https://python-docx.readthedocs.io/">python-docx 문서</a> — 제목·목록·표 만들기</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div class="sd-end"></div>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const timers = new Set();
+  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
+  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
+
+  /* 예시 녹음(41초)에서 계산한 값: 0.1초마다 세기, 말소리 구간(초), 1초 조각 [시작초, 무리, x, y] */
+  const D = {"env":[0.87,0.53,0.57,0.37,0.78,0.9,0.83,0.71,0.61,0.61,0.62,0.6,0.48,0.55,0.61,0.59,0.64,0.56,0.49,0.51,0.54,0.62,0.64,0.45,0.96,0.63,0.52,0.41,0.59,0.68,0.75,0.77,0.37,0.41,0.64,0.69,0.36,0.0,0.0,0.34,0.71,0.61,0.43,0.58,0.36,0.18,0.0,0.09,0.8,0.72,0.67,0.81,0.75,0.47,0.92,0.89,0.85,0.75,0.7,0.68,0.69,0.53,0.85,0.7,0.65,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.07,0.48,0.43,0.45,0.19,0.76,0.63,0.4,0.04,0.82,0.64,0.34,0.39,0.34,0.08,0.64,0.35,0.29,0.11,0.44,0.32,0.54,0.33,0.35,0.58,0.48,0.56,0.54,0.42,0.4,0.41,0.45,0.25,0.45,0.33,0.0,0.0,0.0,0.0,0.0,0.02,0.59,0.47,0.63,0.54,0.43,0.45,0.68,0.55,0.42,0.29,0.53,0.49,0.3,0.37,0.42,0.73,0.82,0.44,0.46,0.26,0.2,0.54,0.2,0.59,0.71,0.86,0.78,0.29,0.62,0.35,0.35,0.37,0.36,0.52,0.72,0.51,0.48,0.11,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.45,0.78,0.38,0.6,0.6,0.58,0.28,0.0,0.0,0.64,0.91,0.45,0.31,0.15,0.92,0.89,0.35,0.5,0.39,0.56,0.67,0.66,0.81,0.19,0.52,0.49,0.53,0.64,0.71,0.68,0.7,0.67,0.66,0.71,0.76,0.68,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.41,0.37,0.53,0.44,0.05,0.79,0.5,0.38,0.48,0.47,0.15,0.51,0.41,0.45,0.35,0.4,0.32,0.4,0.44,0.45,0.4,0.31,0.0,0.0,0.0,0.0,0.0,0.07,0.5,0.38,0.07,0.46,0.41,0.21,0.61,0.5,0.06,0.82,0.79,0.41,0.39,0.47,0.4,0.73,0.04,0.35,0.26,0.44,0.41,0.59,0.52,0.41,0.5,0.47,0.45,0.44,0.05,0.05,0.54,0.49,0.8,0.81,0.04,0.73,0.65,0.37,0.34,0.41,0.43,0.43,0.4,0.32,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.65,0.71,1.0,0.37,0.62,0.58,0.44,0.64,0.65,0.53,0.67,0.64,0.63,0.59,0.8,0.91,0.65,0.63,0.79,0.6,0.52,0.6,0.52,0.85,0.81,0.64,0.77,0.67,0.41,0.4,0.53,0.61,0.54,0.18,0.0,0.0,0.0,0.0,0.0,0.0,0.71,0.52,0.24,0.46,0.3,0.38,0.31,0.45,0.39,0.55,0.47,0.03,0.0,0.0,0.0,0.0,0.0,0.1,0.86,0.7,0.33,0.29,0.49,0.21,0.81,0.75,0.54,0.36,0.49,0.56,0.34,0.29,0.6,0.47,0.0,0.55,0.74,0.13,0.31,0.34,0.47,0.71,0.67,0.51,0.47,0.09,0.12,0.62,0.5,0.55,0.36,0.23,0.52,0.49,0.45,0.45,0.95,0.86,0.47,0.31,0.34,0.45,0.33,0.38,0.37,0.38,0.44,0.41,0.42,0.32,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"vad":[[0.0,3.7],[3.9,4.5],[4.8,6.5],[7.2,8.0],[8.1,9.2],[9.3,10.7],[11.3,15.0],[16.3,17.0],[17.2,17.6],[17.7,19.9],[20.6,21.0],[21.1,22.8],[23.3,23.9],[24.0,24.2],[24.3,25.0],[25.1,26.2],[26.4,26.8],[26.9,27.8],[29.0,32.4],[33.1,34.1],[34.7,36.4],[36.5,36.7],[36.8,37.5],[37.6,38.1],[38.2,40.0]],"pts":[[0.0,1,0.0,0.812],[0.5,1,0.108,0.782],[1.0,1,0.093,0.746],[1.5,1,0.075,0.66],[2.0,1,0.055,0.712],[2.5,1,0.066,0.701],[3.0,1,0.34,0.34],[3.5,1,0.159,0.588],[4.0,1,0.165,0.582],[4.5,1,0.174,0.5],[5.0,1,0.086,0.645],[5.5,1,0.118,0.634],[7.23,0,0.889,0.733],[7.73,0,0.809,0.692],[8.23,0,0.774,0.727],[8.73,0,0.858,0.76],[9.23,0,0.852,0.854],[9.73,0,0.897,0.835],[10.23,0,0.939,0.148],[10.73,0,0.849,0.189],[11.23,0,0.84,0.809],[11.73,0,0.889,1.0],[12.23,0,0.855,0.998],[12.73,0,0.832,0.835],[13.23,0,0.892,0.799],[13.73,0,0.912,0.945],[14.23,0,0.897,0.702],[16.33,1,0.214,0.485],[16.83,1,0.311,0.371],[17.33,1,0.036,0.585],[17.83,1,0.035,0.62],[18.33,1,0.023,0.618],[18.83,1,0.037,0.641],[20.62,0,1.0,0.769],[21.12,0,0.855,0.858],[21.62,0,0.797,0.902],[22.12,0,0.872,0.407],[22.62,0,0.946,0.021],[23.12,0,0.894,0.392],[23.62,0,0.906,0.655],[24.12,0,0.841,0.672],[24.62,0,0.841,0.797],[25.12,0,0.887,0.831],[25.62,0,0.929,0.487],[26.12,0,0.858,0.468],[26.62,0,0.775,0.738],[27.12,0,0.866,0.331],[29.05,1,0.109,0.79],[29.55,1,0.095,0.819],[30.05,1,0.078,0.72],[30.55,1,0.138,0.733],[31.05,1,0.072,0.786],[33.08,0,0.883,0.934],[33.58,0,0.881,0.254],[34.08,0,0.865,0.0],[34.58,0,0.824,0.599],[35.08,0,0.932,0.995],[35.58,0,0.932,0.746],[36.08,0,0.87,0.653],[36.58,0,0.876,0.743],[37.08,0,0.882,0.738],[37.58,0,0.855,0.646],[38.08,0,0.911,0.738],[38.58,0,0.892,0.925],[39.08,0,0.888,0.744]]};
+  const T = 41.25, pct = (t) => (t / T * 100).toFixed(2) + "%";
+  const COL = ["var(--sd-b)", "var(--sd-a)"];   // 무리 0 = 도윤(SPEAKER_01), 무리 1 = 서연(SPEAKER_00)
+  const NAME = ["SPEAKER_01", "SPEAKER_00"];
+
+  /* 01 ① 녹음 세기 막대 — 205개로 줄여 그린다 */
+  const env = root.querySelector("[data-sd-env]");
+  for (let i = 0; i < D.env.length; i += 2) {
+    const v = Math.max(D.env[i], D.env[i + 1] || 0);
+    env.insertAdjacentHTML("beforeend", `<i style="height:${Math.max(4, v * 100).toFixed(0)}%"></i>`);
+  }
+  /* 01 ② 말소리 구간 */
+  const vad = root.querySelector("[data-sd-vad]");
+  D.vad.forEach(([a, b]) => vad.insertAdjacentHTML("beforeend", `<span style="left:${pct(a)};width:${pct(b - a)}"></span>`));
+  /* 01 ③ 1초 조각 — 0.5초씩 겹치니 두 층으로 번갈아 놓는다 */
+  const seg = root.querySelector("[data-sd-seg]");
+  D.pts.forEach(([s], i) => seg.insertAdjacentHTML("beforeend", `<span style="left:${pct(s)};width:${pct(1)};${i % 2 ? "top:30px" : "top:8px"}"></span>`));
+
+  /* 02 점 그림 */
+  const svg = root.querySelector("[data-sd-scatter]");
+  const X = (x) => 60 + x * 520, Y = (y) => 330 - y * 260;
+  let h = `<line class="ax" x1="40" y1="350" x2="610" y2="350"/><line class="ax" x1="40" y1="20" x2="40" y2="350"/>
+    <text class="s" x="610" y="382" text-anchor="end">소리 특징을 줄인 가로 축 →</text><text class="s" x="48" y="22">↑ 세로 축 · 점 사이가 가까울수록 비슷한 목소리</text>`;
+  [[0, "도윤"], [1, "서연"]].forEach(([c, who]) => {
+    const p = D.pts.filter((q) => q[1] === c);
+    const xs = p.map((q) => X(q[2])), ys = p.map((q) => Y(q[3]));
+    const x0 = Math.min(...xs) - 16, x1 = Math.max(...xs) + 16, y0 = Math.min(...ys) - 16, y1 = Math.max(...ys) + 16;
+    h += `<rect class="g" x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="40" style="stroke:${COL[c]}"/>`;
+    // 서연 무리는 위쪽에, 도윤 무리는 왼쪽 아래 빈자리에 이름표를 단다
+    const tx = c ? x0 : x0 - 16, ty = c ? y0 - 38 : y1 - 52, anchor = c ? "start" : "end";
+    h += `<text x="${tx}" y="${ty}" text-anchor="${anchor}" style="fill:${COL[c]}">무리 ${c ? 1 : 2} → ${NAME[c]}</text>`;
+    h += `<text class="s" x="${tx}" y="${ty + 26}" text-anchor="${anchor}">조각 ${p.length}개 · 실제로는 ${who}</text>`;
+  });
+  D.pts.forEach(([, c, x, y]) => { h += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="7" style="fill:${COL[c]}"/>`; });
+  svg.innerHTML = h;
+
+  /* 02 무리 번호를 시간 위에 — 이어진 같은 무리 조각을 한 구간으로 합친다 */
+  const who = root.querySelector("[data-sd-who]");
+  const runs = [];
+  D.pts.forEach(([s, c]) => {
+    const last = runs[runs.length - 1];
+    if (last && last.c === c && s <= last.b + 0.01) last.b = s + 1; else runs.push({ a: s, b: s + 1, c });
+  });
+  runs.forEach((r) => who.insertAdjacentHTML("beforeend", `<span style="left:${pct(r.a)};width:${pct(r.b - r.a)};background:${COL[r.c]}">${r.b - r.a > 2 ? NAME[r.c].slice(-2) : ""}</span>`));
+
+  /* 05 확대 그림: 23~41초 */
+  const Z0 = 23, Z1 = 41, zp = (t) => ((Math.max(Z0, t) - Z0) / (Z1 - Z0) * 100).toFixed(2) + "%";
+  const zw = (a, b) => ((Math.min(Z1, b) - Math.max(Z0, a)) / (Z1 - Z0) * 100).toFixed(2) + "%";
+  const A = "var(--sd-a)", B = "var(--sd-b)";
+  const TURNS = [[20.62, 28.35, B, "도윤"], [29.05, 32.38, A, "서연"], [33.08, 40.55, B, "도윤"]];
+  $$("[data-sd-zt]").forEach((el) => TURNS.forEach(([a, b, c, n]) => el.insertAdjacentHTML("beforeend", `<span style="left:${zp(a)};width:${zw(a, b)};background:${c}">${n}</span>`)));
+  const CH = [[23.4, 27.6, B, "7"], [29.0, 29.0, "", "8"], [32.2, 33.9, B, "9", 1], [33.9, 36.4, B, "10"], [36.4, 39.5, B, "11"]];
+  $$("[data-sd-zc]").forEach((el) => CH.forEach(([a, b, c, n, bad]) => el.insertAdjacentHTML("beforeend", c
+    ? `<span class="${bad ? "bad" : ""}" style="left:${zp(a)};width:${zw(a, b)};background:${c}">${n}</span>`
+    : `<span class="e" style="left:calc(${zp(a)} - 9px);width:18px">${n}</span>`)));
+  const W = [[23.34, 24.16, B], [24.16, 24.82, B], [24.82, 25.26, B], [25.26, 25.68, B], [25.68, 26.14, B], [26.14, 26.74, B], [26.74, 27.9, B],
+    [27.6, 29.3, B, "그건", 1], [29.3, 29.94, A], [29.94, 30.68, A], [30.68, 31.22, A], [31.22, 31.42, A], [31.42, 32.12, A],
+    [32.92, 33.76, B], [34.66, 35.26, B], [35.26, 35.98, B], [35.98, 36.34, B], [36.6, 36.96, B], [36.96, 37.44, B], [37.44, 38.5, B], [38.5, 39.44, B]];
+  $$("[data-sd-zw]").forEach((el) => W.forEach(([a, b, c, n, bad]) => el.insertAdjacentHTML("beforeend",
+    `<span class="${bad ? "bad" : ""}" style="left:${zp(a)};width:${zw(a, b)};background:${c}">${n || ""}</span>`)));
+  $$("[data-sd-zax]").forEach((el) => { el.innerHTML = [23, 26, 29, 32, 35, 38, 41].map((t) => `<span style="left:${zp(t)}">${t}${t === 23 || t === 41 ? "초" : ""}</span>`).join(""); });
+
+  /* 터미널: 실제 API 호출 없이 HTML 에 써 둔 출력을 줄마다 다시 찍는다 */
+  $$("[data-sd-term]").forEach((term) => {
+    const out = term.querySelector("[data-sd-out]"), btn = term.querySelector("[data-sd-run]");
+    const lines = out.innerHTML.split("\n");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; out.innerHTML = "";
+      for (let i = 0; i < lines.length; i++) {
+        if (signal.aborted) return;
+        out.innerHTML = lines.slice(0, i + 1).join("\n") + '<span class="cur"></span>';
+        if (!reduce) await later(i === 0 ? 450 : 160);
+      }
+      out.innerHTML = lines.join("\n");
+      btn.disabled = false; btn.textContent = "다시 실행";
+    }, { signal });
+  });
+})();
+</script>
