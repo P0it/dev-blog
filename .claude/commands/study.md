@@ -1,5 +1,5 @@
 ---
-description: 학습 주제·시리즈 목차·수업 자료를 받아 개념이 그림으로 이해되는 HTML 페이지 글을 만들고 Supabase posts 에 초안으로 적재 (레퍼런스 탐색 → 스토리보드 → 그림 먼저 구현 → Critic → humanize)
+description: 학습 주제·시리즈 목차·수업 자료를 받아 개념이 그림으로 이해되는 HTML 페이지 글을 만들고 Supabase posts 에 바로 발행 (레퍼런스 탐색 → 스토리보드 → 그림 먼저 구현 → Critic → humanize)
 ---
 
 # /study — 학습 주제 → 인터랙티브 HTML 페이지 글
@@ -195,7 +195,9 @@ Supabase Storage 이미지를 새로 받아 Egress 를 쓴다 — 10/16 에 13�
 
 ## 7. 적재
 
-- `.env.local` 이 있으면: `npm run draft -- push auto-drafts/posts/<slug>.html`. 출력된 `/admin/editor?slug=…` 를 알린다.
+- `.env.local` 이 있으면: 7-1 썸네일을 먼저 만들고 `npm run draft -- push auto-drafts/posts/<slug>.html --publish` 로 **바로 발행한다**
+  (2026-11-09 사용자 지시 — 초안으로 두지 않는다. 이미 발행된 글을 고칠 때는 `--force`). 썸네일(`cover_image`) 없이 발행하지 않는다.
+  출력된 `/admin/editor?slug=…` 를 알린다. 5장의 Critic 상한에서 멈춘 글은 사용자가 "이대로 진행"이라 한 뒤에 발행한다.
 - 없으면(클라우드 루틴): 파일을 커밋·푸시한다. GitHub Actions(`auto-draft-ingest`)가 적재한다.
   매일 루틴은 4~6을 모두 마쳤을 때 프런트매터에 `publish: true` 를 넣는다 — Actions 가 화면 점검을
   다시 돌려 통과하면 바로 발행한다(`docs/auto-daily-draft.md`). 로컬 실행에서는 넣지 않는다.
@@ -206,7 +208,7 @@ Supabase Storage 이미지를 새로 받아 Egress 를 쓴다 — 10/16 에 13�
 
 - 대표 그림(대개 첫 화면의 대표 인터랙션)에 `data-thumb` 를 단다. 썸네일로 보여 줄 상태가 따로 있으면
   `data-thumb-act="<js>"`(el = 그 요소)로 그 상태를 만든다. 제목은 넣지 않는다 — 카드가 제목을 따로 보여 준다.
-- `.env.local` 이 있으면 `npm run thumb -- <slug>` 로 1200×630 JPEG 를 찍어 올리고 `cover_image` 를 채운 뒤 `npm run draft -- push` 한다.
+- `.env.local` 이 있으면 `npm run thumb -- <slug>` 로 1200×630 JPEG 를 찍어 올리고 `cover_image` 를 채운 뒤 `npm run draft -- push … --publish` 한다.
   만든 썸네일은 직접 열어 본다(잘리거나 배경 장식이 끊겨 보이면 data-thumb-act 로 정리).
 - 클라우드 루틴은 `data-thumb` 만 달아 두면 발행 직전 GitHub Actions 가 같은 스크립트로 찍어 올린다.
 

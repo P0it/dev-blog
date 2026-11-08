@@ -7,7 +7,7 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
 대상 URL / 메모: **$ARGUMENTS**
 
 이 세션이 곧 작성자다. `ai_jobs` 큐·로컬 워커·`claude` CLI 를 거치지 않고,
-아래 절차로 직접 초안을 써서 Supabase `posts` 에 `draft` 로 넣는다.
+아래 절차로 직접 초안을 써서 Supabase `posts` 에 바로 발행한다(로컬, 2026-11-09 사용자 지시).
 
 ## 절차
 
@@ -80,7 +80,7 @@ description: URL을 받아 POSTING.md 규약대로 글 초안을 작성하고 Su
    - 고른 컷마다 `npm run capture -- upload <고른_파일>` → public URL 을 받아, 본문의 해당 `## 소제목` 바로 아래에 `![설명](URL)` 로 넣는다.
    - 캡처는 영상 글의 기본 시각자료라 ` ```visual ` 카탈로그 카드의 "개수 변주"(POSTING.md 2-3절)와 별개로 본다 — 소제목마다 넣되, 구도가 매번 똑같이 굳지 않게 컷 종류(슬라이드·데모·인물 등)는 다양하게 고른다.
 8. **적재 — 실행 환경에 따라 갈린다.** `.env.local` 이 있으면 로컬, 없으면 클라우드 루틴이다.
-   - **로컬**: `npm run draft -- push drafts/<slug>.md` 실행. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+   - **로컬**: `npm run draft -- push drafts/<slug>.md --publish` 로 **바로 발행한다**(2026-11-09 사용자 지시 — 초안으로 두지 않는다). 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다.
    - **클라우드 루틴**(Supabase 시크릿 없음, egress 제한): 파일을 `drafts/` 가 아니라 **`auto-drafts/posts/<slug>.md`** 에 쓴다. 이미지는 `npm run fetch:image` 대신 `![설명](REHOST:원본URL)` 마커로, 대표 이미지도 `cover_image: REHOST:원본URL` 로 남긴다. 커밋·푸시하면 GitHub Actions 가 재호스팅·적재한다(`docs/auto-daily-draft.md`). 커밋 메시지에 AI attribution 을 넣지 않는다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`.

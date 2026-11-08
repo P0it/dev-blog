@@ -118,7 +118,7 @@ URL 하나를 번역·요약하는 `/draft` 와 달리, 이 커맨드는 **여�
    `source_url` 은 단일 출처가 없으므로 넣지 않는다.
 
 6. **적재 — 실행 환경에 따라 갈린다.** `.env.local` 이 있으면 로컬, 없으면 클라우드 루틴이다.
-   - **로컬**: `npm run draft -- push drafts/<slug>.md` 실행. 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다. 검토 후 에디터에서 발행한다.
+   - **로컬**: `npm run draft -- push drafts/<slug>.md --publish` 로 **바로 발행한다**(2026-11-09 사용자 지시 — 초안으로 두지 않는다). 출력된 `/admin/editor?slug=…` 경로를 사용자에게 알린다.
    - **클라우드 루틴**(Supabase 시크릿 없음, egress 제한): 파일을 `drafts/` 가 아니라 **`auto-drafts/posts/<slug>.md`** 에 쓴다. 이미지는 `npm run fetch:image` 대신 `![설명](REHOST:원본URL)` 마커로, 대표 이미지도 `cover_image: REHOST:원본URL` 로 남긴다. 커밋·푸시하면 GitHub Actions 가 재호스팅·적재한다(`docs/auto-daily-draft.md`). 커밋 메시지에 AI attribution 을 넣지 않는다.
 
 형식·옵션 상세: `docs/draft-in-claude-code.md`. 단일 URL 글은 `/draft`.
