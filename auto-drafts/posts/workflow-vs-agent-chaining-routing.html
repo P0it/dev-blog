@@ -165,10 +165,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .wf-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
 .post-page .wf-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
 /* 2026-10-20 다시 그림: 조작 안내 한 줄, 코드 값 버튼의 한글 뜻, 빨간 펜 */
-.post-page .wf { --wf-penf: "Nanum Pen Script", "Comic Sans MS", cursive; }
+.post-page .wf { --wf-penf: var(--font-sans); }
 .post-page .wf p.wf-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
 .post-page .wf-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
-.post-page .wf-scene .pen { font-family: var(--wf-penf); fill: var(--wf-bad); }
+.post-page .wf-scene .pen { font-family: var(--wf-penf); fill: var(--wf-bad); font-weight: 600; }
 .post-page .wf-map { max-width: 920px; }
 .post-page .wf-legend .ln { width: 22px; height: 0; border-top: 5px solid var(--fg-strong); border-radius: 0; vertical-align: 3px; }
 .post-page .wf-legend .tx { width: 22px; height: 0; border-top: 4px dotted var(--fg-neutral); border-radius: 0; vertical-align: 3px; }
@@ -184,10 +184,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .wf-logl .to { font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
 .post-page .wf-logl .to.x { color: var(--wf-bad); text-decoration: line-through; text-decoration-thickness: 2px; }
 .post-page .wf-logl .to.ok { color: var(--wf-code); }
-.post-page .wf-logl .pen { grid-column: 1 / -1; font-family: var(--wf-penf); color: var(--wf-bad); font-size: 23px; line-height: 1.2; text-align: right; }
+.post-page .wf-logl .pen { grid-column: 1 / -1; font-family: var(--wf-penf); color: var(--wf-bad); font-size: 16px; line-height: 1.2; text-align: right; font-weight: 600; }
 @media (max-width: 520px) { .post-page .wf-logl li { grid-template-columns: minmax(0, 1fr); } .post-page .wf-logl .pen { text-align: left; } }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 <div class="wf">
   <section class="wf-hero">
     <div class="wf-wrap">
@@ -505,7 +504,7 @@ for n in ["account", "device", "software"]:
         mk("rect", { x, y: yy, width: cs, height: cs, fill: "var(--bg-base)", stroke: RAIL, "stroke-width": 1, ...(skip ? { "stroke-dasharray": "3 3", opacity: .5 } : {}) }, ln);
         if (ch[i] && ch[i] !== " ") txt(ln, x + cs / 2, yy + cs * .74, ch[i], { "font-size": cs * .68, "text-anchor": "middle", class: "t-s" }); }
       const r = Math.floor(19 / cols), c = 19 % cols, lx = X0 + (c + 1) * cs, ly = top + r * cs, bottom = top + Math.ceil(26 / cols) * cs;
-      if (!skip) { mk("line", { x1: lx, y1: ly - 7, x2: lx, y2: ly + cs + 7, stroke: BAD, "stroke-width": 3.5, "stroke-linecap": "round" }, ln); txt(ln, lx, bottom + 26, "20자", { "font-size": cols === 26 ? 28 : 32, class: "pen", "text-anchor": "middle" }); }
+      if (!skip) { mk("line", { x1: lx, y1: ly - 7, x2: lx, y2: ly + cs + 7, stroke: BAD, "stroke-width": 3.5, "stroke-linecap": "round" }, ln); txt(ln, lx, bottom + 26, "20자", { "font-size": cols === 26 ? 20 : 22, class: "pen", "text-anchor": "middle" }); }
       if (skip) txt(ln, W / 2, top + (bottom - top) / 2 + 7, "다듬기 건너뜀", { "font-size": fs, class: "t-d", "text-anchor": "middle" });
       y = bottom + (skip ? 10 : 34); return ch.length;
     };
@@ -538,7 +537,7 @@ for n in ["account", "device", "software"]:
     LANE_Y.forEach((y, n) => { const on = n === 0 && k >= 2; const [x, yy] = P([460, y]);
       if (H) T(x, yy - 16, LANE_N[n], { "text-anchor": "middle", ...(on ? { style: hb + `fill:${ACC}` } : { class: "t-d" }) });
       else T(n === 0 ? x - 14 : x + 14, n === 2 ? 500 : 440, LANE_N[n].replace(" 팀", ""), { "text-anchor": n === 0 ? "end" : "start", ...(on ? { style: hb + `fill:${ACC}` } : { class: "t-d" }) });
-      if (on && k >= 3) { const [dx, dy] = P([460, y + 34]); if (H) T(dx, dy, "초안 씀", { "text-anchor": "middle", class: "pen", "font-size": 26, style: hb }); else T(x - 14, 490, "초안 씀", { class: "pen", "font-size": 26, style: hb, "text-anchor": "end" }); } });
+      if (on && k >= 3) { const [dx, dy] = P([460, y + 34]); if (H) T(dx, dy, "초안 씀", { "text-anchor": "middle", class: "pen", "font-size": 18, style: hb }); else T(x - 14, 490, "초안 씀", { class: "pen", "font-size": 18, style: hb, "text-anchor": "end" }); } });
     /* 분류·다듬기 지점 */
     [[270, 190, "분류", k >= 1], [650, 190, "다듬기", k >= 3]].forEach(([x0, y0, s, on]) => { const [x, y] = P([x0, y0]); mk("circle", { cx: x, cy: y, r: 13, fill: "var(--bg-base)", stroke: on ? ACC : INK, "stroke-width": 5 }, ps);
       if (H) T(x, y + (s === "분류" ? 42 : 56), s, { "text-anchor": "middle" }); else T(x - 24, y + 7, s, { "text-anchor": "end" }); });
@@ -587,7 +586,7 @@ for n in ["account", "device", "software"]:
         const x = sx + i * step;
         mk("line", { x1: x, y1: sy + 12, x2: x + w, y2: sy + 12, stroke: unk ? BAD : INK, "stroke-width": 2.5, ...(unk ? { "stroke-dasharray": "5 6" } : {}), opacity: last ? .55 : 1 }, g);
         if (known) txt(g, x + w / 2, sy, steps[i], { "font-size": fs, class: "t-s", "text-anchor": "middle" });
-        else txt(g, x + w / 2, sy + 4, last ? "몇 칸 더?" : "?", { "font-size": last ? (H ? 28 : 24) : 40, class: "pen", "text-anchor": "middle" });
+        else txt(g, x + w / 2, sy + 4, last ? "몇 칸 더?" : "?", { "font-size": last ? (H ? 20 : 17) : 28, class: "pen", "text-anchor": "middle" });
       }
       const word = side === 0 ? "→ 워크플로" : "→ Agent";
       if (H) txt(g, 820, ry, word, { "font-size": 20, class: "t-s" }); else txt(g, 400, ry, word, { "font-size": 19, class: "t-s", "text-anchor": "end" });
