@@ -79,7 +79,7 @@ function thumbKindFromSlug(slug) {
 // 인라인 마크다운 제거 — 요약을 카드/메타용 평문으로. src/lib/markdown.ts 와 동일.
 function stripInline(s) {
   return s
-    .replace(/`[^`\n]*`/g, "")
+    .replace(/`([^`\n]*)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/~~([^~]+)~~/g, "$1")

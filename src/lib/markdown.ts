@@ -60,7 +60,7 @@ export function deriveExcerpt(md: string | null | undefined): string {
 // 평문 추출용 — 인라인 마크다운 제거. 요약 파생 시 카드/메타에 깔끔하게.
 function stripInline(s: string): string {
   return s
-    .replace(/`[^`\n]*`/g, "")
+    .replace(/`([^`\n]*)`/g, "$1") // 인라인 코드는 글자만 남긴다 — 지우면 "모델 로" 처럼 요약에 구멍이 난다
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/~~([^~]+)~~/g, "$1")
