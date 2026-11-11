@@ -12,7 +12,7 @@ export function PostCard({ post, hrefBase = "/posts" }: { post: Post; hrefBase?:
         </div>
         <h3>{post.title}</h3>
         <p>{post.excerpt}</p>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {post.tags.map((t) => (
             <Chip key={t}>{t}</Chip>
           ))}
