@@ -23,13 +23,6 @@ export const metadata: Metadata = {
   },
 };
 
-function fmtRange(first: string | null, last: string | null): string | null {
-  if (!first) return null;
-  const f = first.slice(0, 7).replace("-", ".");
-  const l = (last ?? first).slice(0, 7).replace("-", ".");
-  return f === l ? f : `${f} – ${l}`;
-}
-
 export default async function SeriesIndexPage() {
   const series = await getAllSeries();
 
@@ -44,7 +37,6 @@ export default async function SeriesIndexPage() {
         <div className="series-grid">
           {series.length === 0 && <Chip>아직 시리즈가 없습니다</Chip>}
           {series.map((s) => {
-            const range = fmtRange(s.firstAt, s.lastAt);
             return (
               <Link key={s.slug} href={`/series/${s.slug}`} className="series-card">
                 {/* 앞 3편 표지를 부채꼴로 겹쳐 '묶음'임을 한눈에 보이게 한다 */}
@@ -59,7 +51,6 @@ export default async function SeriesIndexPage() {
                 <div className="series-card-body">
                   <div className="series-card-meta">
                     <span className="series-card-count">{s.count}편</span>
-                    {range && <span className="series-card-range">{range}</span>}
                   </div>
                   <h3 className="series-card-title">{s.title}</h3>
                   {s.description && <p className="series-card-desc">{s.description}</p>}
