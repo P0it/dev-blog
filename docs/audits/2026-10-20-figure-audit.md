@@ -30,7 +30,7 @@ HTML 페이지 글 55편의 그림 509개를 `POSTING.md` 5-9(그림 문법)로 
 | high | mcp-client-agent-adapters-security | ai-agent | 3/1/1 | Agent·관문·서버를 상자→화살표→상자로 쌓은 그림이 히어로 포함 3개. OAuth 생명선만 문법에 맞음 | |
 | high | python-mcp-server-ticket-desk | ai-agent | 3/0/0 | 세 그림 모두 둥근 상자+아이콘+화살표(히어로 포함). 코드·로그 원문을 그림으로 쓰는 쪽으로 전면 교체 필요 | |
 | high | subagent-vs-handoff-langchain | ai-agent | 3/1/0 | SVG 장면 네 개 모두 색 Agent 상자 + 로봇·기어 아이콘 + 화살표. 히어로부터 상자 문법이라 전면 재제작 대상 | |
-| high | utf8-encoding-mojibake |  | 3/0/5 | 바이트 칩·전구·길이 표지 띠·비둘기집은 좋다. 결말 세 갈래 트리, 저장 전후 비교, 예전/2.1.296 단계 줄이 상자 문법 | |
+| high | utf8-encoding-mojibake |  | 3/0/5 | 바이트 칩·전구·길이 표지 띠·비둘기집은 좋다. 결말 세 갈래 트리, 저장 전후 비교, 예전/2.1.296 단계 줄이 상자 문법 |  2026-11-14 · Critic 4→5/5 (세 갈래 → 작은 그림 세 장, 저장 전후 → 원래 바이트에 줄 긋고 EF BF BD 내려놓기, 단계 줄 → 두 노선) |
 | high | helpdesk-agent-service-fastapi-sse | ai-agent | 2/0/1 | 히어로가 브라우저→서버→Agent 상자 안 부품 카드 4장(제목+회색 부제, 순번 색). 왕복 생명선은 양호 | |
 | high | langgraph-state-design-retry-error-path | ai-agent | 1/0/3 | 히어로가 문장 토막 상자 5개 세로 + 노드 상자. 나머지(쓰기·읽기 점 표, 시간축 재시도, 스트림 카드 비교)는 양호 | |
 | mid | ai-data-platform-lake-iceberg-spark-starrocks | llm-infra-basics | 2/3/12 | 실물(디스크 띠·Parquet·앨범·셔플) 위주로 좋음. 세 저장소·세 세대가 이모지 상자 흐름, 스냅샷 트리·데이터 지도는 상자 노드 | |
