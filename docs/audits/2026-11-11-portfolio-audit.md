@@ -27,7 +27,7 @@ POSTING 2-4 의 grep 신호(`~죠`·연결어미 쉼표·대시 헤드라인 등
 - 썸네일 빈칸 3편 채움(content-addressing 은 `npm run thumb`, 마크다운 2편은 본문 첫 이미지).
 - **요약 추출 버그** — `stripInline` 이 인라인 코드를 글자째 지워 Glasswing 요약이 "프론티어 모델 로" 가 됐다.
   백틱만 벗기게 고침(`src/lib/markdown.ts`, `scripts/draft.mjs`).
-- **발행 안 된 글로 가는 내부 링크 11곳 (미해결)** — 대상 4편이 초안이다:
+- **발행 안 된 글로 가는 내부 링크 11곳 → 해결(2026-11-14 발행)** — 대상 4편이 초안이었다(시리즈 없는 단독 학습 글, `/study` 견본):
   `rag-retrieval-pipeline`, `self-attention-qkv`, `llm-temperature-sampling`, `utf8-encoding-mojibake`.
   링크가 있는 글: rag-embedding-vector-db, llm-parameters-7b-explained, transformer-attention-how-llm-reads,
   fine-tuning-lora-qlora-peft, prefill-decode-kv-cache, prompt-structure-hallucination-clean-data.
