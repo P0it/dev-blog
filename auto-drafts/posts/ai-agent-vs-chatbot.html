@@ -604,7 +604,7 @@ while True:
       </div>
       <div class="ag-fig" data-figure>
         <svg class="ag-scene" data-ag-map role="img" aria-label="헬프데스크 Agent 노선도. 직원에서 출발해 모델 호출역을 지나 답으로 가는 본선은 이 글에서 만든 구간이라 주황으로 칠했다. 모델 호출역에서 도구 실행역으로 내려갔다 돌아오는 순환선, 도구 실행역에서 FAQ·매뉴얼 검색, 장비 상태 조회, 티켓 조회·생성으로 갈라지는 지선은 앞으로 깔 구간이라 점선이다. 티켓 지선에는 사람 승인 검문이 있다."></svg>
-        <p class="ag-cap">주황 선은 이 글에서 만든 구간, 회색 점선은 앞으로 깔 구간입니다. 스크롤을 내리면 요청 점이 직원에서 출발해 앞으로 깔 도구 순환선을 한 바퀴 돌고 답에 닿습니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
+        <p class="ag-cap">주황 선은 이 글에서 만든 구간, 회색 점선은 앞으로 깔 구간입니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
       </div>
         <p class="ag-pull">정리하면 챗봇, 워크플로, Agent는 같은 LLM을 씁니다. 다른 점은 LLM이 쓴 글을 받은 뒤 다음 단계를 누가 정하느냐입니다. 사람이 정하면 챗봇, 미리 짠 코드가 정하면 워크플로, 모델이 결과를 보고 정하면 Agent입니다.</p>
     </div>
@@ -910,27 +910,8 @@ while True:
       [["FAQ·매뉴얼\n검색"], ["장비 상태\n조회"], ["티켓\n조회·생성"]].forEach(([s], i) => T(g.br[i][0], g.br[i][1] + 30, s, { "font-size": 14, class: "t-s", "text-anchor": "middle" }));
       T(gx + 20, gy + 5, "승인", { "font-size": 13, class: "t-s" });
     }
-    /* 스크롤에 맞춰 요청 점이 직원 → 모델 호출 → (앞으로 깔 도구 순환선 한 바퀴) → 답으로 간다 */
-    const loopTail = g.loop.replace(/^M[\d.]+ [\d.]+/, "");
-    mRoute = mk("path", { d: `M${g.st[0]} ${g.st[1]} L${g.md[0]} ${g.md[1]}${loopTail} L${g.en[0]} ${g.en[1]}`, fill: "none", stroke: "none" }, mapSvg);
-    mRoute.len = mRoute.getTotalLength();
-    mSeg = [g.md[0] - g.st[0], mRoute.len - (g.en[0] - g.md[0])];
-    mDot = mk("circle", { r: 10, stroke: "var(--bg-base)", "stroke-width": 3 }, mapSvg);
-    setMapP(mapP);
-  }
-  let mRoute = null, mDot = null, mSeg = [0, 0], mapP = 1;
-  function setMapP(p) {
-    mapP = p;
-    const l = p * mRoute.len, pt = mRoute.getPointAtLength(l);
-    mDot.setAttribute("cx", pt.x); mDot.setAttribute("cy", pt.y);
-    /* 이번 글에서 깐 주황 선 위에서는 꽉 찬 점, 아직 깔지 않은 점선 순환선 위에서는 속 빈 점 */
-    const future = l > mSeg[0] + 1 && l < mSeg[1] - 1;
-    mDot.setAttribute("fill", future ? "var(--bg-base)" : ACC);
-    mDot.setAttribute("stroke", future ? MUT : "var(--bg-base)");
-    mDot.setAttribute("stroke-dasharray", future ? "4 3" : "none");
   }
   drawMap();
-  scrollP(mapSvg, setMapP);
   addEventListener("resize", () => { if (wide(mapSvg, 760) !== mLay) drawMap(); }, { passive: true, signal });
 })();
 </script>
