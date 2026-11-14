@@ -35,3 +35,12 @@ test("highlightPageCode — 들여쓴 줄에만 들여쓰기 칸 수를 남긴�
   assert.match(out, /data-ln="3"[^>]*--pg-i:4|--pg-i:4[^>]*data-ln="3"/);
   assert.doesNotMatch(out, /data-ln="1"[^>]*--pg-i|--pg-i[^>]*data-ln="1"/);
 });
+
+test("highlightPageCode — 코드와 해설 목록을 함께 담은 가장 가까운 칸에만 data-pg-stack 을 단다", async () => {
+  const html = '<section><div class="wrap"><p>글</p><div class="cp"><div class="cp-code"><pre data-title="a.py"><code class="language-python">x = 1</code></pre></div>' +
+    '<div class="side"><ol class="pg-code-notes"><li>①</li></ol></div></div></div></section><svg viewBox="0 0 10 10"><rect width="1" height="1"/></svg>';
+  const out = (await highlightPageCode(html)).replace(/<style data-pg-code>[\s\S]*?<\/style>\n/, "");
+  assert.match(out, /<div data-pg-stack class="cp">/);
+  assert.equal(out.match(/data-pg-stack/g)?.length, 1);
+  assert.match(out, /viewBox="0 0 10 10"/); // 원문을 다시 직렬화하지 않는다
+});

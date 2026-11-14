@@ -417,7 +417,7 @@ Use LangGraph's built-in persistence instead.</span>
           <li><code>RunnableWithMessageHistory</code>는 체인을 감싸 서랍 일을 대신합니다. 부르기 전에 기록을 꺼내 빈칸에 끼우고 답이 나오면 질문과 답을 서랍에 넣습니다. <code>input_messages_key</code>는 새 질문이 든 키, <code>history_messages_key</code>는 기록을 넣을 빈칸의 이름입니다.</li>
           <li><code>config</code>는 <code>invoke</code>에 덧붙이는 실행 설정이고 그 안 <code>configurable</code>에 이름표 <code>session_id</code>를 넣는 것이 정해진 모양입니다. 두 번 불렀으니 민지 서랍에는 질문 2개와 답 2개, 모두 4개가 쌓입니다. 노란 경고 줄은 바로 아래에서 설명합니다.</li>
         </ol>
-        <div class="cp-notes2">
+        <div class="cp-notes2" style="order:2">
           <p><b>노란 경고가 뜨는 이유.</b> 2026년 LangChain은 이 서랍 일을 LangGraph로 옮겼습니다. LangGraph는 LangChain 팀이 만든, 여러 단계로 움직이는 AI 앱을 짜는 도구입니다. 그 안의 체크포인터(checkpointer)가 대화를 이름표별로 저장하는 서랍장입니다. 이름표를 <code>session_id</code> 대신 <code>thread_id</code>라고 부를 뿐 원리는 같고, 아래 Streamlit 앱이 이 방식을 씁니다.</p>
           <details>
             <summary>사용 중단 일정</summary>
@@ -568,7 +568,7 @@ if prompt := st.chat_input("무엇을 도와드릴까요?"):
           <li><code>:=</code>는 값을 변수에 넣으면서 그 값을 바로 검사하는 연산자입니다. <code>prompt = st.chat_input(...)</code>과 <code>if prompt:</code> 두 줄을 한 줄로 쓴 것입니다.</li>
           <li>앞 대화는 체크포인터가 이름표로 찾아 붙이니 보낼 때는 이번 질문 하나만 넣습니다. <code>yield</code>가 든 함수는 값을 한꺼번에 돌려주지 않고 하나씩 내보내는 제너레이터(generator)입니다. <code>st.write_stream</code>이 조각을 화면에 이어 붙이고 다 모인 글을 돌려줍니다(<a href="/posts/stock-chatbot-function-calling-streaming">스트리밍 글</a>). 버전은 streamlit 1.67, langgraph 1.2 기준입니다.</li>
         </ol>
-        <div class="cp-notes2">
+        <div class="cp-notes2" style="order:2">
           <p>메모리 서랍장은 서버를 다시 켜면 비워지고, 탭을 새로고침하면 이름표가 바뀌어 앞 대화를 찾지 못합니다. 손님이 내일 다시 와도 대화를 이어 가야 한다면 로그인한 사용자 아이디를 이름표로 쓰고 데이터베이스에 저장하는 체크포인터로 바꿉니다(<a href="/posts/langchain-agent-memory-context-engineering">에이전트 메모리 글</a>).</p>
         </div>
       </div>

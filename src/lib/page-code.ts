@@ -8,6 +8,7 @@
 // 테마는 One Dark Pro 하나로, 사이트 라이트·다크와 무관하게 늘 어두운 에디터 창이다(2026-10-14 사용자 선택).
 // 코드 안의 ①~⑳ 은 해설 목록과 짝을 맞추는 표지라 둥근 배지로 바꾼다.
 import { codeToHtml } from "shiki";
+import { parseFragment } from "parse5";
 
 // 코드 블록 모양 — 코드가 있는 글에만 한 번 넣는다. 색은 globals.css 의 --code-* 토큰.
 const STYLE = `<style data-pg-code>
@@ -65,6 +66,17 @@ const STYLE = `<style data-pg-code>
 .post-page ol.pg-code-notes { list-style: none; counter-reset: pgc; padding: 0; margin: 4px 0 28px; }
 .post-page ol.pg-code-notes > li { counter-increment: pgc; position: relative; padding-left: 2.1em; margin: 10px 0; line-height: 1.7; }
 .post-page ol.pg-code-notes > li::before { content: counter(pgc); position: absolute; left: 0; top: 0.2em; font-size: 0.8em; }
+/* 코드 | 해설을 좌우로 두지 않는다 — 코드는 칸 폭을 다 쓰고 해설은 아래에(POSTING 5-7, 2026-11-14).
+   글마다 짠 grid 를 이기려고 !important 를 쓴다. 넓은 화면에서는 해설을 두 단으로 펴 세로 길이를 줄인다 */
+.post-page [data-pg-stack] { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 18px !important; }
+.post-page [data-pg-stack] > * { position: static !important; width: auto !important; max-width: none !important; min-width: 0; margin-left: 0 !important; margin-right: 0 !important; }
+/* 원고에서 해설을 코드보다 앞에 적은 글도 해설이 맨 아래로 간다 */
+.post-page [data-pg-stack] > :has(ol.pg-code-notes), .post-page [data-pg-stack] > ol.pg-code-notes { order: 1; }
+.post-page [data-pg-stack] ol.pg-code-notes { margin-top: 6px; }
+@media (min-width: 961px) {
+  .post-page [data-pg-stack] ol.pg-code-notes { columns: 2; column-gap: 48px; }
+  .post-page [data-pg-stack] ol.pg-code-notes > li { break-inside: avoid; margin-top: 0; }
+}
 </style>`;
 
 const BLOCK = /<pre\b([^>]*)>\s*<code\b([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi;
@@ -122,6 +134,51 @@ async function renderBlock(preAttrs: string, codeAttrs: string, raw: string): Pr
     `<button class="pg-code-copy" type="button" data-pg-copy aria-label="코드 복사">복사</button></figcaption>${html}</figure>`;
 }
 
+type P5Node = {
+  nodeName: string;
+  tagName?: string;
+  attrs?: { name: string; value: string }[];
+  childNodes?: P5Node[];
+  content?: P5Node;
+  parentNode?: P5Node | null;
+  sourceCodeLocation?: { startTag?: { startOffset: number } } | null;
+};
+const hasClass = (n: P5Node, c: string) =>
+  !!n.attrs?.some((a) => a.name === "class" && a.value.split(/\s+/).includes(c));
+
+/**
+ * 해설 목록(ol.pg-code-notes)과 그 코드 블록을 함께 담은 가장 가까운 칸에 data-pg-stack 을 단다.
+ * 글마다 코드 | 해설을 좌우로 놓으면 코드 칸이 좁아져 가로 스크롤이 생겼다(2026-11-14 사용자 지적).
+ * 원고 46편을 고치지 않고 이 칸을 위아래로 쌓는다(STYLE 의 [data-pg-stack]). HTML 을 다시 직렬화하지 않고
+ * 시작 태그 위치에 속성만 끼워 넣어 원문을 그대로 둔다.
+ */
+function markCodeStacks(html: string): string {
+  if (!html.includes("pg-code-notes")) return html;
+  const doc = parseFragment(html, { sourceCodeLocationInfo: true }) as unknown as P5Node;
+  const codeAncestors = new Set<P5Node>();
+  const notes: P5Node[] = [];
+  const walk = (n: P5Node) => {
+    if (n.tagName === "figure" && hasClass(n, "pg-code")) {
+      for (let p = n.parentNode; p; p = p.parentNode) codeAncestors.add(p);
+    }
+    if (n.tagName === "ol" && hasClass(n, "pg-code-notes")) notes.push(n);
+    n.childNodes?.forEach(walk);
+  };
+  walk(doc);
+  const marks = new Set<number>();
+  for (const ol of notes) {
+    for (let p = ol.parentNode; p && p !== doc; p = p.parentNode) {
+      if (!codeAncestors.has(p)) continue;
+      const at = p.sourceCodeLocation?.startTag?.startOffset;
+      if (at != null && p.tagName) marks.add(at + 1 + p.tagName.length);
+      break;
+    }
+  }
+  let out = html;
+  for (const at of [...marks].sort((a, b) => b - a)) out = `${out.slice(0, at)} data-pg-stack${out.slice(at)}`;
+  return out;
+}
+
 /** 페이지 HTML 의 <pre><code> 를 에디터형 블록으로 바꾼다. <script>·<style> 안은 건드리지 않는다. */
 export async function highlightPageCode(html: string): Promise<string> {
   if (!/<pre\b/i.test(html)) return html;
@@ -134,8 +191,9 @@ export async function highlightPageCode(html: string): Promise<string> {
     let k = 0;
     parts[i] = parts[i].replace(BLOCK, () => done[k++]);
   }
-  const out = parts.join("");
+  let out = parts.join("");
   if (!out.includes('class="pg-code"')) return out;
+  out = markCodeStacks(out);
   // 페이지 표지 바로 뒤에 한 번만 넣는다(표지가 없으면 맨 앞)
   return /<!-- page -->/.test(out) ? out.replace(/<!-- page -->/, (m) => `${m}\n${STYLE}`) : `${STYLE}\n${out}`;
 }

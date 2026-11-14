@@ -90,9 +90,10 @@ function rhythm(L) {
     return bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent";
   });
   // 섹션 바깥에 붙어 다니는 조작판(옆 sticky 패널)도 나란히 놓인 것으로 본다
-  const single = secs.filter((s) => !sideBySide(s) && !band(s) && !besideSomething(s, root));
+  // 코드 블록이 있는 섹션은 코드가 칸 폭을 다 쓰고 해설이 아래로 가는 것이 규약이다(POSTING 5-7, 2026-11-14) — 한 열로 세지 않는다
+  const single = secs.filter((s) => !sideBySide(s) && !band(s) && !besideSomething(s, root) && !s.querySelector("[data-pg-stack]"));
   if (secs.length && single.length / secs.length > L.singleMax)
-    problems.push(`가운데 한 열 섹션이 ${single.length}/${secs.length} — 절반 이하여야 한다(글|그림·제목|글·코드|해설·전폭 띠 등으로 바꾼다): ${single.map((s) => '"' + s.querySelector("h2").textContent.trim().slice(0, 14) + '"').join(", ")}`);
+    problems.push(`가운데 한 열 섹션이 ${single.length}/${secs.length} — 절반 이하여야 한다(글|그림·제목|글·전폭 띠 등으로 바꾼다): ${single.map((s) => '"' + s.querySelector("h2").textContent.trim().slice(0, 14) + '"').join(", ")}`);
   // SVG 그림 속 글자는 화면에서 본문과 비슷한 크기여야 한다. viewBox 그림이 넓은 칸에서 늘어나면 글자도 같이 커진다
   for (const svg of all.filter((e) => e.tagName === "svg")) {
     const sizes = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect().height).filter((h) => h > 0);
