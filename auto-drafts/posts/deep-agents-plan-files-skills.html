@@ -455,6 +455,27 @@ files: ['/notes/log_findings.md']
 <script>
 (() => {
   const { root, signal } = window.postPage;
+  /* 2026-11-14: 움직임은 그림 전체가 화면에 들어왔을 때만 시작한다(95% 이상 보이거나, 화면보다 큰 그림은 화면의 85%를 채울 때).
+     거의 다 벗어나면(15% 미만) 나간 것으로 본다. 이 글의 모든 IntersectionObserver 가 이 기준을 쓴다 */
+  const IntersectionObserver = class {
+    constructor(cb) {
+      this.st = new Map();
+      this.io = new window.IntersectionObserver((es) => {
+        const out = [];
+        es.forEach((e) => {
+          const full = e.intersectionRatio >= 0.95 || e.intersectionRect.height >= innerHeight * 0.85, was = this.st.get(e.target) || false;
+          const now = was ? e.intersectionRatio >= 0.15 : full;
+          if (now !== was) { this.st.set(e.target, now); out.push({ target: e.target, isIntersecting: now, intersectionRatio: e.intersectionRatio }); }
+        });
+        if (out.length) cb(out, this);
+      }, { threshold: [0, 0.15, 0.5, 0.8, 0.9, 0.95, 1] });
+      (window.__pgIO = window.__pgIO || []).push(this);
+    }
+    observe(el) { this.io.observe(el); (window.__pgIOt = window.__pgIOt || []).push(el); }
+    unobserve(el) { this.io.unobserve(el); }
+    disconnect() { this.io.disconnect(); }
+  };
+
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
 
@@ -462,11 +483,11 @@ files: ['/notes/log_findings.md']
      처음부터 85% 선 위에 있는 그림(히어로)은 페이지 맨 위를 0 으로 잡는다 */
   const scrollP = (el, fn, ...opt) => {
     /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
-    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const pinned = opt.find((o) => typeof o === "function"), D = 2000; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || el.getBoundingClientRect().height > innerHeight * 0.95) { fn(1); return; } /* 한 화면에 다 담기지 않는 그림은 움직이지 않고 완성 상태 */
     const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
     fn(0);
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0 });
     io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
 
