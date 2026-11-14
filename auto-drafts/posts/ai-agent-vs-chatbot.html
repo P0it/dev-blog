@@ -232,10 +232,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <dt>내용</dt><dd>"노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요."</dd>
         <dt>티켓 시스템</dt><dd>지난주에 같은 증상으로 연 티켓 <code>#1042</code>가 아직 열려 있음</dd>
       </dl>
-      <div class="ag-hfig" data-figure data-thumb data-thumb-act="el.querySelectorAll('.ag-cap').forEach((x) => { x.style.display = 'none'; })">
+      <div class="ag-hfig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('ag-all')); el.querySelectorAll('.ag-cap').forEach((x) => { x.style.display = 'none'; })">
         <svg class="ag-scene" data-ag-hero role="img" aria-label="한 요청이 챗봇, 워크플로, Agent 세 선로로 갈라지는 노선도. 챗봇은 답을 글로 쓴 뒤 사람이 직접 처리한다. 워크플로는 분류, 새 티켓 만들기, 안내 문장 순서로 늘 같은 길을 간다. Agent는 먼저 티켓을 찾아보고 그 결과에 따라 기존 티켓에 덧붙이거나 새 티켓을 만드는 갈림길에서 길을 고른다. 같은 티켓이 이미 있으면 워크플로는 중복 티켓을 만들고 Agent는 기존 티켓에 메모를 남긴다."></svg>
         <p class="ag-eff">Agent는 찾아본 결과에서 #1042를 보고 덧붙이는 길로 갔습니다. 워크플로는 정해 둔 길대로 가서 #1043을 하나 더 만들었습니다. 열린 티켓이 없었다면 Agent는 점선 갈래, 곧 새 티켓을 만드는 길로 갔을 겁니다.</p>
-        <p class="ag-cap">선로 하나가 프로그램 하나이고 점은 그 프로그램이 하는 일입니다. 점선은 사람이 손으로 하는 일이거나 이번 상황에서 가지 않은 길입니다. 설명용으로 만든 예시 시나리오라 실제 모델이 늘 이렇게 판단하지는 않습니다.</p>
+        <p class="ag-cap">선로 하나가 프로그램 하나이고 점은 그 프로그램이 하는 일입니다. 점선은 사람이 손으로 하는 일이거나 이번 상황에서 가지 않은 길입니다. 스크롤을 내리면 요청 점이 세 선로를 함께 지나가고 끝에 닿은 선로부터 결과가 나타납니다. 설명용으로 만든 예시 시나리오라 실제 모델이 늘 이렇게 판단하지는 않습니다.</p>
       </div>
     </div>
   </header>
@@ -604,7 +604,7 @@ while True:
       </div>
       <div class="ag-fig" data-figure>
         <svg class="ag-scene" data-ag-map role="img" aria-label="헬프데스크 Agent 노선도. 직원에서 출발해 모델 호출역을 지나 답으로 가는 본선은 이 글에서 만든 구간이라 주황으로 칠했다. 모델 호출역에서 도구 실행역으로 내려갔다 돌아오는 순환선, 도구 실행역에서 FAQ·매뉴얼 검색, 장비 상태 조회, 티켓 조회·생성으로 갈라지는 지선은 앞으로 깔 구간이라 점선이다. 티켓 지선에는 사람 승인 검문이 있다."></svg>
-        <p class="ag-cap">주황 선은 이 글에서 만든 구간, 회색 점선은 앞으로 깔 구간입니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
+        <p class="ag-cap">주황 선은 이 글에서 만든 구간, 회색 점선은 앞으로 깔 구간입니다. 스크롤을 내리면 요청 점이 직원에서 출발해 앞으로 깔 도구 순환선을 한 바퀴 돌고 답에 닿습니다. 도구와 데이터는 모두 연습용으로 새로 만듭니다.</p>
       </div>
         <p class="ag-pull">정리하면 챗봇, 워크플로, Agent는 같은 LLM을 씁니다. 다른 점은 LLM이 쓴 글을 받은 뒤 다음 단계를 누가 정하느냐입니다. 사람이 정하면 챗봇, 미리 짠 코드가 정하면 워크플로, 모델이 결과를 보고 정하면 Agent입니다.</p>
     </div>
@@ -690,7 +690,22 @@ while True:
            eff: "열린 티켓이 없자 Agent는 새 티켓을 만드는 길로 갔습니다. 이번에는 워크플로와 결과가 같습니다. 챗봇은 두 경우 모두 글로 답하고 끝납니다." },
   };
   const heroSvg = $("[data-ag-hero]");
-  const hCase = "dup"; let hH = null, hRes = {};
+  const hCase = "dup"; let hH = null, hRes = {}, hRoutes = {}, hDots = {}, heroP = 1, heroPinned = false;
+  /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 아래 85% 선에 닿으면 0, 그림 아래쪽이 화면 45% 선에 닿으면 1 */
+  function scrollP(el, fn) {
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      if (el === heroSvg && heroPinned) return;
+      const r = el.getBoundingClientRect(), vh = innerHeight;
+      const a = vh * 0.85, b = vh * 0.45;
+      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal });
+    addEventListener("resize", on, { signal });
+    tick();
+  }
   function hp(k, i, H, br) { // i: -1 출발, 0~2 역, 9 끝
     if (H) { const y = { chat: 80, flow: 205, agent: 330 }[k]; const x = i < 0 ? 160 : i === 9 ? 880 : [400, 610, 800][i]; return [x, br === "a" ? y - 34 : br === "b" ? y + 36 : y]; }
     const x = { chat: 60, flow: 180, agent: 300 }[k]; const y = i < 0 ? 62 : i === 9 ? 450 : [130, 240, 350][i]; return [br === "a" ? x - 30 : br === "b" ? x + 30 : x, y];
@@ -747,10 +762,28 @@ while True:
       const [rt, rtn, kind] = C.res[k], col = kind === "bad" ? BAD : kind === "ok" ? ACC : "";
       hRes[k] = H ? txt(heroSvg, end[0] + 18, end[1] + 6, rt, { "font-size": 16, class: kind === "dim" ? "t-d" : "t-s", style: col ? `fill:${col}` : "" })
                   : txt(heroSvg, end[0], end[1] + 30, rtn, { "font-size": 14, class: kind === "dim" ? "t-d" : "t-s", "text-anchor": "middle", style: col ? `fill:${col}` : "" });
+      hRoutes[k] = mk("path", { d: (H ? `M${SRC[0]} ${SRC[1]}` + seg(SRC, st, H) : `M${st[0]} ${st[1]}`) + pathD(route, H).replace(/^M[\d.]+ [\d.]+/, ""), fill: "none", stroke: "none" }, heroSvg);
+    }
+    hDots = {};
+    for (const k in hRoutes) { hRoutes[k].len = hRoutes[k].getTotalLength(); hDots[k] = mk("circle", { r: 9, fill: INK, stroke: "var(--bg-base)", "stroke-width": 3 }, heroSvg); }
+    setHeroP(heroP);
+  }
+  /* 스크롤에 맞춰 요청 점이 세 선로를 함께 지나간다 — 누를 것도 자동 재생도 없다. 끝에 닿은 선로만 결과가 보인다 */
+  function setHeroP(p) {
+    heroP = p;
+    const max = Math.max(...Object.values(hRoutes).map((r) => r.len));
+    for (const k in hRoutes) {
+      const r = hRoutes[k], l = Math.min(r.len, p * max), pt = r.getPointAtLength(l);
+      hDots[k].setAttribute("cx", pt.x); hDots[k].setAttribute("cy", pt.y);
+      const done = l >= r.len - 1;
+      hDots[k].style.opacity = done ? 0 : 1;
+      hRes[k].style.opacity = done ? 1 : 0.15;
     }
   }
   addEventListener("resize", () => { if (wide(heroSvg, 820) !== hH) drawHero(); }, { passive: true, signal });
   drawHero();
+  scrollP(heroSvg, setHeroP);
+  heroSvg.closest("[data-thumb]").addEventListener("ag-all", () => { heroPinned = true; setHeroP(1); }, { signal });
 
   /* 5. 루프: 노선도 위 점이 스크롤 단계마다 움직이고 메시지 목록이 쌓인다 */
   const LOOP = [
@@ -877,8 +910,27 @@ while True:
       [["FAQ·매뉴얼\n검색"], ["장비 상태\n조회"], ["티켓\n조회·생성"]].forEach(([s], i) => T(g.br[i][0], g.br[i][1] + 30, s, { "font-size": 14, class: "t-s", "text-anchor": "middle" }));
       T(gx + 20, gy + 5, "승인", { "font-size": 13, class: "t-s" });
     }
+    /* 스크롤에 맞춰 요청 점이 직원 → 모델 호출 → (앞으로 깔 도구 순환선 한 바퀴) → 답으로 간다 */
+    const loopTail = g.loop.replace(/^M[\d.]+ [\d.]+/, "");
+    mRoute = mk("path", { d: `M${g.st[0]} ${g.st[1]} L${g.md[0]} ${g.md[1]}${loopTail} L${g.en[0]} ${g.en[1]}`, fill: "none", stroke: "none" }, mapSvg);
+    mRoute.len = mRoute.getTotalLength();
+    mSeg = [g.md[0] - g.st[0], mRoute.len - (g.en[0] - g.md[0])];
+    mDot = mk("circle", { r: 10, stroke: "var(--bg-base)", "stroke-width": 3 }, mapSvg);
+    setMapP(mapP);
+  }
+  let mRoute = null, mDot = null, mSeg = [0, 0], mapP = 1;
+  function setMapP(p) {
+    mapP = p;
+    const l = p * mRoute.len, pt = mRoute.getPointAtLength(l);
+    mDot.setAttribute("cx", pt.x); mDot.setAttribute("cy", pt.y);
+    /* 이번 글에서 깐 주황 선 위에서는 꽉 찬 점, 아직 깔지 않은 점선 순환선 위에서는 속 빈 점 */
+    const future = l > mSeg[0] + 1 && l < mSeg[1] - 1;
+    mDot.setAttribute("fill", future ? "var(--bg-base)" : ACC);
+    mDot.setAttribute("stroke", future ? MUT : "var(--bg-base)");
+    mDot.setAttribute("stroke-dasharray", future ? "4 3" : "none");
   }
   drawMap();
+  scrollP(mapSvg, setMapP);
   addEventListener("resize", () => { if (wide(mapSvg, 760) !== mLay) drawMap(); }, { passive: true, signal });
 })();
 </script>
