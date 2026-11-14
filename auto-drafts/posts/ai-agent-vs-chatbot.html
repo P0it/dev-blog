@@ -9,7 +9,7 @@ series_order: 1
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-vs-chatbot-mvfhp23j.jpg
 ---
 <!-- page -->
-<!-- layout: 비교 히어로(한 요청이 챗봇·워크플로·Agent 세 선로로 갈라지는 노선도, 상황 토글로 Agent 갈림길만 바뀜) + 글|그림 2단(흐르는 글자와 진짜 티켓 장부) + 제목|글 머리 + 요청·응답 원문에 빨간 번호 메모 + 쌓이는 messages 띠 + 노선도 스크롤리텔링(모델역·도구 실행역 순환선) + 시리즈 노선도 | 글의 성격: 같은 입력을 세 방식이 다르게 처리하는 비교가 핵심, 뒤 섹션은 짧은 개념 여러 개. 그림 문법은 POSTING 5-9 | 버린 후보: 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 세 레인 단계 카드 목록 히어로·프롬프트→LLM→출력 상자·요청/응답 봉투 상자·모델↔프로그램 상자 루프·둥근 상자 구성도(2026-10-20 상자 그림 전수 조사로 교체) -->
+<!-- layout: [2026-11-14 개편: 조작 요소 0 — 상황 토글·보내 보기·보내기·실행해 보기·보내는 방식 토글 제거, 대화 전체/이번 질문만 두 줄 펼쳐 놓기, 요청 말풍선→접수 카드, 비용 막대 그림 추가] 비교 히어로(한 요청이 챗봇·워크플로·Agent 세 선로로 갈라지는 노선도, Agent 갈림길의 두 길을 함께 그림) + 글|그림 2단(흐르는 글자와 진짜 티켓 장부) + 제목|글 머리 + 요청·응답 원문에 빨간 번호 메모 + 쌓이는 messages 띠 + 노선도 스크롤리텔링(모델역·도구 실행역 순환선) + 시리즈 노선도 | 글의 성격: 같은 입력을 세 방식이 다르게 처리하는 비교가 핵심, 뒤 섹션은 짧은 개념 여러 개. 그림 문법은 POSTING 5-9 | 버린 후보: 옆 조작판(모든 그림을 움직일 변수 하나가 없음), 세 레인 단계 카드 목록 히어로·프롬프트→LLM→출력 상자·요청/응답 봉투 상자·모델↔프로그램 상자 루프·둥근 상자 구성도(2026-10-20 상자 그림 전수 조사로 교체) -->
 <style>
 .post-page .ag {
   --ag-human: rgb(37, 112, 235); --ag-code: rgb(16, 150, 120); --ag-model: rgb(226, 106, 28); --ag-bad: rgb(214, 56, 56);
@@ -39,38 +39,28 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-who::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 /* 버튼: 고르기 = 붙은 세그먼트, 실행 = 테두리 + ▶ */
 /* 고르기 = 토글(옅은 트랙 안에서 고른 칸만 채움). 밑줄 탭과 섞지 않는다 */
-.post-page .ag-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
-.post-page .ag-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
-.post-page .ag-seg button:hover { color: var(--fg-strong); }
-.post-page .ag-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
-.post-page .ag-act { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
-.post-page .ag-act::before { content: "▶ "; font-size: 11px; }
-.post-page .ag-act.plain::before { content: ""; }
-.post-page .ag-act:disabled { opacity: 0.4; cursor: default; }
-.post-page .ag-ctrl { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
-.post-page .ag-ctrl > span { font-size: 14px; color: var(--fg-neutral); }
 
 /* 히어로: 한 요청이 세 선로로 갈라지는 노선도 */
 .post-page .ag-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
 .post-page .ag-hero .ag-col { text-align: left; }
 .post-page .ag-lede { font-size: 18px !important; color: var(--fg-neutral); margin-top: 32px !important; }
-.post-page .ag-req { max-width: 700px; margin: 44px auto 0; display: flex; gap: 12px; align-items: flex-start; }
-.post-page .ag-req-bubble { flex: 1; padding: 12px 16px; border-radius: 16px 16px 16px 4px; border: 1.5px solid var(--fg-strong); font-size: 16px; line-height: 1.6; }
+.post-page .ag-req { max-width: 700px; margin: 44px auto 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; padding: 14px 18px; border-radius: 14px; background: var(--bg-subtle); }
+.post-page .ag-req dt { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .ag-req dd { margin: 0; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .ag-req dd code { font-size: 13px; }
 .post-page .ag-hfig { max-width: 1040px; margin: 40px auto 0; }
-.post-page .ag-hfig .ag-ctrl { margin-bottom: 22px; }
 .post-page .ag-scene { width: 100%; height: auto; display: block; margin: 0 auto; }
 .post-page .ag-scene text { font-family: var(--font-sans); fill: var(--fg-normal); }
 .post-page .ag-scene .t-s { fill: var(--fg-strong); font-weight: 700; }
 .post-page .ag-scene .t-d { fill: var(--fg-neutral); }
-.post-page .ag p.ag-eff { font-size: 16px; line-height: 1.7; font-weight: 600; color: var(--fg-strong); margin: 18px auto 0; max-width: 760px; min-height: 3.4em; text-align: center; }
-.post-page .ag p.ag-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
+.post-page .ag p.ag-eff { font-size: 16px; line-height: 1.7; font-weight: 600; color: var(--fg-strong); margin: 18px auto 0; max-width: 760px; text-align: center; }
 
 /* 1. 글만 쓰는 LLM: 흐르는 글자 + 진짜 티켓 장부 */
 .post-page .ag-txt { font-size: 16px; line-height: 2; margin-top: 22px; }
 .post-page .ag-txt-lbl { display: block; font-size: 13px; font-weight: 700; color: var(--fg-neutral); line-height: 1.5; margin-bottom: 2px; }
 .post-page .ag-txt-in { color: var(--fg-strong); padding-bottom: 12px; border-bottom: 1px dashed var(--line-strong); }
 .post-page .ag-txt-out { padding-top: 12px; min-height: 6.2em; }
-.post-page .ag-tok { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--fg-neutral) 55%, transparent); margin-right: 2px; animation: pg-ag-pop .25s ease-out; }
+.post-page .ag-tok { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--fg-neutral) 55%, transparent); margin-right: 2px; }
 .post-page .ag-tok.lie { color: var(--ag-bad); font-weight: 700; box-shadow: inset 0 -3px 0 var(--ag-bad); }
 @keyframes pg-ag-pop { from { opacity: 0; } }
 .post-page .ag-ledger { margin-top: 28px; font-size: 15px; }
@@ -97,9 +87,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-msg > b { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.6; color: var(--bg-base); background: var(--fg-neutral); vertical-align: 1px; font-family: var(--font-mono); }
 
 /* 3. 쌓이는 messages */
-.post-page .ag-calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 16px; }
-.post-page .ag-call { display: flex; flex-direction: column; gap: 5px; transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
-.post-page .ag-call.off { opacity: 0.45; transform: translateY(16px); }
+.post-page .ag-rows { display: flex; flex-direction: column; gap: clamp(40px, 5vw, 56px); }
+.post-page .ag-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 24px; align-items: end; }
+.post-page .ag-row + .ag-row { border-top: 1px solid var(--line-subtle); padding-top: clamp(32px, 4vw, 48px); }
+.post-page .ag-row-h { margin: 0; align-self: center; font-family: var(--font-display); font-size: 18px; line-height: 1.4; color: var(--fg-strong); word-break: keep-all; }
+.post-page .ag-calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end; }
+.post-page .ag-call { display: flex; flex-direction: column; gap: 5px; }
 .post-page .ag-call h5 { margin: 6px 0 0; font-size: 13px; color: var(--fg-neutral); font-weight: 700; text-align: center; order: 9; }
 .post-page .ag-call .ag-msg { margin: 0; }
 .post-page .ag-call .ag-msg.new { box-shadow: inset 0 0 0 2px var(--ag-model); }
@@ -107,7 +100,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-bar { order: 10; height: 10px; border-radius: 5px; background: var(--bg-muted); overflow: hidden; }
 .post-page .ag-bar i { display: block; height: 100%; background: var(--fg-strong); transition: width .7s cubic-bezier(.2,.7,.2,1); }
 .post-page .ag-bar-t { order: 11; font-size: 13px; color: var(--fg-neutral); text-align: center; }
-.post-page .ag-reply { order: 8; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 12px 12px 4px 12px; border: 1.5px solid var(--fg-strong); }
+.post-page .ag-reply { order: 8; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 10px; border: 1.5px dashed var(--fg-strong); }
+.post-page .ag-reply > b { margin-right: 6px; font-size: 12px; }
 .post-page .ag-reply.bad { border-color: var(--ag-bad); color: var(--ag-bad); }
 
 /* 4. 스펙트럼 SVG */
@@ -144,11 +138,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 /* 터미널: 실제 호출 없이 준비한 출력을 찍어 보인다 */
 .post-page .ag-term { border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; margin: 8px 0 0; }
-.post-page .ag-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--line-subtle); font-size: 13px; color: var(--fg-neutral); }
-.post-page .ag-term-bar .ag-act { font-size: 13px; padding: 5px 11px; }
-.post-page .ag-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; min-height: 5.4em; color: var(--fg-normal); }
-.post-page .ag-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: var(--fg-strong); animation: pg-ag-blink 1s steps(1) infinite; }
-@keyframes pg-ag-blink { 50% { opacity: 0; } }
+.post-page .ag-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line-subtle); font-size: 13px; color: var(--fg-neutral); }
+.post-page .ag-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; color: var(--fg-normal); }
 .post-page .ag details { margin: 6px 0 14px; padding: 2px 0; }
 .post-page .ag details[open] { margin-bottom: 22px; }
 .post-page .ag summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 15px; }
@@ -164,6 +155,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 /* 배치 — 섹션마다 다르게: 글|그림, 제목|글 머리, 코드|해설, 전폭 띠, 지그재그 */
 .post-page .ag-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
 .post-page .ag-split .ag-fig { margin: 0; }
+.post-page .ag-split-rev { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .ag-cost { width: 100%; max-width: 520px; height: auto; display: block; }
 .post-page .ag-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
 .post-page .ag-head > h2 { margin: 0; }
 .post-page .ag-head-sub { margin-top: 8px; }
@@ -181,18 +174,13 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ag-zig .ag-quote { font-family: var(--font-display); font-size: clamp(19px, 2.2vw, 24px); line-height: 1.6; color: var(--fg-strong); }
 .post-page .ag-pull { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 26px) !important; line-height: 1.6 !important; color: var(--fg-strong); max-width: 860px; margin: clamp(32px, 5vw, 56px) auto 0 !important; text-align: center; }
 @media (max-width: 900px) {
-  .post-page .ag-split, .post-page .ag-head, .post-page .ag-codepair, .post-page .ag-codepair.rev, .post-page .ag-two, .post-page .ag-zig, .post-page .ag-zig-b { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ag-split, .post-page .ag-split-rev, .post-page .ag-head, .post-page .ag-codepair, .post-page .ag-codepair.rev, .post-page .ag-two, .post-page .ag-zig, .post-page .ag-zig-b { grid-template-columns: minmax(0, 1fr); }
   .post-page .ag-codepair.rev > :first-child { order: 0; }
   .post-page .ag-head > h2 { margin-bottom: 4px; }
   .post-page .ag-pull { text-align: left; }
 }
 /* 단계 흐름은 스크롤로 — 그림을 고정해 두고 스크롤한 만큼 단계가 진행된다. 클릭은 체험용 조작에만 */
-.post-page .ag-stick { position: sticky; top: 76px; z-index: 2; }
-.post-page .ag-scroll-space { height: calc(var(--n) * 36vh); }
 .post-page .ag-stepcap { display: block; text-align: center; font-size: 14px; font-weight: 600; color: var(--fg-strong); margin: 20px 0 0 !important; }
-.post-page .ag-ctrl .ag-stepcap { display: inline-block; margin: 0 !important; min-width: 7em; text-align: left; }
-.post-page .ag-hero .ag-stick { background: var(--bg-base); padding-bottom: 8px; }
-.post-page .ag-band .ag-stick { background: var(--bg-subtle); }
 .post-page .ag-loopscroll { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: clamp(32px, 5vw, 72px); margin-top: clamp(40px, 6vw, 64px); }
 .post-page .ag-loop-steps { list-style: none; margin: 0; padding: 18vh 0 24vh; counter-reset: lp; }
 .post-page .ag-loop-steps li { counter-increment: lp; min-height: 36vh; display: flex; gap: 12px; align-items: center; font-size: 17px; line-height: 1.75; color: var(--fg-neutral); opacity: .35; transition: opacity .3s, color .3s; word-break: keep-all; }
@@ -210,7 +198,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .ag-loop-stick .ag-state h4 { margin-bottom: 4px; font-size: 12.5px; }
   .post-page .ag-loop-steps { padding: 4vh 0 30vh; }
   .post-page .ag-loop-steps li { min-height: 52vh; align-items: center; padding-top: 0; }
-  .post-page .ag-stick { top: 60px; }
 }
 @media (max-width: 900px) {
   .post-page .ag-wire { grid-template-columns: minmax(0, 1fr); gap: 6px; }
@@ -221,7 +208,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (max-width: 640px) {
   .post-page .ag-wrap { padding: 0 20px; }
   .post-page .ag p { font-size: 16px; }
-  .post-page .ag-calls { grid-template-columns: 1fr; min-height: 0; }
+  .post-page .ag-calls { grid-template-columns: 1fr; }
+  .post-page .ag-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .post-page .ag-spec { grid-template-columns: 1fr; gap: 28px; }
   .post-page .ag-spec-axis { display: none; }
   .post-page .ag-call h5 { order: -1; text-align: left; }
@@ -239,22 +227,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <h1>AI Agent는 더 똑똑한 챗봇이 아니다</h1>
         <p class="ag-lede">회사 IT 헬프데스크에 이런 메시지가 들어왔다고 해 보겠습니다. <b>티켓</b>은 헬프데스크에 들어온 요청 한 건을 기록해 두는 접수 번호표입니다. 같은 LLM을 쓰는 프로그램 세 개가 이 요청을 받으면 어떻게 될까요? 차이는 모델의 똑똑함이 아니라 <b>다음에 할 일을 누가 정하느냐</b>에서 생깁니다.</p>
       </div>
-      <div class="ag-req">
-        <span class="ag-who">직원</span>
-        <div class="ag-req-bubble">노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
-      </div>
-      <div class="ag-hfig" data-figure data-thumb data-thumb-act="el.querySelectorAll('.ag-ask, .ag-ctrl, .ag-cap').forEach((x) => { x.style.display = 'none'; })">
-        <p class="ag-ask">직원 상황을 골라 보세요. Agent 선로의 갈림길과 맨 오른쪽 결과가 바뀝니다. ▶를 누르면 요청 하나가 세 선로를 함께 지나갑니다.</p>
-        <div class="ag-ctrl">
-          <div class="ag-seg" role="group" aria-label="직원 상황 고르기">
-            <button type="button" data-ag-case="dup" aria-pressed="true">지난주에 같은 티켓을 열어 둠</button>
-            <button type="button" data-ag-case="new" aria-pressed="false">열린 티켓 없음</button>
-          </div>
-          <button type="button" class="ag-act" data-ag-hrun>세 곳에 보내 보기</button>
-        </div>
+      <dl class="ag-req" aria-label="들어온 요청">
+        <dt>보낸 사람</dt><dd>직원 김민지</dd>
+        <dt>내용</dt><dd>"노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요."</dd>
+        <dt>티켓 시스템</dt><dd>지난주에 같은 증상으로 연 티켓 <code>#1042</code>가 아직 열려 있음</dd>
+      </dl>
+      <div class="ag-hfig" data-figure data-thumb data-thumb-act="el.querySelectorAll('.ag-cap').forEach((x) => { x.style.display = 'none'; })">
         <svg class="ag-scene" data-ag-hero role="img" aria-label="한 요청이 챗봇, 워크플로, Agent 세 선로로 갈라지는 노선도. 챗봇은 답을 글로 쓴 뒤 사람이 직접 처리한다. 워크플로는 분류, 새 티켓 만들기, 안내 문장 순서로 늘 같은 길을 간다. Agent는 먼저 티켓을 찾아보고 그 결과에 따라 기존 티켓에 덧붙이거나 새 티켓을 만드는 갈림길에서 길을 고른다. 같은 티켓이 이미 있으면 워크플로는 중복 티켓을 만들고 Agent는 기존 티켓에 메모를 남긴다."></svg>
-        <p class="ag-eff" data-ag-heff aria-live="polite"></p>
-        <p class="ag-cap">선로 하나가 프로그램 하나이고 점은 그 프로그램이 하는 일입니다. 점선은 사람이 손으로 하는 일이거나 이번에 가지 않은 길입니다. 설명용으로 만든 예시 시나리오라 실제 모델이 늘 이렇게 판단하지는 않습니다.</p>
+        <p class="ag-eff">Agent는 찾아본 결과에서 #1042를 보고 덧붙이는 길로 갔습니다. 워크플로는 정해 둔 길대로 가서 #1043을 하나 더 만들었습니다. 열린 티켓이 없었다면 Agent는 점선 갈래, 곧 새 티켓을 만드는 길로 갔을 겁니다.</p>
+        <p class="ag-cap">선로 하나가 프로그램 하나이고 점은 그 프로그램이 하는 일입니다. 점선은 사람이 손으로 하는 일이거나 이번 상황에서 가지 않은 길입니다. 설명용으로 만든 예시 시나리오라 실제 모델이 늘 이렇게 판단하지는 않습니다.</p>
       </div>
     </div>
   </header>
@@ -264,24 +245,22 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div>
         <h2>LLM은 글을 이어 쓰는 프로그램입니다</h2>
         <p>세 프로그램 모두 안에 같은 LLM이 들어 있습니다. <b>LLM(Large Language Model)</b>은 엄청나게 많은 글을 읽고 배운 프로그램입니다. 받은 글 뒤에 올 말을 이어 씁니다. 휴대폰 키보드가 다음 단어를 추천하는 것과 비슷한데, 한 단어 대신 긴 답을 통째로 씁니다.</p>
-        <p>LLM은 글을 <b>토큰</b> 단위로 읽고 씁니다. 토큰은 단어보다 조금 작은 글 조각입니다. 모델에게 주는 글은 <b>프롬프트</b>라고 부릅니다. 아래에서 티켓을 열어 달라고 보내 보세요.</p>
+        <p>LLM은 글을 <b>토큰</b> 단위로 읽고 씁니다. 토큰은 단어보다 조금 작은 글 조각입니다. 모델에게 주는 글은 <b>프롬프트</b>라고 부릅니다. 이 섹션의 그림에는 티켓을 열어 달라는 프롬프트에 LLM이 이어 쓴 글과, 같은 때의 진짜 티켓 장부를 나란히 놓았습니다.</p>
         <p>LLM이 "티켓을 열었습니다"라고 써도 티켓은 생기지 않습니다. 실제로 일어난 일은 글자가 나온 것뿐입니다. LLM은 회사 시스템에 직접 접속하지 못합니다. 접속했다는 문장을 <b>쓸 수 있을 뿐</b>입니다.</p>
         <p>그래서 세 프로그램의 차이는 LLM 바깥에 있습니다. LLM이 쓴 글을 받아서 무엇을 하느냐가 프로그램마다 다릅니다.</p>
       </div>
       <div class="ag-split-fig">
       <div class="ag-fig ag-fig-tight" data-figure>
-        <p class="ag-ask">보내기를 누르면 LLM이 프롬프트 뒤에 글을 한 조각씩 이어 씁니다. 글에 나온 티켓 번호가 아래 장부에도 생기는지 보세요.</p>
-        <div class="ag-ctrl"><button type="button" class="ag-act" data-ag-gen>보내기</button></div>
         <div class="ag-txt">
           <div class="ag-txt-in"><span class="ag-txt-lbl">보내는 글(프롬프트)</span>노트북 와이파이가 안 잡혀요. 티켓 좀 열어 주세요.</div>
-          <div class="ag-txt-out"><span class="ag-txt-lbl">LLM이 이어 쓴 글</span><span data-ag-gen-out aria-live="polite"></span></div>
+          <div class="ag-txt-out"><span class="ag-txt-lbl">LLM이 이어 쓴 글</span><span><span class="ag-tok">네</span><span class="ag-tok">,</span> <span class="ag-tok">티켓</span> <span class="ag-tok lie">#</span><span class="ag-tok lie">3471</span><span class="ag-tok">을</span> <span class="ag-tok">열</span><span class="ag-tok">었습니다</span><span class="ag-tok">.</span> <span class="ag-tok">곧</span> <span class="ag-tok">담당자가</span> <span class="ag-tok">연락</span><span class="ag-tok">드릴</span> <span class="ag-tok">거예요</span><span class="ag-tok">.</span></span></div>
         </div>
         <div class="ag-ledger" data-ag-db>
           <h4>진짜 티켓 시스템의 장부</h4>
           <ol>
             <li><b>#1041</b><span>지난주 접수</span></li>
             <li><b>#1042</b><span>지난주 접수</span></li>
-            <li class="slot" data-ag-slot><b>#3471</b><span data-ag-db-note>아직 없음</span></li>
+            <li class="slot lie"><b>#3471</b><span>글에만 있고 장부에는 없음</span></li>
           </ol>
         </div>
         <p class="ag-cap">밑줄 하나가 토큰 하나입니다. 토큰을 나누는 방식은 설명하기 쉽도록 단순하게 그렸습니다.</p>
@@ -365,8 +344,8 @@ print(response.choices[0].message.content)
 # ⑤ 이번 호출에 쓴 토큰 수
 print(response.usage.total_tokens)</code></pre>
 <div class="ag-term" data-ag-term="ask">
-  <div class="ag-term-bar"><span>터미널</span><button type="button" class="ag-act" data-ag-run="ask">실행해 보기</button></div>
-  <div class="ag-term-out" data-ag-out aria-live="polite">$ python ask.py
+  <div class="ag-term-bar"><span>터미널</span></div>
+  <div class="ag-term-out">$ python ask.py
 와이파이를 껐다 켜 보세요. 그래도 안 되면 노트북 이름과 증상을 알려 주시면 티켓을 열어 드릴게요.
 57</div>
 </div>
@@ -409,22 +388,50 @@ print(response.usage.total_tokens)</code></pre>
     </div>
     <div class="ag-band">
       <div class="ag-wrap">
-      <div class="ag-scroll" data-ag-scroll="calls">
-      <div class="ag-stick">
       <div class="ag-fig ag-fig-band" data-figure>
-        <p class="ag-ask">모델에 무엇을 실어 보낼지 골라 보세요. 호출마다 실린 메시지 칸과 맨 아래 토큰 막대가 바뀝니다.</p>
-        <div class="ag-ctrl">
-          <span class="ag-stepcap" data-ag-ccap aria-live="polite">1번째 호출</span>
-          <div class="ag-seg" role="group" aria-label="보내는 방식">
-            <button type="button" data-ag-mem="on" aria-pressed="true">대화 전체 보내기</button>
-            <button type="button" data-ag-mem="off" aria-pressed="false">이번 질문만 보내기</button>
+        <div class="ag-rows">
+          <div class="ag-row">
+            <h4 class="ag-row-h">대화 전체를 보낼 때</h4>
+            <div class="ag-calls">
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr new"><b>user</b> 노트북 와이파이가 안 잡혀요</span>
+              <div class="ag-reply"><b>응답</b> 재부팅은 해 보셨나요?</div>
+              <h5>1번째 호출 · 메시지 2개</h5>
+              <div class="ag-bar"><i style="width:25%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 30개</div></div>
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr"><b>user</b> 노트북 와이파이가 안 잡혀요</span><span class="ag-msg ast"><b>assistant</b> 재부팅은 해 보셨나요?</span><span class="ag-msg usr new"><b>user</b> 네, 해 봤는데도 그래요</span>
+              <div class="ag-reply"><b>응답</b> 그럼 무선 드라이버를 다시 설치해 보세요.</div>
+              <h5>2번째 호출 · 메시지 4개</h5>
+              <div class="ag-bar"><i style="width:53%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 64개</div></div>
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr"><b>user</b> 노트북 와이파이가 안 잡혀요</span><span class="ag-msg ast"><b>assistant</b> 재부팅은 해 보셨나요?</span><span class="ag-msg usr"><b>user</b> 네, 해 봤는데도 그래요</span><span class="ag-msg ast"><b>assistant</b> 그럼 무선 드라이버를 다시 설치해 보세요.</span><span class="ag-msg usr new"><b>user</b> 드라이버는 어디서 받아요?</span>
+              <div class="ag-reply"><b>응답</b> 와이파이 드라이버라면 사내 소프트웨어 센터에 있습니다.</div>
+              <h5>3번째 호출 · 메시지 6개</h5>
+              <div class="ag-bar"><i style="width:82%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 98개</div></div>
+            </div>
+          </div>
+          <div class="ag-row">
+            <h4 class="ag-row-h">이번 질문만 보낼 때</h4>
+            <div class="ag-calls">
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr new"><b>user</b> 노트북 와이파이가 안 잡혀요</span>
+              <div class="ag-reply"><b>응답</b> 재부팅은 해 보셨나요?</div>
+              <h5>1번째 호출 · 메시지 2개</h5>
+              <div class="ag-bar"><i style="width:25%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 30개</div></div>
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr new"><b>user</b> 네, 해 봤는데도 그래요</span>
+              <div class="ag-reply bad"><b>응답</b> 무엇을 해 보셨다는 말씀인지 알려 주시겠어요?</div>
+              <h5>2번째 호출 · 메시지 2개</h5>
+              <div class="ag-bar"><i style="width:25%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 30개</div></div>
+            <div class="ag-call"><span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span><span class="ag-msg usr new"><b>user</b> 드라이버는 어디서 받아요?</span>
+              <div class="ag-reply bad"><b>응답</b> 어떤 드라이버를 찾으시나요?</div>
+              <h5>3번째 호출 · 메시지 2개</h5>
+              <div class="ag-bar"><i style="width:25%"></i></div>
+              <div class="ag-bar-t">보낸 토큰 약 30개</div></div>
+            </div>
           </div>
         </div>
-        <div class="ag-calls" data-ag-calls></div>
-        <p class="ag-cap">묶음 하나가 API 호출 한 번이며 위쪽 칸들은 실어 보낸 메시지, 굵은 테두리 칸은 이번에 새로 더한 메시지입니다. 맨 아래 "답" 말풍선은 돌아온 답이라 보낸 메시지 수에 세지 않습니다. 막대는 보낸 토큰 수이며 숫자는 설명을 위한 예시 값입니다. 스크롤을 내리면 호출이 하나씩 늘어납니다.</p>
-      </div>
-      </div>
-      <div class="ag-scroll-space" style="--n:3"></div>
+        <p class="ag-cap">묶음 하나가 API 호출 한 번입니다. 위쪽 칸들은 실어 보낸 메시지이고 굵은 테두리 칸은 이번에 새로 더한 메시지입니다. 맨 아래 "응답"은 돌아온 답이라 보낸 메시지 수에 세지 않습니다. 막대는 보낸 토큰 수이며 숫자는 설명을 위한 예시 값입니다. 아래 줄의 붉은 응답은 앞 대화를 받지 못해 엉뚱하게 되묻는 답입니다.</p>
       </div>
       </div>
     </div>
@@ -462,8 +469,8 @@ while True:
     print("상담원:", answer)
     print(f"[보낸 메시지 {len(messages) - 1}개]")</code></pre>
 <div class="ag-term" data-ag-term="chat">
-  <div class="ag-term-bar"><span>터미널</span><button type="button" class="ag-act" data-ag-run="chat">실행해 보기</button></div>
-  <div class="ag-term-out" data-ag-out aria-live="polite">$ python chat.py
+  <div class="ag-term-bar"><span>터미널</span></div>
+  <div class="ag-term-out">$ python chat.py
 나: 와이파이가 안 잡혀요
 상담원: 재부팅은 해 보셨나요?
 [보낸 메시지 2개]
@@ -477,7 +484,7 @@ while True:
         <div class="ag-codepair-side">
 <ol class="pg-code-notes">
   <li><b>대화 기록을 담을 목록</b>입니다. system 지시 하나로 시작합니다. 이 목록이 위 그림의 묶음이자 프로그램이 들고 있는 상태입니다.</li>
-  <li><b>사용자의 말을 목록 끝에 더합니다.</b> 이 줄을 빼고 이번 질문만 보내면, 위 그림에서 "이번 질문만 보내기"를 고른 것과 같습니다.</li>
+  <li><b>사용자의 말을 목록 끝에 더합니다.</b> 이 줄을 빼고 이번 질문만 보내면 위 그림의 아래 줄처럼 됩니다.</li>
   <li><b>목록 전체를 보냅니다.</b> 호출할 때마다 처음부터 지금까지가 다 실립니다.</li>
   <li><b>모델의 답도 목록에 더합니다.</b> 이걸 빼면 다음 질문을 보낼 때 모델은 자기가 앞에서 무슨 답을 했는지 모릅니다.</li>
 </ol>
@@ -574,13 +581,15 @@ while True:
   </section>
 
   <section class="ag-sec">
-    <div class="ag-wrap">
-      <div class="ag-head">
+    <div class="ag-wrap ag-split ag-split-rev">
+      <div>
         <h2>Agent가 늘 더 나은 선택은 아닙니다</h2>
-        <div>
         <p>Agent는 상황에 맞춰 길을 바꾸는 대신 대가를 치릅니다. 루프를 한 바퀴 돌 때마다 모델을 다시 부르니 시간과 토큰이 더 듭니다. 모델이 길을 고르니 같은 요청에도 매번 다르게 움직일 수 있습니다. 앞에서 한 잘못된 판단이 뒤로 이어지기도 합니다.</p>
         <p>그래서 Anthropic도 같은 글에서 가장 단순한 방법부터 찾으라고 권합니다. 답만 쓰면 되는 일이면 챗봇으로, 순서가 늘 같은 일이면 워크플로로 충분합니다. 상황마다 다음 할 일이 달라지고 그 판단을 모델에게 맡길 만할 때 Agent를 씁니다.</p>
-        </div>
+      </div>
+      <div class="ag-fig" data-figure>
+        <svg class="ag-cost" viewBox="0 0 520 330" role="img" aria-label="맨 위 그림의 상황에서 모델 호출 횟수와 보낸 토큰. 챗봇과 워크플로는 모델을 한 번 부르고 토큰을 60개, 90개쯤 보낸다. Agent는 모델을 세 번 부르고, 부를 때마다 지시와 도구 목록과 늘어난 메시지 목록을 다시 보내서 토큰이 830개쯤으로 늘어난다"><text x="0" y="20" class="t-s" font-size="15">모델 호출 횟수</text><text x="92" y="63" text-anchor="end" font-size="15">챗봇</text><rect x="104" y="44" width="56" height="28" rx="6" fill="var(--fg-strong)" opacity=".85"/><text x="174" y="63" class="t-d" font-size="14">1번</text><text x="92" y="103" text-anchor="end" font-size="15">워크플로</text><rect x="104" y="84" width="56" height="28" rx="6" fill="var(--fg-strong)" opacity=".85"/><text x="174" y="103" class="t-d" font-size="14">1번</text><text x="92" y="143" text-anchor="end" font-size="15">Agent</text><rect x="104" y="124" width="56" height="28" rx="6" fill="var(--ag-model)" opacity=".85"/><rect x="168" y="124" width="56" height="28" rx="6" fill="var(--ag-model)" opacity=".85"/><rect x="232" y="124" width="56" height="28" rx="6" fill="var(--ag-model)" opacity=".85"/><text x="302" y="143" class="t-d" font-size="14">3번</text><text x="0" y="196" class="t-s" font-size="15">보낸 토큰 (예시 값)</text><text x="92" y="237" text-anchor="end" font-size="15">챗봇</text><rect x="104" y="218" width="21" height="28" rx="5" fill="var(--fg-strong)" opacity=".85"/><text x="133" y="237" class="t-d" font-size="14">약 60</text><text x="92" y="277" text-anchor="end" font-size="15">워크플로</text><rect x="104" y="258" width="34" height="28" rx="5" fill="var(--fg-strong)" opacity=".85"/><text x="146" y="277" class="t-d" font-size="14">약 90</text><text x="92" y="317" text-anchor="end" font-size="15">Agent</text><rect x="104" y="298" width="88" height="28" rx="5" fill="var(--ag-model)" opacity=".85"/><rect x="196" y="298" width="114" height="28" rx="5" fill="var(--ag-model)" opacity=".85"/><rect x="314" y="298" width="135" height="28" rx="5" fill="var(--ag-model)" opacity=".85"/><text x="457" y="317" class="t-d" font-size="14">약 830</text></svg>
+        <p class="ag-cap">맨 위 그림의 "같은 티켓이 이미 있음" 상황을 셈한 예시입니다. Agent 막대는 세 토막입니다. 모델을 부를 때마다 지시·도구 목록·늘어난 메시지 목록을 처음부터 다시 보내기 때문입니다.</p>
       </div>
     </div>
   </section>
@@ -626,7 +635,6 @@ while True:
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
   const who = { h: "사람", c: "미리 짠 코드", m: "모델" };
 
-  // 스크롤로 단계 진행 — 고정된 그림(첫 자식)이 바깥 틀을 지나가는 정도를 0~1 로 재서 단계 번호로 바꾼다
   // 고정 그림은 화면 세로 가운데에 둔다(nav 에 붙이지 않는다). 그림 높이에 맞춰 sticky top 을 계산한다. 모바일은 위쪽 고정
   function centerSticky(el, mobileTop) {
     const set = () => {
@@ -646,23 +654,6 @@ while True:
       let best = 0, bd = Infinity;
       items.forEach((x, i) => { const r = x.getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bd) { bd = d; best = i; } });
       pick(best);
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
-  }
-  function scrollSteps(box, n, draw) {
-    let last = -1, raf = 0;
-    const stick = box.firstElementChild;
-    centerSticky(stick, 60);
-    const tick = () => {
-      raf = 0;
-      const r = box.getBoundingClientRect(), h = stick.getBoundingClientRect().height;
-      const top = parseFloat(getComputedStyle(stick).top) || 0;
-      const p = Math.min(1, Math.max(0, (top - r.top) / Math.max(1, r.height - h)));
-      const k = Math.min(n - 1, Math.floor(p * n));
-      if (k !== last) { last = k; draw(k); }
     };
     const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
     addEventListener("scroll", on, { passive: true, signal });
@@ -691,7 +682,7 @@ while True:
     flow: { name: "워크플로", who: "다음 일을 미리 짠 코드가 고름", whoN: "코드가 고름", nodes: [["분류", "분류"], ["새 티켓 만들기", "새 티켓\n만들기"], ["안내 문장", "안내\n문장"]] },
     agent: { name: "Agent", who: "다음 일을 모델이 고름", whoN: "모델이 고름", nodes: [["티켓 찾아보기", "티켓\n찾아보기"], null, ["답 쓰기", "답 쓰기"]] },
   };
-  const FORK = { a: ["#1042에 덧붙이기", "#1042에\n덧붙이기"], b: ["새 티켓 만들기", "새 티켓\n만들기"] };
+  const FORK = { a: ["#1042에 덧붙이기", "#1042에\n덧붙이기"], b: ["없었다면: 새 티켓 만들기", "없었다면\n새 티켓"] };
   const CASE = {
     dup: { br: "a", found: ["찾은 결과: #1042", "#1042 있음"], res: { chat: ["사람 몫", "사람 몫", "dim"], flow: ["#1043 중복", "#1043\n중복", "bad"], agent: ["#1042에 메모", "#1042에\n메모", "ok"] },
            eff: "Agent는 찾아본 결과에서 #1042를 보고 덧붙이는 길로 갔습니다. 워크플로는 정해 둔 길대로 가서 #1043을 하나 더 만들었습니다." },
@@ -699,7 +690,7 @@ while True:
            eff: "열린 티켓이 없자 Agent는 새 티켓을 만드는 길로 갔습니다. 이번에는 워크플로와 결과가 같습니다. 챗봇은 두 경우 모두 글로 답하고 끝납니다." },
   };
   const heroSvg = $("[data-ag-hero]");
-  let hCase = "dup", hH = null, hGen = 0, hRoutes = {}, hRes = {};
+  const hCase = "dup"; let hH = null, hRes = {};
   function hp(k, i, H, br) { // i: -1 출발, 0~2 역, 9 끝
     if (H) { const y = { chat: 80, flow: 205, agent: 330 }[k]; const x = i < 0 ? 160 : i === 9 ? 880 : [400, 610, 800][i]; return [x, br === "a" ? y - 34 : br === "b" ? y + 36 : y]; }
     const x = { chat: 60, flow: 180, agent: 300 }[k]; const y = i < 0 ? 62 : i === 9 ? 450 : [130, 240, 350][i]; return [br === "a" ? x - 30 : br === "b" ? x + 30 : x, y];
@@ -707,7 +698,7 @@ while True:
   function drawHero() {
     const H = hH = wide(heroSvg, 820), C = CASE[hCase], f = H ? 1 : 1;
     heroSvg.innerHTML = ""; heroSvg.setAttribute("viewBox", H ? "0 0 1040 410" : "0 0 360 520"); heroSvg.style.maxWidth = H ? "1040px" : "440px";
-    hRoutes = {}; hRes = {};
+    hRes = {};
     const rail = (pts, a = {}) => mk("path", { d: pathD(pts, H), fill: "none", stroke: RAIL, "stroke-width": H ? 6 : 5, "stroke-linecap": "round", ...a }, heroSvg);
     const node = ([x, y], a = {}) => mk("circle", { cx: x, cy: y, r: 9, fill: "var(--bg-base)", stroke: INK, "stroke-width": 3.5, ...a }, heroSvg);
     const lab = ([x, y], pair, a = {}) => H ? txt(heroSvg, x, y - 20, pair[0], { "font-size": 16, "text-anchor": "middle", ...a }) : txt(heroSvg, x, y + 28, pair[1], { "font-size": 14, "text-anchor": "middle", style: halo + "stroke-width:9px;" + (a.style || ""), ...(a.class ? { class: a.class } : {}) });
@@ -747,6 +738,7 @@ while True:
         } else {
           txt(heroSvg, on[0], on[1] + 28, onLab[1], { "font-size": 14, class: "t-s", "text-anchor": "middle", style: halo + `fill:${ACC}` });
           txt(heroSvg, n0[0] - 16, n0[1] + 5, C.found[1], { "font-size": 13, class: "t-s", "text-anchor": "end", style: halo + `fill:${ACC}` });
+          txt(heroSvg, off[0], off[1] + 28, offLab[1], { "font-size": 13, class: "t-d", "text-anchor": "middle", style: halo + "opacity:.8" });
         }
         route = [st, n0, on, n2, end];
       }
@@ -755,124 +747,10 @@ while True:
       const [rt, rtn, kind] = C.res[k], col = kind === "bad" ? BAD : kind === "ok" ? ACC : "";
       hRes[k] = H ? txt(heroSvg, end[0] + 18, end[1] + 6, rt, { "font-size": 16, class: kind === "dim" ? "t-d" : "t-s", style: col ? `fill:${col}` : "" })
                   : txt(heroSvg, end[0], end[1] + 30, rtn, { "font-size": 14, class: kind === "dim" ? "t-d" : "t-s", "text-anchor": "middle", style: col ? `fill:${col}` : "" });
-      hRoutes[k] = mk("path", { d: (H ? `M${SRC[0]} ${SRC[1]}` + seg(SRC, st, H) : `M${st[0]} ${st[1]}`) + pathD(route, H).replace(/^M[\d.]+ [\d.]+/, ""), fill: "none", stroke: "none" }, heroSvg);
     }
-    $("[data-ag-heff]").textContent = C.eff;
   }
-  async function runHero() {
-    const my = ++hGen, btn = $("[data-ag-hrun]"); btn.disabled = true;
-    const ks = Object.keys(hRoutes), lens = ks.map((k) => hRoutes[k].getTotalLength()), max = Math.max(...lens);
-    ks.forEach((k) => { hRes[k].style.opacity = 0; });
-    const dots = ks.map(() => mk("circle", { r: 9, fill: INK, stroke: "var(--bg-base)", "stroke-width": 3 }, heroSvg));
-    await tween(reduce ? 0 : Math.max(2400, max * 4.5), (e) => {
-      if (my !== hGen) return;
-      ks.forEach((k, i) => { const l = Math.min(lens[i], e * max), p = hRoutes[k].getPointAtLength(l); dots[i].setAttribute("cx", p.x); dots[i].setAttribute("cy", p.y); if (l >= lens[i] - 1) hRes[k].style.opacity = 1; });
-    });
-    dots.forEach((d) => d.remove()); ks.forEach((k) => { if (hRes[k]) hRes[k].style.opacity = 1; });
-    if (my === hGen) btn.disabled = false;
-  }
-  $$("[data-ag-case]").forEach((b) => b.addEventListener("click", () => {
-    hCase = b.dataset.agCase; hGen++; $("[data-ag-hrun]").disabled = false;
-    $$("[data-ag-case]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    drawHero();
-  }, { signal }));
-  $("[data-ag-hrun]").addEventListener("click", runHero, { signal });
-  addEventListener("resize", () => { if (wide(heroSvg, 820) !== hH) { hGen++; $("[data-ag-hrun]").disabled = false; drawHero(); } }, { passive: true, signal });
+  addEventListener("resize", () => { if (wide(heroSvg, 820) !== hH) drawHero(); }, { passive: true, signal });
   drawHero();
-
-  /* 1. 글만 쓰는 LLM: 프롬프트 뒤에 토큰이 붙고, 장부는 그대로 */
-  const OUT = ["네", ",", " 티켓", " #", "3471", "을", " 열", "었습니다", ".", " 곧", " 담당자가", " 연락", "드릴", " 거예요", "."];
-  const outEl = $("[data-ag-gen-out]"), dbEl = $("[data-ag-db]"), slotEl = $("[data-ag-slot]");
-  let genTimer = 0;
-  const genIdle = () => { outEl.innerHTML = '<span style="color:var(--fg-alternative)">보내기를 누르면 여기에 글이 이어집니다</span>'; };
-  genIdle();
-  $("[data-ag-gen]").addEventListener("click", () => {
-    clearInterval(genTimer); outEl.innerHTML = ""; slotEl.classList.remove("lie"); $("[data-ag-db-note]").textContent = "아직 없음";
-    let i = 0;
-    genTimer = setInterval(() => {
-      if (i >= OUT.length) {
-        clearInterval(genTimer);
-        $$(".ag-tok.claim", outEl).forEach((x) => x.classList.add("lie"));
-        slotEl.classList.add("lie"); $("[data-ag-db-note]").textContent = "글에만 있고 장부에는 없음";
-        return;
-      }
-      const t = OUT[i];
-      if (t.startsWith(" ")) outEl.append(" ");
-      const s = document.createElement("span"); s.className = "ag-tok" + (i === 3 || i === 4 ? " claim" : ""); s.textContent = t.trim(); outEl.append(s); i++;
-    }, reduce ? 0 : 120);
-  }, { signal });
-  signal.addEventListener("abort", () => clearInterval(genTimer));
-
-  /* 3. 쌓이는 messages */
-  const TURNS = [
-    { u: "노트북 와이파이가 안 잡혀요", a: "재부팅은 해 보셨나요?", aOff: "재부팅은 해 보셨나요?" },
-    { u: "네, 해 봤는데도 그래요", a: "그럼 무선 드라이버를 다시 설치해 보세요.", aOff: "무엇을 해 보셨다는 말씀인지 알려 주시겠어요?" },
-    { u: "드라이버는 어디서 받아요?", a: "와이파이 드라이버라면 사내 소프트웨어 센터에 있습니다.", aOff: "어떤 드라이버를 찾으시나요?" },
-  ];
-  let turn = 1, mem = "on";
-  const callsEl = $("[data-ag-calls]");
-  let builtMem = null;
-  function drawCalls() {
-    if (builtMem === mem) {
-      $$(".ag-call", callsEl).forEach((c, k) => c.classList.toggle("off", k >= turn));
-      $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3 · 스크롤로 진행`;
-      return;
-    }
-    builtMem = mem;
-    let html = "";
-    for (let k = 0; k < 3; k++) {
-      const msgs = [`<span class="ag-msg sys"><b>system</b> 헬프데스크 상담원</span>`];
-      if (mem === "on") {
-        for (let j = 0; j < k; j++) {
-          msgs.push(`<span class="ag-msg usr"><b>user</b> ${TURNS[j].u}</span>`);
-          msgs.push(`<span class="ag-msg ast"><b>assistant</b> ${TURNS[j].a}</span>`);
-        }
-      }
-      msgs.push(`<span class="ag-msg usr new"><b>user</b> ${TURNS[k].u}</span>`);
-      const count = msgs.length;
-      const tokens = 18 + (mem === "on" ? k * 34 : 0) + 12;
-      const reply = mem === "on" ? TURNS[k].a : TURNS[k].aOff;
-      const bad = mem === "off" && k > 0;
-      html += `<div class="ag-call${k >= turn ? " off" : ""}">${msgs.join("")}
-        <div class="ag-reply${bad ? " bad" : ""}"><b>답</b> ${reply}</div>
-        <h5>${k + 1}번째 호출 · 메시지 ${count}개</h5>
-        <div class="ag-bar"><i style="width:${Math.round(tokens / 1.2)}%"></i></div>
-        <div class="ag-bar-t">보낸 토큰 약 ${tokens}개</div></div>`;
-    }
-    callsEl.innerHTML = html;
-    $("[data-ag-ccap]").textContent = `${turn}번째 호출 / 3 · 스크롤로 진행`;
-  }
-  $$("[data-ag-mem]").forEach((b) => b.addEventListener("click", () => {
-    mem = b.dataset.agMem;
-    $$("[data-ag-mem]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    drawCalls();
-  }, { signal }));
-  scrollSteps($('[data-ag-scroll="calls"]'), 3, (k) => { turn = k + 1; drawCalls(); });
-
-  /* 코드 아래 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const RUNS = {
-    ask: [["cmd", "$ python ask.py"], ["wait", 700], ["type", "와이파이를 껐다 켜 보세요. 그래도 안 되면 노트북 이름과 증상을 알려 주시면 티켓을 열어 드릴게요."], ["line", "57"]],
-    chat: [["cmd", "$ python chat.py"], ["line", "나: 와이파이가 안 잡혀요"], ["wait", 600], ["type", "상담원: 재부팅은 해 보셨나요?"], ["line", "[보낸 메시지 2개]"],
-           ["line", "나: 네, 해 봤는데도 그래요"], ["wait", 600], ["type", "상담원: 그럼 무선 드라이버를 다시 설치해 보세요."], ["line", "[보낸 메시지 4개]"], ["line", "나: 끝"]],
-  };
-  const timers = new Set();
-  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
-  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
-  $$("[data-ag-run]").forEach((btn) => btn.addEventListener("click", async () => {
-    const out = $("[data-ag-out]", btn.closest("[data-ag-term]"));
-    const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    btn.disabled = true; out.textContent = "";
-    const cur = document.createElement("span"); cur.className = "cur";
-    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
-    for (const [kind, v] of RUNS[btn.dataset.agRun]) {
-      if (signal.aborted) return;
-      if (kind === "wait") { if (!fast) await later(v); continue; }
-      if (out.textContent) add("\n");
-      if (kind === "type" && !fast) { for (const ch of v) { add(ch); await later(28); } }
-      else { add(v); if (!fast) await later(kind === "cmd" ? 400 : 250); }
-    }
-    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
-  }, { signal }));
 
   /* 5. 루프: 노선도 위 점이 스크롤 단계마다 움직이고 메시지 목록이 쌓인다 */
   const LOOP = [
