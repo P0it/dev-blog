@@ -9,9 +9,8 @@ series_order: 4
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-init-chat-model-switch-provider-mvft715g.jpg
 ---
 <!-- page -->
-<!-- layout: 제목|글 머리 + 전폭 요청서 두 장 히어로(작은 그림 여러 장) + 글|그림 2단(문자열에 펜 동그라미·메모) + 그림 고정 스크롤리텔링(채팅창) + 글|넓은 그림(원본 응답 두 장 → AIMessage, 고른 값 줄만 칠함) + 실험판 전폭 띠(물컵) + 글|그림(다이얼) + 글|그림(빈칸에 글자가 흘러 들어가는 틀) + 정리 표 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지가 핵심이라 실제 요청·응답 원문을 나란히 놓고 달라진 줄만 칠한다. 그림 문법은 POSTING 5-9 | 버린 후보: 어댑터 상자→콘센트 상자 세로 흐름(히어로), 서랍장 상자 쌓기, 응답 상자→깔때기→AIMessage 상자, 틀 상자→파이프→로봇 아이콘 모델 상자, 맞춰 줌·직접 확인 아이콘 두 칸 정리 그림(2026-10-20 상자 그림 전수 조사로 교체), 상자 보드 나열(앞 버전) -->
+<!-- layout: 제목|글 머리 + 전폭 요청서 두 장 히어로(작은 그림 여러 장) + 글|그림 2단(문자열에 펜 동그라미·메모) + 그림 고정 스크롤리텔링(role 배지 메시지 목록) + 글|넓은 그림(원본 응답 두 장 → AIMessage, 세 값 줄을 상태 색으로 칠함) + 물컵 세 줄(스크롤에 맞춰 시계가 흐름) + 다이얼 두 개 나란히(보내지 않음·0.7) + 글|그림(빈칸에 글자가 흘러 들어가는 틀) + 정리 표 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지가 핵심이라 실제 요청·응답 원문을 나란히 놓고 달라진 줄만 칠한다. 그림 문법은 POSTING 5-9 | 버린 후보: 어댑터 상자→콘센트 상자 세로 흐름(히어로), 서랍장 상자 쌓기, 응답 상자→깔때기→AIMessage 상자, 틀 상자→파이프→로봇 아이콘 모델 상자, 맞춰 줌·직접 확인 아이콘 두 칸 정리 그림(2026-10-20 상자 그림 전수 조사로 교체), 상자 보드 나열(앞 버전) -->
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap");
 .post-page .lc {
   --lc-human: rgb(37, 112, 235); --lc-code: rgb(16, 150, 120); --lc-model: rgb(226, 106, 28); --lc-bad: rgb(214, 56, 56);
   color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
@@ -35,18 +34,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-split.top { align-items: start; }
 .post-page .lc-split.rev > :first-child { order: 2; }
 
-/* 고르기 = 토글, 실행 = 테두리 버튼 */
-.post-page .lc-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
-.post-page .lc-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
-.post-page .lc-seg button:hover { color: var(--fg-strong); }
-.post-page .lc-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
-.post-page .lc-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
-.post-page .lc-act::before { content: "▶ "; font-size: 11px; }
-.post-page .lc-act:disabled { opacity: .4; cursor: default; }
-.post-page .lc-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
-.post-page .lc-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
-.post-page .lc-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
-.post-page .lc-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
 
 /* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
 .post-page .lc-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
@@ -66,10 +53,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .lc-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
 .post-page .lc-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
-.post-page .lc-term-bar .lc-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
 .post-page .lc-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
-.post-page .lc-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-lc-blink 1s steps(1) infinite; }
-@keyframes pg-lc-blink { 50% { opacity: 0; } }
 @media (max-width: 900px) {
   .post-page .lc-codepair, .post-page .lc-codepair.rev { grid-template-columns: minmax(0, 1fr); }
   .post-page .lc-codepair > .cp-code, .post-page .lc-codepair > .cp-term, .post-page .lc-codepair > .cp-notes,
@@ -86,7 +70,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc details { margin: 0 0 24px; }
 .post-page .lc summary { cursor: pointer; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); padding: 6px 0; }
 .post-page .lc details > .lc-in-d { padding-top: 14px; }
-.post-page .lc-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
 .post-page .lc-four { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; counter-reset: lp4; }
 .post-page .lc-four li { counter-increment: lp4; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 18px; align-items: baseline; font-size: 17px; line-height: 1.75; }
 .post-page .lc-four li::before { content: counter(lp4); font-family: var(--font-display); font-size: 40px; line-height: 1; font-weight: 800; color: var(--fg-neutral); opacity: .55; }
@@ -98,12 +81,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .lc *, .post-page .lc *::before { transition: none !important; animation: none !important; }
 }
 
-.post-page .lc-mobhint { display: none; margin: 28px 0 0; }
 @media (max-width: 900px) {
   .post-page .lc-wrap { padding: 0 20px; }
   .post-page .lc-head, .post-page .lc-split { grid-template-columns: minmax(0, 1fr); }
   .post-page .lc-split.rev > :first-child { order: 0; }
-  .post-page p.lc-mobhint { display: block; }
 }
 /* 실험판 전폭 띠 */
 .post-page .lc-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
@@ -120,7 +101,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-s.m { --k: var(--lc-model); } .post-page .lc-s.c { --k: var(--lc-code); } .post-page .lc-s.x { --k: var(--lc-bad); } .post-page .lc-s.h { --k: var(--lc-human); }
 .post-page .lc-s + .lc-s::before { content: "↓"; position: absolute; top: -17px; left: 18px; font-size: 13px; color: var(--fg-neutral); }
 @media (max-width: 900px) { .post-page .lc-vs { grid-template-columns: minmax(0, 1fr); } }
-.post-page .lc-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
+.post-page .lc p.lc-big { font-family: var(--font-display); font-size: clamp(22px, 2.8vw, 30px); line-height: 1.55; color: var(--fg-strong); letter-spacing: -.01em; margin: 0 0 1.2em; }
 .post-page .lc-hero { padding: clamp(40px, 6vw, 72px) 0 0; }
 .post-page .lc-hero-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: end; }
 .post-page .lc-hero-top p { margin: 0 0 1.2em; }
@@ -164,23 +145,22 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-h-lede h1 { margin-bottom: 28px; }
 @media (max-width: 900px) { .post-page .lc-h-grid { grid-template-columns: minmax(0, 1fr); } .post-page .lc-h-fig { margin-top: 28px; } }
 .post-page .lc-h-fig { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 22px); }
-.post-page .lc-h-fig .lc-ctrl { margin-bottom: 8px; gap: 8px 14px; }
-.post-page .lc-h-fig .lc-ctrl > span { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
 .post-page .lc-m { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.65; color: var(--fg-strong); overflow-wrap: anywhere; white-space: pre-wrap; margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--bg-base); }
 .post-page .lc-m u { text-decoration: none; background: color-mix(in srgb, var(--lc-model) 28%, transparent); border-radius: 4px; padding: 0 3px; box-shadow: 0 0 0 1.5px var(--lc-model); }
 .post-page .lc-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); opacity: 0; }
 .post-page .lc-card.on { opacity: 1; transform: translate(0, 0) !important; }
 @media (max-width: 900px) { .post-page .lc-card { opacity: 1; transform: none !important; } }
-.post-page .lc-note { margin: 12px 0 0; font-size: 14px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
+.post-page .lc p.lc-note { margin: 14px 0 0; font-size: 15px; line-height: 1.7; color: var(--fg-neutral); }
 .post-page .lc-req { border-radius: 14px; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); padding: 14px 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .post-page .lc-req .d1 { background: rgba(255, 150, 80, .22); border-radius: 4px; padding: 0 3px; color: #fff; }
 .post-page .lc-req .d2 { background: rgba(60, 205, 165, .22); border-radius: 4px; padding: 0 3px; color: #fff; }
-.post-page .lc-dialwrap input[type="range"] { width: min(100%, 360px); accent-color: var(--fg-strong); }
-.post-page .lc-verdict { margin-top: 10px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+.post-page .lc-dials { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px clamp(28px, 5vw, 72px); max-width: 1000px; margin: 0 auto; }
+.post-page .lc-dials h3 { font-size: 17px; text-align: center; margin: 0 0 10px; }
+.post-page .lc-dials .lc-scene { max-width: 440px; }
+@media (max-width: 900px) { .post-page .lc-dials { grid-template-columns: minmax(0, 1fr); } }
+.post-page .lc .lc-verdict { margin: 10px auto 0; max-width: 440px; font-size: 15.5px; line-height: 1.65; font-weight: 700; color: var(--fg-strong); text-align: center; }
 
 /* 2026-10-20 그림 문법 교체(POSTING 5-9): 색은 상태에만 — 먹(그대로) · 초록(회사에 맞게 달라진 곳·고른 것) · 빨강(막힘·원본 그대로 남은 곳, 펜 메모) */
-.post-page .lc p.lc-ask { font-size: 15px; line-height: 1.6; font-weight: 600; color: var(--fg-strong); margin: 0 0 12px; }
-.post-page .lc-seg button small { display: block; font-size: 11.5px; font-weight: 400; opacity: .8; margin-top: 1px; }
 .post-page .lc .pen { font-family: var(--font-sans); color: var(--lc-bad); font-weight: 600; line-height: 1.1; letter-spacing: 0; }
 .post-page .lc-mk { background: color-mix(in srgb, var(--lc-code) 20%, transparent); box-shadow: inset 0 -2px 0 var(--lc-code); border-radius: 2px; }
 
@@ -199,22 +179,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-sheet .l { white-space: pre-wrap; overflow-wrap: anywhere; }
 .post-page .lc-sheet .i1 { padding-left: 2ch; } .post-page .lc-sheet .i2 { padding-left: 4ch; } .post-page .lc-sheet .i3 { padding-left: 5ch; }
 .post-page .lc-sheet .nt { font-family: var(--font-sans); font-size: 13px; color: var(--fg-neutral); line-height: 1.4; margin: 0 0 4px 2ch; }
-.post-page .lc-sheet .tp { display: none; font-weight: 700; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet .tp { display: block; }
-.post-page .lc-sheet .stamp { display: none; position: absolute; right: 14px; top: 8px; font-size: 34px; transform: rotate(-8deg); }
-.post-page .lc-sheet .strike { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .stamp, .post-page .lc-rq[data-temp="on"] .lc-sheet.rej .strike { display: block; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .l, .post-page .lc-rq[data-temp="on"] .lc-sheet.rej .nt { opacity: .45; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .l.tp { opacity: 1; color: var(--lc-bad); text-decoration: underline wavy var(--lc-bad) 1.5px; text-underline-offset: 5px; }
-.post-page .lc-sheet .tpw { display: none; font-size: 22px; margin: 0 0 2px 2ch; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet.rej .tpw { display: block; }
-.post-page .lc-sheet .tpn { display: none; }
-.post-page .lc-rq[data-temp="on"] .lc-sheet .tpn { display: block; }
+.post-page .lc-sheet .opt { display: inline-block; border: 1.5px dashed var(--fg-neutral); border-radius: 6px; padding: 0 6px; margin-left: -7px; color: var(--fg-neutral); }
+.post-page .lc-sheet.rej .opt { color: var(--lc-bad); border-color: var(--lc-bad); text-decoration: underline wavy var(--lc-bad) 1.5px; text-underline-offset: 5px; }
+.post-page .lc-sheet .tpw { font-size: 14.5px; margin: 0 0 4px 2ch; line-height: 1.45; }
 
 /* 서랍 고르기: 문자열에 직접 표시 */
-.post-page .lc-str { font-family: var(--font-mono); font-size: clamp(17px, 2.6vw, 30px); font-weight: 700; color: var(--fg-strong); margin: 30px 0 0; white-space: nowrap; }
+.post-page .lc-drws { display: grid; gap: clamp(36px, 4vw, 48px); }
+.post-page .lc-str { font-family: var(--font-mono); font-size: clamp(16px, 2.1vw, 26px); font-weight: 700; color: var(--fg-strong); margin: 12px 0 0; white-space: nowrap; }
 .post-page .lc-str .pv { position: relative; display: inline-block; padding: 0 .1em; }
-.post-page .lc-str .pv svg { position: absolute; left: -14px; top: -12px; width: calc(100% + 28px); height: calc(100% + 24px); overflow: visible; }
+.post-page .lc-str .pv svg { position: absolute; left: -.3em; top: -.4em; width: calc(100% + .6em); height: calc(100% + .8em); overflow: visible; }
 .post-page .lc-str .mn { color: var(--fg-neutral); font-weight: 600; }
 .post-page .lc-memo { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 0 10px; margin: 2px 0 0; }
 .post-page .lc-memo svg { width: 54px; height: 70px; overflow: visible; }
@@ -237,12 +210,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-rs .lc-sheet { font-size: 12.5px; line-height: 1.7; padding: 12px 14px; }
 .post-page .lc-rs h3 { font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); margin: 0 0 6px; font-family: var(--font-sans); }
 .post-page .lc-rs .f { border-radius: 3px; transition: background .3s, box-shadow .3s; }
-.post-page .lc-rs[data-f="content"] .f.content, .post-page .lc-rs[data-f="usage"] .f.usage { background: color-mix(in srgb, var(--lc-code) 20%, transparent); box-shadow: inset 0 -2px 0 var(--lc-code); }
-.post-page .lc-rs[data-f="stop"] .f.stop { background: color-mix(in srgb, var(--lc-bad) 14%, transparent); box-shadow: inset 0 -2px 0 var(--lc-bad); }
-.post-page .lc-rs .rn { display: none; font-size: 24px; margin: 2px 0 0 2ch; }
-.post-page .lc-rs[data-f="stop"] .rn { display: block; }
-.post-page .lc-rs .sn { display: none; font-family: var(--font-sans); font-size: 13px; color: var(--lc-code); font-weight: 700; margin: 0 0 2px 2ch; }
-.post-page .lc-rs[data-f="content"] .sn.content, .post-page .lc-rs[data-f="usage"] .sn.usage { display: block; }
+.post-page .lc-rs .f.content, .post-page .lc-rs .f.usage { background: color-mix(in srgb, var(--lc-code) 20%, transparent); box-shadow: inset 0 -2px 0 var(--lc-code); }
+.post-page .lc-rs .f.stop { background: color-mix(in srgb, var(--lc-bad) 14%, transparent); box-shadow: inset 0 -2px 0 var(--lc-bad); }
+.post-page .lc-rs .rn { font-size: 15px; margin: 4px 0 0 2ch; }
+.post-page .lc-rs .sn { font-family: var(--font-sans); font-size: 13px; color: var(--lc-code); font-weight: 700; margin: 0 0 2px 2ch; }
 
 /* 프롬프트 틀: 빈칸에 글자가 흘러 들어감 */
 .post-page .lc-tpl { margin-top: 4px; }
@@ -266,7 +237,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-tpl[data-st="0"] .lc-tpl-pipe .out, .post-page .lc-tpl[data-st="1"] .lc-tpl-pipe .out, .post-page .lc-tpl[data-st="2"] .lc-tpl-pipe .out { opacity: 0; }
 .post-page .lc p.pen { font-size: 17px; margin: 6px 0 0 4.2em; }
 
-/* 채팅창: 말한 쪽 위치로 구분, 방금 붙은 쪽지만 초록 */
 .post-page .lc-sum-tbl td:first-child { font-weight: 400; white-space: normal; color: var(--fg-normal); }
 .post-page .lc-sum-tbl td b { color: var(--fg-strong); }
 </style>
@@ -280,19 +250,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <div class="lc-h-lede">
           <p>해외여행을 갈 때 멀티 어댑터를 챙깁니다. 콘센트 모양은 나라마다 달라도 어댑터를 끼우면 같은 충전기를 그대로 씁니다.</p>
           <p>Agent 프로그램도 비슷한 상황을 만납니다. 모델을 서비스하는 회사(provider)마다 요청 모양이 달라서 회사를 바꾸려면 호출 코드를 고쳐야 합니다. LangChain은 이 사이에 끼우는 어댑터 역할을 하는 프레임워크(framework, 자주 쓰는 뼈대를 미리 만들어 둔 도구 묶음)입니다.</p>
-          <p>그러면 모델을 바꿀 때 정말 한 줄만 고치면 될까요? 대부분은 그렇습니다. 다만 어댑터는 콘센트 모양만 맞춰 줄 뿐 전압까지 바꿔 주지는 않습니다. 아래 요청서 두 장에 temperature를 넣어 보세요.</p>
+          <p>그러면 모델을 바꿀 때 정말 한 줄만 고치면 될까요? 대부분은 그렇습니다. 다만 어댑터는 콘센트 모양만 맞춰 줄 뿐 전압까지 바꿔 주지는 않습니다. 아래 요청서 두 장의 점선 줄이 그런 경우입니다.</p>
         </div>
       </div>
-      <div class="lc-rq" data-figure data-thumb data-lc-rig data-temp="off">
-        <p class="lc-ask">temperature를 넣을지 골라 보세요. 두 요청서에 temperature 줄이 생기고, 그 값을 받지 않는 쪽 요청서에 거절 표시가 붙습니다.</p>
-        <div class="lc-ctrl">
-          <div class="lc-seg" role="group" aria-label="temperature 넣기">
-            <button type="button" data-lc-temp="off" aria-pressed="true">넣지 않음</button>
-            <button type="button" data-lc-temp="on" aria-pressed="false">temperature=0.7<small>답의 무작위성 설정</small></button>
-          </div>
-        </div>
+      <div class="lc-rq" data-figure data-thumb>
         <p class="lc-rq-same">두 쪽 모두 호출 줄은 똑같이 <code>res = model.invoke(messages)</code>입니다.</p>
-        <div class="lc-rq-grid" role="img" aria-label="요청서 두 장 그림. 같은 호출 코드가 Anthropic에는 system이 messages 밖 따로 칸에 있고 max_tokens가 채워진 요청으로, OpenAI에는 system이 messages 안 첫 쪽지인 요청으로 나간다. 달라진 줄은 초록으로 칠했다. temperature를 넣으면 Claude 쪽 요청서에 400 거절 표시가 붙는다.">
+        <div class="lc-rq-grid" role="img" aria-label="요청서 두 장 그림. 같은 호출 코드가 Anthropic에는 system이 messages 밖 따로 칸에 있고 max_tokens가 채워진 요청으로, OpenAI에는 system이 messages 안 첫 쪽지인 요청으로 나간다. 달라진 줄은 초록으로 칠했다. 점선으로 둘러싼 temperature 줄은 코드에 temperature=0.7을 넣었을 때만 생기는 줄이고, Claude 쪽 요청서에서는 이 줄 때문에 요청이 400 오류로 거절된다는 빨간 펜 메모가 붙어 있다.">
           <div>
             <div class="lc-rq-code">init_chat_model("<b>anthropic:claude-sonnet-5-5</b>")</div>
             <div class="lc-sheet rej">
@@ -301,8 +264,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
               <div class="l i1">"model": "claude-sonnet-5-5",</div>
               <div class="l i1"><span class="lc-mk">"max_tokens": 128000,</span></div>
               <div class="nt">↑ 코드에 안 쓴 값을 LangChain이 채움</div>
-              <div class="l i1 tp">"temperature": 0.7,</div>
-              <div class="pen tpw">↑ 이 줄 때문에 요청 전체가 거절됨</div>
+              <div class="l i1 tp"><span class="opt">"temperature": 0.7,</span></div>
+              <div class="pen tpw">↑ temperature=0.7을 넣었다면: 이 줄 때문에 요청 전체가 400 거절</div>
               <div class="l i1"><span class="lc-mk">"system": "너는 IT 헬프데스크 상담원이다.",</span></div>
               <div class="nt">↑ messages 목록 밖 따로 칸</div>
               <div class="l i1">"messages": [</div>
@@ -310,7 +273,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
               <div class="l i3">"content": "T-1042 티켓 어떻게 됐어요?"}</div>
               <div class="l i1">]</div>
               <div class="l">}</div>
-              <span class="pen stamp">400 거절</span>
             </div>
           </div>
           <div>
@@ -319,8 +281,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
               <div class="l">POST <span class="lc-mk">/v1/chat/completions</span></div>
               <div class="l">{</div>
               <div class="l i1">"model": "gpt-5.5",</div>
-              <div class="l i1 tp">"temperature": 0.7,</div>
-              <div class="nt tpn">↑ gpt-5.5가 받는지는 OpenAI 문서에서 확인</div>
+              <div class="l i1 tp"><span class="opt">"temperature": 0.7,</span></div>
+              <div class="nt tpn">↑ temperature=0.7을 넣었다면: gpt-5.5가 받는지는 OpenAI 문서에서 확인</div>
               <div class="l i1">"messages": [</div>
               <div class="l i2"><span class="lc-mk">{"role": "system",</span></div>
               <div class="l i3"><span class="lc-mk">"content": "너는 IT 헬프데스크 상담원이다."},</span></div>
@@ -332,7 +294,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             </div>
           </div>
         </div>
-        <p class="lc-note" data-lc-notebox>초록 줄은 같은 호출이 회사에 따라 다르게 나간 곳입니다. 이 차이는 LangChain이 맞춰 줍니다.</p>
+        <p class="lc-note">초록 줄은 같은 호출이 회사에 따라 다르게 나간 곳이고 이 차이는 LangChain이 맞춰 줍니다. 점선 줄은 코드에 temperature를 넣었을 때만 실립니다. Claude Sonnet 5.5는 기본값이 아닌 temperature를 받지 않아 이 줄이 실린 요청을 400 오류로 거절합니다.</p>
         <p class="lc-cap">같은 코드로 보낸 요청을 줄여 옮긴 예시입니다. 128000은 이 환경에서 LangChain이 모델 정보를 보고 채운 값이며 버전에 따라 다를 수 있습니다.</p>
       </div>
     </div>
@@ -347,24 +309,33 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>이 구조 덕분에 코드의 나머지는 어느 회사의 클래스인지 몰라도 됩니다. 클래스마다 같은 <code>invoke</code>가 있어서 부르는 쪽 코드는 그대로입니다.</p>
       </div>
       <div data-figure>
-        <p class="lc-ask">회사 이름을 골라 보세요. 문자열의 콜론 앞이 바뀌고, 펜 메모가 그 회사의 클래스·패키지·API 키 이름으로 바뀝니다.</p>
-        <div class="lc-ctrl">
-          <div class="lc-seg" role="group" aria-label="회사 고르기">
-            <button type="button" data-lc-p2="anthropic" aria-pressed="true">anthropic</button>
-            <button type="button" data-lc-p2="openai" aria-pressed="false">openai</button>
+        <div class="lc-drws" role="img" aria-label="모델 이름 문자열 두 개에 직접 표시한 그림. anthropic:claude-sonnet-5-5와 openai:gpt-5.5의 콜론 앞 회사 이름에 빨간 펜 동그라미를 치고, 화살표 메모로 그 이름이 여는 서랍의 클래스와 설치할 패키지와 API 키 환경변수 이름을 적었다. 위는 ChatAnthropic, 아래는 ChatOpenAI다.">
+          <div class="lc-drw">
+            <div class="lc-str">"<span class="pv">anthropic<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M52 3 C20 1 3 10 4 21 C5 33 30 39 56 37 C82 35 98 28 96 17 C94 7 76 2 44 5" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg></span>:<span class="mn">claude-sonnet-5-5</span>"</div>
+            <div class="lc-memo">
+              <svg viewBox="0 0 54 70" aria-hidden="true"><path d="M30 2 C26 24 28 44 44 60" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round"/><path d="M34 58 L45 61 L44 50" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div>
+                <p class="pen">이 서랍을 엽니다</p>
+                <ul>
+                  <li><span class="pen">클래스</span><code>ChatAnthropic</code></li>
+                  <li><span class="pen">설치</span><code>pip install langchain-anthropic</code></li>
+                  <li><span class="pen">API 키</span><code>ANTHROPIC_API_KEY</code></li>
+                </ul>
+              </div>
+            </div>
           </div>
-        </div>
-        <div role="img" aria-label="모델 이름 문자열에 직접 표시한 그림. 콜론 앞 회사 이름에 빨간 펜 동그라미를 치고, 화살표 메모로 그 이름이 여는 서랍의 클래스와 설치할 패키지와 API 키 환경변수 이름을 적었다.">
-          <div class="lc-str">"<span class="pv"><span data-lc-pv>anthropic</span><svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M52 3 C20 1 3 10 4 21 C5 33 30 39 56 37 C82 35 98 28 96 17 C94 7 76 2 44 5" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg></span>:<span class="mn" data-lc-mn>claude-sonnet-5-5</span>"</div>
-          <div class="lc-memo">
-            <svg viewBox="0 0 54 70" aria-hidden="true"><path d="M30 2 C26 24 28 44 44 60" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round"/><path d="M34 58 L45 61 L44 50" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <div>
-              <p class="pen">이 서랍을 엽니다</p>
-              <ul>
-                <li><span class="pen">클래스</span><code data-lc-m1>ChatAnthropic</code></li>
-                <li><span class="pen">설치</span><code data-lc-m2>pip install langchain-anthropic</code></li>
-                <li><span class="pen">API 키</span><code data-lc-m3>ANTHROPIC_API_KEY</code></li>
-              </ul>
+          <div class="lc-drw">
+            <div class="lc-str">"<span class="pv">openai<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M52 3 C20 1 3 10 4 21 C5 33 30 39 56 37 C82 35 98 28 96 17 C94 7 76 2 44 5" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg></span>:<span class="mn">gpt-5.5</span>"</div>
+            <div class="lc-memo">
+              <svg viewBox="0 0 54 70" aria-hidden="true"><path d="M30 2 C26 24 28 44 44 60" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round"/><path d="M34 58 L45 61 L44 50" fill="none" stroke="var(--lc-bad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div>
+                <p class="pen">이 서랍을 엽니다</p>
+                <ul>
+                  <li><span class="pen">클래스</span><code>ChatOpenAI</code></li>
+                  <li><span class="pen">설치</span><code>pip install langchain-openai</code></li>
+                  <li><span class="pen">API 키</span><code>OPENAI_API_KEY</code></li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -398,7 +369,7 @@ model = init_chat_model("anthropic:claude-sonnet-5-5")
       <div class="lc-head">
         <h2>메시지는 말한 사람의 이름표를 붙인 쪽지입니다</h2>
         <div>
-          <p>단톡방에서 누가 한 말인지는 이름표로 구분합니다. 모델에 보내는 대화도 쪽지마다 역할(role) 이름표가 붙어 있고 LangChain에는 이름표별로 클래스가 네 개 있습니다. 클래스 대신 이름표와 내용을 묶은 딕셔너리(이름과 값을 짝지어 담는 Python 자료형)로 써도 같은 뜻으로 받아 줍니다. 스크롤하며 채팅창에 쪽지가 하나씩 붙는 모습을 보세요.</p>
+          <p>단톡방에서 누가 한 말인지는 이름표로 구분합니다. 모델에 보내는 대화도 쪽지마다 역할(role) 이름표가 붙어 있고 LangChain에는 이름표별로 클래스가 네 개 있습니다. 클래스 대신 이름표와 내용을 묶은 딕셔너리(이름과 값을 짝지어 담는 Python 자료형)로 써도 같은 뜻으로 받아 줍니다. 메시지 목록에는 system 쪽지부터 차례로 쌓입니다.</p>
         </div>
       </div>
       <div class="lc-story" style="margin-top:44px" data-lc-story>
@@ -409,7 +380,7 @@ model = init_chat_model("anthropic:claude-sonnet-5-5")
           <div class="lc-step" data-lc-step><h3>tool: 도구를 실행한 결과</h3><p><code>ToolMessage</code>는 코드가 도구를 실행하고 받은 결과입니다. 어느 요청의 결과인지 알 수 있게 번호(<code>tool_call_id</code>)가 함께 붙습니다.</p></div>
         </div>
         <div class="lc-sfig" data-lc-sfig data-figure>
-          <svg class="lc-scene lc-nar" data-lc-chat viewBox="0 0 460 520" role="img" aria-label="채팅창 그림. 위에서 아래로 system 안내문, user 질문, assistant 답, tool 결과 쪽지가 차례로 붙는다. 쪽지마다 LangChain 클래스 이름이 적혀 있다."></svg>
+          <svg class="lc-scene lc-nar" data-lc-chat style="max-width:440px" viewBox="0 0 380 426" role="img" aria-label="메시지 목록 그림. messages 목록에 system 안내문, user 질문, assistant 답, tool 결과 쪽지가 차례로 쌓인다. 쪽지마다 role 배지와 LangChain 클래스 이름이 붙어 있다."></svg>
           <p class="lc-stat" data-lc-stat></p>
         </div>
       </div>
@@ -419,16 +390,9 @@ model = init_chat_model("anthropic:claude-sonnet-5-5")
 
   <section class="lc-sec">
     <div class="lc-wrap lc-split rev lc-wide">
-      <div class="lc-rs" data-figure data-f="content" data-lc-rs>
-        <p class="lc-ask">어떤 값을 따라가 볼지 골라 보세요. 두 회사 원본 응답과 AIMessage에서 그 값이 든 줄이 칠해집니다.</p>
-        <div class="lc-ctrl" style="margin-bottom:16px">
-          <div class="lc-seg" role="group" aria-label="따라갈 값 고르기">
-            <button type="button" data-lc-f="content" aria-pressed="true">글<small>content</small></button>
-            <button type="button" data-lc-f="usage" aria-pressed="false">토큰 수<small>usage</small></button>
-            <button type="button" data-lc-f="stop" aria-pressed="false">멈춘 이유<small>stop · finish</small></button>
-          </div>
-        </div>
-        <div class="lc-rs-grid" role="img" aria-label="응답 그림. 왼쪽에 Anthropic과 OpenAI가 보낸 원본 응답이 위아래로 있고 오른쪽에 LangChain이 만든 AIMessage가 있다. 글과 토큰 수는 원본에서 이름이 달라도 AIMessage에서는 같은 이름 줄로 모이고, 멈춘 이유는 response_metadata 안에 회사 원본 이름 그대로 남는다.">
+      <div class="lc-rs" data-figure>
+        <div class="lc-legend" style="margin:0 0 16px"><span><i style="background:color-mix(in srgb, var(--lc-code) 45%, transparent)"></i>글·토큰 수: 이름이 하나로 모임</span><span><i style="background:color-mix(in srgb, var(--lc-bad) 40%, transparent)"></i>멈춘 이유: 회사 이름 그대로</span></div>
+        <div class="lc-rs-grid" role="img" aria-label="응답 그림. 왼쪽에 Anthropic과 OpenAI가 보낸 원본 응답이 위아래로 있고 오른쪽에 LangChain이 만든 AIMessage가 있다. 초록으로 칠한 글과 토큰 수는 원본에서 이름이 달라도 AIMessage에서는 같은 이름 줄로 모이고, 빨갛게 칠한 멈춘 이유는 response_metadata 안에 회사 원본 이름 그대로 남는다.">
           <div class="lc-rs-src">
             <div>
               <h3>Anthropic 원본 응답</h3>
@@ -479,8 +443,8 @@ model = init_chat_model("anthropic:claude-sonnet-5-5")
       </div>
       <div>
         <h2>응답에는 글만 있지 않습니다</h2>
-        <p>모델의 응답은 글 한 줄이 아니라 AIMessage 객체입니다. 객체(object)는 값 여러 개를 이름을 붙여 한 덩어리로 묶은 것입니다. <code>content_blocks</code>는 글과 도구 요청을 같은 모양의 조각 목록으로 정리한 것이고 <code>tool_calls</code>는 모델이 부른 도구 요청 목록이며 <code>usage_metadata</code>는 토큰(token, 모델이 글을 읽고 쓰는 단위) 수입니다. 그림에서 초록으로 칠해지는 줄은 어느 회사 모델이든 이름과 모양이 같습니다.</p>
-        <p>멈춘 이유를 고르면 <code>response_metadata</code>에 빨간 펜이 붙습니다. 회사가 보내 준 원래 정보를 그대로 담은 곳이라 이름이 다릅니다. 모델이 답을 멈춘 이유를 적은 값이 Anthropic은 <code>stop_reason</code>이고 OpenAI는 <code>finish_reason</code>입니다. LangChain이 맞춰 주는 곳은 글과 도구 요청과 토큰 수이고 멈춘 이유는 아직 회사 이름 그대로입니다.</p>
+        <p>모델의 응답은 글 한 줄이 아니라 AIMessage 객체입니다. 객체(object)는 값 여러 개를 이름을 붙여 한 덩어리로 묶은 것입니다. <code>content_blocks</code>는 글과 도구 요청을 같은 모양의 조각 목록으로 정리한 것이고 <code>tool_calls</code>는 모델이 부른 도구 요청 목록이며 <code>usage_metadata</code>는 토큰(token, 모델이 글을 읽고 쓰는 단위) 수입니다. 그림에서 초록으로 칠한 줄은 어느 회사 모델이든 이름과 모양이 같습니다.</p>
+        <p>빨갛게 칠한 줄은 <code>response_metadata</code> 안의 멈춘 이유입니다. 회사가 보내 준 원래 정보를 그대로 담은 곳이라 이름이 다릅니다. 모델이 답을 멈춘 이유를 적은 값이 Anthropic은 <code>stop_reason</code>이고 OpenAI는 <code>finish_reason</code>입니다. LangChain이 맞춰 주는 곳은 글과 도구 요청과 토큰 수이고 멈춘 이유는 아직 회사 이름 그대로입니다.</p>
       </div>
     </div>
     <div class="lc-wrap">
@@ -499,8 +463,8 @@ print(res.response_metadata)</code></pre>
         </div>
         <div class="cp-term">
 <div class="lc-term" data-lc-term>
-  <div class="lc-term-bar"><span>터미널</span><button type="button" class="lc-act" data-lc-run="meta">실행해 보기</button></div>
-  <div class="lc-term-out" data-lc-out aria-live="polite">$ python llm.py
+  <div class="lc-term-bar"><span>터미널</span></div>
+  <div class="lc-term-out">$ python llm.py
 AIMessage T-1042는 부품 대기 중입니다.
 {'input_tokens': 20, 'output_tokens': 12, 'total_tokens': 32, 'input_token_details': {}}
 {'stop_details': None, 'stop_reason': 'end_turn', 'stop_sequence': None}</div>
@@ -523,8 +487,7 @@ AIMessage T-1042는 부품 대기 중입니다.
         <h2>invoke는 한 번에 stream은 조금씩 batch는 여러 개를 한꺼번에</h2>
         <div>
           <p>호출 방식은 세 가지입니다. <code>invoke</code>는 컵에 물이 다 찬 뒤에 한 번에 받습니다. <code>stream</code>은 물이 차는 대로 조각(chunk)을 받아 바로 화면에 찍을 수 있습니다. <code>batch</code>는 컵 여러 개를 동시에 채웁니다. 세 가지 모두 어느 회사 모델이든 이름과 사용법이 같습니다.</p>
-          <p class="lc-ask">지금 그림은 1.2초 시점에 멈춘 모습입니다. 버튼을 누르면 세 방식이 처음부터 2.4초 동안 동시에 돌아갑니다. 컵이 차는 모습과 글자가 나오는 때를 비교해 보세요.</p>
-          <div class="lc-ctrl"><button type="button" class="lc-act" data-lc-play>돌려 보기</button></div>
+          <p>아래 그림에서는 스크롤에 맞춰 시계가 0초에서 2.4초로 흐릅니다. 세 줄에서 컵이 차는 모습과 글자가 나오는 때를 견주어 보면 차이가 보입니다.</p>
         </div>
       </div>
       <div style="margin-top:44px" data-figure>
@@ -545,8 +508,8 @@ answers = model.batch([messages_a, messages_b])</code></pre>
         </div>
         <div class="cp-term">
 <div class="lc-term" data-lc-term>
-  <div class="lc-term-bar"><span>터미널</span><button type="button" class="lc-act" data-lc-run="stream">실행해 보기</button></div>
-  <div class="lc-term-out" data-lc-out aria-live="polite">$ python llm.py
+  <div class="lc-term-bar"><span>터미널</span></div>
+  <div class="lc-term-out">$ python llm.py
 T-1042는 |부품 대기 |중입니다.|</div>
 </div>
 <p class="lc-cap">출력은 예시입니다. 조각을 나누는 단위는 모델이 정하며 빈 조각이 섞여 오기도 합니다.</p>
@@ -572,10 +535,18 @@ T-1042는 |부품 대기 |중입니다.|</div>
         </div>
       </div>
       <div class="lc-dialwrap" style="margin-top:44px" data-figure>
-        <p class="lc-ask" style="text-align:center">temperature를 보낼지 골라 보세요. 바늘이 기본값 자리와 0.7 자리를 오가고 가운데 글자가 통과인지 400 거절인지 바뀝니다.</p>
-        <div class="lc-ctrl" style="justify-content:center;margin-bottom:16px"><div class="lc-seg" role="group" aria-label="temperature 보내기"><button type="button" data-lc-dt="off" aria-pressed="true">보내지 않음<small>모델 기본값</small></button><button type="button" data-lc-dt="on" aria-pressed="false">temperature=0.7<small>값을 넣어 보냄</small></button></div></div>
-        <svg class="lc-scene lc-nar" data-lc-dial viewBox="0 0 460 300" role="img" aria-label="다이얼 그림. 바늘이 왼쪽 끝 기본값 자리에 있으면 통과, 0.7 자리로 가면 400 거절이 뜬다. 0부터 1까지 눈금 전체가 빨갛게 칠해져 있어 어느 값을 넣어도 거절된다."></svg>
-        <p class="lc-verdict" data-lc-dialv style="text-align:center"></p>
+        <div class="lc-dials">
+          <div>
+            <h3><code>temperature</code>를 보내지 않음</h3>
+            <svg class="lc-scene" data-lc-dial="off" viewBox="0 0 460 300" role="img" aria-label="다이얼 그림. 바늘이 왼쪽 끝 기본값 자리에 있고 가운데에 통과라고 적혀 있다."></svg>
+            <p class="lc-verdict"><span style="color:var(--lc-code)">요청이 나갑니다.</span> 값을 보내지 않으면 모델이 정한 기본값으로 답합니다.</p>
+          </div>
+          <div>
+            <h3><code>temperature=0.7</code>을 넣어 보냄</h3>
+            <svg class="lc-scene" data-lc-dial="on" viewBox="0 0 460 300" role="img" aria-label="다이얼 그림. 바늘이 0.7 자리에 있고 가운데에 400 거절이라고 적혀 있다. 0부터 1까지 눈금 전체가 빨갛게 칠해져 있어 어느 값을 넣어도 거절된다."></svg>
+            <p class="lc-verdict"><span style="color:var(--lc-bad)">400 오류.</span> 이 모델은 기본값이 아닌 temperature를 받지 않습니다. LangChain이 보내기 전에 막기도 합니다.</p>
+          </div>
+        </div>
         <p class="lc-cap">Claude Sonnet 5.5·Opus 5.5 기준입니다. top_p와 top_k도 같은 방식으로 기본값이 아니면 거절됩니다. 바늘 위치는 설명을 위한 예시입니다.</p>
       </div>
       <div class="lc-head" style="margin-top:56px">
@@ -605,9 +576,7 @@ res = model.invoke(messages, config={"configurable": {
         <p>LangChain 1.x에서 Agent를 만들 때 권하는 방법은 <code>create_agent</code>입니다. 예전의 LLMChain 같은 낡은 체인은 <code>langchain-classic</code> 패키지로 옮겨졌습니다. 이 시리즈는 <code>create_agent</code>를 쓰는 쪽으로 갑니다.</p>
       </div>
       <div data-figure>
-        <div class="lc-tpl" data-lc-tpl data-st="0">
-          <p class="lc-ask">버튼을 누르면 question 값이 틀의 빈칸으로 들어가고, 채운 메시지 목록이 | 기호를 지나 model로 넘어갑니다.</p>
-          <div class="lc-ctrl"><button type="button" class="lc-act" data-lc-fill>빈칸 채워 보내기</button></div>
+        <div class="lc-tpl" data-lc-tpl data-st="3">
           <div role="img" aria-label="프롬프트 틀 그림. question 값이 user 줄의 빈칸 {question} 자리로 내려와 채워지고, prompt | model 줄의 | 기호가 채운 메시지 목록을 모델로 넘긴다.">
             <div class="lc-tpl-val"><b>question</b> = "T-1042 티켓 어떻게 됐어요?"</div>
             <div class="lc-tpl-doc">
@@ -679,33 +648,9 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
-  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const timers = new Set();
-  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
-  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
-  const nf = (n) => n.toLocaleString("ko-KR");
-  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const initTerms = (RUNS) => $$("[data-lc-run]").forEach((btn) => btn.addEventListener("click", async () => {
-    const out = $("[data-lc-out]", btn.closest("[data-lc-term]"));
-    btn.disabled = true; out.textContent = "";
-    const cur = document.createElement("span"); cur.className = "cur";
-    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
-    for (const [kind, v] of RUNS[btn.dataset.lcRun]) {
-      if (signal.aborted) return;
-      if (kind === "wait") { if (!reduce) await later(v); continue; }
-      if (out.textContent) add("\n");
-      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
-      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
-    }
-    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
-  }, { signal }));
-
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
-  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
     const st = $(rootSel); if (!st) return; const steps = $$("[data-lc-step]", st), fig = $("[data-lc-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
@@ -718,42 +663,35 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
     addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
   };
 
+  /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1 (ai-agent-vs-chatbot 견본) */
+  function scrollP(el, fn) {
+    let raf = 0;
+    const tick = () => { raf = 0; const r = el.getBoundingClientRect(), vh = innerHeight, a = vh * 0.85, b = vh * 0.45; fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b)))); };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { passive: true, signal }); tick();
+  }
+
   const C = { model: "var(--lc-model)", code: "var(--lc-code)", human: "var(--lc-human)", bad: "var(--lc-bad)" };
   const txt = (p, x, y, s, attrs = {}) => { const e = mk("text", { x, y, ...attrs }, p); e.textContent = s; return e; };
 
-  /* ───── 히어로: 요청서 두 장 — temperature 줄을 넣고 빼기 ───── */
-  const rig = $("[data-lc-rig]");
-  const NOTE = { off: "초록 줄은 같은 호출이 회사에 따라 다르게 나간 곳입니다. 이 차이는 LangChain이 맞춰 줍니다.", on: "두 요청서에 같은 temperature 줄이 실렸습니다. Claude Sonnet 5.5는 기본값이 아닌 temperature를 받지 않아 400 오류로 거절합니다." };
-  $$("[data-lc-temp]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-temp]", b); rig.dataset.temp = b.dataset.lcTemp; $("[data-lc-notebox]").textContent = NOTE[b.dataset.lcTemp]; }, { signal }));
-
-  /* ───── 문자열에 직접 표시: 콜론 앞이 서랍을 고른다 ───── */
-  const P2 = { anthropic: ["anthropic", "claude-sonnet-5-5", "ChatAnthropic", "pip install langchain-anthropic", "ANTHROPIC_API_KEY"], openai: ["openai", "gpt-5.5", "ChatOpenAI", "pip install langchain-openai", "OPENAI_API_KEY"] };
-  $$("[data-lc-p2]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-p2]", b); const v = P2[b.dataset.lcP2];
-    $("[data-lc-pv]").textContent = v[0]; $("[data-lc-mn]").textContent = v[1]; $("[data-lc-m1]").textContent = v[2]; $("[data-lc-m2]").textContent = v[3]; $("[data-lc-m3]").textContent = v[4]; }, { signal }));
-
-  /* ───── 응답: 따라갈 값 고르기 ───── */
-  const rs = $("[data-lc-rs]");
-  $$("[data-lc-f]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-f]", b); rs.dataset.f = b.dataset.lcF; }, { signal }));
-
-  /* ───── 채팅창 (스크롤 이야기) ───── */
+  /* ───── 메시지 목록 (스크롤 이야기): role 배지를 단 칸이 차례로 쌓인다. 색은 방금 쌓인 칸에만 ───── */
   const chat = $("[data-lc-chat]"), stat = $("[data-lc-stat]");
-  mk("rect", { x: 10, y: 8, width: 440, height: 504, rx: 26, fill: "var(--bg-subtle)", stroke: "var(--line-strong)", "stroke-width": 2.5 }, chat);
-  mk("rect", { x: 10, y: 8, width: 440, height: 46, rx: 26, fill: "var(--bg-muted)" }, chat); mk("rect", { x: 10, y: 30, width: 440, height: 24, fill: "var(--bg-muted)" }, chat);
-  txt(chat, 230, 38, "헬프데스크 채팅", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
-  /* 말한 쪽은 위치로 구분한다(사용자 오른쪽, 모델·도구 왼쪽, system 가운데 안내). 색은 방금 붙은 쪽지에만 */
+  txt(chat, 8, 22, "messages = [", { "font-size": 15, class: "mono t-d" });
+  txt(chat, 8, 418, "]", { "font-size": 15, class: "mono t-d" });
   const BUB = [
-    { y: 70, h: 58, x: 40, w: 380, name: "SystemMessage", who: "system", body: "너는 IT 헬프데스크 상담원이다.", from: [0, -18], mid: true },
-    { y: 160, h: 66, x: 150, w: 280, name: "HumanMessage", who: "user", body: "T-1042 티켓 어떻게 됐어요?", from: [30, 0], right: true },
-    { y: 258, h: 66, x: 30, w: 300, name: "AIMessage", who: "assistant", body: "조회해 보겠습니다.", from: [-30, 0] },
-    { y: 356, h: 66, x: 30, w: 360, name: "ToolMessage", who: "tool", body: "부품 대기, 10월 18일 (tool_call_id 붙음)", from: [-30, 0] },
+    { name: "SystemMessage", who: "system", body: "너는 IT 헬프데스크 상담원이다." },
+    { name: "HumanMessage", who: "user", body: "T-1042 티켓 어떻게 됐어요?" },
+    { name: "AIMessage", who: "assistant", body: "조회해 보겠습니다." },
+    { name: "ToolMessage", who: "tool", body: "부품 대기, 10월 18일 (tool_call_id 붙음)" },
   ];
-  const bubEls = BUB.map((b) => {
-    const g = mk("g", { class: "lc-card", style: `transform: translate(${b.from[0]}px, ${b.from[1]}px)` }, chat);
-    const box = mk("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.mid ? 12 : 18, fill: b.mid ? "var(--bg-muted)" : "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2 }, g);
-    const ax = b.mid ? b.x + b.w / 2 : b.x + 18, anc = b.mid ? "middle" : "start";
-    txt(g, ax, b.y + 24, b.who, { "font-size": 14, "font-weight": 800, "text-anchor": anc, class: "mono t-d" });
-    txt(g, ax, b.y + (b.mid ? 46 : 52), b.body, { "font-size": 15, "text-anchor": anc, class: "t-s" });
-    txt(g, b.right ? b.x + b.w : b.mid ? b.x + b.w / 2 : b.x, b.y + b.h + 19, b.name, { "font-size": 13, "text-anchor": b.right ? "end" : b.mid ? "middle" : "start", class: "mono t-d" });
+  const bubEls = BUB.map((b, k) => {
+    const y = 40 + k * 92, g = mk("g", { class: "lc-card", style: "transform: translate(0px, 14px)" }, chat);
+    const box = mk("rect", { x: 6, y, width: 368, height: 76, rx: 12, fill: "var(--bg-base)", stroke: "var(--line-strong)", "stroke-width": 2 }, g);
+    const bw = 18 + b.who.length * 8.6;
+    mk("rect", { x: 20, y: y + 13, width: bw, height: 24, rx: 12, fill: "var(--fg-strong)" }, g);
+    txt(g, 20 + bw / 2, y + 30, b.who, { "font-size": 13.5, "font-weight": 700, "text-anchor": "middle", class: "mono", style: "fill:var(--bg-base)" });
+    txt(g, 360, y + 30, b.name, { "font-size": 13, "text-anchor": "end", class: "mono t-d" });
+    txt(g, 20, y + 60, b.body, { "font-size": 15, class: "t-s" });
     g._box = box;
     return g;
   });
@@ -789,33 +727,23 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
     fills.forEach(([, w, base, h]) => { w.setAttribute("y", base - h); w.setAttribute("height", h); });
     bars.forEach((r) => r.setAttribute("width", 145)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 2.4초"; });
   }
-  async function playLanes() {
-    const btn = $("[data-lc-play]"); btn.disabled = true;
-    fills.forEach(([, w, base]) => { w.setAttribute("y", base); w.setAttribute("height", 0); }); bars.forEach((r) => r.setAttribute("width", 0));
-    [0, 1, 2].forEach((i) => { set(i, "기다리는 중…", ""); clocks[i].textContent = i ? "" : "지금 0.0초"; });
-    if (reduce) { lanesFinal(); btn.disabled = false; return; }
-    const t0 = performance.now();
-    await new Promise((res) => { const tick = (now) => {
-      if (signal.aborted) return res(); const e = Math.min(now - t0, TOTAL), f = e / TOTAL;
-      bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 " + (e / 1000).toFixed(1) + "초"; });
-      fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? Math.min(1, f) : (f >= 1 ? 1 : 0); const hh = h * lv; w.setAttribute("y", base - hh); w.setAttribute("height", hh); });
-      if (e > 300) { const n = Math.min(CH.length, Math.floor((e - 300) / ((TOTAL - 300) / CH.length)) + 1); const [a, b] = split2(CH.slice(0, n).join("")); set(1, a, b); }
-      if (e >= TOTAL) { const [a, b] = split2(TXT_); set(0, a, b); set(2, "① " + a + "…", "② T-1043은 처리가 끝났습니다."); return res(); }
-      requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
-    btn.disabled = false;
+  /* 시계 e(밀리초) 시점의 세 줄을 그린다 */
+  function lanesAt(e) {
+    const f = e / TOTAL;
+    bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 " + (e / 1000).toFixed(1) + "초"; });
+    fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? f : (f >= 1 ? 1 : 0); const hh = h * lv; w.setAttribute("y", base - hh); w.setAttribute("height", hh); });
+    if (e >= TOTAL) { lanesFinal(); return; }
+    set(0, "기다리는 중…", ""); set(2, "기다리는 중…", "");
+    if (e > 300) { const n = Math.min(CH.length, Math.floor((e - 300) / ((TOTAL - 300) / CH.length)) + 1); const [a, b] = split2(CH.slice(0, n).join("")); set(1, a, b); }
+    else set(1, "기다리는 중…", "");
   }
-  $("[data-lc-play]").addEventListener("click", playLanes, { signal });
-  /* 누르기 전에도 차이가 보이게 1.2초 시점을 멈춰 둔다 */
-  (() => { const e = 1200, f = e / TOTAL;
-    bars.forEach((r) => r.setAttribute("width", 145 * f)); clocks.forEach((c, k) => { c.textContent = k ? "" : "지금 1.2초"; });
-    fills.forEach(([i, w, base, h]) => { const lv = i === 1 ? f : 0; w.setAttribute("y", base - h * lv); w.setAttribute("height", h * lv); });
-    const n = Math.floor((e - 300) / ((TOTAL - 300) / CH.length)) + 1; const [a, b] = split2(CH.slice(0, n).join(""));
-    set(0, "기다리는 중…", ""); set(1, a, b); set(2, "기다리는 중…", ""); })();
+  /* 스크롤에 맞춰 시계가 흐른다 — 누를 것도 자동 재생도 없다. 끝까지 내리면 2.4초 완성 상태 */
+  if (reduce) lanesFinal(); else scrollP(lanes, (p) => lanesAt(Math.round(p * TOTAL / 100) * 100));
 
   /* ───── 다이얼 ───── */
-  const dial = $("[data-lc-dial]"); let dOn = false;
-  function drawDial() {
-    const v = dOn ? 7 : 0, ok = !dOn; dial.innerHTML = "";
+  /* 두 상태를 나란히 그린다: 보내지 않음(통과) · 0.7을 넣음(400 거절) */
+  function drawDial(dial, dOn) {
+    const v = dOn ? 7 : 0, ok = !dOn;
     const cx = 230, cy = 230, r = 150;
     const pt = (a, rr = r) => [cx + rr * Math.cos(Math.PI - a), cy - rr * Math.sin(Math.PI - a)];
     const arc = (a1, a2, col, w) => { const [x1, y1] = pt(a1), [x2, y2] = pt(a2); mk("path", { d: `M${x1} ${y1} A${r} ${r} 0 0 1 ${x2} ${y2}`, fill: "none", stroke: col, "stroke-width": w, "stroke-linecap": "round" }, dial); };
@@ -827,19 +755,13 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
     const ang = ok ? 0.11 : 0.34 + (v / 10) * (Math.PI - 0.34); const [nx, ny] = pt(ang, r - 14);
     mk("line", { x1: cx, y1: cy, x2: nx, y2: ny, stroke: "var(--fg-strong)", "stroke-width": 6, "stroke-linecap": "round" }, dial); mk("circle", { cx, cy, r: 14, fill: "var(--fg-strong)" }, dial);
     txt(dial, cx, 286, ok ? "통과" : "400 거절", { "font-size": 26, "text-anchor": "middle", class: "t-s", style: `fill:${ok ? C.code : C.bad}` });
-    $("[data-lc-dialv]").innerHTML = ok ? `<span style="color:${C.code}">요청이 나갑니다.</span> 값을 보내지 않으면 모델이 정한 기본값으로 답합니다.` : `<span style="color:${C.bad}">400 오류.</span> 이 모델은 기본값이 아닌 temperature를 받지 않습니다. LangChain이 보내기 전에 막기도 합니다.`;
   }
-  $$("[data-lc-dt]").forEach((b) => b.addEventListener("click", () => { press("[data-lc-dt]", b); dOn = b.dataset.lcDt === "on"; drawDial(); }, { signal })); drawDial();
+  $$("[data-lc-dial]").forEach((d) => drawDial(d, d.dataset.lcDial === "on"));
 
   /* ───── 프롬프트 틀: 값이 빈칸으로 내려오고 | 를 지나 모델로 ───── */
+  /* 스크롤에 맞춰 값이 빈칸으로 내려오고(2) | 가 칠해지며 모델로 넘어간다(3). 스크립트가 없으면 완성 상태(3) */
   const tpl = $("[data-lc-tpl]");
-  $("[data-lc-fill]").addEventListener("click", async () => { const b = $("[data-lc-fill]"); b.disabled = true;
-    for (const [st, ms] of [["0", 900], ["1", 300], ["2", 900], ["3", 0]]) { if (signal.aborted) return; tpl.dataset.st = st; if (!reduce) await later(ms); }
-    b.disabled = false; b.textContent = "다시 채워 보내기"; }, { signal });
+  if (!reduce) scrollP(tpl, (p) => { tpl.dataset.st = p < 0.35 ? "1" : p < 0.7 ? "2" : "3"; });
 
-  initTerms({
-    meta: [["cmd", "$ python llm.py"], ["wait", 800], ["line", "AIMessage T-1042는 부품 대기 중입니다."], ["line", "{'input_tokens': 20, 'output_tokens': 12, 'total_tokens': 32, 'input_token_details': {}}"], ["line", "{'stop_details': None, 'stop_reason': 'end_turn', 'stop_sequence': None}"]],
-    stream: [["cmd", "$ python llm.py"], ["wait", 600], ["type", "T-1042는 |부품 대기 |중입니다.|"]],
-  });
 })();
 </script>
