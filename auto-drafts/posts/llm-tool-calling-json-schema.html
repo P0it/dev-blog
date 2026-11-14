@@ -9,7 +9,7 @@ series_order: 2
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-tool-calling-json-schema-mvah00tb.jpg
 ---
 <!-- page -->
-<!-- layout: 분할 히어로 + 가로 스크롤 띠(요청서 한 장이 모델 줄과 코드 줄을 오가는 여정) | 글의 성격: 메시지 몇 장이 모델 쪽과 코드 쪽을 오가는 왕복이 중심이고, 앞뒤로 짧은 개념(메뉴판·tool_choice·번호표·확인)이 붙는다 | 버린 후보: 그림 고정 스크롤리텔링(앞 편 루프와 같은 구조), 비교 나란히(앞 편 히어로와 같은 구조) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 분할 히어로 + 가로 스크롤 띠(요청서 한 장이 모델 줄과 코드 줄을 오가는 여정) | 글의 성격: 메시지 몇 장이 모델 쪽과 코드 쪽을 오가는 왕복이 중심이고, 앞뒤로 짧은 개념(메뉴판·tool_choice·번호표·확인)이 붙는다 | 버린 후보: 그림 고정 스크롤리텔링(앞 편 루프와 같은 구조), 비교 나란히(앞 편 히어로와 같은 구조) -->
 <style>
 .post-page .tc {
   --tc-human: rgb(37, 112, 235); --tc-code: rgb(16, 150, 120); --tc-model: rgb(226, 106, 28); --tc-bad: rgb(214, 56, 56);
@@ -205,12 +205,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 /* 4. 두 번의 호출을 두 줄로 펼친 흐름: 카드 자리는 고정, 화면 가운데 온 단계만 켠다 */
 .post-page .tc-band { background: var(--bg-subtle); margin: clamp(48px, 7vw, 80px) 0 0; padding: clamp(40px, 5vw, 56px) 0 0; }
 .post-page .tc-flow { position: relative; }
-.post-page .tc-flow-space { height: 240vh; }
+.post-page .tc-flow-space { display: none; }
 .post-page .tc-flowkey { display: none; }
 .post-page .tc-flownote { order: 9; font-size: 12.5px; color: var(--fg-neutral); }
 @media (max-width: 640px) { .post-page .tc-flownote { display: none; } }
 @media (min-width: 641px) {
-  .post-page .tc-flow-stick { position: sticky; top: 66px; background: var(--bg-subtle); z-index: 3; padding-top: 4px; }
+  .post-page .tc-flow-stick { position: static; background: var(--bg-subtle); padding-top: 4px; }
   .post-page .tc-flow-stick .tc-flowbar { position: static; }
 }
 .post-page .tc-track-win { position: relative; }
@@ -236,7 +236,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .tc-path .lbl { font-size: 12.5px; fill: var(--fg-neutral); }
 .post-page .tc-path .rowh { font-size: 14px; font-weight: 700; fill: var(--fg-strong); }
 .post-page .tc-path.mob { display: none; }
-.post-page .tc-flowbar { position: sticky; bottom: 0; z-index: 4; margin: 0 0 16px; padding: 12px 0 14px; background: var(--bg-subtle); border-top: 1px solid var(--line-subtle); display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+.post-page .tc-flowbar { position: static; bottom: 0; z-index: 4; margin: 0 0 16px; padding: 12px 0 14px; background: var(--bg-subtle); border-top: 1px solid var(--line-subtle); display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
 .post-page .tc-hs-cap { font-size: 14.5px; font-weight: 700; color: var(--fg-strong); display: flex; align-items: center; }
 .post-page .tc-hs-cap .tc-num { background: var(--fg-strong); }
 .post-page .tc-msgs { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
@@ -476,7 +476,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <div>없었다면: 모델 호출 <b>1</b>번 · 티켓 시스템 조회 <b>0</b>번</div>
           </div>
         </div>
-        <p class="tc-cap">스크롤을 내리면 실선 길의 1~4 단계가 차례로 채워집니다. 설명을 위해 만든 예시입니다. 도구 목록이 없을 때 모델이 늘 상태를 지어내지는 않습니다. "확인할 수 없다"고 답할 때도 많습니다. 다만 어느 쪽이든 실제 티켓 시스템에는 닿지 않습니다.</p>
+        <p class="tc-cap">그림이 화면에 들어오면 실선 길의 1~4 단계가 차례로 채워집니다. 설명을 위해 만든 예시입니다. 도구 목록이 없을 때 모델이 늘 상태를 지어내지는 않습니다. "확인할 수 없다"고 답할 때도 많습니다. 다만 어느 쪽이든 실제 티켓 시스템에는 닿지 않습니다.</p>
       </div>
     </div>
   </header>
@@ -807,7 +807,7 @@ call_Qd7w get_ticket {"ticket_id": "<span class="nw">T-1042</span>"}</div>
         <h2>요청서 한 장이 답이 되려면 모델을 두 번 부릅니다</h2>
         <div class="tc-one">
           <p>도구를 한 번만 쓰는 질문도 API 호출은 두 번입니다. 첫 호출에서 요청서를 받고 실행 결과를 실어 다시 불러야 사람에게 줄 답이 나옵니다. API는 앞선 호출을 기억하지 못해서 두 번째 호출에도 처음부터의 메시지를 전부 실어 보냅니다.</p>
-          <p>메시지마다 누가 한 말인지 role을 붙입니다. 모델이 쓴 메시지는 <code>assistant</code>, 도구 결과를 담은 메시지는 <code>tool</code>입니다. 아래 그림은 두 번의 호출을 두 줄로 펼쳤습니다. 스크롤하면 1번부터 한 단계씩 켜지고 막대의 messages에 대화 기록이 쌓입니다.</p>
+          <p>메시지마다 누가 한 말인지 role을 붙입니다. 모델이 쓴 메시지는 <code>assistant</code>, 도구 결과를 담은 메시지는 <code>tool</code>입니다. 아래 그림은 두 번의 호출을 두 줄로 펼쳤습니다. 그림이 화면에 들어오면 1번부터 한 단계씩 켜지고 막대의 messages에 대화 기록이 쌓입니다.</p>
         </div>
       </div>
     </div>
@@ -1100,6 +1100,24 @@ stop
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  /* 2026-11-14: 스크롤 대신 — 화면에 들어오면 단계를 ms 간격으로 한 번 넘기고 끝 단계에서 멈춘다. 벗어났다 오면 다시 */
+  const onViewSteps = (el, n, show, ms = 1500, end = n - 1) => {
+    let gen = 0; show(end);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (t) => new Promise((r) => { const h = setTimeout(r, t); signal.addEventListener("abort", () => clearTimeout(h)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < n; i++) { if (my !== gen || signal.aborted) return; show(i); await wait(ms); } if (my === gen) show(end); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; show(end); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
+  /* 화면에 들어오면 0→1 을 ms 동안 한 번 재생 */
+  const onViewP = (el, fn, ms = 2600) => {
+    let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen) return; const t = Math.min(1, (now - t0) / ms); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1113,19 +1131,14 @@ stop
     steps.forEach((el) => el.classList.toggle("lit", Number(el.dataset.step) <= k));
     hit.classList.toggle("hit", k >= 2);
   }
-  function scrollP(el, fn) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0;
-      if (heroPinned) return fn(1);
-      const r = el.getBoundingClientRect(), vh = innerHeight;
-      const a = vh * 0.85, b = vh * 0.45;
-      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
   world.classList.add("tc-anim");
   scrollP(world, setHeroP);
@@ -1145,27 +1158,7 @@ stop
     $("[data-tc-hcap]").innerHTML = `<span class="tc-num">${k + 1}</span>${esc(CAPS[k])}`;
     $("[data-tc-ncall]").textContent = NCALL[k];
   }
-  let raf = 0;
-  const stickEl = $(".tc-flow-stick", hs);
-  const tick = () => {
-    raf = 0;
-    if (!matchMedia("(max-width: 640px)").matches) {
-      // 데스크톱: 그림은 고정, 바깥 틀을 지나간 비율만큼 1→8 단계로 진행한다
-      const r = hs.getBoundingClientRect(), sh = stickEl.offsetHeight;
-      const top = parseFloat(getComputedStyle(stickEl).top) || 0;
-      const p = Math.min(1, Math.max(0, (top - r.top) / Math.max(1, r.height - sh - 80)));
-      const k = Math.min(7, Math.floor(p * 8));
-      if (k !== hk) drawHS(k);
-      return;
-    }
-    let best = 0;
-    cards.forEach((c, i) => { const r = c.getBoundingClientRect(); if ((r.top + r.bottom) / 2 < innerHeight * 0.55) best = i; });
-    if (best !== hk) drawHS(best);
-  };
-  const onScroll = () => { if (!raf) raf = requestAnimationFrame(tick); };
-  addEventListener("scroll", onScroll, { passive: true, signal });
-  addEventListener("resize", onScroll, { signal });
-  tick();
+  onViewSteps(hs, 8, (k) => { if (k !== hk) drawHS(k); }, 1300);
 
   /* 번호표: 선 끝을 실제 칸 가운데에 맞춘다(그림 높이가 바뀌어도 어긋나지 않게) */
   function wire(pair) {

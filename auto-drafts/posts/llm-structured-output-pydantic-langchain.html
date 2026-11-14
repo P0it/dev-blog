@@ -9,7 +9,7 @@ series_order: 5
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-structured-output-pydantic-langchain-mvb6b2qj.jpg
 ---
 <!-- page -->
-<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 전폭 분류함 장면 아래) + 글|그림 2단(종이 양식) + 그림 고정 스크롤리텔링(두 갈래 길) + 작은 그림 네 장(검문 두 겹) + 그림|글 뒤집기(탁구 재시도) | 글의 성격: 같은 서류가 투입구에 맞느냐 안 맞느냐로 양식의 필요를 보이는 글이라 모양이 제각각인 서류와 같은 서류를 분류함에 던지는 장면으로 열고 길·검문·재시도를 장면으로 이어 간다 | 버린 후보: 상자 비교 보드(앞 버전, 그림이 라벨 상자뿐) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 위아래 쌓은 히어로(제목·리드 위, 전폭 분류함 장면 아래) + 글|그림 2단(종이 양식) + 그림 고정 스크롤리텔링(두 갈래 길) + 작은 그림 네 장(검문 두 겹) + 그림|글 뒤집기(탁구 재시도) | 글의 성격: 같은 서류가 투입구에 맞느냐 안 맞느냐로 양식의 필요를 보이는 글이라 모양이 제각각인 서류와 같은 서류를 분류함에 던지는 장면으로 열고 길·검문·재시도를 장면으로 이어 간다 | 버린 후보: 상자 비교 보드(앞 버전, 그림이 라벨 상자뿐) -->
 <style>
 .post-page .so {
   --so-human: rgb(37, 112, 235); --so-code: rgb(16, 150, 120); --so-model: rgb(226, 106, 28); --so-bad: rgb(214, 56, 56);
@@ -132,7 +132,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .so-step.on { opacity: 1; }
 .post-page .so-step h3 { font-size: 20px; }
 .post-page .so-step p { margin: 0; }
-.post-page .so-sfig { position: sticky; top: var(--so-top, 96px); }
+.post-page .so-sfig { position: static; }
 .post-page .so-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .so-stat b { color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .so-story { grid-template-columns: minmax(0, 1fr); } .post-page .so-sfig { position: static; order: -1; } .post-page .so-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .so-steps { padding-bottom: 0; } }
@@ -154,6 +154,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .so-gcase .so-vl > div { font-size: 14px; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .post-page .so-gcases { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .post-page .so-gcases { grid-template-columns: minmax(0, 1fr); } }
+/* 2026-11-14: 스크롤 고정(sticky) 그림을 쓰지 않는다 — 단계 글은 짧게 쌓고 그림은 제자리에 */
+.post-page .pg-nostick [data-so-sfig] { position: static !important; top: auto !important; }
+.post-page .pg-nostick [data-so-step] { min-height: 0 !important; margin-bottom: 22px; }
+.post-page .pg-nostick { align-items: start; }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -183,7 +187,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       </dl>
       <div class="so-stage" data-figure data-thumb data-so-hero data-thumb-act="el.dispatchEvent(new Event('so-all'))">
         <svg class="so-scene" data-so-sorter viewBox="0 0 930 312" role="img" aria-label="분류함 두 개 그림. 한쪽은 양식 없이 받은 서류 세 장이 원, 삼각형, 별로 모양이 제각각이라 네모난 투입구에 들어가지 못하고 튕겨 나온다. 다른 쪽은 양식을 준 서류 세 장이 모두 같은 네모 모양이라 투입구로 쏙 들어가 담당 큐에 쌓인다."></svg>
-        <p class="so-cap" style="margin-bottom:0">스크롤을 내리면 두 분류함에서 서류가 한 장씩 투입구로 갑니다. 양식 없는 쪽의 답은 설명을 위한 예시입니다. 실제 모양은 모델과 질문마다 다릅니다.</p>
+        <p class="so-cap" style="margin-bottom:0">그림이 화면에 들어오면 두 분류함에서 서류가 한 장씩 투입구로 갑니다. 양식 없는 쪽의 답은 설명을 위한 예시입니다. 실제 모양은 모델과 질문마다 다릅니다.</p>
       </div>
     </div>
   </section>
@@ -231,7 +235,7 @@ class TicketInfo(BaseModel):
       <div class="so-head">
         <h2>양식을 모델에게 건네는 길은 두 가지입니다</h2>
         <div>
-          <p>양식을 만들었으면 모델에게 넘겨야 합니다. 양식 클래스를 그대로 <code>response_format</code>(응답 모양을 정하는 설정)에 넘기면 LangChain이 모델 정보를 보고 길을 자동으로 고릅니다. 스크롤하며 길이 어떻게 갈리는지 보세요.</p>
+          <p>양식을 만들었으면 모델에게 넘겨야 합니다. 양식 클래스를 그대로 <code>response_format</code>(응답 모양을 정하는 설정)에 넘기면 LangChain이 모델 정보를 보고 길을 자동으로 고릅니다. 길이 어떻게 갈리는지 보세요.</p>
         </div>
       </div>
       <div class="so-story" style="margin-top:44px" data-so-story>
@@ -313,7 +317,7 @@ ticket = structured.invoke("노트북 화면이 계속 깜빡여서 회의를 �
     <div class="so-wrap so-split rev">
       <div data-figure>
         <svg class="so-scene so-nar" data-so-pp viewBox="0 0 460 520" role="img" aria-label="탁구 그림. 모델이 urgency에 매우급함을 채워 보내면 Pydantic 검사가 걸러 에러 쪽지를 돌려보내고, 모델이 높음으로 고쳐 보내면 통과한다."></svg>
-        <p class="so-cap">ToolStrategy를 쓸 때의 흐름입니다. 스크롤을 내리면 공이 모델과 검사 사이를 오가며 한 줄씩 나타납니다. 에러 문구는 실제로 만들어지는 메시지를 줄여 옮긴 것입니다.</p>
+        <p class="so-cap">ToolStrategy를 쓸 때의 흐름입니다. 그림이 화면에 들어오면 공이 모델과 검사 사이를 오가며 한 줄씩 나타납니다. 에러 문구는 실제로 만들어지는 메시지를 줄여 옮긴 것입니다.</p>
       </div>
       <div>
         <h2>검증에 실패하면 에러를 모델에게 돌려주고 다시 시킵니다</h2>
@@ -413,14 +417,16 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
   const tween = (ms, fn) => new Promise((res) => { if (reduce || ms <= 0) { fn(1); return res(); } const t0 = performance.now(); const st = (now) => { if (signal.aborted) return res(); const t = Math.min(1, (now - t0) / ms); fn(ease(t)); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
-    const st = $(rootSel); if (!st) return; const steps = $$("[data-so-step]", st), fig = $("[data-so-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
-    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
-    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
-      if (!mq.matches) { apply(-1); return; }
-      fig.style.setProperty("--so-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
-      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
-    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+    /* 2026-11-14: 그림을 고정하고 스크롤로 단계를 넘기지 않는다 — 화면에 들어오면 단계를 1.6초 간격으로 한 번 넘기고 완성 상태(-1)에서 멈춘다 */
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-so-step]", st), fig = $("[data-so-sfig]", st) || st; let gen = 0;
+    st.classList.add("pg-nostick");
+    const apply = (i) => { steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    apply(-1);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < steps.length; i++) { if (my !== gen || signal.aborted) return; apply(i); await wait(1600); } if (my === gen) apply(-1); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; apply(-1); } }), { threshold: 0.35 });
+    io.observe(fig); signal.addEventListener("abort", () => io.disconnect());
   };
 
   const C = { model: "var(--so-model)", code: "var(--so-code)", human: "var(--so-human)", bad: "var(--so-bad)" };
@@ -430,15 +436,14 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
 
   /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
      첫 화면에 걸친 히어로(fromTop)는 페이지 맨 위가 0 이라 처음 열었을 때 움직이기 전 모습부터 보인다 */
-  const scrollP = (el, fn, pinned = () => false, fromTop = false) => {
-    let raf = 0;
-    const tick = () => {
-      raf = 0; if (pinned()) return; const r = el.getBoundingClientRect(), a = innerHeight * 0.85, b = innerHeight * 0.45;
-      if (fromTop) { const end = r.bottom + scrollY - b; fn(end <= 0 ? 1 : Math.min(1, scrollY / end)); return; }
-      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { signal }); tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   };
   const clamp01 = (v) => Math.min(1, Math.max(0, v));
 

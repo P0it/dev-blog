@@ -136,8 +136,15 @@ try {
   const series = fm.match(/^series:\s*(\S+)/m)?.[1];
   if (NO_CONTROL_SERIES.includes(series)) LIMITS.noControls = true;
 } catch {}
-const b = await chromium.launch();
 let bad = false;
+// 같은 시리즈는 스크롤에 묶인 움직임도 두지 않는다(POSTING 5-3, 2026-11-14) — 스크롤 리스너·고정(sticky) 그림이 있으면 실패
+if (LIMITS.noControls) {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(`auto-drafts/posts/${slug}.html`, "utf8");
+  const nScroll = (src.match(/addEventListener\("scroll"/g) || []).length, nSticky = (src.match(/position:\s*sticky/g) || []).length;
+  if (nScroll || nSticky) { bad = true; console.log(`  ✗ 스크롤 연동 ${nScroll}곳 · sticky ${nSticky}곳 — 이 시리즈는 그림이 화면에 들어오면 한 번 재생한다`); }
+}
+const b = await chromium.launch();
 for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 844, true]]) {
   const ctx = await b.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile, colorScheme: dark ? "dark" : "light" });
   const p = await ctx.newPage();

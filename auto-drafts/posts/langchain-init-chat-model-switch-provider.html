@@ -9,7 +9,7 @@ series_order: 4
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langchain-init-chat-model-switch-provider-mvft715g.jpg
 ---
 <!-- page -->
-<!-- layout: 제목|글 머리 + 전폭 요청서 두 장 히어로(작은 그림 여러 장) + 글|그림 2단(문자열에 펜 동그라미·메모) + 그림 고정 스크롤리텔링(role 배지 메시지 목록) + 글|넓은 그림(원본 응답 두 장 → AIMessage, 세 값 줄을 상태 색으로 칠함) + 물컵 세 줄(스크롤에 맞춰 시계가 흐름) + 다이얼 두 개 나란히(보내지 않음·0.7) + 글|그림(빈칸에 글자가 흘러 들어가는 틀) + 정리 표 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지가 핵심이라 실제 요청·응답 원문을 나란히 놓고 달라진 줄만 칠한다. 그림 문법은 POSTING 5-9 | 버린 후보: 어댑터 상자→콘센트 상자 세로 흐름(히어로), 서랍장 상자 쌓기, 응답 상자→깔때기→AIMessage 상자, 틀 상자→파이프→로봇 아이콘 모델 상자, 맞춰 줌·직접 확인 아이콘 두 칸 정리 그림(2026-10-20 상자 그림 전수 조사로 교체), 상자 보드 나열(앞 버전) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목|글 머리 + 전폭 요청서 두 장 히어로(작은 그림 여러 장) + 글|그림 2단(문자열에 펜 동그라미·메모) + 그림 고정 스크롤리텔링(role 배지 메시지 목록) + 글|넓은 그림(원본 응답 두 장 → AIMessage, 세 값 줄을 상태 색으로 칠함) + 물컵 세 줄(스크롤에 맞춰 시계가 흐름) + 다이얼 두 개 나란히(보내지 않음·0.7) + 글|그림(빈칸에 글자가 흘러 들어가는 틀) + 정리 표 | 글의 성격: 한 줄을 바꾸면 무엇이 같고 무엇이 달라지는지가 핵심이라 실제 요청·응답 원문을 나란히 놓고 달라진 줄만 칠한다. 그림 문법은 POSTING 5-9 | 버린 후보: 어댑터 상자→콘센트 상자 세로 흐름(히어로), 서랍장 상자 쌓기, 응답 상자→깔때기→AIMessage 상자, 틀 상자→파이프→로봇 아이콘 모델 상자, 맞춰 줌·직접 확인 아이콘 두 칸 정리 그림(2026-10-20 상자 그림 전수 조사로 교체), 상자 보드 나열(앞 버전) -->
 <style>
 .post-page .lc {
   --lc-human: rgb(37, 112, 235); --lc-code: rgb(16, 150, 120); --lc-model: rgb(226, 106, 28); --lc-bad: rgb(214, 56, 56);
@@ -135,7 +135,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lc-step.on { opacity: 1; }
 .post-page .lc-step h3 { font-size: 20px; }
 .post-page .lc-step p { margin: 0; }
-.post-page .lc-sfig { position: sticky; top: var(--lc-top, 96px); }
+.post-page .lc-sfig { position: static; }
 .post-page .lc-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .lc-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .lc-story { grid-template-columns: minmax(0, 1fr); } .post-page .lc-sfig { position: static; order: -1; } .post-page .lc-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .lc-steps { padding-bottom: 0; } }
@@ -239,6 +239,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 .post-page .lc-sum-tbl td:first-child { font-weight: 400; white-space: normal; color: var(--fg-normal); }
 .post-page .lc-sum-tbl td b { color: var(--fg-strong); }
+/* 2026-11-14: 스크롤 고정(sticky) 그림을 쓰지 않는다 — 단계 글은 짧게 쌓고 그림은 제자리에 */
+.post-page .pg-nostick [data-lc-sfig] { position: static !important; top: auto !important; }
+.post-page .pg-nostick [data-lc-step] { min-height: 0 !important; margin-bottom: 22px; }
+.post-page .pg-nostick { align-items: start; }
 </style>
 <div class="lc">
   <section class="lc-hero">
@@ -487,7 +491,7 @@ AIMessage T-1042는 부품 대기 중입니다.
         <h2>invoke는 한 번에 stream은 조금씩 batch는 여러 개를 한꺼번에</h2>
         <div>
           <p>호출 방식은 세 가지입니다. <code>invoke</code>는 컵에 물이 다 찬 뒤에 한 번에 받습니다. <code>stream</code>은 물이 차는 대로 조각(chunk)을 받아 바로 화면에 찍을 수 있습니다. <code>batch</code>는 컵 여러 개를 동시에 채웁니다. 세 가지 모두 어느 회사 모델이든 이름과 사용법이 같습니다.</p>
-          <p>아래 그림에서는 스크롤에 맞춰 시계가 0초에서 2.4초로 흐릅니다. 세 줄에서 컵이 차는 모습과 글자가 나오는 때를 견주어 보면 차이가 보입니다.</p>
+          <p>아래 그림이 화면에 들어오면 시계가 0초에서 2.4초로 흐릅니다. 세 줄에서 컵이 차는 모습과 글자가 나오는 때를 견주어 보면 차이가 보입니다.</p>
         </div>
       </div>
       <div style="margin-top:44px" data-figure>
@@ -653,22 +657,27 @@ res = (prompt | model).invoke({"question": "T-1042 티켓 어떻게 됐어요?"}
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
-    const st = $(rootSel); if (!st) return; const steps = $$("[data-lc-step]", st), fig = $("[data-lc-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
-    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
-    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
-      if (!mq.matches) { apply(-1); return; }
-      fig.style.setProperty("--lc-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
-      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
-    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+    /* 2026-11-14: 그림을 고정하고 스크롤로 단계를 넘기지 않는다 — 화면에 들어오면 단계를 1.6초 간격으로 한 번 넘기고 완성 상태(-1)에서 멈춘다 */
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-lc-step]", st), fig = $("[data-lc-sfig]", st) || st; let gen = 0;
+    st.classList.add("pg-nostick");
+    const apply = (i) => { steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    apply(-1);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < steps.length; i++) { if (my !== gen || signal.aborted) return; apply(i); await wait(1600); } if (my === gen) apply(-1); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; apply(-1); } }), { threshold: 0.35 });
+    io.observe(fig); signal.addEventListener("abort", () => io.disconnect());
   };
 
   /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1 (ai-agent-vs-chatbot 견본) */
-  function scrollP(el, fn) {
-    let raf = 0;
-    const tick = () => { raf = 0; const r = el.getBoundingClientRect(), vh = innerHeight, a = vh * 0.85, b = vh * 0.45; fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b)))); };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { passive: true, signal }); tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
 
   const C = { model: "var(--lc-model)", code: "var(--lc-code)", human: "var(--lc-human)", bad: "var(--lc-bad)" };

@@ -9,7 +9,7 @@ series_order: 15
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-interrupt-human-approval-checkpoint-mvb7wptb.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 위아래 두 구역 히어로(실행 중인 프로그램과 저장소) + 그림 고정 스크롤리텔링(저장 칸이 한 칸씩 쌓임) + 코드|터미널 + 두 번 실행되는 노드 장면 + 시간 여행 가지 그림 + 정리 | 글의 성격: 멈춘 동안 Agent가 프로그램 밖 저장소에 있다는 사실이 핵심이라 프로그램 구역과 저장소 구역을 위아래로 나누고 저장 칸이 쌓이는 모습을 계속 보여 준다 | 버린 후보: 단계 흐름 상자(앞 시리즈 방식) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 전폭 위아래 두 구역 히어로(실행 중인 프로그램과 저장소) + 그림 고정 스크롤리텔링(저장 칸이 한 칸씩 쌓임) + 코드|터미널 + 두 번 실행되는 노드 장면 + 시간 여행 가지 그림 + 정리 | 글의 성격: 멈춘 동안 Agent가 프로그램 밖 저장소에 있다는 사실이 핵심이라 프로그램 구역과 저장소 구역을 위아래로 나누고 저장 칸이 쌓이는 모습을 계속 보여 준다 | 버린 후보: 단계 흐름 상자(앞 시리즈 방식) -->
 <style>
 .post-page .hl {
   --hl-human: rgb(37, 112, 235); --hl-code: rgb(16, 150, 120); --hl-model: rgb(226, 106, 28); --hl-bad: rgb(214, 56, 56);
@@ -137,7 +137,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .hl-step.on { opacity: 1; }
 .post-page .hl-step h3 { font-size: 20px; }
 .post-page .hl-step p { margin: 0; }
-.post-page .hl-sfig { position: sticky; top: var(--hl-top, 96px); }
+.post-page .hl-sfig { position: static; }
 .post-page .hl-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .hl-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .hl-story { grid-template-columns: minmax(0, 1fr); } .post-page .hl-sfig { position: static; order: -1; } .post-page .hl-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .hl-steps { padding-bottom: 0; } }
@@ -160,6 +160,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .hl-pair h3 { font-size: 17px; margin-bottom: 14px; }
 .post-page .hl-tsv { display: block; width: 100%; max-width: 480px; height: auto; }
 .post-page .hl-tsv .fx { transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+/* 2026-11-14: 스크롤 고정(sticky) 그림을 쓰지 않는다 — 단계 글은 짧게 쌓고 그림은 제자리에 */
+.post-page .pg-nostick [data-hl-sfig] { position: static !important; top: auto !important; }
+.post-page .pg-nostick [data-hl-step] { min-height: 0 !important; margin-bottom: 22px; }
+.post-page .pg-nostick { align-items: start; }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -191,7 +195,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       </div>
       <div class="hl-hfig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('hl-all'))">
         <svg class="hl-hsv" data-hl-hv role="img" aria-label="멈춤과 저장소 그림. 시간은 왼쪽에서 오른쪽으로 흐른다. 위 선로는 프로그램이고 Agent 점이 시작, propose, approve를 지난다. approve의 interrupt에서 점은 아래 저장소의 세 번째 칸으로 내려가고, 그동안 위 선로는 점선이 되어 프로그램이 꺼져 있다. 사람이 승인해 Command(resume=True)가 오면 점이 다시 위로 올라가 approve를 다시 실행하고 send로 가서 메일을 보낸다. 거절했다면 점선 갈래인 cancel로 갔을 것이다. 저장소에는 시작, propose 끝, 승인 대기, 모두 끝 네 칸이 차례로 생긴다."></svg>
-        <p class="hl-cap">점은 Agent의 실행 상태이고 위 선로는 프로그램, 아래 띠는 저장소입니다. 위 선로의 점선 구간은 프로그램이 꺼져 있는 동안입니다. 스크롤을 내리면 점이 저장소로 내려가 답을 기다렸다가 다시 올라옵니다. 거절했다면 점은 점선 갈래인 cancel로 갔을 겁니다.</p>
+        <p class="hl-cap">점은 Agent의 실행 상태이고 위 선로는 프로그램, 아래 띠는 저장소입니다. 위 선로의 점선 구간은 프로그램이 꺼져 있는 동안입니다. 그림이 화면에 들어오면 점이 저장소로 내려가 답을 기다렸다가 다시 올라옵니다. 거절했다면 점은 점선 갈래인 cancel로 갔을 겁니다.</p>
         <p class="hl-cap" style="margin-top:6px">설명을 위한 예시 장면입니다. 저장소는 프로그램 밖에 있는 기록 장소를 그린 것이고 실제 저장 위치는 사용하는 체크포인터에 따라 다릅니다.</p>
       </div>
     </div>
@@ -203,7 +207,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <h2>멈출 때마다 저장소에 한 칸이 생깁니다</h2>
         <div>
           <p>이 저장소를 만드는 도구가 체크포인터(checkpointer)입니다. 그래프를 <code>compile</code>할 때 붙여 두면 노드가 하나 끝날 때마다 State의 모습이 한 칸씩 저장됩니다. 그 한 칸을 체크포인트(checkpoint)라고 부릅니다. 게임을 하다가 저장 슬롯에 저장해 두는 것과 비슷합니다.</p>
-          <p>저장 칸들은 스레드(thread)라는 이름 아래 묶입니다. 같은 <code>thread_id</code>로 다시 부르면 그 이름의 마지막 칸에서 이어 갑니다. 스크롤하며 칸이 쌓이는 모습을 보세요.</p>
+          <p>저장 칸들은 스레드(thread)라는 이름 아래 묶입니다. 같은 <code>thread_id</code>로 다시 부르면 그 이름의 마지막 칸에서 이어 갑니다. 칸이 쌓이는 모습을 보세요.</p>
         </div>
       </div>
       <div class="hl-story" style="margin-top:40px" data-hl-story>
@@ -260,7 +264,7 @@ graph.invoke(Command(resume=True), config)              # ⑤ 같은 이름으�
       <div>
         <h2>이어 가면 멈춘 노드가 처음부터 다시 실행됩니다</h2>
         <p>사람이 답하고 이어 가면 <code>interrupt</code> 줄에서 곧바로 이어지는 것처럼 보입니다. 실제로는 approve 노드가 첫 줄부터 다시 실행됩니다. 이번에는 <code>interrupt</code>가 멈추지 않고 사람의 답을 돌려줍니다. 직접 실행해 보니 노드가 두 번 시작됐습니다.</p>
-        <p>그래서 <code>interrupt</code> 앞에 메일 보내기 같은 되돌릴 수 없는 일을 두면 두 번 실행됩니다. 메일 줄을 앞에 둘 때와 뒤에 둘 때를 나란히 그렸습니다. 스크롤을 내리면 처음 실행과 재개 후 실행에서 어느 줄이 돌았는지 차례로 찍힙니다.</p>
+        <p>그래서 <code>interrupt</code> 앞에 메일 보내기 같은 되돌릴 수 없는 일을 두면 두 번 실행됩니다. 메일 줄을 앞에 둘 때와 뒤에 둘 때를 나란히 그렸습니다. 그림이 화면에 들어오면 처음 실행과 재개 후 실행에서 어느 줄이 돌았는지 차례로 찍힙니다.</p>
       </div>
       <div class="hl-pair">
         <div data-figure>
@@ -283,7 +287,7 @@ graph.invoke(Command(resume=True), config)              # ⑤ 같은 이름으�
         <h2>저장된 칸으로 돌아가 다시 실행하거나 갈라질 수 있습니다</h2>
         <div>
           <p>저장 칸이 남아 있으면 과거의 어느 칸으로든 돌아갈 수 있습니다. 이것을 시간 여행(time travel)이라고 합니다. 그 칸에서 그대로 다시 실행해 결과가 같은지 볼 수도 있고 State 값을 고친 뒤 실행해 다른 길로 갈라질 수도 있습니다. 갈라져도 원래 기록은 지워지지 않고 새 가지가 생깁니다.</p>
-          <p>사람이 요청 내용을 보고 "12명이 아니라 3명에게만 보내세요"라고 고칠 때 쓸 수 있습니다. 아래 그림에 두 방식을 함께 그렸습니다. 스크롤을 내리면 승인 대기 칸에서 두 가지가 차례로 뻗어 나갑니다.</p>
+          <p>사람이 요청 내용을 보고 "12명이 아니라 3명에게만 보내세요"라고 고칠 때 쓸 수 있습니다. 아래 그림에 두 방식을 함께 그렸습니다. 그림이 화면에 들어오면 승인 대기 칸에서 두 가지가 차례로 뻗어 나갑니다.</p>
         </div>
       </div>
       <div class="hl-tlfig" data-figure>
@@ -364,31 +368,27 @@ graph.invoke(None, new)                                 # ④ 고친 값으로 �
 
   /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
      page 가 true 면(처음부터 화면에 보이는 히어로) 페이지 맨 위를 0 으로, end 로 끝 선을 바꾸고, 진행 구간이 minSpan 보다 짧으면 늘린다 */
-  function scrollP(el, fn, o = {}) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0; if (o.stop && o.stop()) return;
-      const r = el.getBoundingClientRect(), vh = innerHeight, y = scrollY, top = r.top + y;
-      let a = top - vh * 0.85, b = top + r.height - vh * (o.end ?? 0.45);
-      if (o.page) a = 0;
-      if (o.minSpan && b - a < o.minSpan) b = a + o.minSpan;
-      fn(clamp((y - a) / Math.max(1, b - a)));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
-    const st = $(rootSel); if (!st) return; const steps = $$("[data-hl-step]", st), fig = $("[data-hl-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
-    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
-    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
-      if (!mq.matches) { apply(-1); return; }
-      fig.style.setProperty("--hl-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
-      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
-    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+    /* 2026-11-14: 그림을 고정하고 스크롤로 단계를 넘기지 않는다 — 화면에 들어오면 단계를 1.6초 간격으로 한 번 넘기고 완성 상태(-1)에서 멈춘다 */
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-hl-step]", st), fig = $("[data-hl-sfig]", st) || st; let gen = 0;
+    st.classList.add("pg-nostick");
+    const apply = (i) => { steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    apply(-1);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < steps.length; i++) { if (my !== gen || signal.aborted) return; apply(i); await wait(1600); } if (my === gen) apply(-1); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; apply(-1); } }), { threshold: 0.35 });
+    io.observe(fig); signal.addEventListener("abort", () => io.disconnect());
   };
   const robot = (p) => { const g = mk("g", {}, p); mk("circle", { r: 15, fill: C.model, stroke: "var(--bg-base)", "stroke-width": 3 }, g); mk("use", { href: "#hl-ic-robot", x: -11, y: -11, width: 22, height: 22, style: "color:#fff" }, g); return g; };
 

@@ -9,7 +9,7 @@ series_order: 19
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/deep-agents-plan-files-skills-mvb8jv5m.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 히어로 두 장 나란히(일반 Agent 창 | Deep Agent 창·계획표·파일함·하위 일꾼, 스크롤만큼 한 단계씩 참) + 계획표 상태 눈금표(할 일 네 줄 × 세 시점) + 파일 경로 두 장 나란히 + 하위 일꾼 한 그림에 격리·복제 두 갈래(스크롤만큼 맡긴 일 점이 내려갔다 보고서로 올라옴) + 스킬 세 단계 세 장 나란히 + 코드|터미널 + 정리 | 글의 성격: 긴 일에서 컨텍스트가 터지지 않게 하는 장치 네 가지를 다루는 글이라 한정된 창에 무엇이 남고 무엇이 밖으로 나가는지를 장면마다 같은 창 그림으로 비교한다 | 버린 후보: 기능 네 개를 카드로 나열(그림이 아니라 목록이라서), 토글로 상태 바꾸기(2026-11-14 조작 요소 0 지시로 펼쳐 놓기로 바꿈) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 히어로 두 장 나란히(일반 Agent 창 | Deep Agent 창·계획표·파일함·하위 일꾼, 스크롤만큼 한 단계씩 참) + 계획표 상태 눈금표(할 일 네 줄 × 세 시점) + 파일 경로 두 장 나란히 + 하위 일꾼 한 그림에 격리·복제 두 갈래(스크롤만큼 맡긴 일 점이 내려갔다 보고서로 올라옴) + 스킬 세 단계 세 장 나란히 + 코드|터미널 + 정리 | 글의 성격: 긴 일에서 컨텍스트가 터지지 않게 하는 장치 네 가지를 다루는 글이라 한정된 창에 무엇이 남고 무엇이 밖으로 나가는지를 장면마다 같은 창 그림으로 비교한다 | 버린 후보: 기능 네 개를 카드로 나열(그림이 아니라 목록이라서), 토글로 상태 바꾸기(2026-11-14 조작 요소 0 지시로 펼쳐 놓기로 바꿈) -->
 <style>
 .post-page .dp {
   --dp-ok: rgb(16, 150, 120); --dp-run: rgb(226, 106, 28); --dp-bad: rgb(214, 56, 56);
@@ -205,7 +205,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <p class="dp-wnote dp-hnote" data-dp-dcap>일이 끝날 때마다 계획표에 체크합니다. 창은 여전히 여유가 있습니다.</p>
         </div>
       </div>
-      <p class="dp-cap" style="max-width:720px;margin:20px auto 0">설명을 위한 예시 장면입니다. 칩의 크기는 차지하는 공간을 대략 나타낸 것이고 실제 토큰 수가 아닙니다. 스크롤을 내리는 만큼 두 Agent가 같은 일을 한 단계씩 진행합니다.</p>
+      <p class="dp-cap" style="max-width:720px;margin:20px auto 0">설명을 위한 예시 장면입니다. 칩의 크기는 차지하는 공간을 대략 나타낸 것이고 실제 토큰 수가 아닙니다. 그림이 화면에 들어오면 두 Agent가 같은 일을 한 단계씩 진행합니다.</p>
     </div>
   </section>
 
@@ -344,7 +344,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <circle class="dp-dot" data-dp-dot r="9" cx="70" cy="200" style="opacity:0"/>
           <circle class="dp-dot" data-dp-dot r="9" cx="300" cy="200" style="opacity:0"/>
         </svg>
-        <p class="dp-wnote" style="max-width:460px;margin-left:auto !important;margin-right:auto !important">격리 모드는 창이 가볍고 하위 일꾼의 중간 과정이 주 창에 섞이지 않습니다. 복제 모드는 앞의 맥락이 필요한 일에 맞지만 창이 더 커집니다. 스크롤을 내리는 만큼 맡긴 일이 내려갔다가 보고서로 올라옵니다.</p>
+        <p class="dp-wnote" style="max-width:460px;margin-left:auto !important;margin-right:auto !important">격리 모드는 창이 가볍고 하위 일꾼의 중간 과정이 주 창에 섞이지 않습니다. 복제 모드는 앞의 맥락이 필요한 일에 맞지만 창이 더 커집니다. 그림이 화면에 들어오면 맡긴 일이 내려갔다가 보고서로 올라옵니다.</p>
       </div>
     </div>
   </section>
@@ -460,18 +460,14 @@ files: ['/notes/log_findings.md']
 
   /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
      처음부터 85% 선 위에 있는 그림(히어로)은 페이지 맨 위를 0 으로 잡는다 */
-  function scrollP(el, fn, isPinned = () => false) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0; if (isPinned()) return;
-      const r = el.getBoundingClientRect(), vh = innerHeight, a = vh * 0.85, b = vh * 0.45, top = r.top + scrollY;
-      const p = top < a ? scrollY / Math.max(600, top + r.height - b) : (a - r.top) / Math.max(1, r.height + a - b);
-      fn(Math.min(1, Math.max(0, p)));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
 
   /* 히어로: 스크롤만큼 두 Agent가 같은 일을 한 단계씩(0~4) 진행한다 */

@@ -9,7 +9,7 @@ series_order: 3
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-loop-stop-conditions-mvb5g31v.jpg
 ---
 <!-- page -->
-<!-- layout: 제목|글 머리 + 전폭 루프 트랙 히어로(택배가 도는 컨베이어) + 글|그림 2단(탁구 랠리 순서도) + 그림 고정 스크롤리텔링(messages 더미) + 분기기 철도 + 실험판 전폭 띠(비용 곡선) + 비교 도로(예외 대 결과) + 번호표 실(병렬 도구 요청) + 논문 그림 | 글의 성격: 루프가 한 바퀴씩 돌며 쌓이는 모양과 끝나는 길이 핵심이라 실제로 돌아가는 트랙·철도·곡선 그림으로 원리를 보이고 규칙 하나마다 그림 하나를 둔다 | 버린 후보: 카드·상자 나열(앞 판에서 쓰다 지적받음), 분할 히어로 -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목|글 머리 + 전폭 루프 트랙 히어로(택배가 도는 컨베이어) + 글|그림 2단(탁구 랠리 순서도) + 그림 고정 스크롤리텔링(messages 더미) + 분기기 철도 + 실험판 전폭 띠(비용 곡선) + 비교 도로(예외 대 결과) + 번호표 실(병렬 도구 요청) + 논문 그림 | 글의 성격: 루프가 한 바퀴씩 돌며 쌓이는 모양과 끝나는 길이 핵심이라 실제로 돌아가는 트랙·철도·곡선 그림으로 원리를 보이고 규칙 하나마다 그림 하나를 둔다 | 버린 후보: 카드·상자 나열(앞 판에서 쓰다 지적받음), 분할 히어로 -->
 <style>
 .post-page .lp {
   --lp-human: rgb(37, 112, 235); --lp-code: rgb(16, 150, 120); --lp-model: rgb(226, 106, 28); --lp-bad: rgb(214, 56, 56);
@@ -179,7 +179,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lp-step.on { opacity: 1; }
 .post-page .lp-step h3 { font-size: 20px; }
 .post-page .lp-step p { margin: 0; }
-.post-page .lp-sfig { position: sticky; top: var(--lp-top, 96px); }
+.post-page .lp-sfig { position: static; }
+.post-page [data-lp-step] { min-height: 0 !important; margin-bottom: 22px; }
 .post-page .lp-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); opacity: 0; }
 .post-page .lp-card.on { opacity: 1; transform: translate(0, 0) !important; }
 .post-page .lp-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
@@ -266,7 +267,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </figure>
         </div>
         <p class="lp-legend" aria-label="messages 더미 색 안내"><span><i style="background:var(--lp-human)"></i>처음 질문</span><span><i style="background:var(--lp-model)"></i>모델 응답</span><span><i style="background:var(--lp-code)"></i>도구 결과</span><span><i style="background:var(--lp-bad)"></i>오류 결과</span></p>
-        <p class="lp-cap" style="margin-top:14px">한 바퀴는 모델 호출 → 멈춘 이유(?) 확인 → 도구 실행 → 결과 붙이기입니다. 페이지를 내리는 만큼 상자가 트랙을 돕니다. 바퀴 수와 상황은 설명용 예시입니다. messages 더미는 한 바퀴에 두 장(모델 응답, 도구 결과)씩 쌓입니다.</p>
+        <p class="lp-cap" style="margin-top:14px">한 바퀴는 모델 호출 → 멈춘 이유(?) 확인 → 도구 실행 → 결과 붙이기입니다. 그림이 화면에 들어오면 상자가 트랙을 돕니다. 바퀴 수와 상황은 설명용 예시입니다. messages 더미는 한 바퀴에 두 장(모델 응답, 도구 결과)씩 쌓입니다.</p>
       </div>
     </div>
   </section>
@@ -528,7 +529,7 @@ elif reason != "tool_use":
           <g class="lp-end" data-lp-goal><use href="#lp-ic-flag" x="380" y="246" width="44" height="44" style="color:var(--fg-strong)"/><text x="402" y="312" text-anchor="middle" font-size="15" class="t-s">답</text></g>
           <text x="192" y="340" text-anchor="middle" font-size="15" class="t-d">"번호는 T-1042 형식입니다"</text>
         </svg>
-        <p class="lp-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 같은 실수를 합니다. 위쪽은 도구 안의 예외가 밖으로 나가 길이 끊기고 아래쪽은 오류가 편지(tool_result)로 돌아가 모델이 고칩니다. 페이지를 내리는 만큼 두 점이 함께 갑니다.</p>
+        <p class="lp-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 같은 실수를 합니다. 위쪽은 도구 안의 예외가 밖으로 나가 길이 끊기고 아래쪽은 오류가 편지(tool_result)로 돌아가 모델이 고칩니다. 그림이 화면에 들어오면 두 점이 함께 갑니다.</p>
       </div>
       <div class="lp-codepair" style="margin-top:44px">
         <div class="cp-code">
@@ -749,6 +750,24 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  /* 2026-11-14: 스크롤 대신 — 화면에 들어오면 단계를 ms 간격으로 한 번 넘기고 끝 단계에서 멈춘다. 벗어났다 오면 다시 */
+  const onViewSteps = (el, n, show, ms = 1500, end = n - 1) => {
+    let gen = 0; show(end);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (t) => new Promise((r) => { const h = setTimeout(r, t); signal.addEventListener("abort", () => clearTimeout(h)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < n; i++) { if (my !== gen || signal.aborted) return; show(i); await wait(ms); } if (my === gen) show(end); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; show(end); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
+  /* 화면에 들어오면 0→1 을 ms 동안 한 번 재생 */
+  const onViewP = (el, fn, ms = 2600) => {
+    let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen) return; const t = Math.min(1, (now - t0) / ms); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   const txt = (parent, x, y, t, a = {}) => { const e = mk("text", { x, y, ...a }, parent); e.textContent = t; return e; };
@@ -758,18 +777,14 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
   /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 그림 아래쪽이 화면 45% 선에 닿으면 1.
      처음부터 85% 선 위에 있는 그림(히어로)은 페이지 맨 위가 0 이다. 썸네일(lp-all)이면 1 에 고정한다 */
   let pinned = false; const scrollFns = [];
-  function scrollP(el, fn) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0; if (pinned) return;
-      const r = el.getBoundingClientRect(), vh = innerHeight;
-      const a = Math.min(vh * 0.85, r.top + scrollY), b = vh * 0.45;
-      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    scrollFns.push(fn); tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
   $("[data-lp-board]").addEventListener("lp-all", () => { pinned = true; scrollFns.forEach((f) => f(1)); }, { signal });
 
@@ -902,18 +917,7 @@ T-1042는 부품 대기 중이고 랜카드는 10월 18일에 도착합니다.</
     const sent = SENT[idx];
     if (sent) { const y1 = 160, y2 = 160 + sent * 64 - 10; mk("path", { d: `M430 ${y1} q14 0 14 14 V${(y1 + y2) / 2 - 8} q0 10 10 10 q-10 0 -10 10 V${y2 - 14} q0 14 -14 14`, fill: "none", stroke: "var(--fg-strong)", "stroke-width": 3 }, braceG); const t = mk("text", { x: 462, y: (y1 + y2) / 2 + 5, "font-size": 15, class: "t-s" }, braceG); t.textContent = `${sent}장 전송`; }
   }
-  let raf = 0;
-  function onScroll() {
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
-      if (!mq.matches) { cardEls.forEach((c) => c.classList.add("on")); stat.innerHTML = "<b>카드 6장이 모두 쌓인 마지막 상태입니다</b>"; steps.forEach((s) => s.classList.add("on")); return; }
-      const top = Math.max(76, (innerHeight - sfig.offsetHeight) / 2); sfig.style.setProperty("--lp-top", top + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9;
-      steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = i; } });
-      applyStep(steps[0].getBoundingClientRect().top > innerHeight * 0.85 ? 0 : best);
-    });
-  }
-  addEventListener("scroll", onScroll, { passive: true, signal }); addEventListener("resize", onScroll, { passive: true, signal }); onScroll();
+  onViewSteps(sfig, steps.length, applyStep, 1500);
 
   /* ───── 분기기: 응답 기차 네 대가 스크롤만큼 네 갈래로 간다. 끝에 닿은 갈래부터 이름이 또렷해진다 ───── */
   const swSvg = $("[data-lp-switch] svg"), tpl = $("[data-lp-train]", swSvg);

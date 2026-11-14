@@ -9,7 +9,7 @@ series_order: 6
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-agent-tool-design-description-schema-mvb6bg92.jpg
 ---
 <!-- page -->
-<!-- layout: 분할 히어로(글 | 설명 범위 벤 다이어그램) + 위아래 짝(코드와 설명서를 색 줄로 잇는 그림) + 실험판 전폭 띠(컨텍스트 창 눈금) + 비교 도로(예외 대 방패) + 그림|글 뒤집기(벽 너머 사용자 정보) + 이름 합치기 + 정리 | 글의 성격: 모델이 읽는 설명서가 중심이라 같은 함수를 모델 눈으로 번역해 보여 주는 대응 그림과 설명 범위가 겹치는 정도를 원으로 보이는 그림으로 풀고 규칙마다 장면 하나를 둔다 | 버린 후보: 라벨 상자 비교 보드(앞 버전) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 분할 히어로(글 | 설명 범위 벤 다이어그램) + 위아래 짝(코드와 설명서를 색 줄로 잇는 그림) + 실험판 전폭 띠(컨텍스트 창 눈금) + 비교 도로(예외 대 방패) + 그림|글 뒤집기(벽 너머 사용자 정보) + 이름 합치기 + 정리 | 글의 성격: 모델이 읽는 설명서가 중심이라 같은 함수를 모델 눈으로 번역해 보여 주는 대응 그림과 설명 범위가 겹치는 정도를 원으로 보이는 그림으로 풀고 규칙마다 장면 하나를 둔다 | 버린 후보: 라벨 상자 비교 보드(앞 버전) -->
 <style>
 .post-page .td {
   --td-human: rgb(37, 112, 235); --td-code: rgb(16, 150, 120); --td-model: rgb(226, 106, 28); --td-bad: rgb(214, 56, 56);
@@ -349,7 +349,7 @@ def get_ticket(ticket_id: str) -> str:
           <path data-td-route="top" d="M80 76 H225" fill="none" stroke="none"/>
           <path data-td-route="bot" d="M72 276 H394" fill="none" stroke="none"/>
         </svg>
-        <p class="td-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 get_ticket("T1042")처럼 틀린 번호를 씁니다. 스크롤을 내리면 호출 점이 두 도로를 함께 지나가고 끝에 닿은 쪽부터 결과가 보입니다.</p>
+        <p class="td-cap">설명을 위한 예시 장면입니다. 두 쪽 모두 모델이 처음에 get_ticket("T1042")처럼 틀린 번호를 씁니다. 그림이 화면에 들어오면 호출 점이 두 도로를 함께 지나가고 끝에 닿은 쪽부터 결과가 보입니다.</p>
       </div>
       <div class="td-codepair" style="margin-top:44px">
         <div class="cp-code">
@@ -500,17 +500,14 @@ T-1042가 열려 있습니다.</div>
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1 */
-  function scrollP(el, fn) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0;
-      const r = el.getBoundingClientRect(), vh = innerHeight, a = vh * 0.85, b = vh * 0.45;
-      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
 
   const C = { model: "var(--td-model)", code: "var(--td-code)", human: "var(--td-human)", bad: "var(--td-bad)" };

@@ -9,7 +9,7 @@ series_order: 16
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-state-design-retry-error-path-mvb83tl5.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 문장 분해 히어로(스크롤만큼 문장→노드→칸→연결) + 그림|글(쓰기·읽기 점검표, memo 칸 포함 한 장) + 실패 세 줄 시간축(스크롤 세로선)|설명 + 코드|터미널 + 스트림 두 방식 나란히(스크롤로 카드 도착) + 미니 프로젝트 글|두 문의 경로 그림 + 코드|터미널 + 정리 | 글의 성격: 만들기 전 설계와 실패 대비를 다루는 글이라 문장이 그래프로 바뀌는 과정, 칸의 쓰기·읽기 표, 실패별 시간 막대, 스트림 스냅샷을 하나씩 보여 준다. 조작 요소 0(2026-11-14) | 버린 후보: 체크리스트 카드 나열(그림이 아니라 목록이라서) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 전폭 문장 분해 히어로(스크롤만큼 문장→노드→칸→연결) + 그림|글(쓰기·읽기 점검표, memo 칸 포함 한 장) + 실패 세 줄 시간축(스크롤 세로선)|설명 + 코드|터미널 + 스트림 두 방식 나란히(스크롤로 카드 도착) + 미니 프로젝트 글|두 문의 경로 그림 + 코드|터미널 + 정리 | 글의 성격: 만들기 전 설계와 실패 대비를 다루는 글이라 문장이 그래프로 바뀌는 과정, 칸의 쓰기·읽기 표, 실패별 시간 막대, 스트림 스냅샷을 하나씩 보여 준다. 조작 요소 0(2026-11-14) | 버린 후보: 체크리스트 카드 나열(그림이 아니라 목록이라서) -->
 <style>
 .post-page .rt {
   --rt-human: rgb(37, 112, 235); --rt-code: rgb(16, 150, 120); --rt-model: rgb(226, 106, 28); --rt-bad: rgb(214, 56, 56);
@@ -124,7 +124,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <h1>요구사항 문장을 노드와 상태로 바꾸고 실패까지 대비하려면?</h1>
       <div class="rt-lede">
         <p>"고객 메일을 받으면 문의 종류를 분류하고 지식 창고에서 근거를 찾아 답변 초안을 쓰고 근거가 없으면 사람에게 넘긴다." 이런 요구사항 문장을 받으면 어디서부터 그래프를 그려야 할지 막막합니다. 방법은 단순합니다. 문장에서 동사에 밑줄을 긋고 명사에는 따로 밑줄을 긋습니다.</p>
-        <p>동사는 일을 하는 노드가 되고 명사는 노드끼리 주고받는 State의 칸이 됩니다. 아래 그림은 스크롤을 내리는 만큼 문장을 노드와 칸으로 나누고 마지막에 하나로 잇습니다.</p>
+        <p>동사는 일을 하는 노드가 되고 명사는 노드끼리 주고받는 State의 칸이 됩니다. 아래 그림은 화면에 들어오면 문장을 노드와 칸으로 나누고 마지막에 하나로 잇습니다.</p>
       </div>
       <div class="rt-stage" data-figure data-thumb data-rt-hero data-thumb-act="el.dispatchEvent(new Event('rt-all'))">
         <ol class="rt-hsteps" aria-hidden="true">
@@ -133,7 +133,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <li data-rt-hs><span>3</span>명사를 칸으로</li>
           <li data-rt-hs class="on"><span>4</span>연결</li>
         </ol>
-        <svg class="rt-scene rt-nar" data-rt-hv viewBox="0 0 460 620" role="img" aria-label="문장 분해 그림. 왼쪽에 요구사항 문장이 다섯 줄로 나뉘어 있다. 스크롤을 내리면 각 줄 오른쪽에 classify, search, draft, to_human 노드가 생기고, 이어서 mail, category, docs, draft, handoff 칸이 생긴다. 마지막에는 노드가 화살표로 이어지고 근거가 없으면 to_human으로 갈라진다."></svg>
+        <svg class="rt-scene rt-nar" data-rt-hv viewBox="0 0 460 620" role="img" aria-label="문장 분해 그림. 왼쪽에 요구사항 문장이 다섯 줄로 나뉘어 있다. 그림이 화면에 들어오면 각 줄 오른쪽에 classify, search, draft, to_human 노드가 생기고, 이어서 mail, category, docs, draft, handoff 칸이 생긴다. 마지막에는 노드가 화살표로 이어지고 근거가 없으면 to_human으로 갈라진다."></svg>
         <p class="rt-verdict" data-rt-hsum>노드를 순서대로 잇고 근거가 없을 때 갈라지는 길을 그렸습니다. 이제 코드로 옮기면 됩니다.</p>
         <p class="rt-cap" style="margin-bottom:0">이 글 끝의 미니 프로젝트(이메일 문의 답변 초안)를 설계하는 과정입니다. 예시 요구사항이고 이름은 직접 정했습니다.</p>
       </div>
@@ -165,8 +165,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       </div>
       <div class="rt-split fig top" style="margin-top:48px">
         <div data-figure>
-          <svg class="rt-scene" data-rt-fl viewBox="0 0 460 520" style="max-width:560px" role="img" aria-label="실패 세 갈래 그림. 세 실패를 같은 시간 축 위에 세 줄로 놓았다. 첫 줄은 서버가 응답하지 않는 경우로, 두 번 실패한 뒤 대기 간격이 0.1초, 0.2초로 길어지다가 세 번째에 성공한다. 둘째 줄은 근거를 못 찾은 경우로, 검색은 한 번에 정상 종료되고 to_human으로 간다. 셋째 줄은 코드가 잘못된 경우로, 한 번 실패하고 곧바로 멈춘다. 스크롤을 내리면 세로선이 시간을 따라 오른쪽으로 가며 막대가 차례로 나타난다."></svg>
-          <p class="rt-cap">세 실패를 같은 시간 축에 놓았습니다. 스크롤을 내리면 세로선이 시간을 따라 오른쪽으로 갑니다. 코드 실수가 가장 먼저 끝나고, 일시 오류가 가장 오래 걸립니다.</p>
+          <svg class="rt-scene" data-rt-fl viewBox="0 0 460 520" style="max-width:560px" role="img" aria-label="실패 세 갈래 그림. 세 실패를 같은 시간 축 위에 세 줄로 놓았다. 첫 줄은 서버가 응답하지 않는 경우로, 두 번 실패한 뒤 대기 간격이 0.1초, 0.2초로 길어지다가 세 번째에 성공한다. 둘째 줄은 근거를 못 찾은 경우로, 검색은 한 번에 정상 종료되고 to_human으로 간다. 셋째 줄은 코드가 잘못된 경우로, 한 번 실패하고 곧바로 멈춘다. 그림이 화면에 들어오면 세로선이 시간을 따라 오른쪽으로 가며 막대가 차례로 나타난다."></svg>
+          <p class="rt-cap">세 실패를 같은 시간 축에 놓았습니다. 그림이 화면에 들어오면 세로선이 시간을 따라 오른쪽으로 갑니다. 코드 실수가 가장 먼저 끝나고, 일시 오류가 가장 오래 걸립니다.</p>
         </div>
         <ol class="rt-four">
           <li><div><strong>서버가 잠깐 응답 없음</strong>일시 오류는 같은 일을 다시 하면 낫습니다. 대기 간격이 점점 길어져 서버가 숨 돌릴 틈을 줍니다. 세 번째에 성공했습니다.</div></li>
@@ -264,7 +264,7 @@ update {'draft': {'draft': '[장비 팀 안내] …'}}</div>
           <p>이 그림에는 아래 터미널에 찍힌 두 문의가 그래프를 지나가는 길을 그렸습니다. 첫 문의는 search의 첫 호출에서 한 번 실패하고 재시도로 넘어갑니다. 그 뒤 근거가 있는 문의는 draft로, 근거가 없는 문의는 to_human으로 갈라집니다.</p>
         </div>
         <div data-figure>
-          <svg class="rt-scene rt-nar" data-rt-pj viewBox="0 0 460 430" role="img" aria-label="미니 프로젝트 그래프를 지나가는 두 문의. 위에서 아래로 START, classify, search가 있고 search 아래에서 draft와 to_human으로 갈라졌다가 END에서 만난다. 비밀번호 문의는 계정으로 분류되고 근거가 있어 draft로 간다. 엑셀 설치 문의는 소프트웨어로 분류되고 근거가 없어 to_human으로 간다. 첫 문의는 search에서 시도 1 실패, 시도 2 성공을 거친다. 스크롤을 내리는 만큼 두 점이 길을 따라 내려간다."></svg>
+          <svg class="rt-scene rt-nar" data-rt-pj viewBox="0 0 460 430" role="img" aria-label="미니 프로젝트 그래프를 지나가는 두 문의. 위에서 아래로 START, classify, search가 있고 search 아래에서 draft와 to_human으로 갈라졌다가 END에서 만난다. 비밀번호 문의는 계정으로 분류되고 근거가 있어 draft로 간다. 엑셀 설치 문의는 소프트웨어로 분류되고 근거가 없어 to_human으로 간다. 첫 문의는 search에서 시도 1 실패, 시도 2 성공을 거친다. 그림이 화면에 들어오면 두 점이 길을 따라 내려간다."></svg>
           <div class="rt-legend"><span><i style="background:var(--rt-code)"></i>비밀번호를 잊어버렸어요</span><span><i style="background:var(--rt-human)"></i>엑셀을 설치하고 싶어요</span></div>
         </div>
       </div>
@@ -328,19 +328,14 @@ graph = b.compile()</code></pre>
   const clamp = (v) => Math.min(1, Math.max(0, v));
   /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
      fromTop: 처음부터 85% 선 위에 있는 히어로는 페이지 맨 위를 0 으로 잡고, 진행 구간을 600px 이상으로 둔다 */
-  function scrollP(el, fn, fromTop) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0;
-      const r = el.getBoundingClientRect(), vh = innerHeight;
-      if (fromTop) { const span = Math.max(600, r.bottom + scrollY - vh * 0.45); fn(clamp(scrollY / span)); return; }
-      const a = vh * 0.85, b = vh * 0.45;
-      fn(clamp((a - r.top) / Math.max(1, r.height + a - b)));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { passive: true, signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
 
   const C = { model: "var(--rt-model)", code: "var(--rt-code)", human: "var(--rt-human)", bad: "var(--rt-bad)" };

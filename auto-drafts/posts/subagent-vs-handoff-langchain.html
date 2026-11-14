@@ -9,7 +9,7 @@ series_order: 18
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/subagent-vs-handoff-langchain-mvb8ep80.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 글|접수 카드 + 전폭 생명선 두 장(맡기기·넘기기를 나란히, 스크롤만큼 말이 오간 순서대로 점이 지나감) + 그림|글(도구 0·1·3회 작은 그림 세 장: 하위 Agent 안 기록 vs 총괄이 받는 것) + 코드|터미널 + 그림 고정 스크롤리텔링(단계 값에 따라 모델 호출 틀이 바뀜) + 코드|터미널 + 일 세 가지에 도장 찍은 고르기 표 + 정리 | 글의 성격: 같은 전문가 분업이지만 누가 사용자와 말하느냐가 갈리는 글이라 대화선이 어디로 이어지는지 먼저 보이고, 안에서 오가는 메시지와 단계에 따라 바뀌는 호출 틀을 하나씩 겪게 한다 | 버린 후보: 두 방식의 장단점 표(그림이 아니라 표라서), 방식 토글·도구 횟수 토글·일 고르기 토글(2026-11-14 조작 요소 0 지시로 펼쳐 놓기로 바꿈) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 글|접수 카드 + 전폭 생명선 두 장(맡기기·넘기기를 나란히, 스크롤만큼 말이 오간 순서대로 점이 지나감) + 그림|글(도구 0·1·3회 작은 그림 세 장: 하위 Agent 안 기록 vs 총괄이 받는 것) + 코드|터미널 + 그림 고정 스크롤리텔링(단계 값에 따라 모델 호출 틀이 바뀜) + 코드|터미널 + 일 세 가지에 도장 찍은 고르기 표 + 정리 | 글의 성격: 같은 전문가 분업이지만 누가 사용자와 말하느냐가 갈리는 글이라 대화선이 어디로 이어지는지 먼저 보이고, 안에서 오가는 메시지와 단계에 따라 바뀌는 호출 틀을 하나씩 겪게 한다 | 버린 후보: 두 방식의 장단점 표(그림이 아니라 표라서), 방식 토글·도구 횟수 토글·일 고르기 토글(2026-11-14 조작 요소 0 지시로 펼쳐 놓기로 바꿈) -->
 <style>
 .post-page .sh {
   --sh-acc: rgb(226, 106, 28); --sh-bad: rgb(214, 56, 56);
@@ -109,7 +109,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .sh-step.on { opacity: 1; }
 .post-page .sh-step h3 { font-size: 20px; }
 .post-page .sh-step p { margin: 0; }
-.post-page .sh-sfig { position: sticky; top: var(--sh-top, 96px); }
+.post-page .sh-sfig { position: static; }
 .post-page .sh-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .sh-stat b { color: var(--fg-strong); }
 .post-page .sh-frame [data-show] { transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); }
@@ -140,6 +140,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 @media (prefers-reduced-motion: reduce) {
   .post-page .sh *, .post-page .sh *::before { transition: none !important; animation: none !important; }
 }
+/* 2026-11-14: 스크롤 고정 그림을 쓰지 않는다 */
+.post-page .pg-nostick [data-sh-sfig] { position: static !important; }
+.post-page .pg-nostick [data-sh-step] { min-height: 0 !important; margin-bottom: 22px; }
 </style>
 <div class="sh">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -207,7 +210,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <p class="sh-verdict">제어권이 청구 단계로 넘어간 뒤에는 고객이 청구 담당과 직접 말을 이어 갑니다.</p>
           </div>
         </div>
-        <p class="sh-cap">세로선 하나가 대화에 나오는 주체 하나이고, 위에서 아래로 시간이 흐릅니다. 스크롤을 내리면 점이 말이 오간 순서대로 지나갑니다. 설명을 위한 예시 장면이고 이름과 문구는 이 글의 예제에서 따왔습니다.</p>
+        <p class="sh-cap">세로선 하나가 대화에 나오는 주체 하나이고, 위에서 아래로 시간이 흐릅니다. 그림이 화면에 들어오면 점이 말이 오간 순서대로 지나갑니다. 설명을 위한 예시 장면이고 이름과 문구는 이 글의 예제에서 따왔습니다.</p>
       </div>
     </div>
   </section>
@@ -278,7 +281,7 @@ main = create_agent(model, tools=[call_billing],
         <h2>넘기면 같은 Agent의 모습이 단계에 따라 바뀝니다</h2>
         <div>
           <p>LangChain이 권하는 Handoff는 Agent를 여러 개 만드는 대신 Agent 하나에 단계 값을 두는 방식입니다. State에 <code>current_step</code> 칸을 두고 도구가 이 값을 바꿉니다. 미들웨어는 모델을 부르기 직전에 이 값을 읽어 시스템 프롬프트와 쓸 수 있는 도구를 갈아 끼웁니다.</p>
-          <p>사용자 눈에는 담당 직원이 바뀐 것처럼 보여도 코드에서는 같은 Agent가 옷만 바꿔 입었을 뿐입니다. 단계 값은 체크포인터에 저장되어 다음 대화에서도 이어집니다. 스크롤하며 모델 호출 틀이 바뀌는 순간을 보세요.</p>
+          <p>사용자 눈에는 담당 직원이 바뀐 것처럼 보여도 코드에서는 같은 Agent가 옷만 바꿔 입었을 뿐입니다. 단계 값은 체크포인터에 저장되어 다음 대화에서도 이어집니다. 모델 호출 틀이 바뀌는 순간을 보세요.</p>
         </div>
       </div>
       <div class="sh-story" style="margin-top:40px" data-sh-story>
@@ -401,6 +404,24 @@ def by_step(request, handler):                    # ③ 모델 호출 직전에 
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
+  /* 2026-11-14: 스크롤 대신 — 화면에 들어오면 단계를 ms 간격으로 한 번 넘기고 끝 단계에서 멈춘다. 벗어났다 오면 다시 */
+  const onViewSteps = (el, n, show, ms = 1500, end = n - 1) => {
+    let gen = 0; show(end);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (t) => new Promise((r) => { const h = setTimeout(r, t); signal.addEventListener("abort", () => clearTimeout(h)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < n; i++) { if (my !== gen || signal.aborted) return; show(i); await wait(ms); } if (my === gen) show(end); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; show(end); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
+  /* 화면에 들어오면 0→1 을 ms 동안 한 번 재생 */
+  const onViewP = (el, fn, ms = 2600) => {
+    let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen) return; const t = Math.min(1, (now - t0) / ms); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
+  };
 
   /* ───── 히어로: 생명선 두 장. 스크롤만큼 점이 말이 오간 순서대로 지나간다 — 누를 것도 자동 재생도 없다 ─────
      그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1. 처음부터 85% 선 위에 있으면 페이지 맨 위가 0.
@@ -422,19 +443,7 @@ def by_step(request, handler):                    # ③ 모델 호출 직전에 
       } else it.g.style.opacity = "";
     });
   };
-  const tick = () => {
-    if (pinned) return;
-    const vh = innerHeight, y = scrollY;
-    lives.forEach((L) => {
-      const r = L.svg.getBoundingClientRect(), top = r.top + y;
-      const s0 = Math.max(0, top - vh * 0.85);
-      let s1 = top + r.height - vh * 0.45; if (s1 - s0 < vh * 0.9) s1 = s0 + vh * 0.9;
-      setLife(L, Math.min(1, Math.max(0, (y - s0) / (s1 - s0))));
-    });
-  };
-  let raf = 0; const on = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; tick(); }); };
-  addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { passive: true, signal });
-  tick();
+  lives.forEach((L) => onViewP(L.svg, (p) => { if (!pinned) setLife(L, p); }, 3600));
   $("[data-thumb]").addEventListener("sh-all", () => { pinned = true; lives.forEach((L) => setLife(L, 1)); }, { signal });
 
   /* ───── 호출 틀이 바뀜 (스크롤 이야기). 요소는 처음부터 다 그려 두고 단계마다 클래스만 바꾼다 ───── */
@@ -448,13 +457,8 @@ def by_step(request, handler):                    # ③ 모델 호출 직전에 
     sstat.innerHTML = `<b>${["접수 단계", "도구 호출", "State가 바뀜", "청구 단계"][k]}</b>`;
   };
   const st = $("[data-sh-story]"), steps = $$("[data-sh-step]", st), fig = $("[data-sh-sfig]", st), mq = matchMedia("(min-width: 901px)");
-  let sraf = 0, scur = -2;
-  const apply = (i) => { if (i === scur) return; scur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); frame(i); };
-  const run = () => { cancelAnimationFrame(sraf); sraf = requestAnimationFrame(() => {
-    if (!mq.matches) { apply(-1); return; }
-    fig.style.setProperty("--sh-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
-    const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
-    apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
-  addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { scur = -2; run(); }, { passive: true, signal }); run();
+  st.classList.add("pg-nostick");
+  const apply = (i) => { steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); frame(i); };
+  onViewSteps(fig, steps.length, (i) => apply(i === steps.length ? -1 : i), 1600, steps.length);
 })();
 </script>

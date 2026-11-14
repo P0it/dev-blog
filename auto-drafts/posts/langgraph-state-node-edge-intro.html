@@ -9,7 +9,7 @@ series_order: 11
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-state-node-edge-intro-mvb769lz.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 창구 장면 히어로(서류가 창구 셋을 지남) + 글|그림(노드 기계) + 코드|해설 두 쌍 + 그림 고정 스크롤리텔링(reducer 서류 칸) + 그림|글 뒤집기(순서와 루프) + 제목|글 머리(실수 장면) | 글의 성격: 서류 한 장이 창구를 차례로 지나는 모습이 그래프의 전부라서 서류의 칸이 채워지는 과정을 먼저 보이고 그 뒤에 코드·덮어쓰기 규칙·실수를 장면으로 한 겹씩 푼다 | 버린 후보: 창구 상자와 서류 칸 목록(앞 버전) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 전폭 창구 장면 히어로(서류가 창구 셋을 지남) + 글|그림(노드 기계) + 코드|해설 두 쌍 + 그림 고정 스크롤리텔링(reducer 서류 칸) + 그림|글 뒤집기(순서와 루프) + 제목|글 머리(실수 장면) | 글의 성격: 서류 한 장이 창구를 차례로 지나는 모습이 그래프의 전부라서 서류의 칸이 채워지는 과정을 먼저 보이고 그 뒤에 코드·덮어쓰기 규칙·실수를 장면으로 한 겹씩 푼다 | 버린 후보: 창구 상자와 서류 칸 목록(앞 버전) -->
 <style>
 .post-page .lg {
   --lg-human: rgb(37, 112, 235); --lg-code: rgb(16, 150, 120); --lg-model: rgb(226, 106, 28); --lg-bad: rgb(214, 56, 56);
@@ -137,7 +137,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lg-step.on { opacity: 1; }
 .post-page .lg-step h3 { font-size: 20px; }
 .post-page .lg-step p { margin: 0; }
-.post-page .lg-sfig { position: sticky; top: var(--lg-top, 96px); }
+.post-page .lg-sfig { position: static; }
 .post-page .lg-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
 .post-page .lg-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .lg-story { grid-template-columns: minmax(0, 1fr); } .post-page .lg-sfig { position: static; order: -1; } .post-page .lg-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .lg-steps { padding-bottom: 0; } }
@@ -162,6 +162,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .lg-mtxt p { font-size: 16px; margin: 0 0 12px; }
 .post-page .lg-mtxt .lg-mres code { background: transparent; padding: 0; }
 @media (max-width: 900px) { .post-page .lg-mrow { grid-template-columns: minmax(0, 1fr); padding: 28px 0; } }
+/* 2026-11-14: 스크롤 고정(sticky) 그림을 쓰지 않는다 — 단계 글은 짧게 쌓고 그림은 제자리에 */
+.post-page .pg-nostick [data-lg-sfig] { position: static !important; top: auto !important; }
+.post-page .pg-nostick [data-lg-step] { min-height: 0 !important; margin-bottom: 22px; }
+.post-page .pg-nostick { align-items: start; }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -182,7 +186,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <h1>LangGraph의 State·Node·Edge, 흐름을 그래프로 그리는 이유</h1>
       <div class="lg-hfig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('lg-all')); el.querySelectorAll('.lg-cap').forEach((x) => { x.style.display = 'none'; })">
         <svg class="lg-scene lg-hero-svg" data-lg-bank viewBox="0 0 1040 392" role="img" aria-label="창구 길 그림. 시작에서 classify, lookup, reply 세 창구를 지나 끝으로 가는 길이 있고, 그 아래에 VPN 문의와 프린터 문의의 서류 두 장이 놓여 있다. 서류의 text, category, queue, reply 칸은 각 창구 바로 밑에 있어서 점이 창구를 지날 때마다 두 서류에서 그 창구가 맡은 칸이 채워진다. VPN 문의는 네트워크, 네트워크 팀 큐로, 프린터 문의는 기타, 일반 큐로 채워진다."></svg>
-        <p class="lg-cap">같은 그래프를 예시 문의 두 건으로 한 번씩 실행했을 때의 서류 두 장입니다. 칸은 그 칸을 맡은 창구 바로 밑에 있습니다. 스크롤을 내리면 점이 창구를 지나고 지난 창구의 칸부터 채워집니다. 칸이 채워지는 순서는 아래 코드를 langgraph 1.2로 직접 실행해 확인한 결과와 같습니다.</p>
+        <p class="lg-cap">같은 그래프를 예시 문의 두 건으로 한 번씩 실행했을 때의 서류 두 장입니다. 칸은 그 칸을 맡은 창구 바로 밑에 있습니다. 그림이 화면에 들어오면 점이 창구를 지나고 지난 창구의 칸부터 채워집니다. 칸이 채워지는 순서는 아래 코드를 langgraph 1.2로 직접 실행해 확인한 결과와 같습니다.</p>
       </div>
       <div class="lg-twocol">
         <p>은행 창구를 생각해 봅니다. 서류 한 장을 들고 접수 창구에서 이름을 적고 확인 창구에서 담당자를 정하고 마지막 창구에서 안내문을 받습니다. 창구마다 하는 일은 달라도 서류는 한 장이라서 앞 창구가 적은 칸을 뒤 창구가 읽습니다.</p>
@@ -284,7 +288,7 @@ for step in graph.stream({"text": "VPN이 안 붙어요"}, stream_mode="updates"
         <h2>같은 칸에 또 쓰면 덮어쓰거나 이어 붙입니다</h2>
         <div>
           <p>노드 둘이 같은 칸을 바꾸면 어떻게 될까요? LangGraph는 칸마다 업데이트를 합치는 규칙인 reducer(리듀서)를 둡니다. 따로 정하지 않으면 새 값이 이전 값을 덮어씁니다. 문서도 기본 reducer는 이전 값을 무시하고 새 값으로 바꾼다고 설명합니다.</p>
-          <p>목록 칸에 이어 붙이게 하려면 칸의 종류를 <code>Annotated[list[str], operator.add]</code>로 적습니다. 스크롤하면서 같은 두 노드가 쪽지를 두 방식의 칸에 붙이는 모습을 나란히 보세요. 직접 실행해서 확인한 값입니다.</p>
+          <p>목록 칸에 이어 붙이게 하려면 칸의 종류를 <code>Annotated[list[str], operator.add]</code>로 적습니다. 같은 두 노드가 쪽지를 두 방식의 칸에 붙이는 모습을 나란히 보세요. 직접 실행해서 확인한 값입니다.</p>
         </div>
       </div>
       <div class="lg-story" style="margin-top:44px" data-lg-story>
@@ -340,7 +344,7 @@ class S(TypedDict):
           <path d="M180 332 V396 H224" fill="none" stroke="var(--fg-strong)" stroke-width="5"/><path d="M228 396 l-14 -8 v16z" fill="var(--fg-strong)"/><use href="#lg-ic-flag" x="234" y="374" width="40" height="40" style="color:var(--fg-strong)"/><text x="284" y="400" font-size="15" class="t-s">답이 나오면 끝</text>
           <text x="14" y="440" font-size="15" class="t-d">앞서 본 create_agent의 안쪽입니다.</text><text x="14" y="462" font-size="15" class="t-d">모델의 응답에 따라 tools로 갔다가 돌아오거나 끝납니다.</text>
         </svg>
-        <p class="lg-cap">두 그래프는 똑같이 노드와 엣지로 그리지만 길을 누가 고르는지가 다릅니다. 스크롤에 맞춰 점이 두 길을 함께 지나갑니다. 아래 길의 점은 model과 tools를 한 번 오간 뒤에 끝납니다.</p>
+        <p class="lg-cap">두 그래프는 똑같이 노드와 엣지로 그리지만 길을 누가 고르는지가 다릅니다. 화면에 들어오면 점이 두 길을 함께 지나갑니다. 아래 길의 점은 model과 tools를 한 번 오간 뒤에 끝납니다.</p>
       </div>
       <div>
         <h2>그래프는 순서를 눈에 보이게 만듭니다</h2>
@@ -468,29 +472,27 @@ builder.invoke({"text": "..."})</pre>
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   /* 그림이 화면을 지나가는 비율(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
      처음부터 85% 선 위에 있는 히어로는 페이지 맨 위를 0 으로 잡는다. 거꾸로 올리면 되돌아간다 */
-  function scrollP(el, fn, pinned = () => false) {
-    let raf = 0;
-    const tick = () => {
-      raf = 0; if (pinned()) return;
-      const r = el.getBoundingClientRect(), vh = innerHeight, top = r.top + scrollY;
-      const s0 = Math.max(0, top - vh * 0.85), s1 = Math.max(s0 + 1, top + r.height - vh * 0.45);
-      fn(clamp((scrollY - s0) / (s1 - s0)));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
   /* 스크롤 고정 그림: 화면 가운데에 가장 가까운 단계를 골라 onStep(i)를 부른다. 모바일은 onStep(-1)=전부 보이기 */
   const story = (rootSel, onStep) => {
-    const st = $(rootSel); if (!st) return; const steps = $$("[data-lg-step]", st), fig = $("[data-lg-sfig]", st), mq = matchMedia("(min-width: 901px)"); let raf = 0, cur = -2;
-    const apply = (i) => { if (i === cur) return; cur = i; steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
-    const run = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
-      if (!mq.matches) { apply(-1); return; }
-      fig.style.setProperty("--lg-top", Math.max(76, (innerHeight - fig.offsetHeight) / 2) + "px");
-      const mid = innerHeight / 2; let best = 0, bd = 1e9; steps.forEach((s, k) => { const r = s.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = k; } });
-      apply(steps[0].getBoundingClientRect().top > innerHeight * .85 ? 0 : best); }); };
-    addEventListener("scroll", run, { passive: true, signal }); addEventListener("resize", () => { cur = -2; run(); }, { passive: true, signal }); run();
+    /* 2026-11-14: 그림을 고정하고 스크롤로 단계를 넘기지 않는다 — 화면에 들어오면 단계를 1.6초 간격으로 한 번 넘기고 완성 상태(-1)에서 멈춘다 */
+    const st = $(rootSel); if (!st) return; const steps = $$("[data-lg-step]", st), fig = $("[data-lg-sfig]", st) || st; let gen = 0;
+    st.classList.add("pg-nostick");
+    const apply = (i) => { steps.forEach((s, k) => s.classList.toggle("on", i < 0 || k === i)); onStep(i); };
+    apply(-1);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+    const play = async () => { const my = ++gen; for (let i = 0; i < steps.length; i++) { if (my !== gen || signal.aborted) return; apply(i); await wait(1600); } if (my === gen) apply(-1); };
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; apply(-1); } }), { threshold: 0.35 });
+    io.observe(fig); signal.addEventListener("abort", () => io.disconnect());
   };
 
   const C = { model: "var(--lg-model)", code: "var(--lg-code)", human: "var(--lg-human)", bad: "var(--lg-bad)" };

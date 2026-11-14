@@ -9,7 +9,7 @@ series_order: 17
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/multi-agent-when-to-split-mvb89cb8.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 비용 탑 히어로(챗 1배·Agent 4배·Multi-Agent 15배, 스크롤만큼 토큰 조각이 쌓임, 막대 아래 세 가지 일) + 제목|글 뒤 두 장면 나란히(창 하나 vs 역할별 창) + 다섯 패턴 줄(모양 그림|잘하는 일·약한 일, 스크롤만큼 점이 흐름) + 세 상황 호출 수 막대 나란히 + 글·두 관문 노선|방식별 ✓✗ 표 + 정리 | 글의 성격: 나눌지 말지를 판단하는 글이라 비용이 얼마나 커지는지 먼저 높이로 보이고, 나누면 무엇이 좋아지는지는 창이 쪼개지는 장면으로, 방식 비교는 모양 그림과 막대로 보인다 | 조작 요소 0(2026-11-14): 일 고르기·구조 고르기·방식 고르기·상황 고르기·내 상황 켜기를 모두 펼쳐 놓기로 바꿈 | 버린 후보: 장단점 비교 표(그림이 아니라 표라서) -->
+<!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 전폭 비용 탑 히어로(챗 1배·Agent 4배·Multi-Agent 15배, 스크롤만큼 토큰 조각이 쌓임, 막대 아래 세 가지 일) + 제목|글 뒤 두 장면 나란히(창 하나 vs 역할별 창) + 다섯 패턴 줄(모양 그림|잘하는 일·약한 일, 스크롤만큼 점이 흐름) + 세 상황 호출 수 막대 나란히 + 글·두 관문 노선|방식별 ✓✗ 표 + 정리 | 글의 성격: 나눌지 말지를 판단하는 글이라 비용이 얼마나 커지는지 먼저 높이로 보이고, 나누면 무엇이 좋아지는지는 창이 쪼개지는 장면으로, 방식 비교는 모양 그림과 막대로 보인다 | 조작 요소 0(2026-11-14): 일 고르기·구조 고르기·방식 고르기·상황 고르기·내 상황 켜기를 모두 펼쳐 놓기로 바꿈 | 버린 후보: 장단점 비교 표(그림이 아니라 표라서) -->
 <style>
 .post-page .ma {
   --ma-model: rgb(226, 106, 28); --ma-ok: rgb(16, 150, 120); --ma-bad: rgb(214, 56, 56);
@@ -267,13 +267,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   const head = (p, x, y, dir, col = MUT) => { const d = { r: `M${x} ${y} l-11 -6 v12z`, l: `M${x} ${y} l11 -6 v12z`, u: `M${x} ${y} l-6 11 h12z`, d: `M${x} ${y} l-6 -11 h12z` }[dir]; return mk("path", { d, fill: col }, p); };
 
   /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1. 거꾸로 올리면 되돌아간다 */
-  function scrollP(el, fn, from) {
-    let raf = 0;
-    const tick = () => { raf = 0; fn(from ? from() : (() => { const r = el.getBoundingClientRect(), a = innerHeight * 0.85, b = innerHeight * 0.45; return clamp((a - r.top) / Math.max(1, r.height + a - b)); })()); };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    addEventListener("scroll", on, { passive: true, signal });
-    addEventListener("resize", on, { signal });
-    tick();
+  const scrollP = (el, fn, ...opt) => {
+    /* 2026-11-14: 스크롤에 묶지 않는다 — 그림이 화면에 들어오면 0→1 을 한 번 재생하고, 벗어났다 다시 들어오면 다시 재생한다 */
+    const pinned = opt.find((o) => typeof o === "function"), D = 2600; let gen = 0;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return; }
+    const play = () => { const my = ++gen, t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen || (pinned && pinned())) return; const t = Math.min(1, (now - t0) / D); fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); if (t < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); };
+    fn(0);
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else if (!(pinned && pinned())) { gen++; fn(0); } }), { threshold: 0.3 });
+    io.observe(el); signal.addEventListener("abort", () => io.disconnect());
   }
   /* 길(path) 위에 점을 놓는다 */
   const rider = (svg, d, col = ACC, r = 8) => { const path = mk("path", { d, fill: "none", stroke: "none" }, svg); const dot = mk("circle", { r, fill: col, stroke: "var(--bg-base)", "stroke-width": 3 }, svg); path.len = path.getTotalLength(); const at = (p) => { const pt = path.getPointAtLength(clamp(p) * path.len); dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y); return pt; }; at(0); return { at, dot }; };
