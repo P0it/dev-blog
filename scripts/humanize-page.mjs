@@ -76,7 +76,8 @@ if (cmd === "extract") {
   s = head + html + js;
   // 프런트매터 title 은 h1 과 같게 둔다
   const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(s);
-  if (h1) s = s.replace(/^title: .*$/m, "title: " + h1[1].replace(/<[^>]+>/g, "").trim());
+  // 줄바꿈 <br> 은 공백으로 — 그냥 지우면 "말고<br>무엇이" 가 "말고무엇이" 로 붙는다(2026-11-14)
+  if (h1) s = s.replace(/^title: .*$/m, "title: " + h1[1].replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
   writeFileSync(src, s);
   console.log(`✓ ${changed}/${items.length}개 블록 반영`);
   if (kept.length) console.log(`⚠ 태그·자리표시자가 달라져 원문을 유지한 블록: ${kept.join(", ")} — 직접 확인`);
