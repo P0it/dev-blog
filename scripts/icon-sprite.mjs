@@ -29,7 +29,7 @@ const BRANDS = {
   kubernetes: dev("kubernetes-original"), python: dev("python-original"), kafka: dev("apachekafka-original"),
   prometheus: dev("prometheus-original"),
   github: si("github"), nextjs: si("nextdotjs"), opentelemetry: si("opentelemetry"), qdrant: si("qdrant"),
-  kakaotalk: si("kakaotalk"), anthropic: si("anthropic"),
+  kakaotalk: si("kakaotalk"), anthropic: si("anthropic"), googlecalendar: si("googlecalendar"),
 };
 
 function symbol(id) {
