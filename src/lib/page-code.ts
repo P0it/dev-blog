@@ -49,9 +49,10 @@ const STYLE = `<style data-pg-code>
 @media (max-width: 640px) {
   .post-page .pg-code pre { font-size: 12.5px; }
 }
-/* 좁은 화면에서는 가로로 밀지 않고 줄을 접는다. 이어지는 줄은 그 줄의 코드 들여쓰기(--pg-i)보다 2칸 더 들여써서 구조가 무너져 보이지 않게 한다 */
-@media (max-width: 760px) {
-  .post-page .pg-code .line { --pg-hang: calc((var(--pg-i, 0) + 2) * 1ch); position: relative; display: inline-block; vertical-align: top; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px + var(--pg-hang)); text-indent: calc(var(--pg-hang) * -1); }
+/* 가로로 밀지 않고 줄을 접는다 — 처음엔 좁은 화면만 접었는데, 넓은 화면에서도 가로 스크롤이 거슬린다는 지적으로 모든 폭에 적용(2026-11-14).
+   이어지는 줄은 그 줄의 코드 들여쓰기(--pg-i)보다 2칸 더 들여써서 구조가 무너져 보이지 않게 한다 */
+@media all {
+  .post-page .pg-code .line { --pg-hang: min(calc((var(--pg-i, 0) + 2) * 1ch), 16ch); position: relative; display: inline-block; vertical-align: top; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(3ch + 28px + var(--pg-hang)); text-indent: calc(var(--pg-hang) * -1); }
   /* 번호를 글 흐름에서 빼야 긴 토큰이 번호만 남기고 다음 줄로 밀리지 않는다 */
   .post-page .pg-code .line::before { position: absolute; left: 0; top: 0; text-indent: 0; }
 }
@@ -66,17 +67,17 @@ const STYLE = `<style data-pg-code>
 .post-page ol.pg-code-notes { list-style: none; counter-reset: pgc; padding: 0; margin: 4px 0 28px; }
 .post-page ol.pg-code-notes > li { counter-increment: pgc; position: relative; padding-left: 2.1em; margin: 10px 0; line-height: 1.7; }
 .post-page ol.pg-code-notes > li::before { content: counter(pgc); position: absolute; left: 0; top: 0.2em; font-size: 0.8em; }
-/* 코드 | 해설을 좌우로 두지 않는다 — 코드는 칸 폭을 다 쓰고 해설은 아래에(POSTING 5-7, 2026-11-14).
-   글마다 짠 grid 를 이기려고 !important 를 쓴다. 넓은 화면에서는 해설을 두 단으로 펴 세로 길이를 줄인다 */
-.post-page [data-pg-stack] { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 18px !important; }
+/* 코드 | 해설을 좌우로 두지 않는다 — 코드 아래에 해설(POSTING 5-7, 2026-11-14). 글마다 짠 grid 를 이기려고 !important.
+   폭은 끝없이 넓히지 않는다: 코드 860px(한 줄 80칸 남짓), 해설은 한 단 760px — 넓으면 줄이 길어 읽기 힘들다(사용자 지적).
+   글 열과 같은 왼쪽 선에 맞춘다 */
+.post-page [data-pg-stack] { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 18px !important; max-width: 860px !important; margin-left: 0 !important; margin-right: auto !important; }
+.post-page [data-pg-stack] > :has(ol.pg-code-notes), .post-page [data-pg-stack] > ol.pg-code-notes { max-width: 760px !important; }
 .post-page [data-pg-stack] > * { position: static !important; width: auto !important; max-width: none !important; min-width: 0; margin-left: 0 !important; margin-right: 0 !important; }
 /* 원고에서 해설을 코드보다 앞에 적은 글도 해설이 맨 아래로 간다 */
 .post-page [data-pg-stack] > :has(ol.pg-code-notes), .post-page [data-pg-stack] > ol.pg-code-notes { order: 1; }
 .post-page [data-pg-stack] ol.pg-code-notes { margin-top: 6px; }
-@media (min-width: 961px) {
-  .post-page [data-pg-stack] ol.pg-code-notes { columns: 2; column-gap: 48px; }
-  .post-page [data-pg-stack] ol.pg-code-notes > li { break-inside: avoid; margin-top: 0; }
-}
+/* 코드 아래 터미널 칸(글마다 짠 pre)도 가로로 밀지 않고 접는다 */
+.post-page [data-pg-stack] pre:not(.shiki) { white-space: pre-wrap !important; overflow-wrap: anywhere; overflow-x: hidden; }
 </style>`;
 
 const BLOCK = /<pre\b([^>]*)>\s*<code\b([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi;
