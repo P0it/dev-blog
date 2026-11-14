@@ -1,0 +1,756 @@
+---
+title: 약관 챗봇이 '상품마다 다릅니다'로 얼버무리는 이유
+slug: rag-chroma-metadata-filter-mmr
+excerpt: 약관을 넣어 준 챗봇에 자기부담금을 물었더니 "상품마다 다릅니다"라는 답이 돌아옵니다. 모델은 약관 전체가 아니라 검색이 골라 준 조각 네 개만 읽고 답하기 때문입니다. 그 네 칸이 어떻게 어긋나는지 차례로 봅니다. 조각을 자르는 크기, 두 번 저장해 생긴 중복, 다른 문서가 섞이는 일, 비슷한 조각만 몰리는 일, k 값이 원인입니다. LangChain과 Chroma로 메타데이터 필터, MMR, 검색 도구를 쓰는 Agent까지 만듭니다.
+tags: [RAG, LangChain, Chroma, 벡터 DB, 임베딩, MMR, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 12
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/rag-chroma-metadata-filter-mmr-mwg3kmoj.jpg
+---
+<!-- page -->
+<!-- layout: 전폭 히어로(채팅 두 창 + 그 아래 네 칸 쟁반) + 지그재그 비대칭(격자·잘린 쪽·중복 막대·필터 격자를 좌우 번갈아) + 그림 고정 스크롤리텔링 1곳(MMR 지도) + 쟁반 세 개 펼쳐 놓기 + 장 표지 띠 1개 + 코드|해설 짝(좌우 뒤집기) + 전폭 막대 | 글의 성격: 겉(얼버무린 답)에서 안(모델이 받은 네 칸)으로 내려가 칸을 망치는 원인을 하나씩 보는 글 | 버린 후보: 그림 고정 스크롤리텔링 위주(11편과 같은 리듬), 가로 스크롤 띠(rag-retrieval-pipeline 과 같은 첫인상) -->
+<style>
+.post-page .rk {
+  --rk-red: rgb(204, 52, 40); --rk-ok: rgb(14, 128, 98); --rk-link: rgb(40, 96, 200);
+  --rk-soft: color-mix(in srgb, var(--fg-strong) 6%, var(--bg-base));
+  --rk-okbg: color-mix(in srgb, var(--rk-ok) 14%, var(--bg-base));
+  --rk-redbg: color-mix(in srgb, var(--rk-red) 12%, var(--bg-base));
+  --rk-ins: color-mix(in srgb, var(--fg-strong) 22%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .rk { --rk-red: rgb(255, 120, 104); --rk-ok: rgb(72, 204, 160); --rk-link: rgb(120, 170, 255); --rk-soft: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); --rk-okbg: color-mix(in srgb, rgb(72, 204, 160) 24%, var(--bg-base)); --rk-redbg: color-mix(in srgb, rgb(255, 120, 104) 20%, var(--bg-base)); --rk-ins: color-mix(in srgb, var(--fg-strong) 30%, var(--bg-base)); }
+.post-page .rk * { box-sizing: border-box; }
+.post-page .rk-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .rk h1, .post-page .rk h2, .post-page .rk h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .rk h1 { font-size: clamp(32px, 5vw, 54px); line-height: 1.24; margin-bottom: 28px; }
+.post-page .rk h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .rk h3 { font-size: 18px; line-height: 1.45; margin-bottom: 10px; }
+.post-page .rk p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .rk b { color: var(--fg-strong); }
+.post-page .rk a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .rk code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .rk figure { margin: 0; min-width: 0; }
+.post-page .rk-cap { font-size: 14.5px !important; line-height: 1.7 !important; color: var(--fg-alternative); margin: 16px 0 0 !important; }
+.post-page .rk-pen { color: var(--rk-red); font-weight: 600; font-size: 15px; line-height: 1.5; font-style: normal; }
+.post-page .rk-good { color: var(--rk-ok); font-weight: 600; font-size: 15px; line-height: 1.5; font-style: normal; }
+.post-page .rk-sec { padding: clamp(96px, 12vw, 148px) 0 0; }
+.post-page .rk-sec:last-of-type { padding-bottom: 48px; }
+
+/* 히어로 */
+.post-page .rk-hero { padding: clamp(56px, 9vw, 104px) 0 0; }
+.post-page .rk-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px !important; }
+.post-page .rk-lede { font-size: 18px !important; max-width: 760px; }
+.post-page .rk-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 44px; }
+.post-page .rk-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.post-page .rk-colh { font-size: 15px !important; font-weight: 700; color: var(--fg-strong); margin: 0 !important; }
+
+/* 채팅 창 */
+.post-page .rk-chat { display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.28); }
+.post-page .rk-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line-subtle); font-size: 14px; font-weight: 600; color: var(--fg-strong); }
+.post-page .rk-bar small { font-size: 12.5px; font-weight: 400; color: var(--fg-alternative); }
+.post-page .rk-log { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 20px 16px 22px; }
+.post-page .rk-me { align-self: flex-end; max-width: 88%; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.post-page .rk-file { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line-subtle); border-radius: 12px; font-size: 13px; color: var(--fg-strong); }
+.post-page .rk-file i { font-style: normal; font-family: var(--font-mono); font-size: 11px; padding: 2px 5px; border-radius: 5px; background: var(--rk-redbg); color: var(--rk-red); }
+.post-page .rk-bub { background: var(--bg-muted); border-radius: 18px; padding: 8px 15px; font-size: 15px; color: var(--fg-strong); line-height: 1.5; }
+.post-page .rk-ai { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; font-size: 15px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .rk-ai .av { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-subtle); display: grid; place-items: center; color: var(--fg-alternative); }
+.post-page .rk svg.ic { display: block; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .rk-src { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.post-page .rk-src span { font-size: 12.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-subtle); color: var(--fg-alternative); }
+.post-page .rk-ai .acts { display: flex; gap: 12px; margin-top: 10px; color: var(--fg-alternative); }
+.post-page .rk-box { display: flex; align-items: center; gap: 10px; margin: 0 12px 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-subtle); border-radius: 24px; color: var(--fg-alternative); font-size: 14.5px; }
+.post-page .rk-box span { flex: 1; min-width: 0; }
+.post-page .rk-box .send { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--fg-strong); color: var(--bg-base); }
+.post-page .rk-vague { background: var(--rk-redbg); color: inherit; border-radius: 4px; padding: 1px 3px; }
+.post-page .rk-flag { font-size: 14.5px !important; line-height: 1.5 !important; color: var(--rk-red); font-weight: 600; margin: 0 !important; }
+.post-page .rk-hgrid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 48px; margin-top: 44px; align-items: start; }
+.post-page .rk-rows { display: flex; flex-direction: column; gap: 8px; }
+.post-page .rk-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+.post-page .rk-row .why { font-size: 14px; line-height: 1.45; color: var(--rk-red); font-weight: 600; }
+.post-page .rk-row .why::before { content: "← "; }
+.post-page .rk-row .why.ok { color: var(--fg-alternative); font-weight: 400; }
+.post-page .rk-after { font-size: 15px !important; line-height: 1.7 !important; margin: 4px 0 0 !important; padding: 12px 14px; border-radius: 12px; background: var(--rk-okbg); color: var(--fg-strong); }
+.post-page .rk-after b { margin-right: 6px; color: var(--rk-ok); }
+.post-page .rk-after span { font-size: 12.5px; color: var(--fg-alternative); margin-left: 4px; }
+
+/* 쟁반 (모델이 받은 k칸) */
+.post-page .rk-tray { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.post-page .rk-tray .lab { grid-column: 1 / -1; font-size: 13.5px; color: var(--fg-alternative); font-weight: 600; }
+.post-page .rk-slot { position: relative; min-width: 0; border-radius: 10px; background: var(--rk-soft); padding: 9px 10px 10px; font-size: 13px; line-height: 1.45; color: var(--fg-strong); }
+.post-page .rk-slot small { display: block; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-alternative); margin-bottom: 3px; }
+.post-page .rk-slot.bad { background: var(--rk-redbg); }
+.post-page .rk-slot.ok { background: var(--rk-okbg); }
+.post-page .rk-slot.twin { outline: 2px dashed var(--rk-red); outline-offset: -2px; }
+.post-page .rk-slot.glo { background: var(--bg-base); border: 1.5px dashed var(--fg-alternative); }
+.post-page .rk-tray .rk-pen, .post-page .rk-tray .rk-good { grid-column: 1 / -1; margin-top: 2px; }
+
+/* 지그재그 */
+.post-page .rk-zig { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; }
+.post-page .rk-zig.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.post-page .rk-zig.flip > .rk-txt { order: 2; }
+.post-page .rk-txt { min-width: 0; }
+
+/* 격자 */
+.post-page .rk-grid svg { width: 100%; display: block; }
+.post-page .rk-grid rect.ins { fill: var(--rk-ins); }
+.post-page .rk-grid rect.glo { fill: none; stroke: var(--fg-alternative); stroke-width: 1.4; }
+.post-page .rk-grid rect.lit { fill: var(--fg-strong); stroke: var(--fg-strong); stroke-width: 3; }
+.post-page .rk-grid rect.glo.lit { fill: var(--rk-red); stroke: var(--rk-red); }
+.post-page .rk-grid rect.off { opacity: .5; stroke-dasharray: 2 3; }
+.post-page .rk-key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font-size: 14px; color: var(--fg-alternative); }
+.post-page .rk-key span::before { content: ""; display: inline-block; width: 13px; height: 13px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+.post-page .rk-key .ins::before { background: var(--rk-ins); }
+.post-page .rk-key .glo::before { border: 1.4px solid var(--fg-alternative); width: 11px; height: 11px; }
+.post-page .rk-key .lit::before { background: var(--fg-strong); }
+.post-page .rk-key .gl::before { background: var(--rk-red); }
+.post-page .rk-key .off::before { border: 1.4px solid var(--fg-alternative); width: 11px; height: 11px; opacity: .35; }
+.post-page .rk-gpair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.post-page .rk-gpair h3 { font-size: 15.5px; }
+.post-page .rk-gpair h3 code { font-size: 13px; }
+
+/* 잘린 쪽 */
+.post-page .rk-pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.post-page .rk-pg { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.post-page .rk-pg h3 { font-size: 15.5px; margin: 0; }
+.post-page .rk-ck { position: relative; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; line-height: 1.65; color: var(--fg-strong); background: var(--rk-soft); }
+.post-page .rk-ck .tag { display: inline-block; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-alternative); margin-bottom: 4px; }
+.post-page .rk-ck mark { background: var(--rk-okbg); color: inherit; border-radius: 4px; padding: 0 2px; }
+.post-page .rk-ck .amt { font-weight: 700; }
+.post-page .rk-ck table { width: 100%; border-collapse: collapse; margin: 4px 0 6px; font-size: 13px; }
+.post-page .rk-ck td { padding: 3px 6px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .rk-ck.picked { box-shadow: 0 0 0 2px var(--fg-strong); background: var(--bg-base); }
+.post-page .rk-ck.missed { opacity: .72; }
+.post-page .rk-cut { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12.5px; color: var(--rk-red); }
+.post-page .rk-cut::before, .post-page .rk-cut::after { content: ""; flex: 1; border-top: 2px dashed var(--rk-red); }
+.post-page .rk-verdict { font-size: 14px; line-height: 1.5; font-weight: 600; }
+
+/* 중복 막대 */
+.post-page .rk-runs { display: flex; flex-direction: column; gap: 26px; }
+.post-page .rk-q { font-size: 15px !important; font-weight: 700; color: var(--fg-strong); margin: 0 !important; }
+.post-page .rk-run { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.post-page .rk-run h3 { font-size: 15.5px; margin: 0; }
+.post-page .rk-meter { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 12px; align-items: center; }
+.post-page .rk-meter .tr { height: 16px; border-radius: 4px; background: var(--rk-soft); overflow: hidden; display: flex; }
+.post-page .rk-meter .fill { height: 100%; background: var(--rk-ins); }
+.post-page .rk-meter .fill.dup { background: var(--rk-red); opacity: .55; }
+.post-page .rk-meter b { font-family: var(--font-mono); font-size: 14px; text-align: right; }
+
+/* MMR 스크롤 */
+.post-page .rk-sc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; margin-top: 48px; }
+.post-page .rk-steps { padding: 0 0 16vh; }
+.post-page .rk-step { min-height: min(56vh, 520px); display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .rk-step.on { opacity: 1; }
+.post-page .rk-step p { margin-bottom: 0; }
+.post-page .rk-step h3 { font-size: 17px; }
+.post-page .rk-stick { position: sticky; top: 100px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+.post-page .rk-mode { font-size: 15px; color: var(--fg-strong); font-weight: 600; }
+.post-page .rk-map svg { width: 100%; display: block; }
+.post-page .rk-map .field { fill: none; stroke: var(--line-subtle); stroke-width: 1.5; stroke-dasharray: 5 6; }
+.post-page .rk-map .fk { font-family: var(--font-mono); font-size: 13px; fill: var(--fg-alternative); }
+.post-page .rk-map .cl { font-family: var(--font-sans); font-size: 15px; fill: var(--fg-strong); font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: var(--bg-base); stroke-width: 6px; stroke-linejoin: round; }
+.post-page .rk-map .pt { fill: var(--bg-base); stroke: var(--fg-alternative); stroke-width: 1.6; transition: fill .5s cubic-bezier(.2,.7,.2,1), opacity .5s, stroke .5s; }
+.post-page .rk-map .q { fill: var(--rk-link); }
+.post-page .rk-map .ql { font-size: 14px; font-weight: 700; fill: var(--rk-link); font-family: var(--font-sans); }
+.post-page .rk-map .num { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--bg-base); text-anchor: middle; opacity: 0; transition: opacity .5s; }
+.post-page .rk-map .halo { fill: var(--rk-redbg); stroke: var(--rk-red); stroke-width: 2; opacity: 0; transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
+.post-page .rk-mmr[data-s="0"] .simp { fill: var(--fg-strong); stroke: var(--fg-strong); }
+.post-page .rk-mmr[data-s="0"] .num.s0 { opacity: 1; }
+.post-page .rk-mmr[data-s="1"] .m1.pt, .post-page .rk-mmr[data-s="2"] .m1.pt, .post-page .rk-mmr[data-s="2"] .m2.pt, .post-page .rk-mmr[data-s="3"] .mmrp { fill: var(--fg-strong); stroke: var(--fg-strong); }
+.post-page .rk-mmr[data-s="1"] .num.m1, .post-page .rk-mmr[data-s="2"] .num.m1, .post-page .rk-mmr[data-s="2"] .num.m2, .post-page .rk-mmr[data-s="3"] .num:not(.s0) { opacity: 1; }
+.post-page .rk-mmr[data-s="1"] .halo.m1, .post-page .rk-mmr[data-s="2"] .halo.m1, .post-page .rk-mmr[data-s="2"] .halo.m2, .post-page .rk-mmr[data-s="3"] .halo { opacity: .9; }
+.post-page .rk-trays { display: grid; }
+.post-page .rk-trays > .rk-tray { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(10px); }
+.post-page .rk-mmr[data-s="0"] .t0, .post-page .rk-mmr[data-s="1"] .t1, .post-page .rk-mmr[data-s="2"] .t2, .post-page .rk-mmr[data-s="3"] .t3 { opacity: 1; visibility: visible; transform: none; transition: opacity .45s cubic-bezier(.2,.7,.2,1), transform .45s cubic-bezier(.2,.7,.2,1); }
+.post-page .rk-mode .a, .post-page .rk-mode .b { display: inline; }
+.post-page .rk-mmr[data-s="0"] .rk-mode .b, .post-page .rk-mmr:not([data-s="0"]) .rk-mode .a { display: none; }
+.post-page .rk-calc { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 64px; gap: 10px 12px; align-items: center; margin-top: 4px; font-size: 14px; }
+.post-page .rk-calc .h { font-size: 12.5px; color: var(--fg-alternative); }
+.post-page .rk-calc b { font-weight: 600; color: var(--fg-strong); }
+.post-page .rk-calc .bar { position: relative; height: 18px; border-radius: 4px; background: var(--rk-soft); overflow: hidden; }
+.post-page .rk-calc .bar i { display: block; height: 100%; background: var(--fg-alternative); opacity: .5; }
+.post-page .rk-calc .bar.red i { background: var(--rk-red); opacity: .55; }
+.post-page .rk-calc .bar em { position: absolute; left: 6px; top: 0; font-style: normal; font-family: var(--font-mono); font-size: 12px; line-height: 18px; color: var(--fg-strong); }
+.post-page .rk-calc strong { font-family: var(--font-mono); text-align: right; color: var(--fg-strong); }
+.post-page .rk-calc strong.win { color: var(--rk-ok); }
+.post-page .rk-monly { display: none; }
+.post-page .rk-mnote p { max-width: 780px; }
+.post-page .rk-formula { font-size: 15.5px; line-height: 1.8; padding: 14px 16px; border-radius: 12px; background: var(--rk-soft); color: var(--fg-strong); margin-top: 18px; }
+
+/* k 쟁반 셋 */
+.post-page .rk-ks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 44px; }
+.post-page .rk-kcol { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.post-page .rk-kcol h3 { font-size: 16px; margin: 0; }
+.post-page .rk-kcol .rk-tray { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.post-page .rk-mini { min-height: 34px; border-radius: 6px; background: var(--rk-soft); font-size: 12px; line-height: 1.3; padding: 4px 6px; display: flex; align-items: center; color: var(--fg-strong); }
+.post-page .rk-mini.ok { background: var(--rk-okbg); box-shadow: inset 0 0 0 2px var(--rk-ok); }
+.post-page .rk-mini.noise { background: var(--rk-soft); color: var(--fg-alternative); }
+.post-page .rk-mini.miss { background: none; color: var(--rk-red); font-weight: 600; }
+.post-page .rk-tok { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 10px; align-items: center; font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); }
+.post-page .rk-tok .tr { height: 10px; border-radius: 4px; background: var(--rk-soft); }
+.post-page .rk-tok .tr i { display: block; height: 100%; border-radius: 4px; background: var(--fg-alternative); }
+
+/* 장 표지 */
+.post-page .rk-band { background: var(--fg-strong); color: var(--bg-base); padding: 64px 0; margin-top: clamp(96px, 12vw, 148px); }
+.post-page .rk-band p { margin: 0 !important; color: var(--bg-base); }
+[data-theme="dark"] .post-page .rk-band { background: color-mix(in srgb, var(--fg-strong) 12%, var(--bg-base)); }
+[data-theme="dark"] .post-page .rk-band p { color: var(--fg-strong); }
+.post-page .rk-band .no { font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em; opacity: .7; margin-bottom: 12px !important; }
+.post-page .rk-band .big { font-family: var(--font-display); font-size: clamp(24px, 3.4vw, 34px) !important; line-height: 1.4 !important; font-weight: 700; max-width: 840px; }
+
+/* 코드 짝 */
+.post-page .rk-code { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 44px; align-items: start; margin-top: 40px; }
+.post-page .rk-code.flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .rk-code.flip > .rk-codel { order: 2; }
+.post-page .rk-codel { min-width: 0; }
+.post-page .rk-code ol.pg-code-notes { margin: 0; }
+.post-page .rk ol.pg-code-notes { columns: 1 !important; max-width: 760px; }
+.post-page .rk-term { background: var(--code-bg, #1e2127); color: var(--code-fg, #d7dae0); border-radius: 12px; padding: 16px 18px; font-family: var(--font-mono); font-size: 13px; line-height: 1.65; white-space: pre; overflow-x: auto; margin-top: 14px; }
+.post-page .rk-term .dim { opacity: .55; }
+.post-page .rk-term .ok { color: rgb(120, 214, 160); }
+.post-page .rk-term .no { color: rgb(255, 128, 112); }
+.post-page .rk-note { font-size: 14px !important; color: var(--fg-alternative); margin: 10px 0 0 !important; }
+
+/* 실패율 막대 */
+.post-page .rk-ctx { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.post-page .rk-fail { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+.post-page .rk-frow { display: grid; grid-template-columns: minmax(0, 15fr) minmax(0, 17fr) 56px; gap: 14px; align-items: center; }
+.post-page .rk-frow span { font-size: 14.5px; color: var(--fg-strong); line-height: 1.4; }
+.post-page .rk-frow .tr { height: 22px; border-radius: 5px; background: var(--rk-soft); overflow: hidden; }
+.post-page .rk-frow .tr i { display: block; height: 100%; background: var(--fg-alternative); opacity: .55; border-radius: 5px; }
+.post-page .rk-frow.best .tr i { background: var(--rk-ok); opacity: 1; }
+.post-page .rk-frow b { font-family: var(--font-mono); font-size: 14.5px; text-align: right; }
+
+.post-page .rk details { margin-top: 28px; border-top: 1px solid var(--line-subtle); padding-top: 14px; }
+.post-page .rk summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 16px; }
+.post-page .rk details p, .post-page .rk details li { font-size: 16px; }
+.post-page .rk-lead > div { max-width: 780px; }
+.post-page .rk-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.post-page .rk-refs ul { margin: 0; padding-left: 18px; }
+.post-page .rk-refs li { font-size: 15.5px; line-height: 1.7; margin-bottom: 8px; }
+
+@media (max-width: 860px) {
+  .post-page .rk-wrap { padding: 0 16px; }
+  .post-page .rk-ctx, .post-page .rk-pair, .post-page .rk-hgrid, .post-page .rk-zig, .post-page .rk-zig.flip, .post-page .rk-code, .post-page .rk-code.flip, .post-page .rk-head, .post-page .rk-ks, .post-page .rk-gpair, .post-page .rk-pages { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .post-page .rk-zig.flip > .rk-txt, .post-page .rk-code.flip > .rk-codel { order: 0; }
+  .post-page .rk-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .rk-term { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .post-page .rk-sc { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .rk-stick { position: static; order: -1; gap: 18px; }
+  .post-page .rk-stick .rk-mode { display: none; }
+  .post-page .rk-monly { display: flex; flex-direction: column; gap: 14px; margin-top: 36px; }
+  .post-page .rk-monly .rk-mode { display: block; font-weight: 700; }
+  .post-page .rk-trays > .t0 { display: none; }
+  .post-page .rk-stick::before { content: "MMR 검색 (k=4, fetch_k=20)"; font-size: 15px; font-weight: 700; color: var(--fg-strong); }
+  .post-page .rk-trays { gap: 18px; }
+  .post-page .rk-trays > .rk-tray { grid-area: auto; opacity: 1; visibility: visible; transform: none; }
+  .post-page .rk-trays > .t1, .post-page .rk-trays > .t2 { display: none; }
+  .post-page .rk-calc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 56px; }
+  .post-page .rk-calc .h:first-child { display: none; }
+  .post-page .rk-calc .h:nth-child(2) { grid-column: 1; }
+  .post-page .rk-calc b { grid-column: 1 / -1; margin-top: 6px; }
+  .post-page .rk-map .cl { font-size: 27px; stroke-width: 8px; }
+  .post-page .rk-map .ql { font-size: 24px; }
+  .post-page .rk-map .fk, .post-page .rk-map .num { display: none; }
+  .post-page .rk-steps { padding: 32px 0 0; }
+  .post-page .rk-step { min-height: 0; opacity: 1; margin-bottom: 26px; }
+  .post-page .rk-frow { grid-template-columns: minmax(0, 1fr) 52px; gap: 6px 10px; }
+  .post-page .rk-frow span { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .rk-step, .post-page .rk-map .pt, .post-page .rk-map .num, .post-page .rk-map .halo, .post-page .rk-trays > .rk-tray { transition: none; }
+}
+</style>
+
+<div class="rk">
+  <header class="rk-hero">
+    <div class="rk-wrap">
+      <p class="rk-eyebrow">AI Service Track · 12</p>
+      <h1>약관 챗봇이 '상품마다 다릅니다'로 얼버무리는 이유</h1>
+      <p class="rk-lede">펫보험 약관 PDF를 올려 둔 챗봇에 "통원 치료 자기부담금이 얼마예요?"라고 물었습니다. 약관에는 금액표가 분명히 있는데 답은 "상품마다 다릅니다"입니다. 모델이 약관을 통째로 읽고 답하는 게 아니라 검색이 골라 준 조각 몇 개만 읽기 때문입니다. 화면 뒤에서 모델이 받은 그 몇 칸을 펼쳐 보고 칸을 제대로 채우는 코드까지 만들어 봅니다.</p>
+      <figure data-thumb>
+        <div class="rk-hgrid">
+          <div class="rk-col">
+            <p class="rk-colh">사용자가 보는 화면</p>
+            <div class="rk-chat">
+              <div class="rk-bar"><span>약관 도우미</span><small>예시 화면</small></div>
+              <div class="rk-log">
+                <div class="rk-me"><span class="rk-file"><i>PDF</i>펫보험 약관.pdf</span><span class="rk-bub">통원 치료 자기부담금이 얼마예요?</span></div>
+                <div class="rk-ai"><div class="av" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>자기부담금은 가입할 때 고른 금액으로 정해지며 <mark class="rk-vague">가입한 상품마다 다릅니다.</mark> 정확한 금액은 보험증권에서 확인해 주세요.<div class="rk-src"><span>약관 20쪽</span><span>약관 20쪽</span><span>용어집</span><span>약관 2쪽</span></div><div class="acts" aria-hidden="true"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg></div></div></div>
+              </div>
+              <div class="rk-box" aria-hidden="true"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>약관에 대해 물어보세요</span><i class="send"><svg class="ic" width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+            </div>
+            <p class="rk-flag">금액표가 약관에 있는데도 금액을 말하지 못했습니다</p>
+          </div>
+          <div class="rk-col">
+            <p class="rk-colh">화면 뒤: 모델이 받은 조각 4개</p>
+            <div class="rk-rows" data-figure>
+              <div class="rk-row"><div class="rk-slot bad"><small>20쪽</small>자기부담금의 뜻 (금액 없음)</div><span class="why">표가 다른 조각으로 잘려 나감</span></div>
+              <div class="rk-row"><div class="rk-slot twin"><small>20쪽</small>자기부담금의 뜻 (같은 조각)</div><span class="why">같은 조각이 두 번 저장됨</span></div>
+              <div class="rk-row"><div class="rk-slot glo"><small>용어집</small>하이퍼파라미터</div><span class="why">다른 문서가 섞여 들어옴</span></div>
+              <div class="rk-row"><div class="rk-slot"><small>2쪽</small>약관 이용 안내</div><span class="why ok">남는 칸에 끼어든 안내 문단</span></div>
+            </div>
+            <p class="rk-colh" style="margin-top: 14px !important">칸을 고친 뒤 받은 조각 4개</p>
+            <div class="rk-tray" data-figure>
+              <div class="rk-slot ok"><small>20쪽</small>제5조 자기부담금 (뜻 + 금액표)</div>
+              <div class="rk-slot"><small>19쪽</small>보상하는 의료비</div>
+              <div class="rk-slot"><small>21쪽</small>보상하지 않는 손해</div>
+              <div class="rk-slot"><small>24쪽</small>보험금 청구 서류</div>
+            </div>
+            <p class="rk-after"><b>고친 뒤의 답</b> 통원 치료는 하루에 1만원, 2만원, 3만원 가운데 가입할 때 고른 금액을 뺀 나머지를 보험금으로 받습니다. <span>약관 20쪽 제5조</span></p>
+          </div>
+        </div>
+        <p class="rk-cap">실제 서비스를 캡처한 화면이 아니라 설명을 위해 그린 예시 화면입니다. 약관 문구와 금액, 쪽 번호도 예시 값입니다. 모델과 질문은 그대로이고 바뀐 것은 모델이 받은 네 칸뿐입니다.</p>
+      </figure>
+    </div>
+  </header>
+
+  <section class="rk-sec">
+    <div class="rk-wrap rk-zig">
+      <div class="rk-txt">
+        <h2>챗봇은 약관 28쪽을 다 읽고 답할까요?</h2>
+        <p>아닙니다. 약관과 용어집은 미리 잘게 잘라 저장해 둡니다. 이렇게 자른 조각을 <b>청크(chunk)</b>라고 부릅니다. 질문이 오면 질문과 뜻이 가장 가까운 조각 몇 개만 골라 질문과 함께 모델에게 넘깁니다. 이 방식을 <b>RAG</b>(Retrieval-Augmented Generation, 찾아서 보태 쓰는 생성)라고 합니다.</p>
+        <p>뜻이 가까운지는 <b>임베딩(embedding)</b>으로 잽니다. 글을 숫자 수백 개를 줄 세운 <b>벡터(vector)</b>로 바꾸는 일인데, 뜻이 비슷한 글일수록 숫자도 비슷하게 나옵니다. 이 벡터를 모아 두고 가까운 것을 빨리 찾아 주는 곳이 <b>벡터 저장소(vector store)</b>입니다. 이 글은 내 컴퓨터에 파일로 저장되는 오픈소스 저장소 Chroma를 씁니다. 몇 개를 고를지는 <b>k</b>로 정하고 LangChain의 기본값은 4입니다.</p>
+        <p>오픈북 시험인데 책 전체가 아니라 친구가 찢어 준 네 쪽만 들고 들어가는 것과 같습니다. 다만 친구는 내용을 읽고 고르지만 검색은 숫자가 가까운지로만 고릅니다. 전체 흐름은 <a href="/posts/rag-retrieval-pipeline">RAG는 AI가 모르는 우리 회사 규정을 어떻게 답할까요</a>에서 자세히 다뤘고 이 글은 그 네 칸에 무엇이 들어가는지만 봅니다.</p>
+      </div>
+      <figure class="rk-grid" data-figure>
+        <svg viewBox="-2 -2 417 208" role="img" aria-label="조각 242개 가운데 4개만 진하게 칠해진 격자"><rect class="ins" x="0" y="0" width="14" height="14" rx="3"/><rect class="ins" x="19" y="0" width="14" height="14" rx="3"/><rect class="ins" x="38" y="0" width="14" height="14" rx="3"/><rect class="ins" x="57" y="0" width="14" height="14" rx="3"/><rect class="ins" x="76" y="0" width="14" height="14" rx="3"/><rect class="ins" x="95" y="0" width="14" height="14" rx="3"/><rect class="ins" x="114" y="0" width="14" height="14" rx="3"/><rect class="ins" x="133" y="0" width="14" height="14" rx="3"/><rect class="ins" x="152" y="0" width="14" height="14" rx="3"/><rect class="ins" x="171" y="0" width="14" height="14" rx="3"/><rect class="ins" x="190" y="0" width="14" height="14" rx="3"/><rect class="ins" x="209" y="0" width="14" height="14" rx="3"/><rect class="ins" x="228" y="0" width="14" height="14" rx="3"/><rect class="ins" x="247" y="0" width="14" height="14" rx="3"/><rect class="ins" x="266" y="0" width="14" height="14" rx="3"/><rect class="ins" x="285" y="0" width="14" height="14" rx="3"/><rect class="ins" x="304" y="0" width="14" height="14" rx="3"/><rect class="ins" x="323" y="0" width="14" height="14" rx="3"/><rect class="ins" x="342" y="0" width="14" height="14" rx="3"/><rect class="ins" x="361" y="0" width="14" height="14" rx="3"/><rect class="ins" x="380" y="0" width="14" height="14" rx="3"/><rect class="ins" x="399" y="0" width="14" height="14" rx="3"/><rect class="ins" x="0" y="19" width="14" height="14" rx="3"/><rect class="ins" x="19" y="19" width="14" height="14" rx="3"/><rect class="ins" x="38" y="19" width="14" height="14" rx="3"/><rect class="ins" x="57" y="19" width="14" height="14" rx="3"/><rect class="ins" x="76" y="19" width="14" height="14" rx="3"/><rect class="ins" x="95" y="19" width="14" height="14" rx="3"/><rect class="ins" x="114" y="19" width="14" height="14" rx="3"/><rect class="ins" x="133" y="19" width="14" height="14" rx="3"/><rect class="ins" x="152" y="19" width="14" height="14" rx="3"/><rect class="ins" x="171" y="19" width="14" height="14" rx="3"/><rect class="ins" x="190" y="19" width="14" height="14" rx="3"/><rect class="ins" x="209" y="19" width="14" height="14" rx="3"/><rect class="ins" x="228" y="19" width="14" height="14" rx="3"/><rect class="ins" x="247" y="19" width="14" height="14" rx="3"/><rect class="ins" x="266" y="19" width="14" height="14" rx="3"/><rect class="ins" x="285" y="19" width="14" height="14" rx="3"/><rect class="ins" x="304" y="19" width="14" height="14" rx="3"/><rect class="ins" x="323" y="19" width="14" height="14" rx="3"/><rect class="ins" x="342" y="19" width="14" height="14" rx="3"/><rect class="ins" x="361" y="19" width="14" height="14" rx="3"/><rect class="ins" x="380" y="19" width="14" height="14" rx="3"/><rect class="ins" x="399" y="19" width="14" height="14" rx="3"/><rect class="ins" x="0" y="38" width="14" height="14" rx="3"/><rect class="ins" x="19" y="38" width="14" height="14" rx="3"/><rect class="ins" x="38" y="38" width="14" height="14" rx="3"/><rect class="ins" x="57" y="38" width="14" height="14" rx="3"/><rect class="ins" x="76" y="38" width="14" height="14" rx="3"/><rect class="ins" x="95" y="38" width="14" height="14" rx="3"/><rect class="ins" x="114" y="38" width="14" height="14" rx="3"/><rect class="ins" x="133" y="38" width="14" height="14" rx="3"/><rect class="ins" x="152" y="38" width="14" height="14" rx="3"/><rect class="ins" x="171" y="38" width="14" height="14" rx="3"/><rect class="ins" x="190" y="38" width="14" height="14" rx="3"/><rect class="ins" x="209" y="38" width="14" height="14" rx="3"/><rect class="ins" x="228" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="247" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="266" y="38" width="14" height="14" rx="3"/><rect class="ins" x="285" y="38" width="14" height="14" rx="3"/><rect class="ins" x="304" y="38" width="14" height="14" rx="3"/><rect class="ins" x="323" y="38" width="14" height="14" rx="3"/><rect class="ins" x="342" y="38" width="14" height="14" rx="3"/><rect class="ins" x="361" y="38" width="14" height="14" rx="3"/><rect class="ins" x="380" y="38" width="14" height="14" rx="3"/><rect class="ins" x="399" y="38" width="14" height="14" rx="3"/><rect class="ins" x="0" y="57" width="14" height="14" rx="3"/><rect class="ins" x="19" y="57" width="14" height="14" rx="3"/><rect class="ins" x="38" y="57" width="14" height="14" rx="3"/><rect class="ins" x="57" y="57" width="14" height="14" rx="3"/><rect class="ins" x="76" y="57" width="14" height="14" rx="3"/><rect class="ins" x="95" y="57" width="14" height="14" rx="3"/><rect class="ins" x="114" y="57" width="14" height="14" rx="3"/><rect class="ins" x="133" y="57" width="14" height="14" rx="3"/><rect class="ins" x="152" y="57" width="14" height="14" rx="3"/><rect class="ins" x="171" y="57" width="14" height="14" rx="3"/><rect class="ins" x="190" y="57" width="14" height="14" rx="3"/><rect class="ins" x="209" y="57" width="14" height="14" rx="3"/><rect class="ins" x="228" y="57" width="14" height="14" rx="3"/><rect class="ins" x="247" y="57" width="14" height="14" rx="3"/><rect class="ins" x="266" y="57" width="14" height="14" rx="3"/><rect class="ins" x="285" y="57" width="14" height="14" rx="3"/><rect class="ins" x="304" y="57" width="14" height="14" rx="3"/><rect class="ins" x="323" y="57" width="14" height="14" rx="3"/><rect class="ins" x="342" y="57" width="14" height="14" rx="3"/><rect class="ins" x="361" y="57" width="14" height="14" rx="3"/><rect class="ins" x="380" y="57" width="14" height="14" rx="3"/><rect class="ins" x="399" y="57" width="14" height="14" rx="3"/><rect class="ins" x="0" y="76" width="14" height="14" rx="3"/><rect class="ins" x="19" y="76" width="14" height="14" rx="3"/><rect class="ins lit" x="38" y="76" width="14" height="14" rx="3"/><rect class="ins" x="57" y="76" width="14" height="14" rx="3"/><rect class="ins" x="76" y="76" width="14" height="14" rx="3"/><rect class="ins" x="95" y="76" width="14" height="14" rx="3"/><rect class="ins" x="114" y="76" width="14" height="14" rx="3"/><rect class="ins" x="133" y="76" width="14" height="14" rx="3"/><rect class="ins" x="152" y="76" width="14" height="14" rx="3"/><rect class="ins" x="171" y="76" width="14" height="14" rx="3"/><rect class="ins" x="190" y="76" width="14" height="14" rx="3"/><rect class="ins" x="209" y="76" width="14" height="14" rx="3"/><rect class="ins" x="228" y="76" width="14" height="14" rx="3"/><rect class="ins" x="247" y="76" width="14" height="14" rx="3"/><rect class="ins" x="266" y="76" width="14" height="14" rx="3"/><rect class="ins" x="285" y="76" width="14" height="14" rx="3"/><rect class="ins" x="304" y="76" width="14" height="14" rx="3"/><rect class="ins" x="323" y="76" width="14" height="14" rx="3"/><rect class="ins" x="342" y="76" width="14" height="14" rx="3"/><rect class="ins" x="361" y="76" width="14" height="14" rx="3"/><rect class="ins" x="380" y="76" width="14" height="14" rx="3"/><rect class="ins" x="399" y="76" width="14" height="14" rx="3"/><rect class="ins" x="0" y="95" width="14" height="14" rx="3"/><rect class="ins" x="19" y="95" width="14" height="14" rx="3"/><rect class="ins" x="38" y="95" width="14" height="14" rx="3"/><rect class="ins" x="57" y="95" width="14" height="14" rx="3"/><rect class="ins" x="76" y="95" width="14" height="14" rx="3"/><rect class="ins" x="95" y="95" width="14" height="14" rx="3"/><rect class="ins" x="114" y="95" width="14" height="14" rx="3"/><rect class="ins" x="133" y="95" width="14" height="14" rx="3"/><rect class="ins" x="152" y="95" width="14" height="14" rx="3"/><rect class="ins" x="171" y="95" width="14" height="14" rx="3"/><rect class="ins" x="190" y="95" width="14" height="14" rx="3"/><rect class="ins" x="209" y="95" width="14" height="14" rx="3"/><rect class="ins" x="228" y="95" width="14" height="14" rx="3"/><rect class="ins" x="247" y="95" width="14" height="14" rx="3"/><rect class="ins" x="266" y="95" width="14" height="14" rx="3"/><rect class="ins" x="285" y="95" width="14" height="14" rx="3"/><rect class="ins" x="304" y="95" width="14" height="14" rx="3"/><rect class="ins" x="323" y="95" width="14" height="14" rx="3"/><rect class="ins" x="342" y="95" width="14" height="14" rx="3"/><rect class="ins" x="361" y="95" width="14" height="14" rx="3"/><rect class="ins" x="380" y="95" width="14" height="14" rx="3"/><rect class="ins" x="399" y="95" width="14" height="14" rx="3"/><rect class="ins" x="0" y="114" width="14" height="14" rx="3"/><rect class="ins" x="19" y="114" width="14" height="14" rx="3"/><rect class="ins" x="38" y="114" width="14" height="14" rx="3"/><rect class="ins" x="57" y="114" width="14" height="14" rx="3"/><rect class="ins" x="76" y="114" width="14" height="14" rx="3"/><rect class="ins" x="95" y="114" width="14" height="14" rx="3"/><rect class="ins" x="114" y="114" width="14" height="14" rx="3"/><rect class="ins" x="133" y="114" width="14" height="14" rx="3"/><rect class="ins" x="152" y="114" width="14" height="14" rx="3"/><rect class="ins" x="171" y="114" width="14" height="14" rx="3"/><rect class="glo" x="190" y="114" width="14" height="14" rx="3"/><rect class="glo" x="209" y="114" width="14" height="14" rx="3"/><rect class="glo" x="228" y="114" width="14" height="14" rx="3"/><rect class="glo" x="247" y="114" width="14" height="14" rx="3"/><rect class="glo" x="266" y="114" width="14" height="14" rx="3"/><rect class="glo" x="285" y="114" width="14" height="14" rx="3"/><rect class="glo" x="304" y="114" width="14" height="14" rx="3"/><rect class="glo" x="323" y="114" width="14" height="14" rx="3"/><rect class="glo" x="342" y="114" width="14" height="14" rx="3"/><rect class="glo" x="361" y="114" width="14" height="14" rx="3"/><rect class="glo" x="380" y="114" width="14" height="14" rx="3"/><rect class="glo" x="399" y="114" width="14" height="14" rx="3"/><rect class="glo" x="0" y="133" width="14" height="14" rx="3"/><rect class="glo" x="19" y="133" width="14" height="14" rx="3"/><rect class="glo" x="38" y="133" width="14" height="14" rx="3"/><rect class="glo" x="57" y="133" width="14" height="14" rx="3"/><rect class="glo" x="76" y="133" width="14" height="14" rx="3"/><rect class="glo" x="95" y="133" width="14" height="14" rx="3"/><rect class="glo" x="114" y="133" width="14" height="14" rx="3"/><rect class="glo" x="133" y="133" width="14" height="14" rx="3"/><rect class="glo" x="152" y="133" width="14" height="14" rx="3"/><rect class="glo" x="171" y="133" width="14" height="14" rx="3"/><rect class="glo" x="190" y="133" width="14" height="14" rx="3"/><rect class="glo" x="209" y="133" width="14" height="14" rx="3"/><rect class="glo" x="228" y="133" width="14" height="14" rx="3"/><rect class="glo" x="247" y="133" width="14" height="14" rx="3"/><rect class="glo" x="266" y="133" width="14" height="14" rx="3"/><rect class="glo" x="285" y="133" width="14" height="14" rx="3"/><rect class="glo" x="304" y="133" width="14" height="14" rx="3"/><rect class="glo" x="323" y="133" width="14" height="14" rx="3"/><rect class="glo" x="342" y="133" width="14" height="14" rx="3"/><rect class="glo" x="361" y="133" width="14" height="14" rx="3"/><rect class="glo" x="380" y="133" width="14" height="14" rx="3"/><rect class="glo" x="399" y="133" width="14" height="14" rx="3"/><rect class="glo" x="0" y="152" width="14" height="14" rx="3"/><rect class="glo" x="19" y="152" width="14" height="14" rx="3"/><rect class="glo" x="38" y="152" width="14" height="14" rx="3"/><rect class="glo" x="57" y="152" width="14" height="14" rx="3"/><rect class="glo" x="76" y="152" width="14" height="14" rx="3"/><rect class="glo" x="95" y="152" width="14" height="14" rx="3"/><rect class="glo" x="114" y="152" width="14" height="14" rx="3"/><rect class="glo" x="133" y="152" width="14" height="14" rx="3"/><rect class="glo" x="152" y="152" width="14" height="14" rx="3"/><rect class="glo" x="171" y="152" width="14" height="14" rx="3"/><rect class="glo" x="190" y="152" width="14" height="14" rx="3"/><rect class="glo lit" x="209" y="152" width="14" height="14" rx="3"/><rect class="glo" x="228" y="152" width="14" height="14" rx="3"/><rect class="glo" x="247" y="152" width="14" height="14" rx="3"/><rect class="glo" x="266" y="152" width="14" height="14" rx="3"/><rect class="glo" x="285" y="152" width="14" height="14" rx="3"/><rect class="glo" x="304" y="152" width="14" height="14" rx="3"/><rect class="glo" x="323" y="152" width="14" height="14" rx="3"/><rect class="glo" x="342" y="152" width="14" height="14" rx="3"/><rect class="glo" x="361" y="152" width="14" height="14" rx="3"/><rect class="glo" x="380" y="152" width="14" height="14" rx="3"/><rect class="glo" x="399" y="152" width="14" height="14" rx="3"/><rect class="glo" x="0" y="171" width="14" height="14" rx="3"/><rect class="glo" x="19" y="171" width="14" height="14" rx="3"/><rect class="glo" x="38" y="171" width="14" height="14" rx="3"/><rect class="glo" x="57" y="171" width="14" height="14" rx="3"/><rect class="glo" x="76" y="171" width="14" height="14" rx="3"/><rect class="glo" x="95" y="171" width="14" height="14" rx="3"/><rect class="glo" x="114" y="171" width="14" height="14" rx="3"/><rect class="glo" x="133" y="171" width="14" height="14" rx="3"/><rect class="glo" x="152" y="171" width="14" height="14" rx="3"/><rect class="glo" x="171" y="171" width="14" height="14" rx="3"/><rect class="glo" x="190" y="171" width="14" height="14" rx="3"/><rect class="glo" x="209" y="171" width="14" height="14" rx="3"/><rect class="glo" x="228" y="171" width="14" height="14" rx="3"/><rect class="glo" x="247" y="171" width="14" height="14" rx="3"/><rect class="glo" x="266" y="171" width="14" height="14" rx="3"/><rect class="glo" x="285" y="171" width="14" height="14" rx="3"/><rect class="glo" x="304" y="171" width="14" height="14" rx="3"/><rect class="glo" x="323" y="171" width="14" height="14" rx="3"/><rect class="glo" x="342" y="171" width="14" height="14" rx="3"/><rect class="glo" x="361" y="171" width="14" height="14" rx="3"/><rect class="glo" x="380" y="171" width="14" height="14" rx="3"/><rect class="glo" x="399" y="171" width="14" height="14" rx="3"/><rect class="glo" x="0" y="190" width="14" height="14" rx="3"/><rect class="glo" x="19" y="190" width="14" height="14" rx="3"/><rect class="glo" x="38" y="190" width="14" height="14" rx="3"/><rect class="glo" x="57" y="190" width="14" height="14" rx="3"/><rect class="glo" x="76" y="190" width="14" height="14" rx="3"/><rect class="glo" x="95" y="190" width="14" height="14" rx="3"/><rect class="glo" x="114" y="190" width="14" height="14" rx="3"/><rect class="glo" x="133" y="190" width="14" height="14" rx="3"/><rect class="glo" x="152" y="190" width="14" height="14" rx="3"/><rect class="glo" x="171" y="190" width="14" height="14" rx="3"/><rect class="glo" x="190" y="190" width="14" height="14" rx="3"/><rect class="glo" x="209" y="190" width="14" height="14" rx="3"/><rect class="glo" x="228" y="190" width="14" height="14" rx="3"/><rect class="glo" x="247" y="190" width="14" height="14" rx="3"/><rect class="glo" x="266" y="190" width="14" height="14" rx="3"/><rect class="glo" x="285" y="190" width="14" height="14" rx="3"/><rect class="glo" x="304" y="190" width="14" height="14" rx="3"/><rect class="glo" x="323" y="190" width="14" height="14" rx="3"/><rect class="glo" x="342" y="190" width="14" height="14" rx="3"/><rect class="glo" x="361" y="190" width="14" height="14" rx="3"/><rect class="glo" x="380" y="190" width="14" height="14" rx="3"/><rect class="glo" x="399" y="190" width="14" height="14" rx="3"/></svg>
+        <div class="rk-key"><span class="ins">약관 조각 142개</span><span class="glo">용어집 조각 100개</span><span class="lit">뽑힌 약관 조각</span><span class="gl">뽑힌 용어집 조각</span></div>
+        <p class="rk-cap">약관을 200자씩 자르면 142조각, 용어집은 100조각이 나옵니다(예시 값). 저장소에 든 242조각 가운데 모델이 실제로 읽는 것은 진하게 칠한 4칸뿐입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <div class="rk-lead">
+        <h2>금액이 적힌 표는 왜 네 칸에 못 들어왔을까요?</h2>
+        <div>
+          <p>조각을 너무 작게 잘라 "자기부담금"이라는 말과 금액표가 서로 다른 조각으로 갈라졌기 때문입니다. 표만 남은 조각에는 무엇의 금액인지 적혀 있지 않아 질문과 멀어집니다. 검색은 뜻이 담긴 앞 조각을 고르고 모델은 그 조각에 있는 "고른 금액"이라는 말만 보고 답합니다.</p>
+          <p>LangChain의 <code>RecursiveCharacterTextSplitter</code>는 정한 글자 수(<code>chunk_size</code>)를 넘지 않게 빈 줄, 줄바꿈, 띄어쓰기, 글자 순서로 자를 곳을 찾습니다. 경계에서 뜻이 끊기지 않게 앞뒤를 겹치는 <code>chunk_overlap</code>도 있지만 이 예처럼 빈 줄에서 잘리면 겹치는 글자가 생기지 않습니다.</p>
+        </div>
+      </div>
+      <figure data-figure style="margin-top: 44px">
+        <p class="rk-q" style="margin-bottom: 16px !important">같은 제5조를 200자와 500자로 자르면</p>
+        <div class="rk-pages">
+          <div class="rk-pg">
+            <h3><code>chunk_size=200</code></h3>
+            <div class="rk-ck picked"><span class="tag">조각 ① · 뽑힘</span><br>제5조(<mark>자기부담금</mark>) ① 회사는 보상하는 의료비에서 아래의 <mark>자기부담금</mark>을 뺀 금액을 보험금으로 지급합니다. ② <mark>자기부담금</mark>은 계약자가 고른 금액으로 합니다.</div>
+            <div class="rk-cut">여기서 잘림 · 겹친 글자 0자</div>
+            <div class="rk-ck missed"><span class="tag">조각 ② · 못 뽑힘</span><table><tr><td>통원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr><tr><td>입원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr></table>③ 같은 날 두 곳 이상에서 통원 치료를 받으면 1회로 봅니다.</div>
+            <p class="rk-verdict rk-pen" style="margin:0">뜻은 ①에, 금액은 ②에 있습니다</p>
+          </div>
+          <div class="rk-pg">
+            <h3><code>chunk_size=500</code></h3>
+            <div class="rk-ck picked"><span class="tag">조각 ① · 뽑힘</span><br>제5조(<mark>자기부담금</mark>) ① 회사는 보상하는 의료비에서 아래의 <mark>자기부담금</mark>을 뺀 금액을 보험금으로 지급합니다. ② <mark>자기부담금</mark>은 계약자가 고른 금액으로 합니다.<table><tr><td>통원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr><tr><td>입원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr></table>③ 같은 날 두 곳 이상에서 통원 치료를 받으면 1회로 봅니다.</div>
+            <p class="rk-verdict rk-good" style="margin:0">뜻과 금액이 한 조각에 있습니다</p>
+          </div>
+        </div>
+        <p class="rk-cap">초록 칠은 질문의 "자기부담금"과 겹치는 낱말입니다. 약관 문구는 예시이고 나뉘는 곳은 이 글을 실제 <code>RecursiveCharacterTextSplitter</code>(langchain-text-splitters 1.1.3)로 잘라 확인했습니다. 200자 설정에서 <code>chunk_overlap=20</code>을 줬는데도 겹친 글자는 없었습니다.</p>
+      </figure>
+      <div class="rk-lead" style="margin-top: 40px"><div><p>그래서 조각 크기는 <b>하이퍼파라미터(hyperparameter)</b>, 곧 학습으로 정해지지 않고 사람이 실험해 정하는 값입니다. 기준은 "답의 근거 한 덩어리가 한 조각에 다 들어가는 가장 작은 크기"입니다. 약관이라면 조항 하나가 한 조각에 들어가게 맞춥니다.</p></div></div>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap rk-zig" style="align-items: start">
+      <div class="rk-txt">
+        <h2>같은 조각이 두 칸을 차지한 까닭</h2>
+        <p>저장하는 코드를 두 번 돌려서입니다. <code>Chroma.from_documents</code>나 <code>add_documents</code>는 조각마다 번호표(id)를 새로 지어 붙이는데, 번호표를 따로 주지 않으면 실행할 때마다 처음 보는 이름이 붙어 같은 조각이 또 들어갑니다. 242조각이 484조각이 되고 검색은 똑같은 두 조각을 나란히 "가장 가깝다"고 내놓습니다.</p>
+        <p>네 칸 가운데 두 칸이 이미 읽은 내용으로 차면 모델이 볼 근거는 실제로 두 개뿐입니다. 조각마다 정해진 번호표를 직접 주면 간단히 해결됩니다. 은행 대기 번호처럼 조각 하나에 번호 하나를 붙이는 것입니다. 뒤에서 볼 꼬리표(어떤 종류인지 적은 분류 스티커)와는 다릅니다. LangChain의 Chroma는 번호표가 같은 조각이 이미 있으면 새로 쌓지 않고 덮어씁니다. 이를 <b>upsert</b>(있으면 고치고 없으면 넣기)라고 부릅니다.</p>
+      </div>
+      <figure data-figure>
+        <div class="rk-runs">
+          <p class="rk-q">질문: 통원 치료 자기부담금이 얼마예요?</p>
+          <div class="rk-run">
+            <h3>번호표 없이 한 번 저장</h3>
+            <div class="rk-meter"><div class="tr"><i class="fill" style="width:50%"></i></div><b>242</b></div>
+            <div class="rk-tray"><div class="rk-slot"><small>20쪽</small>자기부담금의 뜻</div><div class="rk-slot"><small>2쪽</small>약관 이용 안내</div><div class="rk-slot"><small>19쪽</small>보상하는 의료비</div><div class="rk-slot"><small>21쪽</small>보상하지 않는 손해</div></div>
+          </div>
+          <div class="rk-run">
+            <h3>번호표 없이 두 번 저장</h3>
+            <div class="rk-meter"><div class="tr"><i class="fill" style="width:50%"></i><i class="fill dup" style="width:50%"></i></div><b>484</b></div>
+            <div class="rk-tray"><div class="rk-slot"><small>20쪽</small>자기부담금의 뜻</div><div class="rk-slot twin"><small>20쪽</small>자기부담금의 뜻</div><div class="rk-slot"><small>2쪽</small>약관 이용 안내</div><div class="rk-slot twin"><small>2쪽</small>약관 이용 안내</div><em class="rk-pen">네 칸 중 두 칸이 똑같은 조각입니다</em></div>
+          </div>
+          <div class="rk-run">
+            <h3>번호표를 주고 두 번 저장</h3>
+            <div class="rk-meter"><div class="tr"><i class="fill" style="width:50%"></i></div><b>242</b></div>
+            <div class="rk-tray"><div class="rk-slot"><small>20쪽</small>자기부담금의 뜻</div><div class="rk-slot"><small>2쪽</small>약관 이용 안내</div><div class="rk-slot"><small>19쪽</small>보상하는 의료비</div><div class="rk-slot"><small>21쪽</small>보상하지 않는 손해</div><em class="rk-good">같은 번호표는 덮어써서 개수가 그대로입니다</em></div>
+          </div>
+        </div>
+        <p class="rk-cap">막대는 저장소에 든 조각 수, 그 아래는 같은 질문에 돌아온 네 칸입니다. 조각 수는 예시 값이고 늘어나고 그대로인 동작은 langchain-chroma 1.1.0에서 같은 문서를 두 번 넣어 확인했습니다(3개 → 6개, 번호표를 주면 3개 → 3개).</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <div class="rk-lead">
+        <h2>파이썬 용어가 보험 질문에 끼어든 이유</h2>
+        <div>
+          <p>저장소에 용어집과 약관이 섞여 있는데 검색은 내용만 보고 고르기 때문입니다. "자기부담금은 고른 금액"이라는 말과 "사람이 직접 정해 주는 값"이라는 하이퍼파라미터 풀이는 숫자로 바꾸면 꽤 가깝게 나올 수 있습니다. 그렇게 보험 질문에 파이썬 용어가 한 칸을 차지합니다.</p>
+          <p>막는 방법은 조각마다 <b>메타데이터(metadata)</b>, 곧 "이 조각은 어디서 왔고 어떤 종류인지"를 적은 꼬리표를 달아 두는 것입니다. 도서관 책 등에 붙은 분류 스티커와 같습니다. 검색할 때 <code>filter</code>로 "약관만"을 걸면 용어집 조각은 아예 후보에서 빠지고 남은 약관 조각 안에서 네 개를 고릅니다. 스티커와 다른 점도 있습니다. 꼬리표는 코드가 파일 단위로 붙이므로 잘못 붙이면 필터가 정답 조각까지 지워 버립니다.</p>
+        </div>
+      </div>
+      <figure class="rk-grid" data-figure style="margin-top: 44px">
+        <div class="rk-gpair">
+          <div>
+            <h3>필터 없이 검색</h3>
+            <svg viewBox="-2 -2 417 208" role="img" aria-label="필터 없이 고른 4개 가운데 하나가 용어집 조각"><rect class="ins" x="0" y="0" width="14" height="14" rx="3"/><rect class="ins" x="19" y="0" width="14" height="14" rx="3"/><rect class="ins" x="38" y="0" width="14" height="14" rx="3"/><rect class="ins" x="57" y="0" width="14" height="14" rx="3"/><rect class="ins" x="76" y="0" width="14" height="14" rx="3"/><rect class="ins" x="95" y="0" width="14" height="14" rx="3"/><rect class="ins" x="114" y="0" width="14" height="14" rx="3"/><rect class="ins" x="133" y="0" width="14" height="14" rx="3"/><rect class="ins" x="152" y="0" width="14" height="14" rx="3"/><rect class="ins" x="171" y="0" width="14" height="14" rx="3"/><rect class="ins" x="190" y="0" width="14" height="14" rx="3"/><rect class="ins" x="209" y="0" width="14" height="14" rx="3"/><rect class="ins" x="228" y="0" width="14" height="14" rx="3"/><rect class="ins" x="247" y="0" width="14" height="14" rx="3"/><rect class="ins" x="266" y="0" width="14" height="14" rx="3"/><rect class="ins" x="285" y="0" width="14" height="14" rx="3"/><rect class="ins" x="304" y="0" width="14" height="14" rx="3"/><rect class="ins" x="323" y="0" width="14" height="14" rx="3"/><rect class="ins" x="342" y="0" width="14" height="14" rx="3"/><rect class="ins" x="361" y="0" width="14" height="14" rx="3"/><rect class="ins" x="380" y="0" width="14" height="14" rx="3"/><rect class="ins" x="399" y="0" width="14" height="14" rx="3"/><rect class="ins" x="0" y="19" width="14" height="14" rx="3"/><rect class="ins" x="19" y="19" width="14" height="14" rx="3"/><rect class="ins" x="38" y="19" width="14" height="14" rx="3"/><rect class="ins" x="57" y="19" width="14" height="14" rx="3"/><rect class="ins" x="76" y="19" width="14" height="14" rx="3"/><rect class="ins" x="95" y="19" width="14" height="14" rx="3"/><rect class="ins" x="114" y="19" width="14" height="14" rx="3"/><rect class="ins" x="133" y="19" width="14" height="14" rx="3"/><rect class="ins" x="152" y="19" width="14" height="14" rx="3"/><rect class="ins" x="171" y="19" width="14" height="14" rx="3"/><rect class="ins" x="190" y="19" width="14" height="14" rx="3"/><rect class="ins" x="209" y="19" width="14" height="14" rx="3"/><rect class="ins" x="228" y="19" width="14" height="14" rx="3"/><rect class="ins" x="247" y="19" width="14" height="14" rx="3"/><rect class="ins" x="266" y="19" width="14" height="14" rx="3"/><rect class="ins" x="285" y="19" width="14" height="14" rx="3"/><rect class="ins" x="304" y="19" width="14" height="14" rx="3"/><rect class="ins" x="323" y="19" width="14" height="14" rx="3"/><rect class="ins" x="342" y="19" width="14" height="14" rx="3"/><rect class="ins" x="361" y="19" width="14" height="14" rx="3"/><rect class="ins" x="380" y="19" width="14" height="14" rx="3"/><rect class="ins" x="399" y="19" width="14" height="14" rx="3"/><rect class="ins" x="0" y="38" width="14" height="14" rx="3"/><rect class="ins" x="19" y="38" width="14" height="14" rx="3"/><rect class="ins" x="38" y="38" width="14" height="14" rx="3"/><rect class="ins" x="57" y="38" width="14" height="14" rx="3"/><rect class="ins" x="76" y="38" width="14" height="14" rx="3"/><rect class="ins" x="95" y="38" width="14" height="14" rx="3"/><rect class="ins" x="114" y="38" width="14" height="14" rx="3"/><rect class="ins" x="133" y="38" width="14" height="14" rx="3"/><rect class="ins" x="152" y="38" width="14" height="14" rx="3"/><rect class="ins" x="171" y="38" width="14" height="14" rx="3"/><rect class="ins" x="190" y="38" width="14" height="14" rx="3"/><rect class="ins" x="209" y="38" width="14" height="14" rx="3"/><rect class="ins" x="228" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="247" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="266" y="38" width="14" height="14" rx="3"/><rect class="ins" x="285" y="38" width="14" height="14" rx="3"/><rect class="ins" x="304" y="38" width="14" height="14" rx="3"/><rect class="ins" x="323" y="38" width="14" height="14" rx="3"/><rect class="ins" x="342" y="38" width="14" height="14" rx="3"/><rect class="ins" x="361" y="38" width="14" height="14" rx="3"/><rect class="ins" x="380" y="38" width="14" height="14" rx="3"/><rect class="ins" x="399" y="38" width="14" height="14" rx="3"/><rect class="ins" x="0" y="57" width="14" height="14" rx="3"/><rect class="ins" x="19" y="57" width="14" height="14" rx="3"/><rect class="ins" x="38" y="57" width="14" height="14" rx="3"/><rect class="ins" x="57" y="57" width="14" height="14" rx="3"/><rect class="ins" x="76" y="57" width="14" height="14" rx="3"/><rect class="ins" x="95" y="57" width="14" height="14" rx="3"/><rect class="ins" x="114" y="57" width="14" height="14" rx="3"/><rect class="ins" x="133" y="57" width="14" height="14" rx="3"/><rect class="ins" x="152" y="57" width="14" height="14" rx="3"/><rect class="ins" x="171" y="57" width="14" height="14" rx="3"/><rect class="ins" x="190" y="57" width="14" height="14" rx="3"/><rect class="ins" x="209" y="57" width="14" height="14" rx="3"/><rect class="ins" x="228" y="57" width="14" height="14" rx="3"/><rect class="ins" x="247" y="57" width="14" height="14" rx="3"/><rect class="ins" x="266" y="57" width="14" height="14" rx="3"/><rect class="ins" x="285" y="57" width="14" height="14" rx="3"/><rect class="ins" x="304" y="57" width="14" height="14" rx="3"/><rect class="ins" x="323" y="57" width="14" height="14" rx="3"/><rect class="ins" x="342" y="57" width="14" height="14" rx="3"/><rect class="ins" x="361" y="57" width="14" height="14" rx="3"/><rect class="ins" x="380" y="57" width="14" height="14" rx="3"/><rect class="ins" x="399" y="57" width="14" height="14" rx="3"/><rect class="ins" x="0" y="76" width="14" height="14" rx="3"/><rect class="ins" x="19" y="76" width="14" height="14" rx="3"/><rect class="ins lit" x="38" y="76" width="14" height="14" rx="3"/><rect class="ins" x="57" y="76" width="14" height="14" rx="3"/><rect class="ins" x="76" y="76" width="14" height="14" rx="3"/><rect class="ins" x="95" y="76" width="14" height="14" rx="3"/><rect class="ins" x="114" y="76" width="14" height="14" rx="3"/><rect class="ins" x="133" y="76" width="14" height="14" rx="3"/><rect class="ins" x="152" y="76" width="14" height="14" rx="3"/><rect class="ins" x="171" y="76" width="14" height="14" rx="3"/><rect class="ins" x="190" y="76" width="14" height="14" rx="3"/><rect class="ins" x="209" y="76" width="14" height="14" rx="3"/><rect class="ins" x="228" y="76" width="14" height="14" rx="3"/><rect class="ins" x="247" y="76" width="14" height="14" rx="3"/><rect class="ins" x="266" y="76" width="14" height="14" rx="3"/><rect class="ins" x="285" y="76" width="14" height="14" rx="3"/><rect class="ins" x="304" y="76" width="14" height="14" rx="3"/><rect class="ins" x="323" y="76" width="14" height="14" rx="3"/><rect class="ins" x="342" y="76" width="14" height="14" rx="3"/><rect class="ins" x="361" y="76" width="14" height="14" rx="3"/><rect class="ins" x="380" y="76" width="14" height="14" rx="3"/><rect class="ins" x="399" y="76" width="14" height="14" rx="3"/><rect class="ins" x="0" y="95" width="14" height="14" rx="3"/><rect class="ins" x="19" y="95" width="14" height="14" rx="3"/><rect class="ins" x="38" y="95" width="14" height="14" rx="3"/><rect class="ins" x="57" y="95" width="14" height="14" rx="3"/><rect class="ins" x="76" y="95" width="14" height="14" rx="3"/><rect class="ins" x="95" y="95" width="14" height="14" rx="3"/><rect class="ins" x="114" y="95" width="14" height="14" rx="3"/><rect class="ins" x="133" y="95" width="14" height="14" rx="3"/><rect class="ins" x="152" y="95" width="14" height="14" rx="3"/><rect class="ins" x="171" y="95" width="14" height="14" rx="3"/><rect class="ins" x="190" y="95" width="14" height="14" rx="3"/><rect class="ins" x="209" y="95" width="14" height="14" rx="3"/><rect class="ins" x="228" y="95" width="14" height="14" rx="3"/><rect class="ins" x="247" y="95" width="14" height="14" rx="3"/><rect class="ins" x="266" y="95" width="14" height="14" rx="3"/><rect class="ins" x="285" y="95" width="14" height="14" rx="3"/><rect class="ins" x="304" y="95" width="14" height="14" rx="3"/><rect class="ins" x="323" y="95" width="14" height="14" rx="3"/><rect class="ins" x="342" y="95" width="14" height="14" rx="3"/><rect class="ins" x="361" y="95" width="14" height="14" rx="3"/><rect class="ins" x="380" y="95" width="14" height="14" rx="3"/><rect class="ins" x="399" y="95" width="14" height="14" rx="3"/><rect class="ins" x="0" y="114" width="14" height="14" rx="3"/><rect class="ins" x="19" y="114" width="14" height="14" rx="3"/><rect class="ins" x="38" y="114" width="14" height="14" rx="3"/><rect class="ins" x="57" y="114" width="14" height="14" rx="3"/><rect class="ins" x="76" y="114" width="14" height="14" rx="3"/><rect class="ins" x="95" y="114" width="14" height="14" rx="3"/><rect class="ins" x="114" y="114" width="14" height="14" rx="3"/><rect class="ins" x="133" y="114" width="14" height="14" rx="3"/><rect class="ins" x="152" y="114" width="14" height="14" rx="3"/><rect class="ins" x="171" y="114" width="14" height="14" rx="3"/><rect class="glo" x="190" y="114" width="14" height="14" rx="3"/><rect class="glo" x="209" y="114" width="14" height="14" rx="3"/><rect class="glo" x="228" y="114" width="14" height="14" rx="3"/><rect class="glo" x="247" y="114" width="14" height="14" rx="3"/><rect class="glo" x="266" y="114" width="14" height="14" rx="3"/><rect class="glo" x="285" y="114" width="14" height="14" rx="3"/><rect class="glo" x="304" y="114" width="14" height="14" rx="3"/><rect class="glo" x="323" y="114" width="14" height="14" rx="3"/><rect class="glo" x="342" y="114" width="14" height="14" rx="3"/><rect class="glo" x="361" y="114" width="14" height="14" rx="3"/><rect class="glo" x="380" y="114" width="14" height="14" rx="3"/><rect class="glo" x="399" y="114" width="14" height="14" rx="3"/><rect class="glo" x="0" y="133" width="14" height="14" rx="3"/><rect class="glo" x="19" y="133" width="14" height="14" rx="3"/><rect class="glo" x="38" y="133" width="14" height="14" rx="3"/><rect class="glo" x="57" y="133" width="14" height="14" rx="3"/><rect class="glo" x="76" y="133" width="14" height="14" rx="3"/><rect class="glo" x="95" y="133" width="14" height="14" rx="3"/><rect class="glo" x="114" y="133" width="14" height="14" rx="3"/><rect class="glo" x="133" y="133" width="14" height="14" rx="3"/><rect class="glo" x="152" y="133" width="14" height="14" rx="3"/><rect class="glo" x="171" y="133" width="14" height="14" rx="3"/><rect class="glo" x="190" y="133" width="14" height="14" rx="3"/><rect class="glo" x="209" y="133" width="14" height="14" rx="3"/><rect class="glo" x="228" y="133" width="14" height="14" rx="3"/><rect class="glo" x="247" y="133" width="14" height="14" rx="3"/><rect class="glo" x="266" y="133" width="14" height="14" rx="3"/><rect class="glo" x="285" y="133" width="14" height="14" rx="3"/><rect class="glo" x="304" y="133" width="14" height="14" rx="3"/><rect class="glo" x="323" y="133" width="14" height="14" rx="3"/><rect class="glo" x="342" y="133" width="14" height="14" rx="3"/><rect class="glo" x="361" y="133" width="14" height="14" rx="3"/><rect class="glo" x="380" y="133" width="14" height="14" rx="3"/><rect class="glo" x="399" y="133" width="14" height="14" rx="3"/><rect class="glo" x="0" y="152" width="14" height="14" rx="3"/><rect class="glo" x="19" y="152" width="14" height="14" rx="3"/><rect class="glo" x="38" y="152" width="14" height="14" rx="3"/><rect class="glo" x="57" y="152" width="14" height="14" rx="3"/><rect class="glo" x="76" y="152" width="14" height="14" rx="3"/><rect class="glo" x="95" y="152" width="14" height="14" rx="3"/><rect class="glo" x="114" y="152" width="14" height="14" rx="3"/><rect class="glo" x="133" y="152" width="14" height="14" rx="3"/><rect class="glo" x="152" y="152" width="14" height="14" rx="3"/><rect class="glo" x="171" y="152" width="14" height="14" rx="3"/><rect class="glo" x="190" y="152" width="14" height="14" rx="3"/><rect class="glo lit" x="209" y="152" width="14" height="14" rx="3"/><rect class="glo" x="228" y="152" width="14" height="14" rx="3"/><rect class="glo" x="247" y="152" width="14" height="14" rx="3"/><rect class="glo" x="266" y="152" width="14" height="14" rx="3"/><rect class="glo" x="285" y="152" width="14" height="14" rx="3"/><rect class="glo" x="304" y="152" width="14" height="14" rx="3"/><rect class="glo" x="323" y="152" width="14" height="14" rx="3"/><rect class="glo" x="342" y="152" width="14" height="14" rx="3"/><rect class="glo" x="361" y="152" width="14" height="14" rx="3"/><rect class="glo" x="380" y="152" width="14" height="14" rx="3"/><rect class="glo" x="399" y="152" width="14" height="14" rx="3"/><rect class="glo" x="0" y="171" width="14" height="14" rx="3"/><rect class="glo" x="19" y="171" width="14" height="14" rx="3"/><rect class="glo" x="38" y="171" width="14" height="14" rx="3"/><rect class="glo" x="57" y="171" width="14" height="14" rx="3"/><rect class="glo" x="76" y="171" width="14" height="14" rx="3"/><rect class="glo" x="95" y="171" width="14" height="14" rx="3"/><rect class="glo" x="114" y="171" width="14" height="14" rx="3"/><rect class="glo" x="133" y="171" width="14" height="14" rx="3"/><rect class="glo" x="152" y="171" width="14" height="14" rx="3"/><rect class="glo" x="171" y="171" width="14" height="14" rx="3"/><rect class="glo" x="190" y="171" width="14" height="14" rx="3"/><rect class="glo" x="209" y="171" width="14" height="14" rx="3"/><rect class="glo" x="228" y="171" width="14" height="14" rx="3"/><rect class="glo" x="247" y="171" width="14" height="14" rx="3"/><rect class="glo" x="266" y="171" width="14" height="14" rx="3"/><rect class="glo" x="285" y="171" width="14" height="14" rx="3"/><rect class="glo" x="304" y="171" width="14" height="14" rx="3"/><rect class="glo" x="323" y="171" width="14" height="14" rx="3"/><rect class="glo" x="342" y="171" width="14" height="14" rx="3"/><rect class="glo" x="361" y="171" width="14" height="14" rx="3"/><rect class="glo" x="380" y="171" width="14" height="14" rx="3"/><rect class="glo" x="399" y="171" width="14" height="14" rx="3"/><rect class="glo" x="0" y="190" width="14" height="14" rx="3"/><rect class="glo" x="19" y="190" width="14" height="14" rx="3"/><rect class="glo" x="38" y="190" width="14" height="14" rx="3"/><rect class="glo" x="57" y="190" width="14" height="14" rx="3"/><rect class="glo" x="76" y="190" width="14" height="14" rx="3"/><rect class="glo" x="95" y="190" width="14" height="14" rx="3"/><rect class="glo" x="114" y="190" width="14" height="14" rx="3"/><rect class="glo" x="133" y="190" width="14" height="14" rx="3"/><rect class="glo" x="152" y="190" width="14" height="14" rx="3"/><rect class="glo" x="171" y="190" width="14" height="14" rx="3"/><rect class="glo" x="190" y="190" width="14" height="14" rx="3"/><rect class="glo" x="209" y="190" width="14" height="14" rx="3"/><rect class="glo" x="228" y="190" width="14" height="14" rx="3"/><rect class="glo" x="247" y="190" width="14" height="14" rx="3"/><rect class="glo" x="266" y="190" width="14" height="14" rx="3"/><rect class="glo" x="285" y="190" width="14" height="14" rx="3"/><rect class="glo" x="304" y="190" width="14" height="14" rx="3"/><rect class="glo" x="323" y="190" width="14" height="14" rx="3"/><rect class="glo" x="342" y="190" width="14" height="14" rx="3"/><rect class="glo" x="361" y="190" width="14" height="14" rx="3"/><rect class="glo" x="380" y="190" width="14" height="14" rx="3"/><rect class="glo" x="399" y="190" width="14" height="14" rx="3"/></svg>
+          </div>
+          <div>
+            <h3><code>filter={"source_type": "insurance"}</code></h3>
+            <svg viewBox="-2 -2 417 208" role="img" aria-label="용어집 조각을 흐리게 지우고 약관 조각에서만 고른 4개"><rect class="ins" x="0" y="0" width="14" height="14" rx="3"/><rect class="ins" x="19" y="0" width="14" height="14" rx="3"/><rect class="ins" x="38" y="0" width="14" height="14" rx="3"/><rect class="ins" x="57" y="0" width="14" height="14" rx="3"/><rect class="ins" x="76" y="0" width="14" height="14" rx="3"/><rect class="ins" x="95" y="0" width="14" height="14" rx="3"/><rect class="ins" x="114" y="0" width="14" height="14" rx="3"/><rect class="ins" x="133" y="0" width="14" height="14" rx="3"/><rect class="ins" x="152" y="0" width="14" height="14" rx="3"/><rect class="ins" x="171" y="0" width="14" height="14" rx="3"/><rect class="ins" x="190" y="0" width="14" height="14" rx="3"/><rect class="ins" x="209" y="0" width="14" height="14" rx="3"/><rect class="ins" x="228" y="0" width="14" height="14" rx="3"/><rect class="ins" x="247" y="0" width="14" height="14" rx="3"/><rect class="ins" x="266" y="0" width="14" height="14" rx="3"/><rect class="ins" x="285" y="0" width="14" height="14" rx="3"/><rect class="ins" x="304" y="0" width="14" height="14" rx="3"/><rect class="ins" x="323" y="0" width="14" height="14" rx="3"/><rect class="ins" x="342" y="0" width="14" height="14" rx="3"/><rect class="ins" x="361" y="0" width="14" height="14" rx="3"/><rect class="ins" x="380" y="0" width="14" height="14" rx="3"/><rect class="ins" x="399" y="0" width="14" height="14" rx="3"/><rect class="ins" x="0" y="19" width="14" height="14" rx="3"/><rect class="ins" x="19" y="19" width="14" height="14" rx="3"/><rect class="ins" x="38" y="19" width="14" height="14" rx="3"/><rect class="ins" x="57" y="19" width="14" height="14" rx="3"/><rect class="ins" x="76" y="19" width="14" height="14" rx="3"/><rect class="ins" x="95" y="19" width="14" height="14" rx="3"/><rect class="ins" x="114" y="19" width="14" height="14" rx="3"/><rect class="ins" x="133" y="19" width="14" height="14" rx="3"/><rect class="ins" x="152" y="19" width="14" height="14" rx="3"/><rect class="ins" x="171" y="19" width="14" height="14" rx="3"/><rect class="ins" x="190" y="19" width="14" height="14" rx="3"/><rect class="ins" x="209" y="19" width="14" height="14" rx="3"/><rect class="ins" x="228" y="19" width="14" height="14" rx="3"/><rect class="ins" x="247" y="19" width="14" height="14" rx="3"/><rect class="ins" x="266" y="19" width="14" height="14" rx="3"/><rect class="ins" x="285" y="19" width="14" height="14" rx="3"/><rect class="ins" x="304" y="19" width="14" height="14" rx="3"/><rect class="ins" x="323" y="19" width="14" height="14" rx="3"/><rect class="ins" x="342" y="19" width="14" height="14" rx="3"/><rect class="ins" x="361" y="19" width="14" height="14" rx="3"/><rect class="ins" x="380" y="19" width="14" height="14" rx="3"/><rect class="ins" x="399" y="19" width="14" height="14" rx="3"/><rect class="ins" x="0" y="38" width="14" height="14" rx="3"/><rect class="ins" x="19" y="38" width="14" height="14" rx="3"/><rect class="ins" x="38" y="38" width="14" height="14" rx="3"/><rect class="ins" x="57" y="38" width="14" height="14" rx="3"/><rect class="ins" x="76" y="38" width="14" height="14" rx="3"/><rect class="ins" x="95" y="38" width="14" height="14" rx="3"/><rect class="ins" x="114" y="38" width="14" height="14" rx="3"/><rect class="ins" x="133" y="38" width="14" height="14" rx="3"/><rect class="ins" x="152" y="38" width="14" height="14" rx="3"/><rect class="ins" x="171" y="38" width="14" height="14" rx="3"/><rect class="ins" x="190" y="38" width="14" height="14" rx="3"/><rect class="ins" x="209" y="38" width="14" height="14" rx="3"/><rect class="ins" x="228" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="247" y="38" width="14" height="14" rx="3"/><rect class="ins lit" x="266" y="38" width="14" height="14" rx="3"/><rect class="ins" x="285" y="38" width="14" height="14" rx="3"/><rect class="ins" x="304" y="38" width="14" height="14" rx="3"/><rect class="ins" x="323" y="38" width="14" height="14" rx="3"/><rect class="ins" x="342" y="38" width="14" height="14" rx="3"/><rect class="ins" x="361" y="38" width="14" height="14" rx="3"/><rect class="ins" x="380" y="38" width="14" height="14" rx="3"/><rect class="ins" x="399" y="38" width="14" height="14" rx="3"/><rect class="ins" x="0" y="57" width="14" height="14" rx="3"/><rect class="ins" x="19" y="57" width="14" height="14" rx="3"/><rect class="ins" x="38" y="57" width="14" height="14" rx="3"/><rect class="ins" x="57" y="57" width="14" height="14" rx="3"/><rect class="ins" x="76" y="57" width="14" height="14" rx="3"/><rect class="ins" x="95" y="57" width="14" height="14" rx="3"/><rect class="ins" x="114" y="57" width="14" height="14" rx="3"/><rect class="ins" x="133" y="57" width="14" height="14" rx="3"/><rect class="ins" x="152" y="57" width="14" height="14" rx="3"/><rect class="ins" x="171" y="57" width="14" height="14" rx="3"/><rect class="ins" x="190" y="57" width="14" height="14" rx="3"/><rect class="ins" x="209" y="57" width="14" height="14" rx="3"/><rect class="ins" x="228" y="57" width="14" height="14" rx="3"/><rect class="ins" x="247" y="57" width="14" height="14" rx="3"/><rect class="ins" x="266" y="57" width="14" height="14" rx="3"/><rect class="ins" x="285" y="57" width="14" height="14" rx="3"/><rect class="ins" x="304" y="57" width="14" height="14" rx="3"/><rect class="ins" x="323" y="57" width="14" height="14" rx="3"/><rect class="ins" x="342" y="57" width="14" height="14" rx="3"/><rect class="ins" x="361" y="57" width="14" height="14" rx="3"/><rect class="ins" x="380" y="57" width="14" height="14" rx="3"/><rect class="ins" x="399" y="57" width="14" height="14" rx="3"/><rect class="ins" x="0" y="76" width="14" height="14" rx="3"/><rect class="ins" x="19" y="76" width="14" height="14" rx="3"/><rect class="ins lit" x="38" y="76" width="14" height="14" rx="3"/><rect class="ins" x="57" y="76" width="14" height="14" rx="3"/><rect class="ins" x="76" y="76" width="14" height="14" rx="3"/><rect class="ins" x="95" y="76" width="14" height="14" rx="3"/><rect class="ins" x="114" y="76" width="14" height="14" rx="3"/><rect class="ins" x="133" y="76" width="14" height="14" rx="3"/><rect class="ins" x="152" y="76" width="14" height="14" rx="3"/><rect class="ins" x="171" y="76" width="14" height="14" rx="3"/><rect class="ins" x="190" y="76" width="14" height="14" rx="3"/><rect class="ins" x="209" y="76" width="14" height="14" rx="3"/><rect class="ins" x="228" y="76" width="14" height="14" rx="3"/><rect class="ins" x="247" y="76" width="14" height="14" rx="3"/><rect class="ins" x="266" y="76" width="14" height="14" rx="3"/><rect class="ins" x="285" y="76" width="14" height="14" rx="3"/><rect class="ins" x="304" y="76" width="14" height="14" rx="3"/><rect class="ins" x="323" y="76" width="14" height="14" rx="3"/><rect class="ins" x="342" y="76" width="14" height="14" rx="3"/><rect class="ins" x="361" y="76" width="14" height="14" rx="3"/><rect class="ins" x="380" y="76" width="14" height="14" rx="3"/><rect class="ins" x="399" y="76" width="14" height="14" rx="3"/><rect class="ins" x="0" y="95" width="14" height="14" rx="3"/><rect class="ins" x="19" y="95" width="14" height="14" rx="3"/><rect class="ins lit" x="38" y="95" width="14" height="14" rx="3"/><rect class="ins" x="57" y="95" width="14" height="14" rx="3"/><rect class="ins" x="76" y="95" width="14" height="14" rx="3"/><rect class="ins" x="95" y="95" width="14" height="14" rx="3"/><rect class="ins" x="114" y="95" width="14" height="14" rx="3"/><rect class="ins" x="133" y="95" width="14" height="14" rx="3"/><rect class="ins" x="152" y="95" width="14" height="14" rx="3"/><rect class="ins" x="171" y="95" width="14" height="14" rx="3"/><rect class="ins" x="190" y="95" width="14" height="14" rx="3"/><rect class="ins" x="209" y="95" width="14" height="14" rx="3"/><rect class="ins" x="228" y="95" width="14" height="14" rx="3"/><rect class="ins" x="247" y="95" width="14" height="14" rx="3"/><rect class="ins" x="266" y="95" width="14" height="14" rx="3"/><rect class="ins" x="285" y="95" width="14" height="14" rx="3"/><rect class="ins" x="304" y="95" width="14" height="14" rx="3"/><rect class="ins" x="323" y="95" width="14" height="14" rx="3"/><rect class="ins" x="342" y="95" width="14" height="14" rx="3"/><rect class="ins" x="361" y="95" width="14" height="14" rx="3"/><rect class="ins" x="380" y="95" width="14" height="14" rx="3"/><rect class="ins" x="399" y="95" width="14" height="14" rx="3"/><rect class="ins" x="0" y="114" width="14" height="14" rx="3"/><rect class="ins" x="19" y="114" width="14" height="14" rx="3"/><rect class="ins" x="38" y="114" width="14" height="14" rx="3"/><rect class="ins" x="57" y="114" width="14" height="14" rx="3"/><rect class="ins" x="76" y="114" width="14" height="14" rx="3"/><rect class="ins" x="95" y="114" width="14" height="14" rx="3"/><rect class="ins" x="114" y="114" width="14" height="14" rx="3"/><rect class="ins" x="133" y="114" width="14" height="14" rx="3"/><rect class="ins" x="152" y="114" width="14" height="14" rx="3"/><rect class="ins" x="171" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="190" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="209" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="228" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="247" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="266" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="285" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="304" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="323" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="342" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="361" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="380" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="399" y="114" width="14" height="14" rx="3"/><rect class="glo off" x="0" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="19" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="38" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="57" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="76" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="95" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="114" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="133" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="152" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="171" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="190" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="209" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="228" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="247" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="266" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="285" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="304" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="323" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="342" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="361" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="380" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="399" y="133" width="14" height="14" rx="3"/><rect class="glo off" x="0" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="19" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="38" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="57" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="76" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="95" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="114" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="133" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="152" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="171" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="190" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="209" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="228" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="247" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="266" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="285" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="304" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="323" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="342" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="361" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="380" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="399" y="152" width="14" height="14" rx="3"/><rect class="glo off" x="0" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="19" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="38" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="57" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="76" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="95" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="114" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="133" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="152" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="171" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="190" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="209" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="228" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="247" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="266" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="285" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="304" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="323" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="342" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="361" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="380" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="399" y="171" width="14" height="14" rx="3"/><rect class="glo off" x="0" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="19" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="38" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="57" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="76" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="95" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="114" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="133" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="152" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="171" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="190" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="209" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="228" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="247" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="266" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="285" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="304" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="323" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="342" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="361" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="380" y="190" width="14" height="14" rx="3"/><rect class="glo off" x="399" y="190" width="14" height="14" rx="3"/></svg>
+          </div>
+        </div>
+        <div class="rk-key"><span class="ins">약관 조각</span><span class="glo">용어집 조각</span><span class="off">후보에서 빠진 용어집 조각</span><span class="lit">뽑힌 약관 조각</span><span class="gl">뽑힌 용어집 조각</span></div>
+        <p class="rk-cap">필터를 건 그림에서는 용어집 조각이 흐려져 후보에서 빠졌습니다. 어느 칸이 뽑혔는지는 설명을 위한 예시입니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <div class="rk-lead">
+        <h2>비슷한 조각만 네 개 오면 답이 왜 좁아질까요?</h2>
+        <div>
+          <p>네 칸이 거의 같은 이야기로 차면 모델은 한쪽 이야기만 듣고 답하기 때문입니다. "보험 약관을 정리해 줘"처럼 넓게 물으면 약관 맨 앞의 "약관 이용 안내" 문단들이 질문과 가장 가깝게 나와 네 칸을 다 가져갑니다. 보장 내용, 청구 서류, 알릴 의무는 한 줄도 들어오지 못합니다.</p>
+          <p><b>MMR</b>(Maximal Marginal Relevance)은 한 칸씩 채우면서 이미 고른 것과 닮은 후보의 점수를 깎는 검색 방식입니다. 1998년 정보 검색 학회 SIGIR에서 나온 방법입니다. 같은 후보 20개에서 두 방식이 무엇을 고르는지 차례로 봅니다.</p>
+        </div>
+      </div>
+      <figure class="rk-mmr rk-monly" data-s="0">
+        <p class="rk-mode" style="margin:0">유사도 검색 (k=4)</p>
+        <div class="rk-map"><svg viewBox="0 0 600 420" role="img" aria-label="질문 별 주위에 후보 조각 20개가 흩어진 지도"><rect class="field" x="40" y="24" width="520" height="372" rx="22"/><text class="fk" x="58" y="50">후보 20개 (fetch_k=20)</text><circle class="halo m1" cx="334" cy="190" r="58"/><circle class="halo m2" cx="206" cy="122" r="58"/><circle class="halo m3" cx="214" cy="318" r="58"/><circle class="halo m3" cx="424" cy="318" r="58"/><text class="cl" x="384" y="150">약관 이용 안내</text><text class="cl" x="150" y="82">보험금 청구 서류</text><text class="cl" x="470" y="360">알릴 의무</text><text class="cl" x="150" y="370">보장 내용</text><circle class="pt gA simp mmrp m1" data-k="a1" cx="334" cy="190" r="9"/><circle class="pt gA simp" data-k="a2" cx="348" cy="218" r="9"/><circle class="pt gA simp" data-k="a3" cx="322" cy="240" r="9"/><circle class="pt gA" data-k="a4" cx="362" cy="196" r="9"/><circle class="pt gA simp" data-k="a5" cx="340" cy="168" r="9"/><circle class="pt gB mmrp m2" data-k="b1" cx="206" cy="122" r="9"/><circle class="pt gB" data-k="b2" cx="186" cy="104" r="9"/><circle class="pt gB" data-k="b3" cx="224" cy="98" r="9"/><circle class="pt gC mmrp m3" data-k="c1" cx="424" cy="318" r="9"/><circle class="pt gC" data-k="c2" cx="446" cy="300" r="9"/><circle class="pt gC" data-k="c3" cx="440" cy="336" r="9"/><circle class="pt gD mmrp m3" data-k="d1" cx="214" cy="318" r="9"/><circle class="pt gD" data-k="d2" cx="192" cy="336" r="9"/><circle class="pt gE" data-k="e1" cx="110" cy="230" r="9"/><circle class="pt gE" data-k="e2" cx="490" cy="112" r="9"/><circle class="pt gE" data-k="e3" cx="512" cy="236" r="9"/><circle class="pt gE" data-k="e4" cx="392" cy="70" r="9"/><circle class="pt gE" data-k="e5" cx="96" cy="352" r="9"/><circle class="pt gE" data-k="e6" cx="534" cy="372" r="9"/><circle class="pt gE" data-k="e7" cx="262" cy="46" r="9"/><text class="num s0" x="334" y="194">1</text><text class="num s0" x="322" y="244">2</text><text class="num s0" x="348" y="222">3</text><text class="num s0" x="340" y="172">4</text><text class="num m1" x="334" y="194">1</text><text class="num m2" x="206" y="126">2</text><text class="num m3" x="214" y="322">3</text><text class="num m3" x="424" y="322">4</text><polygon class="q" points="300.0,190.0 303.8,199.7 314.3,200.4 306.2,207.0 308.8,217.1 300.0,211.5 291.2,217.1 293.8,207.0 285.7,200.4 296.2,199.7"/><text class="ql" x="278" y="239">질문</text></svg></div>
+        <div class="rk-tray"><span class="lab">유사도 검색이 고른 4개</span><div class="rk-slot"><small>1</small>약관 이용 안내</div><div class="rk-slot"><small>2</small>약관 읽는 법</div><div class="rk-slot"><small>3</small>핵심 확인 항목</div><div class="rk-slot"><small>4</small>약관이란</div><em class="rk-pen">네 칸이 모두 안내 문단입니다</em></div>
+      </figure>
+      <div class="rk-sc" data-rk-sc>
+        <div class="rk-steps">
+          <div class="rk-step" data-rk-step>
+            <h3>유사도 검색: 가까운 순서대로 네 개</h3>
+            <p>질문 별에서 가장 가까운 점 네 개를 고릅니다. 네 점 모두 "약관 이용 안내" 무리에 있습니다. 점끼리 가깝다는 건 내용도 거의 같다는 뜻입니다.</p>
+          </div>
+          <div class="rk-step" data-rk-step>
+            <h3>MMR 첫 칸: 가장 가까운 것 하나</h3>
+            <p>MMR도 첫 칸은 똑같이 가장 가까운 점을 고릅니다. 대신 그 점 둘레의 빨간 원 안에 있는 후보는 "이미 고른 것과 닮았다"며 점수가 깎입니다.</p>
+          </div>
+          <div class="rk-step" data-rk-step>
+            <h3>둘째 칸: 덜 닮은 쪽으로</h3>
+            <p>안내 무리의 나머지는 질문과 가깝지만 깎인 점수 때문에 밀립니다. 질문과 적당히 가까우면서 빨간 원 밖에 있는 "보험금 청구 서류"가 둘째 칸에 들어갑니다.</p>
+          </div>
+          <div class="rk-step" data-rk-step>
+            <h3>셋째, 넷째 칸까지</h3>
+            <p>같은 계산을 되풀이해 "보장 내용"과 "알릴 의무"가 들어옵니다. 네 칸이 네 가지 이야기로 찼습니다. 질문과 먼 회색 점들은 끝까지 뽑히지 않습니다.</p>
+          </div>
+        </div>
+        <figure class="rk-stick rk-mmr" data-rk-stick data-rk-stage data-s="3">
+          <p class="rk-mode" style="margin:0"><span class="a">유사도 검색 (k=4)</span><span class="b">MMR 검색 (k=4, fetch_k=20)</span></p>
+          <div class="rk-map" data-figure><svg viewBox="0 0 600 420" role="img" aria-label="질문 별 주위에 후보 조각 20개가 흩어진 지도"><rect class="field" x="40" y="24" width="520" height="372" rx="22"/><text class="fk" x="58" y="50">후보 20개 (fetch_k=20)</text><circle class="halo m1" cx="334" cy="190" r="58"/><circle class="halo m2" cx="206" cy="122" r="58"/><circle class="halo m3" cx="214" cy="318" r="58"/><circle class="halo m3" cx="424" cy="318" r="58"/><text class="cl" x="384" y="150">약관 이용 안내</text><text class="cl" x="150" y="82">보험금 청구 서류</text><text class="cl" x="470" y="360">알릴 의무</text><text class="cl" x="150" y="370">보장 내용</text><circle class="pt gA simp mmrp m1" data-k="a1" cx="334" cy="190" r="9"/><circle class="pt gA simp" data-k="a2" cx="348" cy="218" r="9"/><circle class="pt gA simp" data-k="a3" cx="322" cy="240" r="9"/><circle class="pt gA" data-k="a4" cx="362" cy="196" r="9"/><circle class="pt gA simp" data-k="a5" cx="340" cy="168" r="9"/><circle class="pt gB mmrp m2" data-k="b1" cx="206" cy="122" r="9"/><circle class="pt gB" data-k="b2" cx="186" cy="104" r="9"/><circle class="pt gB" data-k="b3" cx="224" cy="98" r="9"/><circle class="pt gC mmrp m3" data-k="c1" cx="424" cy="318" r="9"/><circle class="pt gC" data-k="c2" cx="446" cy="300" r="9"/><circle class="pt gC" data-k="c3" cx="440" cy="336" r="9"/><circle class="pt gD mmrp m3" data-k="d1" cx="214" cy="318" r="9"/><circle class="pt gD" data-k="d2" cx="192" cy="336" r="9"/><circle class="pt gE" data-k="e1" cx="110" cy="230" r="9"/><circle class="pt gE" data-k="e2" cx="490" cy="112" r="9"/><circle class="pt gE" data-k="e3" cx="512" cy="236" r="9"/><circle class="pt gE" data-k="e4" cx="392" cy="70" r="9"/><circle class="pt gE" data-k="e5" cx="96" cy="352" r="9"/><circle class="pt gE" data-k="e6" cx="534" cy="372" r="9"/><circle class="pt gE" data-k="e7" cx="262" cy="46" r="9"/><text class="num s0" x="334" y="194">1</text><text class="num s0" x="322" y="244">2</text><text class="num s0" x="348" y="222">3</text><text class="num s0" x="340" y="172">4</text><text class="num m1" x="334" y="194">1</text><text class="num m2" x="206" y="126">2</text><text class="num m3" x="214" y="322">3</text><text class="num m3" x="424" y="322">4</text><polygon class="q" points="300.0,190.0 303.8,199.7 314.3,200.4 306.2,207.0 308.8,217.1 300.0,211.5 291.2,217.1 293.8,207.0 285.7,200.4 296.2,199.7"/><text class="ql" x="278" y="239">질문</text></svg></div>
+          <div class="rk-trays">
+            <div class="rk-tray t0"><span class="lab">유사도 검색이 고른 4개</span><div class="rk-slot"><small>1</small>약관 이용 안내</div><div class="rk-slot"><small>2</small>약관 읽는 법</div><div class="rk-slot"><small>3</small>핵심 확인 항목</div><div class="rk-slot"><small>4</small>약관이란</div><em class="rk-pen">네 칸이 모두 안내 문단입니다</em></div>
+            <div class="rk-tray t1"><span class="lab">MMR이 채우는 중</span><div class="rk-slot"><small>1</small>약관 이용 안내</div><div class="rk-slot glo"><small>2</small>&nbsp;</div><div class="rk-slot glo"><small>3</small>&nbsp;</div><div class="rk-slot glo"><small>4</small>&nbsp;</div></div>
+            <div class="rk-tray t2"><span class="lab">MMR이 채우는 중</span><div class="rk-slot"><small>1</small>약관 이용 안내</div><div class="rk-slot"><small>2</small>보험금 청구 서류</div><div class="rk-slot glo"><small>3</small>&nbsp;</div><div class="rk-slot glo"><small>4</small>&nbsp;</div></div>
+            <div class="rk-tray t3"><span class="lab">MMR이 고른 4개</span><div class="rk-slot ok"><small>1</small>약관 이용 안내</div><div class="rk-slot ok"><small>2</small>보험금 청구 서류</div><div class="rk-slot ok"><small>3</small>보장 내용</div><div class="rk-slot ok"><small>4</small>알릴 의무</div><em class="rk-good">네 칸이 네 가지 이야기입니다</em></div>
+          </div>
+        </figure>
+      </div>
+      <div class="rk-mnote" style="margin-top: 24px"><div>
+          <p class="rk-cap">지도의 점 위치는 설명을 위해 그린 예시입니다. 실제 벡터는 수백, 수천 차원이라 평면에 그대로 그릴 수 없습니다. 점수 식은 langchain-chroma 1.1.0 소스의 <code>maximal_marginal_relevance</code>를 그대로 옮겼습니다.</p>
+          <p>MMR이 매기는 점수는 아래 한 줄입니다. 두 항의 무게를 정하는 값이 <code>lambda_mult</code>이고 LangChain Chroma의 기본값은 0.5입니다. 1에 가까울수록 유사도 검색과 같아지고 0에 가까울수록 다양한 쪽을 고릅니다. 후보를 몇 개 먼저 모을지는 <code>fetch_k</code>(기본 20)가 정합니다.</p>
+          <div class="rk-formula" data-figure>점수 = <code>lambda_mult</code> × <b>질문과 가까운 정도</b><br>　　 − (1 − <code>lambda_mult</code>) × <b>이미 고른 조각과 닮은 정도</b></div>
+          <p style="margin-top: 18px">가까운 정도와 닮은 정도는 0(전혀 다름)부터 1(똑같음)까지의 수입니다. 첫 칸에 "약관 이용 안내"가 들어간 뒤 둘째 칸 후보 둘을 0.5로 계산하면 이렇습니다.</p>
+          <div class="rk-calc" data-figure>
+            <span class="h">후보</span><span class="h">질문과 가까움</span><span class="h">첫 칸과 닮음</span><span class="h">점수</span>
+            <b>약관 읽는 법</b><span class="bar"><i style="width:90%"></i><em>0.9</em></span><span class="bar red"><i style="width:95%"></i><em>0.95</em></span><strong>−0.025</strong>
+            <b>보험금 청구 서류</b><span class="bar"><i style="width:60%"></i><em>0.6</em></span><span class="bar red"><i style="width:20%"></i><em>0.2</em></span><strong class="win">0.2</strong>
+          </div>
+          <p class="rk-cap" style="margin-top: 10px !important">0.5×0.9 − 0.5×0.95 = −0.025, 0.5×0.6 − 0.5×0.2 = 0.2. 덜 가까워도 청구 서류가 둘째 칸에 들어갑니다(숫자는 예시 값).</p>
+          <p>MMR이 늘 나은 것은 아닙니다. "통원 자기부담금 얼마"처럼 답이 한 조항에 있는 좁은 질문에서는 둘째 칸부터 덜 관련된 조각이 들어오고 그 조항이 두 조각에 걸쳐 있으면 둘째 조각이 오히려 밀려날 수 있습니다. MMR은 넓게 정리해 달라는 질문에 잘 맞습니다.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <div class="rk-lead">
+        <h2>k는 몇 개가 알맞을까요?</h2>
+        <div>
+          <p>답에 필요한 근거는 다 들어오고 상관없는 조각은 가장 적게 들어오는 개수입니다. 너무 적으면 근거가 빠지고 너무 많으면 모델이 읽을 잡음과 토큰(모델이 글을 세는 단위이자 요금 단위)이 질문마다 늘어납니다. 상관없는 내용이 많을수록 모델이 엉뚱한 줄을 근거로 삼을 여지도 커집니다.</p>
+          <p>그래서 k부터 키우는 것은 순서가 거꾸로입니다. 아래는 앞의 세 문제를 그대로 둔 저장소에서 k만 바꿔 본 결과입니다.</p>
+        </div>
+      </div>
+      <figure class="rk-ks" data-figure>
+        <div class="rk-kcol">
+          <h3>k=1</h3>
+          <div class="rk-tray"><div class="rk-mini ok">20쪽 뜻</div><div class="rk-mini miss">금액표는 못 받음</div></div>
+          <div class="rk-tok"><div class="tr"><i style="width:8%"></i></div><span>≈ 300</span></div>
+          <em class="rk-pen">뜻만 오고 금액표 조각은 빠집니다</em>
+        </div>
+        <div class="rk-kcol">
+          <h3>k=4</h3>
+          <div class="rk-tray"><div class="rk-mini ok">20쪽 뜻</div><div class="rk-mini noise">20쪽 뜻(같음)</div><div class="rk-mini noise">용어집</div><div class="rk-mini noise">2쪽</div></div>
+          <div class="rk-tok"><div class="tr"><i style="width:33%"></i></div><span>≈ 1,200</span></div>
+          <em class="rk-pen">맨 위 화면의 네 칸입니다. 금액표는 아직 없습니다</em>
+        </div>
+        <div class="rk-kcol">
+          <h3>k=12</h3>
+          <div class="rk-tray"><div class="rk-mini ok">20쪽 뜻</div><div class="rk-mini noise">20쪽 뜻(같음)</div><div class="rk-mini noise">용어집</div><div class="rk-mini noise">2쪽</div><div class="rk-mini noise">2쪽(같음)</div><div class="rk-mini noise">19쪽</div><div class="rk-mini noise">용어집(같음)</div><div class="rk-mini noise">21쪽</div><div class="rk-mini noise">3쪽</div><div class="rk-mini ok">20쪽 금액표</div><div class="rk-mini noise">24쪽</div><div class="rk-mini noise">6쪽</div></div>
+          <div class="rk-tok"><div class="tr"><i style="width:100%"></i></div><span>≈ 3,600</span></div>
+          <em class="rk-pen">열 번째에서야 금액표가 들어오고 읽을 양은 세 배입니다</em>
+        </div>
+      </figure>
+      <p class="rk-cap">맨 위 왼쪽 화면과 같은 저장소(200자로 자름, 두 번 저장, 필터 없음)에 같은 질문을 던졌습니다. 초록 칸은 답에 필요한 근거, 회색 칸은 상관없거나 겹친 조각입니다. 토큰은 조각 하나를 300토큰으로 잡은 예시 값입니다.</p>
+      <p class="rk-after" style="margin-top: 32px !important">조각을 500자로 자르고 번호표와 필터를 고친 저장소에서는 k=4로도 첫 칸에 금액표가 들어옵니다. 중복과 용어집이 빠진 자리에는 19쪽, 21쪽처럼 제5조 앞뒤 조항이 들어오고 안내 문단은 밀려납니다. 맨 위 오른쪽의 네 칸이 그 결과입니다. 알맞은 k는 질문의 종류마다 다르므로 뒤의 코드에서는 Agent가 질문을 보고 k를 고르게 합니다.</p>
+    </div>
+  </section>
+
+  <div class="rk-band">
+    <div class="rk-wrap">
+      <p class="no">PART 2 · 코드</p>
+      <p class="big">조각 크기, 번호표, 꼬리표, 검색 방식, k를 코드로 정해 봅니다</p>
+    </div>
+  </div>
+
+  <section class="rk-sec" style="padding-top: clamp(72px, 9vw, 112px)">
+    <div class="rk-wrap">
+      <h2>자르고 꼬리표와 번호표를 달아 저장하기</h2>
+      <p style="max-width: 760px">한 번만 돌리는 저장 코드입니다. <code>langchain 1.5</code>, <code>langchain-chroma 1.1</code>, <code>langchain-pymupdf4llm 1.28</code> 기준입니다.</p>
+      <div class="rk-term" style="max-width: 760px">pip install langchain langchain-openai langchain-chroma \
+    langchain-text-splitters langchain-pymupdf4llm</div>
+      <div class="rk-code">
+        <div class="rk-codel">
+<pre data-title="index.py" data-hl="9-10,15-16,21,26,33" data-start="1"><code class="language-python">from pathlib import Path
+from langchain_core.documents import Document
+from langchain_pymupdf4llm import PyMuPDF4LLMLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
+
+# ① 쪽마다 Document 하나
+pdf = "data/pet_insurance.pdf"
+pages = PyMuPDF4LLMLoader(pdf, mode="page").load()
+text = Path("data/glossary.txt").read_text(encoding="utf-8")
+glossary = [Document(text, metadata={"source": "data/glossary.txt"})]
+
+# ② 조항 하나가 들어갈 크기
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500, chunk_overlap=80)
+chunks = []
+for kind, docs in [("insurance", pages), ("glossary", glossary)]:
+    for c in splitter.split_documents(docs):
+        # ③ 어디서 왔는지 꼬리표
+        c.metadata["source_type"] = kind
+        chunks.append(c)
+ids = [f"{c.metadata['source_type']}-{i:04d}" for i, c in enumerate(chunks)]
+
+# ④ 저장할 때와 찾을 때 같은 임베딩 모델
+emb = OpenAIEmbeddings(model="text-embedding-3-small")
+store = Chroma(
+    collection_name="docs",
+    embedding_function=emb,
+    persist_directory="chroma_data",
+)
+# ⑤ 같은 번호표는 덮어쓰기
+store.add_documents(chunks, ids=ids)
+print("저장된 조각:", len(store.get()["ids"]))</code></pre>
+<div class="rk-term"><span class="dim">$ python index.py</span>
+저장된 조각: 131
+<span class="dim">$ python index.py</span>
+저장된 조각: 131</div>
+<p class="rk-note">출력의 조각 수는 설명을 위한 예시 값입니다. 500자로 자르니 200자로 자를 때(242조각)보다 조각 수가 줄었습니다. 두 번 돌려도 개수가 그대로인 것이 이 코드의 요점입니다.</p>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>쪽마다 Document.</b> 로더(loader)는 파일을 읽어 Document 목록으로 바꿔 주는 도구입니다. <code>Document</code>는 글(<code>page_content</code>)과 꼬리표 사전(<code>metadata</code>)을 묶은 LangChain의 상자입니다. 이 로더는 쪽 번호를 <code>metadata["page"]</code>에 0부터 담아 줍니다. 예전 글에 자주 나오는 <code>PyPDFLoader</code>, <code>TextLoader</code>는 지원이 끝난 <code>langchain-community</code>에 있어 새 코드에는 쓰지 않습니다.</li>
+          <li><b>조각 크기.</b> 500자에 80자 겹침으로 잡았습니다. 빈 줄 없이 긴 문단은 글자 수로 잘리는데, 그때 겹침이 문장 끊김을 막아 줘서 남겨 둡니다. 예시 약관에서 제5조가 한 조각에 들어가는 크기입니다. 문서마다 다르니 저장한 조각을 몇 개 열어 조항이 반으로 갈리지 않았는지 눈으로 봅니다.</li>
+          <li><b>꼬리표.</b> <code>source_type</code>은 뒤에서 필터와 Agent 도구가 함께 쓰는 열쇠입니다. 파일 종류처럼 틀릴 일이 없는 값만 꼬리표로 답니다.</li>
+          <li><b>임베딩 모델.</b> 저장할 때와 검색할 때 같은 모델을 써야 합니다. 모델이 다르면 같은 글도 전혀 다른 숫자가 되어 가까운 조각을 찾지 못합니다. 대화 모델은 Claude를 쓰고 임베딩은 OpenAI를 쓰는 식으로 따로 골라도 됩니다.</li>
+          <li><b>번호표.</b> <code>ids</code>를 주면 같은 번호표는 덮어써서 몇 번을 돌려도 중복이 쌓이지 않습니다. 조각 크기를 바꿔 다시 만들 때는 조각 수가 달라져 옛 번호표가 남으므로 <code>store.reset_collection()</code>으로 비우고 넣습니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <h2>같은 질문을 두 방식으로 검색해 보기</h2>
+      <div class="rk-code">
+        <div class="rk-codel">
+<pre data-title="search.py" data-hl="6-7,9-11" data-start="1"><code class="language-python"># ... (index.py 의 emb, store 설정과 같음)
+store = Chroma(collection_name="docs", embedding_function=emb,
+               persist_directory="chroma_data")
+
+# ① 약관 조각만 후보로
+only_ins = {"source_type": "insurance"}
+plain = store.as_retriever(search_kwargs={"k": 4, "filter": only_ins})
+# ② 20개 모아서 덜 닮은 4개
+mmr = store.as_retriever(search_type="mmr", search_kwargs={
+    "k": 4, "fetch_k": 20, "lambda_mult": 0.5, "filter": only_ins,
+})
+
+q = "보험 약관을 정리해 줘"
+for name, r in [("유사도", plain), ("MMR", mmr)]:
+    print(f"[{name}]")
+    for d in r.invoke(q):
+        head = d.page_content[:22].replace("\n", " ")
+        print(f"  {d.metadata['page'] + 1:>2}쪽  {head}")</code></pre>
+<div class="rk-term"><span class="dim">$ python search.py</span>
+[유사도]
+   2쪽  약관 이용 안내 약관 내용 중 어려운
+   3쪽  약관의 핵심 확인 항목 쉽게 찾기
+   1쪽  보험약관이란? 보험약관은 가입하신
+   2쪽  약관 조항 중 음영·컬러로 표시된
+[MMR]
+   2쪽  약관 이용 안내 약관 내용 중 어려운
+  24쪽  보험금 청구 서류 청구서 신분증,
+  19쪽  제4조(보상하는 의료비) 회사는 피보
+   6쪽  계약 전 알릴 의무 청약할 때 질문</div>
+<p class="rk-note">출력은 설명을 위한 예시 값입니다.</p>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>필터.</b> 꼬리표 값이 같은 조각만 후보로 남깁니다. 값을 여러 개 허용하려면 <code>{"source_type": {"$in": ["insurance", "glossary"]}}</code>처럼 Chroma의 비교 기호를 씁니다. 필터를 빼면 저장소 전체에서 고릅니다.</li>
+          <li><b>MMR.</b> <code>fetch_k</code>개를 먼저 유사도 순서로 모은 뒤 그 안에서 <code>k</code>개를 고릅니다. <code>fetch_k</code>가 <code>k</code>와 같으면 고를 여지가 없어 유사도 검색과 같아집니다. 출력에서 유사도 쪽은 앞쪽 안내 문단만, MMR 쪽은 청구 서류와 보장 조항까지 가져왔습니다.</li>
+        </ol>
+      </div>
+      <details>
+        <summary>거리를 함께 받아 보면 숫자가 작을수록 가깝습니다</summary>
+        <p><code>store.similarity_search_with_score(q, k=4)</code>로 값을 같이 받으면 Chroma는 기본으로 거리(L2, 두 점 사이 직선거리의 제곱)를 돌려줍니다. 그래서 0에 가까울수록 질문과 가까운 조각입니다. 컬렉션을 만들 때 <code>collection_configuration={"hnsw": {"space": "cosine"}}</code>처럼 바꾸면 각도를 기준으로 잽니다. MMR 점수처럼 클수록 좋다고 생각하고 기준값을 정하면 정반대로 걸러지니 처음에 한 번 확인합니다.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap">
+      <h2>k와 꼬리표를 Agent가 고르게 하기</h2>
+      <p style="max-width: 760px">질문마다 알맞은 문서 종류와 k가 다르니 검색을 도구로 감싸 Agent에게 맡깁니다. 도구와 Agent 기록 읽는 법은 <a href="/posts/agent-tool-use-message-trace">11편</a>에서 다뤘고 여기서는 검색 도구에 필요한 것만 봅니다.</p>
+      <div class="rk-code">
+        <div class="rk-codel">
+<pre data-title="agent.py" data-hl="7,21-23,28-33" data-start="1"><code class="language-python">from typing import Literal
+from langchain.agents import create_agent
+from langchain.tools import tool
+# ... (store 설정은 search.py 와 같음)
+
+# ① 고를 수 있는 값을 셋으로 못 박기
+Kind = Literal["insurance", "glossary", "all"]
+
+@tool
+def search_docs(query: str, source_type: Kind = "all", k: int = 4) -&gt; str:
+    """사내 문서에서 질문과 관련된 조각을 찾습니다.
+    source_type: insurance=펫보험 약관, glossary=파이썬·AI 용어집, all=전체"""
+    kw = {"k": k, "fetch_k": max(20, k * 5)}
+    if source_type != "all":
+        kw["filter"] = {"source_type": source_type}
+    retriever = store.as_retriever(search_type="mmr", search_kwargs=kw)
+    docs = retriever.invoke(query)
+    if not docs:
+        return "찾은 조각이 없습니다."
+    # ② 쪽 번호를 붙인 글로 돌려주기
+    def cite(d):
+        return f"[{d.metadata['source']} {d.metadata.get('page', 0) + 1}쪽]"
+    return "\n\n".join(f"{cite(d)}\n{d.page_content}" for d in docs)
+
+agent = create_agent(
+    model="anthropic:claude-sonnet-5-5", tools=[search_docs],
+    # ③ 찾은 조각 안에서만 답하기
+    system_prompt=(
+        "search_docs로 찾은 조각의 내용만 씁니다. "
+        "금액에는 [파일 쪽]을 붙입니다. "
+        "답이 없으면 k나 검색어를 바꿔 한 번 더 찾고 "
+        "그래도 없으면 모른다고 합니다."
+    ),
+)
+q = {"messages": [{"role": "user", "content": "통원 치료 자기부담금이 얼마예요?"}]}
+for step in agent.stream(q, stream_mode="updates"):
+    for update in step.values():
+        for m in (update or {}).get("messages", []):
+            calls = getattr(m, "tool_calls", None)
+            text = m.content[:46].replace("\n", " ")
+            print(m.type, calls[0]["args"] if calls else text)</code></pre>
+<div class="rk-term"><span class="dim">$ python agent.py</span>
+ai {'query': '통원 치료 자기부담금', 'source_type': 'insurance', 'k': 4}
+tool [data/pet_insurance.pdf 20쪽] 제5조(자기부담금) ① 회사는 피보험동물
+ai 통원 치료는 하루에 1만원, 2만원, 3만원 가운데 가입할 때 고른 금액을</div>
+<p class="rk-note">출력은 설명을 위한 예시 답이고 줄마다 46자까지만 찍었습니다. Agent는 질문을 보고 약관만, k=4로 골랐고 검색 한 번에 금액표가 든 제5조 조각을 받아 바로 답했습니다. 마지막 줄의 답은 맨 위 오른쪽 화면의 답과 같습니다. 조각에 답이 없을 때만 k나 검색어를 바꿔 다시 찾습니다.</p>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>값 못 박기.</b> <code>Literal</code>로 적으면 도구 설명서에 고를 수 있는 값 목록(<code>enum</code>)이 들어가서 모델이 "pet"처럼 없는 꼬리표를 지어내지 못합니다. 문자열로만 받으면 필터가 빈 결과를 돌려줘도 모델은 이유를 모릅니다.</li>
+          <li><b>글로 돌려주기.</b> <code>Document</code> 목록을 그대로 돌려주면 모델은 PDF 만든 프로그램 이름 같은 꼬리표까지 글자로 읽어 토큰만 늘어납니다. 출처로 쓸 파일 이름과 쪽 번호만 앞에 붙여 이어 붙입니다.</li>
+          <li><b>지시문.</b> 찾은 조각 안에서만 답하고 출처를 붙이라는 규칙입니다. 출처가 붙어 있으면 사람이 그 쪽을 열어 맞는지 확인할 수 있습니다. 다시 찾는 횟수는 Agent 루프가 정하므로, 무한히 되풀이하지 않게 지시문에 "한 번 더"처럼 한도를 적어 둡니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="rk-sec">
+    <div class="rk-wrap rk-zig">
+      <div class="rk-txt">
+        <h2>요즘 RAG는 네 칸을 어떻게 더 잘 채울까요?</h2>
+        <p>찾는 방법을 여러 겹으로 쌓습니다. 첫째는 조각마다 "이 조각은 어느 문서의 어떤 내용인지" 설명을 50~100토큰 붙여 저장하는 <b>Contextual Retrieval</b>입니다. Anthropic이 2024년 9월에 공개했습니다. 앞에서 본 "무엇의 금액인지 적히지 않은 표 조각"을 고치는 방법입니다.</p>
+        <p>둘째는 <b>BM25</b>입니다. 책 뒤의 찾아보기처럼 질문의 낱말이 그대로 들어 있는 조각에 점수를 주는 오래된 검색 방식이라 "제5조" 같은 정확한 낱말에 강합니다.</p>
+        <p>셋째 <b>리랭킹(reranking)</b>은 후보를 150개쯤 넉넉히 뽑은 뒤 다른 모델이 하나씩 다시 읽고 20개로 줄 세우는 일입니다. 서류 심사 뒤에 면접을 한 번 더 보는 것과 같습니다. 셋을 다 쓰자 놓치는 비율은 처음의 3분의 1로 내려갔습니다.</p>
+      </div>
+      <figure data-figure>
+        <div class="rk-ctx">
+          <div class="rk-ck missed"><span class="tag">그냥 저장한 조각</span><table><tr><td>통원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr><tr><td>입원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr></table></div>
+          <div class="rk-ck picked"><span class="tag">설명을 붙여 저장한 조각</span><br><mark>펫보험 약관 제5조(자기부담금)의 금액표입니다.</mark><table><tr><td>통원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr><tr><td>입원의료비</td><td class="amt">1일당 1·2·3만원 중 선택</td></tr></table></div>
+        </div>
+        <p class="rk-q" style="margin: 36px 0 14px !important">정답 조각을 놓친 비율</p>
+        <div class="rk-fail">
+          <div class="rk-frow"><span>임베딩 검색만</span><div class="tr"><i style="width:100%"></i></div><b>5.7%</b></div>
+          <div class="rk-frow"><span>+ 조각마다 설명 붙여 임베딩</span><div class="tr"><i style="width:64.9%"></i></div><b>3.7%</b></div>
+          <div class="rk-frow"><span>+ 설명 붙여 BM25도 함께</span><div class="tr"><i style="width:50.9%"></i></div><b>2.9%</b></div>
+          <div class="rk-frow best"><span>+ 리랭킹</span><div class="tr"><i style="width:33.3%"></i></div><b>1.9%</b></div>
+        </div>
+        <p class="rk-cap">상위 20개 조각 안에 정답 조각이 없었던 비율입니다. 막대가 짧을수록 좋습니다. 출처: Anthropic, <a href="https://www.anthropic.com/news/contextual-retrieval">Introducing Contextual Retrieval</a>(2024-09-19). 여러 분야 문서로 잰 값이라 약관 하나에 그대로 들어맞지는 않습니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="rk-sec rk-refs">
+    <div class="rk-wrap rk-head">
+      <h2>참고 자료</h2>
+      <ul>
+        <li>LangChain, <a href="https://docs.langchain.com/oss/python/integrations/vectorstores/chroma">Chroma 연동</a> · <a href="https://docs.langchain.com/oss/python/integrations/document_loaders">Document loaders</a> · <a href="https://github.com/langchain-ai/langchain/blob/master/libs/partners/chroma/langchain_chroma/vectorstores.py">langchain_chroma/vectorstores.py</a></li>
+        <li><a href="https://github.com/pymupdf/langchain-pymupdf4llm">langchain-pymupdf4llm</a> · <a href="https://github.com/langchain-ai/langchain-community/issues/674">langchain-community 지원 종료 안내</a></li>
+        <li>Chroma, <a href="https://docs.trychroma.com/docs/collections/configure">Configure collections</a> · <a href="https://docs.trychroma.com/docs/querying-collections/metadata-filtering">Metadata filtering</a></li>
+        <li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/embeddings">Embeddings</a></li>
+        <li>Carbonell &amp; Goldstein, <a href="https://doi.org/10.1145/290941.291025">The use of MMR, diversity-based reranking for reordering documents and producing summaries</a> (SIGIR 1998)</li>
+        <li>Qdrant, <a href="https://qdrant.tech/blog/mmr-diversity-aware-reranking/">MMR diversity-aware reranking</a> · Weaviate, <a href="https://weaviate.io/blog/chunking-strategies-for-rag">Chunking strategies for RAG</a></li>
+        <li>Anthropic, <a href="https://www.anthropic.com/news/contextual-retrieval">Introducing Contextual Retrieval</a> (2024)</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const sc = root.querySelector("[data-rk-sc]");
+  if (!sc) return;
+  const stage = sc.querySelector("[data-rk-stage]");
+  const steps = [...sc.querySelectorAll("[data-rk-step]")];
+  const mq = matchMedia("(max-width: 860px)");
+  const place = () => {
+    if (mq.matches) { stage.style.top = ""; return; }
+    stage.style.top = Math.max(84, (innerHeight - stage.offsetHeight) / 2) + "px";
+  };
+  const tick = () => {
+    if (mq.matches) {
+      stage.dataset.s = 3;
+      steps.forEach((el) => el.classList.add("on"));
+      return;
+    }
+    const line = innerHeight / 2;
+    let best = 0, bd = Infinity;
+    steps.forEach((el, i) => {
+      const r = el.getBoundingClientRect();
+      const d = Math.abs((r.top + r.bottom) / 2 - line);
+      if (d < bd) { bd = d; best = i; }
+    });
+    stage.dataset.s = best;
+    steps.forEach((el, i) => el.classList.toggle("on", i === best));
+  };
+  place(); tick();
+  addEventListener("scroll", tick, { passive: true, signal });
+  addEventListener("resize", () => { place(); tick(); }, { passive: true, signal });
+})();
+</script>
