@@ -1,0 +1,298 @@
+---
+title: 워크플로로 충분한 일에Agent를 쓰고 있지는 않나요?
+slug: workflow-agent-patterns-map
+excerpt: LLM 앱의 흐름은 실행 순서를 누가 정하느냐에 따라 둘로 나뉩니다. 코드가 정하면 워크플로, 모델이 정하면 Agent입니다. Anthropic이 정리한 다섯 가지 워크플로(프롬프트 체이닝·라우팅·병렬화·오케스트레이터-워커·평가자-최적화)와 Agent를 그림 한 장으로 비교하고, 어느 쪽을 언제 고르는지 정리합니다.
+tags: [AI 아키텍처, AI Agent, 워크플로, Anthropic, LangGraph]
+category: ai
+series: ai-architecture-cheatsheet
+series_order: 2
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwg1gnoj.jpg
+---
+<!-- page -->
+<!-- layout: 제목|요약 머리 + 순서 결정 축 + 패턴 여섯 개 옅은 면 격자 + 아이콘 설명 3열 + 제목|글 머리와 단순한 것부터 세 단계 면 + 글|같은 요청 두 방식 비교 2단 + 더 읽어 보기 | 글의 성격: 여섯 패턴을 한눈에 비교하는 치트시트라 첫 화면에 작은 흐름 여섯 개를 같은 크기로 늘어놓고, 모델 판단(주황)과 코드 처리(초록)를 아이콘 색으로 가른다 | 버린 후보: 패턴마다 큰 그림 한 장씩 세로로(한눈에 비교가 안 됨) -->
+<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10) -->
+<style>
+.post-page .ac {
+  --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
+  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ac {
+  --ac-user: rgb(110, 165, 255); --ac-app: rgb(60, 205, 165); --ac-model: rgb(255, 150, 80);
+  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192);
+}
+.post-page .ac * { box-sizing: border-box; }
+.post-page .ac-wrap { max-width: 1240px; margin: 0 auto; padding: 0 40px; }
+.post-page .ac h1, .post-page .ac h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
+.post-page .ac h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.2; }
+.post-page .ac h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .ac p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .ac b { color: var(--fg-strong); }
+.post-page .ac a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ac p.ac-cap { font-size: 14.5px; color: var(--fg-neutral); line-height: 1.7; margin: 16px 0 0; }
+.post-page .ac-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .ac-sec:last-child { padding-bottom: 40px; }
+.post-page .ac-hero { padding-top: clamp(40px, 6vw, 72px); }
+.post-page .ac-kicker { font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--fg-neutral); margin-bottom: 14px; }
+.post-page .ac-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: end; }
+.post-page .ac-head p { margin: 0; }
+.post-page .ac .k-user { --c: var(--ac-user); } .post-page .ac .k-app { --c: var(--ac-app); }
+.post-page .ac .k-model { --c: var(--ac-model); } .post-page .ac .k-data { --c: var(--ac-data); }
+.post-page .ac .k-tool { --c: var(--ac-tool); } .post-page .ac .k-ops { --c: var(--ac-ops); }
+
+/* 아이콘 노드(작은 판) — POSTING 5-10 */
+.post-page .ac .nd { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--fg-strong); text-align: center; white-space: nowrap; }
+.post-page .ac .ni { width: 42px; height: 42px; border-radius: 12px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 4px 14px rgba(15, 23, 42, .08); display: grid; place-items: center; }
+[data-theme="dark"] .post-page .ac .ni { background: color-mix(in srgb, var(--fg-strong) 9%, var(--bg-base)); box-shadow: none; }
+.post-page .ac .ni svg { width: 21px; height: 21px; color: var(--c); }
+.post-page .ac .ep { font-size: 12.5px; color: var(--fg-neutral); white-space: nowrap; align-self: center; }
+.post-page .ac svg.ar { width: 16px; height: 16px; color: var(--fg-neutral); flex: none; align-self: center; margin-bottom: 18px; }
+
+/* 축: 순서를 누가 정하나 */
+.post-page .ac-axis { display: flex; align-items: center; gap: 16px; margin: clamp(40px, 5vw, 56px) 0 22px; font-size: 13.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .ac-axis .k { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.post-page .ac-axis .k svg { width: 18px; height: 18px; color: var(--c); }
+.post-page .ac-axis .line { flex: 1; height: 2px; background: linear-gradient(90deg, var(--ac-app), var(--ac-model)); position: relative; border-radius: 2px; }
+.post-page .ac-axis .line::after { content: ""; position: absolute; right: -2px; top: -4px; border: 5px solid transparent; border-left: 8px solid var(--ac-model); border-right: 0; }
+
+/* 패턴 여섯 개 격자 */
+.post-page .ac-patterns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; }
+.post-page .ac-patterns .pf { background: var(--bg-subtle); border-radius: 22px; padding: 22px 22px 20px; display: flex; flex-direction: column; }
+.post-page .ac-patterns .pf.agent { background: color-mix(in srgb, var(--ac-model) 8%, var(--bg-base)); }
+.post-page .ac-patterns .pn { font-size: 16px; font-weight: 800; color: var(--fg-strong); }
+.post-page .ac-patterns .pn span { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); margin-top: 2px; }
+.post-page .ac-patterns .fl { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 26px 0 22px; min-height: 160px; }
+.post-page .ac-patterns .stk { display: flex; flex-direction: column; gap: 10px; align-items: center; position: relative; }
+.post-page .ac-patterns .stk.dyn { padding: 8px 8px; border-radius: 14px; outline: 1.5px dashed color-mix(in srgb, var(--ac-model) 55%, transparent); outline-offset: 0; }
+.post-page .ac-patterns .fl:has(.dyn) { margin-bottom: 40px; }
+.post-page .ac-patterns .stk.dyn::after { content: "몇 개로 나눌지 모델이 정함"; position: absolute; bottom: -22px; font-size: 11px; color: var(--ac-model); white-space: nowrap; font-weight: 700; }
+.post-page .ac-patterns .lp { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--fg-neutral); margin-bottom: 18px; white-space: nowrap; }
+.post-page .ac-patterns .lp svg { width: 18px; height: 18px; color: var(--fg-neutral); }
+.post-page .ac-patterns .pw { font-size: 13.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin: auto 0 0 !important; }
+.post-page .ac-patterns .pw b { color: var(--fg-strong); font-weight: 700; }
+
+/* 설명 3열 */
+.post-page .ac-notes { list-style: none; margin: clamp(36px, 4vw, 48px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 40px; }
+.post-page .ac-notes li { font-size: 15px; line-height: 1.75; color: var(--fg-normal); }
+.post-page .ac-notes li b { display: block; font-size: 16px; margin-bottom: 4px; }
+
+/* 단순한 것부터: 세 단계 면 + 상대 막대 */
+.post-page .ac-ladder { display: grid; grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr); margin: clamp(40px, 5vw, 60px) 0 0; }
+.post-page .ac-ladder .st { background: var(--bg-subtle); border-radius: 22px; padding: 26px 24px; display: grid; justify-items: start; gap: 4px; }
+.post-page .ac-ladder .st .ni { margin-bottom: 10px; width: 52px; height: 52px; border-radius: 15px; }
+.post-page .ac-ladder .st .ni svg { width: 26px; height: 26px; }
+.post-page .ac-ladder .st b { font-size: 17px; }
+.post-page .ac-ladder .st .d { font-size: 13.5px; color: var(--fg-neutral); line-height: 1.6; }
+.post-page .ac-ladder .bars { width: 100%; display: grid; gap: 10px; margin-top: 18px; }
+.post-page .ac-ladder .bar { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); align-items: center; gap: 10px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .ac-ladder .bar i { height: 8px; border-radius: 8px; background: color-mix(in srgb, var(--fg-strong) 10%, transparent); position: relative; overflow: hidden; }
+.post-page .ac-ladder .bar i::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--v); border-radius: 8px; background: var(--c); }
+.post-page .ac-ladder .sa { display: grid; place-items: center; color: var(--fg-neutral); }
+.post-page .ac-ladder .sa svg { width: 20px; height: 20px; }
+
+/* 같은 요청 두 방식 */
+.post-page .ac-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(36px, 5vw, 80px); align-items: center; }
+.post-page .ac-runs { display: grid; gap: 16px; }
+.post-page .ac-runs .run { background: var(--bg-subtle); border-radius: 22px; padding: 20px 22px; }
+.post-page .ac-runs .run.agent { background: color-mix(in srgb, var(--ac-model) 8%, var(--bg-base)); }
+.post-page .ac-runs .rh { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 15px; font-weight: 800; color: var(--fg-strong); }
+.post-page .ac-runs .rh span { font-size: 13px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ac-runs .fl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; row-gap: 14px; }
+
+.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
+.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); margin: 0; }
+.post-page .ac-more ul { margin: 0; padding-left: 1.3em; }
+.post-page .ac-more li { font-size: 15.5px; line-height: 1.8; margin-bottom: 6px; }
+
+@media (max-width: 1080px) {
+  .post-page .ac-patterns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .post-page .ac-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 960px) {
+  .post-page .ac-split { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ac-ladder { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ac-ladder .sa { padding: 10px 0; } .post-page .ac-ladder .sa svg { transform: rotate(90deg); }
+}
+@media (max-width: 720px) {
+  .post-page .ac-wrap { padding: 0 20px; }
+  .post-page .ac-head, .post-page .ac-more { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ac-patterns, .post-page .ac-notes { grid-template-columns: minmax(0, 1fr); }
+  .post-page .ac-axis { font-size: 12.5px; gap: 10px; }
+  .post-page .ac-patterns .fl { gap: 6px; min-height: 120px; }
+}
+</style>
+
+<div class="ac">
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-arrow-left-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4" /> <path d="M4 7h16" /> <path d="m16 21 4-4-4-4" /> <path d="M20 17H4" /></g></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></g></symbol>
+<symbol id="i-badge-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /> <path d="m16 9-5.5 5.5L8 12" /></g></symbol>
+<symbol id="i-brain" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5" /> <path d="M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4" /> <path d="M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294" /> <path d="M17.996 5.125a4 4 0 012.526 5.77" /> <path d="M18 18a4 4 0 002-7.465" /> <path d="M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517" /> <path d="M6 18a4 4 0 01-2-7.465" /> <path d="M6.004 5.125a4 4 0 00-2.526 5.77" /></g></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m16 9-5.5 5.5L8 12" /></g></symbol>
+<symbol id="i-merge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 6 4-4 4 4" /> <path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22" /> <path d="m20 22-5-5" /></g></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" /></g></symbol>
+<symbol id="i-split" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5" /> <path d="M8 3H3v5" /> <path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3" /> <path d="m15 9 6-6" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-workflow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2" /> <path d="M7 11v4a2 2 0 0 0 2 2h4" /> <rect width="8" height="8" x="13" y="13" rx="2" /></g></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></g></symbol>
+</defs></svg>
+
+<section class="ac-hero">
+  <div class="ac-wrap">
+    <div class="ac-kicker">한 장으로 보는 AI 시스템 설계 · 2</div>
+    <div class="ac-head">
+      <h1>워크플로로 충분한 일에<br>Agent를 쓰고 있지는 않나요?</h1>
+      <p>LLM 앱의 흐름은 실행 순서를 누가 정하느냐에 따라 둘로 나뉩니다. 코드가 정하면 워크플로, 모델이 정하면 Agent입니다. 아래 여섯 그림은 왼쪽 위에서 오른쪽 아래로 갈수록 모델이 정하는 몫이 커집니다.</p>
+    </div>
+
+    <div class="ac-axis" aria-hidden="true">
+      <span class="k k-app"><svg><use href="#i-workflow"/></svg>순서를 코드가 정한다</span>
+      <span class="line"></span>
+      <span class="k k-model"><svg><use href="#i-brain"/></svg>순서를 모델이 정한다</span>
+    </div>
+
+    <figure class="ac-patterns" data-figure data-thumb aria-label="LLM 흐름 패턴 여섯 가지. 프롬프트 체이닝, 라우팅, 병렬화, 오케스트레이터-워커, 평가자-최적화 다섯 워크플로와 Agent를 같은 크기의 작은 흐름도로 늘어놓았다. 주황 아이콘은 모델이 판단하는 단계, 초록 아이콘은 코드가 처리하는 단계, 청록은 도구다.">
+      <div class="pf">
+        <div class="pn">프롬프트 체이닝<span>Prompt chaining</span></div>
+        <div class="fl">
+          <span class="ep">입력</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM 1</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-app"><span class="ni"><svg><use href="#i-circle-check"/></svg></span>검사</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM 2</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">출력</span>
+        </div>
+        <p class="pw"><b>언제</b> 일을 정해진 단계로 나눌 수 있을 때</p>
+      </div>
+      <div class="pf">
+        <div class="pn">라우팅<span>Routing</span></div>
+        <div class="fl">
+          <span class="ep">입력</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-split"/></svg></span>분류</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="stk"><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>계정 담당</span><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>장비 담당</span></span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">출력</span>
+        </div>
+        <p class="pw"><b>언제</b> 입력 종류마다 다르게 처리해야 할 때</p>
+      </div>
+      <div class="pf">
+        <div class="pn">병렬화<span>Parallelization</span></div>
+        <div class="fl">
+          <span class="ep">입력</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="stk"><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span></span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-app"><span class="ni"><svg><use href="#i-merge"/></svg></span>합치기</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">출력</span>
+        </div>
+        <p class="pw"><b>언제</b> 나눠서 동시에 하거나, 여러 번 물어 다수결을 낼 때</p>
+      </div>
+      <div class="pf">
+        <div class="pn">오케스트레이터-워커<span>Orchestrator-workers</span></div>
+        <div class="fl">
+          <span class="ep">입력</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>나누기</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="stk dyn"><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>워커</span><span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>워커</span></span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>종합</span>
+        </div>
+        <p class="pw"><b>언제</b> 하위 작업이 무엇일지 미리 알 수 없을 때</p>
+      </div>
+      <div class="pf">
+        <div class="pn">평가자-최적화<span>Evaluator-optimizer</span></div>
+        <div class="fl">
+          <span class="ep">입력</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>생성</span>
+          <span class="lp"><svg><use href="#i-arrow-left-right"/></svg>고쳐서 다시</span>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-badge-check"/></svg></span>평가</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">출력</span>
+        </div>
+        <p class="pw"><b>언제</b> 평가 기준이 분명하고 고칠수록 나아질 때</p>
+      </div>
+      <div class="pf agent">
+        <div class="pn">Agent<span>Autonomous agent</span></div>
+        <div class="fl">
+          <span class="nd k-user"><span class="ni"><svg><use href="#i-user"/></svg></span>사람</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span>
+          <span class="lp"><svg><use href="#i-repeat"/></svg>멈출 때까지</span>
+          <span class="nd k-tool"><span class="ni"><svg><use href="#i-wrench"/></svg></span>도구</span>
+        </div>
+        <p class="pw"><b>언제</b> 단계 수도 순서도 미리 정할 수 없을 때</p>
+      </div>
+    </figure>
+    <p class="ac-cap">주황 아이콘은 모델이 판단하는 단계, 초록은 코드가 처리하는 단계, 청록은 도구입니다. 그림은 Anthropic "Building effective agents"의 분류를 따랐습니다.</p>
+
+    <ul class="ac-notes">
+      <li><b>프롬프트 체이닝</b>앞 단계의 출력이 다음 단계의 입력이 됩니다. 중간에 코드로 검사를 넣어 엉뚱한 방향으로 가면 멈춥니다.</li>
+      <li><b>라우팅</b>먼저 입력을 분류하고 종류마다 따로 다듬은 프롬프트나 모델로 보냅니다. 쉬운 질문은 작은 모델로 보내 비용을 줄이기도 합니다.</li>
+      <li><b>병렬화</b>독립된 일을 나눠 동시에 맡기거나, 같은 일을 여러 번 시켜 결과를 비교합니다. 결과를 합치는 일은 코드가 합니다.</li>
+      <li><b>오케스트레이터-워커</b>병렬화와 비슷해 보이지만 무엇을 몇 개로 나눌지는 실행 중에 모델이 정합니다.</li>
+      <li><b>평가자-최적화</b>한 모델이 만들고 다른 모델이 평가해 고칠 점을 돌려줍니다. 기준을 통과하거나 횟수 한도에 닿으면 끝납니다.</li>
+      <li><b>Agent</b>모델이 도구를 쓰고 결과를 보며 다음 행동을 스스로 고릅니다. 언제 멈출지도 모델이 정하므로 횟수 한도와 사람 확인을 함께 둡니다.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-head">
+      <h2>가장 단순한 방법부터 시작합니다</h2>
+      <div>
+        <p>Anthropic은 가장 단순한 방법을 먼저 찾고 꼭 필요할 때만 복잡도를 높이라고 권합니다. 검색과 예시를 붙인 LLM 호출 한 번으로 풀리는 일이 생각보다 많습니다.</p>
+        <p>Agent는 지연과 비용이 더 드는 대신 그만큼 더 넓은 일을 해냅니다. 고를 때는 그 대가를 치를 만한 일인지를 봅니다.</p>
+      </div>
+    </div>
+    <figure class="ac-ladder" data-figure aria-label="LLM 호출 한 번, 워크플로, Agent 세 단계. 오른쪽으로 갈수록 비용·지연과 할 수 있는 일의 폭이 함께 커진다.">
+      <div class="st k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span><b>LLM 호출 한 번</b><span class="d">검색 결과와 예시를 붙여 한 번에 답한다</span>
+        <div class="bars"><span class="bar k-ops">비용 · 지연<i style="--v: 18%"></i></span><span class="bar k-model">할 수 있는 일<i style="--v: 22%"></i></span></div></div>
+      <div class="sa" aria-hidden="true"><svg><use href="#i-arrow-right"/></svg></div>
+      <div class="st k-app"><span class="ni"><svg><use href="#i-workflow"/></svg></span><b>워크플로</b><span class="d">정해 둔 순서로 LLM을 여러 번 부른다</span>
+        <div class="bars"><span class="bar k-ops">비용 · 지연<i style="--v: 48%"></i></span><span class="bar k-model">할 수 있는 일<i style="--v: 55%"></i></span></div></div>
+      <div class="sa" aria-hidden="true"><svg><use href="#i-arrow-right"/></svg></div>
+      <div class="st k-model"><span class="ni"><svg><use href="#i-repeat"/></svg></span><b>Agent</b><span class="d">모델이 도구를 쓰며 다음 행동을 고른다</span>
+        <div class="bars"><span class="bar k-ops">비용 · 지연<i style="--v: 88%"></i></span><span class="bar k-model">할 수 있는 일<i style="--v: 92%"></i></span></div></div>
+    </figure>
+    <p class="ac-cap">막대 길이는 설명을 위한 상대 비교입니다. 실제 비용과 지연은 모델과 작업에 따라 크게 다릅니다.</p>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap ac-split">
+    <div>
+      <h2>같은 요청을 두 방식으로 처리하면 어떻게 다를까요?</h2>
+      <p>"노트북이 너무 느려요"라는 문의를 라우팅 워크플로와 Agent로 처리해 봤습니다. 워크플로는 어떤 문의든 같은 횟수만큼 모델을 부릅니다. 그래서 비용을 예상하기 쉽고 문제가 생기면 어느 단계에서 틀렸는지 찾기도 쉽습니다.</p>
+      <p>Agent는 장비 상태를 조회해 보고 나서야 티켓을 만들지 정합니다. 처리할 수 있는 문의는 넓어지지만 호출 횟수가 매번 달라집니다.</p>
+    </div>
+    <figure class="ac-runs" data-figure aria-label="같은 문의를 처리하는 두 방식. 라우팅 워크플로는 분류와 장비 담당 두 번 호출로 끝나고, Agent는 모델과 도구를 번갈아 다섯 단계를 거친다.">
+      <div class="run">
+        <div class="rh">라우팅 워크플로<span>모델 호출 2번 · 매번 같다</span></div>
+        <div class="fl">
+          <span class="ep">문의</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-split"/></svg></span>분류: 장비</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>장비 담당 답변</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">"재부팅해 보세요"</span>
+        </div>
+      </div>
+      <div class="run agent">
+        <div class="rh">Agent<span>모델 호출 3번 · 상황마다 다르다</span></div>
+        <div class="fl">
+          <span class="ep">문의</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-tool"><span class="ni"><svg><use href="#i-wrench"/></svg></span>장비 조회</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-tool"><span class="ni"><svg><use href="#i-wrench"/></svg></span>티켓 생성</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="nd k-model"><span class="ni"><svg><use href="#i-brain"/></svg></span>LLM</span><svg class="ar"><use href="#i-arrow-right"/></svg>
+          <span class="ep">"디스크 교체 접수"</span>
+        </div>
+      </div>
+      <p class="ac-cap">설명을 위한 예시 흐름입니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap ac-more">
+    <h2>더 읽어 보기</h2>
+    <ul>
+      <li><a href="/posts/workflow-vs-agent-chaining-routing">체이닝과 라우팅을 코드로</a> · <a href="/posts/workflow-parallel-orchestrator-evaluator">병렬화·오케스트레이터·평가자를 코드로</a> · <a href="/posts/ai-agent-vs-chatbot">챗봇과 Agent의 차이</a></li>
+      <li><a href="https://www.anthropic.com/engineering/building-effective-agents" rel="noopener">Anthropic, Building effective agents</a> · <a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents" rel="noopener">LangGraph 문서, Workflows and agents</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
