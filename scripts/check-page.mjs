@@ -118,11 +118,23 @@ function rhythm(L) {
     if (run > maxRun) maxRun = run;
     if (run > L.run && run - c <= L.run) problems.push(`그림 없이 ${L.run}자를 넘는 글 구간: "${runStart}…" 부터`);
   }
-  return { sections: secs.length, withFig, single: single.length, figures: all.length, maxPara, maxRun, problems };
+  // 조작 요소 — 독자에게 입력을 요구하는 버튼·토글·슬라이더·입력칸. 사이트가 붙이는 코드 복사 버튼은 뺀다.
+  // L.noControls 인 글(AI Agent 시리즈)은 하나라도 있으면 실패(POSTING 5-3, 2026-11-14)
+  const controls = [...root.querySelectorAll("button, input, select, textarea")].filter((el) => !el.matches("[data-pg-copy]"));
+  if (L.noControls && controls.length) problems.push(`조작 요소 ${controls.length}개 — 이 시리즈는 버튼·토글·슬라이더·입력칸을 두지 않는다: ${controls.slice(0, 4).map((el) => '"' + (el.textContent || el.getAttribute("aria-label") || el.type).trim().slice(0, 12) + '"').join(", ")}`);
+  return { sections: secs.length, withFig, single: single.length, figures: all.length, controls: controls.length, maxPara, maxRun, problems };
 }
 const [slug, out] = process.argv.slice(2);
 const dark = process.argv.includes("--dark");
 const ai = process.argv.indexOf("--act"); const act = ai > 0 ? process.argv[ai + 1] : null;
+// 조작 요소를 두지 않는 시리즈(POSTING 5-3) — 원고 프런트매터의 series 로 가린다
+const NO_CONTROL_SERIES = ["ai-agent"];
+try {
+  const { readFileSync } = await import("node:fs");
+  const fm = readFileSync(`auto-drafts/posts/${slug}.html`, "utf8").match(/^---[\s\S]*?\n---/)?.[0] || "";
+  const series = fm.match(/^series:\s*(\S+)/m)?.[1];
+  if (NO_CONTROL_SERIES.includes(series)) LIMITS.noControls = true;
+} catch {}
 const b = await chromium.launch();
 let bad = false;
 for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 844, true]]) {
@@ -143,7 +155,7 @@ for (const [name, vw, vh, mobile] of [["desk", 1440, 900, false], ["mob", 390, 8
   const ov = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (name === "desk" && !dark) {
     const r = await p.evaluate(rhythm, LIMITS);
-    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}, 가운데 한 열 ${r.single}) · 그림 ${r.figures} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
+    console.log(`rhythm: 섹션 ${r.sections}(그림 있는 섹션 ${r.withFig}, 가운데 한 열 ${r.single}) · 그림 ${r.figures} · 조작 요소 ${r.controls} · 가장 긴 단락 ${r.maxPara}자 · 그림 없이 이어진 최대 ${r.maxRun}자`);
     if (r.problems.length) { bad = true; r.problems.forEach((x) => console.log("  ✗ " + x)); }
   }
   if (name === "mob" && !dark) {
