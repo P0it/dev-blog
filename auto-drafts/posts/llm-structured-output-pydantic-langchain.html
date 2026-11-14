@@ -9,7 +9,7 @@ series_order: 5
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-structured-output-pydantic-langchain-mvb6b2qj.jpg
 ---
 <!-- page -->
-<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 전폭 분류함 장면 아래) + 글|그림 2단(종이 양식) + 그림 고정 스크롤리텔링(두 갈래 길) + 실험판 전폭 띠(검문 두 겹) + 그림|글 뒤집기(탁구 재시도) | 글의 성격: 같은 서류가 투입구에 맞느냐 안 맞느냐로 양식의 필요를 보이는 글이라 모양이 제각각인 서류와 같은 서류를 분류함에 던지는 장면으로 열고 길·검문·재시도를 장면으로 이어 간다 | 버린 후보: 상자 비교 보드(앞 버전, 그림이 라벨 상자뿐) -->
+<!-- layout: 위아래 쌓은 히어로(제목·리드 위, 전폭 분류함 장면 아래) + 글|그림 2단(종이 양식) + 그림 고정 스크롤리텔링(두 갈래 길) + 작은 그림 네 장(검문 두 겹) + 그림|글 뒤집기(탁구 재시도) | 글의 성격: 같은 서류가 투입구에 맞느냐 안 맞느냐로 양식의 필요를 보이는 글이라 모양이 제각각인 서류와 같은 서류를 분류함에 던지는 장면으로 열고 길·검문·재시도를 장면으로 이어 간다 | 버린 후보: 상자 비교 보드(앞 버전, 그림이 라벨 상자뿐) -->
 <style>
 .post-page .so {
   --so-human: rgb(37, 112, 235); --so-code: rgb(16, 150, 120); --so-model: rgb(226, 106, 28); --so-bad: rgb(214, 56, 56);
@@ -34,19 +34,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .so-split.top { align-items: start; }
 .post-page .so-split.rev > :first-child { order: 2; }
 
-/* 고르기 = 토글, 실행 = 테두리 버튼 */
-.post-page .so-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
-.post-page .so-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
-.post-page .so-seg button:hover { color: var(--fg-strong); }
-.post-page .so-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
-.post-page .so-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
-.post-page .so-act::before { content: "▶ "; font-size: 11px; }
-.post-page .so-act:disabled { opacity: .4; cursor: default; }
-.post-page .so-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
-.post-page .so-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
-.post-page .so-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
-.post-page .so-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
-
 /* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
 .post-page .so-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
 .post-page .so-tag.n { --t: var(--fg-strong); } .post-page .so-tag.m { --t: var(--so-model); } .post-page .so-tag.c { --t: var(--so-code); } .post-page .so-tag.h { --t: var(--so-human); } .post-page .so-tag.x { --t: var(--so-bad); }
@@ -65,10 +52,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .so ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .so-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
 .post-page .so-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
-.post-page .so-term-bar .so-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
 .post-page .so-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
-.post-page .so-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-so-blink 1s steps(1) infinite; }
-@keyframes pg-so-blink { 50% { opacity: 0; } }
 @media (max-width: 900px) {
   .post-page .so-codepair, .post-page .so-codepair.rev { grid-template-columns: minmax(0, 1fr); }
   .post-page .so-codepair > .cp-code, .post-page .so-codepair > .cp-term, .post-page .so-codepair > .cp-notes,
@@ -104,11 +88,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .so-split.rev > :first-child { order: 0; }
   .post-page p.so-mobhint { display: block; }
 }
-/* 실험판 전폭 띠 */
-.post-page .so-lab { margin-top: clamp(96px, 12vw, 160px); padding: clamp(40px, 5vw, 64px) 0; background: var(--bg-subtle); }
-.post-page .so-lab h2 { margin-bottom: 24px; }
-.post-page .so-labtop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
-@media (max-width: 900px) { .post-page .so-labtop { grid-template-columns: minmax(0, 1fr); } }
 /* 비교 두 칸 + 세로 카드 */
 .post-page .so-vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; margin-top: 8px; }
 .post-page .so-vs h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
@@ -155,22 +134,26 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .so-step p { margin: 0; }
 .post-page .so-sfig { position: sticky; top: var(--so-top, 96px); }
 .post-page .so-stat { margin-top: 10px; font-size: 14.5px; color: var(--fg-neutral); text-align: center; min-height: 2.2em; }
-.post-page .so-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
+.post-page .so-stat b { color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .so-story { grid-template-columns: minmax(0, 1fr); } .post-page .so-sfig { position: static; order: -1; } .post-page .so-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .so-steps { padding-bottom: 0; } }
 
 .post-page .so-hero-lede { max-width: 760px; margin-top: 28px; }
-.post-page .so-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 36px; }
-.post-page .so-stage .so-ctrl { margin-bottom: 8px; gap: 8px 14px; }
-.post-page .so-stage .so-ctrl > span { font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
+.post-page .so-stage { margin-top: 44px; }
+.post-page .so-req { max-width: 760px; margin: 36px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; padding: 14px 18px; border-radius: 14px; background: var(--bg-subtle); }
+.post-page .so-req dt { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .so-req dd { margin: 0; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); }
+.post-page .so-req dd code { font-size: 13px; }
 .post-page .so-card { transition: opacity .6s cubic-bezier(.2,.7,.2,1); }
-.post-page .so-verdict { margin-top: 10px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
 .post-page .so-vl { display: grid; gap: 8px; margin-top: 14px; }
 .post-page .so-vl > div { font-size: 14.5px; line-height: 1.6; padding: 8px 0; border-top: 1px solid var(--line-subtle); color: var(--fg-normal); }
 .post-page .so-vl b { color: var(--fg-strong); }
-.post-page .so-cases { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
-.post-page .so-cases button { font: inherit; font-size: 14px; text-align: left; padding: 8px 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--bg-base); color: var(--fg-normal); cursor: pointer; }
-.post-page .so-cases button b { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--fg-strong); }
-.post-page .so-cases button[aria-pressed="true"] { border-color: var(--fg-strong); background: var(--bg-muted); }
+/* 검문 두 겹: 같은 크기의 작은 그림 네 장 */
+.post-page .so-gcases { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 48px 28px; margin-top: 44px; }
+.post-page .so-gcase { margin: 0; }
+.post-page .so-scene.so-gmini { max-width: 300px; }
+.post-page .so-gcase .so-vl > div { font-size: 14px; overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .post-page .so-gcases { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .post-page .so-gcases { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -193,18 +176,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <p>은행에서 서류를 쓸 때 백지를 받는 경우는 없습니다. 이름과 계좌 번호와 날짜 칸이 나뉜 양식을 받습니다. 창구 직원이 양식이 같은 서류만 처리할 수 있기 때문입니다.</p>
         <p>프로그램도 마찬가지입니다. 문의 내용을 분류해서 담당 큐(대기열)로 보내는 프로그램은 모델의 답에서 "장비"라는 단어를 정확히 읽어야 합니다. 그런데 모델에게 그냥 물으면 답의 모양이 매번 달라집니다. 같은 질문을 세 번 물어 받은 서류를 분류함 투입구에 넣어 봅니다.</p>
       </div>
-      <div class="so-stage" data-figure data-thumb data-so-hero>
-        <div class="so-ctrl">
-          <span>문의</span>
-          <div class="so-seg" role="group" aria-label="문의 고르기">
-            <button type="button" data-so-q="0" aria-pressed="true">노트북 화면 깜빡임</button>
-            <button type="button" data-so-q="1" aria-pressed="false">비밀번호 분실</button>
-            <button type="button" data-so-q="2" aria-pressed="false">프린터 용지 걸림</button>
-          </div>
-          <button type="button" class="so-act" data-so-throw>서류 넣어 보기</button>
-        </div>
-        <svg class="so-scene so-nar" data-so-sorter viewBox="0 0 460 640" role="img" aria-label="분류함 두 개 그림. 위쪽은 양식 없이 받은 서류 세 장이 원, 삼각형, 별로 모양이 제각각이라 네모난 투입구에 들어가지 못하고 튕겨 나온다. 아래쪽은 양식을 준 서류 세 장이 모두 같은 네모 모양이라 투입구로 쏙 들어가 담당 큐에 쌓인다."></svg>
-        <p class="so-cap" style="margin-bottom:0">양식 없는 쪽의 답은 설명을 위한 예시입니다. 실제 모양은 모델과 질문마다 다릅니다.</p>
+      <dl class="so-req" aria-label="들어온 문의">
+        <dt>보낸 사람</dt><dd>사내 직원</dd>
+        <dt>내용</dt><dd>"노트북 화면이 계속 깜빡여서 회의를 못 하고 있어요"</dd>
+        <dt>보낼 곳</dt><dd>분야별 담당 큐, 이번 문의는 <code>QUEUES["장비"]</code></dd>
+      </dl>
+      <div class="so-stage" data-figure data-thumb data-so-hero data-thumb-act="el.dispatchEvent(new Event('so-all'))">
+        <svg class="so-scene" data-so-sorter viewBox="0 0 930 312" role="img" aria-label="분류함 두 개 그림. 한쪽은 양식 없이 받은 서류 세 장이 원, 삼각형, 별로 모양이 제각각이라 네모난 투입구에 들어가지 못하고 튕겨 나온다. 다른 쪽은 양식을 준 서류 세 장이 모두 같은 네모 모양이라 투입구로 쏙 들어가 담당 큐에 쌓인다."></svg>
+        <p class="so-cap" style="margin-bottom:0">스크롤을 내리면 두 분류함에서 서류가 한 장씩 투입구로 갑니다. 양식 없는 쪽의 답은 설명을 위한 예시입니다. 실제 모양은 모델과 질문마다 다릅니다.</p>
       </div>
     </div>
   </section>
@@ -212,17 +191,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   <section class="so-sec">
     <div class="so-wrap so-split">
       <div data-figure>
-        <div class="so-ctrl" style="margin-bottom:14px">
-          <div class="so-seg" role="group" aria-label="분야 칸의 종류">
-            <button type="button" data-so-kind="str" aria-pressed="false">str (아무 글)</button>
-            <button type="button" data-so-kind="lit" aria-pressed="true">Literal (보기 고르기)</button>
-          </div>
-          <div class="so-seg" role="group" aria-label="설명 쓰기">
-            <button type="button" data-so-desc="1" aria-pressed="true">칸 설명 있음</button>
-            <button type="button" data-so-desc="0" aria-pressed="false">칸 설명 없음</button>
-          </div>
-        </div>
-        <svg class="so-scene so-nar" data-so-form viewBox="0 0 460 560" role="img" aria-label="종이 양식 그림. TicketInfo 양식에 분야와 긴급도와 요약 칸이 있다. 분야 칸을 Literal로 두면 보기 다섯 개 중 하나에 표시하고 str로 두면 아무 글이 제멋대로 적힌다. 아래의 로봇은 칸 설명을 읽고 칸을 채운다."></svg>
+        <svg class="so-scene so-nar" data-so-form viewBox="0 0 460 660" role="img" aria-label="종이 양식 그림. TicketInfo 양식에 분야와 긴급도와 요약 칸이 있다. 분야 칸은 Literal이라 보기 다섯 개 중 장비에 표시했고, 그 아래 점선 칸에는 str이었다면 하드웨어, 컴퓨터 고장, 장비가 제멋대로 적혔을 모습이 있다. 아래의 로봇은 칸 설명을 읽고 칸을 채운다. 점선 말풍선은 설명이 없었다면 칸의 뜻을 짐작해야 한다는 것을 보여 준다."></svg>
         <p class="so-cap">양식 그림은 TicketInfo 클래스의 칸을 종이 양식처럼 그린 것입니다. 칸 설명은 모델이 읽는 안내문이고 사람 눈에 보이는 서류와는 다릅니다.</p>
       </div>
       <div>
@@ -293,8 +262,8 @@ print(ticket.category, ticket.urgency)</code></pre>
         </div>
         <div class="cp-term">
 <div class="so-term" data-so-term>
-  <div class="so-term-bar"><span>터미널</span><button type="button" class="so-act" data-so-run="auto">실행해 보기</button></div>
-  <div class="so-term-out" data-so-out aria-live="polite">$ python classify.py
+  <div class="so-term-bar"><span>터미널</span></div>
+  <div class="so-term-out" data-so-out>$ python classify.py
 장비 높음</div>
 </div>
 <p class="so-cap">출력은 예시 답입니다. 코드는 <code>langchain</code> 1.4와 <code>pydantic</code> 2.14 기준입니다.</p>
@@ -321,18 +290,20 @@ ticket = structured.invoke("노트북 화면이 계속 깜빡여서 회의를 �
         <h2>양식이 모양을 지켜도 범위와 내용은 따로 검사합니다</h2>
         <div>
           <p>구조화 출력을 켜면 칸이 모두 채워지고 종류가 맞는 답이 옵니다. 그래도 걸러야 할 일이 남습니다. Anthropic 문서에 따르면 숫자의 최소·최대와 문자열 길이 같은 제약은 양식에 넣을 수 없습니다. 모델이 답을 거절하거나(refusal) 길이 한도에 걸려 답이 잘리면(max_tokens) 양식을 못 따르기도 합니다.</p>
-          <p>실제로 <code>confidence: float = Field(ge=0, le=1)</code>처럼 범위를 적으면 LangChain은 그 범위를 양식 규칙이 아니라 칸 설명 글에 덧붙여 보냅니다(요청을 직접 확인했습니다). 범위 검사는 받은 뒤 Pydantic이 합니다. 문제 있는 답을 하나 고르면 어느 검문에서 걸리는지 보입니다.</p>
+          <p>실제로 <code>confidence: float = Field(ge=0, le=1)</code>처럼 범위를 적으면 LangChain은 그 범위를 양식 규칙이 아니라 칸 설명 글에 덧붙여 보냅니다(요청을 직접 확인했습니다). 범위 검사는 받은 뒤 Pydantic이 합니다. 아래에 문제 있는 답 네 가지를 나란히 놓고 각각 어느 검문에서 멈추는지 표시했습니다.</p>
         </div>
       </div>
-      <div style="margin-top:44px" data-figure>
-        <div class="so-cases" role="group" aria-label="문제 있는 답 고르기">
-          <button type="button" data-so-case="0" aria-pressed="true"><b>urgency: "매우급함"</b>보기에 없는 값</button>
-          <button type="button" data-so-case="1" aria-pressed="false"><b>confidence: 1.4</b>0~1 범위를 벗어난 숫자</button>
-          <button type="button" data-so-case="2" aria-pressed="false"><b>stop_reason: "refusal"</b>모델이 답을 거절</button>
-          <button type="button" data-so-case="3" aria-pressed="false"><b>stop_reason: "max_tokens"</b>답이 길이 한도에서 잘림</button>
-        </div>
-        <svg class="so-scene so-nar" data-so-gates viewBox="0 0 460 620" role="img" aria-label="검문 두 겹 그림. 위에서 답 서류가 내려오다 첫째 검문인 회사 양식 검사와 둘째 검문인 Pydantic 검사를 차례로 지나 프로그램에 도착한다. 문제가 있는 답은 걸리는 검문에서 멈춘다."></svg>
-        <div class="so-vl" data-so-vl></div>
+      <div class="so-gcases" data-figure data-so-gcases>
+        <figure class="so-gcase"><svg class="so-scene so-gmini" data-so-gmini="0" viewBox="0 0 260 310" role="img" aria-label="보기에 없는 urgency 값 매우급함이 1겹 회사 양식 검사에서 멈춘 그림. ToolStrategy였다면 2겹에서 걸렸을 자리는 점선으로 그렸다."></svg>
+          <div class="so-vl"><div><b>1겹</b> ProviderStrategy: 보기에 없는 값은 아예 만들어지지 않게 막습니다</div><div><b>2겹</b> ToolStrategy라면 이 값이 여기까지 와서 literal_error로 걸립니다</div><div><b>프로그램</b> 어느 쪽이든 보기 안의 값만 도착합니다</div></div></figure>
+        <figure class="so-gcase"><svg class="so-scene so-gmini" data-so-gmini="1" viewBox="0 0 260 310" role="img" aria-label="confidence 1.4가 1겹을 지나 2겹 Pydantic 검사에서 멈춘 그림."></svg>
+          <div class="so-vl"><div><b>1겹</b> 숫자 범위는 양식 규칙에 없어서 통과합니다</div><div><b>2겹</b> less_than_equal: Input should be less than or equal to 1 (input 1.4)</div><div><b>프로그램</b> 도착하지 않았습니다. 에러를 모델에게 돌려주고 다시 시킵니다</div></div></figure>
+        <figure class="so-gcase"><svg class="so-scene so-gmini" data-so-gmini="2" viewBox="0 0 260 310" role="img" aria-label="stop_reason이 refusal인 답이 1겹에서 멈춘 그림."></svg>
+          <div class="so-vl"><div><b>1겹</b> stop_reason이 refusal이면 답이 양식을 따르지 않을 수 있습니다</div><div><b>2겹</b> 여기까지 오지 못했습니다</div><div><b>프로그램</b> stop_reason을 직접 확인해 안내 문구로 대신합니다</div></div></figure>
+        <figure class="so-gcase"><svg class="so-scene so-gmini" data-so-gmini="3" viewBox="0 0 260 310" role="img" aria-label="stop_reason이 max_tokens라 중간에 잘린 답이 1겹에서 멈춘 그림."></svg>
+          <div class="so-vl"><div><b>1겹</b> max_tokens면 JSON이 중간에 끊긴 채로 옵니다</div><div><b>2겹</b> 여기까지 오지 못했습니다</div><div><b>프로그램</b> max_tokens를 올려 다시 부르거나 실패로 처리합니다</div></div></figure>
+      </div>
+      <div>
         <p class="so-cap" style="margin-top:18px">검문 결과는 Anthropic 구조화 출력 문서와 Pydantic 검사 결과를 정리한 예시입니다. ToolStrategy를 쓰면 1겹이 없어서 보기에 없는 값도 2겹에서 걸립니다.</p>
       </div>
     </div>
@@ -342,8 +313,7 @@ ticket = structured.invoke("노트북 화면이 계속 깜빡여서 회의를 �
     <div class="so-wrap so-split rev">
       <div data-figure>
         <svg class="so-scene so-nar" data-so-pp viewBox="0 0 460 520" role="img" aria-label="탁구 그림. 모델이 urgency에 매우급함을 채워 보내면 Pydantic 검사가 걸러 에러 쪽지를 돌려보내고, 모델이 높음으로 고쳐 보내면 통과한다."></svg>
-        <div class="so-ctrl" style="justify-content:center;margin-top:10px"><button type="button" class="so-act" data-so-pp-play>다시 쳐 보기</button></div>
-        <p class="so-cap">ToolStrategy를 쓸 때의 흐름입니다. 에러 문구는 실제로 만들어지는 메시지를 줄여 옮긴 것입니다.</p>
+        <p class="so-cap">ToolStrategy를 쓸 때의 흐름입니다. 스크롤을 내리면 공이 모델과 검사 사이를 오가며 한 줄씩 나타납니다. 에러 문구는 실제로 만들어지는 메시지를 줄여 옮긴 것입니다.</p>
       </div>
       <div>
         <h2>검증에 실패하면 에러를 모델에게 돌려주고 다시 시킵니다</h2>
@@ -367,8 +337,8 @@ print("모델 호출", sum(m.type == "ai" for m in result["messages"]), "번")</
         </div>
         <div class="cp-term">
 <div class="so-term" data-so-term>
-  <div class="so-term-bar"><span>터미널</span><button type="button" class="so-act" data-so-run="retry">실행해 보기</button></div>
-  <div class="so-term-out" data-so-out aria-live="polite">$ python retry.py
+  <div class="so-term-bar"><span>터미널</span></div>
+  <div class="so-term-out" data-so-out>$ python retry.py
 category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
 모델 호출 2 번</div>
 </div>
@@ -433,29 +403,10 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
   const { root, signal } = window.postPage;
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
-  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const timers = new Set();
   const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
   signal.addEventListener("abort", () => timers.forEach(clearTimeout));
-  const nf = (n) => n.toLocaleString("ko-KR");
-  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const initTerms = (RUNS) => $$("[data-so-run]").forEach((btn) => btn.addEventListener("click", async () => {
-    const out = $("[data-so-out]", btn.closest("[data-so-term]"));
-    btn.disabled = true; out.textContent = "";
-    const cur = document.createElement("span"); cur.className = "cur";
-    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
-    for (const [kind, v] of RUNS[btn.dataset.soRun]) {
-      if (signal.aborted) return;
-      if (kind === "wait") { if (!reduce) await later(v); continue; }
-      if (out.textContent) add("\n");
-      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
-      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
-    }
-    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
-  }, { signal }));
-
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
   const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -477,98 +428,100 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
   const arrowDown = (p, x, y1, y2, col = "var(--fg-neutral)") => { mk("line", { x1: x, y1, x2: x, y2: y2 - 8, stroke: col, "stroke-width": 4, "stroke-linecap": "round" }, p); mk("path", { d: `M${x} ${y2} l-9 -13 h18z`, fill: col }, p); };
   const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
 
-  /* ───── 히어로: 분류함 ───── */
+  /* 그림이 화면을 지나가는 정도(0~1)를 스크롤로 잰다 — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
+     첫 화면에 걸친 히어로(fromTop)는 페이지 맨 위가 0 이라 처음 열었을 때 움직이기 전 모습부터 보인다 */
+  const scrollP = (el, fn, pinned = () => false, fromTop = false) => {
+    let raf = 0;
+    const tick = () => {
+      raf = 0; if (pinned()) return; const r = el.getBoundingClientRect(), a = innerHeight * 0.85, b = innerHeight * 0.45;
+      if (fromTop) { const end = r.bottom + scrollY - b; fn(end <= 0 ? 1 : Math.min(1, scrollY / end)); return; }
+      fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b))));
+    };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { signal }); tick();
+  };
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+  /* ───── 히어로: 분류함 — 스크롤한 만큼 서류가 한 장씩 투입구로 간다 ───── */
   const sorter = $("[data-so-sorter]");
-  const QS = [
-    { no: ["장비 문제 같아요^^", "분야: 장비 / 긴급도: 높음", "hardware (영어 표기)"], yes: "장비 · 높음", q: "장비" },
-    { no: ["계정 문의로 보입니다", "{\"account\": …} 칸 이름이 다름", "{\"분야\": \"계정\"}"], yes: "계정 · 높음", q: "계정" },
-    { no: ["용지 걸림은 장비 쪽이에요", "분류 결과입니다: {…}", "Hardware / low"], yes: "장비 · 낮음", q: "장비" },
-  ];
-  let qi = 0, busy = false, sGen = 0;
+  const Q = { no: ["장비 문제 같아요^^", "분야: 장비 / 긴급도: 높음", "hardware (영어 표기)"], yes: "장비 · 높음", q: "장비" };
   const SHAPES = [(g, x, y, col) => mk("circle", { cx: x, cy: y, r: 28, fill: `color-mix(in srgb, ${col} 20%, var(--bg-base))`, stroke: col, "stroke-width": 3.5 }, g), (g, x, y, col) => mk("path", { d: `M${x} ${y - 32} L${x + 32} ${y + 26} L${x - 32} ${y + 26} Z`, fill: `color-mix(in srgb, ${col} 20%, var(--bg-base))`, stroke: col, "stroke-width": 3.5, "stroke-linejoin": "round" }, g), (g, x, y, col) => mk("path", { d: `M${x} ${y - 32} L${x + 9} ${y - 10} L${x + 33} ${y - 8} L${x + 14} ${y + 8} L${x + 20} ${y + 32} L${x} ${y + 19} L${x - 20} ${y + 32} L${x - 14} ${y + 8} L${x - 33} ${y - 8} L${x - 9} ${y - 10} Z`, fill: `color-mix(in srgb, ${col} 20%, var(--bg-base))`, stroke: col, "stroke-width": 3.5, "stroke-linejoin": "round" }, g)];
   const XS = [80, 230, 380];
-  let items = [], counters = [];
+  let sItems = [], sCnt = [], sChips = [], sP = 1, sPinned = false, sWide = null;
   function buildSorter() {
-    sorter.innerHTML = ""; items = [];
-    const d = QS[qi];
+    const W = sWide = sorter.parentElement.clientWidth >= 820;
+    sorter.innerHTML = ""; sItems = []; sChips = [];
+    sorter.setAttribute("viewBox", W ? "0 0 930 312" : "0 0 460 640"); sorter.style.maxWidth = W ? "940px" : "460px";
     [[0, "양식 없이 물을 때", C.bad], [1, "양식(스키마)을 주고 물을 때", C.code]].forEach(([pi, title, col]) => {
-      const oy = pi * 322;
-      box(sorter, 8, oy + 8, 444, 300, col, { fill: "var(--bg-subtle)", sw: 2.5, rx: 18 });
-      txt(sorter, 24, oy + 36, title, { "font-size": 17, class: "t-s", style: `fill:${col}` });
-      txt(sorter, 24, oy + 56, pi ? "ticket = result[\"structured_response\"]" : "ticket = json.loads(answer)", { "font-size": 15, class: "t-d mono" });
-      // 투입구와 큐
-      mk("rect", { x: 160, y: oy + 200, width: 140, height: 12, rx: 6, fill: "var(--fg-strong)" }, sorter);
-      txt(sorter, 230, oy + 192, "투입구 (네모)", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
-      mk("path", { d: `M170 ${oy + 212} h120 v52 q0 8 -8 8 h-104 q-8 0 -8 -8z`, fill: `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": 3 }, sorter);
-      txt(sorter, 230, oy + 244, `QUEUES["${d.q}"]`, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
-      const cnt = txt(sorter, 230, oy + 296, "", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${col}` }); counters[pi] = cnt;
+      const P = mk("g", { transform: W ? `translate(${pi * 470} 0)` : `translate(0 ${pi * 322})` }, sorter);
+      mk("rect", { x: 8, y: 8, width: 444, height: 296, rx: 18, fill: "none", stroke: `color-mix(in srgb, ${col} 45%, var(--bg-base))`, "stroke-width": 2 }, P);
+      txt(P, 24, 36, title, { "font-size": 17, class: "t-s", style: `fill:${col}` });
+      txt(P, 24, 58, pi ? "ticket = result[\"structured_response\"]" : "ticket = json.loads(answer)", { "font-size": 15, class: "t-d mono" });
+      mk("rect", { x: 160, y: 200, width: 140, height: 12, rx: 6, fill: "var(--fg-strong)" }, P);
+      txt(P, 230, 192, "투입구 (네모)", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+      mk("path", { d: "M150 212 h160 v52 q0 8 -8 8 h-144 q-8 0 -8 -8z", fill: `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": 3 }, P);
+      txt(P, 230, 236, `QUEUES["${Q.q}"]`, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
+      [0, 1, 2].forEach((k) => { const c = mk("rect", { x: 191 + k * 28, y: 248, width: 22, height: 14, rx: 3, fill: pi ? col : "none", stroke: pi ? col : "var(--line-strong)", "stroke-width": 2, ...(pi ? {} : { "stroke-dasharray": "3 3" }) }, P); if (pi) sChips[k] = c; });
+      sCnt[pi] = txt(P, 230, 296, "", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${col}` });
       for (let k = 0; k < 3; k++) {
-        const g = mk("g", {}, sorter); const x = XS[k], y = oy + 96;
+        const g = mk("g", {}, P); const x = XS[k], y = 96;
         if (pi === 0) SHAPES[k](g, x, y, C.bad); else box(g, x - 36, y - 26, 72, 52, C.code, { rx: 10 });
-        const lab = pi === 0 ? d.no[k] : d.yes; const lines = lab.length > 12 ? [lab.slice(0, Math.ceil(lab.length / 2)), lab.slice(Math.ceil(lab.length / 2))] : [lab];
-        lines.forEach((l, i) => txt(g, x, y + 54 + i * 17, l, { "font-size": 15, "text-anchor": "middle", class: "t-d" }));
-        const mark = txt(g, x, y + 6, "", { "font-size": 22, "text-anchor": "middle", "font-weight": 800 }, g);
-        items.push({ g, pi, k, x, y, mark });
+        const lab = pi === 0 ? Q.no[k] : Q.yes; const lines = lab.length > 12 ? [lab.slice(0, Math.ceil(lab.length / 2)), lab.slice(Math.ceil(lab.length / 2))] : [lab];
+        const labs = mk("g", {}, g); lines.forEach((l, i) => txt(labs, x, y + 54 + i * 17, l, { "font-size": 15, "text-anchor": "middle", class: "t-d" }));
+        const mark = txt(g, x, y + 8, "", { "font-size": 24, "text-anchor": "middle", "font-weight": 800, style: "fill:var(--so-bad)" });
+        sItems.push({ g, pi, k, x, mark, labs });
       }
     });
-    counters[0].textContent = "큐에 들어간 서류 0/3"; counters[1].textContent = "큐에 들어간 서류 0/3";
+    setSorter(sP);
   }
-  async function throwItems() {
-    if (busy) return; busy = true; const my = ++sGen; buildSorter(); const btn = $("[data-so-throw]"); btn.disabled = true; let ok = 0;
-    for (const it of items) {
-      if (signal.aborted || my !== sGen) return;
-      const ty = it.pi === 0 ? 70 : 70, startY = 0;
+  /* p 를 세 토막으로 나눠 서류 k 가 k 번째 토막에서 움직인다. 양식 없는 서류는 투입구에서 튕겨 제자리로, 양식 있는 서류는 큐로 들어간다 */
+  function setSorter(p) {
+    sP = p; let ok = 0;
+    for (const it of sItems) {
+      const t = clamp01(p * 3 - it.k), dx = 230 - it.x;
+      it.labs.style.opacity = t > 0 && t < 1 ? 0 : 1; /* 움직이는 동안은 이름표를 감춰 투입구 글자와 겹치지 않게 */
       if (it.pi === 0) {
-        await tween(450, (t) => it.g.setAttribute("transform", `translate(${(230 - it.x) * t} ${60 * t})`));
-        it.mark.textContent = "✕"; it.mark.style.fill = "var(--so-bad)";
-        await tween(250, (t) => it.g.setAttribute("transform", `translate(${(230 - it.x) + Math.sin(t * 18) * 6 * (1 - t)} 60)`));
-        await tween(450, (t) => it.g.setAttribute("transform", `translate(${(230 - it.x) * (1 - t)} ${60 * (1 - t)})`));
+        const a = t < .5 ? ease(t / .5) : 1 - ease((t - .5) / .5), shake = t > .48 && t < .62 ? Math.sin((t - .48) * 90) * 5 : 0;
+        it.g.setAttribute("transform", `translate(${dx * a + shake} ${66 * a})`);
+        it.mark.textContent = t >= .5 ? "✕" : "";
       } else {
-        await tween(500, (t) => it.g.setAttribute("transform", `translate(${(230 - it.x) * t} ${80 * t})`));
-        await tween(400, (t) => { it.g.setAttribute("transform", `translate(${230 - it.x} ${80 + 120 * t})`); it.g.style.opacity = 1 - t; });
-        ok++; counters[1].textContent = `큐에 들어간 서류 ${ok}/3`;
+        const a = ease(clamp01(t / .55)), b = ease(clamp01((t - .55) / .45));
+        it.g.setAttribute("transform", `translate(${dx * a} ${80 * a + 70 * b})`); it.g.style.opacity = String(1 - b);
+        if (t >= 1) ok++; sChips[it.k].style.opacity = t >= 1 ? 1 : 0;
       }
-      await later(reduce ? 0 : 120);
     }
-    counters[0].textContent = "큐에 들어간 서류 0/3 — 모양이 달라 모두 튕김";
-    busy = false; btn.disabled = false;
+    sCnt[0].textContent = p >= 1 ? "큐에 들어간 서류 0/3 — 모양이 달라 모두 튕김" : "큐에 들어간 서류 0/3";
+    sCnt[1].textContent = `큐에 들어간 서류 ${ok}/3`;
   }
-  $$("[data-so-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.soQ; press("[data-so-q]", b); sGen++; busy = false; $("[data-so-throw]").disabled = false; buildSorter(); }, { signal }));
-  $("[data-so-throw]").addEventListener("click", throwItems, { signal });
   buildSorter();
+  scrollP(sorter, setSorter, () => sPinned, true);
+  addEventListener("resize", () => { if ((sorter.parentElement.clientWidth >= 820) !== sWide) buildSorter(); }, { passive: true, signal });
+  sorter.closest("[data-thumb]").addEventListener("so-all", () => { sPinned = true; setSorter(1); }, { signal });
 
-  /* ───── 종이 양식 ───── */
-  const formSvg = $("[data-so-form]"); let kind = "lit", desc = true;
+  /* ───── 종이 양식 — 고른 양식(Literal + 칸 설명)을 그리고, 다른 선택은 점선 "~였다면" 칸으로 함께 둔다 ───── */
+  const formSvg = $("[data-so-form]");
   const OPTS = ["계정", "장비", "소프트웨어", "네트워크", "기타"];
-  function drawForm() {
-    formSvg.innerHTML = "";
-    box(formSvg, 14, 12, 432, 380, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 2.5, rx: 16 });
-    mk("rect", { x: 14, y: 12, width: 432, height: 44, rx: 16, fill: "var(--bg-muted)" }, formSvg); mk("rect", { x: 14, y: 36, width: 432, height: 20, fill: "var(--bg-muted)" }, formSvg);
-    txt(formSvg, 32, 41, "class TicketInfo(BaseModel)", { "font-size": 17, class: "t-s mono" });
-    txt(formSvg, 32, 88, "분야  category", { "font-size": 16, class: "t-s" });
-    if (kind === "lit") {
-      OPTS.forEach((o, i) => { const x = 32 + (i % 3) * 138, y = 112 + Math.floor(i / 3) * 40; const pick = o === "장비"; mk("circle", { cx: x + 10, cy: y + 4, r: 10, fill: pick ? C.code : "var(--bg-base)", stroke: pick ? C.code : "var(--line-strong)", "stroke-width": 2.5 }, formSvg); if (pick) mk("circle", { cx: x + 10, cy: y + 4, r: 4, fill: "var(--bg-base)" }, formSvg); txt(formSvg, x + 28, y + 10, o, { "font-size": 15, class: pick ? "t-s" : "t-d" }); });
-      txt(formSvg, 32, 198, "보기 밖의 값은 검사에서 걸립니다", { "font-size": 15, class: "t-d", style: `fill:${C.code}` });
-    } else {
-      [["하드웨어", -4, 32, 126], ["컴퓨터 고장", 3, 160, 146], ["장비", -2, 316, 128]].forEach(([w, rot, x, y]) => { const t = txt(formSvg, x, y, w, { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); t.setAttribute("transform", `rotate(${rot} ${x} ${y})`); });
-      mk("path", { d: "M32 160 q60 -8 120 0 t120 0 t120 0", fill: "none", stroke: "var(--line-strong)", "stroke-width": 2, "stroke-dasharray": "3 5" }, formSvg);
-      txt(formSvg, 32, 198, "같은 뜻이 여러 표기로 섞입니다", { "font-size": 15, class: "t-d", style: `fill:${C.bad}` });
-    }
-    txt(formSvg, 32, 232, "긴급도  urgency", { "font-size": 16, class: "t-s" });
-    ["낮음", "보통", "높음"].forEach((o, i) => { const x = 32 + i * 138, y = 252; const pick = o === "보통"; mk("circle", { cx: x + 10, cy: y + 4, r: 10, fill: pick ? C.code : "var(--bg-base)", stroke: pick ? C.code : "var(--line-strong)", "stroke-width": 2.5 }, formSvg); if (pick) mk("circle", { cx: x + 10, cy: y + 4, r: 4, fill: "var(--bg-base)" }, formSvg); txt(formSvg, x + 28, y + 10, o, { "font-size": 15, class: pick ? "t-s" : "t-d" }); });
-    txt(formSvg, 32, 308, "요약  summary", { "font-size": 16, class: "t-s" });
-    mk("line", { x1: 32, y1: 350, x2: 428, y2: 350, stroke: "var(--fg-neutral)", "stroke-width": 2 }, formSvg);
-    txt(formSvg, 32, 342, "노트북 화면이 깜빡여 회의를 못 하고 있음", { "font-size": 15, class: "t-s" });
-    // 로봇과 안내 말풍선
-    mk("use", { href: "#so-ic-robot", x: 24, y: 404, width: 52, height: 52, style: `color:${C.model}` }, formSvg);
-    box(formSvg, 92, 404, 350, 84, desc ? C.model : "var(--line-strong)", { fill: "var(--bg-subtle)", sw: 2.5, dash: desc ? "" : "6 5" });
-    if (desc) { txt(formSvg, 108, 430, "칸 설명을 읽고 채웁니다", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); txt(formSvg, 108, 454, "긴급도 → \"급한 정도\"", { "font-size": 15, class: "t-d mono" }); txt(formSvg, 108, 476, "요약 → \"한 문장 요약\"", { "font-size": 15, class: "t-d mono" }); }
-    else { txt(formSvg, 108, 430, "설명이 없습니다", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(formSvg, 108, 454, "칸의 뜻을 짐작해야 합니다", { "font-size": 15, class: "t-d" }); txt(formSvg, 108, 476, "요약 길이도 모델 마음입니다", { "font-size": 15, class: "t-d" }); }
-    txt(formSvg, 230, 528, "클래스의 칸 이름이 곧 양식의 칸입니다", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
-  }
-  $$("[data-so-kind]").forEach((b) => b.addEventListener("click", () => { kind = b.dataset.soKind; press("[data-so-kind]", b); drawForm(); }, { signal }));
-  $$("[data-so-desc]").forEach((b) => b.addEventListener("click", () => { desc = b.dataset.soDesc === "1"; press("[data-so-desc]", b); drawForm(); }, { signal }));
-  drawForm();
+  const radio = (o, x, y, pick) => { mk("circle", { cx: x + 10, cy: y + 4, r: 10, fill: pick ? C.code : "var(--bg-base)", stroke: pick ? C.code : "var(--line-strong)", "stroke-width": 2.5 }, formSvg); if (pick) mk("circle", { cx: x + 10, cy: y + 4, r: 4, fill: "var(--bg-base)" }, formSvg); txt(formSvg, x + 28, y + 10, o, { "font-size": 15, class: pick ? "t-s" : "t-d" }); };
+  box(formSvg, 14, 12, 432, 410, "var(--fg-neutral)", { fill: "var(--bg-base)", sw: 2.5, rx: 16 });
+  mk("rect", { x: 14, y: 12, width: 432, height: 44, rx: 16, fill: "var(--bg-muted)" }, formSvg); mk("rect", { x: 14, y: 36, width: 432, height: 20, fill: "var(--bg-muted)" }, formSvg);
+  txt(formSvg, 32, 41, "class TicketInfo(BaseModel)", { "font-size": 17, class: "t-s mono" });
+  txt(formSvg, 32, 88, "분야  category · Literal", { "font-size": 16, class: "t-s" });
+  OPTS.forEach((o, i) => radio(o, 32 + (i % 3) * 138, 112 + Math.floor(i / 3) * 40, o === "장비"));
+  mk("rect", { x: 26, y: 180, width: 408, height: 72, rx: 10, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2, "stroke-dasharray": "6 5" }, formSvg);
+  txt(formSvg, 40, 204, "str이었다면:", { "font-size": 15, class: "t-d" });
+  [["하드웨어", -4, 150, 206], ["컴퓨터 고장", 3, 250, 210], ["장비", -2, 380, 204]].forEach(([w, rot, x, y]) => { const t = txt(formSvg, x, y, w, { "font-size": 17, class: "t-s", style: `fill:${C.bad}` }); t.setAttribute("transform", `rotate(${rot} ${x} ${y})`); });
+  txt(formSvg, 40, 236, "같은 뜻이 여러 표기로 섞입니다", { "font-size": 15, class: "t-d", style: `fill:${C.bad}` });
+  txt(formSvg, 32, 284, "긴급도  urgency", { "font-size": 16, class: "t-s" });
+  ["낮음", "보통", "높음"].forEach((o, i) => radio(o, 32 + i * 138, 304, o === "보통"));
+  txt(formSvg, 32, 358, "요약  summary", { "font-size": 16, class: "t-s" });
+  mk("line", { x1: 32, y1: 398, x2: 428, y2: 398, stroke: "var(--fg-neutral)", "stroke-width": 2 }, formSvg);
+  txt(formSvg, 32, 390, "노트북 화면이 깜빡여 회의를 못 하고 있음", { "font-size": 15, class: "t-s" });
+  mk("use", { href: "#so-ic-robot", x: 24, y: 446, width: 52, height: 52, style: `color:${C.model}` }, formSvg);
+  box(formSvg, 92, 440, 350, 84, C.model, { fill: "var(--bg-base)", sw: 2.5 });
+  txt(formSvg, 108, 466, "칸 설명을 읽고 채웁니다", { "font-size": 15, class: "t-s", style: `fill:${C.model}` }); txt(formSvg, 108, 490, "긴급도 → \"급한 정도\"", { "font-size": 15, class: "t-d mono" }); txt(formSvg, 108, 512, "요약 → \"한 문장 요약\"", { "font-size": 15, class: "t-d mono" });
+  box(formSvg, 92, 536, 350, 64, "var(--line-strong)", { fill: "none", sw: 2, dash: "6 5" });
+  txt(formSvg, 108, 562, "설명이 없었다면:", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(formSvg, 108, 586, "칸의 뜻과 요약 길이를 짐작해야 합니다", { "font-size": 15, class: "t-d" });
+  txt(formSvg, 230, 640, "클래스의 칸 이름이 곧 양식의 칸입니다", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
 
   /* ───── 두 갈래 길 (스크롤 이야기) ───── */
   const rd = $("[data-so-roads]"), stat = $("[data-so-stat]");
@@ -580,9 +533,9 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
   arrowDown(rd, 230, 82, 112);
   const sL = mk("g", { class: "so-card on" }, rd), sR = mk("g", { class: "so-card on" }, rd);
   box(sL, 10, 360, 200, 150, C.human, {}); txt(sL, 110, 388, "ToolStrategy", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.human}` });
-  txt(sL, 110, 456, "양식을 도구로 변장", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(sL, 110, 478, "tools + tool_choice: any", { "font-size": 15, "text-anchor": "middle", class: "t-d mono" }); txt(sL, 110, 498, "받은 뒤 Pydantic 검사", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+  txt(sL, 110, 428, "양식을 도구로 변장", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(sL, 110, 454, "tools +", { "font-size": 14, "text-anchor": "middle", class: "t-d mono" }); txt(sL, 110, 474, "tool_choice: any", { "font-size": 14, "text-anchor": "middle", class: "t-d mono" }); txt(sL, 110, 498, "받은 뒤 Pydantic 검사", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
   box(sR, 250, 360, 200, 150, C.code, {}); txt(sR, 350, 388, "ProviderStrategy", { "font-size": 17, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` });
-  txt(sR, 350, 456, "회사 기능에 맡김", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(sR, 350, 478, "output_config: json_schema", { "font-size": 15, "text-anchor": "middle", class: "t-d mono" }); txt(sR, 350, 498, "받은 JSON을 객체로", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
+  txt(sR, 350, 428, "회사 기능에 맡김", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(sR, 350, 454, "output_config:", { "font-size": 14, "text-anchor": "middle", class: "t-d mono" }); txt(sR, 350, 474, "json_schema", { "font-size": 14, "text-anchor": "middle", class: "t-d mono" }); txt(sR, 350, 498, "받은 JSON을 객체로", { "font-size": 15, "text-anchor": "middle", class: "t-d" });
   const barrier = mk("g", { style: "opacity:0;transition:opacity .4s" }, rd); mk("use", { href: "#so-ic-stop", x: 74, y: 268, width: 52, height: 52, style: `color:${C.bad}` }, barrier); txt(barrier, 140, 290, "tool_choice: any", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` }); txt(barrier, 140, 308, "Claude 5.5는 받지 않음", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
   const pick = mk("g", { style: "opacity:0;transition:opacity .4s" }, rd); box(pick, 280, 528, 170, 28, C.code, { rx: 14 }); txt(pick, 365, 548, "자동으로 고른 길", { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${C.code}` });
   const pkg = mk("g", { style: "opacity:0" }, rd); mk("rect", { x: -20, y: -26, width: 40, height: 52, rx: 6, fill: "var(--bg-base)", stroke: "var(--fg-strong)", "stroke-width": 3 }, pkg); mk("path", { d: "M-11 -12H11M-11 -2H11M-11 8H3", stroke: "var(--fg-strong)", "stroke-width": 3, "stroke-linecap": "round" }, pkg);
@@ -598,85 +551,104 @@ category='장비' urgency='높음' summary='노트북 화면이 깜빡임'
     pkg.style.opacity = 0; if (i === 1) send("L"); if (i === 2 || i === 3) send("R");
   });
 
-  /* ───── 검문 두 겹 ───── */
-  const gs = $("[data-so-gates]"), vl = $("[data-so-vl]");
-  const GY = [210, 370], FINAL_Y = 520;
-  const CASES = [
-    { stop: 0, label: "urgency: 매우급함", v: ["<b>1겹</b> ProviderStrategy: 보기에 없는 값은 아예 만들어지지 않게 막습니다", "<b>2겹</b> ToolStrategy라면 이 값이 여기까지 와서 literal_error로 걸립니다", "<b>프로그램</b> 어느 쪽이든 보기 안의 값만 도착합니다"] },
-    { stop: 1, label: "confidence: 1.4", v: ["<b>1겹</b> 숫자 범위는 양식 규칙에 없어서 통과합니다", "<b>2겹</b> less_than_equal: Input should be less than or equal to 1 (input 1.4)", "<b>프로그램</b> 도착하지 않았습니다. 에러를 모델에게 돌려주고 다시 시킵니다"] },
-    { stop: 0, label: "stop_reason: refusal", v: ["<b>1겹</b> stop_reason이 refusal이면 답이 양식을 따르지 않을 수 있습니다", "<b>2겹</b> 여기까지 오지 못했습니다", "<b>프로그램</b> stop_reason을 직접 확인해 안내 문구로 대신합니다"] },
-    { stop: 0, label: "stop_reason: max_tokens", v: ["<b>1겹</b> max_tokens면 JSON이 중간에 끊긴 채로 옵니다", "<b>2겹</b> 여기까지 오지 못했습니다", "<b>프로그램</b> max_tokens를 올려 다시 부르거나 실패로 처리합니다"] },
+  /* ───── 검문 두 겹 — 같은 크기의 작은 그림 네 장. 화면에 들어오면 답 카드가 한 번 내려와 걸리는 검문에서 멈춘다 ───── */
+  const GC = [
+    { label: "urgency: \"매우급함\"", stop: 0, ghost: true },
+    { label: "confidence: 1.4", stop: 1 },
+    { label: "stop_reason: \"refusal\"", stop: 0 },
+    { label: "stop_reason: \"max_tokens\"", stop: 0, cut: true },
   ];
-  let cIdx = 0, gGen = 0;
-  const PICT = [
-    (g) => { [0, 1, 2].forEach((k) => { mk("circle", { cx: 70 + k * 22, cy: 46, r: 8, fill: k === 2 ? C.bad : "var(--line-strong)" }, g); }); txt(g, 70, 74, "보기 밖", { "font-size": 15, class: "t-d" }); },
-    (g) => { mk("rect", { x: 56, y: 40, width: 80, height: 10, rx: 5, fill: "var(--line-subtle)" }, g); mk("rect", { x: 56, y: 40, width: 80, height: 10, rx: 5, fill: C.human, opacity: .4 }, g); mk("circle", { cx: 150, cy: 45, r: 8, fill: C.bad }, g); txt(g, 52, 76, "0~1 밖 1.4", { "font-size": 15, class: "t-d" }); },
-    (g) => { mk("path", { d: "M52 32 h44 a8 8 0 0 1 8 8 v14 a8 8 0 0 1 -8 8 h-30 l-10 8 v-8 h-4 a8 8 0 0 1 -8 -8 v-14 a8 8 0 0 1 8 -8z", fill: "none", stroke: C.bad, "stroke-width": 3 }, g); txt(g, 74, 52, "답 안 함", { "font-size": 15, class: "t-s" }); },
-    (g) => { mk("path", { d: "M52 32 h44 a8 8 0 0 1 8 8 v14 a8 8 0 0 1 -8 8 h-30 l-10 8 v-8 h-4 a8 8 0 0 1 -8 -8 v-14 a8 8 0 0 1 8 -8z", fill: "none", stroke: C.bad, "stroke-width": 3, "stroke-dasharray": "14 6" }, g); txt(g, 66, 52, "글이 중간에…", { "font-size": 15, class: "t-s" }); },
-  ];
-  async function drawGates(i, animate) {
-    const my = ++gGen, c = CASES[i]; gs.innerHTML = "";
-    GATES(c);
-    const cx = 230, card = mk("g", {}, gs); box(card, cx - 90, 20, 180, 52, c.stop === 0 && i !== 1 ? C.bad : C.human, { rx: 12 }); txt(card, cx, 52, c.label, { "font-size": 15, "text-anchor": "middle", class: "t-s mono" });
-    const stopY = c.stop === 0 ? GY[0] - 70 : GY[1] - 70;
-    if (animate && !reduce) await tween(900, (t) => { if (my === gGen) card.setAttribute("transform", `translate(0 ${(stopY - 20) * t})`); }); else card.setAttribute("transform", `translate(0 ${stopY - 20})`);
-    if (my !== gGen) return;
-    const x = mk("use", { href: "#so-ic-stop", x: 354, y: (c.stop === 0 ? GY[0] : GY[1]) - 78, width: 46, height: 46, style: `color:${C.bad}` }, gs);
-    const pg = mk("g", { transform: `translate(-48 ${stopY - 20})` }, gs); PICT[i](pg);
-    vl.innerHTML = c.v.map((t) => `<div>${t}</div>`).join("");
-  }
-  function GATES(c) {
-    [["1겹 · 모델 회사의 양식 검사", "ProviderStrategy", GY[0]], ["2겹 · Pydantic 검사", "받은 뒤 LangChain이 실행", GY[1]]].forEach(([t, s, y], k) => {
-      mk("rect", { x: 40, y, width: 380, height: 14, rx: 7, fill: c.stop === k ? C.bad : "var(--fg-strong)" }, gs);
-      [0, 1, 2, 3].forEach((n) => mk("rect", { x: 90 + n * 80, y: y - 6, width: 14, height: 26, rx: 4, fill: c.stop === k ? C.bad : "var(--fg-strong)" }, gs));
-      txt(gs, 40, y + 40, t, { "font-size": 15.5, class: "t-s" }); txt(gs, 40, y + 60, s, { "font-size": 15, class: "t-d" });
+  const GY = [112, 212], CARD_Y = 10, STOP = [GY[0] - 50, GY[1] - 50];
+  const gMinis = $$("[data-so-gmini]").map((sv) => {
+    const c = GC[+sv.dataset.soGmini];
+    [["1겹 · 회사 양식 검사", GY[0]], ["2겹 · Pydantic 검사", GY[1]]].forEach(([t, y], k) => {
+      const col = c.stop === k ? C.bad : "var(--fg-strong)";
+      mk("rect", { x: 14, y, width: 232, height: 12, rx: 6, fill: col }, sv);
+      [0, 1, 2, 3].forEach((n) => mk("rect", { x: 40 + n * 58, y: y - 6, width: 12, height: 24, rx: 4, fill: col }, sv));
+      txt(sv, 14, y + 40, t, { "font-size": 14, class: "t-s", ...(c.stop === k ? { style: `fill:${C.bad}` } : {}) });
     });
-    arrowDown(gs, 230, GY[0] + 66, GY[1] - 12, "var(--line-strong)");
-    arrowDown(gs, 230, GY[1] + 66, FINAL_Y - 12, "var(--line-strong)");
-    const ok = c.stop === 0 ? false : false; box(gs, 120, FINAL_Y, 220, 70, "var(--line-strong)", { fill: "var(--bg-subtle)", dash: "6 5" }); mk("use", { href: "#so-ic-gear", x: 134, y: FINAL_Y + 17, width: 36, height: 36, style: "color:var(--fg-neutral)" }, gs); txt(gs, 180, FINAL_Y + 38, "프로그램", { "font-size": 17, class: "t-s" }); txt(gs, 180, FINAL_Y + 58, "도착하지 않은 서류", { "font-size": 15, class: "t-d" });
-    if (c.label.includes("매우급함")) { mk("path", { d: "M280 192 q30 -10 56 0", fill: "none", stroke: C.human, "stroke-width": 0 }, gs); }
+    if (c.ghost) { mk("rect", { x: 14, y: STOP[1], width: 204, height: 40, rx: 10, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2, "stroke-dasharray": "5 4" }, sv); txt(sv, 116, STOP[1] + 25, "ToolStrategy라면 여기서 걸림", { "font-size": 13, "text-anchor": "middle", class: "t-d" }); }
+    mk("use", { href: "#so-ic-gear", x: 14, y: 266, width: 30, height: 30, style: "color:var(--fg-neutral)" }, sv);
+    txt(sv, 52, 280, "프로그램", { "font-size": 15, class: "t-s" }); txt(sv, 52, 299, "도착하지 않음", { "font-size": 13, class: "t-d" });
+    const card = mk("g", {}, sv);
+    box(card, 14, CARD_Y, 204, 40, C.bad, { rx: 10, sw: 2.5, ...(c.cut ? { dash: "16 6" } : {}) });
+    txt(card, 116, CARD_Y + 25, c.label, { "font-size": 13, "text-anchor": "middle", class: "t-s mono" });
+    const dy = STOP[c.stop] - CARD_Y;
+    const icon = mk("use", { href: "#so-ic-stop", x: 224, y: STOP[c.stop] + 4, width: 32, height: 32, style: `color:${C.bad}` }, sv);
+    card.setAttribute("transform", `translate(0 ${dy})`);
+    return { card, icon, dy };
+  });
+  let gGen = 0;
+  async function playGates() {
+    if (reduce) return; const my = ++gGen;
+    gMinis.forEach((m) => { m.card.setAttribute("transform", "translate(0 0)"); m.icon.style.opacity = 0; });
+    await Promise.all(gMinis.map(async (m, k) => {
+      await later(250 + k * 220); if (my !== gGen) return;
+      await tween(1000 + m.dy * 4, (e) => { if (my === gGen) m.card.setAttribute("transform", `translate(0 ${m.dy * e})`); });
+      if (my === gGen) m.icon.style.opacity = 1;
+    }));
   }
-  $$("[data-so-case]").forEach((b) => b.addEventListener("click", () => { press("[data-so-case]", b); cIdx = +b.dataset.soCase; drawGates(cIdx, true); }, { signal }));
-  drawGates(0, false);
-
-  /* ───── 탁구 재시도 ───── */
-  const pp = $("[data-so-pp]"); let ppGen = 0;
-  async function drawPP(animate) {
-    const my = ++ppGen; pp.innerHTML = "";
-    mk("use", { href: "#so-ic-robot", x: 28, y: 12, width: 52, height: 52, style: `color:${C.model}` }, pp); txt(pp, 54, 82, "모델", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
-    mk("use", { href: "#so-ic-check", x: 380, y: 12, width: 52, height: 52, style: `color:${C.code}` }, pp); txt(pp, 406, 82, "Pydantic 검사", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
-    mk("line", { x1: 54, y1: 96, x2: 54, y2: 505, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, pp); mk("line", { x1: 406, y1: 96, x2: 406, y2: 505, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, pp);
-    const steps = [
-      { y: 130, dir: 1, col: C.model, t1: "1번째 호출", t2: "urgency = \"매우급함\"", t3: "", f: null },
-      { y: 200, dir: 0, col: C.bad, t1: "검사 실패", t2: "보기에 없는 값입니다", t3: "literal_error", f: "x" },
-      { y: 290, dir: -1, col: C.code, t1: "ToolMessage로 돌려줌", t2: "Error: Failed to parse … Please fix", t3: "", f: null },
-      { y: 380, dir: 1, col: C.model, t1: "2번째 호출", t2: "urgency = \"높음\"", t3: "", f: null },
-      { y: 450, dir: 0, col: C.code, t1: "검사 통과", t2: "structured_response에 객체가 담김", t3: "", f: "ok" },
-    ];
-    for (const s of steps) {
-      if (my !== ppGen) return; const g = mk("g", { style: "opacity:0" }, pp);
-      if (s.dir !== 0) { const x1 = s.dir > 0 ? 62 : 398, x2 = s.dir > 0 ? 398 : 62; mk("line", { x1, y1: s.y, x2: x2 - s.dir * 10, y2: s.y, stroke: s.col, "stroke-width": 4, "stroke-linecap": "round" }, g); mk("path", { d: s.dir > 0 ? `M${x2} ${s.y} l-12 -7 v14z` : `M${x2} ${s.y} l12 -7 v14z`, fill: s.col }, g); txt(g, 230, s.y - 24, s.t1, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(g, 230, s.y - 8, s.t2, { "font-size": s.t2.length > 22 ? 12.5 : 14.5, "text-anchor": "middle", class: "t-s mono" }); }
-      else { box(g, 150, s.y - 28, 256, 60, s.col, { rx: 12 }); txt(g, 278, s.y - 8, s.t1, { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${s.col}` }); txt(g, 278, s.y + 14, s.t2 + (s.t3 ? " · " + s.t3 : ""), { "font-size": 15, "text-anchor": "middle", class: "t-d" }); mk("use", { href: s.f === "ok" ? "#so-ic-check" : "#so-ic-stop", x: 106, y: s.y - 20, width: 38, height: 38, style: `color:${s.col}` }, g); }
-      if (animate && !reduce) { await tween(420, (t) => { g.style.opacity = t; }); await later(250); } else g.style.opacity = 1;
-    }
+  {
+    const gw = $("[data-so-gcases]");
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) playGates(); else { gGen++; gMinis.forEach((m) => { m.card.setAttribute("transform", `translate(0 ${m.dy})`); m.icon.style.opacity = 1; }); } }), { threshold: 0.6 });
+    io.observe(gw); signal.addEventListener("abort", () => io.disconnect());
   }
-  $("[data-so-pp-play]").addEventListener("click", () => drawPP(true), { signal });
-  drawPP(false);
 
-  /* ───── 한 바퀴 지도 ───── */
+  /* ───── 탁구 재시도 — 스크롤한 만큼 공이 모델과 검사 사이를 오가고, 공이 지난 줄이 나타난다 ───── */
+  const pp = $("[data-so-pp]");
+  mk("use", { href: "#so-ic-robot", x: 28, y: 12, width: 52, height: 52, style: `color:${C.model}` }, pp); txt(pp, 54, 82, "모델", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
+  mk("use", { href: "#so-ic-check", x: 380, y: 12, width: 52, height: 52, style: `color:${C.code}` }, pp); txt(pp, 406, 82, "Pydantic 검사", { "font-size": 15, "text-anchor": "middle", class: "t-s" });
+  mk("line", { x1: 54, y1: 96, x2: 54, y2: 505, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, pp); mk("line", { x1: 406, y1: 96, x2: 406, y2: 505, class: "ln", "stroke-dasharray": "4 6", "stroke-width": 2 }, pp);
+  const PPS = [
+    { y: 130, dir: 1, col: C.model, t1: "1번째 호출", t2: "urgency = \"매우급함\"", at: 1 },
+    { y: 200, dir: 0, col: C.bad, t1: "검사 실패", t2: "보기에 없는 값입니다 · literal_error", f: "x", at: 2 },
+    { y: 290, dir: -1, col: C.code, t1: "ToolMessage로 돌려줌", t2: "Error: Failed to parse … Please fix", at: 4 },
+    { y: 380, dir: 1, col: C.model, t1: "2번째 호출", t2: "urgency = \"높음\"", at: 6 },
+    { y: 450, dir: 0, col: C.code, t1: "검사 통과", t2: "structured_response에 객체가 담김", f: "ok", at: 7 },
+  ];
+  const BALL = [[54, 130], [406, 130], [406, 200], [406, 290], [54, 290], [54, 380], [406, 380], [406, 450]];
+  const cum = [0]; for (let i = 1; i < BALL.length; i++) cum.push(cum[i - 1] + Math.hypot(BALL[i][0] - BALL[i - 1][0], BALL[i][1] - BALL[i - 1][1]));
+  const ppG = PPS.map((s) => {
+    const g = mk("g", { style: "opacity:0" }, pp);
+    if (s.dir !== 0) { const x1 = s.dir > 0 ? 62 : 398, x2 = s.dir > 0 ? 398 : 62; mk("line", { x1, y1: s.y, x2: x2 - s.dir * 10, y2: s.y, stroke: s.col, "stroke-width": 4, "stroke-linecap": "round" }, g); mk("path", { d: s.dir > 0 ? `M${x2} ${s.y} l-12 -7 v14z` : `M${x2} ${s.y} l12 -7 v14z`, fill: s.col }, g); txt(g, 230, s.y - 24, s.t1, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); txt(g, 230, s.y - 8, s.t2, { "font-size": s.t2.length > 22 ? 12.5 : 14.5, "text-anchor": "middle", class: "t-s mono" }); }
+    else { box(g, 140, s.y - 28, 250, 60, s.col, { rx: 12 }); txt(g, 265, s.y - 8, s.t1, { "font-size": 15, "text-anchor": "middle", class: "t-s", style: `fill:${s.col}` }); txt(g, 265, s.y + 14, s.t2, { "font-size": 14, "text-anchor": "middle", class: "t-d" }); mk("use", { href: s.f === "ok" ? "#so-ic-check" : "#so-ic-stop", x: 96, y: s.y - 20, width: 38, height: 38, style: `color:${s.col}` }, g); }
+    return g;
+  });
+  const ball = mk("circle", { r: 9, fill: "var(--fg-strong)", stroke: "var(--bg-base)", "stroke-width": 3 }, pp);
+  function setPP(p) {
+    const d = p * cum[cum.length - 1]; let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+    const f = clamp01((d - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1])), [ax, ay] = BALL[i - 1], [bx, by] = BALL[i];
+    ball.setAttribute("cx", ax + (bx - ax) * f); ball.setAttribute("cy", ay + (by - ay) * f);
+    PPS.forEach((s, k) => { const o = clamp01((d - cum[s.at] + 60) / 60); ppG[k].style.opacity = o; ppG[k].setAttribute("transform", `translate(0 ${(1 - o) * 12})`); });
+  }
+  scrollP(pp, setPP);
+
+  /* ───── 한 바퀴 지도 — 정리 지도라 화면에 들어오면 요청 점이 한 번 지나간다. 검문에서 한 번 걸려 모델로 돌아갔다가 통과하는 길 ───── */
   const ln = $("[data-so-line]");
-  mk("path", { d: "M70 40 V560", class: "so-rail" }, ln);
+  mk("path", { d: "M90 40 V560", class: "so-rail" }, ln);
   [["질문", "문의 한 건이 들어옵니다", "human", "paper", 40], ["양식", "TicketInfo(Pydantic)", "code", "check", 140], ["길 고르기", "ToolStrategy 또는 ProviderStrategy", "model", "gear", 240], ["모델 응답", "양식의 칸을 채워 돌아옵니다", "model", "robot", 340], ["두 겹 검문", "회사 양식 검사 → Pydantic 검사", "bad", "stop", 440], ["프로그램", "result[\"structured_response\"] 객체", "code", "flag", 540]].forEach(([t, d, c, ic, y]) => {
-    mk("circle", { cx: 70, cy: y, r: 30, fill: "var(--bg-base)", stroke: C[c], "stroke-width": 4 }, ln); mk("use", { href: "#so-ic-" + ic, x: 52, y: y - 18, width: 36, height: 36, style: `color:${C[c]}` }, ln);
-    txt(ln, 118, y - 4, t, { "font-size": 18, class: "t-s" }); txt(ln, 118, y + 20, d, { "font-size": 15, class: "t-d" });
+    mk("circle", { cx: 90, cy: y, r: 30, fill: "var(--bg-base)", stroke: C[c], "stroke-width": 4 }, ln); mk("use", { href: "#so-ic-" + ic, x: 72, y: y - 18, width: 36, height: 36, style: `color:${C[c]}` }, ln);
+    txt(ln, 138, y - 4, t, { "font-size": 18, class: "t-s" }); txt(ln, 138, y + 20, d, { "font-size": 15, class: "t-d" });
   });
-  mk("path", { d: "M330 446 H430 V348 H352", fill: "none", stroke: C.bad, "stroke-width": 3, "stroke-dasharray": "6 5" }, ln);
-  mk("path", { d: "M338 348 l14 -7 v14z", fill: C.bad }, ln);
-  txt(ln, 262, 394, "검문 실패: 에러 쪽지가", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(ln, 262, 412, "모델에게 돌아가 다시 채움", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
-
-  initTerms({
-    auto: [["cmd", "$ python classify.py"], ["wait", 900], ["type", "장비 높음"]],
-    retry: [["cmd", "$ python retry.py"], ["wait", 1100], ["line", "category='장비' urgency='높음' summary='노트북 화면이 깜빡임'"], ["type", "모델 호출 2 번"]],
-  });
+  mk("path", { d: "M54 454 C12 454 12 330 44 330", fill: "none", stroke: C.bad, "stroke-width": 3, "stroke-dasharray": "6 5" }, ln);
+  mk("path", { d: "M56 330 l-13 -7 v14z", fill: C.bad }, ln);
+  txt(ln, 138, 392, "검문 실패: 에러 쪽지가", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); txt(ln, 138, 410, "모델에게 돌아가 다시 채움", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` });
+  const hid = (d) => mk("path", { d, fill: "none", stroke: "none" }, ln);
+  const mRoute = hid("M90 40 V440 L54 454 C12 454 12 330 56 330 L90 340 V560"), mLen = mRoute.getTotalLength();
+  const mSeg = [hid("M90 40 V440 L54 454").getTotalLength(), hid("M90 40 V440 L54 454 C12 454 12 330 56 330").getTotalLength()];
+  const mDot = mk("circle", { r: 10, "stroke-width": 3, style: "opacity:0" }, ln);
+  let mGen = 0;
+  /* 본선 위에서는 꽉 찬 점, 에러 쪽지를 들고 돌아가는 점선 위에서는 빨간 테두리의 속 빈 점 */
+  const placeDot = (l) => { const pt = mRoute.getPointAtLength(l), back = l > mSeg[0] && l < mSeg[1]; mDot.setAttribute("cx", pt.x); mDot.setAttribute("cy", pt.y); mDot.setAttribute("fill", back ? "var(--bg-base)" : "var(--fg-strong)"); mDot.setAttribute("stroke", back ? C.bad : "var(--bg-base)"); };
+  async function playMap() {
+    if (reduce) return; const my = ++mGen; mDot.style.opacity = 1;
+    await tween(4400, (e) => { if (my === mGen) placeDot(e * mLen); });
+    if (my !== mGen) return;
+    await tween(600, (e) => { if (my === mGen) mDot.style.opacity = 1 - e; });
+  }
+  {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) playMap(); else { mGen++; mDot.style.opacity = 0; } }), { threshold: 0.6 });
+    io.observe(ln); signal.addEventListener("abort", () => io.disconnect());
+  }
 })();
 </script>
