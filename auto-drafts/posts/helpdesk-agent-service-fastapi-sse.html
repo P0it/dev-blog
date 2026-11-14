@@ -9,7 +9,7 @@ series_order: 25
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/helpdesk-agent-service-fastapi-sse-mvb9g4ep.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 아키텍처 지도 히어로(질문 세 가지가 부품을 켜는 길) + 그림 고정 스크롤리텔링(승인이 필요한 요청 하나의 왕복) + SSE 대 한 번에 응답 비교 + 코드|터미널 둘 + 정리 | 글의 성격: 부품을 조립하는 글이라 부품 배치와 요청이 지나는 길을 먼저 지도로 보이고 승인 요청의 왕복을 순서대로 따라가게 한다 | 버린 후보: 부품 목록 나열(그림이 아니라 목록이라서) -->
+<!-- layout: [2026-11-14 개편: 조작 요소 0 — 질문·응답 방식 토글과 실행해 보기 제거, 구조도 세 장 펼쳐 놓기, 응답 방식 두 장은 스크롤만큼 시간이 흘러 SSE 조각이 차례로 도착] 제목 위 + 전폭 아키텍처 지도 히어로(질문 세 가지가 부품을 켜는 길) + 그림 고정 스크롤리텔링(승인이 필요한 요청 하나의 왕복) + SSE 대 한 번에 응답 비교 + 코드|터미널 둘 + 정리 | 글의 성격: 부품을 조립하는 글이라 부품 배치와 요청이 지나는 길을 먼저 지도로 보이고 승인 요청의 왕복을 순서대로 따라가게 한다 | 버린 후보: 부품 목록 나열(그림이 아니라 목록이라서) -->
 <style>
 .post-page .fn {
   --fn-human: rgb(37, 112, 235); --fn-code: rgb(16, 150, 120); --fn-model: rgb(226, 106, 28); --fn-bad: rgb(214, 56, 56);
@@ -35,17 +35,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .fn-split.rev > :first-child { order: 2; }
 
 /* 고르기 = 토글, 실행 = 테두리 버튼 */
-.post-page .fn-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
-.post-page .fn-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
-.post-page .fn-seg button:hover { color: var(--fg-strong); }
-.post-page .fn-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
-.post-page .fn-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
-.post-page .fn-act::before { content: "▶ "; font-size: 11px; }
-.post-page .fn-act:disabled { opacity: .4; cursor: default; }
-.post-page .fn-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
-.post-page .fn-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
-.post-page .fn-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
-.post-page .fn-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
 
 /* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
 .post-page .fn-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
@@ -65,10 +54,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .fn ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .fn-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
 .post-page .fn-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
-.post-page .fn-term-bar .fn-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
-.post-page .fn-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
-.post-page .fn-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-fn-blink 1s steps(1) infinite; }
-@keyframes pg-fn-blink { 50% { opacity: 0; } }
+.post-page .fn-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 900px) {
   .post-page .fn-codepair, .post-page .fn-codepair.rev { grid-template-columns: minmax(0, 1fr); }
   .post-page .fn-codepair > .cp-code, .post-page .fn-codepair > .cp-term, .post-page .fn-codepair > .cp-notes,
@@ -158,11 +144,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .fn-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .fn-story { grid-template-columns: minmax(0, 1fr); } .post-page .fn-sfig { position: static; order: -1; } .post-page .fn-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .fn-steps { padding-bottom: 0; } }
 
-.post-page .fn-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
-.post-page .fn-stage .fn-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .fn-stage { margin-top: 36px; }
 .post-page .fn-lede { max-width: 780px; margin-top: 24px; }
-.post-page .fn-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
-.post-page .fn-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+.post-page .fn-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); }
+.post-page .fn-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); }
+.post-page .fn-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 32px); align-items: start; }
+.post-page .fn-trio h3, .post-page .fn-pair h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: 17px; color: var(--fg-strong); word-break: keep-all; }
+.post-page .fn-trio .fn-scene { max-width: none; }
+.post-page .fn-trio p, .post-page .fn-pair p { font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); margin: 6px 0 0; word-break: keep-all; }
+.post-page .fn-pair > div + div { margin-top: 28px; }
+@media (max-width: 900px) { .post-page .fn-trio { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -183,18 +174,26 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <h1>지금까지의 부품은 한 서비스에서 어떻게 맞물릴까요?</h1>
       <div class="fn-lede">
         <p>IT 헬프데스크 서비스를 만든다고 해 봅니다. 직원이 "VPN이 안 돼요"라고 물으면 사내 문서에서 답을 찾아 주고, "T-1042 상태 알려 줘"라고 하면 티켓 시스템을 조회하고, "토너 교체 티켓 만들어 줘"라고 하면 사람의 승인을 받은 뒤에 티켓을 만듭니다. 지금까지 하나씩 만든 부품이 모두 들어갑니다.</p>
-        <p>부품은 지식 검색 도구, MCP로 연결한 티켓 도구, 쓰기 앞에서 멈추는 사람 승인, 멈춘 자리를 기억하는 저장소입니다. 이 넷을 Agent 하나로 묶고 웹 서버가 바깥에 내놓습니다. 질문을 골라 어떤 부품이 켜지는지 보세요.</p>
+        <p>부품은 지식 검색 도구, MCP로 연결한 티켓 도구, 쓰기 앞에서 멈추는 사람 승인, 멈춘 자리를 기억하는 저장소입니다. 이 넷을 Agent 하나로 묶고 웹 서버가 바깥에 내놓습니다. 아래 세 그림은 질문마다 어떤 부품이 켜지는지 나란히 보여 줍니다.</p>
       </div>
       <div class="fn-stage" data-figure data-thumb data-fn-hero>
-        <div class="fn-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">질문</span>
-          <div class="fn-seg" role="group" aria-label="질문 고르기">
-            <button type="button" data-fn-q="0" aria-pressed="false">VPN이 안 돼요</button>
-            <button type="button" data-fn-q="1" aria-pressed="false">T-1042 상태 알려 줘</button>
-            <button type="button" data-fn-q="2" aria-pressed="true">토너 교체 티켓 만들어 줘</button>
+        <div class="fn-trio">
+          <div>
+            <h3>"VPN이 안 돼요"</h3>
+            <svg class="fn-scene" data-fn-hv="0" viewBox="0 0 460 660" role="img" aria-label="질문 VPN이 안 돼요일 때의 서비스 구조. 브라우저, 웹 서버의 chat과 approve 입구, 그 아래 Agent 안의 지식 검색 도구, MCP 티켓 도구, 사람 승인, 저장소 가운데 지나는 부품만 켜져 있다. 지식 질문은 검색 도구만 지나 사내 문서에서 근거를 찾고 근거 번호와 함께 답합니다."></svg>
+            <p>지식 질문은 검색 도구만 지나 사내 문서에서 근거를 찾고 근거 번호와 함께 답합니다.</p>
+          </div>
+          <div>
+            <h3>"T-1042 상태 알려 줘"</h3>
+            <svg class="fn-scene" data-fn-hv="1" viewBox="0 0 460 660" role="img" aria-label="질문 T-1042 상태 알려 줘일 때의 서비스 구조. 브라우저, 웹 서버의 chat과 approve 입구, 그 아래 Agent 안의 지식 검색 도구, MCP 티켓 도구, 사람 승인, 저장소 가운데 지나는 부품만 켜져 있다. 티켓 조회는 MCP 티켓 도구를 지나 티켓 서버에서 상태를 읽어 옵니다. 읽기라 승인 없이 바로 실행됩니다."></svg>
+            <p>티켓 조회는 MCP 티켓 도구를 지나 티켓 서버에서 상태를 읽어 옵니다. 읽기라 승인 없이 바로 실행됩니다.</p>
+          </div>
+          <div>
+            <h3>"토너 교체 티켓 만들어 줘"</h3>
+            <svg class="fn-scene" data-fn-hv="2" viewBox="0 0 460 660" role="img" aria-label="질문 토너 교체 티켓 만들어 줘일 때의 서비스 구조. 브라우저, 웹 서버의 chat과 approve 입구, 그 아래 Agent 안의 지식 검색 도구, MCP 티켓 도구, 사람 승인, 저장소 가운데 지나는 부품만 켜져 있다. 티켓 만들기는 MCP 티켓 도구에서 사람 승인 앞에 멈추고 저장소가 그 자리를 기억합니다. 승인이 오면 이어 갑니다."></svg>
+            <p>티켓 만들기는 MCP 티켓 도구에서 사람 승인 앞에 멈추고 저장소가 그 자리를 기억합니다. 승인이 오면 이어 갑니다.</p>
           </div>
         </div>
-        <svg class="fn-scene fn-nar" data-fn-hv viewBox="0 0 460 660" role="img" aria-label="서비스 구조 그림. 위에서 아래로 브라우저, 웹 서버의 chat과 approve 두 입구, 그 아래 Agent 상자가 있다. Agent 안에는 지식 검색 도구, MCP 티켓 도구, 사람 승인, 저장소 네 부품이 있다. 질문에 따라 지나는 부품이 켜진다. 지식 질문은 검색 도구, 티켓 조회는 MCP 티켓 도구, 티켓 만들기는 MCP 티켓 도구와 사람 승인과 저장소를 지나며 승인에서 멈춘다."></svg>
-        <p class="fn-verdict" data-fn-hsum></p>
         <p class="fn-cap" style="margin-bottom:0">설명을 위한 구조도입니다. 세 질문 모두 FastAPI 서비스를 실제로 띄워 스트림으로 확인했습니다. 모델은 모의 서버, 사내 문서와 티켓은 가짜 데이터입니다.</p>
       </div>
     </div>
@@ -227,14 +226,23 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   <section class="fn-sec">
     <div class="fn-wrap fn-split rev">
       <div data-figure>
-        <div class="fn-ctrl" style="margin-bottom:8px"><div class="fn-seg" role="group" aria-label="응답 방식 고르기"><button type="button" data-fn-rs="once" aria-pressed="false">끝나면 한 번에</button><button type="button" data-fn-rs="sse" aria-pressed="true">SSE로 조각씩</button></div></div>
-        <svg class="fn-scene fn-nar" data-fn-rv viewBox="0 0 460 440" role="img" aria-label="응답 방식 비교 그림. 시간 축 위에 요청이 시작되고 Agent가 네 단계를 거친다. 한 번에 응답하면 마지막에야 결과 상자 하나가 도착해 그 전까지 화면이 비어 있다. SSE로 보내면 단계마다 조각이 하나씩 도착해 화면이 계속 채워진다."></svg>
-        <p class="fn-wnote" data-fn-rvnote></p>
+        <div class="fn-pair">
+          <div>
+            <h3>끝나면 한 번에</h3>
+            <svg class="fn-scene fn-nar" data-fn-rv="once" viewBox="0 0 460 410" role="img" aria-label="한 번에 응답하는 경우. 서버 안의 Agent가 모델, 도구, 모델, 끝 네 단계를 거치는 동안 사용자 화면은 비어 있고 마지막에 결과 상자 하나가 도착한다."></svg>
+            <p>Agent가 끝나야 결과가 한 번에 오므로 그동안 화면이 비어 있고 승인 요청을 중간에 보여 줄 수도 없습니다.</p>
+          </div>
+          <div>
+            <h3>SSE로 조각씩</h3>
+            <svg class="fn-scene fn-nar" data-fn-rv="sse" viewBox="0 0 460 410" role="img" aria-label="SSE로 보내는 경우. Agent가 단계를 지날 때마다 tool_call, tool_result, answer, done 조각이 하나씩 사용자 화면에 도착한다."></svg>
+            <p>단계마다 이벤트가 도착해 사용자가 진행 상황을 봅니다. 승인 요청도 이 스트림으로 옵니다.</p>
+          </div>
+        </div>
       </div>
       <div>
         <h2>조각을 계속 보내는 SSE로 내보냅니다</h2>
         <p>Agent는 도구를 몇 번 부를지 모르고 몇 초가 걸릴지도 모릅니다. 응답이 끝나기를 기다렸다가 한 번에 보내면 사용자는 그동안 빈 화면만 보게 됩니다. SSE(Server-Sent Events)는 서버가 연결을 열어 둔 채 글 조각을 계속 보내는 방식입니다.</p>
-        <p>형식은 단순합니다. 이벤트 이름 줄(<code>event:</code>)과 내용 줄(<code>data:</code>)을 쓰고 빈 줄로 하나를 끝냅니다. 응답의 종류(<code>media_type</code>)는 <code>text/event-stream</code>으로 정합니다. 방식을 바꿔 보세요.</p>
+        <p>형식은 단순합니다. 이벤트 이름 줄(<code>event:</code>)과 내용 줄(<code>data:</code>)을 쓰고 빈 줄로 하나를 끝냅니다. 응답의 종류(<code>media_type</code>)는 <code>text/event-stream</code>으로 정합니다. 옆 두 그림은 같은 요청을 두 방식으로 보낸 것으로, 스크롤을 내리는 만큼 시간이 흐릅니다.</p>
       </div>
     </div>
   </section>
@@ -279,8 +287,8 @@ async def lifespan(app):
         </div>
         <div class="cp-term">
 <div class="fn-term" data-fn-term>
-  <div class="fn-term-bar"><span>터미널</span><button type="button" class="fn-act" data-fn-run="c">실행해 보기</button></div>
-  <div class="fn-term-out" data-fn-out aria-live="polite">$ curl -N -X POST localhost:8010/chat -d '{"thread_id":"c","message":"토너 교체 티켓 만들어 줘"}'
+  <div class="fn-term-bar"><span>터미널</span></div>
+  <div class="fn-term-out">$ curl -N -X POST localhost:8010/chat -d '{"thread_id":"c","message":"토너 교체 티켓 만들어 줘"}'
 event: tool_call
 data: {"name": "create_ticket"}
 event: approval_required
@@ -327,27 +335,15 @@ data: {"text": "T-1045 티켓을 만들었습니다. 담당은 kim입니다."}</
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const timers = new Set();
-  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
-  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
   const nf = (n) => n.toLocaleString("ko-KR");
-  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const initTerms = (RUNS) => $$("[data-fn-run]").forEach((btn) => btn.addEventListener("click", async () => {
-    const out = $("[data-fn-out]", btn.closest("[data-fn-term]"));
-    btn.disabled = true; out.textContent = "";
-    const cur = document.createElement("span"); cur.className = "cur";
-    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
-    for (const [kind, v] of RUNS[btn.dataset.fnRun]) {
-      if (signal.aborted) return;
-      if (kind === "wait") { if (!reduce) await later(v); continue; }
-      if (out.textContent) add("\n");
-      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
-      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
-    }
-    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
-  }, { signal }));
+  /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1 */
+  const scrollP = (el, fn) => {
+    let raf = 0;
+    const tick = () => { raf = 0; const r = el.getBoundingClientRect(), vh = innerHeight, a = vh * 0.85, b = vh * 0.45; fn(Math.min(1, Math.max(0, (a - r.top) / Math.max(1, r.height + a - b)))); };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { signal }); tick();
+  };
 
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
@@ -371,9 +367,9 @@ data: {"text": "T-1045 티켓을 만들었습니다. 담당은 kim입니다."}</
   const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
 
   /* ───── 히어로: 구조도 ───── */
-  const hv = $("[data-fn-hv]"), hsum = $("[data-fn-hsum]"); let qi = 2;
+
   const QS = [[["search"], "지식 질문은 검색 도구만 지나 사내 문서에서 근거를 찾고 근거 번호와 함께 답합니다."], [["mcp"], "티켓 조회는 MCP 티켓 도구를 지나 티켓 서버에서 상태를 읽어 옵니다. 읽기라 승인 없이 바로 실행됩니다."], [["mcp", "hitl", "store"], "티켓 만들기는 MCP 티켓 도구에서 사람 승인 앞에 멈추고 저장소가 그 자리를 기억합니다. 승인이 오면 이어 갑니다."]];
-  function drawHero() {
+  function drawHero(hv, qi) {
     hv.innerHTML = ""; const on = new Set(QS[qi][0]), lit = (k) => on.has(k);
     box(hv, 130, 10, 200, 54, "var(--fg-strong)", { rx: 12, sw: 3.5 }); txt(hv, 230, 44, "브라우저", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
     mk("path", { d: "M230 66 V94", stroke: "var(--fg-strong)", "stroke-width": 4.5 }, hv); mk("path", { d: "M230 100 l-9 -14 h18z", fill: "var(--fg-strong)" }, hv);
@@ -387,9 +383,8 @@ data: {"text": "T-1045 티켓을 만들었습니다. 담당은 kim입니다."}</
     if (lit("mcp")) { mk("path", { d: "M330 280 V296", stroke: C.human, "stroke-width": 5 }, hv); }
     if (lit("hitl")) { mk("path", { d: "M330 410 V436", stroke: C.bad, "stroke-width": 5 }, hv); mk("use", { href: "#fn-ic-stop", x: 396, y: 458, width: 34, height: 34, style: `color:${C.bad}` }, hv); }
     if (lit("store")) { mk("path", { d: "M236 495 H228", stroke: C.model, "stroke-width": 5 }, hv); }
-    hsum.textContent = QS[qi][1];
   }
-  $$("[data-fn-q]").forEach((b) => b.addEventListener("click", () => { qi = +b.dataset.fnQ; press("[data-fn-q]", b); drawHero(); }, { signal })); drawHero();
+  $$("[data-fn-hv]").forEach((el) => drawHero(el, +el.dataset.fnHv));
 
   /* ───── 요청 왕복 (스크롤) ───── */
   const sq = $("[data-fn-sq]"), sqstat = $("[data-fn-sqstat]");
@@ -406,21 +401,22 @@ data: {"text": "T-1045 티켓을 만들었습니다. 담당은 kim입니다."}</
   story("[data-fn-story]", (i) => drawSq(i)); drawSq(0);
 
   /* ───── 응답 방식 ───── */
-  const rv = $("[data-fn-rv]"); let rm = "sse";
-  function drawRv() {
-    rv.innerHTML = ""; const sse = rm === "sse", ev = ["tool_call", "tool_result", "answer", "done"];
+  const RV = [];
+  function drawRv(rv) {
+    rv.innerHTML = ""; const sse = rv.dataset.fnRv === "sse", ev = ["tool_call", "tool_result", "answer", "done"], late = [];
     mk("path", { d: "M20 70 H440", stroke: "var(--fg-neutral)", "stroke-width": 3 }, rv); [0, 1, 2, 3, 4].forEach((t) => { mk("path", { d: `M${40 + t * 90} 62 V78`, stroke: "var(--fg-neutral)", "stroke-width": 3 }, rv); });
     txt(rv, 40, 34, "요청", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(rv, 400, 34, "시간 →", { "font-size": 15, "text-anchor": "end", class: "t-d" });
     box(rv, 20, 100, 420, 72, C.model, { rx: 12, sw: 3.5, fill: `color-mix(in srgb, ${C.model} 6%, var(--bg-base))` }); txt(rv, 34, 130, "서버 안의 Agent", { "font-size": 15, class: "t-d" }); ["모델", "도구", "모델", "끝"].forEach((s, i) => { mk("rect", { x: 130 + i * 76, y: 124, width: 62, height: 34, rx: 6, fill: i % 2 ? C.code : C.model }, rv); txt(rv, 161 + i * 76, 147, s, { "font-size": 15, "text-anchor": "middle", class: "t-s", style: "fill:#fff" }); });
     box(rv, 20, 210, 420, 190, sse ? C.code : C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${sse ? C.code : C.bad} 5%, var(--bg-base))` }); txt(rv, 34, 240, "사용자 화면", { "font-size": 17, class: "t-s" });
-    if (sse) { ev.forEach((e, i) => { box(rv, 34, 254 + i * 34, 220 + i * 40, 28, C.code, { rx: 6, sw: 2.5, fill: "var(--bg-base)" }); txt(rv, 44, 274 + i * 34, e, { "font-size": 15, class: "t-s mono" }); }); txt(rv, 280, 380, "조각이 계속 도착", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); }
-    else { txt(rv, 34, 300, "(빈 화면)", { "font-size": 17, class: "t-d" }); box(rv, 270, 330, 156, 54, C.bad, { rx: 10, sw: 3.5, fill: `color-mix(in srgb, ${C.bad} 8%, var(--bg-base))` }); txt(rv, 348, 364, "결과 한 번에", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); txt(rv, 34, 380, "끝날 때까지 기다림", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); }
-    $("[data-fn-rvnote]").textContent = sse ? "단계마다 이벤트가 도착해 사용자가 진행 상황을 봅니다. 승인 요청도 이 스트림으로 옵니다." : "Agent가 끝나야 결과가 한 번에 오므로 그동안 화면이 비어 있고 승인 요청을 중간에 보여 줄 수도 없습니다.";
+    /* 지금 시각을 가리키는 세로선 — 스크롤만큼 오른쪽으로 간다 */
+    const now = mk("path", { d: "M40 50 V90", stroke: C.bad, "stroke-width": 4 }, rv);
+    if (sse) { ev.forEach((e, i) => { const g = mk("g", {}, rv); box(g, 34, 254 + i * 34, 220 + i * 40, 28, C.code, { rx: 6, sw: 2.5, fill: "var(--bg-base)" }); txt(g, 44, 274 + i * 34, e, { "font-size": 15, class: "t-s mono" }); late.push([g, (i + 1) / 4]); }); txt(rv, 280, 380, "조각이 계속 도착", { "font-size": 15, class: "t-s", style: `fill:${C.code}` }); }
+    else { const empty = txt(rv, 34, 300, "(빈 화면)", { "font-size": 17, class: "t-d" }); const g = mk("g", {}, rv); box(g, 270, 330, 156, 54, C.bad, { rx: 10, sw: 3.5, fill: `color-mix(in srgb, ${C.bad} 8%, var(--bg-base))` }); txt(g, 348, 364, "결과 한 번에", { "font-size": 15, "text-anchor": "middle", class: "t-s" }); late.push([g, 1]); txt(rv, 34, 380, "끝날 때까지 기다림", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); }
+    RV.push({ rv, now, late });
   }
-  $$("[data-fn-rs]").forEach((b) => b.addEventListener("click", () => { rm = b.dataset.fnRs; press("[data-fn-rs]", b); drawRv(); }, { signal })); drawRv();
+  const setRv = (p) => RV.forEach(({ now, late }) => { const x = 40 + 360 * p; now.setAttribute("d", `M${x} 50 V90`); late.forEach(([g, at]) => { g.style.opacity = p >= at - 0.02 ? 1 : 0.1; }); });
+  $$("[data-fn-rv]").forEach(drawRv);
+  if (reduce) setRv(1); else scrollP($(".fn-pair"), setRv);
 
-  initTerms({
-    c: [["cmd", "$ curl -N -X POST localhost:8010/chat -d '{\"thread_id\":\"c\",\"message\":\"토너 교체 티켓 만들어 줘\"}'"], ["wait", 700], ["line", "event: tool_call"], ["line", "data: {\"name\": \"create_ticket\"}"], ["line", "event: approval_required"], ["line", "data: {\"tool\": \"create_ticket\", \"args\": {\"title\": \"프린터 토너 교체\", \"owner\": \"kim\"}}"], ["line", ""], ["cmd", "$ curl -N -X POST localhost:8010/approve -d '{\"thread_id\":\"c\",\"approve\":true}'"], ["wait", 500], ["line", "event: tool_result"], ["line", "event: answer"], ["type", "data: {\"text\": \"T-1045 티켓을 만들었습니다. 담당은 kim입니다.\"}"]],
-  });
 })();
 </script>
