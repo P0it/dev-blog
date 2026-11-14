@@ -9,7 +9,7 @@ series_order: 22
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/mcp-client-agent-adapters-security-mvb91dvb.jpg
 ---
 <!-- page -->
-<!-- layout: 제목 위 + 전폭 관문 통과 히어로(도구 호출이 허용 목록·시간 한도·실패 처리 앞에서 어떻게 되는지 세 장면) + 코드|터미널 + 그림|글(이름 충돌) + 허용 칩 던지기 장면 + OAuth 단계 시퀀스 + 위험 네 가지 지도 + 정리 | 글의 성격: 연결은 쉽고 조심할 것이 많은 글이라 호출이 지나는 관문을 먼저 눈으로 보이고 권한, 인증, 위험을 하나씩 겪게 한다 | 버린 후보: 체크리스트 나열(그림이 아니라 목록이라서) -->
+<!-- layout: [2026-11-14 개편: 조작 요소 0 — 상황·접두어·허용·OAuth·위험 토글과 실행해 보기 제거, 상황은 세 장·위험은 2×2 펼쳐 놓기, 히어로는 스크롤 호출 점, OAuth 는 스크롤 단계] 제목 위 + 전폭 관문 통과 히어로(도구 호출이 허용 목록·시간 한도·실패 처리 앞에서 어떻게 되는지 세 장면) + 코드|터미널 + 그림|글(이름 충돌) + 허용 칩 던지기 장면 + OAuth 단계 시퀀스 + 위험 네 가지 지도 + 정리 | 글의 성격: 연결은 쉽고 조심할 것이 많은 글이라 호출이 지나는 관문을 먼저 눈으로 보이고 권한, 인증, 위험을 하나씩 겪게 한다 | 버린 후보: 체크리스트 나열(그림이 아니라 목록이라서) -->
 <style>
 .post-page .ca {
   --ca-human: rgb(37, 112, 235); --ca-code: rgb(16, 150, 120); --ca-model: rgb(226, 106, 28); --ca-bad: rgb(214, 56, 56);
@@ -35,17 +35,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ca-split.rev > :first-child { order: 2; }
 
 /* 고르기 = 토글, 실행 = 테두리 버튼 */
-.post-page .ca-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
-.post-page .ca-seg button { font: inherit; font-size: 14px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--fg-neutral); cursor: pointer; transition: background .2s, color .2s; }
-.post-page .ca-seg button:hover { color: var(--fg-strong); }
-.post-page .ca-seg button[aria-pressed="true"] { background: var(--fg-strong); color: var(--bg-base); font-weight: 700; }
-.post-page .ca-act { font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 13px; border-radius: 10px; border: 1.5px solid var(--fg-strong); background: transparent; color: var(--fg-strong); cursor: pointer; }
-.post-page .ca-act::before { content: "▶ "; font-size: 11px; }
-.post-page .ca-act:disabled { opacity: .4; cursor: default; }
-.post-page .ca-ctrl { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
-.post-page .ca-ctrl label { font-size: 14px; color: var(--fg-neutral); display: inline-flex; align-items: center; gap: 10px; }
-.post-page .ca-ctrl input[type="range"] { width: 150px; accent-color: var(--fg-strong); }
-.post-page .ca-ctrl output { font-family: var(--font-mono); font-weight: 700; color: var(--fg-strong); min-width: 1.5em; }
 
 /* 시각 언어: 모델(주황) · 코드(초록) · 사람(파랑) · 막힘(빨강). 한 바퀴 = 호출 칸 하나 */
 .post-page .ca-tag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; color: var(--bg-base); background: var(--t, var(--fg-neutral)); white-space: nowrap; }
@@ -65,10 +54,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ca ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .ca-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
 .post-page .ca-term-bar { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-comment, #7f848e); }
-.post-page .ca-term-bar .ca-act { color: var(--code-fg, #abb2bf); border-color: var(--code-fg, #abb2bf); }
-.post-page .ca-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 5em; }
-.post-page .ca-term-out .cur { display: inline-block; width: 8px; height: 1.1em; vertical-align: -3px; background: currentColor; animation: pg-ca-blink 1s steps(1) infinite; }
-@keyframes pg-ca-blink { 50% { opacity: 0; } }
+.post-page .ca-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 900px) {
   .post-page .ca-codepair, .post-page .ca-codepair.rev { grid-template-columns: minmax(0, 1fr); }
   .post-page .ca-codepair > .cp-code, .post-page .ca-codepair > .cp-term, .post-page .ca-codepair > .cp-notes,
@@ -158,11 +144,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ca-stat b { font-family: var(--font-mono); color: var(--fg-strong); }
 @media (max-width: 900px) { .post-page .ca-story { grid-template-columns: minmax(0, 1fr); } .post-page .ca-sfig { position: static; order: -1; } .post-page .ca-step { min-height: 0; opacity: 1; margin-top: 28px; } .post-page .ca-steps { padding-bottom: 0; } }
 
-.post-page .ca-stage { background: var(--bg-subtle); border-radius: 20px; padding: clamp(14px, 2vw, 24px); margin-top: 30px; }
-.post-page .ca-stage .ca-ctrl { margin-bottom: 8px; gap: 8px 14px; }
+.post-page .ca-stage { margin-top: 36px; }
 .post-page .ca-lede { max-width: 780px; margin-top: 24px; }
-.post-page .ca-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); min-height: 3.3em; }
-.post-page .ca-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); min-height: 3.2em; }
+.post-page .ca-wnote { margin: 8px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); }
+.post-page .ca-verdict { margin-top: 8px; font-size: 15.5px; font-weight: 700; color: var(--fg-strong); }
+/* 펼쳐 놓기: 같은 그림을 상황마다 한 장씩 나란히 (데스크톱 가로, 모바일 세로) */
+.post-page .ca-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 32px); }
+.post-page .ca-quad { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); }
+.post-page .ca-trio h3, .post-page .ca-quad h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: 17px; color: var(--fg-strong); word-break: keep-all; }
+.post-page .ca-trio .ca-scene, .post-page .ca-quad .ca-scene { max-width: none; }
+.post-page .ca-trio p, .post-page .ca-quad p { font-size: 14.5px; line-height: 1.65; color: var(--fg-neutral); margin: 6px 0 0; word-break: keep-all; }
+.post-page .ca-steps { margin: 18px auto 0; padding-left: 1.4em; max-width: 680px; }
+.post-page .ca-steps li { font-size: 15px; line-height: 1.65; color: var(--fg-neutral); margin: 4px 0; transition: color .3s; }
+.post-page .ca-steps li.on { color: var(--fg-strong); font-weight: 700; }
+@media (max-width: 900px) { .post-page .ca-trio, .post-page .ca-quad { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -183,19 +178,27 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <h1>남이 만든 도구를 내 Agent에 꽂으면 무엇을 조심해야 할까요?</h1>
       <div class="ca-lede">
         <p>MCP 서버를 Agent에 연결하는 일은 몇 줄이면 됩니다. 조심할 일은 연결한 뒤에 생깁니다. 남이 만든 서버의 도구를 내 Agent가 내 권한으로 부르게 되기 때문입니다. 삭제하는 도구가 섞여 있을 수도 있고 서버가 갑자기 꺼질 수도 있고 도구가 오류를 낼 수도 있습니다.</p>
-        <p>그래서 Agent와 서버 사이에 관문을 둡니다. 허용한 도구만 통과시키고 서버가 응답하지 않을 때를 대비하고 오류 메시지는 모델이 읽을 수 있게 돌려줍니다. 아래에서 상황을 하나 골라 호출이 어디서 멈추는지 보세요.</p>
+        <p>그래서 Agent와 서버 사이에 관문을 둡니다. 허용한 도구만 통과시키고 서버가 응답하지 않을 때를 대비하고 오류 메시지는 모델이 읽을 수 있게 돌려줍니다. 아래 세 그림은 같은 관문에서 세 가지 상황의 호출이 어디서 멈추는지 나란히 보여 줍니다.</p>
       </div>
-      <div class="ca-stage" data-figure data-thumb data-ca-hero>
-        <div class="ca-ctrl"><span style="font-size:13.5px;color:var(--fg-neutral);font-weight:700">상황</span>
-          <div class="ca-seg" role="group" aria-label="상황 고르기">
-            <button type="button" data-ca-sc="0" aria-pressed="false">허용하지 않은 도구를 부름</button>
-            <button type="button" data-ca-sc="1" aria-pressed="true">없는 티켓을 조회함</button>
-            <button type="button" data-ca-sc="2" aria-pressed="false">서버가 꺼져 있음</button>
+      <div class="ca-stage" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('ca-all'))" data-ca-hero>
+        <div class="ca-trio">
+          <div>
+            <h3>허용하지 않은 도구를 부름</h3>
+            <svg class="ca-scene" data-ca-hv="0" viewBox="0 0 460 580" role="img" aria-label="허용하지 않은 도구를 부름: 허용 목록 관문에서 튕겨 나옵니다. 서버까지 가지 않고 Agent가 거절 이유를 읽습니다."></svg>
+            <p>허용 목록 관문에서 튕겨 나옵니다. 서버까지 가지 않고 Agent가 거절 이유를 읽습니다.</p>
+          </div>
+          <div>
+            <h3>없는 티켓을 조회함</h3>
+            <svg class="ca-scene" data-ca-hv="1" viewBox="0 0 460 580" role="img" aria-label="없는 티켓을 조회함: 서버까지 갔다가 ToolError 메시지가 돌아옵니다. 모델이 원인을 읽고 번호를 다시 확인할 수 있습니다."></svg>
+            <p>서버까지 갔다가 ToolError 메시지가 돌아옵니다. 모델이 원인을 읽고 번호를 다시 확인할 수 있습니다.</p>
+          </div>
+          <div>
+            <h3>서버가 꺼져 있음</h3>
+            <svg class="ca-scene" data-ca-hv="2" viewBox="0 0 460 580" role="img" aria-label="서버가 꺼져 있음: 서버에 닿지 못하고 연결 실패가 올라옵니다. 잡아서 도구 없이 시작하고 사용자에게 알려야 합니다."></svg>
+            <p>서버에 닿지 못하고 연결 실패가 올라옵니다. 잡아서 도구 없이 시작하고 사용자에게 알려야 합니다.</p>
           </div>
         </div>
-        <svg class="ca-scene ca-nar" data-ca-hv viewBox="0 0 460 580" role="img" aria-label="관문 그림. 위에서 아래로 Agent, 허용 목록 관문, MCP 서버가 놓여 있다. 허용하지 않은 도구를 부르면 호출이 관문에서 튕겨 나와 Agent가 거절 메시지를 읽는다. 없는 티켓을 조회하면 호출이 서버까지 가서 오류 메시지가 돌아와 Agent가 읽는다. 서버가 꺼져 있으면 호출이 서버에 닿지 못하고 연결 실패가 Agent 쪽 프로그램에 알려진다."></svg>
-        <p class="ca-verdict" data-ca-hsum></p>
-        <p class="ca-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 세 상황은 모두 langchain-mcp-adapters와 Python MCP SDK로 직접 실행해 확인했습니다.</p>
+        <p class="ca-cap" style="margin-bottom:0">설명을 위한 예시 장면입니다. 스크롤을 내리면 호출 점이 세 그림을 함께 지나가고 끝에 닿은 그림부터 결과 칸이 진해집니다. 세 상황은 모두 langchain-mcp-adapters와 Python MCP SDK로 직접 실행해 확인했습니다.</p>
       </div>
     </div>
   </section>
@@ -225,8 +228,8 @@ agent = create_agent(model, tools=tools)</code></pre>
         </div>
         <div class="cp-term">
 <div class="ca-term" data-ca-term>
-  <div class="ca-term-bar"><span>터미널</span><button type="button" class="ca-act" data-ca-run="a">실행해 보기</button></div>
-  <div class="ca-term-out" data-ca-out aria-live="polite">$ python agent.py
+  <div class="ca-term-bar"><span>터미널</span></div>
+  <div class="ca-term-out">$ python agent.py
 도구 이름: ['get_ticket', 'list_tickets']
 허용된 호출: {"id": "T-1043", "title": "메일 용량 증설", ...}
 막힌 호출: list_tickets은 허용 목록에 없어 실행하지 않았습니다
@@ -267,9 +270,8 @@ async def allowlist(request, handler):
   <section class="ca-sec">
     <div class="ca-wrap ca-split rev">
       <div data-figure>
-        <div class="ca-ctrl" style="margin-bottom:8px"><div class="ca-seg" role="group" aria-label="이름 붙이기 고르기"><button type="button" data-ca-px="off" aria-pressed="false">접두어 없음</button><button type="button" data-ca-px="on" aria-pressed="true">서버 이름 접두어</button></div></div>
-        <svg class="ca-scene ca-nar" data-ca-pxv viewBox="0 0 460 460" role="img" aria-label="이름 충돌 그림. 티켓 서버와 위키 서버가 둘 다 search라는 도구를 갖고 있다. 접두어가 없으면 모델이 보는 도구 목록에 같은 이름이 두 번 나와 구분되지 않고, 서버 이름 접두어를 붙이면 tickets_search와 wiki_search로 나뉜다."></svg>
-        <p class="ca-wnote" data-ca-pxnote></p>
+        <svg class="ca-scene ca-nar" data-ca-pxv viewBox="0 0 460 410" role="img" aria-label="이름 충돌 그림. 티켓 서버와 위키 서버가 둘 다 search라는 도구를 갖고 있다. 아래에 모델이 보는 도구 목록 두 개를 나란히 놓았다. 접두어가 없는 왼쪽 목록에는 같은 이름 search가 두 번 나와 구분되지 않고, 서버 이름 접두어를 붙인 오른쪽 목록에는 tickets_search와 wiki_search로 나뉜다."></svg>
+        <p class="ca-wnote">왼쪽은 접두어가 없을 때, 오른쪽은 tool_name_prefix=True로 서버 이름을 앞에 붙였을 때 모델이 보는 목록입니다.</p>
       </div>
       <div>
         <h2>서버가 둘이면 도구 이름이 겹칠 수 있습니다</h2>
@@ -285,13 +287,12 @@ async def allowlist(request, handler):
         <h2>도구마다 허용할지 말지를 정합니다</h2>
         <div>
           <p>MCP 공식 보안 문서는 권한 범위를 줄이라고 거듭 말합니다. 처음에는 읽기 같은 위험이 낮은 것만 열고 필요할 때 한 단계씩 넓힙니다. 넓은 권한을 한 번에 받아 두면 토큰이나 도구 하나가 새는 순간 피해가 커지기 때문입니다.</p>
-          <p>티켓 시스템에 도구가 다섯 개 있다고 해 봅니다. 도구를 눌러 허용을 바꾸고 모델이 모두 호출해 보게 해 보세요.</p>
+          <p>티켓 시스템에 도구가 다섯 개 있다고 해 봅니다. 아래 그림은 읽기 도구 두 개만 허용해 두고 모델이 다섯 개를 모두 불렀을 때입니다.</p>
         </div>
       </div>
       <div style="margin-top:36px" data-figure>
-        <div class="ca-ctrl" style="flex-wrap:wrap"><div class="ca-seg" role="group" aria-label="허용할 도구 고르기"><button type="button" data-ca-al="0" aria-pressed="true">get_ticket</button><button type="button" data-ca-al="1" aria-pressed="true">list_tickets</button><button type="button" data-ca-al="2" aria-pressed="false">update_ticket</button><button type="button" data-ca-al="3" aria-pressed="false">delete_ticket</button><button type="button" data-ca-al="4" aria-pressed="false">send_mail</button></div><button type="button" class="ca-act" data-ca-try>모델이 전부 호출해 보기</button></div>
         <svg class="ca-scene ca-nar" data-ca-alv viewBox="0 0 460 520" role="img" aria-label="허용 목록 그림. 왼쪽에 Agent가 부르려는 도구 다섯 개가 있고 가운데 관문이 있고 오른쪽에 서버가 있다. 허용한 도구는 관문을 지나 서버에 닿고 허용하지 않은 도구는 관문에서 튕겨 나온다. 읽기 도구는 파란색, 쓰기 도구는 주황색, 삭제와 외부 전송 도구는 빨간색으로 위험도를 나타낸다."></svg>
-        <p class="ca-verdict" data-ca-alsay></p>
+        <p class="ca-verdict">허용한 두 개만 서버에 닿고 쓰기·삭제·외부 전송 세 개는 관문에서 막혔습니다. 쓰기는 필요해질 때 한 단계씩 더합니다.</p>
       </div>
     </div>
   </section>
@@ -302,13 +303,12 @@ async def allowlist(request, handler):
         <h2>원격 서버는 OAuth로 누구인지 확인합니다</h2>
         <div>
           <p>HTTP로 연결하는 원격 서버가 사용자 데이터를 다룬다면 인증이 필요합니다. MCP 규격은 OAuth 2.1을 바탕으로 한 흐름을 정의합니다. 서버는 보호된 자원을 지키는 쪽이고 클라이언트는 사용자를 대신해 접근을 요청하는 쪽이며 사용자의 동의와 토큰 발급은 인증 서버가 맡습니다.</p>
-          <p>인증은 선택 사항입니다. 내 컴퓨터에서 도는 stdio 서버는 이 흐름을 따르지 않고 환경에서 자격 증명을 가져옵니다. 단계를 눌러 흐름을 따라가 보세요.</p>
+          <p>인증은 선택 사항입니다. 내 컴퓨터에서 도는 stdio 서버는 이 흐름을 따르지 않고 환경에서 자격 증명을 가져옵니다. 스크롤을 내리면 화살표가 한 단계씩 더해집니다.</p>
         </div>
       </div>
       <div style="margin-top:36px" data-figure>
-        <div class="ca-ctrl"><div class="ca-seg" role="group" aria-label="단계 고르기"><button type="button" data-ca-oa="0" aria-pressed="false">① 요청</button><button type="button" data-ca-oa="1" aria-pressed="false">② 401</button><button type="button" data-ca-oa="2" aria-pressed="false">③ 동의 요청</button><button type="button" data-ca-oa="3" aria-pressed="false">④ 토큰</button><button type="button" data-ca-oa="4" aria-pressed="false">⑤ 재요청</button><button type="button" data-ca-oa="5" aria-pressed="true">⑥ 결과</button></div></div>
         <svg class="ca-scene ca-nar" data-ca-oav viewBox="0 0 460 580" role="img" aria-label="OAuth 단계 그림. 세 줄이 클라이언트, MCP 서버, 인증 서버이다. 클라이언트가 토큰 없이 서버에 요청하고, 서버가 401과 인증 서버 안내를 돌려주고, 클라이언트가 인증 서버에 동의를 요청해 사용자가 동의하고, 토큰을 받아, Authorization Bearer 헤더에 담아 서버에 다시 요청하고, 서버가 결과를 돌려준다. 단계마다 화살표가 더해진다."></svg>
-        <p class="ca-verdict" data-ca-oasay></p>
+        <ol class="ca-steps" data-ca-oasteps><li>클라이언트가 토큰 없이 서버에 요청합니다.</li><li>서버가 401(인증 필요)과 함께 인증 서버를 찾는 방법(resource_metadata)을 알려 줍니다.</li><li>클라이언트가 인증 서버에 접근을 요청합니다. 사용자의 동의 화면이 열리고 PKCE와 resource 값이 함께 갑니다.</li><li>사용자가 동의하면 인증 서버가 이 서버를 위한 접근 토큰을 발급합니다.</li><li>클라이언트가 모든 요청의 Authorization 헤더에 Bearer 토큰을 담아 다시 보냅니다. 토큰은 주소(URL)에 넣지 않습니다.</li><li>서버가 자기 앞으로 발급된 토큰인지 확인하고 결과를 돌려줍니다.</li></ol>
       </div>
     </div>
   </section>
@@ -319,13 +319,28 @@ async def allowlist(request, handler):
         <h2>믿지 말아야 할 것도 있습니다</h2>
         <div>
           <p>MCP 서버는 내 Agent에게 도구와 설명을 건네는 외부 프로그램입니다. 공식 문서는 도구는 임의의 코드 실행에 해당하니 신중히 다루고 도구 동작을 설명한 글은 믿을 만한 서버에서 온 것이 아니라면 믿지 말라고 말합니다. 도구를 실행하기 전에 사용자의 명시적인 동의를 받아야 한다고도 적혀 있습니다.</p>
-          <p>위험을 네 가지로 나눠 정리했습니다. 하나씩 눌러 무슨 일이 생기고 어떻게 막는지 보세요.</p>
+          <p>위험을 네 가지로 나눠 무슨 일이 생기고 어떻게 막는지 한 장씩 정리했습니다.</p>
         </div>
       </div>
       <div style="margin-top:36px" data-figure>
-        <div class="ca-ctrl"><div class="ca-seg" role="group" aria-label="위험 고르기"><button type="button" data-ca-hz="0" aria-pressed="true">서버 실행 명령</button><button type="button" data-ca-hz="1" aria-pressed="false">도구 설명</button><button type="button" data-ca-hz="2" aria-pressed="false">넓은 권한</button><button type="button" data-ca-hz="3" aria-pressed="false">엉뚱한 곳에 토큰</button></div></div>
-        <svg class="ca-scene ca-nar" data-ca-hzv viewBox="0 0 460 480" role="img" aria-label="위험 지도 그림. 위쪽에 위험이 일어나는 장면, 아래쪽에 막는 방법이 놓인다. 서버 실행 명령은 내 권한으로 임의 명령이 실행되는 위험과 정확한 명령을 보여 주고 동의받기, 격리해 실행하기로 막는다. 도구 설명은 믿을 수 없는 글이 모델을 속이는 위험과 믿을 만한 서버만 쓰기, 실행 전 동의로 막는다. 넓은 권한은 토큰이 새면 피해가 커지는 위험과 최소 권한으로 막는다. 엉뚱한 곳에 토큰은 다른 서버가 토큰을 가로채는 위험과 해당 서버의 인증 서버가 발급한 토큰만 보내는 것으로 막는다."></svg>
-        <p class="ca-verdict" data-ca-hzsay></p>
+        <div class="ca-quad">
+          <div>
+            <svg class="ca-scene" data-ca-hzv="0" viewBox="0 0 460 480" role="img" aria-label="위험: 서버 실행 명령. 위쪽에 상황과 피해, 아래쪽에 막는 방법."></svg>
+            <p>공식 문서는 한 번에 서버를 설정하는 기능이 있다면 명령을 잘리지 않게 보여 주고 사용자 승인을 받으라고 합니다.</p>
+          </div>
+          <div>
+            <svg class="ca-scene" data-ca-hzv="1" viewBox="0 0 460 480" role="img" aria-label="위험: 도구 설명. 위쪽에 상황과 피해, 아래쪽에 막는 방법."></svg>
+            <p>공식 문서는 도구 동작을 설명한 글을 믿을 만한 서버에서 얻은 것이 아니면 신뢰하지 말라고 합니다.</p>
+          </div>
+          <div>
+            <svg class="ca-scene" data-ca-hzv="2" viewBox="0 0 460 480" role="img" aria-label="위험: 넓은 권한. 위쪽에 상황과 피해, 아래쪽에 막는 방법."></svg>
+            <p>공식 문서의 최소 권한(scope minimization) 원칙입니다. 한 번에 넓게 받지 않습니다.</p>
+          </div>
+          <div>
+            <svg class="ca-scene" data-ca-hzv="3" viewBox="0 0 460 480" role="img" aria-label="위험: 엉뚱한 곳에 토큰. 위쪽에 상황과 피해, 아래쪽에 막는 방법."></svg>
+            <p>규격은 그 MCP 서버의 인증 서버가 발급하지 않은 토큰을 클라이언트가 보내지 못하게 합니다.</p>
+          </div>
+        </div>
       </div>
       <div class="ca-codepair" style="margin-top:44px">
         <div class="cp-code">
@@ -337,8 +352,8 @@ except Exception as e:
         </div>
         <div class="cp-term">
 <div class="ca-term" data-ca-term>
-  <div class="ca-term-bar"><span>터미널</span><button type="button" class="ca-act" data-ca-run="s">실행해 보기</button></div>
-  <div class="ca-term-out" data-ca-out aria-live="polite">$ python safe_start.py
+  <div class="ca-term-bar"><span>터미널</span></div>
+  <div class="ca-term-out">$ python safe_start.py
 일부 도구를 쓸 수 없습니다: ExceptionGroup</div>
 </div>
 <p class="ca-cap">출력은 예시입니다. 응답하지 않는 주소로 연결해 확인한 결과이고 오류 이름은 어댑터 버전에 따라 다를 수 있습니다.</p>
@@ -377,27 +392,20 @@ except Exception as e:
   const $ = (s, el = root) => el.querySelector(s);
   const $$ = (s, el = root) => [...el.querySelectorAll(s)];
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const press = (sel, b) => $$(sel).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const timers = new Set();
-  const later = (ms) => new Promise((r) => { const t = setTimeout(() => { timers.delete(t); r(); }, ms); timers.add(t); });
-  signal.addEventListener("abort", () => timers.forEach(clearTimeout));
   const nf = (n) => n.toLocaleString("ko-KR");
-  /* 터미널: 실제 API 호출 없이 준비한 출력을 한 글자씩 찍는다 */
-  const initTerms = (RUNS) => $$("[data-ca-run]").forEach((btn) => btn.addEventListener("click", async () => {
-    const out = $("[data-ca-out]", btn.closest("[data-ca-term]"));
-    btn.disabled = true; out.textContent = "";
-    const cur = document.createElement("span"); cur.className = "cur";
-    const add = (t) => { cur.remove(); out.append(t); out.append(cur); };
-    for (const [kind, v] of RUNS[btn.dataset.caRun]) {
-      if (signal.aborted) return;
-      if (kind === "wait") { if (!reduce) await later(v); continue; }
-      if (out.textContent) add("\n");
-      if (kind === "type" && !reduce) { for (const ch of v) { add(ch); await later(22); } }
-      else { add(v); if (!reduce) await later(kind === "cmd" ? 350 : 200); }
-    }
-    cur.remove(); btn.disabled = false; btn.textContent = "다시 실행";
-  }, { signal }));
+  /* 그림이 화면을 지나가는 정도(0~1) — 그림 위쪽이 화면 85% 선에 닿으면 0, 아래쪽이 45% 선에 닿으면 1.
+     처음부터 85% 선 위에 있는 히어로는 페이지 맨 위를 0 으로 잡고 진행 구간을 600px 이상으로 둔다 */
+  const scrollP = (el, fn, isHero) => {
+    let raf = 0;
+    const tick = () => { raf = 0; const r = el.getBoundingClientRect(), vh = innerHeight, top = r.top + scrollY;
+      let p;
+      if (isHero) { const end = Math.max(600, top + r.height - vh * 0.45); p = scrollY / end; }
+      else { const a = vh * 0.85, b = vh * 0.45; p = (a - r.top) / Math.max(1, r.height + a - b); }
+      fn(Math.min(1, Math.max(0, p))); };
+    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    addEventListener("scroll", on, { passive: true, signal }); addEventListener("resize", on, { signal }); tick();
+  };
 
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; };
@@ -421,36 +429,47 @@ except Exception as e:
   const box = (p, x, y, w, h, col, o = {}) => mk("rect", { x, y, width: w, height: h, rx: o.rx ?? 14, fill: o.fill ?? `color-mix(in srgb, ${col} 12%, var(--bg-base))`, stroke: col, "stroke-width": o.sw ?? 3, ...(o.dash ? { "stroke-dasharray": o.dash } : {}) }, p);
 
   /* ───── 히어로: 관문 ───── */
-  const hv = $("[data-ca-hv]"), hsum = $("[data-ca-hsum]"); let sc = 1;
+  const HV = $$("[data-ca-hv]"), HR = [];
   const SCN = [["delete_ticket", "허용 목록 관문에서 튕겨 나옵니다. 서버까지 가지 않고 Agent가 거절 이유를 읽습니다.", "delete_ticket은 허용 목록에 없어 실행하지 않았습니다"], ["get_ticket(T-9999)", "서버까지 갔다가 ToolError 메시지가 돌아옵니다. 모델이 원인을 읽고 번호를 다시 확인할 수 있습니다.", "Error executing tool get_ticket: 없는 티켓입니다: T-9999"], ["get_ticket", "서버에 닿지 못하고 연결 실패가 올라옵니다. 잡아서 도구 없이 시작하고 사용자에게 알려야 합니다.", "ExceptionGroup (연결 실패)"]];
-  function drawHero() {
-    hv.innerHTML = ""; const [call, say, msg] = SCN[sc];
+  function drawHero(hv, sc) {
+    hv.innerHTML = ""; const [call, , msg] = SCN[sc];
     box(hv, 120, 10, 220, 80, C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.model} 8%, var(--bg-base))` }); mk("use", { href: "#ca-ic-robot", x: 134, y: 28, width: 44, height: 44, style: `color:${C.model}` }, hv); txt(hv, 190, 58, "Agent", { "font-size": 19, class: "t-s" });
     const gateOn = sc === 0; box(hv, 70, 190, 320, 70, gateOn ? C.bad : C.code, { rx: 12, sw: 4.5, fill: `color-mix(in srgb, ${gateOn ? C.bad : C.code} 8%, var(--bg-base))` }); txt(hv, 230, 232, "허용 목록 관문", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
     const srvOn = sc !== 2; box(hv, 120, 380, 220, 80, srvOn ? C.human : "var(--line-strong)", { rx: 14, sw: srvOn ? 4 : 2.5, dash: srvOn ? "" : "7 5", fill: `color-mix(in srgb, ${srvOn ? C.human : "var(--line-strong)"} 6%, var(--bg-base))` }); mk("use", { href: "#ca-ic-gear", x: 134, y: 398, width: 44, height: 44, style: `color:${srvOn ? C.human : "var(--line-strong)"}` }, hv); txt(hv, 190, 428, sc === 2 ? "MCP 서버(꺼짐)" : "MCP 서버", { "font-size": 17, class: "t-s", opacity: srvOn ? 1 : .6 });
     mk("path", { d: "M190 92 V186", stroke: C.model, "stroke-width": 5 }, hv); mk("path", { d: "M190 190 l-9 -14 h18z", fill: C.model }, hv); txt(hv, 206, 150, call, { "font-size": 15, class: "t-s mono" });
     if (sc === 0) { mk("path", { d: "M390 225 H424 V50 H348", fill: "none", stroke: C.bad, "stroke-width": 5 }, hv); mk("path", { d: "M342 50 l14 -9 v18z", fill: C.bad }, hv); mk("path", { d: "M170 196 l40 20 m0 -20 l-40 20", stroke: C.bad, "stroke-width": 5 }, hv); }
     else { mk("path", { d: "M190 262 V" + (sc === 1 ? 376 : 330), stroke: sc === 1 ? C.code : C.bad, "stroke-width": 5 }, hv); if (sc === 1) { mk("path", { d: "M190 380 l-9 -14 h18z", fill: C.code }, hv); mk("path", { d: "M340 420 H424 V50 H348", fill: "none", stroke: C.bad, "stroke-width": 4 }, hv); mk("path", { d: "M342 50 l14 -9 v18z", fill: C.bad }, hv); } else { mk("path", { d: "M170 334 l40 20 m0 -20 l-40 20", stroke: C.bad, "stroke-width": 5 }, hv); mk("path", { d: "M390 225 H424 V50 H348", fill: "none", stroke: C.bad, "stroke-width": 4, "stroke-dasharray": "6 5" }, hv); mk("path", { d: "M342 50 l14 -9 v18z", fill: C.bad }, hv); } }
-    box(hv, 14, 480, 432, 90, sc === 2 ? C.bad : sc === 0 ? C.bad : C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${sc === 1 ? C.model : C.bad} 7%, var(--bg-base))` }); txt(hv, 28, 508, sc === 2 ? "Agent 프로그램이 받는 것" : "모델이 읽는 도구 결과", { "font-size": 15, class: "t-d" }); const m1 = msg.length > 26 ? msg.lastIndexOf(" ", 26) : -1; txt(hv, 28, 536, m1 > 0 ? msg.slice(0, m1) : msg, { "font-size": 15, class: "t-s mono" }); if (m1 > 0) txt(hv, 28, 558, msg.slice(m1 + 1), { "font-size": 15, class: "t-s mono" });
-    hsum.textContent = say;
+    const res = mk("g", {}, hv); box(res, 14, 480, 432, 90, sc === 2 ? C.bad : sc === 0 ? C.bad : C.model, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${sc === 1 ? C.model : C.bad} 7%, var(--bg-base))` }); txt(res, 28, 508, sc === 2 ? "Agent 프로그램이 받는 것" : "모델이 읽는 도구 결과", { "font-size": 15, class: "t-d" }); const m1 = msg.length > 26 ? msg.lastIndexOf(" ", 26) : -1; txt(res, 28, 536, m1 > 0 ? msg.slice(0, m1) : msg, { "font-size": 15, class: "t-s mono" }); if (m1 > 0) txt(res, 28, 558, msg.slice(m1 + 1), { "font-size": 15, class: "t-s mono" });
+    /* 호출 점이 지나갈 길: 관문에서 튕김 / 서버까지 갔다 돌아옴 / 서버 앞에서 끊기고 연결 실패가 올라옴 */
+    const route = mk("path", { d: ["M190 92 V214 H424 V50 H348", "M190 92 V420 H424 V50 H348", "M190 92 V344 M390 225 H424 V50 H348"][sc], fill: "none", stroke: "none" }, hv);
+    const dot = mk("circle", { r: 10, fill: C.model, stroke: "var(--bg-base)", "stroke-width": 3 }, hv);
+    HR[sc] = { route, len: route.getTotalLength(), dot, res };
   }
-  $$("[data-ca-sc]").forEach((b) => b.addEventListener("click", () => { sc = +b.dataset.caSc; press("[data-ca-sc]", b); drawHero(); }, { signal })); drawHero();
+  let heroPinned = false;
+  const setHero = (p) => { const max = Math.max(...HR.map((h) => h.len)); HR.forEach((h) => { const l = Math.min(h.len, p * max), pt = h.route.getPointAtLength(l); h.dot.setAttribute("cx", pt.x); h.dot.setAttribute("cy", pt.y); const done = l >= h.len - 1; h.dot.style.opacity = done ? 0 : 1; h.res.style.opacity = done ? 1 : .25; }); };
+  HV.forEach((hv, i) => drawHero(hv, i));
+  scrollP($("[data-ca-hero]"), (p) => { if (!heroPinned) setHero(p); }, true);
+  $("[data-ca-hero]").addEventListener("ca-all", () => { heroPinned = true; setHero(1); }, { signal });
 
   /* ───── 이름 충돌 ───── */
-  const px = $("[data-ca-pxv]"); let pm = "on";
+  const px = $("[data-ca-pxv]");
   function drawPx() {
-    px.innerHTML = ""; const on = pm === "on";
-    [["티켓 서버", 14, C.human, "tickets"], ["위키 서버", 246, C.model, "wiki"]].forEach(([nm, x, col, pf]) => { box(px, x, 10, 200, 110, col, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${col} 8%, var(--bg-base))` }); txt(px, x + 14, 40, nm, { "font-size": 17, class: "t-s" }); box(px, x + 14, 56, 172, 46, col, { rx: 8, sw: 3, fill: "var(--bg-base)" }); txt(px, x + 100, 86, "search", { "font-size": 17, "text-anchor": "middle", class: "t-s mono" }); mk("path", { d: `M${x + 100} 122 V190`, stroke: col, "stroke-width": 4.5 }, px); mk("path", { d: `M${x + 100} 196 l-9 -14 h18z`, fill: col }, px); });
-    box(px, 14, 200, 432, 200, on ? C.code : C.bad, { rx: 14, sw: 4.5, fill: `color-mix(in srgb, ${on ? C.code : C.bad} 5%, var(--bg-base))` }); mk("use", { href: "#ca-ic-robot", x: 28, y: 214, width: 38, height: 38, style: `color:${C.model}` }, px); txt(px, 76, 240, "모델이 보는 도구 목록", { "font-size": 17, class: "t-s" });
-    ["tickets", "wiki"].forEach((pf, i) => { const y = 266 + i * 62, col = i === 0 ? C.human : C.model; box(px, 30, y, 400, 48, col, { rx: 8, sw: 3, fill: "var(--bg-base)" }); txt(px, 46, y + 31, on ? `${pf}_search` : "search", { "font-size": 17, class: "t-s mono" }); });
-    if (!on) { mk("path", { d: "M300 280 q50 20 0 44", fill: "none", stroke: C.bad, "stroke-width": 4 }, px); txt(px, 340, 308, "같은 이름", { "font-size": 15, class: "t-s", style: `fill:${C.bad}` }); }
-    txt(px, 14, 446, on ? "서버 이름 접두어로 어느 서버의 도구인지 구분" : "어느 쪽 검색인지 모델이 가릴 수 없음", { "font-size": 15, class: "t-s", style: `fill:${on ? C.code : C.bad}` });
-    $("[data-ca-pxnote]").textContent = on ? "tool_name_prefix=True로 서버 이름이 앞에 붙어 두 도구를 구분합니다." : "접두어가 없으면 같은 이름의 도구가 둘이 되어 호출이 어느 서버로 갈지 모호합니다.";
+    px.innerHTML = "";
+    [["티켓 서버", 14, "tickets"], ["위키 서버", 246, "wiki"]].forEach(([nm, x]) => { box(px, x, 10, 200, 110, "var(--fg-strong)", { rx: 14, sw: 3, fill: "var(--bg-base)" }); txt(px, x + 14, 40, nm, { "font-size": 17, class: "t-s" }); box(px, x + 14, 56, 172, 46, "var(--line-strong)", { rx: 8, sw: 2.5, fill: "var(--bg-base)" }); txt(px, x + 100, 86, "search", { "font-size": 17, "text-anchor": "middle", class: "t-s mono" }); });
+    mk("path", { d: "M230 128 V150", stroke: "var(--fg-neutral)", "stroke-width": 3 }, px); mk("path", { d: "M230 158 l-8 -12 h16z", fill: "var(--fg-neutral)" }, px);
+    /* 왼쪽: 접두어 없음(빨강 = 막힘), 오른쪽: 서버 이름 접두어(초록 = 구분됨) */
+    [[14, false], [238, true]].forEach(([x, on]) => { const col = on ? C.code : C.bad;
+      box(px, x, 172, 208, 228, col, { rx: 14, sw: 3.5, fill: `color-mix(in srgb, ${col} 5%, var(--bg-base))` });
+      txt(px, x + 14, 200, on ? "서버 이름 접두어" : "접두어 없음", { "font-size": 15, class: "t-s", style: `fill:${col}` });
+      txt(px, x + 14, 222, "모델이 보는 목록", { "font-size": 15, class: "t-d" });
+      ["tickets", "wiki"].forEach((pf, i) => { const y = 238 + i * 58; box(px, x + 14, y, 180, 44, "var(--line-strong)", { rx: 8, sw: 2.5, fill: "var(--bg-base)" }); txt(px, x + 26, y + 29, on ? `${pf}_search` : "search", { "font-size": 15, class: "t-s mono" }); });
+      txt(px, x + 14, 380, on ? "어느 서버인지 구분됨" : "같은 이름이 둘", { "font-size": 15, class: "t-s", style: `fill:${col}` }); });
+    mk("path", { d: "M150 254 q30 26 0 52", fill: "none", stroke: C.bad, "stroke-width": 3.5 }, px);
   }
-  $$("[data-ca-px]").forEach((b) => b.addEventListener("click", () => { pm = b.dataset.caPx; press("[data-ca-px]", b); drawPx(); }, { signal })); drawPx();
+  drawPx();
 
   /* ───── 허용 목록 ───── */
-  const al = $("[data-ca-alv]"); const allow = [true, true, false, false, false]; let tried = false;
+  const al = $("[data-ca-alv]"); const allow = [true, true, false, false, false], tried = true;
   const TL = [["get_ticket", "읽기", C.human], ["list_tickets", "읽기", C.human], ["update_ticket", "쓰기", C.model], ["delete_ticket", "삭제", C.bad], ["send_mail", "외부 전송", C.bad]];
   function drawAl() {
     al.innerHTML = ""; box(al, 168, 10, 124, 496, "var(--fg-strong)", { rx: 14, sw: 3.5, fill: "var(--bg-subtle)" }); txt(al, 230, 40, "관문", { "font-size": 17, "text-anchor": "middle", class: "t-s" });
@@ -458,41 +477,34 @@ except Exception as e:
     mk("use", { href: "#ca-ic-robot", x: 10, y: 6, width: 40, height: 40, style: `color:${C.model}` }, al);
     TL.forEach(([nm, kind, col], i) => { const y = 66 + i * 86, ok = allow[i]; box(al, 8, y, 148, 62, ok ? col : "var(--line-strong)", { rx: 10, sw: ok ? 3.5 : 2.5, dash: ok ? "" : "6 5", fill: ok ? `color-mix(in srgb, ${col} 9%, var(--bg-base))` : "var(--bg-base)" }); txt(al, 18, y + 28, nm, { "font-size": 15, class: "t-s mono", opacity: ok ? 1 : .6 }); txt(al, 18, y + 50, kind + (ok ? " · 허용" : " · 막음"), { "font-size": 15, class: "t-d", style: ok ? `fill:${col}` : "" });
       if (tried) { if (ok) { mk("path", { d: `M156 ${y + 31} H336`, stroke: col, "stroke-width": 4.5 }, al); mk("path", { d: `M340 ${y + 31} l-14 -9 v18z`, fill: col }, al); } else { mk("path", { d: `M156 ${y + 31} H206`, stroke: C.bad, "stroke-width": 4.5 }, al); mk("path", { d: `M198 ${y + 17} l22 28 m0 -28 l-22 28`, stroke: C.bad, "stroke-width": 5 }, al); } } });
-    const n = allow.filter(Boolean).length, risky = TL.filter(([, , c], i) => allow[i] && c === C.bad).length;
-    $("[data-ca-alsay]").textContent = !tried ? `허용한 도구 ${n}개입니다. 도구 이름을 눌러 바꾼 뒤 호출해 보세요.` : risky ? `삭제나 외부 전송까지 열려 있어 호출 ${n}개가 서버에 닿았습니다. 정말 필요한지 다시 따져 보세요.` : `허용한 ${n}개만 서버에 닿고 나머지는 관문에서 막혔습니다.`;
   }
-  $$("[data-ca-al]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.caAl; allow[i] = !allow[i]; b.setAttribute("aria-pressed", allow[i]); tried = false; drawAl(); }, { signal }));
-  $("[data-ca-try]").addEventListener("click", () => { tried = true; drawAl(); }, { signal }); drawAl();
+  drawAl();
 
   /* ───── OAuth 단계 ───── */
-  const oa = $("[data-ca-oav]"); let ok = 5;
-  const OSAY = ["클라이언트가 토큰 없이 서버에 요청합니다.", "서버가 401(인증 필요)과 함께 인증 서버를 찾는 방법(resource_metadata)을 알려 줍니다.", "클라이언트가 인증 서버에 접근을 요청합니다. 사용자의 동의 화면이 열리고 PKCE와 resource 값이 함께 갑니다.", "사용자가 동의하면 인증 서버가 이 서버를 위한 접근 토큰을 발급합니다.", "클라이언트가 모든 요청의 Authorization 헤더에 Bearer 토큰을 담아 다시 보냅니다. 토큰은 주소(URL)에 넣지 않습니다.", "서버가 자기 앞으로 발급된 토큰인지 확인하고 결과를 돌려줍니다."];
+  const oa = $("[data-ca-oav]"), oaSteps = $$("[data-ca-oasteps] li"); let ok = 5;
   function drawOa() {
     oa.innerHTML = ""; const X = [60, 230, 400], names = ["클라이언트", "MCP 서버", "인증 서버"], cols = [C.model, C.code, C.human];
     names.forEach((nm, i) => { box(oa, X[i] - 56, 8, 112, 40, cols[i], { rx: 10, sw: 3.5 }); txt(oa, X[i], 34, nm, { "font-size": 15, "text-anchor": "middle", class: "t-s" }); mk("path", { d: `M${X[i]} 50 V570`, stroke: "var(--line-strong)", "stroke-width": 3, "stroke-dasharray": "6 6" }, oa); });
     const ar = (a, b, y, lb, sub, col, on, cur) => { if (!on) return; const dir = X[b] > X[a] ? 1 : -1; mk("path", { d: `M${X[a]} ${y} H${X[b] - dir * 12}`, stroke: col, "stroke-width": cur ? 6 : 4 }, oa); mk("path", { d: `M${X[b]} ${y} l${-dir * 14} -9 v18z`, fill: col }, oa); txt(oa, (X[a] + X[b]) / 2, y - 16, lb, { "font-size": 15, "text-anchor": "middle", class: "t-s mono", style: `fill:${col}` }); if (sub) txt(oa, (X[a] + X[b]) / 2, y + 26, sub, { "font-size": 15, "text-anchor": "middle", class: "t-d" }); };
     ar(0, 1, 96, "요청", "토큰 없음", C.human, ok >= 0, ok === 0); ar(1, 0, 186, "401", "인증 서버 안내", C.bad, ok >= 1, ok === 1); ar(0, 2, 276, "동의 요청", "사용자 동의·PKCE", C.model, ok >= 2, ok === 2); ar(2, 0, 366, "토큰", "이 서버용 접근 토큰", C.code, ok >= 3, ok === 3); ar(0, 1, 456, "Bearer 토큰", "Authorization 헤더", C.human, ok >= 4, ok === 4); ar(1, 0, 536, "결과", "", C.code, ok >= 5, ok === 5);
-    $("[data-ca-oasay]").textContent = OSAY[ok];
+    oaSteps.forEach((li, i) => li.classList.toggle("on", i === ok));
   }
-  $$("[data-ca-oa]").forEach((b) => b.addEventListener("click", () => { ok = +b.dataset.caOa; press("[data-ca-oa]", b); drawOa(); }, { signal })); drawOa();
+  drawOa();
+  /* 스크롤만큼 단계가 하나씩 더해진다 */
+  scrollP(oa, (p) => { const k = Math.min(5, Math.floor(p * 6)); if (k !== ok) { ok = k; drawOa(); } });
 
   /* ───── 위험 지도 ───── */
-  const hz = $("[data-ca-hzv]"); let hi = 0;
+  const HZV = $$("[data-ca-hzv]");
   const HZ = [["서버 실행 명령", "서버를 띄우는 명령이 내 권한으로 실행됩니다", "악성 명령이 숨어 있으면 파일이 유출되거나 지워질 수 있습니다", ["실행할 정확한 명령을 보여 주고 동의받기", "제한된 환경에서 실행하기"], "공식 문서는 한 번에 서버를 설정하는 기능이 있다면 명령을 잘리지 않게 보여 주고 사용자 승인을 받으라고 합니다."], ["도구 설명", "도구의 이름과 설명을 서버가 정해서 건넵니다", "믿을 수 없는 글이 모델의 판단을 흔들 수 있습니다", ["믿을 만한 서버만 연결하기", "도구를 실행하기 전 동의받기"], "공식 문서는 도구 동작을 설명한 글을 믿을 만한 서버에서 얻은 것이 아니면 신뢰하지 말라고 합니다."], ["넓은 권한", "처음부터 모든 권한을 받아 둡니다", "토큰 하나가 새면 관련 없는 도구까지 모두 열립니다", ["읽기 같은 최소 권한으로 시작하기", "필요할 때 한 단계씩 넓히기"], "공식 문서의 최소 권한(scope minimization) 원칙입니다. 한 번에 넓게 받지 않습니다."], ["엉뚱한 곳에 토큰", "받은 토큰을 다른 서버에도 보냅니다", "토큰을 받은 서버가 악용하거나 다른 서비스에 넘길 수 있습니다", ["그 서버의 인증 서버가 발급한 토큰만 보내기", "토큰은 헤더에만 담기"], "규격은 그 MCP 서버의 인증 서버가 발급하지 않은 토큰을 클라이언트가 보내지 못하게 합니다."]];
-  function drawHz() {
-    hz.innerHTML = ""; const [nm, cause, harm, fix, say] = HZ[hi], wrap = (t, x, y, n, cls, col) => { const sp = t.length > n ? t.lastIndexOf(" ", n) : -1; txt(hz, x, y, sp > 0 ? t.slice(0, sp) : t, { "font-size": 15, class: cls, style: col ? `fill:${col}` : "" }); if (sp > 0) txt(hz, x, y + 22, t.slice(sp + 1), { "font-size": 15, class: cls, style: col ? `fill:${col}` : "" }); };
+  function drawHz(hz, hi) {
+    hz.innerHTML = ""; const [nm, cause, harm, fix] = HZ[hi], wrap = (t, x, y, n, cls, col) => { const sp = t.length > n ? t.lastIndexOf(" ", n) : -1; txt(hz, x, y, sp > 0 ? t.slice(0, sp) : t, { "font-size": 15, class: cls, style: col ? `fill:${col}` : "" }); if (sp > 0) txt(hz, x, y + 22, t.slice(sp + 1), { "font-size": 15, class: cls, style: col ? `fill:${col}` : "" }); };
     box(hz, 8, 8, 444, 220, C.bad, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.bad} 6%, var(--bg-base))` }); mk("use", { href: "#ca-ic-stop", x: 22, y: 22, width: 40, height: 40, style: `color:${C.bad}` }, hz); txt(hz, 74, 50, nm, { "font-size": 19, class: "t-s", style: `fill:${C.bad}` });
     txt(hz, 24, 98, "상황", { "font-size": 15, class: "t-d" }); wrap(cause, 24, 124, 30, "t-s"); txt(hz, 24, 176, "피해", { "font-size": 15, class: "t-d" }); wrap(harm, 24, 200, 30, "t-s");
     mk("path", { d: "M230 232 V262", stroke: "var(--fg-neutral)", "stroke-width": 4 }, hz); mk("path", { d: "M230 270 l-9 -14 h18z", fill: "var(--fg-neutral)" }, hz);
     box(hz, 8, 280, 444, 190, C.code, { rx: 14, sw: 4, fill: `color-mix(in srgb, ${C.code} 6%, var(--bg-base))` }); mk("use", { href: "#ca-ic-check", x: 22, y: 292, width: 40, height: 34, style: `color:${C.code}` }, hz); txt(hz, 74, 318, "막는 방법", { "font-size": 19, class: "t-s", style: `fill:${C.code}` });
     fix.forEach((f, i) => { mk("circle", { cx: 30, cy: 358 + i * 36, r: 7, fill: C.code }, hz); txt(hz, 46, 364 + i * 36, f, { "font-size": 15, class: "t-s" }); });
-    $("[data-ca-hzsay]").textContent = say;
   }
-  $$("[data-ca-hz]").forEach((b) => b.addEventListener("click", () => { hi = +b.dataset.caHz; press("[data-ca-hz]", b); drawHz(); }, { signal })); drawHz();
+  HZV.forEach((el, i) => drawHz(el, i));
 
-  initTerms({
-    a: [["cmd", "$ python agent.py"], ["wait", 700], ["line", "도구 이름: ['get_ticket', 'list_tickets']"], ["line", "허용된 호출: {\"id\": \"T-1043\", \"title\": \"메일 용량 증설\", ...}"], ["line", "막힌 호출: list_tickets은 허용 목록에 없어 실행하지 않았습니다"], ["type", "Agent 답: T-1042는 부품 대기 중입니다."]],
-    s: [["cmd", "$ python safe_start.py"], ["wait", 700], ["type", "일부 도구를 쓸 수 없습니다: ExceptionGroup"]],
-  });
 })();
 </script>
