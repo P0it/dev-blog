@@ -1,0 +1,701 @@
+---
+title: Agent가 진짜 검색했는지 답만 봐서는 모르는 이유
+slug: agent-tool-use-message-trace
+excerpt: AI 비서에게 영상을 찾아 달라고 하면 그럴듯한 링크가 돌아옵니다. 그 링크가 실제 검색 결과인지, 모델이 지어낸 글자인지는 답만 봐서는 알 수 없습니다. LangChain Agent가 남기는 메시지 기록에서 도구 요청과 도구 결과를 꺼내 봅니다. ReAct가 무엇이었는지와 주소만 돌려주는 도구가 왜 위험한지 설명하고 답 속 링크를 기록과 대조하는 코드까지 만듭니다.
+tags: [LangChain, AI Agent, Tool Calling, ReAct, YouTube Data API, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 11
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-tool-use-message-trace-mwfy8p1q.jpg
+---
+<!-- page -->
+<!-- layout: 전폭 히어로(채팅 두 창 나란히 + 그 아래 기록 띠) + 글|그림 2단(노선도) + 그림 고정 스크롤리텔링 1곳(메시지 카드) + 제목|글 머리 + 전폭 논문 그림 + 장 표지 띠 1개 + 대조판 펼쳐 놓기 + 그림|글 2단(체) + 코드|해설 짝(좌우 뒤집기) + 채팅 두 창 펼쳐 놓기 | 글의 성격: 겉(같아 보이는 두 답)에서 안(메시지 기록)으로 내려가 기록과 답을 대조하는 글 | 버린 후보: 레일(5편), 전폭 히어로+데이터 띠(9편과 같은 첫 화면), 가로 스크롤 띠(코드와 함께 모바일에서 읽기 힘듦) -->
+<style>
+.post-page .at {
+  --at-red: rgb(204, 52, 40); --at-ok: rgb(14, 128, 98); --at-link: rgb(40, 96, 200);
+  --at-soft: color-mix(in srgb, var(--fg-strong) 6%, var(--bg-base));
+  --at-okbg: color-mix(in srgb, var(--at-ok) 14%, var(--bg-base));
+  --at-redbg: color-mix(in srgb, var(--at-red) 12%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .at { --at-okbg: color-mix(in srgb, rgb(72, 204, 160) 26%, var(--bg-base)); --at-red: rgb(255, 120, 104); --at-ok: rgb(72, 204, 160); --at-link: rgb(120, 170, 255); --at-soft: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); }
+.post-page .at * { box-sizing: border-box; }
+.post-page .at-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .at h1, .post-page .at h2, .post-page .at h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .at h1 { font-size: clamp(32px, 5vw, 56px); line-height: 1.22; margin-bottom: 28px; }
+.post-page .at h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .at h3 { font-size: 19px; line-height: 1.45; margin-bottom: 10px; }
+.post-page .at p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .at b { color: var(--fg-strong); }
+.post-page .at a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .at code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .at figure { margin: 0; min-width: 0; }
+.post-page .at-cap { font-size: 14.5px !important; line-height: 1.7 !important; color: var(--fg-alternative); margin: 16px 0 0 !important; }
+.post-page .at-pen { color: var(--at-red); font-family: var(--font-sans); font-weight: 600; font-size: 15.5px; line-height: 1.5; font-style: normal; }
+.post-page .at-sec { padding: clamp(96px, 12vw, 148px) 0 0; }
+.post-page .at-sec:last-of-type { padding-bottom: 48px; }
+
+/* 히어로 */
+.post-page .at-hero { padding: clamp(56px, 9vw, 104px) 0 0; }
+.post-page .at-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px !important; }
+.post-page .at-lede { font-size: 18px !important; max-width: 760px; }
+.post-page .at-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 44px; }
+.post-page .at-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.post-page .at-colh { font-size: 15px !important; font-weight: 700; color: var(--fg-strong); margin: 0 !important; }
+
+/* 채팅 창 */
+.post-page .at-chat { display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.28); }
+.post-page .at-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line-subtle); font-size: 14px; font-weight: 600; color: var(--fg-strong); }
+.post-page .at-bar small { font-size: 12.5px; font-weight: 400; color: var(--fg-alternative); }
+.post-page .at-log { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 20px 16px 22px; }
+.post-page .at-me { align-self: flex-end; max-width: 88%; background: var(--bg-muted); border-radius: 18px; padding: 8px 15px; font-size: 15px; color: var(--fg-strong); line-height: 1.5; }
+.post-page .at-ai { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; font-size: 15px; line-height: 1.65; color: var(--fg-strong); }
+.post-page .at-ai .av { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-subtle); display: grid; place-items: center; color: var(--fg-alternative); }
+.post-page .at-ai svg, .post-page .at-box svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .at-ai ol { margin: 6px 0 0; padding-left: 20px; }
+.post-page .at-ai li { margin: 4px 0; }
+.post-page .at-ai .u { display: block; color: var(--at-link); font-size: 13.5px; overflow-wrap: anywhere; }
+.post-page .at-ai .acts { display: flex; gap: 12px; margin-top: 10px; color: var(--fg-alternative); }
+.post-page .at-box { display: flex; align-items: center; gap: 10px; margin: 0 12px 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-subtle); border-radius: 24px; color: var(--fg-alternative); font-size: 14.5px; }
+.post-page .at-box span { flex: 1; min-width: 0; }
+.post-page .at-box .send { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--fg-strong); color: var(--bg-base); }
+.post-page .at-x { text-decoration: underline wavy var(--at-red); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+
+/* 기록 띠 */
+.post-page .at-trail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; }
+.post-page .at-trail .lab { width: 100%; font-size: 13px; color: var(--fg-alternative); font-family: var(--font-mono); }
+.post-page .at-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 10px; background: var(--at-soft); font-size: 13.5px; color: var(--fg-strong); line-height: 1.35; }
+.post-page .at-chip i { font-style: normal; font-family: var(--font-mono); font-size: 11.5px; padding: 1px 6px; border-radius: 6px; background: var(--bg-base); color: var(--fg-alternative); }
+.post-page .at-chip.tool { background: var(--at-okbg); }
+.post-page .at-trail .ar { color: var(--fg-alternative); font-size: 13px; }
+.post-page .at-trail .at-pen { width: 100%; margin-top: 4px; }
+
+/* 2단 */
+.post-page .at-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
+.post-page .at-two.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.post-page .at-route svg { width: 100%; max-width: 660px; display: block; margin: 0 auto; }
+.post-page .at-route .m { display: none; }
+.post-page .at-route text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .at-route .sub { fill: var(--fg-alternative); }
+.post-page .at-route .lbl { fill: var(--fg-strong); font-weight: 600; font-family: var(--font-mono); }
+
+/* 스크롤 카드 */
+.post-page .at-sc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; margin-top: 48px; }
+.post-page .at-steps { padding: 0 0 18vh; }
+.post-page .at-step { min-height: min(52vh, 480px); display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .5s cubic-bezier(.2,.7,.2,1); }
+.post-page .at-step.on { opacity: 1; }
+.post-page .at-step p { margin-bottom: 0; }
+.post-page .at-stick { position: sticky; top: 120px; align-self: start; }
+.post-page .at-stack { display: flex; flex-direction: column; gap: 12px; }
+.post-page .at-card { border-radius: 14px; background: var(--at-soft); padding: 14px 16px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; color: var(--fg-strong); opacity: 0; transform: translateY(14px); transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); overflow-wrap: anywhere; }
+.post-page .at-card.in { opacity: 1; transform: none; }
+.post-page .at-card.dim { opacity: .62; }
+.post-page .at-card.hot { background: var(--bg-base); box-shadow: 0 0 0 2px var(--fg-strong); }
+.post-page .at-card .role { display: inline-block; font-family: var(--font-sans); font-weight: 700; font-size: 12.5px; padding: 2px 9px; border-radius: 999px; background: var(--bg-base); margin-bottom: 6px; }
+.post-page .at-card .k { color: var(--fg-alternative); }
+.post-page .at-card .empty { color: var(--at-red); }
+.post-page .at-card .id { background: var(--at-okbg); color: var(--at-ok); border-radius: 5px; padding: 0 5px; font-weight: 600; }
+.post-page .at-card.tool { background: var(--at-okbg); }
+.post-page .at-screen { margin-top: 12px; font-size: 14px !important; margin-bottom: 0 !important; opacity: 0; transition: opacity .5s; }
+.post-page .at-stage[data-s="4"] .at-screen { opacity: 1; }
+
+/* 논문 그림 */
+.post-page .at-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.post-page .at-paper { margin-top: 48px !important; }
+.post-page .at-zoom { display: block; }
+.post-page .at-paper img { width: 100%; display: block; border-radius: 12px; border: 1px solid var(--line-subtle); background: #fff; }
+[data-theme="dark"] .post-page .at-paper img { filter: brightness(.9); }
+.post-page .at-then { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
+.post-page .at-then > div { min-width: 0; }
+.post-page .at-then h3 { font-size: 16px; }
+.post-page .at-raw { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.75; background: var(--at-soft); border-radius: 12px; padding: 16px 18px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .at-raw .t { color: var(--fg-alternative); }
+.post-page .at-raw .slot { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 6px 10px; }
+.post-page .at-raw .slot span:nth-child(odd) { color: var(--fg-alternative); }
+
+/* 장 표지 */
+.post-page .at-band { background: var(--fg-strong); color: var(--bg-base); padding: 64px 0; margin-bottom: clamp(72px, 9vw, 112px); }
+.post-page .at-band p { margin: 0 !important; color: var(--bg-base); }
+[data-theme="dark"] .post-page .at-band { background: color-mix(in srgb, var(--fg-strong) 12%, var(--bg-base)); }
+[data-theme="dark"] .post-page .at-band p { color: var(--fg-strong); }
+.post-page .at-band .no { font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em; opacity: .7; margin-bottom: 12px !important; }
+.post-page .at-band .big { font-family: var(--font-display); font-size: clamp(24px, 3.4vw, 36px) !important; line-height: 1.4 !important; font-weight: 700; max-width: 820px; }
+
+/* 대조판 */
+.post-page .at-audit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; margin-top: 44px; }
+.post-page .at-sheet { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.post-page .at-sheet .lab { font-size: 16px; font-weight: 700; color: var(--fg-strong); margin: 0 !important; }
+.post-page .at-rec { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; background: var(--at-okbg); border-radius: 12px; padding: 14px 16px; color: var(--fg-strong); overflow-wrap: anywhere; }
+.post-page .at-ans { font-size: 16px; line-height: 1.85; color: var(--fg-strong); border-top: 1px solid var(--line-subtle); padding-top: 14px; }
+.post-page .at-ans mark { background: none; color: inherit; padding: 0 1px; }
+.post-page .at-ans mark.ok { background: var(--at-okbg); border-radius: 4px; }
+.post-page .at-ans mark.no { text-decoration: underline wavy var(--at-red); text-decoration-thickness: 1.5px; text-underline-offset: 5px; }
+.post-page .at-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; color: var(--fg-alternative); margin-top: 22px; }
+.post-page .at-legend span::before { content: ""; display: inline-block; width: 26px; height: 12px; margin-right: 8px; vertical-align: -1px; border-radius: 3px; }
+.post-page .at-legend .ok::before { background: var(--at-okbg); }
+.post-page .at-legend .no::before { height: 6px; border-bottom: 2px dotted var(--at-red); border-radius: 0; }
+
+/* 체 */
+.post-page .at-sieve { display: flex; flex-direction: column; gap: 16px; }
+.post-page .at-fields { display: flex; flex-wrap: wrap; gap: 8px; }
+.post-page .at-f { font-family: var(--font-mono); font-size: 13px; padding: 6px 10px; border-radius: 9px; background: var(--at-soft); color: var(--fg-strong); line-height: 1.4; }
+.post-page .at-f small { display: block; font-family: var(--font-sans); font-size: 12.5px; color: var(--fg-alternative); }
+.post-page .at-f.drop { opacity: .6; }
+.post-page .at-f.drop > b { font-weight: 400; text-decoration: line-through; text-decoration-color: var(--at-red); text-decoration-thickness: 2px; }
+.post-page .at-f.keep { background: var(--at-okbg); }
+.post-page .at-mesh { position: relative; height: 34px; display: flex; align-items: center; justify-content: center; }
+.post-page .at-mesh::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 3px dashed var(--fg-alternative); }
+.post-page .at-mesh span { position: relative; background: var(--bg-base); padding: 0 12px; font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); font-weight: 600; }
+.post-page .at-out { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; padding: 12px 14px; border-radius: 10px; background: var(--at-okbg); color: var(--fg-strong); overflow-wrap: anywhere; }
+
+/* 코드 짝 */
+.post-page .at-code { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 44px; align-items: start; margin-top: 40px; }
+.post-page .at-code.flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.post-page .at-code.flip > .at-codel { order: 2; }
+.post-page .at-codel { min-width: 0; }
+.post-page .at-code ol.pg-code-notes { margin: 0; position: sticky; top: 96px; }
+.post-page .at-term { background: var(--code-bg, #1e2127); color: var(--code-fg, #d7dae0); border-radius: 12px; padding: 16px 18px; font-family: var(--font-mono); font-size: 13px; line-height: 1.65; white-space: pre; overflow-x: auto; margin-top: 14px; }
+.post-page .at-term .dim { opacity: .55; }
+.post-page .at-term .ok { color: rgb(120, 214, 160); }
+.post-page .at-term .no { color: rgb(255, 128, 112); }
+.post-page .at-note { font-size: 14px !important; color: var(--fg-alternative); margin: 10px 0 0 !important; }
+
+/* 화면 비교 */
+.post-page .at-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.post-page .at-vc { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line-subtle); border-radius: 12px; }
+.post-page .at-vc .th { aspect-ratio: 16 / 9; border-radius: 8px; background: color-mix(in srgb, var(--fg-strong) 14%, var(--bg-base)); display: grid; place-items: center; color: var(--bg-base); }
+.post-page .at-vc .th svg { fill: currentColor; stroke: none; }
+.post-page .at-vc b { display: block; font-size: 14px; line-height: 1.4; }
+.post-page .at-vc small { font-size: 12.5px; color: var(--fg-alternative); }
+
+.post-page .at details { margin-top: 28px; border-top: 1px solid var(--line-subtle); padding-top: 14px; }
+.post-page .at summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 16px; }
+.post-page .at details p, .post-page .at details li { font-size: 16px; }
+.post-page .at table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin-top: 12px; }
+.post-page .at th, .post-page .at td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; }
+.post-page .at-refs ul { margin: 0; padding-left: 18px; }
+.post-page .at-refs li { font-size: 15.5px; line-height: 1.7; margin-bottom: 8px; }
+
+@media (max-width: 860px) {
+  .post-page .at-wrap { padding: 0 16px; }
+  .post-page .at-pair, .post-page .at-two, .post-page .at-two.flip, .post-page .at-head, .post-page .at-then, .post-page .at-audit, .post-page .at-code, .post-page .at-code.flip { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .post-page .at-code.flip > .at-codel { order: 0; }
+  .post-page .at-code ol.pg-code-notes { position: static; }
+  .post-page .at-term { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .post-page .at-sc { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .post-page .at-stick { position: static; order: -1; }
+  .post-page .at-steps { padding: 24px 0 0; }
+  .post-page .at-step { min-height: 0; opacity: 1; margin-bottom: 26px; }
+  .post-page .at-route .d { display: none; }
+  .post-page .at-route .m { display: block; max-width: 360px; }
+  .post-page .at-raw .slot { grid-template-columns: 96px minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .at-card, .post-page .at-step, .post-page .at-screen { transition: none; }
+}
+</style>
+
+<div class="at">
+  <header class="at-hero">
+    <div class="at-wrap">
+      <p class="at-eyebrow">AI Service Track · 11</p>
+      <h1>Agent가 진짜 검색했는지 답만 봐서는 모르는 이유</h1>
+      <p class="at-lede">AI 비서에게 "영상 좀 찾아 줘"라고 하면 제목과 링크가 붙은 답이 금방 돌아옵니다. 그런데 그 링크가 실제로 검색해서 얻은 것인지, 모델이 그럴듯하게 지어낸 글자인지는 화면만 봐서는 구별되지 않습니다. 화면 뒤로 내려가 Agent가 남기는 기록을 펼쳐 보고 답을 그 기록과 맞춰 보는 코드까지 만들어 봅니다.</p>
+      <figure data-thumb>
+        <div class="at-pair">
+          <div class="at-col">
+            <p class="at-colh">도구 없이 답한 경우</p>
+            <div class="at-chat">
+              <div class="at-bar"><span>영상 비서</span><small>예시 화면</small></div>
+              <div class="at-log">
+                <div class="at-me">와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘</div>
+                <div class="at-ai"><div class="av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>입문자에게 맞는 영상 두 편입니다.<ol><li>와인 기초 완전 정복<span class="u at-x">youtube.com/watch?v=Wn3kXa81PqT</span></li><li>레드 와인 고르는 법<span class="u at-x">youtube.com/watch?v=Rd5mQe02LhZ</span></li></ol><div class="acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg></div></div></div>
+              </div>
+              <div class="at-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+            </div>
+            <div class="at-trail" data-figure>
+              <span class="lab">화면 뒤 기록</span>
+              <span class="at-chip"><i>user</i>질문</span><span class="ar">→</span>
+              <span class="at-chip"><i>ai</i>답</span>
+              <em class="at-pen">검색한 적이 없으니 두 주소는 모델이 만든 글자입니다</em>
+            </div>
+          </div>
+          <div class="at-col">
+            <p class="at-colh">검색 도구를 쓴 경우</p>
+            <div class="at-chat">
+              <div class="at-bar"><span>영상 비서</span><small>예시 화면</small></div>
+              <div class="at-log">
+                <div class="at-me">와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘</div>
+                <div class="at-ai"><div class="av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>처음이라면 두 편을 권합니다.<ol><li>와인 처음이라면 이 영상부터<span class="u">youtube.com/watch?v=q3RxW8mTn2A</span></li><li>레드와 화이트, 10분 만에 구분하기<span class="u">youtube.com/watch?v=Lk9pZc41vEo</span></li></ol><div class="acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg></div></div></div>
+              </div>
+              <div class="at-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+            </div>
+            <div class="at-trail" data-figure>
+              <span class="lab">화면 뒤 기록</span>
+              <span class="at-chip"><i>user</i>질문</span><span class="ar">→</span>
+              <span class="at-chip"><i>ai</i>검색해 달라는 요청</span><span class="ar">→</span>
+              <span class="at-chip tool"><i>tool</i>검색 결과 2개</span><span class="ar">→</span>
+              <span class="at-chip"><i>ai</i>답</span>
+              <em class="at-pen">두 주소가 검색 결과 안에 그대로 있습니다</em>
+            </div>
+          </div>
+        </div>
+        <p class="at-cap">실제 서비스를 캡처한 화면이 아니라 설명을 위해 그린 예시 화면입니다. 영상 제목과 주소도 지어낸 예시 값입니다. 두 답은 화면에서 거의 같아 보이지만 그 아래 기록은 전혀 다릅니다.</p>
+      </figure>
+    </div>
+  </header>
+
+  <section class="at-sec">
+    <div class="at-wrap at-two" style="align-items: start">
+      <div>
+        <h2>Agent는 언제 도구를 꺼낼까요?</h2>
+        <p>모델이 질문을 읽고 "이건 내가 아는 것만으로는 답할 수 없다"고 판단할 때 꺼냅니다. 여기서 모델은 글을 읽고 다음 글을 만들어 내는 AI 본체이고 <b>도구(tool)</b>는 그 모델이 실행을 부탁할 수 있는 함수(function), 곧 값을 받아 정해진 일을 하고 결과를 돌려주는 코드 묶음입니다. 모델과 도구를 묶어 스스로 다음 할 일을 고르게 만든 프로그램을 <b>Agent</b>라고 부릅니다.</p>
+        <p>백화점 안내 데스크를 떠올리면 쉽습니다. 화장실 위치는 바로 알려 주지만 "이 운동화 270 있어요?"라는 질문에는 재고 시스템을 조회합니다. 다만 직원은 재고 질문이면 늘 조회하지만 모델의 판단은 매번 조금씩 달라서 같은 질문에도 도구를 건너뛸 때가 있습니다.</p>
+        <p>도구를 쓰기로 하면 모델은 어떤 도구를 어떤 값으로 부를지 적어 보내고(행동, <b>action</b>), 실행 결과를 돌려받아 읽은 뒤(관찰, <b>observation</b>), 더 부를 게 없으면 답을 씁니다. 도구 설명서를 쓰는 법은 <a href="/posts/ai-agent-tool-design-description-schema">도구 설계 글</a>에, <code>create_agent</code>가 이 반복을 대신 돌리는 구조는 <a href="/posts/langchain-create-agent-loop-anatomy">create_agent 해부 글</a>에 따로 정리했습니다.</p>
+      </div>
+      <figure class="at-route" style="margin-top: 56px">
+        <svg class="d" viewBox="0 0 660 280" role="img" aria-label="질문에서 답까지 가는 두 노선. 영상 추천 질문은 도구 역에 들렀다 모델로 돌아와 답으로 가고 LangChain이 뭐냐는 질문은 도구 역 없이 바로 답으로 간다.">
+          <path d="M60 150 H210 C260 150 280 60 330 60 C380 60 400 150 450 150 H600" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" style="color: var(--fg-strong)"/>
+          <path d="M210 150 C235 150 240 232 270 232 H570 C590 232 600 200 600 166" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" style="color: var(--fg-alternative)"/>
+          <g fill="var(--bg-base)" stroke="currentColor" stroke-width="4" style="color: var(--fg-strong)">
+            <circle cx="60" cy="150" r="11"/><circle cx="210" cy="150" r="11"/><circle cx="330" cy="60" r="13" style="color: var(--at-ok)"/><circle cx="450" cy="150" r="11"/><circle cx="600" cy="150" r="13"/>
+          </g>
+          <text x="60" y="185" text-anchor="middle" font-size="16" font-weight="700">질문</text>
+          <text x="196" y="185" text-anchor="middle" font-size="16" font-weight="700">모델</text>
+          <text x="330" y="30" text-anchor="middle" font-size="16" font-weight="700">도구</text>
+          <text x="450" y="185" text-anchor="middle" font-size="16" font-weight="700">모델</text>
+          <text x="450" y="204" text-anchor="middle" font-size="13" class="sub">결과를 읽고 다시</text>
+          <text x="600" y="125" text-anchor="middle" font-size="16" font-weight="700">답</text>
+          <text x="232" y="88" font-size="13.5" class="pen" text-anchor="end">action</text>
+          <text x="430" y="88" font-size="13.5" class="lbl">observation</text>
+          <text x="330" y="268" text-anchor="middle" font-size="14" class="sub">점선: "LangChain이 뭐야?"처럼 도구 없이 바로 답</text>
+        </svg>
+        <svg class="m" viewBox="0 0 340 430" role="img" aria-label="질문에서 답까지 가는 두 노선을 세로로 그린 그림. 실선은 도구에 들렀다 오고 점선은 바로 답으로 간다.">
+          <path d="M90 40 V120 C90 160 250 160 250 200 C250 240 90 240 90 280 V390" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" style="color: var(--fg-strong)"/>
+          <path d="M90 120 C40 140 40 360 90 380" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" style="color: var(--fg-alternative)"/>
+          <g fill="var(--bg-base)" stroke="currentColor" stroke-width="4" style="color: var(--fg-strong)">
+            <circle cx="90" cy="40" r="10"/><circle cx="90" cy="120" r="10"/><circle cx="250" cy="200" r="12" style="color: var(--at-ok)"/><circle cx="90" cy="280" r="10"/><circle cx="90" cy="390" r="12"/>
+          </g>
+          <text x="112" y="46" font-size="17" font-weight="700">질문</text>
+          <text x="112" y="126" font-size="17" font-weight="700">모델</text>
+          <text x="272" y="206" font-size="17" font-weight="700">도구</text>
+          <text x="112" y="286" font-size="17" font-weight="700">모델</text>
+          <text x="112" y="306" font-size="14" class="sub">결과를 읽고 다시</text>
+          <text x="112" y="396" font-size="17" font-weight="700">답</text>
+          <text x="200" y="148" font-size="15" class="lbl">action</text>
+          <text x="180" y="262" font-size="15" class="lbl">observation</text>
+          <text x="20" y="424" font-size="14" class="sub">점선: 도구 없이 바로 답</text>
+        </svg>
+        <p class="at-cap">실선은 "영상 추천해 줘"처럼 도구가 필요한 질문, 점선은 모델이 이미 아는 질문입니다. 어느 길로 갈지는 코드가 아니라 모델이 그때그때 고릅니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap">
+      <h2>화면 뒤에는 어떤 기록이 쌓일까요?</h2>
+      <p style="max-width: 760px">Agent가 한 번 일할 때마다 <b>메시지(message)</b> 목록에 카드가 한 장씩 쌓입니다. 메시지는 누가 무슨 말을 했는지 적은 기록 한 줄입니다. 채팅 창에는 마지막 카드만 보이고 나머지는 이 목록 안에 남습니다.</p>
+      <div class="at-sc" data-at-sc>
+        <div class="at-steps">
+          <div class="at-step on" data-at-step><h3>사용자의 질문이 첫 장입니다</h3><p>LLM 앱을 만드는 파이썬 라이브러리인 LangChain은 사용자가 보낸 말을 <code>HumanMessage</code>로 담습니다. 질문 글자 말고는 아무것도 없습니다.</p></div>
+          <div class="at-step" data-at-step><h3>모델은 도구를 실행하지 않고 요청서만 씁니다</h3><p>두 번째 장 <code>AIMessage</code>의 본문(<code>content</code>)은 비어 있습니다. 대신 <code>tool_calls</code> 칸에 부를 도구 이름과 넘길 값, 요청 번호(<code>id</code>)가 적혀 있습니다. 모델은 글을 만들 뿐 함수를 직접 돌리지 못합니다.</p></div>
+          <div class="at-step" data-at-step><h3>함수는 우리 프로그램이 실행합니다</h3><p><code>create_agent</code> 안에서 함수를 돌리는 차례인 tools 단계가 요청서대로 함수를 돌리고 결과를 도구 메시지(<code>ToolMessage</code>)로 붙입니다. 초록으로 칠한 요청 번호가 같아서 어느 요청의 결과인지 짝이 맞습니다.</p></div>
+          <div class="at-step" data-at-step><h3>모델이 앞의 세 장을 다 읽고 답을 씁니다</h3><p>모델을 한 번 더 부르면 이번에는 <code>tool_calls</code>가 빈 목록이고 본문에 답이 들어 있습니다. 부를 도구가 더 없으니 반복도 여기서 멈춥니다.</p></div>
+          <div class="at-step" data-at-step><h3>채팅 창에 뜨는 것은 마지막 한 장입니다</h3><p>앱은 보통 <code>result["messages"][-1].content</code>만 꺼내 화면에 보여 줍니다. 검색을 했는지는 가운데 두 장에만 남아 있으니, 답만 보면 알 수 없는 게 당연합니다.</p></div>
+        </div>
+        <figure class="at-stick" data-at-stick>
+          <div class="at-stage" data-at-stage data-s="4" data-figure>
+            <div class="at-stack">
+              <div class="at-card in dim" data-at-card><span class="role">사용자 · HumanMessage</span><br><span class="k">content:</span> "와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘"</div>
+              <div class="at-card in dim" data-at-card><span class="role">모델 · AIMessage</span><br><span class="k">content:</span> <span class="empty">""</span><br><span class="k">tool_calls:</span> search_videos(query="와인 입문 가이드")<br><span class="k">id:</span> <span class="id">call_7f2a</span></div>
+              <div class="at-card tool in dim" data-at-card><span class="role">도구 · ToolMessage</span><br><span class="k">tool_call_id:</span> <span class="id">call_7f2a</span><br><span class="k">content:</span> [{"title": "와인 처음이라면 이 영상부터", "url": "…q3RxW8mTn2A"}, {"title": "레드와 화이트, 10분 만에 구분하기", "url": "…Lk9pZc41vEo"}]</div>
+              <div class="at-card in hot" data-at-card><span class="role">모델 · AIMessage</span><br><span class="k">content:</span> "처음이라면 두 편을 권합니다. 1. 와인 처음이라면…"<br><span class="k">tool_calls:</span> []</div>
+            </div>
+            <p class="at-screen at-pen">↑ 채팅 창에 보이는 건 이 카드 하나</p>
+          </div>
+          <p class="at-cap">카드 속 값은 예시입니다. 실제 메시지에는 토큰 수 같은 정보가 더 붙습니다.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap">
+      <div class="at-two" style="align-items: start">
+        <div>
+          <h2>ReAct는 생각을 글로 쓰게 한 방법이었습니다</h2>
+          <p>Agent 이야기를 찾아보면 <b>ReAct</b>라는 이름이 꼭 나옵니다. 추론(Reasoning)과 행동(Acting)을 합친 말로, 프린스턴 대학과 구글 연구진이 2022년 10월에 공개하고 이듬해 인공지능 학회 ICLR에서 발표한 방법입니다. 모델에게 생각(Thought), 행동(Act), 관찰(Obs)을 번갈아 글로 쓰게 했습니다.</p>
+          <p>지금은 이 일을 모델 API가 맡습니다. 두 상자 가운데 첫째가 2022년 방식, 둘째가 지금 방식입니다. 그래서 LangChain 문서도 Agent를 "도구를 반복해서 부르는 모델"이라고만 설명합니다. 추론 모델(reasoning model)은 답하기 전에 속으로 따져 보지만 그 내용은 숨기거나 요약만 보여 줍니다.</p>
+        </div>
+        <div class="at-then">
+          <div>
+            <h3>2022년 ReAct: 한 덩어리 글 속에 섞여 있음</h3>
+            <div class="at-raw" data-figure><span class="t">Thought:</span> 영상을 검색해야겠다.<br><span class="t">Action:</span> search[와인 입문]<br><span class="t">Observation:</span> (프로그램이 결과를 글로 붙여 넣음)<br><span class="t">Thought:</span> 이제 답할 수 있다.</div>
+            <p class="at-note">프로그램은 모델이 쓴 글에서 "Action:" 뒤를 잘라 내 함수를 불렀습니다. 형식이 조금만 어긋나도 실행이 깨졌습니다.</p>
+          </div>
+          <div>
+            <h3>지금: 모델 API가 칸을 나눠 돌려줌</h3>
+            <div class="at-raw" data-figure><div class="slot"><span>content</span><span>""</span><span>tool_calls</span><span>[{name: "search_videos", args: {query: "와인 입문"}, id: "call_7f2a"}]</span></div></div>
+            <p class="at-note">OpenAI·Anthropic API는 도구 요청을 정해진 칸으로 따로 돌려줍니다. 다른 글의 예제 코드가 <code>[Reasoning]</code>이라는 말머리를 붙여 찍는 줄도 대개 이 칸이지 모델의 생각이 아닙니다.</p>
+          </div>
+        </div>
+      </div>
+      <figure class="at-paper" data-figure>
+        <p class="at-colh" style="margin-bottom: 14px !important">논문에 실린 비교: 생각만 하면 지어내고 검색 결과를 근거로 삼으면 맞힌다</p>
+        <a class="at-zoom" href="/post-assets/agent-tool-use-message-trace/react-hotpotqa.webp" target="_blank" rel="noopener"><picture><source media="(max-width: 860px)" srcset="/post-assets/agent-tool-use-message-trace/react-hotpotqa-m.webp"><img src="/post-assets/agent-tool-use-message-trace/react-hotpotqa.webp" alt="같은 질문을 여러 방식으로 푼 비교. 빨간 칠은 근거 없는 내용, 초록 칠은 검색으로 확인한 내용" loading="lazy"></picture></a>
+        <p class="at-cap">"Apple Remote 말고 그 프로그램을 조작할 수 있는 기기는?"이라는 질문입니다. 생각만 한 모델(Reason only)은 빨간 칠처럼 기억에 기대다 틀렸고 ReAct는 초록 칠처럼 검색 결과(Obs)를 근거로 정답 "keyboard function keys"에 닿았습니다. 출처: Yao et al., <a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a>, ICLR 2023, Figure 1 일부(<a href="https://react-lm.github.io/">프로젝트 페이지</a>). 모바일은 두 방식만 잘라 실었고, 그림을 누르면 원본이 열립니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-band">
+      <div class="at-wrap">
+        <p class="no">PART 2 · 기록과 답 맞춰 보기</p>
+        <p class="big">기록이 있다고 끝이 아닙니다. 마지막 답은 모델이 기록을 읽고 새로 쓴 글이라서 기록과 다른 말을 할 수 있습니다.</p>
+      </div>
+    </div>
+    <div class="at-wrap">
+      <h2>도구는 22도라고 했는데 답은 왜 25도일까요?</h2>
+      <p style="max-width: 760px">모델이 도구 결과를 그대로 옮기지 않고 자기가 아는 내용과 섞어 다시 쓰기 때문입니다. 회계 감사관이 장부의 숫자마다 영수증을 찾아보듯, 답의 문장마다 도구 결과라는 영수증이 있는지 맞춰 보면 차이가 보입니다. 아래 두 장이 그렇게 맞춰 본 결과입니다.</p>
+      <figure>
+        <div class="at-legend" style="margin: 36px 0 0"><span class="ok">도구 결과에 있음</span><span class="no">도구 결과에 없음 (모델이 덧붙임)</span></div>
+        <div class="at-audit" data-figure style="margin-top: 24px">
+          <div class="at-sheet">
+            <p class="lab">① 날씨 도구: 결과는 맞았는데</p>
+            <div class="at-rec">get_weather(city="서울")<br>→ {"temp_c": 22, "sky": "맑음"}</div>
+            <div class="at-ans"><mark class="ok">서울은 지금 맑고</mark>, <mark class="no">기온은 25도쯤으로 조금 덥습니다.</mark> <mark class="no">반소매를 입으세요.</mark></div>
+            <em class="at-pen">도구는 22도라고 했는데 답은 25도입니다. 옷차림 조언도 모델이 덧붙였습니다.</em>
+          </div>
+          <div class="at-sheet">
+            <p class="lab">② 영상 검색 도구: 주소만 돌려줌</p>
+            <div class="at-rec">YouTubeSearchTool("와인 입문 가이드")<br>→ "['https://www.youtube.com/watch?v=q3RxW8mTn2A', 'https://www.youtube.com/watch?v=Lk9pZc41vEo']"</div>
+            <div class="at-ans">검색 결과로 두 편이 나왔습니다. <mark class="ok">watch?v=q3RxW8mTn2A</mark>, <mark class="ok">watch?v=Lk9pZc41vEo</mark>. <mark class="no">두 영상 모두 와인 종류와 시음의 기본을 다룰 가능성이 큽니다.</mark> <mark class="no">길이가 짧아 따라 하기 좋습니다.</mark></div>
+            <em class="at-pen">주소 말고는 받은 게 없는데 내용과 길이를 말합니다.</em>
+          </div>
+        </div>
+        <p class="at-cap">②의 도구 이름과 결과 모양은 실제를 따랐고 날씨 도구와 영상 주소, 답 문장은 예시입니다.</p>
+      </figure>
+      <div style="max-width: 760px; margin-top: 56px">
+        <div>
+          <p>①에서 도구는 제 몫을 했습니다. 모델이 답을 새로 쓰면서 숫자를 바꾸고 묻지 않은 조언까지 보탰습니다. 기온 3도는 웃고 넘길 수 있지만 재고나 가격, 약 복용량에서 같은 일이 생기면 그대로 사고가 됩니다. 그래서 기록이 있어도 답을 기록과 맞춰 봐야 합니다.</p>
+          <p>이런 실패는 따로 연구될 만큼 흔합니다. 2026년 7월에 나온 ToolFailBench는 19개 모델을 시험하면서 도구를 건너뛰기, 결과 무시하기, 결과를 지어내기 같은 유형을 나눴습니다. 가장 잘한 모델도 필요할 때 도구를 부르고 결과대로 답한 비율이 86.33%였습니다. 나머지 13.67%에서는 앞의 실패 가운데 하나가 나왔습니다(<a href="https://arxiv.org/abs/2607.04686">논문</a>).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap at-two">
+      <div>
+        <h2>주소만 돌려주는 도구는 무엇을 버렸을까요?</h2>
+        <p>LangChain의 <code>YouTubeSearchTool</code>은 검색으로 받은 제목·채널·길이·조회 수를 버리고 주소만 문자열로 넘깁니다. 그러니 ②의 모델은 주소만 보고 내용을 짐작할 수밖에 없었습니다. 도구가 모델에게 무엇을 넘기는지가 답의 품질을 정합니다.</p>
+        <p>그래서 이번에는 Google이 제공하는 YouTube Data API v3로 도구를 직접 만듭니다. 공식 검색 결과에는 제목, 채널 이름, 올린 날짜가 들어 있습니다. 길이와 조회 수는 다른 호출(<code>videos.list</code>)로 따로 받아야 합니다.</p>
+      </div>
+      <figure>
+        <div class="at-sieve" data-figure>
+          <p class="at-cap" style="margin: 0 !important">검색 라이브러리가 영상 하나마다 받아 오는 칸</p>
+          <div class="at-fields">
+            <span class="at-f drop"><b>title</b><small>와인 처음이라면 이 영상부터</small></span>
+            <span class="at-f drop"><b>channel</b><small>한 잔의 기록</small></span>
+            <span class="at-f drop"><b>duration</b><small>8:42</small></span>
+            <span class="at-f drop"><b>views</b><small>조회수 3.1만회</small></span>
+            <span class="at-f drop"><b>publish_time</b><small>7개월 전</small></span>
+            <span class="at-f drop"><b>long_desc</b><small>설명 글</small></span>
+            <span class="at-f drop"><b>thumbnails</b></span>
+            <span class="at-f drop"><b>id</b></span>
+            <span class="at-f keep">url_suffix<small>/watch?v=q3RxW8mTn2A</small></span>
+          </div>
+          <div class="at-mesh"><span>YouTubeSearchTool</span></div>
+          <div class="at-out">"['https://www.youtube.com/watch?v=q3RxW8mTn2A', …]"</div>
+          <em class="at-pen">모델에게 가는 건 이 문자열 하나. 제목도 길이도 모릅니다.</em>
+        </div>
+        <p class="at-cap">칸 이름은 <code>youtube-search</code> 2.2.0이 돌려주는 실제 키이고 칸 안의 값은 예시입니다.</p>
+        <details>
+          <summary>이 도구를 새 코드에 쓰지 않는 이유 하나 더</summary>
+          <p><code>YouTubeSearchTool</code>이 든 <code>langchain-community</code> 패키지(여러 회사 연동 코드를 모아 둔 묶음)는 2026년 5월 22일 지원 종료를 알렸고 0.4.2가 마지막 버전입니다. 지금 불러오면 경고가 뜹니다. 안에서 쓰는 <code>youtube-search</code>도 공식 API가 아니라 YouTube 검색 화면을 긁어 오는 방식이라 화면이 바뀌면 멈출 수 있습니다.</p>
+        </details>
+      </figure>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap">
+      <h2>모델이 읽을 칸을 골라 넘기는 도구</h2>
+      <p style="max-width: 760px">도구는 검색 결과에서 모델이 근거로 쓸 칸만 골라 깔끔하게 넘기면 됩니다. 아래 코드는 <code>langchain 1.5</code>, <code>google-api-python-client 2.202</code> 기준입니다.</p>
+      <div class="at-code">
+        <div class="at-codel">
+<pre data-title="tools.py" data-hl="8,13,19-24" data-start="1"><code class="language-python">import os
+from googleapiclient.discovery import build
+from langchain.tools import tool
+
+KEY = os.environ["YOUTUBE_API_KEY"]
+youtube = build("youtube", "v3", developerKey=KEY)
+# ① 모델이 읽는 설명서
+@tool
+def search_videos(query: str, max_results: int = 3) -&gt; list[dict]:
+    """YouTube에서 영상을 검색해 제목·채널·올린 날짜·주소를 돌려줍니다.
+    영상 추천을 부탁받으면 씁니다."""
+    # ② 검색 한 번
+    res = youtube.search().list(
+        q=query, part="snippet", type="video",
+        maxResults=max_results, relevanceLanguage="ko",
+    ).execute()
+    return [
+        # ③ 근거로 쓸 칸만 골라서
+        {
+            "title": it["snippet"]["title"],
+            "channel": it["snippet"]["channelTitle"],
+            "published": it["snippet"]["publishedAt"][:10],
+            "url": f"https://www.youtube.com/watch?v={it['id']['videoId']}",
+        }
+        for it in res["items"]
+    ]
+
+args = {"query": "와인 입문 가이드", "max_results": 2}
+print(search_videos.invoke(args))</code></pre>
+<div class="at-term">[{'title': '와인 처음이라면 이 영상부터', 'channel': '한 잔의 기록', 'published': '2026-04-18', 'url': 'https://www.youtube.com/watch?v=q3RxW8mTn2A'}, {'title': '레드와 화이트, 10분 만에 구분하기', 'channel': '소믈리에 노트', 'published': '2025-12-02', 'url': 'https://www.youtube.com/watch?v=Lk9pZc41vEo'}]</div>
+<p class="at-note">출력은 설명을 위한 예시 값입니다.</p>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>설명서.</b> 모델은 함수 코드를 보지 못하고 이름, 함수 바로 아래 따옴표 세 개로 쓴 설명(docstring), 인자 타입만 읽고 언제 쓸지 고릅니다. "영상 추천을 부탁받으면"처럼 쓰는 때를 적어 두면 건너뛰는 일이 줄어듭니다.</li>
+          <li><b>검색 한 번.</b> <code>type="video"</code>로 재생 목록과 채널을 빼고 <code>relevanceLanguage="ko"</code>로 한국어 영상을 앞에 둡니다. 2026년 11월 공식 문서 기준 검색 호출은 프로젝트마다 하루 100번까지라서 같은 검색어 결과는 저장해 두고 다시 쓰는 편이 좋습니다.</li>
+          <li><b>칸 고르기.</b> 응답 전체를 넘기면 썸네일 주소 같은 칸까지 들어가 토큰(모델이 글을 세는 단위이자 요금 단위)만 늘어납니다. 반대로 주소만 넘기면 앞의 ②처럼 모델이 짐작합니다. 답에 쓸 근거인 제목, 채널, 날짜, 주소만 고릅니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap">
+      <h2>Agent가 남긴 기록을 코드로 펼쳐 보기</h2>
+      <p style="max-width: 760px">답 한 줄 대신 메시지 목록 전체를 찍어 보면 앞에서 본 카드 네 장이 그대로 나옵니다. 메시지마다 붙어 있는 <code>pretty_print()</code>가 종류별 머리줄을 달아 보기 좋게 찍어 줍니다.</p>
+      <div class="at-code">
+        <div class="at-codel">
+<pre data-title="agent.py" data-hl="6-7,10-12,22" data-start="1"><code class="language-python">from langchain.agents import create_agent
+from tools import search_videos
+
+agent = create_agent(
+    # ① 두뇌와 도구
+    model="openai:gpt-6.1-sol",
+    tools=[search_videos],
+    system_prompt=(
+        # ② 지어내지 말라는 규칙
+        "당신은 영상 큐레이터입니다. "
+        "영상은 search_videos 결과에서만 고르고, "
+        "결과에 없는 주소나 내용은 쓰지 마세요."
+    ),
+)
+
+question = "와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘"
+messages = [{"role": "user", "content": question}]
+result = agent.invoke({"messages": messages})
+
+for msg in result["messages"]:
+    # ③ 마지막 답이 아니라 기록 전체
+    msg.pretty_print()</code></pre>
+<p class="at-note" style="margin: 14px 0 0 !important">③을 실행한 결과입니다. 같은 질문을 다시 보냈을 때 나온 예시 답입니다. 이번에는 모델이 규칙을 어기고 세 번째 영상을 덧붙였습니다.</p>
+<div class="at-term"><span class="dim">================================ Human Message =================================</span>
+
+와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘
+<span class="dim">================================== Ai Message ==================================</span>
+Tool Calls:
+  search_videos (call_7f2a)
+ Call ID: call_7f2a
+  Args:
+    query: 와인 입문 가이드
+<span class="dim">================================= Tool Message =================================</span>
+Name: search_videos
+
+[{"title": "와인 처음이라면 이 영상부터", "channel": "한 잔의 기록", "published": "2026-04-18", "url": "https://www.youtube.com/watch?v=q3RxW8mTn2A"}, {"title": "레드와 화이트, 10분 만에 구분하기", ...}]
+<span class="dim">================================== Ai Message ==================================</span>
+
+처음이라면 세 편을 권합니다.
+1. 와인 처음이라면 이 영상부터 (한 잔의 기록)
+   https://www.youtube.com/watch?v=q3RxW8mTn2A
+2. 레드와 화이트, 10분 만에 구분하기 (소믈리에 노트)
+   https://www.youtube.com/watch?v=Lk9pZc41vEo
+3. 와인 잔 고르는 법
+   https://www.youtube.com/watch?v=Hw2bN7xQe5U</div>
+<p class="at-note">세 번째 영상 주소는 검색 결과에 없는, 지어낸 주소입니다.</p>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>두뇌와 도구.</b> <code>"openai:gpt-6.1-sol"</code>처럼 "회사:모델" 문자열을 주면 LangChain이 알맞은 연결 코드를 고릅니다. <code>"anthropic:claude-sonnet-5-5"</code>로 바꿔도 나머지 코드는 그대로입니다. 모델 ID는 2026년 11월 기준입니다.</li>
+          <li><b>규칙.</b> 결과에 없는 내용은 쓰지 말라고 적으면 지어내는 일이 줄지만 사라지지는 않습니다. 위 출력의 세 번째 영상처럼 규칙을 어기는 답이 나올 수 있어서 다음 단계의 대조가 필요합니다.</li>
+          <li><b>기록 전체.</b> <code>result["messages"]</code>에는 질문, 도구 요청, 도구 결과, 답이 순서대로 들어 있습니다. 도구를 안 썼다면 가운데 두 장이 아예 없습니다. 검색을 했는지는 이걸로 판정합니다.</li>
+        </ol>
+      </div>
+      <p style="max-width: 760px; margin-top: 64px">다 끝난 뒤에 한꺼번에 받지 않고 진행되는 동안 조각조각 받아 보고 싶으면 <code>stream</code>을 씁니다. <code>stream_mode="updates"</code>로 받으면 한 단계가 끝날 때마다 어느 단계(<code>model</code> 또는 <code>tools</code>)가 무엇을 더했는지 하나씩 들어옵니다.</p>
+      <div class="at-code">
+        <div class="at-codel">
+<pre data-title="watch.py" data-hl="3,7" data-start="1"><code class="language-python">for chunk in agent.stream({"messages": messages}, stream_mode="updates"):
+    # ① 어느 단계가 일했나
+    for node, update in chunk.items():
+        last = update["messages"][-1]
+        tag = f"[{node}]"
+        # ② 모델이 쓴 도구 요청
+        if node == "model" and last.tool_calls:
+            for call in last.tool_calls:
+                print(tag, "도구 요청 →", call["name"], call["args"])
+        elif node == "tools":
+            print(tag, "도구 결과 →", last.content[:40])
+        else:
+            print(tag, "최종 답 →", last.content.splitlines()[0])</code></pre>
+<div class="at-term">[model] 도구 요청 → search_videos {'query': '와인 입문 가이드'}
+[tools] 도구 결과 → [{"title": "와인 처음이라면 이 영상부터", "channel":
+[model] 최종 답 → 처음이라면 세 편을 권합니다.</div>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>단계 이름.</b> 한 덩어리(chunk)는 <code>{"model": …}</code>이나 <code>{"tools": …}</code>처럼 단계 이름을 열쇠로 한 사전(dict, 이름표와 값을 짝지은 묶음)입니다. 모델을 두 번 불렀으니 <code>model</code>이 두 번 나옵니다.</li>
+          <li><b>도구 요청.</b> 다른 글의 예제는 이 줄에 <code>[Reasoning]</code>이라는 말머리를 붙이기도 합니다. 그래도 모델의 생각이 아니라 도구 요청 칸이라는 걸 알고 이름을 붙이면 로그를 읽을 때 덜 헷갈립니다.</li>
+        </ol>
+      </div>
+      <details>
+        <summary>다른 글에서 이런 옛 코드를 만나면</summary>
+        <table>
+          <thead><tr><th>옛 코드</th><th>이 글의 코드</th></tr></thead>
+          <tbody>
+            <tr><td><code>from langchain_community.tools import YouTubeSearchTool</code></td><td>직접 만든 <code>search_videos</code> (지원이 끝난 패키지라서)</td></tr>
+            <tr><td><code>FormatCode(str(chunk))</code>로 덩어리를 통째로 정리해 찍기</td><td><code>msg.pretty_print()</code>, 필요한 칸만 꺼내 찍기</td></tr>
+            <tr><td><code>from langchain_core.tools import tool</code></td><td><code>from langchain.tools import tool</code> (같은 데코레이터, 둘 다 동작)</td></tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <section class="at-sec">
+    <div class="at-wrap">
+      <h2>답 속 링크가 기록에 있는지 코드로 대조하기</h2>
+      <div class="at-code">
+        <div class="at-codel">
+<pre data-title="check.py" data-hl="8-11,13-14" data-start="1"><code class="language-python">import re
+from langchain.messages import ToolMessage
+
+URL = re.compile(r"https://www\.youtube\.com/watch\?v=[\w-]{11}")
+
+def check_links(messages):
+    # ① 영수증: 도구가 실제로 돌려준 주소
+    receipts = {
+        u for m in messages if isinstance(m, ToolMessage)
+        for u in URL.findall(m.content)
+    }
+    # ② 답에 적힌 주소를 하나씩 대조
+    for u in URL.findall(messages[-1].content):
+        print("기록 있음" if u in receipts else "기록 없음", u)
+
+check_links(result["messages"])</code></pre>
+<div class="at-term"><span class="ok">기록 있음</span> https://www.youtube.com/watch?v=q3RxW8mTn2A
+<span class="ok">기록 있음</span> https://www.youtube.com/watch?v=Lk9pZc41vEo
+<span class="no">기록 없음</span> https://www.youtube.com/watch?v=Hw2bN7xQe5U</div>
+        </div>
+        <ol class="pg-code-notes">
+          <li><b>영수증 모으기.</b> 도구 결과(<code>ToolMessage</code>)에 든 주소만 모읍니다. 도구가 사전 목록을 돌려줘도 메시지 안에는 JSON(사전 모양을 글자로 적는 형식) 글자로 들어갑니다. 그래서 글자 모양 규칙으로 찾는 정규식(regular expression)으로 주소를 골라낼 수 있습니다. 영상 ID는 11글자입니다.</li>
+          <li><b>대조.</b> 마지막 답의 주소가 영수증 묶음에 없으면 모델이 만든 주소입니다. 서비스라면 그 줄을 지우거나 다시 물어보게 합니다.</li>
+        </ol>
+      </div>
+      <div style="max-width: 760px; margin-top: 64px">
+        <p>링크를 아예 모델 글에 맡기지 않으면 더 확실합니다. 영상 카드는 앱이 도구 결과로 직접 그리고 모델에게는 한두 줄 소개만 쓰게 합니다. 그러면 화면의 링크는 모두 검색 결과에서 나옵니다.</p>
+      </div>
+      <figure>
+        <div class="at-pair" style="margin-top: 32px" data-figure>
+          <div class="at-col">
+            <p class="at-colh">링크까지 모델이 글로 씀</p>
+            <div class="at-chat">
+              <div class="at-bar"><span>영상 비서</span><small>예시 화면</small></div>
+              <div class="at-log">
+                <div class="at-me">와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘</div>
+                <div class="at-ai"><div class="av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>처음이라면 세 편을 권합니다.<ol><li>와인 처음이라면 이 영상부터<span class="u">youtube.com/watch?v=q3RxW8mTn2A</span></li><li>레드와 화이트, 10분 만에 구분하기<span class="u">youtube.com/watch?v=Lk9pZc41vEo</span></li><li>와인 잔 고르는 법<span class="u at-x">youtube.com/watch?v=Hw2bN7xQe5U</span></li></ol><div class="acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg></div></div></div>
+              </div>
+              <div class="at-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+            </div>
+            <em class="at-pen">세 번째 링크는 검색 결과에 없습니다</em>
+          </div>
+          <div class="at-col">
+            <p class="at-colh">카드는 앱이 도구 결과로 그림</p>
+            <div class="at-chat">
+              <div class="at-bar"><span>영상 비서</span><small>예시 화면</small></div>
+              <div class="at-log">
+                <div class="at-me">와인 처음 마셔 보는 사람이 볼 만한 영상 찾아 줘</div>
+                <div class="at-ai"><div class="av" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div><div>레드와 화이트의 차이부터 보시면 좋습니다.
+                  <div class="at-cards">
+                    <div class="at-vc"><div class="th" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><div><b>와인 처음이라면 이 영상부터</b><small>한 잔의 기록 · 2026-04-18</small></div></div>
+                    <div class="at-vc"><div class="th" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><div><b>레드와 화이트, 10분 만에 구분하기</b><small>소믈리에 노트 · 2025-12-02</small></div></div>
+                  </div>
+                  <div class="acts" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg></div></div></div>
+              </div>
+              <div class="at-box" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 물어보세요</span><i class="send"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+            </div>
+            <em class="at-pen">모델은 한 줄 소개만, 카드는 ToolMessage에서</em>
+          </div>
+        </div>
+        <p class="at-cap">설명을 위해 그린 예시 화면입니다. "링크까지 모델이 글로 씀"은 앞 코드의 출력처럼 모델이 규칙을 어기고 세 번째 영상을 덧붙인 경우, "카드는 앱이 도구 결과로 그림"은 앱이 기록의 도구 결과를 읽어 카드를 그리는 방식입니다.</p>
+      </figure>
+      <details>
+        <summary>도구 결과를 모델에게 거치지 않고 바로 답으로 내보내려면</summary>
+        <p>LangChain 도구에는 <code>@tool(return_direct=True)</code> 옵션이 있습니다. 켜면 도구 결과가 곧바로 최종 답이 되고 모델을 다시 부르지 않습니다. 지어낼 틈은 없어지지만 모델이 결과를 읽고 고르거나 설명하는 단계도 사라집니다. 검색 결과 목록을 그대로 보여 주면 되는 화면에만 맞습니다.</p>
+        <p>여러 사람이 쓰는 서비스에서 기록을 매번 찍어 볼 수는 없습니다. 실행 기록을 자동으로 모아 보는 trace와 점수 매기는 법은 <a href="/posts/agent-evaluation-tracing-trajectory">Agent 평가 글</a>에서 다룹니다.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="at-sec at-refs">
+    <div class="at-wrap at-head">
+      <h2>참고 자료</h2>
+      <ul>
+        <li>Yao et al., <a href="https://arxiv.org/abs/2210.03629">ReAct: Synergizing Reasoning and Acting in Language Models</a> (ICLR 2023) · <a href="https://react-lm.github.io/">프로젝트 페이지</a></li>
+        <li>LangChain, <a href="https://docs.langchain.com/oss/python/langchain/agents">Agents</a> · <a href="https://docs.langchain.com/oss/python/langchain/streaming">Streaming</a> · <a href="https://docs.langchain.com/oss/python/langchain/tools">Tools</a> · <a href="https://docs.langchain.com/oss/python/langchain/messages">Messages</a></li>
+        <li><a href="https://github.com/langchain-ai/langchain-community/issues/674">langchain-community 지원 종료 안내 (issue #674)</a> · <a href="https://pypi.org/project/langchain-community/">PyPI langchain-community</a></li>
+        <li>Google, <a href="https://developers.google.com/youtube/v3/docs/search/list">YouTube Data API v3 search.list</a> · <a href="https://developers.google.com/youtube/v3/determine_quota_cost">Quota cost</a></li>
+        <li>OpenAI, <a href="https://developers.openai.com/api/docs/guides/function-calling">Function calling</a> · Anthropic, <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview">Tool use</a></li>
+        <li><a href="https://arxiv.org/abs/2607.04686">ToolFailBench (arXiv 2607.04686)</a></li>
+        <li>AccountingTools, <a href="https://www.accountingtools.com/articles/vouching">Vouching</a></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  const sc = root.querySelector("[data-at-sc]");
+  if (!sc) return;
+  const stage = sc.querySelector("[data-at-stage]");
+  const stick = sc.querySelector("[data-at-stick]");
+  const steps = [...sc.querySelectorAll("[data-at-step]")];
+  const cards = [...sc.querySelectorAll("[data-at-card]")];
+  const mq = matchMedia("(max-width: 860px)");
+  const show = (s) => {
+    stage.dataset.s = s;
+    steps.forEach((el, i) => el.classList.toggle("on", i === s));
+    cards.forEach((c, i) => {
+      c.classList.toggle("in", i <= Math.min(s, 3));
+      c.classList.toggle("dim", s === 4 ? i < 3 : i < s);
+      c.classList.toggle("hot", s === 4 ? i === 3 : i === s);
+    });
+  };
+  const place = () => {
+    if (mq.matches) { stick.style.top = ""; return; }
+    stick.style.top = Math.max(84, (innerHeight - stick.offsetHeight) / 2) + "px";
+  };
+  const tick = () => {
+    if (mq.matches) {
+      stage.dataset.s = 4;
+      steps.forEach((el) => el.classList.add("on"));
+      cards.forEach((c) => { c.classList.add("in"); c.classList.remove("dim", "hot"); });
+      return;
+    }
+    const line = innerHeight / 2;
+    let best = 0, bd = Infinity;
+    steps.forEach((el, i) => {
+      const r = el.getBoundingClientRect();
+      const d = Math.abs((r.top + r.bottom) / 2 - line);
+      if (d < bd) { bd = d; best = i; }
+    });
+    show(best);
+  };
+  place(); tick();
+  addEventListener("scroll", tick, { passive: true, signal });
+  addEventListener("resize", () => { place(); tick(); }, { passive: true, signal });
+})();
+</script>

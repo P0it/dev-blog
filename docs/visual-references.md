@@ -128,7 +128,7 @@
 | [Anthropic, Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) | 서버별 도구 수와 토큰(GitHub 35개 ~26K, 5개 서버 58개 ~55K, 사내 134K)을 나열 | 도구 정의가 context window 를 먹는 양을 실제 값으로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema (20만 토큰 막대) |
 | [LangChain, INVALID_TOOL_RESULTS](https://docs.langchain.com/oss/python/langchain/errors/INVALID_TOOL_RESULTS) | tool_call_id 짝이 빠졌을 때 OpenAI 가 내는 400 문장을 그대로 싣는다 | 번호표가 빠지면 요청 전체가 거절된다는 것을 실제 오류로 보일 때 | 2026-10-16 | llm-tool-calling-json-schema |
 | [Anthropic, Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) · [Handling stop reasons](https://platform.claude.com/docs/en/api/handling-stop-reasons) | stop_reason 값마다 "루프가 할 일"을 표로 나눈 것을 갈림길 그림으로 바꾼다. tool_use·tool_result JSON 예시를 그림 속 카드 문구로 쓴다 | 루프의 분기를 값별로 보일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
-| [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions |
+| [ReAct 논문](https://arxiv.org/abs/2210.03629) · [Game Programming Patterns, Game Loop](https://gameprogrammingpatterns.com/game-loop.html) | Thought/Action/Observation 줄을 모델이 쓴 것과 코드가 가져온 것으로 칠하고 API 블록과 짝지은다. (다른 분야) 게임 루프 `while(true){입력·갱신·그리기}` 로 while 루프가 낯설지 않다고 연다 | 반복 구조의 이름을 처음 붙일 때 | 2026-10-16 | ai-agent-loop-stop-conditions, agent-tool-use-message-trace(Figure 1 을 원본 그대로 싣고 모바일은 Reason only·ReAct 두 칸만 잘라 세로로) |
 | [LangChain, Models](https://docs.langchain.com/oss/python/langchain/models) · [Messages](https://docs.langchain.com/oss/python/langchain/messages) | init_chat_model·invoke·stream·batch 와 AIMessage 필드를 문서 순서대로 쓰되, 실제로 모의 서버에 두 회사 클래스를 붙여 요청 본문과 응답 필드를 관찰한 값으로 "같은 것과 다른 것"을 그린다 | 추상화 계층이 무엇을 맞춰 주고 무엇을 못 맞추는지 보일 때 | 2026-10-16 | langchain-init-chat-model-switch-provider |
 | [LangChain, Structured output](https://docs.langchain.com/oss/python/langchain/structured-output) · [Anthropic, Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) | ToolStrategy/ProviderStrategy 두 길과 거절·길이 한도·숫자 범위 같은 보장 밖 사례를 문서 문장으로 확인하고, 모의 서버에 붙여 요청 본문(tools vs output_config.format)·검증 오류·재시도 메시지를 관찰한 값으로 그림을 그린다 | "양식이 보장하는 것과 못 하는 것"을 겹으로 나눠 보일 때 | 2026-10-16 | llm-structured-output-pydantic-langchain |
 | [Anthropic, Writing effective tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) · [LangChain, Tools](https://docs.langchain.com/oss/python/langchain/tools) | 도구 설명이 겹치면 고르기 어렵다는 문장을 "설명 범위를 원으로 그려 질문 점이 몇 개 원에 걸리나"로 바꾼다. 함수 코드와 모델이 받는 JSON 설명서를 같은 색 부분끼리 짝짓고, 도구 오류 기본 동작과 ToolRuntime 숨김을 모의 서버로 직접 확인한다 | 설명 품질이 선택에 미치는 영향, 코드와 모델이 보는 것의 대응을 보일 때 | 2026-10-16 | ai-agent-tool-design-description-schema |
@@ -228,6 +228,9 @@
 - 알고리즘 레퍼런스 조사(2026-10-19~20)에서 열지 못했거나 화면을 확인하지 못한 곳: VisuAlgo 2026-05 블로그·Coddy 재귀/DFS 시각화(403), hello-algo.com 병합·이분·삽입 페이지(429), search-visualized.onrender.com·Codeforces 이분 탐색 글(503), Oakland 퀵 정렬(404), Avik Das 그림으로 하는 DP 입문(403), USFCA Galles 시각화 전체(캔버스라 화면 확인 불가), sorting-algorithms.com 원본, Bornat Visualizer(IP 호스트), TUM 완전탐색 슬라이드, MrAech DP Visualizer(Vercel 로그인), Mvidia(본문 비어 있음), HF Ultra-Scale Playbook(로딩 중), AnimatedLLM·ViT-Explainer 라이브 화면, samwho.dev 개별 글(Big O·Bloom Filters 등), Virtual Labs 시뮬레이션 화면, GeoGebra Pool Table, ravensmove 해시·selfboot 해시·스택 도구(요약만)
 
 ## 잘 먹힌 기법
+- **같아 보이는 두 화면 아래 다른 기록 띠** (agent-tool-use-message-trace) — 채팅 화면 두 장을 나란히 두고 그 아래에만 메시지 칩 줄(user→ai / user→ai→tool→ai)을 달았다. "검색했는지는 화면이 아니라 기록에 있다"가 히어로 한 장으로 전해졌다(Critic 이해 4)
+- **영수증 대조판** (agent-tool-use-message-trace) — 회계 감사의 vouching 에서 빌림. 도구 결과를 위에, 답 문장을 아래에 두고 결과에 있는 말은 초록 칠, 없는 말은 빨간 물결 밑줄. 첫 판은 "도구가 틀림"과 "모델이 바꿈"을 한 장에 섞어 교훈이 흐리다는 지적을 받았다 — 한 장에는 한 가지 실패만
+- **버린 칸에 줄 긋는 체** (agent-tool-use-message-trace) — 라이브러리가 받은 9칸 중 1칸만 통과하는 그림으로 "도구가 무엇을 넘기는지가 답을 정한다"를 보였다
 - **V자 왕복 + 자라는 목록** (stock-chatbot-function-calling-streaming) — 화면·내 코드·모델 세 줄을 오가는 길이 스크롤로 켜지고, 그 아래 실제 `input` 목록이 한 줄씩 자란다. "호출 2는 세 줄을 모두 보낸다"를 목록 위에 직접 적으니 Critic 이 가장 잘 읽히는 그림으로 꼽았다
 - **같은 데이터로 틀린 답 보이기** (stock-chatbot-function-calling-streaming) — 실제 TSLA 종가를 `tail(10)`과 전체 요약으로 나란히 그려 +2.83%와 +1.71%를 맞세웠다. 예시 값이 아니라 실측이라 함정이 바로 믿긴다
 - **가능한 답을 점 구름으로** (prompt-structure-hallucination-clean-data) — 요청서 칸이 늘 때마다 진한 점이 줄어드는 작은 그림 여섯 장. "구체적으로 써라"를 말 대신 범위 축소로 보였다. 점 수는 예시 값이라고 밝힌다
@@ -335,7 +338,7 @@
 | 원문에 직접 표시 | NYT 뮬러 보고서 검열 표시, Genius 주석 | 마스킹·토큰화·템플릿 치환 | langchain-middleware-hooks-guardrails |
 | 실물 은유(구멍 뚫는 표·개찰구) | Ciechanowski Mechanical Watch, Nicky Case The Evolution of Trust | rate limit·토큰 예산·재시도 | langchain-middleware-hooks-guardrails |
 | 눈금 한 줄 | Tufte 스파크라인, Gapminder | 루프 횟수·요청 타임라인 | langchain-middleware-hooks-guardrails |
-| 로그가 곧 그림 | Julia Evans 진, Stripe API 문서 | 에이전트 루프·도구 호출 | |
+| 로그가 곧 그림 | Julia Evans 진, Stripe API 문서 | 에이전트 루프·도구 호출 | agent-tool-use-message-trace(메시지 카드 네 장이 스크롤로 쌓이고 요청 번호를 같은 색으로) |
 | 생명선 | MDN CORS 흐름도, 시퀀스 다이어그램 | MCP·OAuth·미들웨어 전후 | |
 | 작은 그림 여러 장 | Tufte small multiples, The Pudding | 옵션 비교 | langchain-middleware-hooks-guardrails |
 | 손그림 층 | Excalidraw, Maggie Appleton, Rough.js | 미들웨어·하네스·샌드박스 | langchain-middleware-hooks-guardrails |
