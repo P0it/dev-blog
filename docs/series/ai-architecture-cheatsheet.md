@@ -30,7 +30,7 @@ ByteByteGo 처럼 **그림 한 장으로 구조와 흐름이 보이는** 치트�
 | # | 주제 (슬러그) | 이 편의 한 질문 | 대표 그림 | 자세히 푼 글(ai-agent 등) | 상태 |
 |---|---|---|---|---|---|
 | 1 | AI 앱 전체 구조 (`ai-app-architecture-map`) | AI 서비스에는 모델 말고 무엇이 더 필요할까요? | 세 구역 구조도 + 요청 하나의 시퀀스 + 4단계 확장 | ai-agent-vs-chatbot, rag-retrieval-pipeline, mcp-host-client-server-primitives | 초안 |
-| 2 | 워크플로와 Agent, 다섯 패턴 | 정해진 순서로 충분한 일과 Agent 가 필요한 일은 어디서 갈릴까요? | Anthropic 5패턴(체이닝·라우팅·병렬·오케스트레이터-워커·평가자-최적화) 작은 그림 나란히 + Agent | workflow-vs-agent-chaining-routing, workflow-parallel-orchestrator-evaluator | 계획 |
+| 2 | 워크플로와 Agent, 다섯 패턴 (`workflow-agent-patterns-map`) | 정해진 순서로 충분한 일과 Agent 가 필요한 일은 어디서 갈릴까요? | Anthropic 5패턴(체이닝·라우팅·병렬·오케스트레이터-워커·평가자-최적화) 작은 그림 나란히 + Agent | workflow-vs-agent-chaining-routing, workflow-parallel-orchestrator-evaluator | 초안 |
 | 3 | Agent 루프와 Tool Calling | 모델은 도구를 직접 실행하지 않는데 Agent 는 어떻게 일을 할까요? | 사용자·앱·모델·도구 시퀀스, stop_reason 갈림길 | llm-tool-calling-json-schema, ai-agent-loop-stop-conditions | 계획 |
 | 4 | RAG 구조의 변천 | Naive RAG 에서 Agentic RAG·GraphRAG 까지 무엇이 더해졌을까요? | 네 가지 파이프라인을 같은 축에 겹쳐 그림 | rag-retrieval-pipeline, agentic-rag-search-as-tool-langchain | 계획 |
 | 5 | LangGraph 한 장 | 그래프로 짠 Agent 는 상태를 어디에 두고 어떻게 멈췄다 다시 갈까요? | State·Node·Edge·Checkpointer·interrupt·Send 한 장 | langgraph-state-node-edge-intro, langgraph-interrupt-human-approval-checkpoint | 계획 |
