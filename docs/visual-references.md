@@ -211,6 +211,9 @@
 | [Dhuliawala 외, Chain-of-Verification](https://arxiv.org/abs/2309.11495) | 초안 → 검증 질문 → 답 → 수정 네 칸에 실제 예문을 넣고, 초안을 빼는 설계 차이를 정밀도로 비교 | 검증 절차를 단계로 보일 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (치킨 리뷰 세 장 + 수직선, 원 그림 접기) |
 | [UAX #15 Normalization Forms](https://www.unicode.org/reports/tr15/) | 행 = 글자, 열 = 변환으로 정규형 차이를 한 표에 둔다 | 규칙 여러 개의 결과를 견줄 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (글자 타일 + 토큰 막대) |
 | [Zhang 외, cAST](https://arxiv.org/abs/2506.15655) | 같은 코드에 구문 무시·구문 인지 청크를 겹쳐 그리고 생성 결과의 성공·실패까지 잇는다 | 자르는 위치가 결과를 바꾸는 것을 보일 때 | 2026-11-05 | prompt-structure-hallucination-clean-data (경계선 코드 두 장, 원 그림 접기) |
+| [Streamlit, Session State](https://docs.streamlit.io/develop/concepts/architecture/session-state) | "a blank slate for regular Python variables" — 일반 변수와 Session State 를 맞세워 재실행마다 무엇이 지워지는지 보인다 | 재실행·상태 유지처럼 "언제 사라지나"가 핵심인 개념 | 2026-11-14 | langchain-runnable-memory-streamlit-chatbot |
+| [Wikipedia, Railroad switch](https://en.wikipedia.org/wiki/Railroad_switch) | (다른 분야) 열차가 오기 전에 선로가 먼저 바뀐다 — 분류가 끝나야 고르는 함수가 돈다 | 라우팅·분기 | 2026-11-14 | langchain-runnable-memory-streamlit-chatbot |
+| [Red Blob Games, making of line drawing](https://www.redblobgames.com/making-of/line-drawing/) | 과정을 단계마다 그림 한 장으로 쪼개고 모든 그림이 같은 상태를 공유 | 1→N 단계를 따라가는 스크롤 그림 | 2026-11-14 | langchain-runnable-memory-streamlit-chatbot |
 
 ## 미확인
 
@@ -228,6 +231,10 @@
 - 알고리즘 레퍼런스 조사(2026-10-19~20)에서 열지 못했거나 화면을 확인하지 못한 곳: VisuAlgo 2026-05 블로그·Coddy 재귀/DFS 시각화(403), hello-algo.com 병합·이분·삽입 페이지(429), search-visualized.onrender.com·Codeforces 이분 탐색 글(503), Oakland 퀵 정렬(404), Avik Das 그림으로 하는 DP 입문(403), USFCA Galles 시각화 전체(캔버스라 화면 확인 불가), sorting-algorithms.com 원본, Bornat Visualizer(IP 호스트), TUM 완전탐색 슬라이드, MrAech DP Visualizer(Vercel 로그인), Mvidia(본문 비어 있음), HF Ultra-Scale Playbook(로딩 중), AnimatedLLM·ViT-Explainer 라이브 화면, samwho.dev 개별 글(Big O·Bloom Filters 등), Virtual Labs 시뮬레이션 화면, GeoGebra Pool Table, ravensmove 해시·selfboot 해시·스택 도구(요약만)
 
 ## 잘 먹힌 기법
+- **코드 줄 + 변수 상자 + 화면을 한 장면으로, 실행 번호 배지** (langchain-runnable-memory-streamlit-chatbot, Critic 4/3) — Streamlit 재실행을 app.py 8줄(이번 실행에서 짚을 줄 노랑·문제 줄 빨강·건너뛴 줄 회색 "건너뜀")과 `messages` 상자(길이 배지)·화면을 함께 놓고 스크롤로 실행 1·2·3·session_state판을 넘겼다. 처음엔 줄 훑기 애니메이션을 넣었는데 캡처마다 중간 상태가 찍혀 "모든 줄이 칠해졌다"는 지적을 받고 뺐다
+- **값의 수명을 같은 시간축 막대로** (langchain-runnable-memory-streamlit-chatbot) — app.py 변수(점선, 실행마다 새로)·session_state(새로고침에서 ×)·cache_resource(서버 재시작에서 ×)·DB 를 한 축에 놓으니 "어디에 둘지 = 얼마나 남아야 하나"가 한 장으로 섰다. 모바일은 세로 축으로 다시 그림
+- **수레에 실린 키와 프롬프트 빈칸** (langchain-runnable-memory-streamlit-chatbot) — KeyError 를 dict 글자 비교 대신 수레(키 칩)와 프롬프트 카드의 빨간 점선 빈칸으로 그렸다. Critic 이 "글자 비교는 그림이 아니다"라고 지적한 뒤 바꾼 판
+- **히어로 지도 번호를 섹션 번호와 맞추기** (langchain-runnable-memory-streamlit-chatbot) — 1차 판은 히어로(2×4 비교 카드)와 본문 순서가 달라 Critic 이해 3점. 히어로를 잊는 곳 ①②③ 노선도로 다시 그리고 본문 소제목에 같은 번호를 달았다. 같은 기호를 호출 횟수에 쓰면 섹션 번호로 읽힌다는 지적도 받았다("민지 ②" → "민지 2회")
 - **같아 보이는 두 화면 아래 다른 기록 띠** (agent-tool-use-message-trace) — 채팅 화면 두 장을 나란히 두고 그 아래에만 메시지 칩 줄(user→ai / user→ai→tool→ai)을 달았다. "검색했는지는 화면이 아니라 기록에 있다"가 히어로 한 장으로 전해졌다(Critic 이해 4)
 - **영수증 대조판** (agent-tool-use-message-trace) — 회계 감사의 vouching 에서 빌림. 도구 결과를 위에, 답 문장을 아래에 두고 결과에 있는 말은 초록 칠, 없는 말은 빨간 물결 밑줄. 첫 판은 "도구가 틀림"과 "모델이 바꿈"을 한 장에 섞어 교훈이 흐리다는 지적을 받았다 — 한 장에는 한 가지 실패만
 - **버린 칸에 줄 긋는 체** (agent-tool-use-message-trace) — 라이브러리가 받은 9칸 중 1칸만 통과하는 그림으로 "도구가 무엇을 넘기는지가 답을 정한다"를 보였다
@@ -374,7 +381,7 @@
 |---|---|---|---|
 | 분할 히어로(글 + 살아 있는 그림) | 두 칸 / 그림 먼저 쌓기 | 첫 화면에서 원리를 한 번 움직여 보일 때 | llm-tool-calling-json-schema(모바일은 제목 → 그림 → 글), self-attention-qkv, content-addressing-merkle-tree, prompt-engineering-roles-few-shot, fine-tuning-lora-qlora-peft(제목·리드 위, 축척 그림 | 손잡이·판독 아래), mcp-model-context-protocol-usb-c(제목·첫 문단 옆 배선 지도) |
 | ~~옆에 붙어 다니는 조작판~~ (2026-10-30 접음: 조작이 읽기를 끊고 모바일에서 본문을 가림. 펼쳐 놓기로 대신) | 본문 + 오른쪽 sticky 패널 / 위쪽 sticky 바 | 쓰지 않음 | llm-temperature-sampling |
-| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스), coding-agent-security-prompt-injection-owasp(스위스 치즈 네 층), sllm-self-hosted-coding-agent-2026(고르는 순서도), ai-pr-review-bottleneck-verification(정거장 위 PR 한 장, 모바일은 정거장만 고정) |
+| 그림 고정 스크롤리텔링 | 그림 sticky + 옆으로 지나가는 단계 / 그림 위에 단계 카드 | 한 그림이 단계별로 변하는 계산 과정 | ai-native-dev-loop-explore-plan-verify(모델·하네스·컴퓨터 주고받기), self-attention-qkv, llm-parameters-7b-explained, prefill-decode-kv-cache, air-gapped-rag-on-premise-llm(반입 정거장), beyond-llm-xgboost-timesfm-two-tower, ai-native-dev-2026-what-changed(시간 비율 띠), mcp-model-context-protocol-usb-c(메시지 시퀀스), coding-agent-security-prompt-injection-owasp(스위스 치즈 네 층), sllm-self-hosted-coding-agent-2026(고르는 순서도), ai-pr-review-bottleneck-verification(정거장 위 PR 한 장, 모바일은 정거장만 고정), langchain-runnable-memory-streamlit-chatbot(제목을 단계 열 맨 위에, 모바일은 단계마다 그림) |
 | 가로 스크롤 띠 | 세로 스크롤을 가로 이동으로 / 스와이프 | 순서·파이프라인·규모 비교 | rag-retrieval-pipeline |
 | 장 표지 띠(전폭 색 띠) | 본문을 끊는 화면 전체 폭 띠 / 같음 | 글이 두세 개의 큰 장으로 나뉠 때 | rag-retrieval-pipeline, prompt-engineering-roles-few-shot, prompt-structure-hallucination-clean-data, stock-chatbot-function-calling-streaming |
 | 지그재그 비대칭 | 그림·글이 좌우를 번갈아 / 위아래 | 짧은 개념 여러 개를 하나씩 그림으로 | utf8-encoding-mojibake |
