@@ -35,7 +35,7 @@ Daily Dose of DS 577개, Chip Huyen "AI Engineering" 목차, Anthropic·OpenAI·
 |---|---|---|---|---|
 | 1 | AI 앱 전체 (`ai-app-architecture-map`) | 클라이언트 → API → 오케스트레이션 → 모델·지식·도구, 운영 계층 | ByteByteGo EP171·EP218, Chip 1·10장 | 초안 |
 | 2 | 워크플로·Agent 흐름 패턴 (`workflow-agent-patterns-map`) | 패턴 6가지의 흐름 구조 | Anthropic Building effective agents | 초안 |
-| 3 | Agent 런타임 | 루프·모델·도구·메모리·가드레일이 맞물리는 구조, 멈추는 조건 | ByteByteGo EP218·"The Agent Loop" | 계획 |
+| 3 | Agent 런타임 (`agent-runtime-loop-architecture`) | 루프·모델·도구·메모리·가드레일이 맞물리는 구조, 멈추는 조건 | ByteByteGo EP218·"The Agent Loop" | 초안 |
 | 4 | RAG 시스템 | 적재 파이프라인(청킹·임베딩·색인)과 질의 파이프라인(검색·리랭킹·생성), Agentic·Graph 변형 | 출처 전체에서 가장 많이 반복 | 계획 |
 | 5 | Multi-Agent 시스템 | 오케스트레이터·서브에이전트·공유 상태, 결과 종합 | Anthropic multi-agent research system | 계획 |
 | 6 | MCP 연결 구조 | Host·Client·Server, 전송 방식, 인증, Tasks(2026-07-28 스펙) | MCP가 반복 빈도 2위 | 계획 |
