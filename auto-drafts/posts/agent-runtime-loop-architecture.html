@@ -9,7 +9,7 @@ series_order: 3
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-runtime-loop-architecture-mwg62k1e.jpg
 ---
 <!-- page -->
-<!-- layout: 짧은 머리 + 치트시트 보드 한 장(제목·예시 요청 | 런타임이 들고 있는 것 · 모델과 런타임의 턴 기록 · 멈추는 조건 | 결론 띠) + 더 읽어 보기 | 글의 성격: Agent 런타임의 구성 요소와 요청 하나가 루프를 도는 길을 한 장에 보인다. 턴 기록은 순서가 곧 뜻이라 위에서 아래로 쌓는다 | 버린 후보: 원형 루프 그림(턴마다 무엇이 오가는지 적을 자리가 없다) -->
+<!-- layout: 짧은 머리 + 치트시트 보드 한 장(제목·예시 요청 | 런타임이 들고 있는 것 · 순환 고리 + 모델과 런타임의 턴 기록 · 멈추는 조건 | 결론 띠) + 더 읽어 보기 | 글의 성격: Agent 런타임의 구성 요소와 요청 하나가 루프를 도는 길을 한 장에 보인다. 턴 기록은 순서가 곧 뜻이라 위에서 아래로 쌓는다 | 순환 고리(2026-11-18 사용자 요청 "loop·cycle 이니 순환 애니메이션"): 고리만 그리면 턴마다 무엇이 오가는지 적을 자리가 없어 처음엔 버렸다. 턴 기록 위에 얹어 고리가 한 바퀴 돌 때마다 해당 턴 줄이 켜지게 해서 둘을 같이 쓴다 -->
 <!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10) -->
 <style>
 .post-page .ac {
@@ -121,6 +121,24 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .rt .back { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line-subtle); font-size: 12.5px; color: var(--fg-neutral); }
 .post-page .rt .back svg { width: 16px; height: 16px; color: var(--ac-app); flex: none; }
 
+/* 순환 고리 — 화면에 다 들어오면 턴마다 한 바퀴씩 돌고 end_turn 에서 빠져나가 멈춘다 (2026-11-18) */
+.post-page .rt .lp { margin: -4px 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line-subtle); }
+.post-page .rt .lp-svg { display: block; width: 100%; overflow: visible; }
+.post-page .rt .lp-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .rt .lp-svg .t-n { font-size: 12.5px; font-weight: 800; }
+.post-page .rt .lp-svg .t-d { font-size: 11.5px; fill: var(--fg-neutral); }
+.post-page .rt .lp-svg .t-c { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; fill: var(--fg-neutral); }
+.post-page .rt .lp-svg .t-big { font-size: 15px; font-weight: 800; }
+.post-page .rt .lp-svg .nd { transition: opacity .4s; }
+.post-page .rt .lp-svg .nd.dim { opacity: .35; }
+.post-page .rt .lp-svg .nd.hot circle.bg { stroke: var(--c); stroke-width: 2.5; }
+.post-page .rt .lp-cap { font-size: 13px !important; line-height: 1.6 !important; color: var(--fg-neutral); min-height: 1.6em; transition: opacity .3s; }
+.post-page .rt .lp-cap.fade { opacity: 0; }
+.post-page .rt .lp-cap code { color: var(--fg-strong); }
+.post-page .rt .pane.center .turn { transition: opacity .4s; }
+.post-page .rt .pane.center.playing .turn { opacity: .38; }
+.post-page .rt .pane.center.playing .turn.on { opacity: 1; }
+
 @media (max-width: 1080px) { .post-page .rt { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .post-page .rt .pane.center { grid-column: 1 / -1; order: -1; } }
 @media (max-width: 720px) {
   .post-page .rt { grid-template-columns: minmax(0, 1fr); }
@@ -175,6 +193,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </ul>
         </div>
         <div class="pane center">
+          <div class="lp" data-lp>
+            <svg class="lp-svg" data-lp-svg height="178" role="img" aria-label="모델, 런타임, 도구, 메시지 기록을 잇는 순환 고리. 요청 하나가 이 고리를 세 바퀴 돌고 네 번째 모델 호출에서 end_turn으로 빠져나가 루프가 끝난다."></svg>
+            <p class="lp-cap" data-lp-cap>세 바퀴 돌고 네 번째 호출에서 <code>end_turn</code>으로 빠져나간다 · 모델 호출 4번, 도구 실행 3번</p>
+          </div>
           <div class="cols">
             <div class="ph k-model"><svg><use href="#i-brain"/></svg>모델이 말한다<span class="lg"><svg><use href="#i-claude"/></svg><svg><use href="#i-openai"/></svg><svg><use href="#i-gemini"/></svg></span></div>
             <span></span>
@@ -213,3 +235,124 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 </section>
 
 </div>
+
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  /* 2026-11-14 기준(POSTING 5-3): 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상) 시작하고, 15% 미만이면 나간 것으로 본다 */
+  const IntersectionObserver = class {
+    constructor(cb) {
+      this.st = new Map();
+      this.io = new window.IntersectionObserver((es) => {
+        const out = [];
+        es.forEach((e) => {
+          const full = e.intersectionRatio >= 0.95 || e.intersectionRect.height >= innerHeight * 0.85, was = this.st.get(e.target) || false;
+          const now = was ? e.intersectionRatio >= 0.15 : full;
+          if (now !== was) { this.st.set(e.target, now); out.push({ target: e.target, isIntersecting: now, intersectionRatio: e.intersectionRatio }); }
+        });
+        if (out.length) cb(out, this);
+      }, { threshold: [0, 0.15, 0.5, 0.8, 0.9, 0.95, 1] });
+      (window.__pgIO = window.__pgIO || []).push(this);
+    }
+    observe(el) { this.io.observe(el); (window.__pgIOt = window.__pgIOt || []).push(el); }
+    unobserve(el) { this.io.unobserve(el); }
+    disconnect() { this.io.disconnect(); }
+  };
+
+  const lp = root.querySelector("[data-lp]"); if (!lp) return;
+  const svg = lp.querySelector("[data-lp-svg]"), cap = lp.querySelector("[data-lp-cap]"), pane = lp.closest(".pane");
+  const turns = [...pane.querySelectorAll(".turn")];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
+  const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+
+  /* 턴마다 도구 칸에 보일 것과 아래 한 줄 */
+  const LAPS = [
+    { icon: "googlecalendar", c: "var(--ac-tool)", sub: "캘린더 조회", cap: "턴 1 · 모델이 <code>find_free_time</code>을 고르면 런타임이 캘린더를 조회하고 결과를 기록에 붙인다" },
+    { icon: "hand", c: "var(--ac-warn)", sub: "승인 대기", hold: 900, cap: "턴 2 · <code>create_event</code>는 초대 6통이 나가는 일이라 런타임이 사람 승인을 받고 나서 실행한다" },
+    { icon: "slack", c: "var(--ac-tool)", sub: "채널 게시", cap: "턴 3 · <code>send_message</code>로 팀 채널에 안건을 올리고 결과를 기록에 붙인다" },
+  ];
+  const CAP_END = "턴 4 · 더 부를 도구가 없으니 <code>end_turn</code>. 고리를 빠져나가 사용자에게 답을 보낸다";
+  const CAP_DONE = cap.innerHTML;
+
+  let G = null, gen = 0;
+  function draw() {
+    svg.innerHTML = "";
+    const W = Math.max(260, svg.getBoundingClientRect().width || 600), H = 178, cy = 94, r = 40, top = cy - r, bot = cy + r;
+    const ax = 26, Lx = 112, Rx = W - 22, S = Math.max(40, Rx - Lx - 2 * r), q = Math.PI * r / 2, wide = W >= 420;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const xRun = Lx + r + S * (wide ? 0.26 : 0.18), xTool = Lx + r + S * (wide ? 0.78 : 0.86), xLog = Lx + r + S / 2;
+    const d = `M${Lx} ${cy} A${r} ${r} 0 0 1 ${Lx + r} ${top} L${Lx + r + S} ${top} A${r} ${r} 0 0 1 ${Lx + r + S} ${bot} L${Lx + r} ${bot} A${r} ${r} 0 0 1 ${Lx} ${cy} Z`;
+    const track = mk("path", { d, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2.5 });
+    /* 도는 방향: 오른쪽 끝에서 아래로, 왼쪽 아래에서 위로 */
+    const tri = (x, y, rot) => mk("path", { d: "M-5 -4 L5 0 L-5 4 Z", fill: "var(--fg-neutral)", transform: `translate(${x} ${y}) rotate(${rot})` });
+    tri(Lx + r + S + r, cy, 90); tri(Lx + r - r * Math.SQRT1_2, cy + r * Math.SQRT1_2, -135);
+    /* 빠져나가는 길: 모델 → 답 */
+    mk("line", { x1: Lx - 18, y1: cy, x2: ax + 20, y2: cy, stroke: "var(--line-strong)", "stroke-width": 2, "stroke-dasharray": "4 4" });
+    mk("path", { d: "M5 -4 L-5 0 L5 4 Z", fill: "var(--fg-neutral)", transform: `translate(${ax + 22} ${cy})` });
+    txt(svg, (ax + Lx) / 2 + 4, cy + 17, "end_turn", "t-c");
+
+    /* 점은 노드 밑에 깐다 — 노드에 닿으면 아이콘을 가리지 않고 테두리만 켜진다 */
+    const dot = mk("circle", { r: 6, fill: "var(--ac-model)", stroke: "var(--bg-base)", "stroke-width": 2.5, cx: ax, cy });
+    const node = (x, y, icon, c) => {
+      const g = mk("g", { class: "nd", transform: `translate(${x} ${y})`, style: `--c:${c}` });
+      mk("circle", { class: "bg", r: 17, fill: "var(--bg-base)", stroke: "var(--line-subtle)", "stroke-width": 1 }, g);
+      const u = mk("use", { href: `#i-${icon}`, x: -9, y: -9, width: 18, height: 18, style: `color:${c}` }, g);
+      return { g, u, x, y };
+    };
+    const nModel = node(Lx, cy, "brain", "var(--ac-model)"), nRun = node(xRun, top, "workflow", "var(--ac-app)");
+    const nTool = node(xTool, top, "slack", "var(--ac-tool)"), nLog = node(xLog, bot, "messages-square", "var(--ac-app)");
+    const nEnd = node(ax, cy, "circle-stop", "var(--ac-app)");
+    txt(svg, Lx - 22, cy - 24, "모델", "t-n", "end"); if (wide) txt(svg, Lx - 22, cy - 10, "다음 행동", "t-d", "end");
+    txt(svg, xRun, top - 36, "런타임", "t-n"); if (wide) txt(svg, xRun, top - 22, "도구 실행", "t-d");
+    txt(svg, xTool, top - 36, "도구", "t-n"); const toolSub = wide ? txt(svg, xTool, top - 22, "채널 게시", "t-d") : null;
+    txt(svg, xLog, bot + 34, "메시지 기록에 붙임", "t-n");
+    txt(svg, ax, cy + 34, "답", "t-n");
+    const cx = Lx + r + S / 2, turnT = txt(svg, cx, cy + 1, "턴 4", "t-big"), msgT = txt(svg, cx, cy + 18, "메시지 8건", "t-d");
+    const total = track.getTotalLength(), at = (x) => q + (x - (Lx + r));
+    G = { track, total, dot, nodes: [nModel, nRun, nTool, nLog, nEnd], nModel, nRun, nTool, nLog, nEnd, toolSub, turnT, msgT,
+      L: { run: at(xRun), tool: at(xTool), log: 3 * q + S + (Lx + r + S - xLog) }, ex: [Lx, ax, cy] };
+  }
+
+  const put = (L) => { const p = G.track.getPointAtLength(Math.min(L, G.total - 0.01)); G.dot.setAttribute("cx", p.x); G.dot.setAttribute("cy", p.y); };
+  const hot = (n) => G.nodes.forEach((m) => m.g.classList.toggle("hot", m === n));
+  const setCap = async (html, my) => { cap.classList.add("fade"); await wait(250); if (my !== gen) return; cap.innerHTML = html; cap.classList.remove("fade"); };
+  const seg = (ms, from, to, my, f = put) => new Promise((res) => { const t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen) return res(); const t = Math.min(1, (now - t0) / ms); f(from + (to - from) * t); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
+  const setTool = (lap) => { G.nTool.u.setAttribute("href", `#i-${lap.icon}`); G.nTool.u.setAttribute("style", `color:${lap.c}`); G.nTool.g.style.setProperty("--c", lap.c); if (G.toolSub) G.toolSub.textContent = lap.sub; };
+  const rows = (k) => { pane.classList.toggle("playing", k >= 0); turns.forEach((t, i) => t.classList.toggle("on", i === k)); };
+
+  /* 끝난 모습: 점은 답에, 턴 4 · 메시지 8건, 턴 기록은 다 보인다 */
+  const done = () => { rows(-1); hot(G.nEnd); setTool(LAPS[2]); G.dot.setAttribute("cx", G.ex[1]); G.dot.setAttribute("cy", G.ex[2]); G.turnT.textContent = "턴 4"; G.msgT.textContent = "메시지 8건"; cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
+
+  async function play() {
+    const my = ++gen; let msgs = 1;
+    for (let k = 0; k < LAPS.length; k++) {
+      const lap = LAPS[k]; if (my !== gen) return;
+      rows(k); setTool(lap); G.turnT.textContent = `턴 ${k + 1}`; G.msgT.textContent = `메시지 ${msgs}건`;
+      hot(G.nModel); put(0); setCap(lap.cap, my); await wait(k ? 150 : 400);
+      await seg(520, 0, G.L.run, my); if (my !== gen) return; hot(G.nRun);
+      await seg(300, G.L.run, G.L.tool, my); if (my !== gen) return; hot(G.nTool); await wait(lap.hold || 260);
+      await seg(520, G.L.tool, G.L.log, my); if (my !== gen) return; hot(G.nLog); msgs += 2; G.msgT.textContent = `메시지 ${msgs}건`;
+      await seg(360, G.L.log, G.total, my); if (my !== gen) return;
+    }
+    rows(3); hot(G.nModel); put(0); G.turnT.textContent = "턴 4"; setCap(CAP_END, my); await wait(500); if (my !== gen) return;
+    const [x1, x2, y] = G.ex;
+    await seg(520, x1, x2, my, (x) => { G.dot.setAttribute("cx", x); G.dot.setAttribute("cy", y); }); if (my !== gen) return;
+    hot(G.nEnd); G.msgT.textContent = "메시지 8건"; await wait(1600); if (my !== gen) return;
+    rows(-1); await setCap(CAP_DONE, my);
+  }
+
+  draw(); done();
+  let lastW = svg.getBoundingClientRect().width;
+  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; lastW = w; gen++; draw(); done(); });
+  ro.observe(svg);
+  if (!reduce) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; done(); } }));
+    io.observe(lp);
+    signal.addEventListener("abort", () => io.disconnect());
+  }
+  signal.addEventListener("abort", () => ro.disconnect());
+})();
+</script>
