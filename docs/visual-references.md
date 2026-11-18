@@ -215,6 +215,11 @@
 | [Wikipedia, Railroad switch](https://en.wikipedia.org/wiki/Railroad_switch) | (다른 분야) 열차가 오기 전에 선로가 먼저 바뀐다 — 분류가 끝나야 고르는 함수가 돈다 | 라우팅·분기 | 2026-11-14 | langchain-runnable-memory-streamlit-chatbot |
 | [Red Blob Games, making of line drawing](https://www.redblobgames.com/making-of/line-drawing/) | 과정을 단계마다 그림 한 장으로 쪼개고 모든 그림이 같은 상태를 공유 | 1→N 단계를 따라가는 스크롤 그림 | 2026-11-14 | langchain-runnable-memory-streamlit-chatbot |
 
+| [ByteByteGo, How RAG Works](https://blog.bytebytego.com/p/how-agentic-rag-works) | 노드를 격자에 놓고 엣지를 가로·세로로만 꺾는다(모서리 살짝 둥글게, 진한 2px). 요청·응답은 나란한 두 줄. 번호는 검은 원 + 흰 숫자, 바로 옆에 굵은 엣지 글("❷ Query"). 그룹은 점선 테두리 + 아래 이름 | 요청이 여러 구성 요소를 도는 순서를 보일 때 | 2026-11-19 | agent-runtime-loop-architecture |
+| [ByteByteGo, EP218 The AI Agent Stack](https://blog.bytebytego.com/p/ep218-the-typical-ai-agent-stack) | 층마다 진한 테두리 상자 + 위 테두리에 검은 알약 이름표("Model Layer"). 루프는 단계 상자를 가로로 놓고 아래 점선이 처음 단계로 되돌아간다. 단계 번호는 상자 왼쪽 위 원 | 구성 요소 층과 그 안의 루프를 한 그림에 | 2026-11-19 | agent-runtime-loop-architecture |
+| [ByteByteGo, EP215 The Anatomy of an AI Agent](https://blog.bytebytego.com/p/ep215-the-anatomy-of-an-ai-agent) | 가운데 점선 원이 루프(Perceive→LLM→Act→Observe), 원 위 출구 "final answer (no tool call)" 와 멈춤 조건 한 줄. 바깥 구역(Memory·Tools·Guardrails)과는 색 점선 화살표 + 엣지 글(context·invoke·gate) | 루프와 바깥 구성 요소가 주고받는 것을 보일 때 | 2026-11-19 | agent-runtime-loop-architecture |
+| [ByteByteGo, The Agent Loop (Augmented LLM)](https://blog.bytebytego.com/p/the-agent-loop-how-ai-goes-from-answering) | 가운데 LLM 상자 하나만 색, 나머지는 회색 상자 + 직선. 상자 안 굵은 이름 + 한 줄 부제 | 중심 요소 하나를 세울 때 | 2026-11-19 | |
+| ByteByteGo, Top AI Agentic Workflow Patterns(사용자가 준 캡처, 2026-11-19) | 패턴마다 한 줄: 왼쪽 아이콘 카드(이름) · 가운데 흐름도 · 오른쪽 점선 너머 설명 두세 줄. 흐름도는 직각 엣지 + 번호 엣지 글, 되돌아가는 엣지는 큰 반경 곡선 하나. 도구 묶음은 점선 상자 + 초록 알약 "Tools" | 패턴 여러 개를 같은 문법으로 나란히 | 2026-11-19 | (2편 다시 만들 때) |
 ## 미확인
 
 열어 봤지만 내용을 확인하지 못했거나 열리지 않은 곳. 다음에 다시 시도한다.
@@ -413,3 +418,9 @@
 같은 회색 둥근 카드 반복 · 위에 색 띠를 두른 카드와 이모지 아이콘 · 모든 섹션이 같은 폭·같은 순서(제목→부제→카드) ·
 보라→파랑 그라데이션 히어로 · 숫자 통계 3칸 띠 · 모든 요소가 똑같이 fade-up · 그림 자리에 장식 blob.
 한 페이지에 폭을 2~3가지(글 열, 넓은 그림, 전폭 띠) 섞고, 움직임은 상태가 바뀔 때만 쓴다.
+
+## ByteByteGo 흐름도 문법 — AI 시스템 설계 시리즈 (2026-11-19)
+
+위 "그림체·색·레이아웃은 가져오지 않는다"의 예외다. 사용자가 이 시리즈를 ByteByteGo 로 벤치마킹하라고 했다("늘 말하지만 레퍼런스가 중요해요").
+위 표의 ByteByteGo 다섯 장을 실제로 열어 본 뒤 뽑은 문법을 `POSTING.md` 5-10 에 옮겼다. 처음 판(2026-11-19 오전)은 레퍼런스 없이 베지어 곡선 + 회색 굵은 선 + 선 가운데 배지로 그려
+"화살표 곡선·모양새가 보기 안 좋다"는 지적을 받았다 — 기억으로 그리지 말고 열어 보고 그린다.
