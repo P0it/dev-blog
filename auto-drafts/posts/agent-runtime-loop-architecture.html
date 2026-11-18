@@ -1,7 +1,7 @@
 ---
 title: 모델은 도구를 실행하지 않는데 Agent는 어떻게 일을 끝낼까요?
 slug: agent-runtime-loop-architecture
-excerpt: Agent의 모델은 다음에 할 행동을 말할 뿐이고 도구를 실행하고 결과를 기록하고 멈출 때를 정하는 일은 런타임이 맡습니다. "내일 오전에 팀 회의 잡고 안건 공유해 줘"라는 요청 하나로 런타임이 들고 있는 것, 모델과 런타임이 주고받는 턴, 루프가 멈추는 조건을 치트시트 한 장에 담았습니다.
+excerpt: Agent의 모델은 다음에 할 행동을 말할 뿐이고 도구를 실행하고 결과를 기록하고 멈출 때를 정하는 일은 런타임이 맡습니다. "내일 오전에 팀 회의 잡고 안건 공유해 줘"라는 요청 하나로 런타임이 들고 있는 것, 모델과 런타임이 주고받는 턴, 루프가 멈추는 조건을 흐름도로 그렸습니다.
 tags: [AI 아키텍처, AI Agent, Tool Calling, Agent 루프, 가드레일]
 category: ai
 series: ai-architecture-cheatsheet
@@ -9,17 +9,17 @@ series_order: 3
 cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-runtime-loop-architecture-mwg62k1e.jpg
 ---
 <!-- page -->
-<!-- layout: 짧은 머리 + 치트시트 보드 한 장(제목·예시 요청 | 런타임이 들고 있는 것 · 순환 고리 + 모델과 런타임의 턴 기록 · 멈추는 조건 | 결론 띠) + 더 읽어 보기 | 글의 성격: Agent 런타임의 구성 요소와 요청 하나가 루프를 도는 길을 한 장에 보인다. 턴 기록은 순서가 곧 뜻이라 위에서 아래로 쌓는다 | 순환 고리(2026-11-18 사용자 요청 "loop·cycle 이니 순환 애니메이션"): 고리만 그리면 턴마다 무엇이 오가는지 적을 자리가 없어 처음엔 버렸다. 턴 기록 위에 얹어 고리가 한 바퀴 돌 때마다 해당 턴 줄이 켜지게 해서 둘을 같이 쓴다 -->
-<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10) -->
+<!-- layout: 짧은 머리 + 큰 흐름도 하나(노드·번호 엣지, ByteByteGo 처럼) + 런타임이 따로 챙기는 것(들고 있는 것 | 멈추는 조건) + 더 읽어 보기 | 글의 성격: 요청 하나가 Agent 런타임을 도는 길을 크게 그린다. 흐름도가 화면에 다 들어오면 점이 엣지를 따라 턴마다 한 바퀴씩 돌고 end_turn 에서 빠져나간다 | 접은 안: 보드 한 장(2026-11-14, 2026-11-19 사용자 "흐름도가 엄청 크게, 한 장 컨셉을 덜어내자 — ByteByteGo 를 벤치마킹"), 작은 순환 고리 + 턴 기록 줄(2026-11-18) -->
+<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10). 흐름도 노드 아이콘은 스크립트가 쓰므로 여기 적어 굽게 한다: <use href="#i-slack"/><use href="#i-brain"/><use href="#i-workflow"/><use href="#i-wrench"/><use href="#i-user-check"/><use href="#i-messages-square"/><use href="#i-googlecalendar"/><use href="#i-claude"/><use href="#i-openai"/><use href="#i-gemini"/> -->
 <style>
 .post-page .ac {
   --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
-  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139);
+  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139); --ac-warn: rgb(202, 138, 4);
   color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
 }
 [data-theme="dark"] .post-page .ac {
   --ac-user: rgb(110, 165, 255); --ac-app: rgb(60, 205, 165); --ac-model: rgb(255, 150, 80);
-  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192);
+  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192); --ac-warn: rgb(250, 204, 21);
 }
 .post-page .ac * { box-sizing: border-box; }
 .post-page .ac-wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
@@ -27,148 +27,101 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ac h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.25; }
 .post-page .ac p { font-size: 17px; line-height: 1.85; margin: 0; }
 .post-page .ac a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ac code { font-family: var(--font-mono); font-size: .9em; }
 .post-page .ac-hero { padding-top: clamp(40px, 6vw, 64px); }
 .post-page .ac-kicker { font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--fg-neutral); margin-bottom: 14px; }
 .post-page .ac-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: end; }
 .post-page .ac .k-user { --c: var(--ac-user); } .post-page .ac .k-app { --c: var(--ac-app); }
 .post-page .ac .k-model { --c: var(--ac-model); } .post-page .ac .k-tool { --c: var(--ac-tool); }
-.post-page .ac .k-data { --c: var(--ac-data); } .post-page .ac .k-ops { --c: var(--ac-ops); }
+.post-page .ac .k-data { --c: var(--ac-data); } .post-page .ac .k-ops { --c: var(--ac-ops); } .post-page .ac .k-warn { --c: var(--ac-warn); }
 
-/* 치트시트 보드 — 흐름·설명·쓰는 때·예시·고르는 순서를 한 장 안에 (POSTING 5-10) */
-.post-page .cs { margin: clamp(36px, 4vw, 48px) 0 0; background: var(--bg-subtle); border-radius: 30px; padding: clamp(22px, 3vw, 36px); }
-.post-page .cs-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; margin-bottom: 22px; }
-.post-page .cs-top h2 { font-size: clamp(20px, 2.2vw, 26px); }
-.post-page .cs-axis { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 300px; max-width: 620px; font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
-.post-page .cs-axis .k { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.post-page .cs-axis .k svg { width: 17px; height: 17px; color: var(--c); }
-.post-page .cs-axis .line { flex: 1; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--ac-app), var(--ac-model)); position: relative; }
-.post-page .cs-axis .line::after { content: ""; position: absolute; right: -2px; top: -4px; border: 5px solid transparent; border-left: 8px solid var(--ac-model); border-right: 0; }
-/* 공통 예시 메일 */
-.post-page .cs-mail { display: flex; align-items: flex-start; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 16px 20px; margin-bottom: 14px; }
-.post-page .cs-mail .ni { flex: none; }
-.post-page .cs-mail .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 4px; }
-.post-page .cs-mail .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
-.post-page .cs-foot { margin-top: 14px; }
-.post-page .cs-foot > div { background: var(--bg-base); border-radius: 20px; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
-.post-page .cs-foot h3 { font-size: 14px; font-weight: 800; color: var(--fg-strong); margin: 0; }
-.post-page .cs-steps { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.post-page .cs-steps .s { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--fg-strong); }
-.post-page .cs-steps .s .ni { width: 32px; height: 32px; border-radius: 9px; }
-.post-page .cs-steps .s .ni svg { width: 16px; height: 16px; }
-.post-page .cs-steps svg.ar { margin: 0; }
-.post-page .cs-cost { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; font-size: 12.5px; color: var(--fg-neutral); }
-.post-page .cs-cost i { flex: 1; min-width: 60px; height: 6px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--ac-ops) 25%, transparent), var(--ac-ops)); }
-.post-page .cs-guard { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.post-page .cs-guard span { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--fg-strong); }
-.post-page .cs-guard svg { width: 17px; height: 17px; color: var(--c); }
-.post-page .cs-src { font-size: 12.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin-top: 16px !important; }
+/* 아이콘 타일 (POSTING 5-10) */
+.post-page .ac .ni { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 4px 12px rgba(15, 23, 42, .09); display: grid; place-items: center; }
+[data-theme="dark"] .post-page .ac .ni { background: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); box-shadow: none; }
+.post-page .ac .ni svg { width: 19px; height: 19px; color: var(--c); }
 
-.post-page .ac-sec { padding: clamp(80px, 10vw, 120px) 0 40px; }
-.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; }
-.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); }
+/* 큰 흐름도 — 노드 + 번호 엣지 (POSTING 5-10, 2026-11-19) */
+.post-page .fl { margin: clamp(36px, 4vw, 48px) 0 0; background: var(--bg-subtle); border-radius: 30px; padding: clamp(20px, 3vw, 36px); }
+.post-page .fl-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; }
+.post-page .fl-top h2 { font-size: clamp(20px, 2.2vw, 26px); }
+.post-page .fl-req { display: flex; align-items: center; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 12px 18px; flex: 1; min-width: 280px; max-width: 640px; }
+.post-page .fl-req .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .fl-req .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
+.post-page .fl-cap { margin: 18px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 600; min-height: 1.6em; transition: opacity .3s; }
+.post-page .fl-cap.fade { opacity: 0; }
+.post-page .fl-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+.post-page .fl-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .fl-svg .zone { fill: color-mix(in srgb, var(--bg-base) 65%, transparent); }
+.post-page .fl-svg .zone.us { fill: color-mix(in srgb, var(--ac-app) 8%, var(--bg-base)); }
+.post-page .fl-svg .zl { font-size: 14px; font-weight: 800; fill: var(--fg-neutral); }
+.post-page .fl-svg .nt { font-size: 17px; font-weight: 800; }
+.post-page .fl-svg .ns { font-size: 13.5px; fill: var(--fg-neutral); }
+.post-page .fl-svg .ns.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.post-page .fl-svg .tile { fill: var(--bg-base); stroke: var(--line-subtle); stroke-width: 1; transition: stroke .3s, stroke-width .3s; }
+[data-theme="dark"] .post-page .fl-svg .tile { fill: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); }
+.post-page .fl-svg .nd { filter: drop-shadow(0 4px 10px rgba(15, 23, 42, .10)); }
+[data-theme="dark"] .post-page .fl-svg .nd { filter: none; }
+.post-page .fl-svg .nd.hot .tile { stroke: var(--c); stroke-width: 3; }
+.post-page .fl-svg .e { fill: none; stroke: var(--line-strong); stroke-width: 2.5; transition: stroke .3s; }
+.post-page .fl-svg .e.dash { stroke-dasharray: 6 6; }
+.post-page .fl-svg .e.on { stroke: var(--ac-model); }
+.post-page .fl-svg .ah { fill: var(--line-strong); }
+.post-page .fl-svg .badge circle { fill: var(--fg-strong); }
+.post-page .fl-svg .badge text { fill: var(--bg-base); font-size: 12.5px; font-weight: 800; }
+.post-page .fl-svg .el { font-size: 14px; font-weight: 600; fill: var(--fg-neutral); }
+.post-page .fl-svg .el.mono { font-family: var(--font-mono); font-size: 13px; }
+.post-page .fl-svg .chip { font-size: 15px; font-weight: 800; fill: var(--ac-app); }
+.post-page .fl-svg .dot { fill: var(--ac-model); stroke: var(--bg-base); stroke-width: 3; }
+.post-page .fl-legend { display: none; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: s; }
+.post-page .fl-legend li { counter-increment: s; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; margin-bottom: 6px; color: var(--fg-normal); }
+.post-page .fl-legend li::before { content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 12px; font-weight: 800; display: grid; place-items: center; margin-top: 1px; }
+.post-page .fl-src { font-size: 12.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin-top: 16px !important; }
+
+/* 런타임이 따로 챙기는 것 */
+.post-page .ac-sec { padding: clamp(64px, 8vw, 96px) 0 0; }
+.post-page .ac-sec h2 { font-size: clamp(20px, 2.2vw, 26px); margin-bottom: 24px; }
+.post-page .kp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.post-page .kp > div { background: var(--bg-subtle); border-radius: 24px; padding: 24px; }
+.post-page .kp h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--fg-strong); margin: 0 0 18px; }
+.post-page .kp h3 svg { width: 17px; height: 17px; color: var(--c); }
+.post-page .kp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.post-page .kp li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.post-page .kp li b { display: block; font-size: 15px; color: var(--fg-strong); }
+.post-page .kp li .d { display: block; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.55; margin-top: 2px; }
+.post-page .kp .note { font-size: 13px; color: var(--fg-neutral); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-subtle); }
+.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; padding-bottom: 40px; }
+.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); margin: 0; }
 .post-page .ac-more ul { margin: 0; padding-left: 1.3em; }
 .post-page .ac-more li { font-size: 15.5px; line-height: 1.8; margin-bottom: 6px; }
 
-@media (max-width: 1080px) { .post-page .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) {
   .post-page .ac-wrap { padding: 0 16px; }
-  .post-page .ac-head, .post-page .ac-more { grid-template-columns: minmax(0, 1fr); }
-  .post-page .cs { border-radius: 22px; padding: 16px; }
-  .post-page .cs-grid { grid-template-columns: minmax(0, 1fr); }
-  .post-page .cs-axis { min-width: 0; }
-}
-
-/* 세 구역 구조도 — 아이콘 노드 + 옅은 구역 면 (POSTING 5-10) */
-.post-page .cs .ni { width: 38px; height: 38px; border-radius: 11px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 4px 12px rgba(15, 23, 42, .09); display: grid; place-items: center; }
-[data-theme="dark"] .post-page .cs .ni { background: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); box-shadow: none; }
-.post-page .cs .ni svg { width: 19px; height: 19px; color: var(--c); }
-.post-page .cs-steps svg.sa { width: 14px; height: 14px; color: var(--fg-neutral); flex: none; }
-.post-page .cs-note { font-size: 12.5px; color: var(--fg-neutral); }
-
-.post-page .ac { --ac-warn: rgb(202, 138, 4); }
-[data-theme="dark"] .post-page .ac { --ac-warn: rgb(250, 204, 21); }
-.post-page .ac .k-warn { --c: var(--ac-warn); }
-.post-page .cs-top .cs-mail { margin: 0; flex: 1; min-width: 280px; max-width: 640px; padding: 12px 18px; }
-
-/* 런타임 보드: 들고 있는 것 | 턴 기록 | 멈추는 조건 */
-.post-page .rt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr); gap: 14px; }
-.post-page .rt .pane { background: var(--bg-base); border-radius: 20px; padding: 20px; }
-.post-page .rt .pane.us { background: color-mix(in srgb, var(--ac-app) 8%, var(--bg-base)); }
-.post-page .rt .ph { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: var(--fg-strong); margin-bottom: 16px; }
-.post-page .rt .ph svg { width: 16px; height: 16px; color: var(--c); }
-.post-page .rt .items { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-.post-page .rt .items li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; align-items: start; }
-.post-page .rt .ni { width: 34px; height: 34px; border-radius: 10px; }
-.post-page .rt .ni svg { width: 17px; height: 17px; }
-.post-page .rt .items .ni { margin-top: 1px; }
-.post-page .rt .items b { display: block; font-size: 14px; color: var(--fg-strong); }
-.post-page .rt .items div > span { display: block; font-size: 12.5px; color: var(--fg-neutral); line-height: 1.5; margin-top: 2px; }
-.post-page .rt code { font-family: var(--font-mono); font-size: 12px; }
-
-.post-page .rt .cols { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1.15fr); gap: 0 8px; align-items: center; margin-bottom: 10px; }
-.post-page .rt .cols .ph { margin: 0; }
-.post-page .rt .cols .lg { display: inline-flex; gap: 6px; margin-left: 4px; }
-.post-page .rt .cols .lg svg { width: 15px; height: 15px; color: var(--fg-strong); }
-.post-page .rt .turn { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1.15fr); gap: 0 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line-subtle); }
-.post-page .rt .turn .m { background: color-mix(in srgb, var(--ac-model) 9%, var(--bg-base)); border-radius: 12px; padding: 10px 12px; }
-.post-page .rt .turn .m code { display: block; color: var(--fg-strong); word-break: keep-all; overflow-wrap: anywhere; }
-.post-page .rt .turn .m .sr { display: inline-block; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ac-model); }
-.post-page .rt .turn .m.end .sr { color: var(--fg-neutral); }
-.post-page .rt .turn svg.ar { width: 16px; height: 16px; color: var(--fg-neutral); justify-self: center; }
-.post-page .rt .turn .r { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; }
-.post-page .rt .turn .r b { display: block; font-size: 13.5px; color: var(--fg-strong); }
-.post-page .rt .turn .r span.d { display: block; font-size: 12.5px; color: var(--fg-neutral); line-height: 1.5; }
-.post-page .rt .turn .r .ni.brand svg { width: 18px; height: 18px; }
-.post-page .rt .back { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line-subtle); font-size: 12.5px; color: var(--fg-neutral); }
-.post-page .rt .back svg { width: 16px; height: 16px; color: var(--ac-app); flex: none; }
-
-/* 순환 고리 — 화면에 다 들어오면 턴마다 한 바퀴씩 돌고 end_turn 에서 빠져나가 멈춘다 (2026-11-18) */
-.post-page .rt .lp { margin: -4px 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line-subtle); }
-.post-page .rt .lp-svg { display: block; width: 100%; overflow: visible; }
-.post-page .rt .lp-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
-.post-page .rt .lp-svg .t-n { font-size: 12.5px; font-weight: 800; }
-.post-page .rt .lp-svg .t-d { font-size: 11.5px; fill: var(--fg-neutral); }
-.post-page .rt .lp-svg .t-c { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; fill: var(--fg-neutral); }
-.post-page .rt .lp-svg .t-big { font-size: 15px; font-weight: 800; }
-.post-page .rt .lp-svg .nd { transition: opacity .4s; }
-.post-page .rt .lp-svg .nd.dim { opacity: .35; }
-.post-page .rt .lp-svg .nd.hot circle.bg { stroke: var(--c); stroke-width: 2.5; }
-.post-page .rt .lp-cap { font-size: 13px !important; line-height: 1.6 !important; color: var(--fg-neutral); min-height: 1.6em; transition: opacity .3s; }
-.post-page .rt .lp-cap.fade { opacity: 0; }
-.post-page .rt .lp-cap code { color: var(--fg-strong); }
-.post-page .rt .pane.center .turn { transition: opacity .4s; }
-.post-page .rt .pane.center.playing .turn { opacity: .38; }
-.post-page .rt .pane.center.playing .turn.on { opacity: 1; }
-
-@media (max-width: 1080px) { .post-page .rt { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .post-page .rt .pane.center { grid-column: 1 / -1; order: -1; } }
-@media (max-width: 720px) {
-  .post-page .rt { grid-template-columns: minmax(0, 1fr); }
-  .post-page .rt .cols { display: none; }
-  .post-page .rt .turn { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .post-page .rt .turn svg.ar { transform: rotate(90deg); }
+  .post-page .ac-head, .post-page .ac-more, .post-page .kp { grid-template-columns: minmax(0, 1fr); }
+  .post-page .fl { border-radius: 22px; padding: 16px; }
+  .post-page .fl-req { min-width: 0; flex-basis: 100%; }
+  .post-page .fl-legend { display: block; }
+  .post-page .fl-svg .nt { font-size: 15px; }
 }
 </style>
 
 <div class="ac">
 <svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
-<symbol id="i-arrow-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></g></symbol>
 <symbol id="i-brain" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5" /> <path d="M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4" /> <path d="M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294" /> <path d="M17.996 5.125a4 4 0 012.526 5.77" /> <path d="M18 18a4 4 0 002-7.465" /> <path d="M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517" /> <path d="M6 18a4 4 0 01-2-7.465" /> <path d="M6.004 5.125a4 4 0 00-2.526 5.77" /></g></symbol>
 <symbol id="i-circle-stop" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <rect x="9" y="9" width="6" height="6" rx="1" /></g></symbol>
 <symbol id="i-claude" viewBox="0 0 24 24"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></symbol>
 <symbol id="i-database" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" /></g></symbol>
 <symbol id="i-gemini" viewBox="0 0 24 24"><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-0-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-1-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-2-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-0-_R_0_" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-1-_R_0_" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-2-_R_0_" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></symbol>
 <symbol id="i-googlecalendar" viewBox="0 0 24 24"><g fill="currentColor"><path d="M18.316 5.684H24v12.632h-5.684V5.684zM5.684 24h12.632v-5.684H5.684V24zM18.316 5.684V0H1.895A1.894 1.894 0 0 0 0 1.895v16.421h5.684V5.684h12.632zm-7.207 6.25v-.065c.272-.144.5-.349.687-.617s.279-.595.279-.982c0-.379-.099-.72-.3-1.025a2.05 2.05 0 0 0-.832-.714 2.703 2.703 0 0 0-1.197-.257c-.6 0-1.094.156-1.481.467-.386.311-.65.671-.793 1.078l1.085.452c.086-.249.224-.461.413-.633.189-.172.445-.257.767-.257.33 0 .602.088.816.264a.86.86 0 0 1 .322.703c0 .33-.12.589-.36.778-.24.19-.535.284-.886.284h-.567v1.085h.633c.407 0 .748.109 1.02.327.272.218.407.499.407.843 0 .336-.129.614-.387.832s-.565.327-.924.327c-.351 0-.651-.103-.897-.311-.248-.208-.422-.502-.521-.881l-1.096.452c.178.616.505 1.082.977 1.401.472.319.984.478 1.538.477a2.84 2.84 0 0 0 1.293-.291c.382-.193.684-.458.902-.794.218-.336.327-.72.327-1.149 0-.429-.115-.797-.344-1.105a2.067 2.067 0 0 0-.881-.689zm2.093-1.931l.602.913L15 10.045v5.744h1.187V8.446h-.827l-2.158 1.557zM22.105 0h-3.289v5.184H24V1.895A1.894 1.894 0 0 0 22.105 0zm-3.289 23.5l4.684-4.684h-4.684V23.5zM0 22.105C0 23.152.848 24 1.895 24h3.289v-5.184H0v3.289z"/></g></symbol>
-<symbol id="i-hand" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></g></symbol>
 <symbol id="i-hourglass" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></g></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01" /> <path d="M3 12h.01" /> <path d="M3 19h.01" /> <path d="M8 5h13" /> <path d="M8 12h13" /> <path d="M8 19h13" /></g></symbol>
 <symbol id="i-messages-square" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> <path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1" /></g></symbol>
 <symbol id="i-openai" viewBox="0 0 24 24"><g fill="currentColor"><path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path></g></symbol>
-<symbol id="i-repeat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" /></g></symbol>
 <symbol id="i-scroll-text" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5" /> <path d="M15 8h-5" /> <path d="M19 17V5a2 2 0 0 0-2-2H4" /> <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" /></g></symbol>
 <symbol id="i-slack" viewBox="0 0 128 128"><path d="M27.255 80.719c0 7.33-5.978 13.317-13.309 13.317C6.616 94.036.63 88.049.63 80.719s5.987-13.317 13.317-13.317h13.309zm6.709 0c0-7.33 5.987-13.317 13.317-13.317s13.317 5.986 13.317 13.317v33.335c0 7.33-5.986 13.317-13.317 13.317-7.33 0-13.317-5.987-13.317-13.317zm0 0" fill="#de1c59"/><path d="M47.281 27.255c-7.33 0-13.317-5.978-13.317-13.309C33.964 6.616 39.951.63 47.281.63s13.317 5.987 13.317 13.317v13.309zm0 6.709c7.33 0 13.317 5.987 13.317 13.317s-5.986 13.317-13.317 13.317H13.946C6.616 60.598.63 54.612.63 47.281c0-7.33 5.987-13.317 13.317-13.317zm0 0" fill="#35c5f0"/><path d="M100.745 47.281c0-7.33 5.978-13.317 13.309-13.317 7.33 0 13.317 5.987 13.317 13.317s-5.987 13.317-13.317 13.317h-13.309zm-6.709 0c0 7.33-5.987 13.317-13.317 13.317s-13.317-5.986-13.317-13.317V13.946C67.402 6.616 73.388.63 80.719.63c7.33 0 13.317 5.987 13.317 13.317zm0 0" fill="#2eb57d"/><path d="M80.719 100.745c7.33 0 13.317 5.978 13.317 13.309 0 7.33-5.987 13.317-13.317 13.317s-13.317-5.987-13.317-13.317v-13.309zm0-6.709c-7.33 0-13.317-5.987-13.317-13.317s5.986-13.317 13.317-13.317h33.335c7.33 0 13.317 5.986 13.317 13.317 0 7.33-5.987 13.317-13.317 13.317zm0 0" fill="#ebb02e"/></symbol>
 <symbol id="i-triangle-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></g></symbol>
 <symbol id="i-user-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 11 2 2 4-4" /> <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /></g></symbol>
 <symbol id="i-workflow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2" /> <path d="M7 11v4a2 2 0 0 0 2 2h4" /> <rect width="8" height="8" x="13" y="13" rx="2" /></g></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></g></symbol>
 </defs></svg>
 
 <section class="ac-hero">
@@ -179,49 +132,51 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <p>모델은 다음에 할 행동을 말할 뿐입니다. 도구를 실행하고 결과를 기록하며 멈출 때를 정하는 일은 런타임이 맡습니다.</p>
     </div>
 
-    <figure class="cs" data-figure data-thumb aria-label="Agent 런타임 치트시트. 내일 오전에 팀 회의를 잡고 안건을 공유해 달라는 요청을 예로, 왼쪽에 런타임이 들고 있는 지시문·메시지 기록·도구 목록·장기 메모리, 가운데에 모델이 도구 호출을 말하고 런타임이 캘린더 조회·사람 승인 후 일정 생성·채널 게시를 실행하는 네 번의 턴, 오른쪽에 루프가 멈추는 조건과 가드레일이 끼는 자리가 있다.">
-      <div class="cs-top"><h2>Agent 런타임의 구조</h2>
-        <div class="cs-mail"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-slack"/></svg></span><div><div class="mt">예시 · 사내 메신저로 온 요청</div><div class="mb">"내일 오전에 팀 회의 잡고 안건을 팀 채널에 공유해 줘"</div></div></div>
+    <figure class="fl" data-figure data-thumb aria-label="Agent 런타임 흐름도. 사용자의 요청이 에이전트 루프로 들어오면 루프가 메시지 기록 전체와 도구 목록을 모델에 보내고, 모델은 tool_use로 다음 행동을 말한다. 루프는 도구 실행기에 넘기고 실행기는 캘린더나 팀 채널을 부른다. 되돌리기 힘든 일은 사람 승인을 거친다. 결과는 메시지 기록에 붙고 다음 호출에 다시 들어간다. 모델이 end_turn을 말하면 루프가 사용자에게 답을 보낸다.">
+      <div class="fl-top"><h2>Agent 런타임의 흐름</h2>
+        <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-slack"/></svg></span><div><div class="mt">예시 · 사내 메신저로 온 요청</div><div class="mb">"내일 오전에 팀 회의 잡고 안건을 팀 채널에 공유해 줘"</div></div></div>
       </div>
-      <div class="rt">
-        <div class="pane us">
-          <div class="ph k-app"><svg><use href="#i-workflow"/></svg>런타임이 들고 있는 것</div>
-          <ul class="items">
-            <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-scroll-text"/></svg></span><div><b>지시문</b><span>"팀 비서다. 여러 사람에게 보내기 전에는 확인받는다"</span></div></li>
-            <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-messages-square"/></svg></span><div><b>메시지 기록</b><span>턴마다 결과가 붙어 길어진다. 단기 메모리</span></div></li>
-            <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-list"/></svg></span><div><b>도구 목록</b><span><code>find_free_time</code> · <code>create_event</code> · <code>send_message</code>의 이름과 입력 형식</span></div></li>
-            <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-database"/></svg></span><div><b>장기 메모리</b><span>"팀" = 6명, 채널은 #team</span></div></li>
-          </ul>
-        </div>
-        <div class="pane center">
-          <div class="lp" data-lp>
-            <svg class="lp-svg" data-lp-svg height="178" role="img" aria-label="모델, 런타임, 도구, 메시지 기록을 잇는 순환 고리. 요청 하나가 이 고리를 세 바퀴 돌고 네 번째 모델 호출에서 end_turn으로 빠져나가 루프가 끝난다."></svg>
-            <p class="lp-cap" data-lp-cap>세 바퀴 돌고 네 번째 호출에서 <code>end_turn</code>으로 빠져나간다 · 모델 호출 4번, 도구 실행 3번</p>
-          </div>
-          <div class="cols">
-            <div class="ph k-model"><svg><use href="#i-brain"/></svg>모델이 말한다<span class="lg"><svg><use href="#i-claude"/></svg><svg><use href="#i-openai"/></svg><svg><use href="#i-gemini"/></svg></span></div>
-            <span></span>
-            <div class="ph k-app"><svg><use href="#i-workflow"/></svg>런타임이 한다</div>
-          </div>
-          <div class="turn"><div class="m"><code>find_free_time(팀, 내일 오전)</code><span class="sr">tool_use</span></div><svg class="ar"><use href="#i-arrow-right"/></svg><div class="r"><span class="ni brand"><svg aria-hidden="true"><use href="#i-googlecalendar"/></svg></span><div><b>캘린더 조회</b><span class="d">10:00~11:00 이 비어 있다</span></div></div></div><div class="turn"><div class="m"><code>create_event(내일 10:00, 팀 회의)</code><span class="sr">tool_use</span></div><svg class="ar"><use href="#i-arrow-right"/></svg><div class="r"><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-hand"/></svg></span><div><b>사람 승인 → 일정 생성</b><span class="d">초대 6통이 나가기 전에 확인받는다</span></div></div></div><div class="turn"><div class="m"><code>send_message(#team, 안건)</code><span class="sr">tool_use</span></div><svg class="ar"><use href="#i-arrow-right"/></svg><div class="r"><span class="ni brand"><svg aria-hidden="true"><use href="#i-slack"/></svg></span><div><b>채널에 게시</b><span class="d">안건 세 줄을 올렸다</span></div></div></div><div class="turn"><div class="m end"><code>"내일 10시로 잡고 공유했습니다"</code><span class="sr">end_turn</span></div><svg class="ar"><use href="#i-arrow-right"/></svg><div class="r"><span class="ni k-app"><svg aria-hidden="true"><use href="#i-circle-stop"/></svg></span><div><b>루프 종료</b><span class="d">사용자에게 답을 보낸다</span></div></div></div>
-          <div class="back"><svg><use href="#i-repeat"/></svg>턴마다 실행 결과가 메시지 기록에 붙고 그 기록 전체가 다음 모델 호출에 다시 들어간다</div>
-        </div>
-        <div class="pane">
-          <div class="ph k-ops"><svg><use href="#i-circle-stop"/></svg>루프가 멈추는 조건</div>
-          <ul class="items">
-            <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-circle-stop"/></svg></span><div><b>답 완성</b><span><code>end_turn</code> · 더 부를 도구가 없다</span></div></li>
-            <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-hourglass"/></svg></span><div><b>반복 한도</b><span>정해 둔 횟수를 넘으면 끊는다</span></div></li>
-            <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-user-check"/></svg></span><div><b>사람 승인 대기</b><span>위험한 도구 앞에서 멈췄다 이어 간다</span></div></li>
-            <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-triangle-alert"/></svg></span><div><b>오류 · 거절</b><span>도구 오류는 결과로 돌려주고 <code>refusal</code>이면 끝낸다</span></div></li>
-          </ul>
-        </div>
-      </div>
-      <div class="cs-foot"><div>
-        <h3>모델은 다음 행동을 말하고 실행·기록·멈춤은 런타임이 맡는다</h3>
-        <span class="cs-note">가드레일은 런타임 안에서 끼어든다 · 입력 검사 · 도구 실행 전 승인 · 출력 검사</span>
-      </div></div>
-      <p class="cs-src">요청과 도구 이름은 설명을 위한 예시입니다. <code>tool_use</code>·<code>end_turn</code>·<code>refusal</code>은 Claude API의 stop_reason 값이고, OpenAI의 finish_reason에서는 <code>tool_calls</code>·<code>stop</code>이 같은 뜻입니다.</p>
+      <p class="fl-cap" data-fl-cap>모델 호출 4번, 도구 실행 3번. 모델은 다음 행동을 말하고 실행·기록·멈춤은 런타임이 맡는다</p>
+      <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 720" role="img" aria-label="Agent 런타임 흐름도"></svg>
+      <ol class="fl-legend">
+        <li><span>요청이 에이전트 루프에 들어온다</span></li>
+        <li><span>루프가 메시지 기록 전체와 도구 목록을 모델에 보낸다</span></li>
+        <li><span>모델이 다음 행동을 <code>tool_use</code>로 말한다</span></li>
+        <li><span>루프가 도구 실행기에 넘긴다</span></li>
+        <li><span>실행기가 도구를 부르고 결과를 받는다. 되돌리기 힘든 일은 사람 승인 뒤에</span></li>
+        <li><span>결과를 메시지 기록에 붙인다</span></li>
+        <li><span>늘어난 기록을 들고 2번부터 다시 돈다</span></li>
+        <li><span>모델이 <code>end_turn</code>을 말하면 사용자에게 답을 보낸다</span></li>
+      </ol>
+      <p class="fl-src">요청과 도구 이름은 설명을 위한 예시입니다. <code>tool_use</code>·<code>end_turn</code>은 Claude API의 stop_reason 값이고, OpenAI의 finish_reason에서는 <code>tool_calls</code>·<code>stop</code>이 같은 뜻입니다.</p>
     </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <h2>흐름도 밖에서 런타임이 챙기는 것</h2>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-workflow"/></svg>모델에 보내려고 들고 있는 것</h3>
+        <ul>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-scroll-text"/></svg></span><div><b>지시문</b><span class="d">"팀 비서다. 여러 사람에게 보내기 전에는 확인받는다"</span></div></li>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-messages-square"/></svg></span><div><b>메시지 기록</b><span class="d">턴마다 결과가 붙어 길어진다. 단기 메모리</span></div></li>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-list"/></svg></span><div><b>도구 목록</b><span class="d"><code>find_free_time</code> · <code>create_event</code> · <code>send_message</code>의 이름과 입력 형식</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-database"/></svg></span><div><b>장기 메모리</b><span class="d">"팀" = 6명, 채널은 #team</span></div></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="k-ops"><svg aria-hidden="true"><use href="#i-circle-stop"/></svg>루프가 멈추는 조건</h3>
+        <ul>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-circle-stop"/></svg></span><div><b>답 완성</b><span class="d"><code>end_turn</code> · 더 부를 도구가 없다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-hourglass"/></svg></span><div><b>반복 한도</b><span class="d">정해 둔 횟수를 넘으면 끊는다</span></div></li>
+          <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-user-check"/></svg></span><div><b>사람 승인 대기</b><span class="d">위험한 도구 앞에서 멈췄다 이어 간다</span></div></li>
+          <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-triangle-alert"/></svg></span><div><b>오류 · 거절</b><span class="d">도구 오류는 결과로 돌려주고 <code>refusal</code>이면 끝낸다</span></div></li>
+        </ul>
+        <p class="note">가드레일은 런타임 안에서 끼어든다 · 입력 검사 · 도구 실행 전 승인 · 출력 검사</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -240,7 +195,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 <script>
 (() => {
   const { root, signal } = window.postPage;
-  /* 2026-11-14 기준(POSTING 5-3): 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상) 시작하고, 15% 미만이면 나간 것으로 본다 */
+  /* 2026-11-14 기준(POSTING 5-3): 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상, 화면보다 크면 화면의 85%를 채울 때) 시작하고, 15% 미만이면 나간 것으로 본다 */
   const IntersectionObserver = class {
     constructor(cb) {
       this.st = new Map();
@@ -260,98 +215,156 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     disconnect() { this.io.disconnect(); }
   };
 
-  const lp = root.querySelector("[data-lp]"); if (!lp) return;
-  const svg = lp.querySelector("[data-lp-svg]"), cap = lp.querySelector("[data-lp-cap]"), pane = lp.closest(".pane");
-  const turns = [...pane.querySelectorAll(".turn")];
+  const svg = root.querySelector("[data-fl-svg]"); if (!svg) return;
+  const cap = root.querySelector("[data-fl-cap]"), CAP_DONE = cap.innerHTML;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
   const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
   const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
 
-  /* 턴마다 도구 칸에 보일 것과 아래 한 줄 */
-  const LAPS = [
-    { icon: "googlecalendar", c: "var(--ac-tool)", sub: "캘린더 조회", cap: "턴 1 · 모델이 <code>find_free_time</code>을 고르면 런타임이 캘린더를 조회하고 결과를 기록에 붙인다" },
-    { icon: "hand", c: "var(--ac-warn)", sub: "승인 대기", hold: 1700, cap: "턴 2 · <code>create_event</code>는 초대 6통이 나가는 일이라 런타임이 사람 승인을 받고 나서 실행한다" },
-    { icon: "slack", c: "var(--ac-tool)", sub: "채널 게시", cap: "턴 3 · <code>send_message</code>로 팀 채널에 안건을 올리고 결과를 기록에 붙인다" },
-  ];
-  const CAP_END = "턴 4 · 더 부를 도구가 없으니 <code>end_turn</code>. 고리를 빠져나가 사용자에게 답을 보낸다";
-  const CAP_DONE = cap.innerHTML;
+  /* 노드: 아이콘 · 이름 · 부제 */
+  const NODE = {
+    user: { icon: "slack", c: "var(--ac-user)", t: "사용자", s: "사내 메신저로 요청" },
+    model: { icon: "brain", c: "var(--ac-model)", t: "모델", s: "다음 행동만 말한다", logos: ["claude", "openai", "gemini"] },
+    loop: { icon: "workflow", c: "var(--ac-app)", t: "에이전트 루프", s: "호출 · 실행 · 기록을 반복" },
+    exec: { icon: "wrench", c: "var(--ac-app)", t: "도구 실행기", s: "모델 대신 실제로 부른다" },
+    approve: { icon: "user-check", c: "var(--ac-warn)", t: "사람 승인", s: "되돌리기 힘든 일만" },
+    log: { icon: "messages-square", c: "var(--ac-app)", t: "메시지 기록", s: "턴마다 결과가 붙는다" },
+    cal: { icon: "googlecalendar", c: "var(--ac-tool)", t: "캘린더", s: "find_free_time · create_event", mono: true },
+    chat: { icon: "slack", c: "var(--ac-tool)", t: "팀 채널", s: "send_message", mono: true },
+  };
+  /* 배치 두 벌: 넓은 화면(가로) · 좁은 화면(세로, 엣지 글은 아래 번호 목록으로) */
+  const LAYOUT = {
+    wide: {
+      vb: [1200, 720], tile: 64, labels: true,
+      zones: [
+        { x: 220, y: 14, w: 380, h: 170, t: "모델 API" },
+        { x: 200, y: 214, w: 660, h: 496, t: "Agent 런타임 · 우리가 운영", us: true, lb: true },
+        { x: 930, y: 214, w: 250, h: 496, t: "도구" },
+      ],
+      chip: [836, 250, "end"],
+      nodes: { user: [95, 410, "b"], model: [380, 94, "r"], loop: [380, 410, "b"], exec: [700, 410, "b"], approve: [700, 290, "r"], log: [560, 600, "b"], cal: [1055, 340, "b"], chat: [1055, 560, "b"] },
+      edges: {
+        e1: { d: "M127 396 L348 396", n: 1, t: "요청", lx: 0, ly: -22 },
+        e8: { d: "M348 426 L127 426", n: 8, t: "end_turn → 답", lx: 0, ly: 34, mono: true },
+        e2: { d: "M364 378 C 316 300, 316 190, 364 126", n: 2, t: "기록 전체 + 도구 목록", lx: -18, ly: 5, a: "end" },
+        e3: { d: "M396 126 C 444 190, 444 300, 396 378", n: 3, t: "tool_use", lx: 18, ly: 5, a: "start", mono: true },
+        e4: { d: "M412 410 L668 410", n: 4, t: "실행 요청", lx: 0, ly: -22 },
+        e5a: { d: "M732 400 C 840 400, 900 340, 1023 340", n: 5, t: "실행 · 결과", lx: -8, ly: -20 },
+        e5b: { d: "M732 422 C 840 422, 900 560, 1023 560", n: 5 },
+        e6: { d: "M672 438 C 650 500, 620 560, 592 584", n: 6, t: "기록에 붙임", lx: 18, ly: 5, a: "start" },
+        e7: { d: "M528 590 C 480 560, 470 470, 414 434", n: 7, t: "다음 호출에", lx: -18, ly: 5, a: "end" },
+        ap: { d: "M700 322 L700 378", dash: true },
+      },
+    },
+    narrow: {
+      vb: [400, 800], tile: 54, labels: false,
+      zones: [
+        { x: 196, y: 10, w: 194, h: 150, t: "모델 API" },
+        { x: 10, y: 196, w: 380, h: 440, t: "Agent 런타임", us: true, lb: true, right: true },
+        { x: 10, y: 660, w: 380, h: 130, t: "도구" },
+      ],
+      chip: [372, 226, "end"],
+      nodes: { user: [70, 80, "b"], model: [293, 86, "b"], loop: [110, 310, "b"], exec: [110, 520, "b"], approve: [300, 540, "b"], log: [300, 390, "b"], cal: [120, 724, "r"], chat: [270, 724, "r"] },
+      edges: {
+        e1: { d: "M62 108 L96 284", n: 1 },
+        e8: { d: "M126 284 L86 120", n: 8 },
+        e2: { d: "M104 284 C 116 200, 210 130, 266 96", n: 2 },
+        e3: { d: "M300 114 C 300 200, 210 280, 138 296", n: 3 },
+        e4: { d: "M110 338 L110 492", n: 4 },
+        e5a: { d: "M104 548 L116 696", n: 5 },
+        e5b: { d: "M130 544 C 190 600, 250 640, 262 696", n: 5 },
+        e6: { d: "M136 506 C 200 470, 250 440, 282 416", n: 6 },
+        e7: { d: "M274 380 C 220 360, 180 330, 138 320", n: 7 },
+        ap: { d: "M272 532 L138 524", dash: true },
+      },
+    },
+  };
 
   let G = null, gen = 0;
   function draw() {
-    svg.innerHTML = "";
-    const W = Math.max(260, svg.getBoundingClientRect().width || 600), H = 178, cy = 94, r = 40, top = cy - r, bot = cy + r;
-    const ax = 26, Lx = 112, Rx = W - 22, S = Math.max(40, Rx - Lx - 2 * r), q = Math.PI * r / 2, wide = W >= 420;
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    const xRun = Lx + r + S * (wide ? 0.26 : 0.18), xTool = Lx + r + S * (wide ? 0.78 : 0.86), xLog = Lx + r + S / 2;
-    const d = `M${Lx} ${cy} A${r} ${r} 0 0 1 ${Lx + r} ${top} L${Lx + r + S} ${top} A${r} ${r} 0 0 1 ${Lx + r + S} ${bot} L${Lx + r} ${bot} A${r} ${r} 0 0 1 ${Lx} ${cy} Z`;
-    const track = mk("path", { d, fill: "none", stroke: "var(--line-strong)", "stroke-width": 2.5 });
-    /* 도는 방향: 오른쪽 끝에서 아래로, 왼쪽 아래에서 위로 */
-    const tri = (x, y, rot) => mk("path", { d: "M-5 -4 L5 0 L-5 4 Z", fill: "var(--fg-neutral)", transform: `translate(${x} ${y}) rotate(${rot})` });
-    tri(Lx + r + S + r, cy, 90); tri(Lx + r - r * Math.SQRT1_2, cy + r * Math.SQRT1_2, -135);
-    /* 빠져나가는 길: 모델 → 답 */
-    mk("line", { x1: Lx - 18, y1: cy, x2: ax + 20, y2: cy, stroke: "var(--line-strong)", "stroke-width": 2, "stroke-dasharray": "4 4" });
-    mk("path", { d: "M5 -4 L-5 0 L5 4 Z", fill: "var(--fg-neutral)", transform: `translate(${ax + 22} ${cy})` });
-    txt(svg, (ax + Lx) / 2 + 4, cy + 17, "end_turn", "t-c");
-
-    /* 점은 노드 밑에 깐다 — 노드에 닿으면 아이콘을 가리지 않고 테두리만 켜진다 */
-    const dot = mk("circle", { r: 6, fill: "var(--ac-model)", stroke: "var(--bg-base)", "stroke-width": 2.5, cx: ax, cy });
-    const node = (x, y, icon, c) => {
-      const g = mk("g", { class: "nd", transform: `translate(${x} ${y})`, style: `--c:${c}` });
-      mk("circle", { class: "bg", r: 17, fill: "var(--bg-base)", stroke: "var(--line-subtle)", "stroke-width": 1 }, g);
-      const u = mk("use", { href: `#i-${icon}`, x: -9, y: -9, width: 18, height: 18, style: `color:${c}` }, g);
-      return { g, u, x, y };
-    };
-    const nModel = node(Lx, cy, "brain", "var(--ac-model)"), nRun = node(xRun, top, "workflow", "var(--ac-app)");
-    const nTool = node(xTool, top, "slack", "var(--ac-tool)"), nLog = node(xLog, bot, "messages-square", "var(--ac-app)");
-    const nEnd = node(ax, cy, "circle-stop", "var(--ac-app)");
-    txt(svg, Lx - 22, cy - 24, "모델", "t-n", "end"); if (wide) txt(svg, Lx - 22, cy - 10, "다음 행동", "t-d", "end");
-    txt(svg, xRun, top - 36, "런타임", "t-n"); if (wide) txt(svg, xRun, top - 22, "도구 실행", "t-d");
-    txt(svg, xTool, top - 36, "도구", "t-n"); const toolSub = wide ? txt(svg, xTool, top - 22, "채널 게시", "t-d") : null;
-    txt(svg, xLog, bot + 34, "메시지 기록에 붙임", "t-n");
-    txt(svg, ax, cy + 34, "답", "t-n");
-    const cx = Lx + r + S / 2, turnT = txt(svg, cx, cy + 1, "턴 4", "t-big"), msgT = txt(svg, cx, cy + 18, "메시지 8건", "t-d");
-    const total = track.getTotalLength(), at = (x) => q + (x - (Lx + r));
-    G = { track, total, dot, nodes: [nModel, nRun, nTool, nLog, nEnd], nModel, nRun, nTool, nLog, nEnd, toolSub, turnT, msgT,
-      L: { run: at(xRun), tool: at(xTool), log: 3 * q + S + (Lx + r + S - xLog) }, ex: [Lx, ax, cy] };
+    const w = svg.getBoundingClientRect().width || 1100, L = w < 640 ? LAYOUT.narrow : LAYOUT.wide;
+    svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${L.vb[0]} ${L.vb[1]}`);
+    const defs = mk("defs"), mkr = mk("marker", { id: "fl-ah", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, defs);
+    mk("path", { d: "M0 0 L10 5 L0 10 Z", class: "ah" }, mkr);
+    L.zones.forEach((z) => { mk("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: 26, class: "zone" + (z.us ? " us" : "") }); txt(svg, z.right ? z.x + z.w - 22 : z.x + 24, z.lb ? z.y + z.h - 22 : z.y + 34, z.t, "zl", z.right ? "end" : "start"); });
+    const E = {};
+    for (const [id, e] of Object.entries(L.edges)) E[id] = mk("path", { d: e.d, class: "e" + (e.dash ? " dash" : ""), "marker-end": e.dash ? "" : "url(#fl-ah)" });
+    const dot = mk("circle", { r: 8, class: "dot", cx: 0, cy: 0, style: "opacity:0" });
+    /* 번호 배지와 엣지 글: 엣지 가운데 */
+    for (const [id, e] of Object.entries(L.edges)) {
+      if (!e.n) continue;
+      const p = E[id].getPointAtLength(E[id].getTotalLength() / 2), b = mk("g", { class: "badge", transform: `translate(${p.x} ${p.y})` });
+      mk("circle", { r: 12 }, b); txt(b, 0, 4.5, String(e.n), "");
+      if (L.labels && e.t) txt(svg, p.x + e.lx, p.y + e.ly, e.t, "el" + (e.mono ? " mono" : ""), e.a || "middle");
+    }
+    const N = {}, ts = L.tile, h = ts / 2;
+    for (const [id, [x, y, lab]] of Object.entries(L.nodes)) {
+      const d = NODE[id], g = mk("g", { class: "nd", transform: `translate(${x} ${y})`, style: `--c:${d.c}` });
+      mk("rect", { x: -h, y: -h, width: ts, height: ts, rx: ts * 0.26, class: "tile" }, g);
+      const u = mk("use", { href: `#i-${d.icon}`, x: -ts * 0.24, y: -ts * 0.24, width: ts * 0.48, height: ts * 0.48, style: `color:${d.c}` }, g);
+      const sub = L.labels || lab === "r";
+      if (lab === "r") { txt(g, h + 14, sub ? -4 : 6, d.t, "nt", "start"); if (L.labels) txt(g, h + 14, 18, d.s, "ns" + (d.mono ? " mono" : ""), "start"); }
+      else { txt(g, 0, h + 24, d.t, "nt"); if (L.labels) txt(g, 0, h + 44, d.s, "ns" + (d.mono ? " mono" : "")); }
+      if (d.logos && L.labels) d.logos.forEach((lg, i) => mk("use", { href: `#i-${lg}`, x: h + 14 + i * 26, y: 32, width: 18, height: 18, style: "color:var(--fg-strong)" }, g));
+      N[id] = { g, u };
+    }
+    const chip = txt(svg, L.chip[0], L.chip[1], "", "chip", L.chip[2]);
+    G = { E, N, dot, chip };
   }
 
-  const put = (L) => { const p = G.track.getPointAtLength(Math.min(L, G.total - 0.01)); G.dot.setAttribute("cx", p.x); G.dot.setAttribute("cy", p.y); };
-  const hot = (n) => G.nodes.forEach((m) => m.g.classList.toggle("hot", m === n));
+  const hot = (...ids) => Object.entries(G.N).forEach(([k, n]) => n.g.classList.toggle("hot", ids.includes(k)));
   const setCap = async (html, my) => { cap.classList.add("fade"); await wait(250); if (my !== gen) return; cap.innerHTML = html; cap.classList.remove("fade"); };
-  const seg = (ms, from, to, my, f = put) => new Promise((res) => { const t0 = performance.now(); const st = (now) => { if (signal.aborted || my !== gen) return res(); const t = Math.min(1, (now - t0) / ms); f(from + (to - from) * t); if (t < 1) requestAnimationFrame(st); else res(); }; requestAnimationFrame(st); });
-  const setTool = (lap) => { G.nTool.u.setAttribute("href", `#i-${lap.icon}`); G.nTool.u.setAttribute("style", `color:${lap.c}`); G.nTool.g.style.setProperty("--c", lap.c); if (G.toolSub) G.toolSub.textContent = lap.sub; };
-  const rows = (k) => { pane.classList.toggle("playing", k >= 0); turns.forEach((t, i) => t.classList.toggle("on", i === k)); };
+  /* 엣지 하나를 따라 점을 옮긴다(rev 면 거꾸로) */
+  const run = (id, ms, my, rev = false) => new Promise((res) => {
+    const p = G.E[id], len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); G.dot.style.opacity = 1;
+    const st = (now) => {
+      if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
+      const t = Math.min(1, (now - t0) / ms), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * (rev ? 1 - k : k));
+      G.dot.setAttribute("cx", q.x); G.dot.setAttribute("cy", q.y);
+      if (t < 1) requestAnimationFrame(st); else { p.classList.remove("on"); res(); }
+    };
+    requestAnimationFrame(st);
+  });
 
-  /* 끝난 모습: 점은 답에, 턴 4 · 메시지 8건, 턴 기록은 다 보인다 */
-  const done = () => { rows(-1); hot(G.nEnd); setTool(LAPS[2]); G.dot.setAttribute("cx", G.ex[1]); G.dot.setAttribute("cy", G.ex[2]); G.turnT.textContent = "턴 4"; G.msgT.textContent = "메시지 8건"; cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
+  const TURNS = [
+    { tool: "e5a", node: "cal", cap: "턴 1 · 모델이 <code>find_free_time</code>을 고르면 실행기가 캘린더를 조회하고 결과를 기록에 붙인다" },
+    { tool: "e5a", node: "cal", approve: true, cap: "턴 2 · <code>create_event</code>는 초대 6통이 나가는 일이라 실행기가 사람 승인을 받고 나서 부른다" },
+    { tool: "e5b", node: "chat", cap: "턴 3 · <code>send_message</code>로 팀 채널에 안건을 올리고 결과를 기록에 붙인다" },
+  ];
+  const done = () => { hot(); G.dot.style.opacity = 0; G.chip.textContent = "턴 4 · 메시지 8건"; cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
 
   async function play() {
-    const my = ++gen; let msgs = 1;
-    for (let k = 0; k < LAPS.length; k++) {
-      const lap = LAPS[k]; if (my !== gen) return;
-      rows(k); setTool(lap); G.turnT.textContent = `턴 ${k + 1}`; G.msgT.textContent = `메시지 ${msgs}건`;
-      hot(G.nModel); put(0); setCap(lap.cap, my); await wait(k ? 500 : 900);
-      await seg(900, 0, G.L.run, my); if (my !== gen) return; hot(G.nRun); await wait(450);
-      await seg(650, G.L.run, G.L.tool, my); if (my !== gen) return; hot(G.nTool); await wait(lap.hold || 650);
-      await seg(1000, G.L.tool, G.L.log, my); if (my !== gen) return; hot(G.nLog); msgs += 2; G.msgT.textContent = `메시지 ${msgs}건`; await wait(450);
-      await seg(650, G.L.log, G.total, my); if (my !== gen) return;
+    const my = ++gen, ok = () => my === gen && !signal.aborted; let msgs = 1;
+    G.chip.textContent = "턴 1 · 메시지 1건";
+    hot("user"); await setCap("사내 메신저로 요청이 들어온다", my); await wait(500); if (!ok()) return;
+    await run("e1", 1000, my); if (!ok()) return; hot("loop"); await wait(400);
+    for (let k = 0; k < TURNS.length; k++) {
+      const T = TURNS[k]; G.chip.textContent = `턴 ${k + 1} · 메시지 ${msgs}건`; setCap(T.cap, my);
+      await run("e2", 1000, my); if (!ok()) return; hot("model"); await wait(500);
+      await run("e3", 1000, my); if (!ok()) return; hot("loop"); await wait(300);
+      await run("e4", 800, my); if (!ok()) return; hot("exec"); await wait(400);
+      if (T.approve) { G.E.ap.classList.add("on"); hot("exec", "approve"); await wait(1800); G.E.ap.classList.remove("on"); if (!ok()) return; }
+      await run(T.tool, 900, my); if (!ok()) return; hot(T.node); await wait(500);
+      await run(T.tool, 900, my, true); if (!ok()) return; hot("exec");
+      await run("e6", 800, my); if (!ok()) return; hot("log"); msgs += 2; G.chip.textContent = `턴 ${k + 1} · 메시지 ${msgs}건`; await wait(500);
+      await run("e7", 900, my); if (!ok()) return; hot("loop"); await wait(300);
     }
-    rows(3); hot(G.nModel); put(0); G.turnT.textContent = "턴 4"; setCap(CAP_END, my); await wait(1000); if (my !== gen) return;
-    const [x1, x2, y] = G.ex;
-    await seg(900, x1, x2, my, (x) => { G.dot.setAttribute("cx", x); G.dot.setAttribute("cy", y); }); if (my !== gen) return;
-    hot(G.nEnd); G.msgT.textContent = "메시지 8건"; await wait(2500); if (my !== gen) return;
-    rows(-1); await setCap(CAP_DONE, my);
+    G.chip.textContent = `턴 4 · 메시지 ${msgs}건`; setCap("턴 4 · 더 부를 도구가 없으니 모델이 <code>end_turn</code>을 말하고 루프가 사용자에게 답을 보낸다", my);
+    await run("e2", 1000, my); if (!ok()) return; hot("model"); await wait(500);
+    await run("e3", 1000, my); if (!ok()) return; hot("loop"); G.chip.textContent = "턴 4 · 메시지 8건"; await wait(300);
+    await run("e8", 1000, my); if (!ok()) return; hot("user"); await wait(2500); if (!ok()) return;
+    done();
   }
 
   draw(); done();
   let lastW = svg.getBoundingClientRect().width;
-  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; lastW = w; gen++; draw(); done(); });
+  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; const was = (lastW < 640) !== (w < 640); lastW = w; if (was) { gen++; draw(); done(); } });
   ro.observe(svg);
   if (!reduce) {
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; done(); } }));
-    io.observe(lp);
+    io.observe(svg);
     signal.addEventListener("abort", () => io.disconnect());
   }
   signal.addEventListener("abort", () => ro.disconnect());
