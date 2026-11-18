@@ -69,12 +69,17 @@ const STYLE = `<style data-pg-code>
 .post-page ol.pg-code-notes > li::before { content: counter(pgc); position: absolute; left: 0; top: 0.2em; font-size: 0.8em; }
 /* 코드 | 해설을 좌우로 두지 않는다 — 코드 아래에 해설(POSTING 5-7, 2026-11-14). 글마다 짠 grid 를 이기려고 !important.
    폭은 끝없이 넓히지 않는다: 코드 860px(한 줄 80칸 남짓), 해설은 한 단 760px — 넓으면 줄이 길어 읽기 힘들다(사용자 지적).
-   글 열과 같은 왼쪽 선에 맞춘다 */
-.post-page [data-pg-stack] { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 18px !important; max-width: 860px !important; margin-left: 0 !important; margin-right: auto !important; }
+   폭 제한은 안쪽 칸에만 건다. 묶음 자체의 폭·여백은 그대로 둔다 — 묶음이 가운데 정렬된 바깥 틀(vd-wrap 등)인 글에서
+   묶음에 margin-left: 0 을 걸었더니 틀이 화면 왼쪽 끝에 붙었다(2026-11-18). 안쪽 칸이 왼쪽에 붙으니 글 열과 같은 왼쪽 선이 된다 */
+.post-page [data-pg-stack] { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 18px !important; }
+.post-page [data-pg-stack] > * { position: static !important; align-self: stretch !important; width: auto !important; max-width: 860px !important; min-width: 0; margin-left: 0 !important; margin-right: 0 !important; }
 .post-page [data-pg-stack] > :has(ol.pg-code-notes), .post-page [data-pg-stack] > ol.pg-code-notes { max-width: 760px !important; }
-.post-page [data-pg-stack] > * { position: static !important; width: auto !important; max-width: none !important; min-width: 0; margin-left: 0 !important; margin-right: 0 !important; }
 /* 원고에서 해설을 코드보다 앞에 적은 글도 해설이 맨 아래로 간다 */
 .post-page [data-pg-stack] > :has(ol.pg-code-notes), .post-page [data-pg-stack] > ol.pg-code-notes { order: 1; }
+/* 해설 칸에 소제목·문단이 같이 들어 있으면 칸을 풀어 해설 목록만 내린다 — 칸째 내리면 소제목이 코드 아래로 갔다 */
+.post-page [data-pg-stack] > :has(> ol.pg-code-notes):has(> :is(h2, h3, p)) { display: contents !important; }
+.post-page [data-pg-stack] > :has(> ol.pg-code-notes):has(> :is(h2, h3, p)) > * { order: 0; max-width: 760px; margin-left: 0; margin-right: 0; }
+.post-page [data-pg-stack] > :has(> ol.pg-code-notes):has(> :is(h2, h3, p)) > ol.pg-code-notes { order: 1; }
 .post-page [data-pg-stack] ol.pg-code-notes { margin-top: 6px; }
 /* 코드 아래 터미널 칸(글마다 짠 pre)도 가로로 밀지 않고 접는다 */
 .post-page [data-pg-stack] pre:not(.shiki) { white-space: pre-wrap !important; overflow-wrap: anywhere; overflow-x: hidden; }
