@@ -220,6 +220,9 @@
 | [ByteByteGo, EP215 The Anatomy of an AI Agent](https://blog.bytebytego.com/p/ep215-the-anatomy-of-an-ai-agent) | 가운데 점선 원이 루프(Perceive→LLM→Act→Observe), 원 위 출구 "final answer (no tool call)" 와 멈춤 조건 한 줄. 바깥 구역(Memory·Tools·Guardrails)과는 색 점선 화살표 + 엣지 글(context·invoke·gate) | 루프와 바깥 구성 요소가 주고받는 것을 보일 때 | 2026-11-19 | agent-runtime-loop-architecture |
 | [ByteByteGo, The Agent Loop (Augmented LLM)](https://blog.bytebytego.com/p/the-agent-loop-how-ai-goes-from-answering) | 가운데 LLM 상자 하나만 색, 나머지는 회색 상자 + 직선. 상자 안 굵은 이름 + 한 줄 부제 | 중심 요소 하나를 세울 때 | 2026-11-19 | |
 | ByteByteGo, Top AI Agentic Workflow Patterns(사용자가 준 캡처, 2026-11-19) | 패턴마다 한 줄: 왼쪽 아이콘 카드(이름) · 가운데 흐름도 · 오른쪽 점선 너머 설명 두세 줄. 흐름도는 직각 엣지 + 번호 엣지 글, 되돌아가는 엣지는 큰 반경 곡선 하나. 도구 묶음은 점선 상자 + 초록 알약 "Tools" | 패턴 여러 개를 같은 문법으로 나란히 | 2026-11-19 | (2편 다시 만들 때) |
+| [ByteByteGo, The Complete Path of an LLM Request](https://blog.bytebytego.com/p/how-to-deal-with-errors-and-failures) | 생명선 위에 구성 요소(User·APP·Knowledge·LLM·TOOL·✓)를 늘어놓고, 요청 하나가 지나는 단계를 색 번호 원 ①~⑦ + 굵은 엣지 글로 내려 쓴다. 돌아오는 응답은 왼쪽 화살표 | 요청 하나가 시스템을 지나는 순서를 보일 때 | 2026-11-19 | ai-app-architecture-map |
+| [Anthropic, Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) | 패턴마다 In(알약) → LLM Call 상자 → Out(알약). 개수가 정해지지 않은 분기(orchestrator)는 점선, gate 의 Pass/Fail·evaluator 의 Accepted / Rejected + Feedback 은 엣지 글로 | 워크플로 패턴을 같은 문법으로 견줄 때 | 2026-11-19 | workflow-agent-patterns-map |
+| [ByteByteGo, 패턴 단독 그림(Reflection·Tool Use·ReAct·Planning·Multi-Agent)](https://blog.bytebytego.com/p/top-ai-agentic-workflow-patterns) | 한 패턴을 크게: 사람 → 색 상자 LLM, 직각 엣지 + 빨간 번호 원 ①~⑥, 반복은 가운데 "Iterate N Times" 아이콘, 도구는 점선 묶음 + 초록 알약 "Tools" | 패턴 하나의 순환을 크게 보일 때 | 2026-11-19 | workflow-agent-patterns-map |
 ## 미확인
 
 열어 봤지만 내용을 확인하지 못했거나 열리지 않은 곳. 다음에 다시 시도한다.
