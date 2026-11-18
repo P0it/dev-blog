@@ -100,8 +100,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .rt .items li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; align-items: start; }
 .post-page .rt .ni { width: 34px; height: 34px; border-radius: 10px; }
 .post-page .rt .ni svg { width: 17px; height: 17px; }
+.post-page .rt .items .ni { margin-top: 1px; }
 .post-page .rt .items b { display: block; font-size: 14px; color: var(--fg-strong); }
-.post-page .rt .items span { display: block; font-size: 12.5px; color: var(--fg-neutral); line-height: 1.5; margin-top: 2px; }
+.post-page .rt .items div > span { display: block; font-size: 12.5px; color: var(--fg-neutral); line-height: 1.5; margin-top: 2px; }
 .post-page .rt code { font-family: var(--font-mono); font-size: 12px; }
 
 .post-page .rt .cols { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1.15fr); gap: 0 8px; align-items: center; margin-bottom: 10px; }
@@ -271,7 +272,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   /* 턴마다 도구 칸에 보일 것과 아래 한 줄 */
   const LAPS = [
     { icon: "googlecalendar", c: "var(--ac-tool)", sub: "캘린더 조회", cap: "턴 1 · 모델이 <code>find_free_time</code>을 고르면 런타임이 캘린더를 조회하고 결과를 기록에 붙인다" },
-    { icon: "hand", c: "var(--ac-warn)", sub: "승인 대기", hold: 900, cap: "턴 2 · <code>create_event</code>는 초대 6통이 나가는 일이라 런타임이 사람 승인을 받고 나서 실행한다" },
+    { icon: "hand", c: "var(--ac-warn)", sub: "승인 대기", hold: 1700, cap: "턴 2 · <code>create_event</code>는 초대 6통이 나가는 일이라 런타임이 사람 승인을 받고 나서 실행한다" },
     { icon: "slack", c: "var(--ac-tool)", sub: "채널 게시", cap: "턴 3 · <code>send_message</code>로 팀 채널에 안건을 올리고 결과를 기록에 붙인다" },
   ];
   const CAP_END = "턴 4 · 더 부를 도구가 없으니 <code>end_turn</code>. 고리를 빠져나가 사용자에게 답을 보낸다";
@@ -331,16 +332,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     for (let k = 0; k < LAPS.length; k++) {
       const lap = LAPS[k]; if (my !== gen) return;
       rows(k); setTool(lap); G.turnT.textContent = `턴 ${k + 1}`; G.msgT.textContent = `메시지 ${msgs}건`;
-      hot(G.nModel); put(0); setCap(lap.cap, my); await wait(k ? 150 : 400);
-      await seg(520, 0, G.L.run, my); if (my !== gen) return; hot(G.nRun);
-      await seg(300, G.L.run, G.L.tool, my); if (my !== gen) return; hot(G.nTool); await wait(lap.hold || 260);
-      await seg(520, G.L.tool, G.L.log, my); if (my !== gen) return; hot(G.nLog); msgs += 2; G.msgT.textContent = `메시지 ${msgs}건`;
-      await seg(360, G.L.log, G.total, my); if (my !== gen) return;
+      hot(G.nModel); put(0); setCap(lap.cap, my); await wait(k ? 500 : 900);
+      await seg(900, 0, G.L.run, my); if (my !== gen) return; hot(G.nRun); await wait(450);
+      await seg(650, G.L.run, G.L.tool, my); if (my !== gen) return; hot(G.nTool); await wait(lap.hold || 650);
+      await seg(1000, G.L.tool, G.L.log, my); if (my !== gen) return; hot(G.nLog); msgs += 2; G.msgT.textContent = `메시지 ${msgs}건`; await wait(450);
+      await seg(650, G.L.log, G.total, my); if (my !== gen) return;
     }
-    rows(3); hot(G.nModel); put(0); G.turnT.textContent = "턴 4"; setCap(CAP_END, my); await wait(500); if (my !== gen) return;
+    rows(3); hot(G.nModel); put(0); G.turnT.textContent = "턴 4"; setCap(CAP_END, my); await wait(1000); if (my !== gen) return;
     const [x1, x2, y] = G.ex;
-    await seg(520, x1, x2, my, (x) => { G.dot.setAttribute("cx", x); G.dot.setAttribute("cy", y); }); if (my !== gen) return;
-    hot(G.nEnd); G.msgT.textContent = "메시지 8건"; await wait(1600); if (my !== gen) return;
+    await seg(900, x1, x2, my, (x) => { G.dot.setAttribute("cx", x); G.dot.setAttribute("cy", y); }); if (my !== gen) return;
+    hot(G.nEnd); G.msgT.textContent = "메시지 8건"; await wait(2500); if (my !== gen) return;
     rows(-1); await setCap(CAP_DONE, my);
   }
 
