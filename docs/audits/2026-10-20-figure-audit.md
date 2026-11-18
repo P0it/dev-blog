@@ -36,7 +36,7 @@ HTML 페이지 글 55편의 그림 509개를 `POSTING.md` 5-9(그림 문법)로 
 | mid | ai-data-platform-lake-iceberg-spark-starrocks | llm-infra-basics | 2/3/12 | 실물(디스크 띠·Parquet·앨범·셔플) 위주로 좋음. 세 저장소·세 세대가 이모지 상자 흐름, 스냅샷 트리·데이터 지도는 상자 노드 | |
 | mid | ai-native-dev-loop-explore-plan-verify | ai-native-dev | 2/0/9 | 고리·생명선·코드 검사판은 좋으나 사람 단계 순서도와 멈춤 문 네 칸이 상자 흐름도 | |
 | mid | fine-tuning-lora-qlora-peft | llm-infra-basics | 2/0/14 | 대부분 실제 비율 판·막대·곡선이라 양호. 학습 단계 흐름도와 4칸 지도 두 곳만 상자 문법 | |
-| mid | llm-temperature-sampling |  | 2/1/7 | 확률 막대·시뮬레이션·볼츠만 캔버스·top-p 절단선은 좋음. 4단계 고리 카드와 로짓→softmax 파이프 상자가 상자 흐름도 | |
+| mid | llm-temperature-sampling |  | 2/1/7 | 확률 막대·시뮬레이션·볼츠만 캔버스·top-p 절단선은 좋음. 4단계 고리 카드와 로짓→softmax 파이프 상자가 상자 흐름도 |  2026-11-18 · Critic 5/5·시선 5 (옆 조작판 접고 히어로 슬라이더 하나만, 고리 카드 → 자라는 문장, 파이프 → 식에 펜 메모, 표·연동 그림 → 온도 세 장 펼쳐 놓기) |
 | mid | prompt-engineering-roles-few-shot | ai-service-track | 2/1/7 | 원문 메시지·한 줄 글·토큰 칸·정확도 그래프는 좋음. 응답 상자 안 상자와 우선순위 사다리가 상자, Chat/Responses 대응은 표 | |
 | mid | rag-retrieval-pipeline |  | 2/1/9 | 장 표지 노선도·청킹 원문 칠하기·의미 지도는 좋다. 파인튜닝 vs RAG, 인덱싱/질문 파이프라인 두 SVG가 둥근 상자→화살표 흐름도 | |
 | mid | sllm-self-hosted-coding-agent-2026 | ai-native-dev | 2/0/14 | 저울·밀키트·정사각형·계단선 등 대부분 좋다. SWE-bench 채점 흐름(제목+회색 부제 상자 4개)과 마지막 결정 순서도가 상자 | |

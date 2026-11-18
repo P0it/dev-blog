@@ -1,215 +1,185 @@
 ---
 title: 온도를 올리면 AI는 왜 엉뚱한 말을 할까요
 slug: llm-temperature-sampling
-excerpt: LLM의 temperature는 모델이 아는 것을 바꾸지 않습니다. 다음 단어 후보들의 점수 간격을 늘이거나 줄일 뿐입니다. 온도계 하나로 확률 분포, 샘플링, top-p가 어떻게 함께 움직이는지 직접 돌려 봅니다.
+excerpt: LLM의 temperature는 모델이 아는 것을 바꾸지 않습니다. 다음 단어 후보들의 점수 간격을 늘이거나 줄일 뿐입니다. 같은 확률표를 온도 세 가지로 나란히 놓고 확률 분포, 샘플링, top-p가 어떻게 달라지는지 비교합니다.
 tags: [LLM, Temperature, Sampling, AI Shift Track]
 category: ai
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-temperature-sampling-mv7bnvli.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-temperature-sampling-mwm3y2jq.jpg
 ---
 <!-- page -->
-<!-- layout: 옆에 붙어 다니는 조작판 | 글의 성격: temperature 변수 하나가 확률표·샘플링·top-p·볼츠만 그림을 모두 바꾼다 | 버린 후보: 그림 고정 스크롤리텔링(그림이 여러 개라 하나를 고정할 수 없음) -->
+<!-- layout: 왼쪽 제목 열 + 오른쪽 본문 열, 온도 비교는 화면 폭 띠에 세 장 나란히 | 글의 성격: temperature 하나가 확률표·샘플링·볼츠만·top-p 를 바꾼다 — 상태 셋(차가움·보통·뜨거움)을 펼쳐 놓으면 비교가 한눈에 된다 | 버린 후보: 옆에 붙어 다니는 조작판(2026-10-30 규약으로 접음, 2026-11-18 다시 그림), 그림 고정 스크롤리텔링(그림이 여러 개라 하나를 고정할 수 없음) | 슬라이더는 히어로 온도계 하나만 -->
 <style>
-.post-page .tp { --tp-hot: rgb(255, 106, 61); --tp-cold: rgb(51, 133, 255); --tp-t: 0.5; color: var(--fg-normal); font-family: var(--font-sans); }
+.post-page .tp { --tp-hot: rgb(255, 106, 61); --tp-cold: rgb(51, 133, 255); --tp-pen: rgb(226, 54, 54); color: var(--fg-normal); font-family: var(--font-sans); }
 .post-page .tp * { box-sizing: border-box; }
-.post-page .tp-wrap { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+.post-page .tp-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
 .post-page .tp h1, .post-page .tp h2, .post-page .tp h3 { word-break: keep-all; font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
-.post-page .tp p { line-height: 1.8; margin: 0 0 1em; font-size: 17px; }
+.post-page .tp p { line-height: 1.8; margin: 0 0 1em; font-size: 17px; word-break: keep-all; }
 .post-page .tp b { color: var(--fg-strong); }
-.post-page .tp code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .tp code { white-space: nowrap; font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .tp p.tp-note { font-size: 14px; line-height: 1.6; color: var(--fg-alternative); margin-top: 12px; }
+.post-page .tp p.tp-pen { font-size: 15px; font-weight: 600; line-height: 1.45; color: var(--tp-pen); margin: 6px 0 0; }
 
-/* 히어로 — 문장 빈칸과 후보 단어가 온도에 따라 바뀐다 */
+/* 히어로 — 글의 유일한 슬라이더(온도계)가 확률 막대 바로 아래에 붙는다 */
 .post-page .tp-hero { position: relative; padding: clamp(56px, 9vw, 120px) 0 clamp(40px, 6vw, 72px); overflow: hidden; }
 .post-page .tp-hero::before { content: ""; position: absolute; inset: -20% -10% auto auto; width: 70vw; height: 70vw; max-width: 820px; max-height: 820px; border-radius: 50%;
-  background: radial-gradient(circle, var(--tp-glow, transparent) 0%, transparent 62%);
-  pointer-events: none; transition: background 0.4s; }
+  background: radial-gradient(circle, var(--tp-glow, transparent) 0%, transparent 62%); pointer-events: none; transition: background 0.4s; }
 .post-page .tp-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px; }
 .post-page .tp-hero h1 { font-size: clamp(34px, 5.4vw, 62px); line-height: 1.12; }
-.post-page .tp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: end; }
-.post-page .tp-hero .tp-bars { margin: 0; }
+.post-page .tp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: end; position: relative; }
 .post-page .tp-lede { font-size: clamp(17px, 2vw, 20px) !important; max-width: 36em; margin-top: 24px !important; color: var(--fg-neutral); }
-.post-page .tp-sentence { margin-top: clamp(32px, 5vw, 56px); font-family: var(--font-display); font-size: clamp(26px, 4.6vw, 52px); color: var(--fg-strong); line-height: 1.3; }
+.post-page .tp-sentence { margin: 0 0 24px; font-family: var(--font-display); font-size: clamp(26px, 3.6vw, 40px); color: var(--fg-strong); line-height: 1.3; }
 .post-page .tp-blank { display: inline-block; min-width: 4.2em; border-bottom: 3px solid var(--fg-strong); padding: 0 0.15em; transition: color 0.3s; }
 .post-page .tp-blank.is-roll { color: var(--fg-alternative); }
-.post-page .tp-hint { font-size: 14px !important; color: var(--fg-alternative); margin-top: 14px !important; }
-
-/* 본문 2단: 왼쪽 글, 오른쪽 고정 온도계 */
-.post-page .tp-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 56px; align-items: start; padding-bottom: 80px; }
-.post-page .tp-main > section { padding: 56px 0; border-top: 1px solid var(--line-normal); }
-.post-page .tp-main > section:first-child { border-top: 0; padding-top: 8px; }
-.post-page .tp-main h2 { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.3; margin-bottom: 20px; }
-.post-page .tp-num { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
-
-.post-page .tp-dial { position: sticky; top: 88px; padding: 22px; border-radius: var(--radius-md); background: var(--bg-elevated); border: 1px solid var(--line-normal); box-shadow: var(--shadow-3); }
-.post-page .tp-dial-label { font-size: 13px; color: var(--fg-alternative); display: flex; justify-content: space-between; align-items: baseline; }
-.post-page .tp-dial-val { font-family: var(--font-mono); font-size: 44px; font-weight: 600; color: var(--fg-strong); line-height: 1; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
-.post-page .tp-dial-word { font-size: 14px; color: var(--fg-neutral); min-height: 1.4em; }
-.post-page .tp-range { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 99px; background: linear-gradient(90deg, var(--tp-cold), var(--fg-alternative) 50%, var(--tp-hot)); outline: none; margin: 4px 0 8px; }
-.post-page .tp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); cursor: grab; box-shadow: var(--shadow-2); }
-.post-page .tp-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); cursor: grab; }
-.post-page .tp-ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
-.post-page .tp-presets { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
-.post-page .tp-presets button { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line-strong); background: transparent; color: var(--fg-normal); cursor: pointer; }
-.post-page .tp-presets button:hover { border-color: var(--fg-strong); color: var(--fg-strong); }
-.post-page .tp-mini { margin-top: 18px; display: grid; gap: 5px; }
-.post-page .tp-mini-row { display: grid; grid-template-columns: 4.6em 1fr; gap: 8px; align-items: center; font-size: 12px; }
-.post-page .tp-mini-bar { height: 8px; border-radius: 99px; background: var(--bg-muted); overflow: hidden; }
-.post-page .tp-mini-bar i { display: block; height: 100%; background: var(--fg-strong); border-radius: 99px; transition: width 0.25s; }
-
-/* 1. 확률 막대 */
-.post-page .tp-bars { margin: 28px 0 8px; display: grid; gap: 10px; }
+.post-page .tp-bars { display: grid; gap: 10px; }
 .post-page .tp-bar { display: grid; grid-template-columns: 5.5em 1fr 4.2em; gap: 12px; align-items: center; }
 .post-page .tp-bar-word { font-weight: 600; color: var(--fg-strong); font-size: 15px; }
 .post-page .tp-bar-track { height: 28px; border-radius: var(--radius-xs); background: var(--bg-subtle); overflow: hidden; }
-.post-page .tp-bar-fill { display: block; height: 100%; width: 0; border-radius: var(--radius-xs); transition: width 0.35s cubic-bezier(.2,.8,.2,1), background 0.35s;
-  background: var(--tp-heat, var(--fg-strong)); }
+.post-page .tp-bar-fill { display: block; height: 100%; width: 0; border-radius: var(--radius-xs); transition: width 0.35s cubic-bezier(.2,.8,.2,1), background 0.35s; background: var(--tp-heat, var(--fg-strong)); }
 .post-page .tp-bar-pct { font-family: var(--font-mono); font-size: 14px; text-align: right; color: var(--fg-neutral); font-variant-numeric: tabular-nums; }
+.post-page .tp-dial { margin-top: 22px; }
+.post-page .tp-dial-head { display: flex; align-items: baseline; gap: 12px; font-size: 14px; color: var(--fg-alternative); }
+.post-page .tp-dial-head output { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--fg-strong); font-variant-numeric: tabular-nums; }
+.post-page .tp-range { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 99px; background: linear-gradient(90deg, var(--tp-cold), var(--fg-alternative) 50%, var(--tp-hot)); outline: none; margin: 10px 0 6px; }
+.post-page .tp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); cursor: grab; box-shadow: var(--shadow-2); }
+.post-page .tp-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); cursor: grab; }
+.post-page .tp-ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
 
-/* 2. 파이프라인 + 수직선 */
-.post-page .tp-pipe { display: flex; align-items: stretch; gap: 0; margin: 28px 0; font-size: 14px; }
-.post-page .tp-pipe div { flex: 1; padding: 14px 12px; background: var(--bg-subtle); border: 1px solid var(--line-normal); text-align: center; }
-.post-page .tp-pipe div + div { border-left: 0; }
-.post-page .tp-pipe div:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-.post-page .tp-pipe div:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-.post-page .tp-pipe div.is-key { background: var(--bg-primary-tint); border-color: var(--line-primary); color: var(--fg-strong); font-weight: 600; }
-.post-page .tp-pipe small { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); margin-top: 4px; font-weight: 400; }
-.post-page .tp-line { width: 100%; height: auto; display: block; margin: 12px 0 4px; overflow: visible; }
-.post-page .tp-line text { font-family: var(--font-sans); font-size: 12px; fill: var(--fg-neutral); }
-.post-page .tp-line .lbl { font-family: var(--font-mono); font-size: 11px; fill: var(--fg-alternative); }
-.post-page .tp-line .axis { stroke: var(--line-strong); }
-.post-page .tp-line .dot { transition: cx 0.35s cubic-bezier(.2,.8,.2,1); }
-.post-page .tp-line .wtxt { transition: x 0.35s cubic-bezier(.2,.8,.2,1); }
-.post-page .tp-line .gap { stroke: var(--tp-hot); stroke-width: 2; transition: x1 0.35s, x2 0.35s; }
+/* 본문 — 왼쪽 제목 열, 오른쪽 본문 열. 온도 세 장 비교는 화면 폭 띠(.tp-band) */
+.post-page .tp-sec { padding: clamp(52px, 7vw, 88px) 0; border-top: 1px solid var(--line-normal); }
+.post-page .tp-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
+.post-page .tp-split + .tp-band, .post-page .tp-band + .tp-split { margin-top: clamp(28px, 4vw, 44px); }
+.post-page .tp-sec h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.3; }
+.post-page .tp-num { font-family: var(--font-mono); font-size: 13px; color: var(--fg-alternative); display: block; margin-bottom: 10px; }
+.post-page .tp-fig { margin: 28px 0 24px; }
+.post-page .tp-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 56px; }
+.post-page .tp-three > div { min-width: 0; position: relative; }
+.post-page .tp-three > div + div::before { content: ""; position: absolute; left: -28px; top: 0; bottom: 0; border-left: 1px solid var(--line-normal); }
+.post-page .tp-band .tp-note { margin-top: 18px; max-width: 46em; }
+.post-page .tp-thead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+.post-page .tp-thead b { font-family: var(--font-mono); font-size: 17px; color: var(--c); }
+.post-page .tp-thead span { font-size: 13px; color: var(--fg-alternative); }
 
-/* 3. 샘플링 */
-.post-page .tp-sim { margin: 28px 0 0; padding: 24px; border-radius: var(--radius-md); background: var(--bg-subtle); }
-.post-page .tp-sim-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
-.post-page .tp-btn { font: inherit; font-weight: 600; font-size: 15px; padding: 10px 18px; border-radius: var(--radius-sm); border: 0; background: var(--fg-strong); color: var(--bg-base); cursor: pointer; }
-.post-page .tp-btn:disabled { opacity: 0.5; cursor: default; }
-.post-page .tp-sim-note { font-size: 14px; color: var(--fg-alternative); }
-.post-page .tp-bins { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 220px; border-bottom: 1px solid var(--line-strong); }
-.post-page .tp-bin { display: flex; flex-wrap: wrap-reverse; align-content: flex-start; gap: 2px; justify-content: center; height: 100%; }
-.post-page .tp-chip { width: 9px; height: 9px; border-radius: 2px; background: var(--fg-strong); animation: pg-tp-drop 0.35s cubic-bezier(.3,1.4,.6,1) both; }
-@keyframes pg-tp-drop { from { transform: translateY(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
-.post-page .tp-binlbl { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; font-size: 12px; text-align: center; margin-top: 8px; color: var(--fg-neutral); }
-.post-page .tp-binlbl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.post-page .tp-binlbl b { display: block; font-family: var(--font-mono); font-weight: 500; color: var(--fg-strong); }
-.post-page .tp-samples { margin-top: 18px; font-size: 15px; color: var(--fg-neutral); display: flex; flex-wrap: wrap; gap: 6px 14px; min-height: 1.6em; }
-.post-page .tp-samples span b { color: var(--fg-strong); }
+/* 01 자라는 문장 */
+.post-page .tp-grow { display: grid; gap: 0; }
+.post-page .tp-g { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 12px 28px; align-items: center; padding: 18px 0; border-bottom: 1px dashed var(--line-strong); }
+.post-page .tp-g:last-child { border-bottom: 0; }
+.post-page .tp-g-sent { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 26px) !important; color: var(--fg-strong); margin: 0 !important; line-height: 1.4 !important; }
+.post-page .tp-g-sent small { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); margin-bottom: 4px; }
+.post-page .tp-g-sent em { font-style: normal; display: inline-block; min-width: 3.2em; border-bottom: 3px solid var(--fg-strong); }
+.post-page .tp-g-sent i { font-style: normal; background: color-mix(in srgb, var(--tp-hot) 18%, transparent); border-radius: 4px; padding: 0 3px; }
+.post-page .tp-lbar { display: grid; grid-template-columns: 4.6em minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; color: var(--fg-alternative); }
+.post-page .tp-lbar s { text-decoration: none; display: block; height: 10px; border-radius: 99px; background: var(--fg-alternative); opacity: 0.45; }
+.post-page .tp-lbar em { font-style: normal; font-family: var(--font-mono); font-size: 12px; text-align: right; }
+.post-page .tp-lbar.is-pick { color: var(--fg-strong); font-weight: 600; }
+.post-page .tp-lbar.is-pick s { background: var(--fg-strong); opacity: 1; }
 
-/* 4. 볼츠만 */
-.post-page .tp-phys { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; margin-top: 28px; }
-.post-page .tp-canvas { width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius-md); background: var(--bg-subtle); display: block; }
-.post-page .tp-formula { font-family: var(--font-mono); font-size: clamp(14px, 1.8vw, 17px); padding: 18px; border-radius: var(--radius-md); border: 1px dashed var(--line-strong); line-height: 2; color: var(--fg-strong); }
-.post-page .tp-formula span { color: var(--fg-alternative); font-size: 0.85em; display: block; line-height: 1.6; margin-bottom: 8px; }
-
-/* 5. top-p */
-.post-page .tp-stack { position: relative; display: flex; height: 54px; border-radius: var(--radius-sm); overflow: hidden; margin: 28px 0 8px; background: var(--bg-subtle); }
-.post-page .tp-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--bg-base); white-space: nowrap; overflow: hidden; transition: width 0.3s, opacity 0.3s, background 0.3s; border-right: 1px solid var(--bg-base); }
-.post-page .tp-seg.is-cut { opacity: 0.22; }
-.post-page .tp-cut { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--fg-strong); transition: left 0.3s; }
-.post-page .tp-pctrl { display: flex; align-items: center; gap: 14px; margin-top: 20px; font-size: 14px; }
-.post-page .tp-pctrl input { flex: 1; accent-color: var(--fg-strong); }
-.post-page .tp-pctrl output { font-family: var(--font-mono); font-size: 18px; color: var(--fg-strong); min-width: 3em; }
-.post-page .tp-kept { font-size: 15px; margin-top: 12px; color: var(--fg-neutral); }
-
-/* 6. 스펙트럼 */
-.post-page .tp-uses { margin: 32px 0 10px; display: grid; gap: 8px; }
-.post-page .tp-use { display: grid; grid-template-columns: 7.5em 1fr; gap: 12px; align-items: center; font-size: 14px; color: var(--fg-strong); }
-.post-page .tp-use-track { position: relative; height: 22px; border-radius: 4px; background: var(--bg-subtle); display: block; }
-.post-page .tp-use-track b { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, var(--tp-cold), var(--tp-hot)); background-size: 200% 100%; opacity: 0.85; }
-.post-page .tp-use-axis .tp-use-track { background: none; height: 18px; }
-.post-page .tp-use-axis i { position: absolute; transform: translateX(-50%); font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
-.post-page .tp-use-axis em { position: absolute; bottom: 18px; width: 2px; height: 160px; background: var(--fg-strong); transform: translateX(-1px); transition: left 0.3s; }
-.post-page .tp-spec-axis { position: absolute; left: 0; right: 0; top: 64px; height: 6px; border-radius: 99px; background: linear-gradient(90deg, var(--tp-cold), var(--fg-alternative) 50%, var(--tp-hot)); opacity: 0.7; }
-.post-page .tp-spec-mark { position: absolute; top: 0; transform: translateX(-50%); text-align: center; font-size: 13px; width: 9em; }
-.post-page .tp-spec-mark.down { top: 84px; }
-.post-page .tp-spec-mark b { display: block; font-size: 14px; }
-.post-page .tp-spec-mark i { display: block; font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
-.post-page .tp-spec-now { position: absolute; top: 56px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--bg-base); border: 3px solid var(--fg-strong); transition: left 0.3s; }
-
-.post-page .tp-table { width: 100%; border-collapse: collapse; margin: 24px 0 8px; font-size: 15px; font-variant-numeric: tabular-nums; }
-.post-page .tp-table th, .post-page .tp-table td { padding: 10px 8px; border-bottom: 1px solid var(--line-normal); text-align: right; }
-.post-page .tp-table th:first-child, .post-page .tp-table td:first-child { text-align: left; color: var(--fg-strong); font-weight: 600; }
-.post-page .tp-table th { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--fg-alternative); }
-/* 다음 토큰 고리 */
-.post-page .tp-loop { margin: 28px 0 32px; }
-.post-page .tp-loop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; position: relative; }
-.post-page .tp-st { position: relative; padding: 14px 12px; border-radius: var(--radius-md); background: var(--bg-base); border: 1px solid var(--line-normal); min-height: 132px; transition: border-color 0.25s, box-shadow 0.25s; }
-.post-page .tp-st.is-on { border-color: var(--tp-heat, var(--fg-strong)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-heat, var(--fg-strong)) 22%, transparent); }
-.post-page .tp-st small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); margin-bottom: 8px; }
-.post-page .tp-st b.big { display: block; font-size: 15px; line-height: 1.5; color: var(--fg-strong); word-break: keep-all; }
-.post-page .tp-st:not(:last-child)::after { content: "→"; position: absolute; right: -22px; top: 50%; transform: translateY(-50%); color: var(--fg-alternative); font-size: 18px; }
-.post-page .tp-st .tp-word { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--tp-heat, var(--fg-strong)); color: #fff; }
-.post-page .tp-lbar { display: grid; grid-template-columns: 4.6em 1fr; gap: 6px; align-items: center; font-size: 12px; margin: 3px 0; }
-.post-page .tp-lbar i { display: block; height: 8px; border-radius: 99px; background: var(--tp-heat, var(--fg-strong)); transition: width 0.25s; }
-.post-page .tp-loop-back { margin-top: 10px; height: 26px; border: 2px dashed var(--line-strong); border-top: 0; border-radius: 0 0 14px 14px; margin-left: 12%; margin-right: 12%; position: relative; }
-.post-page .tp-loop-back span { position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); background: var(--bg-base); padding: 0 8px; font-size: 12px; color: var(--fg-alternative); white-space: nowrap; }
-.post-page .tp-loop-ctl { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
-/* softmax 세 단계 */
-.post-page .tp-sm { margin: 32px 0 8px; padding: 0; }
+/* 02 softmax 세 단계 */
 .post-page .tp-sm-head, .post-page .tp-sm-row { display: grid; grid-template-columns: 4.6em 1fr 1fr; gap: 14px; align-items: center; }
-.post-page .tp-sm-head { font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .tp-sm-head { font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); margin-bottom: 8px; }
 .post-page .tp-sm-row { margin: 8px 0; font-size: 14px; }
 .post-page .tp-sm-row > span:first-child { font-weight: 600; color: var(--fg-strong); }
 .post-page .tp-sm-cell { display: grid; grid-template-columns: 1fr 3.4em; gap: 8px; align-items: center; }
-.post-page .tp-sm-cell i { display: block; height: 14px; border-radius: 3px; background: var(--fg-strong); transition: width 0.2s; }
+.post-page .tp-sm-cell i { display: block; height: 14px; border-radius: 3px; background: var(--fg-strong); }
 .post-page .tp-sm-cell em { font-style: normal; font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--fg-neutral); }
-.post-page .tp-sm-pie { display: flex; height: 34px; border-radius: var(--radius-sm); overflow: hidden; }
-.post-page .tp-sm-pie span { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; transition: width 0.2s; }
-.post-page .tp-sm-ctl { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 14px; }
-.post-page .tp-sm-ctl input { flex: 1; accent-color: var(--fg-strong); min-width: 0; }
-.post-page .tp-sm-ctl output { font-family: var(--font-mono); color: var(--fg-strong); min-width: 3em; }
-/* 곁가지 접기 — 상자 없이 글줄 하나. 펼치면 왼쪽 선만 (POSTING 5-6) */
+.post-page .tp-sm-pie { display: flex; height: 34px; border-radius: var(--radius-sm); overflow: hidden; gap: 2px; }
+.post-page .tp-sm-pie span { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--bg-base); white-space: nowrap; overflow: hidden; background: var(--fg-strong); }
+
+/* 03 식에 직접 메모 + 온도 세 장 */
+.post-page .tp-eq { font-family: var(--font-mono); font-size: clamp(24px, 3.4vw, 36px); color: var(--fg-strong); line-height: 1.3; }
+.post-page .tp-eq mark { background: none; color: var(--tp-pen); font-weight: 700; border-bottom: 3px solid var(--tp-pen); padding: 0 2px; }
+.post-page .tp-eq-memo { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; padding-left: 5.4em; }
+.post-page .tp-eq-memo::before { content: "↑"; color: var(--tp-pen); font-weight: 700; font-size: 18px; line-height: 1.3; }
+.post-page .tp-eq-memo p.tp-pen { margin: 0; }
+.post-page .tp-nl { position: relative; height: 70px; margin: 6px 10px 16px; }
+.post-page .tp-nl .nm { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--fg-strong); white-space: nowrap; }
+.post-page .tp-nl::before { content: ""; position: absolute; left: 0; right: 0; top: 38px; border-top: 1px solid var(--line-strong); }
+.post-page .tp-nl .d { position: absolute; top: 32px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 50%; background: var(--fg-strong); }
+.post-page .tp-nl .d.r2 { opacity: 0.7; } .post-page .tp-nl .d.r3 { opacity: 0.5; }
+.post-page .tp-nl .gap { position: absolute; top: 50px; height: 3px; background: var(--tp-pen); border-radius: 2px; }
+.post-page .tp-nl .tk { position: absolute; top: 56px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
+.post-page .tp-nl-lbl { font-size: 12px; color: var(--fg-alternative); }
+.post-page .tp-pb { display: grid; grid-template-columns: 4.4em minmax(0, 1fr) 3.6em; gap: 8px; align-items: center; font-size: 13px; margin: 5px 0; }
+.post-page .tp-pb > span:first-child { color: var(--fg-strong); font-weight: 600; }
+.post-page .tp-pb i { display: block; height: 14px; border-radius: 3px; background: var(--c); }
+.post-page .tp-pb em { font-style: normal; font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--fg-neutral); }
+.post-page .tp-callout { margin: 28px 0 24px; padding: 20px 22px; background: var(--bg-subtle); border-radius: var(--radius-sm); }
+.post-page .tp-callout p:last-child { margin-bottom: 0; }
+
+/* 04 100번 뽑기 — 세 온도를 나란히 */
+.post-page .tp-run { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.post-page .tp-btn { font: inherit; font-weight: 600; font-size: 15px; padding: 10px 18px; border-radius: var(--radius-sm); border: 0; background: var(--fg-strong); color: var(--bg-base); cursor: pointer; }
+.post-page .tp-crow { display: grid; grid-template-columns: 4.4em minmax(0, 1fr) 2em; gap: 8px; align-items: center; font-size: 13px; margin: 3px 0; min-height: 14px; }
+.post-page .tp-crow > span:first-child { color: var(--fg-strong); }
+.post-page .tp-crow em { font-style: normal; font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--fg-neutral); }
+.post-page .tp-chips { display: flex; flex-wrap: wrap; gap: 2px; }
+.post-page .tp-chip { width: 7px; height: 7px; border-radius: 1.5px; background: var(--c); }
+.post-page .tp-crow.zero { color: var(--fg-alternative); }
+.post-page .tp-crow.zero > span:first-child { color: var(--fg-alternative); }
+
+/* 05 볼츠만 — 세 온도의 입자 층 */
+.post-page .tp-formula { font-family: var(--font-mono); font-size: clamp(15px, 1.8vw, 18px); line-height: 2; color: var(--fg-strong); margin: 24px 0; }
+.post-page .tp-formula span { color: var(--fg-alternative); font-size: 0.8em; display: block; line-height: 1.6; }
+.post-page .tp-formula div + div { margin-top: 12px; }
+.post-page .tp-lv { width: 100%; height: auto; display: block; overflow: visible; }
+.post-page .tp-lv text { font-family: var(--font-mono); font-size: 13px; fill: var(--fg-alternative); }
+.post-page .tp-lv line { stroke: var(--line-strong); }
+
+/* 06 top-p — 같은 p = 0.9 를 세 온도에 */
+.post-page .tp-tps { display: grid; gap: 22px; }
+.post-page .tp-tp { display: grid; grid-template-columns: 96px minmax(0, 1fr) 132px; gap: 14px; align-items: center; }
+.post-page .tp-tp > b { font-family: var(--font-mono); font-size: 15px; color: var(--c); }
+.post-page .tp-tp > span:last-child { font-size: 14px; color: var(--fg-neutral); }
+.post-page .tp-tp > span:last-child b { font-family: var(--font-mono); }
+.post-page .tp-stack { position: relative; display: flex; height: 44px; border-radius: var(--radius-sm); overflow: visible; background: var(--bg-subtle); }
+.post-page .tp-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--bg-base); white-space: nowrap; overflow: hidden; border-right: 1px solid var(--bg-base); }
+.post-page .tp-seg:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.post-page .tp-seg.is-cut { background: repeating-linear-gradient(135deg, var(--line-strong) 0 2px, transparent 2px 6px) !important; color: transparent; }
+.post-page .tp-cut { position: absolute; top: -7px; bottom: -7px; width: 3px; margin-left: -1.5px; background: var(--tp-pen); border-radius: 2px; }
+.post-page .tp-p90 { position: absolute; top: -10px; bottom: -10px; left: 90%; width: 0; }
+.post-page .tp-p90::before, .post-page .tp-p90::after { content: ""; position: absolute; left: -1px; height: 10px; border-left: 2px dashed var(--fg-strong); }
+.post-page .tp-p90::before { top: 0; } .post-page .tp-p90::after { bottom: 0; }
+.post-page .tp-p90 small { position: absolute; bottom: 100%; left: -2px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 11px; color: var(--fg-strong); white-space: nowrap; margin-bottom: 2px; }
+.post-page .tp-tps { padding-top: 30px; }
+
+/* 07 스펙트럼 */
+.post-page .tp-uses { margin: 28px 14px 10px 0; display: grid; gap: 8px; }
+.post-page .tp-use-track .cap { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--fg-alternative); }
+.post-page .tp-use { display: grid; grid-template-columns: 7.5em 1fr; gap: 12px; align-items: center; font-size: 14px; color: var(--fg-strong); }
+.post-page .tp-use-track { position: relative; height: 22px; border-radius: 4px; background: var(--bg-subtle); display: block; }
+.post-page .tp-use-track b { position: absolute; top: 0; bottom: 0; border-radius: 4px; background-image: linear-gradient(90deg, var(--tp-cold), var(--fg-alternative) 50%, var(--tp-hot)); background-repeat: no-repeat; opacity: 0.9; }
+.post-page .tp-use-axis .tp-use-track { background: none; height: 18px; }
+.post-page .tp-use-axis i { position: absolute; transform: translateX(-50%); font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-alternative); }
+
+/* 곁가지 접기 — 상자 없이 글줄 하나 (POSTING 5-6) */
 .post-page details.tp-more { margin: 6px 0 18px; padding: 0; border: 0; background: none; }
 .post-page details.tp-more summary { cursor: pointer; list-style: none; display: inline-flex; gap: 8px; align-items: baseline; font-size: 14px; font-weight: 600; color: var(--fg-alternative); }
 .post-page details.tp-more summary::-webkit-details-marker { display: none; }
 .post-page details.tp-more summary::before { content: "+"; font-family: var(--font-mono); font-weight: 700; color: var(--fg-alternative); }
 .post-page details.tp-more summary:hover { color: var(--fg-strong); }
 .post-page details.tp-more[open] summary::before { content: "−"; }
-.post-page details.tp-more[open] > :not(summary) { padding-left: 0; }
 .post-page details.tp-more p { margin-top: 12px; }
 .post-page details.tp-more p:last-child { margin-bottom: 0; }
-.post-page .tp-callout { margin: 28px 0 24px; padding: 20px 22px; background: var(--bg-subtle); border-radius: var(--radius-sm); }
-.post-page .tp-callout p:last-child { margin-bottom: 0; }
 .post-page .tp-refs { font-size: 15px; padding-left: 1.2em; }
 .post-page .tp-refs li { margin: 8px 0; line-height: 1.6; }
 .post-page .tp-refs a { color: var(--fg-strong); text-underline-offset: 3px; }
 
-.post-page .tp-reveal { animation: pg-tp-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
-@keyframes pg-tp-rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
-
-@media (max-width: 960px) {
-  .post-page .tp-hero-grid { grid-template-columns: 1fr; }
-  .post-page .tp-body { grid-template-columns: 1fr; gap: 0; }
-  .post-page .tp-side { order: -1; position: sticky; top: 56px; z-index: 5; margin: 0 -20px; }
-  .post-page .tp-dial { position: static; border-radius: 0; border-left: 0; border-right: 0; padding: 10px 20px 12px; box-shadow: var(--shadow-2); display: grid; grid-template-columns: auto 1fr; gap: 0 14px; align-items: center; }
-  .post-page .tp-dial-label { grid-column: 1 / -1; }
-  .post-page .tp-dial-val { font-size: 28px; margin: 2px 0; }
-  .post-page .tp-dial-word, .post-page .tp-ticks, .post-page .tp-presets, .post-page .tp-mini { display: none; }
-  .post-page .tp-phys { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .post-page .tp-hero-grid, .post-page .tp-split { grid-template-columns: 1fr; }
+  .post-page .tp-split > div:first-child:empty { display: none; }
+  .post-page .tp-three { grid-template-columns: 1fr; gap: 26px; }
+  .post-page .tp-three > div + div::before { display: none; }
+  .post-page .tp-three > div + div { border-top: 1px solid var(--line-normal); padding-top: 22px; }
+  .post-page .tp-g { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .post-page .tp-loop-grid { grid-template-columns: 1fr 1fr; gap: 26px 22px; }
-  .post-page .tp-loop-grid .tp-st:nth-child(3) { order: 4; }
-  .post-page .tp-loop-grid .tp-st:nth-child(4) { order: 3; }
-  .post-page .tp-st:not(:last-child)::after { display: none; }
-  .post-page .tp-loop-back { display: none; }
-  .post-page .tp-sm { padding: 14px; }
-  .post-page .tp-sm-head, .post-page .tp-sm-row { grid-template-columns: 4.2em 1fr 1fr; gap: 8px; }
   .post-page .tp-wrap { padding: 0 20px; }
-  .post-page .tp-line text, .post-page .tp-line .lbl { font-size: 20px; }
   .post-page .tp p { font-size: 16px; }
   .post-page .tp-bar { grid-template-columns: 4.6em 1fr 3.6em; gap: 8px; }
-  .post-page .tp-pipe { flex-direction: column; }
-  .post-page .tp-pipe div + div { border-left: 1px solid var(--line-normal); border-top: 0; }
-  .post-page .tp-pipe div:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-  .post-page .tp-pipe div:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
-  .post-page .tp-bins { gap: 3px; }
-  .post-page .tp-chip { width: 6px; height: 6px; }
-  .post-page .tp-binlbl { gap: 3px; font-size: 10px; }
-  .post-page .tp-spec-mark { width: 6.5em; font-size: 12px; }
-  .post-page .tp-table { font-size: 13px; }
-  .post-page .tp-table th, .post-page .tp-table td { padding: 8px 4px; }
+  .post-page .tp-sm-head, .post-page .tp-sm-row { grid-template-columns: 4.2em 1fr 1fr; gap: 8px; }
+  .post-page .tp-eq-memo { padding-left: 3.6em; }
+  .post-page .tp-tp { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .post-page .tp-seg { font-size: 10px; }
+  .post-page .tp-seg.sm { font-size: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .post-page .tp *, .post-page .tp *::before { animation: none !important; transition: none !important; }
@@ -220,180 +190,229 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   <header class="tp-hero">
     <div class="tp-wrap tp-hero-grid">
       <div>
-      <div class="tp-eyebrow">AI Shift Track · LLM Foundation</div>
-      <h1>온도를 올리면 AI는 왜 엉뚱한 말을 할까요</h1>
-      <p class="tp-lede">같은 질문을 두 번 했는데 답이 다르게 나온 적이 있을 겁니다. 그 차이를 만드는 손잡이 중 하나가 <b>temperature</b>입니다. 이 손잡이를 돌려도 모델이 아는 것은 그대로입니다. 다음 단어 후보의 점수 <b>간격</b>을 늘이거나 줄일 뿐입니다.</p>
-      <div class="tp-sentence" aria-live="polite">오늘 점심은 <span class="tp-blank" data-tp-blank>김치찌개</span></div>
-      <p class="tp-hint">오른쪽(모바일은 위쪽) 온도계를 움직이면 이 페이지의 모든 그림이 함께 바뀝니다.</p>
+        <div class="tp-eyebrow">AI Shift Track · LLM Foundation</div>
+        <h1>온도를 올리면 AI는 왜 엉뚱한 말을 할까요</h1>
+        <p class="tp-lede">같은 질문을 두 번 했는데 답이 다르게 나온 적이 있을 겁니다. 그 차이를 만드는 손잡이 중 하나가 <b>temperature</b>입니다. 이 손잡이를 돌려도 모델이 아는 것은 그대로입니다. 다음 단어 후보의 점수 <b>간격</b>을 늘이거나 줄일 뿐입니다.</p>
       </div>
-      <div>
-        <div class="tp-bars" data-figure data-thumb data-thumb-act="const t = el.closest('[data-tp]'); const r = t.querySelector('[data-tp-range]'); r.value = 0.6; r.dispatchEvent(new Event('input')); t.querySelector('.tp-hero').style.setProperty('--tp-glow', 'transparent');" data-tp-bars role="img" aria-label="다음 단어 후보 8개의 확률 막대그래프"></div>
-        <p class="tp-sim-note" style="margin-top:12px">"오늘 점심은" 다음 단어의 확률표. 후보와 점수는 설명을 위해 정한 예시 값입니다.</p>
+      <div data-figure data-thumb data-thumb-act="const r = el.querySelector('[data-tp-range]'); r.value = 0.6; r.dispatchEvent(new Event('input')); el.closest('.tp-hero').style.setProperty('--tp-glow', 'transparent');">
+        <div class="tp-sentence" aria-live="polite">오늘 점심은 <span class="tp-blank" data-tp-blank>김치찌개</span></div>
+        <div class="tp-bars" data-tp-bars role="img" aria-label="다음 단어 후보 8개의 확률 막대그래프"></div>
+        <div class="tp-dial">
+          <label class="tp-dial-head" for="tp-t">온도계 temperature <output data-tp-val>1.00</output><span data-tp-mood>보통</span></label>
+          <input id="tp-t" class="tp-range" type="range" min="0" max="2" step="0.01" value="1" data-tp-range>
+          <div class="tp-ticks"><span>0 · 늘 1등</span><span>1</span><span>2 · 고르게</span></div>
+        </div>
+        <p class="tp-note">"오늘 점심은" 다음 단어의 확률표입니다. 온도계를 움직이면 막대와 빈칸의 단어가 바뀝니다. 후보와 점수는 설명을 위해 정한 예시 값입니다.</p>
       </div>
     </div>
   </header>
 
-  <div class="tp-wrap tp-body">
-    <div class="tp-main">
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">01</span>
         <h2>모델은 단어를 고르기 전에 확률표부터 만듭니다</h2>
+      </div>
+      <div>
         <p>휴대폰 키보드로 "오늘 점심은"까지 치면 자판 위에 다음 단어 후보가 몇 개 뜹니다. 평소 자주 쓴 말일수록 앞에 나옵니다. LLM이 글을 쓰는 방식도 이 자동완성과 비슷합니다. 앞에 나온 글을 보고 다음에 올 말을 하나 고르고 그 말을 붙인 뒤 다시 다음 말을 고르기를 반복합니다.</p>
         <p>모델이 한 번에 고르는 단위는 <b>토큰(token)</b>입니다. 토큰은 모델이 글을 읽고 쓰는 단위로, 단어 하나일 때도 있고 단어보다 작은 조각일 때도 있습니다. 이 글에서는 설명을 쉽게 하려고 토큰 하나를 단어 하나로 보겠습니다.</p>
-        <div class="tp-loop" data-figure data-tp-loop role="img" aria-label="문장을 보고 확률표를 만들고 한 단어를 뽑아 붙인 뒤 다시 처음으로 돌아가는 네 단계 고리">
-          <div class="tp-loop-grid">
-            <div class="tp-st" data-st="0"><small>1 · 지금까지의 문장</small><b class="big" data-tp-sent>오늘 점심은</b></div>
-            <div class="tp-st" data-st="1"><small>2 · 모델</small><b class="big">후보마다 점수를 매긴다</b></div>
-            <div class="tp-st" data-st="2"><small>3 · 확률표</small><div data-tp-lbars></div></div>
-            <div class="tp-st" data-st="3"><small>4 · 하나 뽑기</small><b class="big" data-tp-picked>…</b></div>
-          </div>
-          <div class="tp-loop-back"><span>뽑은 단어를 문장 끝에 붙이고 1로 돌아간다</span></div>
-          <div class="tp-loop-ctl">
-            <button class="tp-btn" type="button" data-tp-step>한 바퀴 돌리기</button>
-            <span class="tp-sim-note" data-tp-stepnote>누를 때마다 단어가 하나씩 붙습니다. 후보와 점수는 예시 값입니다.</span>
-          </div>
-        </div>
+        <div class="tp-fig tp-grow" data-figure data-tp-grow role="img" aria-label="문장이 한 단어씩 자라고, 단어를 붙일 때마다 그 자리의 확률표에서 하나를 뽑는 세 줄"></div>
+        <p class="tp-note">한 단어를 붙일 때마다 확률표를 새로 만들고 하나를 뽑습니다. 후보와 점수는 예시 값이고 온도는 1입니다.</p>
         <p>다음 토큰을 고르기 전에 모델은 후보마다 <b>확률</b>을 매깁니다. 확률은 어떤 일이 일어날 가능성을 0에서 1 사이 숫자로 나타낸 값이고 퍼센트로 쓰면 0%에서 100%입니다. 모든 후보의 확률을 더하면 정확히 1이 됩니다. 맨 위 막대그래프가 "오늘 점심은" 다음 단어의 확률표입니다.</p>
         <p>자동완성 비유와 다른 부분도 있습니다. 키보드는 후보를 서너 개만 보여 주지만 모델은 자기가 아는 토큰 전부에 확률을 매깁니다. GPT-2만 해도 토큰 종류가 50,257개였습니다. 그림에는 설명을 위해 여덟 개만 남겼습니다.</p>
-        <p>온도계를 낮추면 1등이 확률을 거의 다 가져가고 올리면 꼴찌 후보까지 확률이 고르게 퍼집니다. 빈칸의 단어도 이 표에서 계속 새로 뽑힙니다. 그럼 확률표의 숫자는 어디서 나올까요?</p>
-      </section>
+        <p>맨 위 온도계를 낮추면 1등이 확률을 거의 다 가져가고 올리면 꼴찌 후보까지 확률이 고르게 퍼집니다. 그럼 확률표의 숫자는 어디서 나올까요?</p>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">02</span>
         <h2>모델은 확률보다 점수를 먼저 내놓습니다</h2>
+      </div>
+      <div>
         <p>모델이 처음 계산하는 값은 후보마다 붙은 점수입니다. 이 점수를 <b>로짓(logit)</b>이라고 부릅니다. 로짓이 클수록 그 후보가 다음에 올 만하다는 뜻입니다. 다만 로짓은 음수가 될 수도 있고 다 더해도 1이 되지 않습니다.</p>
         <p>그래서 점수를 확률로 바꾸는 단계가 필요합니다. 피자 한 판을 점수에 따라 나눠 갖는 장면과 비슷합니다. 점수가 높은 후보일수록 큰 조각을 받고 조각을 모두 합치면 늘 한 판입니다. 여기서 피자 한 판이 확률 1, 곧 100%에 해당합니다.</p>
         <p>이 일을 하는 함수가 <b>softmax</b>입니다. softmax는 점수 z마다 e<sup>z</sup>를 계산한 뒤 그 값들을 모두 더한 합으로 나눠 비율을 구합니다. e는 약 2.718인 수학 상수이고 e<sup>z</sup>는 z가 1 커질 때마다 약 2.7배씩 커지는 거듭제곱입니다.</p>
-        <p>후보가 김치찌개(3.1), 짜장면(2.6), 라면(2.2) 세 개뿐이라고 해 보겠습니다. 아래 그림이 이 셋으로 softmax를 계산한 과정입니다. 김치찌개 점수를 움직여 보세요.</p>
-        <div class="tp-sm" data-figure data-tp-sm role="img" aria-label="세 후보의 점수, e의 거듭제곱 값, 확률을 나란히 그린 막대">
-          <div class="tp-sm-head"><span></span><span>① 점수 z</span><span>② e<sup>z</sup></span></div>
+        <p>후보가 김치찌개(3.1), 짜장면(2.6), 라면(2.2) 세 개뿐이라고 해 보겠습니다. 아래 그림이 이 셋으로 softmax를 계산한 과정입니다.</p>
+        <div class="tp-fig" data-figure data-tp-sm role="img" aria-label="세 후보의 점수, e의 거듭제곱 값, 확률을 나란히 그린 막대">
+          <div class="tp-sm-head"><span></span><span>① 점수 z</span><span>② e<sup>z</sup> (e의 z제곱)</span></div>
           <div data-tp-smrows></div>
           <div class="tp-sm-head" style="margin-top:14px"><span></span><span style="grid-column: 2 / -1">③ e<sup>z</sup>를 합으로 나눈 확률 (전체 = 100%)</span></div>
           <div class="tp-sm-pie" data-tp-smpie></div>
-          <label class="tp-sm-ctl">김치찌개 점수<input type="range" min="0" max="5" step="0.1" value="3.1" data-tp-smz><output data-tp-smzout>3.1</output></label>
         </div>
         <p>거듭제곱을 쓰는 이유는 두 가지입니다. 첫째, e<sup>z</sup>는 z가 음수여도 늘 양수라서 확률이 음수로 나오지 않습니다. "우주식량"의 점수 −1.5도 e<sup>−1.5</sup> ≈ 0.22로 바뀝니다. 둘째, 두 후보의 확률 비율은 점수 차이만으로 정해집니다. 점수 차이가 1이면 확률은 약 2.7배, 2면 약 7.4배 차이가 납니다.</p>
         <p>피자 비유와 맞지 않는 부분은 나누는 방식입니다. 피자라면 점수에 비례해 자르면 되지만 softmax는 점수 차이를 거듭제곱으로 키워서 나눕니다. 점수가 2배라고 확률이 2배가 되지는 않습니다.</p>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">03</span>
         <h2>온도는 점수를 나누는 숫자 하나입니다</h2>
-        <p>온도 <code>T</code>는 softmax에 넣기 직전에 모든 점수를 나누는 숫자입니다. 계산 순서는 아래와 같습니다.</p>
-        <div class="tp-pipe" data-figure>
-          <div>로짓<small>z = 3.1, 2.6, …</small></div>
-          <div class="is-key">온도로 나누기<small>z / T</small></div>
-          <div>softmax<small>e<sup>z/T</sup> / Σ e<sup>z/T</sup></small></div>
-          <div>확률표에서 뽑기<small>sample</small></div>
+      </div>
+      <div>
+        <p>온도 <code>T</code>는 softmax에 넣기 직전에 모든 점수를 나누는 숫자입니다. 식으로 쓰면 아래 한 줄입니다.</p>
+        <div class="tp-fig" data-figure>
+          <div class="tp-eq">확률 = softmax( z <mark>/ T</mark> )</div>
+          <div class="tp-eq-memo"><p class="tp-pen">온도가 바꾸는 곳은 여기 한 곳뿐입니다. 점수를 모두 T로 나눕니다</p></div>
         </div>
         <p>사진 앱의 대비 조절과 비슷합니다. 대비를 올리면 밝은 곳은 더 밝게, 어두운 곳은 더 어둡게 바뀌어 차이가 커집니다. 내리면 사진 전체가 회색에 가까워집니다. 어느 쪽이든 밝기 순서는 그대로입니다.</p>
         <p>온도를 1보다 낮추면 대비를 올리는 쪽이고 1보다 높이면 대비를 내리는 쪽입니다. 점수를 T로 나누면 점수 사이 간격이 1/T배가 됩니다. T = 0.5면 간격이 2배로 벌어지고 T = 2면 절반으로 줄어듭니다. softmax는 점수 차이를 보고 확률을 나누므로 간격이 바뀌면 확률표 모양이 바뀝니다.</p>
-        <table class="tp-table">
-          <thead><tr><th>후보</th><th>점수 z</th><th>T = 0.5</th><th>T = 1</th><th>T = 2</th></tr></thead>
-          <tbody>
-            <tr><td>김치찌개</td><td>3.1</td><td>65.2%</td><td>49.7%</td><td>41.4%</td></tr>
-            <tr><td>짜장면</td><td>2.6</td><td>24.0%</td><td>30.1%</td><td>32.2%</td></tr>
-            <tr><td>라면</td><td>2.2</td><td>10.8%</td><td>20.2%</td><td>26.4%</td></tr>
-          </tbody>
-        </table>
-        <p class="tp-sim-note">후보가 세 개뿐이라고 가정하고 계산한 예시 값입니다.</p>
-        <p>세 열 모두 순위는 같고 1등이 얼마나 앞서느냐만 달라집니다. 아래 수직선 위쪽은 원래 점수, 아래쪽은 <code>T</code>로 나눈 점수입니다. 온도가 1보다 작으면 점들이 서로 멀어지고 1보다 크면 한곳으로 모입니다. 빨간 선이 1등과 2등 사이의 간격입니다.</p>
-        <svg class="tp-line" data-tp-line viewBox="0 0 640 230" role="img" aria-label="원래 로짓과 온도로 나눈 로짓을 비교하는 수직선"></svg>
+      </div>
+    </div>
+    <div class="tp-wrap tp-band">
+      <div class="tp-three" data-figure data-tp-temp3 role="img" aria-label="같은 세 후보를 온도 0.5, 1, 2로 나눈 점수와 확률을 나란히 그린 세 장"></div>
+      <p class="tp-note">후보가 세 개뿐이라고 가정하고 계산한 예시 값이라 맨 위 여덟 후보의 확률과는 다릅니다. 각 장 위쪽 가로줄에 놓인 점이 점수를 T로 나눈 값이고, 빨간 선은 1등과 2등 사이 간격입니다.</p>
+    </div>
+    <div class="tp-wrap tp-split">
+      <div></div>
+      <div>
+        <p>세 장 모두 순위는 같고 1등이 얼마나 앞서느냐만 달라집니다. 온도가 1보다 작으면 점들이 서로 멀어지고 1보다 크면 한곳으로 모입니다.</p>
         <div class="tp-callout">
-          <p>간격이 k배로 벌어지면 확률 비율은 원래 비율의 k거듭제곱이 됩니다. 1등과 2등의 점수 차가 0.5일 때 확률 비율은 e<sup>0.5</sup> ≈ 1.6배입니다. <code>T = 0.25</code>로 나누면 차이가 4배인 2.0이 되어 비율은 e<sup>2</sup> ≈ 7.4배로 벌어집니다. 순위는 그대로인데 1등이 훨씬 유리해집니다.</p>
+          <p>간격이 k배로 벌어지면 확률 비율은 원래 비율의 k거듭제곱이 됩니다. 1등과 2등의 점수 차가 0.5일 때 확률 비율은 e<sup>0.5</sup> ≈ 1.6배입니다. <code>T = 0.5</code>로 나누면 차이가 2배인 1.0이 되어 비율은 e<sup>1</sup> ≈ 2.7배로 벌어집니다. 위 그림 왼쪽 장의 65.2% 대 24.0%가 그 비율입니다. 순위는 그대로인데 1등이 훨씬 유리해집니다.</p>
         </div>
         <p>대비 비유와 다른 부분도 있습니다. 사진의 대비 조절은 화면의 밝기 값 자체를 바꾸지만 온도는 모델이 계산한 로짓을 바꾸지 않습니다. 확률로 바꾸는 단계에서만 간격을 조절합니다. 그래서 온도를 바꿔도 모델이 아는 것은 늘지도 줄지도 않습니다.</p>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">04</span>
         <h2>확률표에서 100번 뽑으면 어떻게 될까요</h2>
+      </div>
+      <div>
         <p>확률표가 정해져도 답은 아직 정해지지 않았습니다. 상자에 쪽지를 넣고 하나를 뽑는 제비뽑기를 떠올려 보세요. 온도가 1일 때 김치찌개 쪽지 37장, 짜장면 쪽지 23장처럼 확률만큼 쪽지를 넣고 눈을 감고 하나를 뽑는 것과 같습니다. 이렇게 확률에 따라 무작위로 하나를 고르는 일을 <b>샘플링(sampling)</b>이라고 부릅니다.</p>
-        <p>같은 질문에 다른 답이 나오는 이유가 여기 있습니다. 확률이 높은 후보가 자주 뽑힐 뿐, 매번 뽑히지는 않습니다. 온도를 정하고 100번 뽑아 보세요.</p>
-        <div class="tp-sim" data-figure>
-          <div class="tp-sim-head">
-            <button class="tp-btn" type="button" data-tp-run>100번 뽑기</button>
-            <span class="tp-sim-note" data-tp-runnote>현재 온도로 다음 단어를 100번 뽑습니다.</span>
-          </div>
-          <div class="tp-bins" data-tp-bins></div>
-          <div class="tp-binlbl" data-tp-binlbl></div>
-          <div class="tp-samples" data-tp-samples></div>
-        </div>
+        <p>같은 질문에 다른 답이 나오는 이유가 여기 있습니다. 확률이 높은 후보가 자주 뽑힐 뿐, 매번 뽑히지는 않습니다. 아래는 온도 세 가지로 100번씩 뽑을 때 단어마다 몇 번 나오는지 그린 것입니다.</p>
+      </div>
+    </div>
+    <div class="tp-wrap tp-band">
+      <div class="tp-three" data-figure data-tp-sim3 role="img" aria-label="온도 0.3, 1, 1.6으로 100번씩 뽑아 단어마다 나온 횟수를 네모로 쌓은 세 장"></div>
+      <p class="tp-note" data-tp-simnote>네모 하나가 한 번 뽑힌 것입니다. 처음 그림은 확률대로 나눈 평균 개수입니다.</p>
+      <div class="tp-run"><button class="tp-btn" type="button" data-tp-run>세 온도로 무작위로 100번씩 뽑기</button></div>
+    </div>
+    <div class="tp-wrap tp-split">
+      <div></div>
+      <div>
         <p>제비뽑기와 달리 쪽지는 줄지 않습니다. 모델은 한 번 뽑을 때마다 상자를 새로 채웁니다. 다음 토큰을 고를 때는 방금 뽑은 단어까지 붙은 문장을 보고 새 확률표를 만들어 다시 뽑습니다.</p>
         <p>온도가 0이면 매번 1등만 나옵니다. 이렇게 늘 1등만 고르는 방식을 <b>greedy decoding</b>이라고 부릅니다. 정답이 하나인 일에는 잘 맞지만 긴 글에서는 같은 말을 되풀이하기 쉽습니다. top-p를 제안한 논문도 greedy나 beam search(후보 문장 몇 개를 함께 이어 가며 확률이 가장 높은 문장을 고르는 방식)가 밋밋하거나 같은 말을 반복하는 글을 만든다고 보고했습니다.</p>
         <details class="tp-more">
-          <summary>온도 0이면 늘 같은 답일까요?</summary>
-          <p>이론상으로는 그렇지만 실제 서비스에서는 온도 0에서도 답이 조금씩 달라지곤 합니다. 원인은 덧셈 순서입니다.</p>
-          <p>화면에 8자리까지만 나오는 계산기가 있다고 해 보겠습니다. 10,000,000에 0.4를 한 번씩 열 번 더하면 매번 0.4가 버려져 10,000,000 그대로입니다. 0.4 열 개를 먼저 더해 4를 만든 뒤 더하면 10,000,004가 됩니다. 같은 수를 더했는데 순서만 바꿔서 결과가 달라졌습니다.</p>
-          <p>GPU가 쓰는 부동소수점도 표현할 수 있는 자릿수가 정해져 있어서 같은 일이 생깁니다. 서버는 여러 사용자의 요청을 묶어서 계산하는데, 묶음 크기에 따라 GPU 커널의 덧셈 순서가 바뀝니다. 그 미세한 차이로 1등과 2등이 뒤집힐 수 있습니다. 묶음 크기는 서버가 얼마나 붐비느냐에 따라 달라지므로 사용자 쪽에서는 통제할 수 없습니다.</p>
+        <summary>온도 0이면 늘 같은 답일까요?</summary>
+        <p>이론상으로는 그렇지만 실제 서비스에서는 온도 0에서도 답이 조금씩 달라지곤 합니다. 원인은 덧셈 순서입니다.</p>
+        <p>화면에 8자리까지만 나오는 계산기가 있다고 해 보겠습니다. 10,000,000에 0.4를 한 번씩 열 번 더하면 매번 0.4가 버려져 10,000,000 그대로입니다. 0.4 열 개를 먼저 더해 4를 만든 뒤 더하면 10,000,004가 됩니다. 같은 수를 더했는데 순서만 바꿔서 결과가 달라졌습니다.</p>
+        <p>GPU가 쓰는 부동소수점도 표현할 수 있는 자릿수가 정해져 있어서 같은 일이 생깁니다. 서버는 여러 사용자의 요청을 묶어서 계산하는데, 묶음 크기에 따라 GPU 커널의 덧셈 순서가 바뀝니다. 그 미세한 차이로 1등과 2등이 뒤집힐 수 있습니다. 묶음 크기는 서버가 얼마나 붐비느냐에 따라 달라지므로 사용자 쪽에서는 통제할 수 없습니다.</p>
         </details>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">05</span>
         <h2>이름이 왜 하필 온도일까요</h2>
+      </div>
+      <div>
         <p>물을 데우면 분자가 더 활발하게 움직인다는 건 과학 시간에 배우는 내용입니다. 물리학의 <b>볼츠만 분포</b>는 이 현상을 확률로 나타낸 식입니다. 입자가 에너지 E인 상태에 있을 확률은 e<sup>−E/kT</sup>에 비례합니다. 여기서 T는 온도이고 k는 볼츠만 상수라는 고정된 숫자입니다.</p>
         <p>차가우면 입자 대부분이 가장 낮은 에너지 층에 모여 있고 뜨거워지면 높은 층까지 올라가 흩어집니다. 아래 두 식을 비교하면 모양이 같습니다. LLM에서는 로짓이 높은 후보가 에너지가 낮은 층에 해당합니다. 로짓에 마이너스를 붙이면 에너지와 같은 역할을 하기 때문입니다.</p>
-        <p>그래서 차가운 모델, 곧 T가 작은 모델은 1등 후보에 몰리고 뜨거운 모델은 낮은 순위 후보까지 고르게 뽑습니다. 온도계를 움직여 입자가 층 사이를 오가는 모습을 보세요.</p>
-        <div class="tp-phys">
-          <canvas class="tp-canvas" data-tp-canvas aria-label="온도에 따라 에너지 층 사이를 오가는 입자 시뮬레이션" role="img"></canvas>
-          <div class="tp-formula">
-            <span>물리학 · 볼츠만 분포</span>p(상태) ∝ e<sup>−E / kT</sup>
-            <span style="margin-top:14px">LLM · softmax with temperature</span>p(단어) ∝ e<sup>z / T</sup>
-          </div>
+        <div class="tp-formula">
+          <div><span>물리학 · 볼츠만 분포</span>p(상태) ∝ e<sup>−E / kT</sup></div>
+          <div><span>LLM · softmax with temperature</span>p(단어) ∝ e<sup>z / T</sup></div>
+          <div><span>∝ 는 "비례한다"는 뜻입니다</span></div>
         </div>
+        <p>그래서 차가운 모델, 곧 T가 작은 모델은 1등 후보에 몰리고 뜨거운 모델은 낮은 순위 후보까지 고르게 뽑습니다. 아래 세 장은 같은 입자 70개를 세 온도에 놓고 층마다 몇 개씩 있는지 그렸습니다.</p>
+      </div>
+    </div>
+    <div class="tp-wrap tp-band">
+      <div class="tp-three" data-figure data-tp-lv3 role="img" aria-label="입자 70개가 온도 0.3, 1, 1.6에서 에너지 층 네 개에 나뉘어 있는 세 장"></div>
+      <p class="tp-note">E0~E3은 에너지 층이고 위로 갈수록 에너지가 높습니다. LLM에서는 맨 아래 E0이 점수 1등 후보에 해당합니다. 층의 높이는 예시 값이고, 층마다 입자 수는 볼츠만 분포로 계산했습니다.</p>
+    </div>
+    <div class="tp-wrap tp-split">
+      <div></div>
+      <div>
         <p>다만 LLM의 온도는 이름과 식의 모양만 빌려 왔습니다. 계산할 때 열이 나는 것도 아니고 단위도 없습니다. T는 점수를 나누는 숫자이므로 "몇 도"처럼 물리적인 뜻은 없습니다.</p>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">06</span>
         <h2>top-p는 확률표의 꼬리를 잘라냅니다</h2>
+      </div>
+      <div>
         <p>온도를 올리면 답이 다양해지지만 "우주식량" 같은 엉뚱한 후보에도 확률이 생깁니다. 후보 하나하나의 확률은 낮아도 이런 후보가 수만 개 모이면 그중 하나가 뽑힐 가능성은 꽤 커집니다. 문장 중간에 엉뚱한 단어가 하나 끼면 그 뒤 문장도 그 단어를 따라 흐트러집니다.</p>
         <p>학급 회장 선거로 비유해 보겠습니다. 득표가 많은 순서로 후보를 줄 세우고 득표율을 위에서부터 더해 90%가 되면 거기까지만 결선에 올립니다. 결선에 오른 후보끼리 다시 투표해 한 명을 뽑습니다.</p>
         <p><b>top-p</b>(nucleus sampling)가 이 방식입니다. 확률이 높은 순서로 후보를 쌓다가 누적 확률이 p를 넘는 순간 나머지를 버립니다. 누적 확률은 위에서부터 차례로 더한 확률을 말합니다. 남은 후보끼리 확률을 다시 나눠 가진 다음 뽑습니다.</p>
         <p>예시 값으로 계산해 보겠습니다. T = 1일 때 확률은 김치찌개 37.2%, 짜장면 22.6%, 라면 15.1%, 제육볶음 11.2%, 샐러드 6.2% 순입니다. 위에서부터 더하면 샐러드까지 92.3%라서 p = 0.9이면 다섯 개가 남습니다. 같은 p라도 T = 0.3이면 두 개, T = 1.6이면 여섯 개가 남습니다.</p>
-        <div class="tp-stack" data-figure data-tp-stack role="img" aria-label="누적 확률 막대와 top-p 절단선"><span class="tp-cut" data-tp-cut></span></div>
-        <div class="tp-pctrl">
-          <label for="tp-p">top-p</label>
-          <input id="tp-p" type="range" min="0.1" max="1" step="0.01" value="0.9" data-tp-p>
-          <output data-tp-pout>0.90</output>
-        </div>
-        <p class="tp-kept" data-tp-kept></p>
+      </div>
+    </div>
+    <div class="tp-wrap tp-band">
+      <div class="tp-tps" data-figure data-tp-tp3 role="img" aria-label="온도 0.3, 1, 1.6의 확률을 한 줄로 쌓고 누적 90% 점선을 넘는 후보 끝에 빨간 선을 그은 세 줄"></div>
+      <p class="tp-note">세 줄 모두 p = 0.9입니다. 점선이 누적 90% 자리이고, 점선을 넘긴 후보까지 남긴 뒤 빨간 선에서 자릅니다. 빗금 친 후보는 버려지고, 버려진 확률은 남은 후보끼리 다시 나눠 가집니다.</p>
+    </div>
+    <div class="tp-wrap tp-split">
+      <div></div>
+      <div>
         <p>선거 비유와 다른 부분은 결선 후보 수가 매번 바뀐다는 점입니다. 모델은 토큰 하나를 고를 때마다 새 확률표를 만듭니다. 1등이 압도적인 순간에는 한두 개만 남고 비슷한 후보가 많은 순간에는 여러 개가 남습니다. 온도로 분포 모양을 먼저 정한 뒤 top-p로 꼬리를 자릅니다.</p>
         <p>top-k는 같은 일을 개수로 합니다. 상위 k개만 남기는 식입니다. 다만 분포가 뾰족할 때와 평평할 때 알맞은 k가 다르다는 약점이 있어서 누적 확률로 자르는 top-p를 더 널리 씁니다.</p>
         <p>최근에는 <b>min-p</b>도 오픈소스 추론 엔진에서 많이 씁니다. min-p는 1등 확률에 비례하는 기준선을 정하고 그보다 낮은 후보를 버립니다. min-p = 0.1이고 1등 확률이 37.2%이면 기준선은 3.72%입니다. 위 예시라면 마라탕(2.8%)과 우주식량(0.4%)이 빠집니다.</p>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section>
+  <section class="tp-sec">
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">07</span>
         <h2>그럼 온도는 몇으로 두면 될까요</h2>
+      </div>
+      <div>
         <p>수학 시험 답안과 글짓기 대회를 떠올리면 기준을 정하기 쉽습니다. 수학 답안은 맞는 답이 하나라서 매번 같은 답을 써야 합니다. 글짓기는 남과 다른 표현이 좋은 점수를 받습니다. 답이 하나로 정해진 일은 온도를 낮게, 여러 갈래가 반가운 일은 높게 둡니다.</p>
-        <div class="tp-uses" data-figure data-tp-spec>
+        <div class="tp-uses" data-figure>
           <div class="tp-use"><span>정보 추출·분류</span><span class="tp-use-track"><b style="left:0%;width:10%"></b></span></div>
           <div class="tp-use"><span>코드 작성</span><span class="tp-use-track"><b style="left:0%;width:15%"></b></span></div>
           <div class="tp-use"><span>일반 대화</span><span class="tp-use-track"><b style="left:35%;width:15%"></b></span></div>
           <div class="tp-use"><span>글 초안·변형</span><span class="tp-use-track"><b style="left:40%;width:20%"></b></span></div>
           <div class="tp-use"><span>아이디어 발산</span><span class="tp-use-track"><b style="left:50%;width:15%"></b></span></div>
-          <div class="tp-use tp-use-axis"><span></span><span class="tp-use-track"><i style="left:0">0</i><i style="left:50%">1</i><i style="left:100%">2</i><em data-tp-now></em></span></div>
+          <div class="tp-use tp-use-axis"><span></span><span class="tp-use-track"><i style="left:0">0</i><i style="left:50%">1</i><i style="left:100%">2</i></span></div>
         </div>
-        <p class="tp-sim-note">범위는 흔히 쓰는 출발점이며 모델과 API에 따라 다릅니다. 세로선은 지금 온도계 위치입니다.</p>
+        <p class="tp-note">범위는 흔히 쓰는 출발점이며 모델과 API에 따라 다릅니다. Claude API는 1까지만 받습니다.</p>
         <p>코드 작성을 낮게 두는 이유는 함수 이름 하나만 엉뚱하게 뽑혀도 프로그램이 실행되지 않기 때문입니다. 정보 추출과 분류도 정해진 형식에 맞는 답이 하나뿐이라 낮게 둡니다. 아이디어 발산은 낮은 순위 후보가 가끔 뽑혀야 평소와 다른 결과가 나오므로 높게 둡니다.</p>
         <p>글짓기 비유와 맞지 않는 부분도 있습니다. 글짓기를 잘하는 학생은 새로운 생각을 떠올리지만 온도를 올린 모델은 새 지식을 만들지 않습니다. 원래 덜 뽑히던 후보가 더 자주 뽑힐 뿐이라 너무 높이면 창의적인 글 대신 앞뒤가 맞지 않는 글이 나옵니다.</p>
         <p>실제로 쓸 때는 세 가지를 함께 기억하면 좋습니다. 첫째, 허용 범위는 API마다 다릅니다. Claude API는 0부터 1까지 받고 기본값은 1입니다. 같은 숫자라도 API 문서부터 확인합니다.</p>
         <p>둘째, 최근 모델은 온도를 직접 바꾸지 못하게 막아 둔 경우가 늘고 있습니다. OpenAI의 GPT-5 같은 추론 모델은 기본값 1 외의 값을 넣으면 오류가 납니다. Claude API도 Claude Opus 4.7부터 나온 모델은 temperature·top_p·top_k를 기본값이 아닌 값으로 보내면 오류를 돌려줍니다.</p>
         <p>셋째, 온도와 top-p를 동시에 크게 바꾸면 어느 쪽 효과인지 가려내기 어렵습니다. 보통은 하나만 조절합니다.</p>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section data-text-only>
+  <section class="tp-sec" data-text-only>
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">08</span>
         <h2>정리하면</h2>
+      </div>
+      <div>
         <p>모델은 다음 토큰 후보마다 로짓이라는 점수를 매기고 softmax로 확률표를 만들어 그중 하나를 뽑습니다. 온도는 softmax 직전에 점수를 <code>T</code>로 나눠 간격을 넓히거나 좁히는 숫자입니다. 그래서 순위와 모델의 지식은 그대로이고 확률표의 모양만 뾰족해지거나 평평해집니다.</p>
-        <p>실제 단어는 그 확률표에서 무작위로 뽑습니다. top-p와 top-k, min-p는 뽑기 전에 꼬리를 잘라 엉뚱한 후보를 걸러 냅니다. Self-Attention에서 점수를 <code>√d</code>로 나누는 것도 같은 원리로 확률 분포가 얼마나 뾰족할지 조절합니다.</p>
-      </section>
+        <p>실제 단어는 그 확률표에서 무작위로 뽑습니다. top-p와 top-k, min-p는 뽑기 전에 꼬리를 잘라 엉뚱한 후보를 걸러 냅니다. <a href="/posts/self-attention-qkv">Self-Attention</a>에서 점수를 <code>√d</code>로 나누는 것도 같은 원리로 확률 분포가 얼마나 뾰족할지 조절합니다.</p>
+      </div>
+    </div>
+  </section>
 
-      <section data-text-only>
+  <section class="tp-sec" data-text-only>
+    <div class="tp-wrap tp-split">
+      <div>
         <span class="tp-num">참고</span>
         <h2>참고 자료</h2>
+      </div>
+      <div>
         <ul class="tp-refs" data-tp-refs>
           <li><a href="https://arxiv.org/abs/1904.09751" target="_blank" rel="noopener">Holtzman et al., The Curious Case of Neural Text Degeneration (top-p 제안 논문)</a></li>
           <li><a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer: 온도 슬라이더로 다음 토큰 확률을 보는 인터랙티브 도구</a></li>
@@ -405,28 +424,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <li><a href="https://community.openai.com/t/temperature-in-gpt-5-models/1337133" target="_blank" rel="noopener">OpenAI Community, Temperature in GPT-5 models</a></li>
           <li><a href="https://en.wikipedia.org/wiki/Boltzmann_distribution" target="_blank" rel="noopener">Boltzmann distribution</a></li>
         </ul>
-      </section>
-    </div>
-
-    <aside class="tp-side">
-      <div class="tp-dial">
-        <div class="tp-dial-label"><span>temperature</span><span data-tp-mood>보통</span></div>
-        <div class="tp-dial-val" data-tp-val>1.00</div>
-        <div>
-          <input class="tp-range" type="range" min="0" max="2" step="0.01" value="1" aria-label="온도" data-tp-range>
-          <div class="tp-ticks"><span>0</span><span>1</span><span>2</span></div>
-        </div>
-        <div class="tp-dial-word" data-tp-word></div>
-        <div class="tp-presets">
-          <button type="button" data-tp-set="0">0</button>
-          <button type="button" data-tp-set="0.3">0.3</button>
-          <button type="button" data-tp-set="1">1</button>
-          <button type="button" data-tp-set="1.6">1.6</button>
-        </div>
-        <div class="tp-mini" data-tp-mini></div>
       </div>
-    </aside>
-  </div>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -435,216 +435,140 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   const el = root.querySelector("[data-tp]");
   if (!el) return;
   const $ = (s) => el.querySelector(s);
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const W = ["김치찌개", "짜장면", "라면", "제육볶음", "샐러드", "초밥", "마라탕", "우주식량"];
   const Z = [3.1, 2.6, 2.2, 1.9, 1.3, 1.0, 0.5, -1.5];
-  let T = 1;
-
-  const probs = (t) => {
-    if (t < 0.01) return Z.map((_, i) => (i === 0 ? 1 : 0));
-    const m = Math.max(...Z);
-    const e = Z.map((z) => Math.exp((z - m) / t));
-    const s = e.reduce((a, b) => a + b, 0);
+  const softmax = (z, t) => {
+    if (t < 0.01) return z.map((_, i) => (i === 0 ? 1 : 0));
+    const m = Math.max(...z), e = z.map((x) => Math.exp((x - m) / t)), s = e.reduce((a, b) => a + b, 0);
     return e.map((x) => x / s);
   };
   const pick = (p) => { let r = Math.random(), i = 0; for (; i < p.length - 1; i++) { r -= p[i]; if (r <= 0) break; } return i; };
-  // 차가우면 파랑, 뜨거우면 주황. 막대·입자·히어로 빛이 모두 이 색을 쓴다
+  // 차가우면 파랑, 뜨거우면 주황 — 색은 온도(상태)에만 쓴다
   const heat = (t, a = 1) => { const k = Math.min(t / 2, 1); return `rgba(${Math.round(51 + 204 * k)}, ${Math.round(133 - 27 * k)}, ${Math.round(255 - 194 * k)}, ${a})`; };
   const pct = (x) => (x >= 0.995 ? "100%" : x < 0.001 ? "0.0%" : (x * 100).toFixed(1) + "%");
+  const THREE = [0.3, 1, 1.6];
 
-  // 01 막대
+  // ── 히어로: 글의 유일한 슬라이더 ─────────────────────────────
   const bars = $("[data-tp-bars]");
   bars.innerHTML = W.map((w) => `<div class="tp-bar"><span class="tp-bar-word">${w}</span><span class="tp-bar-track"><span class="tp-bar-fill"></span></span><span class="tp-bar-pct"></span></div>`).join("");
   const fills = [...bars.querySelectorAll(".tp-bar-fill")], pcts = [...bars.querySelectorAll(".tp-bar-pct")];
-  const mini = $("[data-tp-mini]");
-  mini.innerHTML = W.slice(0, 5).map((w) => `<div class="tp-mini-row"><span>${w}</span><span class="tp-mini-bar"><i></i></span></div>`).join("");
-  const minis = [...mini.querySelectorAll("i")];
-
-  // 02 수직선
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = $("[data-tp-line]");
-  const X0 = 40, X1 = 600, LO = -4, HI = 9;
-  const sx = (v) => X0 + ((Math.max(LO, Math.min(HI, v)) - LO) / (HI - LO)) * (X1 - X0);
-  const mk = (tag, attrs, parent = svg) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent.appendChild(n); return n; };
-  [[60, "원래 점수 z"], [170, "나눈 점수 z / T"]].forEach(([y, t]) => {
-    mk("line", { x1: X0, x2: X1, y1: y, y2: y, class: "axis" });
-    mk("text", { x: X0, y: y - 34, class: "lbl" }).textContent = t;
-  });
-  for (let v = LO; v <= HI; v += 2) {
-    mk("text", { x: sx(v), y: 222, class: "lbl", "text-anchor": "middle" }).textContent = v;
-  }
-  const gapLine = mk("line", { y1: 192, y2: 192, class: "gap" });
-  const topDots = Z.map((z, i) => mk("circle", { cx: sx(z), cy: 60, r: i === 0 ? 7 : 5, class: "dot", fill: "var(--fg-strong)", opacity: i < 2 ? 1 : 0.45 }));
-  Z.forEach((z, i) => { if (i < 2) mk("text", { x: sx(z), y: i === 0 ? 40 : 86, "text-anchor": "middle" }).textContent = W[i]; });
-  const botDots = Z.map((z, i) => mk("circle", { cx: sx(z), cy: 170, r: i === 0 ? 7 : 5, class: "dot", fill: "var(--tp-hot)", opacity: i < 2 ? 1 : 0.45 }));
-  const offTxt = mk("text", { x: X1, y: 150, "text-anchor": "end", class: "lbl" });
-
-  // 03 샘플링
-  const bins = $("[data-tp-bins]"), binlbl = $("[data-tp-binlbl]"), samples = $("[data-tp-samples]");
-  bins.innerHTML = W.map(() => `<div class="tp-bin"></div>`).join("");
-  const binEls = [...bins.children];
-  const runBtn = $("[data-tp-run]"), runNote = $("[data-tp-runnote]");
-  const setLabels = (counts) => { binlbl.innerHTML = W.map((w, i) => `<span>${w}<b>${counts ? counts[i] : "·"}</b></span>`).join(""); };
-  setLabels(null);
-  let runId = 0;
-  const runAll = async (instant) => {
-    const id = ++runId, p = probs(T), counts = W.map(() => 0);
-    binEls.forEach((b) => (b.innerHTML = ""));
-    samples.innerHTML = "";
-    runBtn.disabled = true;
-    runNote.textContent = `T = ${T.toFixed(2)}로 뽑는 중…`;
-    for (let n = 0; n < 100; n++) {
-      if (id !== runId || signal.aborted) return;
-      const i = pick(p); counts[i]++;
-      const c = document.createElement("span"); c.className = "tp-chip"; binEls[i].appendChild(c);
-      if (n < 6) { const s = document.createElement("span"); s.innerHTML = `오늘 점심은 <b>${W[i]}</b>`; samples.appendChild(s); }
-      setLabels(counts);
-      if (!instant && !reduce && n % 2 === 0) await new Promise((r) => setTimeout(r, 18));
-    }
-    runBtn.disabled = false;
-    const kinds = counts.filter((c) => c > 0).length;
-    runNote.textContent = `T = ${T.toFixed(2)} · 100번 중 ${kinds}가지 단어가 나왔습니다. 온도를 바꾸고 다시 뽑아 보세요.`;
-  };
-  runBtn.addEventListener("click", () => runAll(false), { signal });
-
-  // 04 볼츠만 입자
-  const cv = $("[data-tp-canvas]"), ctx = cv.getContext("2d");
-  const LV = [0, 1, 2, 3.4]; // 에너지 층
-  const parts = Array.from({ length: 70 }, () => ({ x: Math.random(), lv: 0, y: 0, vy: 0 }));
-  let cw = 0, ch = 0;
-  const fit = () => { const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1; cw = r.width; ch = r.height; cv.width = cw * d; cv.height = ch * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
-  fit(); new ResizeObserver(fit).observe(cv);
-  const levelY = (lv) => ch - 30 - (LV[lv] / 3.4) * (ch - 70);
-  const reassign = () => {
-    const kt = Math.max(T, 0.02) * 0.9;
-    const w = LV.map((e) => Math.exp(-e / kt)), s = w.reduce((a, b) => a + b, 0);
-    const p = w.map((x) => x / s);
-    parts.forEach((q) => { if (Math.random() < 0.006) q.lv = pick(p); });
-  };
-  const seed = () => { const kt = Math.max(T, 0.02) * 0.9, w = LV.map((e) => Math.exp(-e / kt)), s = w.reduce((a, b) => a + b, 0); parts.forEach((q) => { q.lv = pick(w.map((x) => x / s)); q.y = levelY(q.lv); }); };
-  let vis = false;
-  new IntersectionObserver(([e]) => (vis = e.isIntersecting)).observe(cv);
-  const css = getComputedStyle(el);
-  const draw = () => {
-    if (signal.aborted) return;
-    if (vis && cw) {
-      const fg = getComputedStyle(root).getPropertyValue("--fg-neutral").trim() || "#777";
-      ctx.clearRect(0, 0, cw, ch);
-      ctx.font = "13px " + (css.getPropertyValue("--font-mono") || "monospace");
-      LV.forEach((e, i) => {
-        const y = levelY(i);
-        ctx.strokeStyle = fg; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(16, y + 8); ctx.lineTo(cw - 16, y + 8); ctx.stroke();
-        ctx.globalAlpha = 1; ctx.fillStyle = fg; ctx.fillText(`E${i}`, 16, y - 4);
-      });
-      reassign();
-      const t = Math.min(T / 2, 1);
-      parts.forEach((q, i) => {
-        const target = levelY(q.lv);
-        q.y += (target - q.y) * (reduce ? 1 : 0.12);
-        const jitter = reduce ? 0 : Math.sin(performance.now() / 120 + i) * (1 + t * 4);
-        const x = 40 + q.x * (cw - 60);
-        ctx.fillStyle = heat(T);
-        ctx.beginPath(); ctx.arc(x, q.y + jitter, 4.5, 0, Math.PI * 2); ctx.fill();
-      });
-    }
-    requestAnimationFrame(draw);
-  };
-  requestAnimationFrame(draw);
-
-  // 05 top-p
-  const stack = $("[data-tp-stack]"), cut = $("[data-tp-cut]"), pIn = $("[data-tp-p]"), pOut = $("[data-tp-pout]"), kept = $("[data-tp-kept]");
-  const segs = W.map((w, i) => { const s = document.createElement("span"); s.className = "tp-seg"; s.title = w; s.style.background = `color-mix(in srgb, var(--fg-strong) ${100 - i * 10}%, var(--fg-alternative))`; stack.insertBefore(s, cut); return s; });
-  const renderP = () => {
-    const P = +pIn.value, p = probs(T);
-    pOut.textContent = P.toFixed(2);
-    let acc = 0, n = 0;
-    for (; n < p.length; n++) { acc += p[n]; if (acc >= P - 1e-9) break; }
-    n = Math.min(n + 1, p.length);
-    let x = 0;
-    p.forEach((v, i) => { segs[i].style.width = v * 100 + "%"; segs[i].textContent = v > 0.07 ? W[i] : ""; segs[i].classList.toggle("is-cut", i >= n); if (i < n) x += v; });
-    cut.style.left = `calc(${x * 100}% - 1px)`;
-    const keptSum = p.slice(0, n).reduce((a, b) => a + b, 0);
-    kept.innerHTML = `남은 후보 <b>${n}개</b>: ${W.slice(0, n).join(", ")}. 버려진 확률 ${((1 - keptSum) * 100).toFixed(1)}%는 남은 후보에게 다시 나눠집니다.`;
-  };
-  pIn.addEventListener("input", renderP, { signal });
-
-  // 온도계
-  const range = $("[data-tp-range]"), val = $("[data-tp-val]"), mood = $("[data-tp-mood]"), word = $("[data-tp-word]"), blank = $("[data-tp-blank]"), now = $("[data-tp-now]");
-  const moodOf = (t) => (t < 0.01 ? "항상 1등" : t < 0.5 ? "차분함" : t < 1.2 ? "보통" : t < 1.6 ? "들뜸" : "횡설수설");
+  const range = $("[data-tp-range]"), val = $("[data-tp-val]"), mood = $("[data-tp-mood]"), blank = $("[data-tp-blank]");
+  const moodOf = (t) => (t < 0.01 ? "늘 1등" : t < 0.5 ? "차분함" : t < 1.2 ? "보통" : t < 1.6 ? "들뜸" : "횡설수설");
   let rollTimer = 0;
-  // 01 다음 토큰 고리 — 메뉴 다음에는 예시 후보 넷으로 한 번 더 돈다
-  const W2 = ["먹을래요", "어때요", "괜찮아요", "."], Z2 = [2.0, 1.6, 1.2, 0.4];
-  const pOf = (z, t) => { if (t < 0.01) return z.map((_, i) => (i === 0 ? 1 : 0)); const m = Math.max(...z), e = z.map((x) => Math.exp((x - m) / t)), sm = e.reduce((a, b) => a + b, 0); return e.map((x) => x / sm); };
-  const sentEl = $("[data-tp-sent]"), lbars = $("[data-tp-lbars]"), pickedEl = $("[data-tp-picked]"), stepBtn = $("[data-tp-step]"), stepNote = $("[data-tp-stepnote]");
-  const stEls = [...el.querySelectorAll("[data-st]")];
-  let words = [], busy = false;
-  const cand = () => (words.length === 0 ? [W, Z] : [W2, Z2]);
-  const drawLoop = () => {
-    const [cw, cz] = cand(), p = pOf(cz, T);
-    const top = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 4);
-    lbars.innerHTML = top.map(([v, i]) => `<div class="tp-lbar"><span>${cw[i]}</span><i style="width:${Math.max(v * 100, 1)}%"></i></div>`).join("");
-    sentEl.innerHTML = "오늘 점심은" + words.map((w) => ` <span class="tp-word">${w}</span>`).join("");
-  };
-  const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
-  stepBtn.addEventListener("click", async () => {
-    if (busy) return;
-    if (words.length >= 2) { words = []; pickedEl.textContent = "…"; drawLoop(); stepBtn.textContent = "한 바퀴 돌리기"; return; }
-    busy = true;
-    for (const k of [0, 1, 2]) { stEls.forEach((x, j) => x.classList.toggle("is-on", j === k)); await wait(380); if (signal.aborted) return; }
-    const [cw, cz] = cand(), i = pick(pOf(cz, T));
-    stEls.forEach((x, j) => x.classList.toggle("is-on", j === 3));
-    pickedEl.innerHTML = `<span class="tp-word">${cw[i]}</span>`;
-    await wait(450); if (signal.aborted) return;
-    words.push(cw[i]); stEls.forEach((x) => x.classList.remove("is-on"));
-    drawLoop();
-    stepNote.textContent = words.length >= 2 ? "두 단어를 붙였습니다. 처음부터 다시 하려면 버튼을 누르세요." : "뽑은 단어가 문장에 붙었고 확률표가 다음 단어 후보로 바뀌었습니다.";
-    if (words.length >= 2) stepBtn.textContent = "처음부터";
-    busy = false;
-  }, { signal });
-
-  // 02 softmax 세 단계
-  const smRows = $("[data-tp-smrows]"), smPie = $("[data-tp-smpie]"), smZ = $("[data-tp-smz]"), smZout = $("[data-tp-smzout]");
-  const SMC = ["var(--tp-cold)", "rgb(130, 120, 200)", "var(--tp-hot)"];
-  const drawSm = () => {
-    const z = [+smZ.value, 2.6, 2.2], e = z.map(Math.exp), sum = e.reduce((a, b) => a + b, 0);
-    smZout.textContent = z[0].toFixed(1);
-    smRows.innerHTML = W.slice(0, 3).map((w, i) => `<div class="tp-sm-row"><span>${w}</span><span class="tp-sm-cell"><i style="width:${Math.max(z[i] / Math.max(...z), 0.01) * 100}%"></i><em>${z[i].toFixed(1)}</em></span><span class="tp-sm-cell"><i style="width:${(e[i] / Math.max(...e)) * 100}%"></i><em>${e[i].toFixed(1)}</em></span></div>`).join("");
-    smPie.innerHTML = e.map((v, i) => `<span style="width:${(v / sum) * 100}%;background:${SMC[i]}">${v / sum > 0.12 ? W[i] + " " + ((v / sum) * 100).toFixed(1) + "%" : ""}</span>`).join("");
-  };
-  smZ.addEventListener("input", drawSm, { signal });
-
-  const render = () => {
-    const p = probs(T);
+  const renderHero = (roll) => {
+    const T = +range.value, p = softmax(Z, T);
     el.style.setProperty("--tp-heat", heat(T));
-    el.style.setProperty("--tp-glow", heat(T, 0.22));
+    $(".tp-hero").style.setProperty("--tp-glow", heat(T, 0.22));
     val.textContent = T.toFixed(2);
     mood.textContent = moodOf(T);
-    word.textContent = T < 0.01 ? "softmax 대신 가장 높은 점수 하나만 고릅니다." : `1등 확률 ${pct(p[0])}, 꼴찌 확률 ${pct(p[p.length - 1])}`;
     p.forEach((v, i) => { fills[i].style.width = v * 100 + "%"; pcts[i].textContent = pct(v); });
-    minis.forEach((m, i) => (m.style.width = p[i] * 100 + "%"));
-    const t = Math.max(T, 0.01);
-    botDots.forEach((d, i) => d.setAttribute("cx", sx(Z[i] / t)));
-    gapLine.setAttribute("x1", sx(Z[1] / t)); gapLine.setAttribute("x2", sx(Z[0] / t));
-    const off = Z.filter((z) => z / t > HI || z / t < LO).length;
-    offTxt.textContent = T < 0.01 ? "T = 0 → 간격이 무한대" : off ? `${off}개 점이 화면 밖으로 밀려났습니다` : "";
-    now.style.left = (T / 2) * 100 + "%";
-    renderP();
-    drawLoop();
+    if (!roll) return;
     clearTimeout(rollTimer);
     blank.classList.add("is-roll");
-    rollTimer = setTimeout(() => { blank.textContent = W[pick(p)]; blank.classList.remove("is-roll"); }, 220);
+    rollTimer = setTimeout(() => { blank.textContent = W[pick(p)]; blank.classList.remove("is-roll"); }, 200);
   };
-  range.addEventListener("input", () => { T = +range.value; render(); }, { signal });
-  el.querySelectorAll("[data-tp-set]").forEach((b) => b.addEventListener("click", () => { T = +b.dataset.tpSet; range.value = T; render(); }, { signal }));
+  range.addEventListener("input", () => renderHero(true), { signal });
+  signal.addEventListener("abort", () => clearTimeout(rollTimer));
 
-  // 히어로 빈칸은 가만히 두어도 현재 온도로 계속 다시 뽑힌다
-  const heroTick = setInterval(() => { if (!reduce && root.querySelector("[data-tp-blank]")) { blank.classList.add("is-roll"); setTimeout(() => { blank.textContent = W[pick(probs(T))]; blank.classList.remove("is-roll"); }, 180); } }, 1600);
-  signal.addEventListener("abort", () => { clearInterval(heroTick); clearTimeout(rollTimer); });
+  // ── 01 자라는 문장: 고정된 예시 세 줄(두 번째 줄은 2등이 뽑힌다) ──────
+  const lbars = (words, z, picked) => softmax(z, 1).map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 4)
+    .map(([v, i]) => `<div class="tp-lbar${i === picked ? " is-pick" : ""}"><span>${words[i]}</span><s style="width:${Math.max(v * 100 / 0.5, 2)}%"></s><em>${(v * 100).toFixed(0)}%</em></div>`).join("");
+  const W2 = ["먹을래요", "어때요", "괜찮아요", "(마침표)"], Z2 = [2.0, 1.6, 1.2, 0.4];
+  $("[data-tp-grow]").innerHTML =
+    `<div class="tp-g"><p class="tp-g-sent"><small>단어 하나 더</small>오늘 점심은 <em>&nbsp;</em></p><div>${lbars(W, Z, 0)}</div></div>` +
+    `<div class="tp-g"><p class="tp-g-sent"><small>단어 하나 더</small>오늘 점심은 <i>김치찌개</i> <em>&nbsp;</em></p><div>${lbars(W2, Z2, 1)}<p class="tp-pen">2등이 뽑혔습니다. 1등이 늘 뽑히지는 않습니다</p></div></div>` +
+    `<div class="tp-g"><p class="tp-g-sent"><small>완성</small>오늘 점심은 <i>김치찌개</i> <i>어때요</i></p><div></div></div>`;
 
-  drawSm();
-  fit(); seed();
-  render();
-  runAll(true);
+  // ── 02 softmax 세 단계(고정) ─────────────────────────────────
+  {
+    const z = Z.slice(0, 3), e = z.map(Math.exp), sum = e.reduce((a, b) => a + b, 0);
+    $("[data-tp-smrows]").innerHTML = W.slice(0, 3).map((w, i) => `<div class="tp-sm-row"><span>${w}</span><span class="tp-sm-cell"><i style="width:${(z[i] / 3.1) * 100}%"></i><em>${z[i].toFixed(1)}</em></span><span class="tp-sm-cell"><i style="width:${(e[i] / e[0]) * 100}%"></i><em>${e[i].toFixed(1)}</em></span></div>`).join("");
+    $("[data-tp-smpie]").innerHTML = e.map((v, i) => `<span style="width:${(v / sum) * 100}%;opacity:${1 - i * 0.28}">${W[i]} ${((v / sum) * 100).toFixed(1)}%</span>`).join("");
+  }
+
+  // ── 03 같은 세 후보, 온도 세 장 ───────────────────────────────
+  {
+    const z = Z.slice(0, 3), MAX = 7, x = (v) => (v / MAX) * 100;
+    $("[data-tp-temp3]").innerHTML = [0.5, 1, 2].map((t) => {
+      const s = z.map((v) => v / t), p = softmax(z, t), c = heat(t);
+      const dots = s.map((v, i) => `<span class="d r${i + 1}" style="left:${x(v)}%;background:${c}"></span>`).join("") + `<span class="nm" style="left:${x(s[0])}%">김치찌개</span>`;
+      const ticks = [0, 2, 4, 6].map((v) => `<span class="tk" style="left:${x(v)}%">${v}</span>`).join("");
+      const gap = `<span class="gap" style="left:${x(s[1])}%;width:${x(s[0]) - x(s[1])}%"></span>`;
+      const pb = p.map((v, i) => `<div class="tp-pb" style="--c:${c};opacity:${1 - i * 0.25}"><span>${W[i]}</span><i style="width:${v * 100 / 0.7}%"></i><em>${(v * 100).toFixed(1)}%</em></div>`).join("");
+      const what = (t < 1 ? "간격 2배" : t > 1 ? "간격 절반" : "원래 점수") + " · 후보 3개";
+      return `<div style="--c:${c}"><div class="tp-thead"><b>T = ${t}</b><span>${what}</span></div><span class="tp-nl-lbl">점수 ÷ T</span><div class="tp-nl">${ticks}${gap}${dots}</div>${pb}</div>`;
+    }).join("");
+  }
+
+  // ── 04 세 온도로 100번씩 뽑기 ─────────────────────────────────
+  const sim = $("[data-tp-sim3]");
+  // 처음에는 확률대로 나눈 평균 개수(최대 나머지 반올림), 버튼을 누르면 진짜로 무작위로 뽑는다
+  const expected = (p) => { const raw = p.map((v) => v * 100), n = raw.map(Math.floor); let left = 100 - n.reduce((a, b) => a + b, 0);
+    raw.map((r, i) => [r - n[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { n[i]++; left--; } }); return n; };
+  const runAll = (random) => {
+    sim.innerHTML = THREE.map((t) => {
+      const p = softmax(Z, t); let n = W.map(() => 0);
+      if (random) for (let k = 0; k < 100; k++) n[pick(p)]++; else n = expected(p);
+      const c = heat(t), kinds = n.filter(Boolean).length;
+      const rows = W.map((w, i) => `<div class="tp-crow${n[i] ? "" : " zero"}"><span>${w}</span><span class="tp-chips">${'<span class="tp-chip"></span>'.repeat(n[i])}</span><em>${n[i]}</em></div>`).join("");
+      return `<div style="--c:${c}"><div class="tp-thead"><b>T = ${t}</b><span>${kinds}가지 단어가 나옴</span></div>${rows}</div>`;
+    }).join("");
+  };
+  $("[data-tp-run]").addEventListener("click", () => {
+    runAll(true);
+    $("[data-tp-simnote]").textContent = "네모 하나가 한 번 뽑힌 것입니다. 방금 무작위로 뽑은 결과라 누를 때마다 개수가 달라지고, 확률이 비슷한 후보끼리는 순위가 뒤바뀌기도 합니다.";
+  }, { signal });
+  runAll(false);
+
+  // ── 05 입자 70개, 세 온도 ─────────────────────────────────────
+  {
+    const LV = [0, 1, 2, 3.4], N = 70, NS = "http://www.w3.org/2000/svg";
+    const counts = (t) => { // 볼츠만 비율을 정수 70개로 반올림(남는 수는 큰 소수점 순)
+      const w = LV.map((e) => Math.exp(-e / (t * 0.9))), s = w.reduce((a, b) => a + b, 0), raw = w.map((x) => (x / s) * N);
+      const c = raw.map(Math.floor); let left = N - c.reduce((a, b) => a + b, 0);
+      raw.map((r, i) => [r - c[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { c[i]++; left--; } });
+      return c;
+    };
+    const box = $("[data-tp-lv3]");
+    box.innerHTML = THREE.map((t, k) => `<div style="--c:${heat(t)}"><div class="tp-thead"><b>T = ${t}</b><span>${["차가움", "보통", "뜨거움"][k]}</span></div><svg class="tp-lv" viewBox="0 0 300 240" data-k="${k}"></svg></div>`).join("");
+    THREE.forEach((t, k) => {
+      const svg = box.querySelector(`[data-k="${k}"]`), c = counts(t), mk = (tag, a, txt) => { const n = document.createElementNS(NS, tag); for (const q in a) n.setAttribute(q, a[q]); if (txt != null) n.textContent = txt; svg.appendChild(n); return n; };
+      mk("text", { x: 0, y: 14 }, "↑ 에너지 높음");
+      LV.forEach((e, i) => {
+        const y = 230 - (e / 3.4) * 180;
+        mk("line", { x1: 30, x2: 300, y1: y, y2: y });
+        mk("text", { x: 0, y: y + 4 }, `E${i}`);
+        for (let j = 0; j < c[i]; j++) {
+          const col = j % 35, row = Math.floor(j / 35);
+          mk("circle", { cx: 40 + col * 6.4, cy: y - 5 - row * 8, r: 2.8, fill: heat(t) });
+        }
+        mk("text", { x: 300, y: y - 5, "text-anchor": "end" }, `${c[i]}개`);
+      });
+    });
+  }
+
+  // ── 06 top-p = 0.9, 세 온도 ──────────────────────────────────
+  {
+    const P = 0.9;
+    const rows = THREE.map((t) => {
+      const p = softmax(Z, t); let acc = 0, n = 0;
+      for (; n < p.length; n++) { acc += p[n]; if (acc >= P - 1e-9) break; }
+      n = Math.min(n + 1, p.length);
+      const kept = p.slice(0, n).reduce((a, b) => a + b, 0);
+      const segs = p.map((v, i) => `<span class="tp-seg${i >= n ? " is-cut" : ""}" style="width:${v * 100}%;background:color-mix(in srgb, var(--fg-strong) ${100 - i * 10}%, var(--fg-alternative))">${v > 0.06 ? W[i] : ""}</span>`.replace("tp-seg", v < 0.1 ? "tp-seg sm" : "tp-seg")).join("");
+      return `<div class="tp-tp" style="--c:${heat(t)}"><b>T = ${t}</b><div class="tp-stack">${segs}<span class="tp-p90">${t === THREE[0] ? "<small>누적 90%</small>" : ""}</span><span class="tp-cut" style="left:${kept * 100}%"></span></div><span>남은 후보 <b>${n}개</b></span></div>`;
+    }).join("");
+    $("[data-tp-tp3]").innerHTML = rows;
+  }
+
+  // 07 범위 막대: 그라데이션을 0~2 축 전체에 고정해 막대마다 자기 자리 색만 보이게
+  el.querySelectorAll(".tp-use-track b").forEach((b) => {
+    const L = parseFloat(b.style.left), Wd = parseFloat(b.style.width);
+    b.style.backgroundSize = `${(100 / Wd) * 100}% 100%`;
+    b.style.backgroundPosition = `${Wd < 100 ? (L / (100 - Wd)) * 100 : 0}% 0`;
+  });
+
+  renderHero(false);
 })();
 </script>
