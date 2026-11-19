@@ -1,0 +1,776 @@
+---
+title: MCP 서버 두 개를 꽂은 에이전트가 시계 도구를 고른 이유
+slug: mcp-servers-agent-tool-choice
+excerpt: 내가 만든 파일 서버와 남이 만든 시계 서버를 에이전트 하나에 꽂으면, 도구 순서를 코드에 적지 않아도 에이전트가 파일을 읽고 날짜를 확인한 뒤 저장합니다. 모델이 도구 설명을 읽고 고르는 과정, 화면 뒤에서 오가는 JSON-RPC 메시지, 도구를 부를 때마다 서버가 새로 켜지는 기본 동작, stdio 서버의 print 한 줄이 일으키는 일, 같은 서버를 LangChain과 LlamaIndex가 함께 쓰는 방법을 직접 돌린 값으로 정리합니다.
+tags: [MCP, Model Context Protocol, LangChain, LlamaIndex, Agent, Python, AI Service Track]
+category: ai
+series: ai-service-track
+series_order: 14
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/mcp-servers-agent-tool-choice-mwnjx58o.jpg
+---
+<!-- page -->
+<!-- layout: 제목·리드 위 + 전폭 히어로 그림(채팅 창 | 모델이 받은 도구 선반, 겉과 안을 한 줄에) + 글|그림 2단(모델 입력에 펜 메모) + 제목|글 머리 + 코드 + 전폭 원문 표시(tools/list JSON) + 코드 칸(에이전트) + 전폭 생명선(실제 메시지) + 그림|글 뒤집은 2단(시간 눈금 두 줄) + 글|그림 2단(파이프 세 줄) + 전폭 펼쳐 놓기 2장(stdio | HTTP) + 제목|글 머리 2곳 | 글의 성격: 화면의 "저장했습니다" 한 줄에서 출발해 도구 고르기 → 서버 만들기 → 연결 → 오가는 메시지 → 세션·통로·주소로 한 겹씩 내려가는 글 | 버린 후보: 분할 히어로 + 아래 전폭 줄(13편과 같은 첫 화면), 채팅 두 창 나란히(11·12편), 그림 고정 스크롤리텔링(생명선을 고정하면 모바일에서 메시지 줄이 가려짐) -->
+<style>
+.post-page .mx {
+  --mx-red: rgb(204, 52, 40); --mx-ok: rgb(14, 128, 98);
+  --mx-soft: color-mix(in srgb, var(--fg-strong) 6%, var(--bg-base));
+  --mx-mid: color-mix(in srgb, var(--fg-strong) 22%, var(--bg-base));
+  --mx-okbg: color-mix(in srgb, var(--mx-ok) 13%, var(--bg-base));
+  --mx-redbg: color-mix(in srgb, var(--mx-red) 11%, var(--bg-base));
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .mx { --mx-red: rgb(255, 122, 106); --mx-ok: rgb(72, 204, 160); --mx-soft: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); --mx-mid: color-mix(in srgb, var(--fg-strong) 30%, var(--bg-base)); --mx-okbg: color-mix(in srgb, rgb(72, 204, 160) 20%, var(--bg-base)); --mx-redbg: color-mix(in srgb, rgb(255, 122, 106) 18%, var(--bg-base)); }
+.post-page .mx * { box-sizing: border-box; }
+.post-page .mx-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px; }
+.post-page .mx h1, .post-page .mx h2, .post-page .mx h3 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; word-break: keep-all; }
+.post-page .mx h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.24; margin-bottom: 28px; max-width: 900px; }
+.post-page .mx h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.38; margin-bottom: 24px; }
+.post-page .mx h3 { font-size: 16px; line-height: 1.45; margin-bottom: 10px; }
+.post-page .mx p { font-size: 17px; line-height: 1.85; margin: 0 0 1.5em; }
+.post-page .mx b { color: var(--fg-strong); }
+.post-page .mx a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .mx code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-muted); padding: 1px 6px; border-radius: var(--radius-xs); }
+.post-page .mx figure { margin: 0; min-width: 0; }
+.post-page .mx-cap { font-size: 14.5px !important; line-height: 1.7 !important; color: var(--fg-alternative); margin: 18px 0 0 !important; }
+.post-page .mx-pen { color: var(--mx-red); font-weight: 600; font-size: 15px; line-height: 1.5; }
+.post-page .mx-sec { padding: clamp(96px, 12vw, 150px) 0 0; }
+.post-page .mx-sec:last-of-type { padding-bottom: 48px; }
+.post-page .mx-two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; align-items: center; }
+.post-page .mx-two.flip { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+.post-page .mx-two.flip > .mx-txt { order: 2; }
+.post-page .mx-txt { min-width: 0; }
+.post-page .mx-txt > p:last-child { margin-bottom: 0; }
+.post-page .mx-head { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.post-page .mx-head > div > p:last-child { margin-bottom: 0; }
+.post-page .mx-below, .post-page .mx figure.mx-below { margin-top: 56px; }
+.post-page .mx details { margin-top: 28px; }
+.post-page details { margin: 0 0 1.5em; }
+.post-page details summary { cursor: pointer; font-weight: 600; color: var(--fg-strong); font-size: 16px; }
+.post-page details[open] summary { margin-bottom: 12px; }
+.post-page details p, .post-page details li { font-size: 16px; }
+.post-page .mx svg.ic { display: block; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 히어로 */
+.post-page .mx-hero { padding: clamp(56px, 8vw, 96px) 0 0; }
+.post-page .mx-eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; color: var(--fg-alternative); text-transform: uppercase; margin-bottom: 18px !important; }
+.post-page .mx-lede { font-size: 18px !important; max-width: 820px; }
+.post-page .mx-hfig { margin-top: 48px !important; }
+.post-page .mx-hgrid { display: grid; grid-template-columns: minmax(0, 5fr) 56px minmax(0, 7fr); gap: 12px; align-items: stretch; }
+.post-page .mx-hgrid .mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--fg-alternative); font-size: 12.5px; text-align: center; line-height: 1.35; }
+.post-page .mx-hgrid .mid i { font-style: normal; font-size: 22px; }
+
+/* 채팅 앱 창 */
+.post-page .mx-chat { display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); border: 1px solid var(--line-subtle); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px -18px rgba(20, 30, 50, 0.28); }
+.post-page .mx-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line-subtle); font-size: 14px; font-weight: 600; color: var(--fg-strong); }
+.post-page .mx-bar small { font-size: 12px; font-weight: 400; color: var(--fg-alternative); }
+.post-page .mx-log { flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 18px 16px 20px; }
+.post-page .mx-me { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 88%; }
+.post-page .mx-att { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 12px; border: 1px solid var(--line-subtle); font-size: 13px; color: var(--fg-strong); font-family: var(--font-mono); }
+.post-page .mx-me > span { background: var(--bg-muted); border-radius: 18px; padding: 8px 15px; font-size: 14.5px; color: var(--fg-strong); line-height: 1.55; }
+.post-page .mx-ai { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .mx-ai .av { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-subtle); display: grid; place-items: center; color: var(--fg-alternative); }
+.post-page .mx-used { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-alternative); margin-bottom: 6px; }
+.post-page .mx-filecard { margin-top: 10px; border: 1px solid var(--line-subtle); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.post-page .mx-filecard .fn { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-weight: 600; color: var(--fg-strong); margin-bottom: 4px; }
+.post-page .mx-filecard .ln { color: var(--fg-alternative); font-family: var(--font-mono); font-size: 12.5px; }
+.post-page .mx-filecard .ln.hi { color: var(--fg-strong); background: var(--mx-redbg); border-radius: 4px; padding: 0 4px; display: inline-block; }
+.post-page .mx-ai .acts { display: flex; gap: 12px; margin-top: 8px; color: var(--fg-alternative); }
+.post-page .mx-box { display: flex; align-items: center; gap: 10px; margin: 0 12px 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-subtle); border-radius: 24px; color: var(--fg-alternative); font-size: 14px; }
+.post-page .mx-box > span { flex: 1; min-width: 0; }
+.post-page .mx-box .send { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--fg-strong); color: var(--bg-base); }
+
+/* 도구 선반 */
+.post-page .mx-shelf { min-width: 0; display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+.post-page .mx-shelf .ttl { font-size: 14.5px; font-weight: 700; color: var(--fg-strong); }
+.post-page .mx-shelf .ttl small { font-weight: 400; color: var(--fg-alternative); font-size: 13px; margin-left: 6px; }
+.post-page .mx-srv { border-top: 2px solid var(--fg-strong); padding-top: 10px; }
+.post-page .mx-srv .sh { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .mx-srv .sh b { font-family: var(--font-mono); font-size: 13.5px; }
+.post-page .mx-tool { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; padding: 7px 0; }
+.post-page .mx-tool .n { width: 24px; height: 24px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 13px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.post-page .mx-tool .n.off { background: none; border: 1.5px dashed var(--mx-mid); }
+.post-page .mx-tool .nm { font-family: var(--font-mono); font-size: 13.5px; color: var(--fg-strong); font-weight: 600; }
+.post-page .mx-tool .ds { display: block; font-size: 13px; line-height: 1.5; color: var(--fg-alternative); }
+.post-page .mx-tool .ar { display: block; font-family: var(--font-mono); font-size: 12.5px; color: var(--mx-red); margin-top: 2px; overflow-wrap: anywhere; }
+.post-page .mx-tool.dim .nm, .post-page .mx-tool.dim .ds { opacity: .5; }
+
+/* 모델 입력 원문 표시 */
+.post-page .mx-doc { border-radius: 14px; border: 1px solid var(--line-subtle); padding: 18px 20px; font-size: 14.5px; line-height: 1.75; color: var(--fg-strong); background: var(--bg-base); }
+.post-page .mx-doc .rl { display: inline-block; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); border: 1px solid var(--line-subtle); border-radius: 999px; padding: 0 8px; margin-right: 8px; }
+.post-page .mx-doc .blk { padding: 10px 0; border-bottom: 1px dashed var(--line-subtle); }
+.post-page .mx-doc .blk:last-child { border-bottom: 0; }
+.post-page .mx-doc .t { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 6px 0 6px 12px; }
+.post-page .mx-doc .t code { background: none; padding: 0; font-weight: 600; }
+.post-page .mx-doc .t span { font-size: 13.5px; color: var(--fg-alternative); }
+.post-page .mx-doc mark { background: none; color: var(--fg-strong); border-bottom: 2.5px solid var(--mx-red); padding: 0 1px; }
+.post-page .mx-doc .t.pick { background: var(--mx-redbg); border-radius: 8px; }
+.post-page .mx-doc .t.pick span { color: var(--fg-strong); }
+.post-page .mx-doc .pn { display: block; margin-top: 2px; }
+
+/* JSON 원문 + 펜 메모 */
+.post-page .mx-json { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 28px; font-size: 14px; }
+.post-page .mx-json .l { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.9; color: var(--fg-strong); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.post-page .mx-json .l.on { background: var(--mx-redbg); border-radius: 4px; }
+.post-page .mx-json .m { color: var(--mx-red); font-weight: 600; font-size: 14.5px; line-height: 1.9; }
+.post-page .mx-json .m code { background: none; padding: 0; color: var(--mx-red); }
+
+/* 생명선 */
+.post-page .mx-life { position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px; row-gap: 0; }
+.post-page .mx-life .hd { font-size: 14px; font-weight: 700; color: var(--fg-strong); text-align: center; padding: 10px 6px; border: 2px solid var(--fg-strong); border-radius: 12px; background: var(--bg-base); position: relative; z-index: 1; line-height: 1.35; }
+.post-page .mx-life .hd small { display: block; font-weight: 400; font-size: 12px; color: var(--fg-alternative); font-family: var(--font-mono); }
+.post-page .mx-life .rail { position: relative; min-height: 64px; }
+.post-page .mx-life .rail::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--mx-mid); }
+.post-page .mx-life .note { display: flex; align-items: center; justify-content: center; text-align: center; }
+.post-page .mx-life .note span { position: relative; z-index: 1; background: var(--bg-base); color: var(--mx-red); font-weight: 600; font-size: 13.5px; line-height: 1.4; padding: 4px 6px; }
+.post-page .mx-msg { display: flex; flex-direction: column; justify-content: center; padding: 6px 4px; min-width: 0; }
+.post-page .mx-msg .lb { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--fg-alternative); line-height: 1.4; }
+.post-page .mx-msg .lb code { font-size: 13.5px; font-weight: 700; color: var(--fg-strong); background: none; padding: 0; }
+.post-page .mx-msg .lb .gl { color: var(--fg-normal); }
+.post-page .mx-leg { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--fg-alternative); align-items: center; }
+.post-page .mx-leg i.n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 11px; font-style: normal; font-weight: 700; margin-right: 5px; vertical-align: -3px; }
+.post-page .mx-leg b { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-strong); }
+.post-page .mx-leg .r { color: var(--mx-red); font-weight: 600; }
+.post-page .mx-msg .lb .id { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--fg-strong); border-radius: 999px; padding: 0 7px; color: var(--fg-strong); }
+.post-page .mx-msg .line { position: relative; height: 2px; background: var(--fg-strong); margin: 8px 6px 0; }
+.post-page .mx-msg .line::after { content: ""; position: absolute; top: -5px; width: 10px; height: 10px; border-top: 2px solid var(--fg-strong); border-right: 2px solid var(--fg-strong); }
+.post-page .mx-msg.r .line::after { right: 0; transform: rotate(45deg); }
+.post-page .mx-msg.l .line::after { left: 0; transform: rotate(-135deg); }
+.post-page .mx-msg.l .lb { justify-content: flex-end; text-align: right; }
+.post-page .mx-msg.key .line { background: var(--mx-red); height: 3px; }
+.post-page .mx-msg.key .line::after { border-color: var(--mx-red); }
+.post-page .mx-life .gap { grid-column: 1 / -1; display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px; }
+.post-page .mx-lifewrap { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 48px; align-items: start; }
+.post-page .mx-callcard { border-radius: 14px; border: 1px solid var(--line-subtle); padding: 16px 18px; background: var(--bg-base); }
+.post-page .mx-callcard .k { font-size: 13px; color: var(--fg-alternative); margin-bottom: 8px; }
+.post-page .mx-callcard .l { font-family: var(--font-mono); font-size: 13px; line-height: 1.85; color: var(--fg-strong); white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 1.2em; text-indent: -1.2em; }
+.post-page .mx-callcard .l.on { background: var(--mx-redbg); border-radius: 4px; }
+.post-page .mx-callcard .m { color: var(--mx-red); font-weight: 600; font-size: 14px; line-height: 1.5; margin: 2px 0 8px; }
+.post-page .mx-callcard .m:last-child { margin-bottom: 0; }
+
+/* 시간 눈금 */
+.post-page .mx-tl { display: flex; flex-direction: column; gap: 26px; padding-right: 14px; }
+.post-page .mx-tl h3 { font-size: 15.5px; margin-bottom: 4px; }
+.post-page .mx-tl h3 small { font-weight: 400; font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); margin-left: 6px; }
+.post-page .mx-track { position: relative; height: 46px; border-bottom: 2px solid var(--fg-strong); margin-top: 26px; }
+.post-page .mx-seg { position: absolute; bottom: 6px; height: 30px; border-radius: 6px; }
+.post-page .mx-seg.boot { background: var(--mx-mid); }
+.post-page .mx-seg.boot.again { background: var(--mx-redbg); box-shadow: inset 0 0 0 2px var(--mx-red); }
+.post-page .mx-seg.call { background: var(--fg-strong); width: 6px !important; }
+.post-page .mx-seg .v { position: absolute; top: -24px; left: 0; font-size: 12.5px; color: var(--fg-alternative); white-space: nowrap; }
+.post-page .mx-seg .cnt { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.post-page .mx-ax { position: relative; height: 22px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-alternative); }
+.post-page .mx-ax span { position: absolute; transform: translateX(-50%); top: 4px; }
+.post-page .mx-ax span:first-child { transform: none; }
+.post-page .mx-tlkey { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; color: var(--fg-alternative); align-items: center; }
+.post-page .mx-tlkey i { display: inline-block; width: 22px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.post-page .mx-tlkey i.b { background: var(--mx-mid); }
+.post-page .mx-tlkey i.a { background: var(--mx-redbg); box-shadow: inset 0 0 0 2px var(--mx-red); }
+.post-page .mx-tlkey i.c { background: var(--fg-strong); width: 6px; }
+.post-page .mx-tl .sum { font-size: 14px; color: var(--fg-strong); margin-top: 10px; }
+.post-page .mx-tl .sum b { font-family: var(--font-mono); }
+
+/* 파이프 세 줄 */
+.post-page .mx-pipes { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; gap: 0 12px; align-items: stretch; }
+.post-page .mx-pipes .end { border: 2px solid var(--fg-strong); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--fg-strong); line-height: 1.35; padding: 8px 4px; background: var(--bg-base); }
+.post-page .mx-pipes .end small { display: block; font-weight: 400; font-size: 11.5px; color: var(--fg-alternative); font-family: var(--font-mono); }
+.post-page .mx-pipes .lanes { display: flex; flex-direction: column; gap: 14px; padding: 6px 0; min-width: 0; }
+.post-page .mx-lane { min-width: 0; }
+.post-page .mx-lane .nm { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-alternative); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.post-page .mx-lane .tube { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px 8px; border-radius: 999px; border: 2px solid var(--fg-strong); min-height: 40px; align-items: center; }
+.post-page .mx-lane.err .tube { border-style: dashed; border-color: var(--mx-mid); }
+.post-page .mx-pkt { font-family: var(--font-mono); font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--mx-soft); color: var(--fg-strong); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.post-page .mx-pkt.bad { background: var(--mx-redbg); color: var(--mx-red); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--mx-red); }
+.post-page .mx-pkt.log { background: none; border: 1px solid var(--mx-mid); color: var(--fg-alternative); }
+.post-page .mx-outs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+.post-page .mx-outs > div { min-width: 0; }
+.post-page .mx-outs .who { font-size: 13.5px; font-weight: 700; color: var(--fg-strong); margin-bottom: 6px; }
+.post-page .mx-outs .who small { font-weight: 400; font-family: var(--font-mono); color: var(--fg-alternative); font-size: 12px; }
+.post-page .mx-outs .say { font-size: 14px; line-height: 1.55; padding: 9px 12px; border-radius: 10px; color: var(--fg-strong); }
+.post-page .mx-outs .say.no { background: var(--mx-redbg); }
+.post-page .mx-outs .say.meh { background: var(--mx-soft); }
+.post-page .mx-outs .say code { font-size: 12.5px; background: none; padding: 0; }
+
+/* 펼쳐 놓기: stdio | HTTP */
+.post-page .mx-spread { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+.post-page .mx-panel { min-width: 0; }
+.post-page .mx-panel h3 { font-size: 16px; border-bottom: 2px solid var(--fg-strong); padding-bottom: 8px; margin-bottom: 16px; }
+.post-page .mx-panel h3 small { font-weight: 400; font-family: var(--font-mono); color: var(--fg-alternative); font-size: 12.5px; margin-left: 6px; }
+.post-page .mx-panel svg { display: block; width: 100%; height: auto; max-width: 520px; }
+.post-page .mx-panel svg text { font-family: var(--font-sans); fill: var(--fg-strong); font-size: 15px; }
+.post-page .mx-panel svg text.s { fill: var(--fg-alternative); font-size: 13.5px; }
+.post-page .mx-panel svg text.mono { font-family: var(--font-mono); font-size: 13.5px; }
+.post-page .mx-panel svg text.b { font-weight: 700; }
+.post-page .mx-panel svg text.pen { fill: var(--mx-red); font-weight: 600; font-size: 14px; }
+.post-page .mx-panel svg .bx { fill: var(--bg-base); stroke: var(--fg-strong); stroke-width: 2; }
+.post-page .mx-panel svg .bx2 { fill: var(--mx-soft); stroke: var(--fg-strong); stroke-width: 1.5; }
+.post-page .mx-panel svg .ln { fill: none; stroke: var(--fg-strong); stroke-width: 2; }
+.post-page .mx-panel svg .ln.x { stroke: var(--mx-red); stroke-dasharray: 5 5; }
+.post-page .mx-panel svg .hd { fill: var(--fg-strong); }
+.post-page .mx-panel svg .hd.x { fill: var(--mx-red); }
+.post-page .mx-panel svg .xx { stroke: var(--mx-red); stroke-width: 3; stroke-linecap: round; }
+.post-page .mx-panel .say { font-size: 14.5px; line-height: 1.65; margin-top: 14px; color: var(--fg-strong); }
+
+/* 코드 칸 · 터미널 */
+.post-page .mx-code { margin-top: 40px; }
+.post-page .mx-term { border-radius: 12px; overflow: hidden; margin: 10px 0 0; background: var(--code-bg, #282c34); color: var(--code-fg, #abb2bf); }
+.post-page .mx-term-bar { padding: 7px 14px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--code-head-fg, #9da5b4); }
+.post-page .mx-term-out { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-page .mx-term-out .d { color: rgba(255,255,255,.45); }
+.post-page .mx-term-out .g { color: #98c379; }
+.post-page .mx-term-out .r { color: #e06c75; }
+.post-page .mx-term-out .y { color: #e5c07b; }
+
+/* 마지막 목록 · 대응표 */
+.post-page .mx-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 18px; }
+.post-page .mx-list li { font-size: 16.5px; line-height: 1.75; padding-left: 26px; position: relative; }
+.post-page .mx-list li::before { content: ""; position: absolute; left: 4px; top: 11px; width: 9px; height: 9px; border-radius: 2px; background: var(--fg-strong); }
+.post-page .mx-map { width: 100%; border-collapse: collapse; font-size: 14.5px; margin-top: 6px; }
+.post-page .mx-map th, .post-page .mx-map td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-subtle); vertical-align: top; line-height: 1.55; }
+.post-page .mx-map th { font-size: 13px; color: var(--fg-alternative); font-weight: 600; }
+.post-page .mx-map td code { font-size: 12.5px; overflow-wrap: anywhere; }
+.post-page .mx-refs { margin: 0; padding-left: 20px; }
+.post-page .mx-refs li { font-size: 15.5px; line-height: 1.7; margin-bottom: 8px; }
+
+.post-page .mx-m { display: none !important; }
+@media (max-width: 960px) {
+  .post-page .mx-two, .post-page .mx-two.flip, .post-page .mx-head, .post-page .mx-lifewrap { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .post-page .mx-two.flip > .mx-txt { order: 0; }
+  .post-page .mx-hgrid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .post-page .mx-hgrid .mid { flex-direction: row; }
+  .post-page .mx-hgrid .mid i { transform: rotate(90deg); }
+}
+@media (max-width: 680px) {
+  .post-page .mx-wrap { padding: 0 20px; }
+  .post-page .mx-json { grid-template-columns: minmax(0, 1fr); }
+  .post-page .mx-json .m { line-height: 1.5; margin: 0 0 8px; font-size: 14px; }
+  .post-page .mx-json .m:empty { display: none; }
+  .post-page .mx-life { grid-template-columns: 84px minmax(0, 1fr) 84px; }
+  .post-page .mx-life .gap { grid-template-columns: 84px minmax(0, 1fr) 84px; }
+  .post-page .mx-life .hd { font-size: 12.5px; padding: 8px 2px; }
+  .post-page .mx-life .hd small { font-size: 10.5px; }
+  .post-page .mx-msg .lb, .post-page .mx-msg .lb code { font-size: 12.5px; }
+  .post-page .mx-msg .lb .gl { flex-basis: 100%; order: 3; font-size: 12.5px; }
+  .post-page .mx-msg.l .lb .gl { text-align: right; }
+  .post-page .mx-d { display: none !important; }
+  .post-page .mx-m { display: block !important; }
+  .post-page .mx-pipes { grid-template-columns: 62px minmax(0, 1fr) 62px; gap: 0 8px; }
+  .post-page .mx-pipes .end { font-size: 12px; }
+  .post-page .mx-pipes .end small { display: none; }
+  .post-page .mx-outs, .post-page .mx-spread { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .post-page .mx-callcard .l { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .post-page .mx-map { font-size: 13.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-page .mx *, .post-page .mx *::before, .post-page .mx *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="mx">
+  <header class="mx-hero">
+    <div class="mx-wrap">
+      <p class="mx-eyebrow">AI Service Track · 14</p>
+      <h1>MCP 서버 두 개를 꽂은 에이전트가 시계 도구를 고른 이유</h1>
+      <p class="mx-lede">배달 앱 리뷰 파일을 주고 "요약해서 저장해 줘"라고만 했는데, 에이전트가 파일을 읽고 오늘 날짜를 확인한 뒤 작성일이 적힌 요약 파일을 만들었습니다. 파일 도구는 직접 만들었고 시계 도구는 남이 만든 서버에서 가져왔습니다. 어떤 도구를 어떤 순서로 쓰라는 코드는 한 줄도 없습니다. 화면 뒤로 내려가 이 일이 어떻게 일어났는지 봅니다.</p>
+      <figure class="mx-hfig" data-figure data-thumb>
+        <div class="mx-hgrid">
+          <div class="mx-chat">
+            <div class="mx-bar"><span>리뷰 정리 도우미</span><small>예시 화면</small></div>
+            <div class="mx-log">
+              <div class="mx-me">
+                <div class="mx-att"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>reviews.txt</div>
+                <span>이 리뷰 읽고 summary.md에 요약 저장해 줘</span>
+              </div>
+              <div class="mx-ai">
+                <div class="av" aria-hidden="true"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></svg></div>
+                <div>
+                  <span class="mx-used"><svg class="ic" width="14" height="14" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>도구 3개 사용함</span>
+                  <div>리뷰 5건을 읽고 오늘 날짜로 요약을 저장했습니다.</div>
+                  <div class="mx-filecard">
+                    <div class="fn"><svg class="ic" width="14" height="14" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>summary.md</div>
+                    <span class="ln hi">작성일: 2026-11-19</span><br>
+                    <span class="ln">- 좋음 2건: 빠른 배달, 양, 서비스</span><br>
+                    <span class="ln">- 아쉬움 3건: 식은 음식, 포장 터짐, 40분 지연</span>
+                  </div>
+                  <div class="acts" aria-hidden="true"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.4l-1.5 6A2 2 0 0 1 17.5 20H7"/></svg><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8L20 8.5M20 4v4.5h-4.5"/></svg></div>
+                </div>
+              </div>
+            </div>
+            <div class="mx-box" aria-hidden="true"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>무엇이든 맡겨 보세요</span><i class="send"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i></div>
+          </div>
+          <div class="mid" aria-hidden="true"><i>→</i>화면 뒤</div>
+          <div class="mx-shelf">
+            <div class="ttl">모델이 받은 도구 목록<small>서버 두 개에서 모은 5개</small></div>
+            <div class="mx-leg"><span><i class="n">1</i>모델이 고른 순서</span><span><b>files_</b> <b>clock_</b> 서버 이름</span><span class="r">빨간 글씨 넘긴 값</span></div>
+            <div class="mx-srv">
+              <div class="sh"><b>files</b><span>직접 만든 서버</span></div>
+              <div class="mx-tool"><span class="n">1</span><div><span class="nm">files_read_file</span><span class="ds">workspace 폴더 안의 글 파일을 읽어 내용을 돌려줍니다.</span><span class="ar">path="reviews.txt"</span></div></div>
+              <div class="mx-tool"><span class="n">3</span><div><span class="nm">files_write_file</span><span class="ds">workspace 폴더 안에 글 파일을 저장합니다.</span><span class="ar">path="summary.md", content="작성일: 2026-11-19 …"</span></div></div>
+            </div>
+            <div class="mx-srv">
+              <div class="sh"><b>clock</b><span>남이 만든 서버 (mcp-server-time)</span></div>
+              <div class="mx-tool"><span class="n">2</span><div><span class="nm">clock_get_current_time</span><span class="ds">Get current time in a specific timezone</span><span class="ar">timezone="Asia/Seoul"</span></div></div>
+              <div class="mx-tool dim"><span class="n off" aria-hidden="true"></span><div><span class="nm">clock_convert_time</span><span class="ds">Convert time between timezones</span></div></div>
+              <div class="mx-tool dim"><span class="n off" aria-hidden="true"></span><div><span class="nm">clock_get_time_ago</span><span class="ds">Get the time a given number of days, hours, minutes and seconds ago</span></div></div>
+            </div>
+          </div>
+        </div>
+        <p class="mx-cap">채팅 화면은 본떠 그린 예시입니다. 도구 목록은 실제 서버 두 개를 띄우고 받은 것이고 도구 이름 앞의 <code>files_</code>, <code>clock_</code>은 서버 이름입니다. 점선 동그라미는 이번에 쓰지 않은 도구입니다.</p>
+      </figure>
+    </div>
+  </header>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-two">
+      <div class="mx-txt">
+        <h2>에이전트는 도구 설명을 읽고 고릅니다</h2>
+        <p>순서를 정한 건 모델입니다. 모델은 요청 글과 함께 도구 목록을 글자로 받습니다. 목록에는 도구마다 이름, 설명, 넘길 값의 모양이 적혀 있습니다. 모델은 "저장해 줘"와 "파일을 저장합니다"를 짝짓고 시스템 프롬프트(system prompt, 앱이 모델에게 미리 주는 지시문)의 "작성일"과 "current time"을 짝짓습니다.</p>
+        <p>MCP(Model Context Protocol)는 그 목록을 모델 앞까지 배달하고 모델이 고른 도구를 서버에서 실행해 결과를 가져오는 약속입니다. 고르는 일은 하지 않습니다. 식당 메뉴판과 비슷합니다. 주방(서버)이 메뉴판을 만들어 주면 손님(모델)이 읽고 고르고 종업원(MCP 클라이언트)은 주문을 주방에 전합니다. 모델이 도구를 "부른다"는 것도 실제로는 도구 이름과 넘길 값을 적은 글을 내놓는 일이고(위 그림의 빨간 글씨) 실행은 앱이 합니다. 다만 메뉴판과 달리 이 목록은 요청할 때마다 모델 입력에 다시 들어가 토큰(token, 모델이 글을 읽는 단위)을 차지합니다.</p>
+        <p>그래서 설명이 곧 성능입니다. Anthropic은 도구 고르기에 설명이 가장 크게 영향을 준다고 안내합니다. 도구가 30~50개를 넘으면 고르는 정확도가 떨어진다고도 적어 두었습니다. 서버를 많이 꽂을수록 목록이 길어지니 쓰는 서버만 꽂는 편이 낫습니다.</p>
+      </div>
+      <figure data-figure>
+        <div class="mx-doc">
+          <div class="blk"><span class="rl">system</span>리뷰 파일을 요약해 저장합니다. 파일에는 <mark>작성일</mark>을 꼭 넣습니다.</div>
+          <div class="blk"><span class="rl">user</span><mark>reviews.txt</mark> 읽고 summary.md에 요약 <mark>저장</mark>해 줘</div>
+          <div class="blk"><span class="rl">tools</span>
+            <div class="t pick"><code>files_read_file</code><span>workspace 폴더 안의 글 파일을 <mark>읽어</mark> 내용을 돌려줍니다. path 예: '<mark>reviews.txt</mark>'</span></div>
+            <div class="t pick"><code>files_write_file</code><span>workspace 폴더 안에 글 파일을 <mark>저장</mark>합니다.</span></div>
+            <div class="t pick"><code>clock_get_current_time</code><span>Get <mark>current time</mark> in a specific timezone</span><em class="mx-pen pn">"작성일"을 채우려면 오늘 날짜가 필요</em></div>
+            <div class="t"><code>clock_convert_time</code><span>Convert time between timezones</span></div>
+            <div class="t"><code>clock_get_time_ago</code><span>Get the time a given number of days … ago</span></div>
+          </div>
+        </div>
+        <p class="mx-cap">모델이 한 번에 받는 입력을 줄여 적었습니다. 빨간 밑줄은 요청과 설명에서 서로 짝이 되는 말이고 칠한 칸은 고른 도구입니다. 실제로는 넘길 값의 모양(JSON Schema)도 함께 들어갑니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap">
+      <div class="mx-head">
+        <h2>함수 하나가 도구 설명 한 장이 됩니다</h2>
+        <div>
+          <p>MCP 서버는 도구를 담아 두고 요청이 오면 실행하는 작은 프로그램입니다. 파이썬에서는 공식 SDK(Software Development Kit, 개발용 라이브러리 묶음)의 <code>MCPServer</code> 객체를 만들고 함수 위에 <code>@mcp.tool()</code>을 붙이면 됩니다. 데코레이터(decorator)는 함수 위에 <code>@</code>로 붙여 그 함수에 기능을 더하는 문법입니다.</p>
+          <p>붙인 순간 함수 이름은 도구 이름이 되고 독스트링(docstring, 함수 몸통 맨 앞에 적는 설명 글)은 도구 설명이 됩니다. 타입 힌트(type hint, <code>path: str</code>처럼 값의 종류를 적은 표시)는 넘길 값의 모양이 됩니다. 앞에서 본 모델 입력의 설명 글은 아래 코드의 독스트링을 그대로 옮긴 것입니다.</p>
+        </div>
+      </div>
+      <div class="mx-code mx-cp">
+<pre data-title="file_server.py" data-hl="5,14,15,25,28,29" data-start="1"><code class="language-python">from pathlib import Path
+from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
+
+mcp = MCPServer("files")                      # ① 서버 이름
+ROOT = Path("workspace").resolve()
+
+def inside(path: str) -&gt; Path:
+    p = (ROOT / path).resolve()
+    if not p.is_relative_to(ROOT):            # workspace 밖이면 거절
+        raise ToolError("workspace 폴더 밖은 열 수 없습니다")
+    return p
+
+# ② 도구로 등록
+@mcp.tool()
+def read_file(path: str) -&gt; str:
+    """workspace 폴더 안의 글 파일을 읽어 내용을 돌려줍니다.
+    path 예: 'reviews.txt'"""
+    return inside(path).read_text(encoding="utf-8")
+
+@mcp.tool()
+def write_file(path: str, content: str) -&gt; str:
+    """workspace 폴더 안에 글 파일을 저장합니다. 같은 이름이 있으면 덮어씁니다."""
+    inside(path).write_text(content, encoding="utf-8")
+    return f"{path} 저장 완료 ({len(content)}자)"   # ③ 결과 글
+
+if __name__ == "__main__":
+    # ④ 통로: 표준 입출력
+    mcp.run(transport="stdio")</code></pre>
+        <ol class="pg-code-notes">
+          <li><b>서버 이름입니다.</b> 에이전트 쪽 설정에서 서버를 구분하는 이름은 따로 정하므로 여기 이름은 서버 소개용입니다. <code>mcp</code> 2.0부터 클래스 이름이 <code>FastMCP</code>에서 <code>MCPServer</code>로 바뀌었습니다. 옛 이름으로 가져오면 2.x에서는 바로 오류가 납니다. FastMCP라는 이름은 따로 만들어지는 확장 라이브러리 <code>fastmcp</code>에 남아 있고 뒤에 나오는 LangChain 어댑터가 안에서 이 라이브러리를 씁니다.</li>
+          <li><b>함수를 도구로 등록합니다.</b> <code>@mcp.tool(description="…")</code>처럼 설명을 직접 주면 독스트링 대신 그 글이 설명이 됩니다. 둘을 다 쓰면 모델은 <code>description</code>만 봅니다.</li>
+          <li><b>결과는 모델이 읽을 글입니다.</b> 저장한 파일 이름과 글자 수를 돌려주면 모델이 일을 마쳤는지 확인할 수 있습니다. 모델이 엉뚱한 파일을 열거나 덮어쓰지 못하도록 경로를 <code>workspace</code> 안으로 묶어 두었습니다. 거절은 <code>ToolError</code>로 알려야 그 문장이 모델에게 그대로 갑니다.</li>
+          <li><b>메시지를 주고받을 통로입니다.</b> <code>stdio</code>는 에이전트가 이 파일을 직접 실행하고 표준 입출력으로 대화하는 방식입니다. 여러 앱이 주소로 접속하게 하려면 <code>"streamable-http"</code>를 씁니다. 둘의 차이는 아래에서 다시 봅니다.</li>
+        </ol>
+      </div>
+      <figure class="mx-below" data-figure>
+        <div class="mx-json" aria-label="tools/list 응답에 담긴 read_file 도구 설명과 각 칸이 코드의 어디에서 왔는지 적은 메모">
+          <div class="l">{ "name": "read_file",</div><div class="m">← 함수 이름</div>
+          <div class="l on">  "description": "workspace 폴더 안의 글 파일을…",</div><div class="m">← 독스트링</div>
+          <div class="l">  "inputSchema": {</div><div class="m"></div>
+          <div class="l on">    "properties": { "path": { "type": "string" } },</div><div class="m">← <code>path: str</code> 타입 힌트</div>
+          <div class="l">    "required": ["path"] },</div><div class="m">← 기본값이 없어서 꼭 넘겨야 함</div>
+          <div class="l">  "outputSchema": { … "result": "string" } }</div><div class="m">← 돌려주는 값의 타입 <code>str</code></div>
+        </div>
+        <p class="mx-cap">서버가 <code>tools/list</code> 요청에 실제로 돌려준 <code>read_file</code> 항목을 줄여 적었습니다. 빨간 메모는 각 칸이 위 코드의 어느 줄에서 왔는지 가리킵니다.</p>
+      </figure>
+      <details>
+        <summary>만든 서버를 에이전트 없이 먼저 시험하려면</summary>
+        <p>MCP Inspector로 서버를 열어 도구 목록을 보고 값을 넣어 실행해 볼 수 있습니다. 서버를 띄우는 명령을 뒤에 붙입니다. <code>npx @modelcontextprotocol/inspector uv run --with mcp==2.3.0 file_server.py</code>를 실행하면 브라우저 창이 열립니다. Inspector 2.16(2026-11-18) 기준입니다.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-two">
+      <div class="mx-txt">
+        <h2>에이전트 코드에는 서버 목록만 적습니다</h2>
+        <p>도구를 만드는 코드는 서버에 있고 에이전트 쪽에는 어떤 서버를 어떻게 실행할지만 적습니다. LangChain은 1.4부터 MCP 연결을 <code>langchain.mcp</code>의 <code>MCPAdapter</code>로 직접 지원합니다. 따로 깔던 <code>langchain-mcp-adapters</code> 패키지를 대신하며 2026년 11월 기준 아직 베타(beta, 정식 출시 전 시험판)입니다. 어댑터(adapter)는 모양이 다른 두 쪽을 이어 주는 부품으로, 여기서는 MCP 도구를 LangChain 도구 모양으로 바꿔 줍니다.</p>
+        <p>설정 모양은 Claude Desktop이나 Cursor 같은 앱이 쓰는 <code>mcpServers</code> 형식과 같습니다. 서버마다 이름을 붙이고 실행 명령을 적습니다. 남이 만든 시계 서버는 설치하지 않고 <code>uvx</code>로 바로 실행합니다. <code>uv</code>는 파이썬 패키지를 설치하고 실행해 주는 도구이고 <code>uvx</code>는 패키지를 임시 환경(그 프로그램만 쓰는 패키지 묶음)에 받아 바로 실행하는 명령입니다.</p>
+      </div>
+      <figure data-figure>
+        <svg class="mx-d" viewBox="0 0 520 300" role="img" aria-label="에이전트 앱 하나가 files 서버와 clock 서버를 각각 자식 프로세스로 실행하고 두 서버의 도구 이름 앞에 서버 이름이 붙어 하나의 목록으로 모이는 그림" style="max-width:560px">
+          <defs><marker id="mx-a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" fill="none" stroke="var(--fg-strong)" stroke-width="2"/></marker></defs>
+          <rect x="10" y="20" width="180" height="260" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="100" y="50" text-anchor="middle" font-weight="700" font-size="15" fill="var(--fg-strong)">에이전트 앱</text>
+          <text x="100" y="72" text-anchor="middle" font-size="13" fill="var(--fg-alternative)" font-family="var(--font-mono)">agent.py</text>
+          <text x="28" y="112" font-size="13" fill="var(--fg-alternative)">모델에 넘길 목록</text>
+          <g font-family="var(--font-mono)" font-size="12.5" fill="var(--fg-strong)">
+            <rect x="26" y="122" width="148" height="26" rx="6" fill="var(--bg-muted)"/><text x="34" y="140">files_read_file</text>
+            <rect x="26" y="154" width="148" height="26" rx="6" fill="var(--bg-muted)"/><text x="34" y="172">files_write_file</text>
+            <rect x="26" y="186" width="148" height="26" rx="6" fill="var(--bg-muted)"/><text x="34" y="204">clock_get_curr…</text>
+            <rect x="26" y="218" width="148" height="26" rx="6" fill="var(--bg-muted)"/><text x="34" y="236">clock_convert…</text>
+          </g>
+          <text x="100" y="266" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)">… 모두 5개</text>
+          <rect x="320" y="36" width="190" height="92" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="415" y="66" text-anchor="middle" font-weight="700" font-size="15" fill="var(--fg-strong)">files 서버</text>
+          <text x="415" y="88" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)" font-family="var(--font-mono)">uv run … file_server.py</text>
+          <text x="415" y="110" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)">도구 2개</text>
+          <rect x="320" y="172" width="190" height="92" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="415" y="202" text-anchor="middle" font-weight="700" font-size="15" fill="var(--fg-strong)">clock 서버</text>
+          <text x="415" y="224" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)" font-family="var(--font-mono)">uvx mcp-server-time</text>
+          <text x="415" y="246" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)">도구 3개 · 남이 만듦</text>
+          <path d="M196 82 H312" fill="none" stroke="var(--fg-strong)" stroke-width="2" marker-end="url(#mx-a1)"/>
+          <path d="M196 218 H312" fill="none" stroke="var(--fg-strong)" stroke-width="2" marker-end="url(#mx-a1)"/>
+          <text x="254" y="72" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)">직접 실행</text>
+          <text x="254" y="208" text-anchor="middle" font-size="12.5" fill="var(--fg-alternative)">직접 실행</text>
+          <text x="254" y="150" text-anchor="middle" font-size="14" font-weight="600" fill="var(--mx-red)">이름 앞에</text>
+          <text x="254" y="170" text-anchor="middle" font-size="14" font-weight="600" fill="var(--mx-red)">서버 이름</text>
+        </svg>
+        <svg class="mx-m" viewBox="0 0 340 430" role="img" aria-label="위쪽 에이전트 앱이 아래 files 서버와 clock 서버를 각각 실행하고 도구 이름 앞에 서버 이름이 붙은 다섯 도구를 한 목록으로 모은 그림">
+          <defs><marker id="mx-a1m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" fill="none" stroke="var(--fg-strong)" stroke-width="2"/></marker></defs>
+          <rect x="6" y="6" width="328" height="226" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="22" y="34" font-weight="700" font-size="16" fill="var(--fg-strong)">에이전트 앱 <tspan font-weight="400" font-size="14" fill="var(--fg-alternative)" font-family="var(--font-mono)">agent.py</tspan></text>
+          <text x="22" y="60" font-size="14" fill="var(--fg-alternative)">모델에 넘길 목록</text>
+          <g font-family="var(--font-mono)" font-size="14" fill="var(--fg-strong)">
+            <rect x="20" y="70" width="300" height="26" rx="6" fill="var(--bg-muted)"/><text x="30" y="88">files_read_file</text>
+            <rect x="20" y="100" width="300" height="26" rx="6" fill="var(--bg-muted)"/><text x="30" y="118">files_write_file</text>
+            <rect x="20" y="130" width="300" height="26" rx="6" fill="var(--bg-muted)"/><text x="30" y="148">clock_get_current_time</text>
+            <rect x="20" y="160" width="300" height="26" rx="6" fill="var(--bg-muted)"/><text x="30" y="178">clock_convert_time</text>
+            <rect x="20" y="190" width="300" height="26" rx="6" fill="var(--bg-muted)"/><text x="30" y="208">clock_get_time_ago</text>
+          </g>
+          <path d="M88 238 V318" fill="none" stroke="var(--fg-strong)" stroke-width="2" marker-end="url(#mx-a1m)"/>
+          <path d="M252 238 V318" fill="none" stroke="var(--fg-strong)" stroke-width="2" marker-end="url(#mx-a1m)"/>
+          <text x="98" y="272" font-size="14" fill="var(--fg-alternative)">직접 실행</text>
+          <text x="170" y="296" text-anchor="middle" font-size="15" font-weight="600" fill="var(--mx-red)">이름 앞에 서버 이름</text>
+          <rect x="6" y="326" width="160" height="96" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="86" y="358" text-anchor="middle" font-weight="700" font-size="16" fill="var(--fg-strong)">files 서버</text>
+          <text x="86" y="382" text-anchor="middle" font-size="14" fill="var(--fg-alternative)">직접 만듦</text>
+          <text x="86" y="404" text-anchor="middle" font-size="14" fill="var(--fg-alternative)">도구 2개</text>
+          <rect x="174" y="326" width="160" height="96" rx="14" fill="var(--bg-base)" stroke="var(--fg-strong)" stroke-width="2"/>
+          <text x="254" y="358" text-anchor="middle" font-weight="700" font-size="16" fill="var(--fg-strong)">clock 서버</text>
+          <text x="254" y="382" text-anchor="middle" font-size="14" fill="var(--fg-alternative)">남이 만듦</text>
+          <text x="254" y="404" text-anchor="middle" font-size="14" fill="var(--fg-alternative)">도구 3개</text>
+        </svg>
+        <p class="mx-cap">서버가 둘 이상이면 도구 이름 앞에 설정의 서버 이름이 붙습니다. 두 서버에 같은 이름의 도구가 있어도 모델이 헷갈리지 않습니다.</p>
+      </figure>
+    </div>
+    <div class="mx-wrap">
+      <div class="mx-code mx-cp">
+<pre data-title="agent.py" data-hl="5,6,7,10,11,12,16,17,18" data-start="1"><code class="language-python">import asyncio
+from langchain.agents import create_agent
+from langchain.mcp import MCPAdapter
+
+config = {"mcpServers": {
+    # ① 내가 만든 서버
+    "files": {"command": "uv",
+              "args": ["run", "--with", "mcp==2.3.0",
+                       "file_server.py"]},
+    # ② 남이 만든 서버, 설치 없이 실행
+    "clock": {"command": "uvx",
+              "args": ["mcp-server-time==2026.11.18",
+                       "--local-timezone=Asia/Seoul"]},
+}}
+
+async def main():
+    # ③ 열어 둔 채로 도구를 받고 에이전트를 실행
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_agent(
+            model="openai:gpt-6.2-sol",
+            tools=tools,
+            system_prompt="리뷰 파일을 요약해 저장합니다. "
+                          "파일에는 작성일을 꼭 넣습니다.")
+        q = "reviews.txt 읽고 summary.md에 요약 저장해 줘"
+        async for step in agent.astream(
+                {"messages": [{"role": "user", "content": q}]},
+                stream_mode="updates"):
+            ...  # 단계마다 도구 요청·결과·답을 출력
+
+asyncio.run(main())</code></pre>
+        <div class="mx-term"><div class="mx-term-bar">터미널 · 모델 답은 예시, 도구 결과는 실제 서버 출력</div><pre class="mx-term-out"><span class="d">$</span> pip install "langchain[mcp]==1.5.2" langchain-openai
+<span class="d">$</span> python agent.py
+<span class="y">[도구 요청]</span> files_read_file {'path': 'reviews.txt'}
+<span class="g">[도구 결과]</span> 1. 떡볶이가 식어서 왔어요. 맛은 괜찮았는데 아쉬워요. …
+<span class="y">[도구 요청]</span> clock_get_current_time {'timezone': 'Asia/Seoul'}
+<span class="g">[도구 결과]</span> {"timezone": "Asia/Seoul", "datetime": "2026-11-19T21:20:42+09:00", …}
+<span class="y">[도구 요청]</span> files_write_file {'path': 'summary.md', 'content': '작성일: 2026-11-19 …'}
+<span class="g">[도구 결과]</span> summary.md 저장 완료 (71자)
+[답] summary.md에 리뷰 5건 요약을 2026-11-19 날짜로 저장했습니다.</pre></div>
+        <ol class="pg-code-notes">
+          <li><b>내가 만든 서버를 실행하는 명령입니다.</b> <code>uv run --with mcp==2.3.0</code>은 서버에 필요한 패키지만 담은 환경을 따로 만들어 실행합니다. 서버는 에이전트와 다른 프로그램이라 파이썬 환경도 따로 둘 수 있습니다. 같은 환경에 깔았다면 <code>"command": "python", "args": ["file_server.py"]</code>로 써도 됩니다.</li>
+          <li><b>남이 만든 서버는 패키지 이름과 실행 인자만 적습니다.</b> <code>--local-timezone</code>은 시간대를 넘기지 않았을 때 쓸 기본 시간대입니다. 버전을 적어 두면 서버가 갑자기 바뀌어 에이전트가 달라지는 일을 막을 수 있습니다.</li>
+          <li><b>어댑터를 연 채로 에이전트를 돌립니다.</b> <code>async with</code>는 블록에 들어갈 때 연결을 열고 나올 때 닫는 문법이고 <code>await</code>는 오래 걸리는 일이 끝날 때까지 기다리라는 표시입니다. <code>list_tools()</code>가 두 서버의 도구를 LangChain 도구로 바꿔 한 목록으로 돌려줍니다. <code>async with</code>를 빼도 동작하지만 도구를 부를 때마다 서버가 새로 켜집니다. 아래에서 직접 잰 값을 봅니다. 모델 이름 <code>gpt-6.2-sol</code>은 2026-11-19 OpenAI 모델 문서 기준입니다.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap">
+      <div class="mx-head">
+        <h2>화면 뒤에서 오가는 메시지</h2>
+        <div>
+          <p>에이전트와 서버는 JSON-RPC 2.0 형식의 짧은 글을 한 줄씩 주고받습니다. JSON-RPC는 "이 이름의 일을 이 값으로 해 줘"라는 요청과 그 답을 JSON으로 적는 약속입니다. 요청에는 번호(<code>id</code>)가 붙고 답은 같은 번호를 달고 돌아옵니다. 번호가 없는 글은 알림(notification)이라 답을 기다리지 않습니다.</p>
+          <p>도구를 실행할 때의 요청 이름은 늘 <code>tools/call</code>입니다. 어떤 도구인지는 <code>params</code> 안의 <code>name</code>에 적고 넘길 값은 <code>arguments</code>에 적습니다. 도구 이름은 <code>method</code> 칸에 들어가지 않습니다.</p>
+        </div>
+      </div>
+      <div class="mx-lifewrap mx-below">
+        <figure data-figure>
+          <div class="mx-life" role="img" aria-label="에이전트 앱과 clock 서버 사이에 server/discover, tools/list, tools/call 요청과 같은 번호의 응답이 차례로 오가는 생명선 그림">
+            <div class="hd">에이전트 앱<small>MCP 클라이언트</small></div><div></div><div class="hd">clock 서버<small>mcp-server-time</small></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg r"><div class="lb"><code>server/discover</code><span class="id">id 1</span><span class="gl">어떤 버전과 기능을 쓰나요?</span></div><div class="line"></div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg l"><div class="lb"><span class="gl">2026-07-28 판을 씁니다</span><span class="id">id 1</span><code>result</code></div><div class="line"></div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg r"><div class="lb"><code>tools/list</code><span class="id">id 2</span><span class="gl">도구 목록을 주세요</span></div><div class="line"></div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg l"><div class="lb"><span class="gl">도구 3개와 설명</span><span class="id">id 2</span><code>result</code></div><div class="line"></div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail note"><span>모델이 고름</span></div><div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg r key"><div class="lb"><code>tools/call</code><span class="id">id 3</span><span class="gl">get_current_time 실행</span></div><div class="line"></div></div><div class="rail"></div></div>
+            <div class="gap"><div class="rail"></div><div class="mx-msg l"><div class="lb"><span class="gl">2026-11-19T21:20:42+09:00</span><span class="id">id 3</span><code>result</code></div><div class="line"></div></div><div class="rail"></div></div>
+          </div>
+          <p class="mx-cap">맨 위 그림의 2번 도구를 부를 때 실제로 오간 메시지를 순서대로 옮겼습니다. 세로선은 시간이 아래로 흐르는 쪽이고 빨간 화살표가 도구를 실행한 요청입니다.</p>
+        </figure>
+        <figure data-figure>
+          <div class="mx-callcard">
+            <div class="k">빨간 화살표의 실제 요청 (일부 생략)</div>
+            <div class="l">{"jsonrpc": "2.0",</div>
+            <div class="l on"> "id": 3,</div>
+            <div class="m">답도 id 3을 달고 옵니다</div>
+            <div class="l on"> "method": "tools/call",</div>
+            <div class="m">도구를 실행할 때는 늘 이 이름</div>
+            <div class="l"> "params": {</div>
+            <div class="l">  "_meta": {"…protocolVersion": "2026-07-28", …},</div>
+            <div class="m">요청마다 규격 판과 클라이언트 정보를 싣습니다</div>
+            <div class="l on">  "name": "get_current_time",</div>
+            <div class="m">모델이 고른 <code>clock_get_current_time</code>에서 서버 이름을 떼고 보냅니다</div>
+            <div class="l on">  "arguments": {"timezone": "Asia/Seoul"}}}</div>
+            <div class="m">고른 도구와 값은 여기에</div>
+          </div>
+        </figure>
+      </div>
+      <details>
+        <summary>옛 판에서는 먼저 인사를 나눴습니다</summary>
+        <p>2026-07-28 판부터 MCP는 요청 하나하나가 혼자서 읽히게 바뀌었습니다. 그 전 판(2025-11-25까지)은 연결하자마자 <code>initialize</code> 요청으로 버전을 맞추고 <code>notifications/initialized</code> 알림을 보낸 뒤에 <code>tools/list</code>를 불렀습니다. <code>mcp</code> 2.3 서버는 두 판을 다 받습니다. 옛 <code>langchain-mcp-adapters</code>(<code>mcp</code> 1.x를 씀)로 같은 서버에 붙으면 이 인사 과정이 그대로 오갑니다.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-two">
+      <div class="mx-txt">
+        <h2>도구를 부를 때마다 서버가 새로 켜집니다</h2>
+        <p>에이전트가 도구를 쓸 때마다 한 박자씩 늦거나 방금 한 일을 잊는다면 연결 방식부터 봅니다. 어댑터를 열어 두지 않으면 LangChain은 도구를 부를 때마다 서버에 새로 연결합니다. 서버가 둘인 <code>mcpServers</code> 설정에서는 그때마다 서버 프로그램을 새로 실행합니다. 시험용 서버(부를 때마다 수를 하나씩 올리는 도구 <code>bump</code> 하나)를 시계 서버와 함께 꽂아 재 보면 차이가 바로 보입니다.</p>
+        <p>열어 두지 않으면 세 번 불러도 답이 1, 1, 1입니다. 서버가 매번 새로 켜져 기억하던 수가 사라졌기 때문입니다. 한 번에 0.6초 넘게 걸립니다. 어댑터를 연 채로 부르면 1, 2, 3으로 이어지고 첫 연결 뒤로는 한 번에 2~3밀리초면 끝납니다.</p>
+        <p>그래서 에이전트를 돌리는 동안에는 <code>async with MCPAdapter(...)</code> 안에서 실행합니다. 다만 열어 둔 연결 하나를 여러 사용자의 요청이 함께 쓰면 상태가 섞일 수 있다고 어댑터 안의 <code>fastmcp</code> 라이브러리가 경고합니다. 웹 서비스라면 사용자 요청 하나마다 열고 닫는 편이 안전합니다.</p>
+      </div>
+      <figure data-figure>
+        <div class="mx-tl">
+          <div>
+            <h3>열어 두지 않음<small>tools 만 받아 두고 부름</small></h3>
+            <div class="mx-track">
+              <div class="mx-seg boot again" style="left:0%;width:31%"><span class="v">켜기·연결 0.65초</span></div>
+              <div class="mx-seg call" style="left:31.6%"><span class="cnt">1</span></div>
+              <div class="mx-seg boot again" style="left:33.8%;width:31%"></div>
+              <div class="mx-seg call" style="left:65.4%"><span class="cnt">1</span></div>
+              <div class="mx-seg boot again" style="left:67.6%;width:31%"></div>
+              <div class="mx-seg call" style="left:99%"><span class="cnt">1</span></div>
+            </div>
+            <p class="sum">세 번에 <b>약 1.95초</b>, 수는 늘 1</p>
+          </div>
+          <div>
+            <h3>열어 둠<small>async with MCPAdapter(...)</small></h3>
+            <div class="mx-track">
+              <div class="mx-seg boot" style="left:0%;width:25%"><span class="v">켜기·연결 0.5초</span></div>
+              <div class="mx-seg call" style="left:26%"><span class="cnt">1</span></div>
+              <div class="mx-seg call" style="left:30%"><span class="cnt">2</span></div>
+              <div class="mx-seg call" style="left:34%"><span class="cnt">3</span></div>
+            </div>
+            <div class="mx-ax" aria-hidden="true"><span style="left:0%">0초</span><span style="left:50%">1초</span><span style="left:100%;transform:translateX(-100%)">2초</span></div>
+            <p class="sum">세 번에 <b>약 0.53초</b>, 수가 이어짐</p>
+          </div>
+          <div class="mx-tlkey"><span><i class="a"></i>서버를 다시 켬</span><span><i class="b"></i>처음 한 번 켬</span><span><i class="c"></i>도구 실행과 결과(수)</span></div>
+        </div>
+        <p class="mx-cap">시험용 서버와 시계 서버를 함께 꽂은 설정으로 <code>bump</code>를 세 번 불러 잰 값입니다(맥북, LangChain 1.5.2·FastMCP 4.2.2). 컴퓨터와 서버에 따라 시간은 달라지지만 다시 켜지는 횟수는 같습니다. 도구 실행 막대는 보이도록 굵게, 사이를 띄워 그렸습니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-two">
+      <div class="mx-txt">
+        <h2>stdio 서버의 print 한 줄은 메시지 통로로 섞여 들어갑니다</h2>
+        <p>로그를 보려고 넣은 <code>print()</code> 한 줄 때문에 에이전트가 오류로 멈추기도 합니다. stdio(표준 입출력) 방식에서 에이전트는 서버를 자식 프로세스(process, 자기 아래에서 도는 프로그램)로 실행하고 파이프 세 개로 잇습니다. 요청은 표준 입력(stdin)으로, 답은 표준 출력(stdout)으로 오가고 표준 오류(stderr)는 로그용 옆길입니다.</p>
+        <p>함수 안에 <code>print()</code>를 쓰면 그 글은 표준 출력으로 갑니다. 무전기 채널에 잡담이 끼어드는 것과 비슷합니다. 규격은 서버가 표준 출력에 MCP 메시지가 아닌 글을 쓰면 안 된다고 정해 두었습니다. 받는 쪽이 이 줄을 어떻게 다루는지는 클라이언트마다 달랐습니다.</p>
+        <p>로그는 <code>print(..., file=sys.stderr)</code>나 <code>logging</code>으로 표준 오류에 씁니다. 무전기와 달리 이 통로에서는 잡담 한 줄에 프로그램이 멈추기도 합니다.</p>
+      </div>
+      <figure data-figure>
+        <div class="mx-pipes" role="img" aria-label="에이전트 앱과 서버 사이 파이프 세 줄. stdout 파이프에 JSON 메시지 사이로 print 한 줄이 섞여 있고 stderr 파이프로는 로그가 따로 흐른다">
+          <div class="end">에이전트 앱<small>클라이언트</small></div>
+          <div class="lanes">
+            <div class="mx-lane"><div class="nm"><span>stdin</span><span>요청 →</span></div><div class="tube"><span class="mx-pkt">{"method":"tools/call",…}</span></div></div>
+            <div class="mx-lane"><div class="nm"><span>← 답</span><span>stdout</span></div><div class="tube"><span class="mx-pkt bad">[read_file] path=reviews.txt</span><span class="mx-pkt">{"id":3,"result":…}</span></div></div>
+            <div class="mx-lane err"><div class="nm"><span>← 로그</span><span>stderr</span></div><div class="tube"><span class="mx-pkt log">print(…, file=sys.stderr)</span></div></div>
+          </div>
+          <div class="end">files 서버<small>stdio</small></div>
+        </div>
+        <div class="mx-outs">
+          <div><div class="who">옛 어댑터 <small>mcp 1.30</small></div><div class="say no"><code>Failed to parse JSONRPC message</code> 오류를 냈고 세 번 돌려 세 번 모두 프로그램이 오류로 끝났습니다(종료 코드 1).</div></div>
+          <div><div class="who">새 어댑터 <small>FastMCP 4.2</small></div><div class="say meh">그 줄을 말없이 버리고 답만 받았습니다. 동작은 하지만 남기려던 로그가 어디에도 남지 않습니다.</div></div>
+        </div>
+        <p class="mx-cap"><code>read_file</code> 안에 <code>print(f"[read_file] path={path}")</code> 한 줄을 넣어 직접 시험했습니다. 빨간 칸이 메시지 통로에 섞여 들어간 줄입니다. 두 파이프 사이에 기록기를 끼워 실제로 오간 줄을 확인했습니다.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap">
+      <div class="mx-head">
+        <h2>같은 서버를 LangChain과 LlamaIndex가 함께 씁니다</h2>
+        <div>
+          <p>서버를 따로 켜 두고 주소로 접속하게 하면 여러 앱이 한 서버를 나눠 씁니다. 이 방식을 Streamable HTTP라고 부릅니다. 앱은 웹 페이지를 부를 때처럼 HTTP 요청에 메시지를 실어 보냅니다. 코드에서는 <code>mcp.run(transport="streamable-http")</code> 한 줄만 바꾸면 되고 서버는 <code>http://127.0.0.1:8000/mcp</code>에서 기다립니다. <code>127.0.0.1</code>은 내 컴퓨터 자신을 가리키는 주소이고 <code>8000</code>은 그 컴퓨터의 문 번호(포트)입니다.</p>
+          <p>같은 파일 서버를 이렇게 띄우고 LangChain 에이전트와 LlamaIndex 에이전트로 차례로 붙여 봤습니다. 둘 다 같은 두 도구를 받았고 같은 파일을 읽었습니다. 서버는 어느 프레임워크가 부르는지 모릅니다. 메시지 형식만 맞으면 됩니다.</p>
+        </div>
+      </div>
+      <figure class="mx-below" data-figure>
+        <div class="mx-spread">
+          <div class="mx-panel">
+            <h3>stdio<small>앱이 직접 켜는 서버</small></h3>
+            <svg viewBox="0 0 460 250" role="img" aria-label="에이전트 앱 상자 안에서 서버가 자식 프로세스로 실행되고 파이프로 이어진 그림">
+              <defs><marker id="mx-a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" fill="none" stroke="var(--fg-strong)" stroke-width="2"/></marker></defs>
+              <rect class="bx" x="10" y="20" width="440" height="200" rx="16"/>
+              <text class="b" x="30" y="50">에이전트 앱 (내 컴퓨터)</text>
+              <rect class="bx2" x="40" y="80" width="150" height="100" rx="12"/>
+              <text class="b" x="115" y="122" text-anchor="middle">에이전트</text>
+              <text class="s" x="115" y="146" text-anchor="middle">클라이언트</text>
+              <rect class="bx2" x="270" y="80" width="150" height="100" rx="12"/>
+              <text class="b" x="345" y="122" text-anchor="middle">files 서버</text>
+              <text class="s" x="345" y="146" text-anchor="middle">자식 프로세스</text>
+              <path class="ln" d="M196 118 H262" marker-end="url(#mx-a2)"/>
+              <path class="ln" d="M264 144 H198" marker-end="url(#mx-a2)"/>
+              <text class="s" x="230" y="106" text-anchor="middle">파이프</text>
+              <text class="pen" x="230" y="246" text-anchor="middle">앱이 끝나면 서버도 꺼집니다</text>
+            </svg>
+            <p class="say">에이전트가 켜고 끕니다. 그 앱만 쓰고 주소가 없어 밖에서는 닿지 않습니다. 내 컴퓨터의 파일처럼 그 컴퓨터 안에서만 다룰 것에 맞습니다.</p>
+          </div>
+          <div class="mx-panel">
+            <h3>Streamable HTTP<small>주소로 접속하는 서버</small></h3>
+            <svg viewBox="0 0 460 250" role="img" aria-label="주소 127.0.0.1:8000/mcp 에서 기다리는 서버 하나에 LangChain 에이전트와 LlamaIndex 에이전트가 함께 접속하고 클라우드의 OpenAI는 내 컴퓨터 주소에 닿지 못하는 그림">
+              <defs><marker id="mx-a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" fill="none" stroke="var(--fg-strong)" stroke-width="2"/></marker><marker id="mx-a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" fill="none" stroke="var(--mx-red)" stroke-width="2"/></marker></defs>
+              <rect class="bx2" x="10" y="20" width="170" height="64" rx="12"/>
+              <text class="b" x="95" y="48" text-anchor="middle">LangChain</text>
+              <text class="s" x="95" y="70" text-anchor="middle">MCPAdapter</text>
+              <rect class="bx2" x="10" y="104" width="170" height="64" rx="12"/>
+              <text class="b" x="95" y="132" text-anchor="middle">LlamaIndex</text>
+              <text class="s" x="95" y="154" text-anchor="middle">BasicMCPClient</text>
+              <rect class="bx" x="280" y="44" width="170" height="104" rx="14"/>
+              <text class="b" x="365" y="80" text-anchor="middle">files 서버</text>
+              <text class="mono" x="365" y="104" text-anchor="middle">127.0.0.1:8000</text>
+              <text class="mono" x="365" y="124" text-anchor="middle">/mcp</text>
+              <path class="ln" d="M186 52 H230 V84 H272" marker-end="url(#mx-a3)"/>
+              <path class="ln" d="M186 136 H230 V108 H272" marker-end="url(#mx-a3)"/>
+              <rect class="bx2" x="10" y="188" width="170" height="50" rx="12" stroke-dasharray="5 5"/>
+              <text class="b" x="95" y="219" text-anchor="middle">OpenAI 클라우드</text>
+              <path class="ln x" d="M186 213 H300 V156" marker-end="url(#mx-a4)"/>
+              <line class="xx" x1="236" y1="203" x2="252" y2="223"/><line class="xx" x1="252" y1="203" x2="236" y2="223"/>
+              <text class="pen" x="312" y="200">공개 주소여야</text>
+              <text class="pen" x="312" y="220">닿습니다</text>
+            </svg>
+            <p class="say">서버를 따로 켜 둡니다. 주소를 아는 앱이면 프레임워크와 상관없이 붙습니다. 회사 위키나 티켓 시스템처럼 여러 앱과 사람이 함께 쓸 것에 맞습니다.</p>
+          </div>
+        </div>
+        <p class="mx-cap">OpenAI 칸은 API에 서버 주소를 넘기는 방식(아래 접는 상자)일 때입니다.</p>
+      </figure>
+      <div class="mx-code mx-cp">
+<pre data-title="llama_client.py" data-hl="5,6,7" data-start="1"><code class="language-python">import asyncio
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+async def main():
+    # ① 같은 서버 주소, 다른 프레임워크
+    client = BasicMCPClient("http://127.0.0.1:8000/mcp")
+    tools = await McpToolSpec(client=client).to_tool_list_async()
+    for t in tools:
+        print(t.metadata.name, "|", t.metadata.description[:24])
+    print(await tools[0].acall(path="reviews.txt"))
+
+asyncio.run(main())</code></pre>
+        <div class="mx-term"><div class="mx-term-bar">터미널 · 서버는 다른 창에서 <code>streamable-http</code>로 실행 중</div><pre class="mx-term-out"><span class="d">$</span> pip install llama-index-tools-mcp==0.7.0
+<span class="d">$</span> python llama_client.py
+read_file | workspace 폴더 안의 글 파일을 읽어 내용
+write_file | workspace 폴더 안에 글 파일을 저장합니다
+meta=None content=[TextContent(type='text', text='1. 떡볶이가 식어서 왔어요. …')]</pre></div>
+        <ol class="pg-code-notes">
+          <li><b>주소만 바꾸면 다른 프레임워크도 같은 도구를 받습니다.</b> LangChain에서는 <code>MCPAdapter("http://127.0.0.1:8000/mcp")</code>처럼 주소 하나를 넘깁니다. 예전 글에서 흔히 보이는 <code>/sse</code> 주소와 <code>transport="sse"</code>는 2025-03-26 판부터 폐기 예정이 된 옛 방식이고 지금은 <code>/mcp</code>로 받는 Streamable HTTP를 씁니다.</li>
+        </ol>
+      </div>
+      <details>
+        <summary>OpenAI API에 서버 주소를 직접 넘기는 방법</summary>
+        <p>Responses API는 <code>tools</code>에 <code>{"type": "mcp", "server_label": "files", "server_url": "https://…/mcp", "require_approval": "never"}</code>를 넣으면 OpenAI 쪽에서 서버에 접속해 도구를 부릅니다. 이때 서버를 부르는 쪽은 내 컴퓨터가 아니라 OpenAI 클라우드라서 <code>127.0.0.1</code> 같은 내 컴퓨터 주소에는 닿지 않습니다. 인터넷에서 열리는 주소와 인증이 필요합니다. <code>require_approval</code>은 도구를 부르기 전에 사람의 허락을 받을지 정하는 값으로, 쓰기 도구라면 허락을 받게 두는 편이 안전합니다.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-head">
+      <h2>서버를 꽂기 전에 정할 것</h2>
+      <div>
+        <ul class="mx-list">
+          <li><b>설명을 먼저 씁니다.</b> 모델은 이름과 설명만 보고 고릅니다. 무엇을 하는지, 넘길 값의 예, 언제 쓰면 안 되는지를 한두 줄로 적습니다.</li>
+          <li><b>쓸 서버만 꽂습니다.</b> 도구 목록은 요청마다 모델 입력에 들어갑니다. 도구가 많을수록 토큰이 늘고 고르기가 흐려집니다.</li>
+          <li><b>연결을 언제 열고 닫을지 정합니다.</b> 에이전트를 한 번 돌리는 동안은 어댑터를 열어 둡니다. 서버에 상태를 남기는 도구라면 특히 그렇습니다.</li>
+          <li><b>stdio 서버의 로그는 표준 오류로 보냅니다.</b> <code>print()</code>는 표준 출력으로 갑니다.</li>
+          <li><b>통로를 고릅니다.</b> 내 컴퓨터 안에서만 쓸 서버는 stdio, 여러 앱이 함께 쓸 서버는 Streamable HTTP입니다.</li>
+          <li><b>남이 만든 서버는 버전을 고정하고 권한을 좁힙니다.</b> 서버는 내 컴퓨터에서 내 권한으로 실행되는 프로그램입니다. 파일 서버처럼 쓰기 도구가 있으면 다룰 수 있는 폴더를 묶어 둡니다.</li>
+        </ul>
+        <details>
+          <summary>예전 코드와 지금 코드 대응표</summary>
+          <table class="mx-map">
+            <thead><tr><th>예전 글에서 보이는 것</th><th>지금(2026-11 기준)</th></tr></thead>
+            <tbody>
+              <tr><td><code>from mcp.server.fastmcp import FastMCP</code></td><td><code>from mcp.server import MCPServer</code> (<code>mcp</code> 2.0부터)</td></tr>
+              <tr><td><code>from langchain_mcp_adapters.client import MultiServerMCPClient</code></td><td><code>from langchain.mcp import MCPAdapter</code> (<code>langchain[mcp]</code> 1.4부터, 베타)</td></tr>
+              <tr><td><code>{"file_manager": {"transport": "stdio", "command": …}}</code></td><td><code>{"mcpServers": {"files": {"command": …}}}</code>, 통로는 자동으로 정해짐</td></tr>
+              <tr><td><code>mcp.run(transport="sse")</code>, 주소 <code>/sse</code></td><td><code>mcp.run(transport="streamable-http")</code>, 주소 <code>/mcp</code></td></tr>
+              <tr><td><code>pip install mcp==1.30 langchain-mcp-adapters</code></td><td><code>langchain-mcp-adapters</code> 0.3.2는 <code>mcp</code> 2 미만만 받아, <code>mcp</code> 2.3 이상이 필요한 최신 <code>mcp-server-time</code>과 한 환경에 깔리지 않습니다</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-sec">
+    <div class="mx-wrap mx-head">
+      <h2>참고 자료</h2>
+      <div>
+        <ul class="mx-refs">
+          <li><a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">MCP Specification 2026-07-28, Changelog</a>: 요청마다 혼자 읽히는 방식, <code>server/discover</code>, 옛 HTTP+SSE 폐기 예정</li>
+          <li><a href="https://modelcontextprotocol.io/specification/2026-07-28/server/tools">MCP Specification, Tools</a>: <code>tools/list</code>·<code>tools/call</code> 메시지 모양</li>
+          <li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio">MCP Specification, stdio transport</a>: 표준 출력에는 MCP 메시지만 로그는 표준 오류</li>
+          <li><a href="https://pypi.org/project/mcp/2.3.0/">mcp 2.3.0</a>, PyPI · <a href="https://py.sdk.modelcontextprotocol.io/v2/migration/">Python SDK v2 migration</a>: <code>FastMCP</code> → <code>MCPServer</code></li>
+          <li><a href="https://docs.langchain.com/oss/python/langchain/mcp">LangChain, Model Context Protocol (MCP)</a> · <a href="https://docs.langchain.com/oss/python/langchain/mcp/connections">Connections</a> · <a href="https://docs.langchain.com/oss/python/migrate/langchain-mcp-adapters">Migrate from langchain-mcp-adapters</a></li>
+          <li><a href="https://github.com/modelcontextprotocol/servers/tree/main/src/time">mcp-server-time</a>, modelcontextprotocol/servers · <a href="https://pypi.org/project/mcp-server-time/">PyPI 2026.11.18</a></li>
+          <li><a href="https://pypi.org/project/llama-index-tools-mcp/">llama-index-tools-mcp 0.7.0</a>, PyPI</li>
+          <li><a href="https://modelcontextprotocol.io/docs/tools/inspector">MCP Inspector</a>, MCP 문서</li>
+          <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Define tools</a> · <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool">Tool search tool</a>, Anthropic: 설명이 도구 고르기에 주는 영향, 도구 30~50개 이상에서 떨어지는 정확도</li>
+          <li><a href="https://developers.openai.com/api/docs/guides/tools-connectors-mcp">Connectors and MCP servers</a> · <a href="https://developers.openai.com/api/docs/models">Models</a>, OpenAI</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
