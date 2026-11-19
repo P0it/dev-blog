@@ -23,7 +23,7 @@ const theme = opt("--theme", "light");
 const W = 1200, H = 630, PAD = 64;
 
 const b = await chromium.launch();
-const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: theme });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: theme, reducedMotion: "reduce" });  // 움직이는 그림은 끝난 상태로 찍는다
 const p = await ctx.newPage();
 if (theme === "dark") await p.addInitScript(() => { try { localStorage.setItem("theme", "dark"); } catch {} });
 await p.goto(`${process.env.PAGE_BASE || "http://localhost:3000"}/internal/page/${slug}`, { waitUntil: "networkidle", timeout: 120000 });
