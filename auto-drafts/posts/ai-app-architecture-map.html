@@ -229,7 +229,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   const NS = "http://www.w3.org/2000/svg";
   const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
   const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
-  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+  const SLOW = 1.7; /* 2026-11-20: 독자가 따라 볼 수 있게 — 모든 대기·이동 시간을 1.7배로 */
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms * SLOW); signal.addEventListener("abort", () => clearTimeout(t)); });
 
   /* 노드: 아이콘 · 이름 · 부제 · 로고(흔히 쓰는 제품 예) */
   const NODE = {
@@ -362,7 +363,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     const p = G.E[id], len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); G.dot.style.opacity = 1;
     const st = (now) => {
       if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
-      const t = Math.min(1, (now - t0) / ms), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * (rev ? 1 - k : k));
+      const t = Math.min(1, (now - t0) / (ms * SLOW)), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * (rev ? 1 - k : k));
       G.dot.setAttribute("cx", q.x); G.dot.setAttribute("cy", q.y);
       if (t < 1) requestAnimationFrame(st); else { p.classList.remove("on"); res(); }
     };

@@ -232,7 +232,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   const NS = "http://www.w3.org/2000/svg";
   const mk = (p, tag, a = {}) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
   const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk(p, "text", { x, y, class: cls, "text-anchor": anchor }); e.textContent = s; return e; };
-  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms); signal.addEventListener("abort", () => clearTimeout(t)); });
+  const SLOW = 1.7; /* 2026-11-20: 독자가 따라 볼 수 있게 — 모든 대기·이동 시간을 1.7배로 */
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms * SLOW); signal.addEventListener("abort", () => clearTimeout(t)); });
   const COL = { model: "var(--ac-model)", app: "var(--ac-app)", tool: "var(--ac-tool)" };
 
   /* 패턴마다 노드(열 c · 줄 v)와 엣지. 엣지 kind: 앞으로(기본) · loop(아래로 돌아 뒤로) · over(위로 건너뛰기). dyn = 개수가 메일마다 다름(점선) */
@@ -373,7 +374,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       const p = D.EP[id]; if (!p) return res(); const len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); dot.style.opacity = 1;
       const st = (now) => {
         if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
-        const t = Math.min(1, (now - t0) / ms), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * k);
+        const t = Math.min(1, (now - t0) / (ms * SLOW)), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * k);
         dot.setAttribute("cx", q.x); dot.setAttribute("cy", q.y);
         if (t < 1) requestAnimationFrame(st); else { p.classList.remove("on"); res(); }
       };
