@@ -1,12 +1,12 @@
 ---
 title: 사람의 승인을 기다리는 동안 Agent는 어디에 머물까요?
 slug: langgraph-interrupt-human-approval-checkpoint
-excerpt: Agent 프로그램이 사람의 승인을 기다리며 멈추면, 그동안의 실행 상태는 체크포인터가 만든 저장소에 남습니다. interrupt로 멈추고 Command(resume)로 이어 가는 승인 흐름, 재개하면 노드가 처음부터 다시 실행되는 함정, 저장된 지점으로 돌아가 갈라져 나가는 시간 여행을 langgraph 1.2로 확인했습니다.
+excerpt: Agent 프로그램이 사람의 승인을 기다리며 멈추면, 그동안의 실행 상태는 체크포인터가 만든 저장소에 남습니다. 멈춤 표시로 멈추고 재개 명령으로 이어 가는 승인 흐름, 재개하면 노드가 처음부터 다시 실행되는 함정, 저장된 지점으로 돌아가 갈라져 나가는 시간 여행을 langgraph 1.2로 확인했습니다.
 tags: [AI Agent, LangGraph, Human-in-the-loop, interrupt, Checkpointer, Python]
 category: ai
 series: ai-agent
 series_order: 15
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-interrupt-human-approval-checkpoint-mvb7wptb.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-interrupt-human-approval-checkpoint-mwnrl8sb.jpg
 ---
 <!-- page -->
 <!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 제목 위 + 전폭 위아래 두 구역 히어로(실행 중인 프로그램과 저장소) + 그림 고정 스크롤리텔링(저장 칸이 한 칸씩 쌓임) + 코드|터미널 + 두 번 실행되는 노드 장면 + 시간 여행 가지 그림 + 정리 | 글의 성격: 멈춘 동안 Agent가 프로그램 밖 저장소에 있다는 사실이 핵심이라 프로그램 구역과 저장소 구역을 위아래로 나누고 저장 칸이 쌓이는 모습을 계속 보여 준다 | 버린 후보: 단계 흐름 상자(앞 시리즈 방식) -->
@@ -194,8 +194,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         </dl>
       </div>
       <div class="hl-hfig" data-figure data-thumb data-thumb-act="el.dispatchEvent(new Event('hl-all'))">
-        <svg class="hl-hsv" data-hl-hv role="img" aria-label="멈춤과 저장소 그림. 시간은 왼쪽에서 오른쪽으로 흐른다. 위 선로는 프로그램이고 Agent 점이 시작, propose, approve를 지난다. approve의 interrupt에서 점은 아래 저장소의 세 번째 칸으로 내려가고, 그동안 위 선로는 점선이 되어 프로그램이 꺼져 있다. 사람이 승인해 Command(resume=True)가 오면 점이 다시 위로 올라가 approve를 다시 실행하고 send로 가서 메일을 보낸다. 거절했다면 점선 갈래인 cancel로 갔을 것이다. 저장소에는 시작, propose 끝, 승인 대기, 모두 끝 네 칸이 차례로 생긴다."></svg>
-        <p class="hl-cap">점은 Agent의 실행 상태이고 위 선로는 프로그램, 아래 띠는 저장소입니다. 위 선로의 점선 구간은 프로그램이 꺼져 있는 동안입니다. 그림이 화면에 들어오면 점이 저장소로 내려가 답을 기다렸다가 다시 올라옵니다. 거절했다면 점은 점선 갈래인 cancel로 갔을 겁니다.</p>
+        <svg class="hl-hsv" data-hl-hv role="img" aria-label="멈춤과 저장소 그림. 시간은 왼쪽에서 오른쪽으로 흐른다. 위 선로는 프로그램이고 Agent 점이 시작, 제안, 승인 묻기를 지난다. 승인 묻기의 멈춤에서 점은 아래 저장소의 세 번째 칸으로 내려가고, 그동안 위 선로는 점선이 되어 프로그램이 꺼져 있다. 사람이 승인 답을 보내면 점이 다시 위로 올라가 승인 묻기를 다시 실행하고 메일 보내기로 가서 메일을 보낸다. 거절했다면 점선 갈래인 취소로 갔을 것이다. 저장소에는 시작, 제안 끝, 승인 대기, 모두 끝 네 칸이 차례로 생긴다."></svg>
+        <p class="hl-cap">점은 Agent의 실행 상태이고 위 선로는 프로그램, 아래 띠는 저장소입니다. 위 선로의 점선 구간은 프로그램이 꺼져 있는 동안입니다. 그림이 화면에 들어오면 점이 저장소로 내려가 답을 기다렸다가 다시 올라옵니다. 거절했다면 점은 점선 갈래인 취소로 갔을 겁니다.</p>
         <p class="hl-cap" style="margin-top:6px">설명을 위한 예시 장면입니다. 저장소는 프로그램 밖에 있는 기록 장소를 그린 것이고 실제 저장 위치는 사용하는 체크포인터에 따라 다릅니다.</p>
       </div>
     </div>
@@ -206,19 +206,19 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="hl-head">
         <h2>멈출 때마다 저장소에 한 칸이 생깁니다</h2>
         <div>
-          <p>이 저장소를 만드는 도구가 체크포인터(checkpointer)입니다. 그래프를 <code>compile</code>할 때 붙여 두면 노드가 하나 끝날 때마다 State의 모습이 한 칸씩 저장됩니다. 그 한 칸을 체크포인트(checkpoint)라고 부릅니다. 게임을 하다가 저장 슬롯에 저장해 두는 것과 비슷합니다.</p>
-          <p>저장 칸들은 스레드(thread)라는 이름 아래 묶입니다. 같은 <code>thread_id</code>로 다시 부르면 그 이름의 마지막 칸에서 이어 갑니다. 칸이 쌓이는 모습을 보세요.</p>
+          <p>이 저장소를 만드는 도구가 체크포인터(checkpointer)입니다. 그래프를 완성할 때 붙여 두면 노드가 하나 끝날 때마다 State의 모습이 한 칸씩 저장됩니다. 그 한 칸을 체크포인트(checkpoint)라고 부릅니다. 게임을 하다가 저장 슬롯에 저장해 두는 것과 비슷합니다.</p>
+          <p>저장 칸들은 스레드(thread)라는 이름 아래 묶입니다. 같은 스레드 이름(<code>thread_id</code>)으로 다시 부르면 그 이름의 마지막 칸에서 이어 갑니다. 칸이 쌓이는 모습을 보세요.</p>
         </div>
       </div>
       <div class="hl-story" style="margin-top:40px" data-hl-story>
         <div class="hl-steps">
-          <div class="hl-step" data-hl-step><h3>그래프를 부르면 첫 칸이 생김</h3><p><code>graph.invoke({}, config)</code>를 부르면 시작 직후의 모습이 첫 칸에 저장됩니다. 칸 묶음의 이름은 <code>config</code>의 <code>thread_id</code>입니다.</p></div>
-          <div class="hl-step" data-hl-step><h3>propose가 끝나면 두 번째 칸</h3><p>노드가 끝나면 그 결과가 담긴 State가 새 칸으로 저장됩니다. 이제 <code>request</code> 칸에 환불 메일 요청이 적혀 있습니다.</p></div>
-          <div class="hl-step" data-hl-step><h3>approve가 interrupt에서 멈춤</h3><p><code>interrupt</code>를 만나면 그래프는 멈추고 <code>invoke</code>는 돌아옵니다. 결과의 <code>__interrupt__</code> 칸에 사람에게 물을 내용이 담기고 프로그램은 꺼도 됩니다.</p></div>
-          <div class="hl-step" data-hl-step><h3>사람이 답하면 같은 이름으로 이어 감</h3><p>같은 <code>thread_id</code>로 <code>Command(resume=True)</code>를 보내면 마지막 칸에서 이어 갑니다. 승인 뒤 send가 끝나면 마지막 칸이 생깁니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>그래프를 부르면 첫 칸이 생김</h3><p>그래프를 부르면 시작 직후의 모습이 첫 칸에 저장됩니다. 칸 묶음에는 부를 때 정한 스레드 이름이 붙습니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>제안 단계가 끝나면 두 번째 칸</h3><p>노드가 끝나면 그 결과가 담긴 State가 새 칸으로 저장됩니다. 이제 요청 칸에 환불 메일 요청이 적혀 있습니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>승인 묻기 단계에서 멈춤</h3><p>멈춤 표시(interrupt)를 만나면 그래프는 멈추고 호출한 쪽으로 돌아옵니다. 돌아온 결과에는 사람에게 물을 내용이 담깁니다. 이때 프로그램은 꺼도 됩니다.</p></div>
+          <div class="hl-step" data-hl-step><h3>사람이 답하면 같은 이름으로 이어 감</h3><p>같은 스레드 이름으로 "승인" 답을 보내면 마지막 칸에서 이어 갑니다. 승인 뒤 메일 보내기가 끝나면 마지막 칸이 생깁니다.</p></div>
         </div>
         <div class="hl-sfig" data-hl-sfig data-figure>
-          <svg class="hl-scene hl-nar" data-hl-sv viewBox="0 0 460 560" role="img" aria-label="저장 칸 그림. 세로로 놓인 저장 칸이 단계마다 하나씩 채워진다. 첫 칸은 시작, 두 번째는 propose가 끝난 모습, 세 번째는 approve에서 멈춘 모습, 네 번째는 모두 끝난 모습이다. 지금 위치를 가리키는 화살표가 칸을 따라 내려간다."></svg>
+          <svg class="hl-scene hl-nar" data-hl-sv viewBox="0 0 460 560" role="img" aria-label="저장 칸 그림. 세로로 놓인 저장 칸이 단계마다 하나씩 채워진다. 첫 칸은 시작, 두 번째는 제안이 끝난 모습, 세 번째는 승인 묻기에서 멈춘 모습, 네 번째는 모두 끝난 모습이다. 지금 위치를 가리키는 화살표가 칸을 따라 내려간다."></svg>
           <p class="hl-stat" data-hl-sstat></p>
         </div>
       </div>
@@ -436,7 +436,7 @@ graph.invoke(None, new)                                 # ④ 고친 값으로 �
     mk("rect", { x: sx, y: sy, width: sw, height: sh, rx: H ? 16 : 14, fill: "none", stroke: INK, "stroke-width": 2.5 }, hv);
     const sl = txt(hv, G.storeLab[0], G.storeLab[1], H ? "저장소 (체크포인터)" : "저장소", { "font-size": H ? 17 : 15, class: "t-s" });
     if (!H) sl.setAttribute("style", "paint-order:stroke;stroke:var(--bg-base);stroke-width:8px");
-    const SLT = [["① 시작", "{ }"], ["② propose 끝", "request 채워짐"], ["③ approve에서 멈춤", H ? "next = ('approve',)" : "next=('approve',)"], ["④ 모두 끝", "발송 완료"]];
+    const SLT = [["① 시작", "빈 서류"], ["② 제안 끝", "요청 칸 채워짐"], ["③ 승인 묻기에서 멈춤", "다음: 승인 묻기"], ["④ 모두 끝", "발송 완료"]];
     const slotEls = G.slots.map(([x, y, w, h], i) => {
       const g = mk("g", { class: "fx" }, hv), col = i === 2 ? C.bad : C.code;
       box(g, x, y, w, h, col, { rx: 10, sw: i === 2 ? 3.5 : 2.5, fill: `color-mix(in srgb, ${col} 7%, var(--bg-base))` });
@@ -466,27 +466,27 @@ graph.invoke(None, new)                                 # ④ 고친 값으로 �
     let res;
     if (H) {
       L(80, 94, "시작", { "text-anchor": "middle", class: "t-d" });
-      L(220, 94, "propose", { "text-anchor": "middle", class: "t-s mono" });
-      L(360, 94, "approve", { "text-anchor": "middle", class: "t-s mono" });
-      L(378, 152, "interrupt", { class: "t-s mono", style: `fill:${C.bad}` });
+      L(220, 94, "제안", { "text-anchor": "middle", class: "t-s" });
+      L(360, 94, "승인 묻기", { "text-anchor": "middle", class: "t-s" });
+      L(378, 152, "멈춤", { class: "t-s", style: `fill:${C.bad}` });
       L(510, 108, "프로그램 꺼짐", { "text-anchor": "middle", class: "t-d" });
-      L(660, 94, "approve 다시", { "text-anchor": "middle", class: "t-s mono" });
-      L(642, 152, "resume=True", { "text-anchor": "end", class: "t-s mono", "font-size": 14, style: `fill:${C.code}` });
+      L(660, 94, "승인 묻기 다시", { "text-anchor": "middle", class: "t-s" });
+      L(642, 152, "승인 답", { "text-anchor": "end", class: "t-s", "font-size": 14, style: `fill:${C.code}` });
       L(372, 215, "저장", { class: "t-d", "font-size": 14 }); L(672, 215, "꺼냄", { class: "t-d", "font-size": 14 });
-      L(880, 46, "send", { "text-anchor": "middle", class: "t-s mono" });
+      L(880, 46, "메일 보내기", { "text-anchor": "middle", class: "t-s" });
       res = L(900, 76, "메일 발송", { class: "t-s", style: `fill:${C.code}` });
-      L(900, 186, "cancel", { class: "t-d mono" }); L(880, 214, "거절했다면", { "text-anchor": "middle", class: "t-d", "font-size": 14 });
+      L(900, 186, "취소", { class: "t-d" }); L(880, 214, "거절했다면", { "text-anchor": "middle", class: "t-d", "font-size": 14 });
     } else {
       L(88, 85, "시작", { class: "t-d" });
-      L(88, 195, "propose", { class: "t-s mono" });
-      L(88, 290, "approve", { class: "t-s mono" });
-      L(88, 324, "interrupt", { class: "t-s mono", "font-size": 14, style: `fill:${C.bad}` });
+      L(88, 195, "제안", { class: "t-s" });
+      L(88, 290, "승인 묻기", { class: "t-s" });
+      L(88, 324, "멈춤", { class: "t-s", "font-size": 14, style: `fill:${C.bad}` });
       L(84, 396, "프로그램", { class: "t-d", "font-size": 14 }); L(84, 416, "꺼짐", { class: "t-d", "font-size": 14 });
-      L(84, 528, "approve 다시", { class: "t-s mono", "font-size": 13 });
-      L(84, 548, "resume=True", { class: "t-s mono", "font-size": 13, style: `fill:${C.code}` });
-      L(40, 728, "send", { "text-anchor": "middle", class: "t-s mono", "font-size": 14 });
+      L(84, 528, "승인 묻기 다시", { class: "t-s", "font-size": 13 });
+      L(84, 548, "승인 답", { class: "t-s", "font-size": 13, style: `fill:${C.code}` });
+      L(40, 728, "메일 보내기", { "text-anchor": "middle", class: "t-s", "font-size": 14 });
       res = L(40, 750, "메일 발송", { "text-anchor": "middle", class: "t-s", "font-size": 14, style: `fill:${C.code}` });
-      L(124, 728, "cancel", { "text-anchor": "middle", class: "t-d mono", "font-size": 13 }); L(124, 750, "거절했다면", { "text-anchor": "middle", class: "t-d", "font-size": 13 });
+      L(124, 728, "취소", { "text-anchor": "middle", class: "t-d", "font-size": 13 }); L(124, 750, "거절했다면", { "text-anchor": "middle", class: "t-d", "font-size": 13 });
     }
     /* 프로그램 상태 */
     const lamp = mk("circle", { cx: G.prog[0] + 6, cy: G.prog[1] - 5, r: 7 }, hv);
@@ -519,7 +519,7 @@ graph.invoke(None, new)                                 # ④ 고친 값으로 �
 
   /* ───── 저장 칸이 쌓임 (스크롤 이야기) ───── */
   const sv = $("[data-hl-sv]"), sstat = $("[data-hl-sstat]");
-  const SL = [["① 시작", "{ }"], ["② propose 끝", "request: 환불 메일 12명"], ["③ approve에서 멈춤", "__interrupt__ 질문 대기"], ["④ 모두 끝", "decision: approved · result: 발송 완료"]];
+  const SL = [["① 시작", "빈 서류"], ["② 제안 끝", "요청: 환불 메일 12명"], ["③ 승인 묻기에서 멈춤", "사람에게 물을 질문 대기"], ["④ 모두 끝", "결정: 승인 · 결과: 발송 완료"]];
   function drawSlots(i) {
     const k = i < 0 ? 3 : i; sv.innerHTML = ""; mk("path", { d: "M44 40 V500", class: "hl-rail", opacity: .4 }, sv);
     SL.forEach(([a, b], n) => { const y = 14 + n * 130, cur = n === k, on = n <= k; box(sv, 74, y, 372, 104, on ? (cur ? C.model : C.code) : "var(--line-strong)", { rx: 12, sw: cur ? 4.5 : on ? 3 : 2, dash: on ? "" : "6 5", fill: on ? `color-mix(in srgb, ${cur ? C.model : C.code} 8%, var(--bg-base))` : "var(--bg-base)" }); mk("circle", { cx: 44, cy: y + 52, r: 15, fill: on ? (cur ? C.model : C.code) : "var(--bg-base)", stroke: on ? "none" : "var(--line-strong)", "stroke-width": 2.5 }, sv); if (on) { txt(sv, 90, y + 38, a, { "font-size": 17, class: "t-s" }); txt(sv, 90, y + 70, b, { "font-size": 15, class: "t-d" }); if (n === 2) txt(sv, 90, y + 94, "next = ('approve',)", { "font-size": 15, class: "t-s mono", style: `fill:${C.bad}` }); } else { txt(sv, 90, y + 58, "아직 없음", { "font-size": 15, class: "t-d", opacity: .6 }); } });

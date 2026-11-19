@@ -1,7 +1,7 @@
 ---
 title: create_agent 속을 직접 열어 그래프로 다시 짓기
 slug: langgraph-rebuild-agent-graph-by-hand
-excerpt: create_agent가 만들어 주던 model·tools 그래프를 LangGraph로 직접 조립합니다. 메시지가 쌓이는 MessagesState, 모델을 부르는 노드, 도구를 실행하는 ToolNode, 도구 요청이 있으면 tools로 보내는 조건부 엣지(conditional edge)와 직접 쓴 길 고르기 함수, 한 노드에서 상태 갱신과 이동을 함께 하는 Command, 단계 한도와 도구 오류 처리의 위치를 langgraph 1.2 실행 결과와 함께 그림과 코드로 확인합니다.
+excerpt: create_agent가 만들어 주던 모델·도구 두 칸짜리 그래프를 LangGraph로 직접 조립합니다. 메시지가 쌓이는 칸, 모델을 부르는 노드, 도구를 실행하는 노드, 도구 요청이 있으면 도구 칸으로 보내는 조건부 엣지(conditional edge)와 직접 쓴 길 고르기 함수, 한 노드에서 상태 갱신과 이동을 함께 하는 방법, 단계 한도와 도구 오류 처리의 위치를 langgraph 1.2 실행 결과와 함께 그림과 코드로 확인합니다.
 tags: [AI Agent, LangGraph, ToolNode, conditional edge, Command, Python]
 category: ai
 series: ai-agent
@@ -194,10 +194,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="gb-wrap">
       <h1>create_agent 속을 직접 열어 그래프로 다시 짓기</h1>
       <div class="gb-lede">
-        <p>조립 완성품 장난감을 사면 설명서 없이도 놀 수 있지만 부품을 낱개로 받으면 원하는 대로 바꿔 끼울 수 있습니다. <code>create_agent</code>는 완성품이고 LangGraph는 그 부품 서랍입니다. 앞 글에서 본 model과 tools 두 노드, 그리고 길 고르기가 어떤 부품으로 되어 있는지 하나씩 직접 올려 보겠습니다.</p>
+        <p>조립 완성품 장난감을 사면 설명서 없이도 놀 수 있지만 부품을 낱개로 받으면 원하는 대로 바꿔 끼울 수 있습니다. <code>create_agent</code>는 완성품이고 LangGraph는 그 부품 서랍입니다. 앞 글에서 본 모델 칸과 도구 칸 두 노드, 그리고 길 고르기가 어떤 부품으로 되어 있는지 하나씩 직접 올려 보겠습니다.</p>
       </div>
       <div class="gb-stage" data-figure data-thumb data-gb-bench data-thumb-act="el.dispatchEvent(new Event('gb-all'))">
-        <p class="gb-plbl">다섯 부품을 모두 올린 그래프입니다. 그림이 화면에 들어오면 질문 점이 선로를 따라가고, 역을 지날 때마다 messages에 쪽지가 한 장씩 쌓입니다.</p>
+        <p class="gb-plbl">다섯 부품을 모두 올린 그래프입니다. 그림이 화면에 들어오면 질문 점이 선로를 따라가고, 역을 지날 때마다 메시지 칸(messages)에 쪽지가 한 장씩 쌓입니다.</p>
         <svg class="gb-scene gb-line" data-gb-line viewBox="0 50 1000 280" role="img" aria-label="Agent 그래프 노선도. 왼쪽 시작에서 model 역을 지나 오른쪽 끝까지 한 줄로 이어진다. model 뒤 갈림길에서 도구 요청이 있으면 아래로 꺾여 tools 역을 지나 model 앞으로 돌아온다. 왼쪽 아래 쪽지 더미는 messages 칸이다. 질문 점이 지나는 중인 부품은 초록으로 칠해지고, 역을 지날 때마다 쪽지 더미가 한 장씩 늘어 끝에서는 네 장이 된다."></svg>
         <p class="gb-verdict" data-gb-bsay></p>
         <div class="gb-benchlow">

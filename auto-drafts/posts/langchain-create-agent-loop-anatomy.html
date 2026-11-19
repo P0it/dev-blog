@@ -1,7 +1,7 @@
 ---
 title: 직접 짠 루프 24줄은 create_agent 안 어디에 있을까요?
 slug: langchain-create-agent-loop-anatomy
-excerpt: 직접 짠 Agent 루프 24줄은 LangChain의 create_agent 호출 하나로 줄어듭니다. 줄마다 어디로 옮겨 갔는지, 그중 맡길 수 없는 것은 무엇인지 짚습니다. 한 단계씩 지켜보는 stream, 안쪽의 model·tools 그래프, 바퀴 수 한도가 recursion_limit로 바뀐 방식을 그림과 코드로 확인합니다.
+excerpt: 직접 짠 Agent 루프 24줄은 LangChain의 create_agent 호출 하나로 줄어듭니다. 줄마다 어디로 옮겨 갔는지, 그중 맡길 수 없는 것은 무엇인지 짚습니다. 한 단계씩 지켜보는 법, 안쪽의 모델·도구 두 칸짜리 그래프, 바퀴 수 한도가 바뀐 방식을 그림과 코드로 확인합니다.
 tags: [AI Agent, LangChain, create_agent, LangGraph, Streaming, Python]
 category: ai
 series: ai-agent
@@ -278,7 +278,7 @@ result = agent.invoke({"messages": [...]},
     <div class="ag-wrap ag-split rev">
       <div data-figure>
         <div class="ag-log" data-ag-log role="img" aria-label="result[&quot;messages&quot;] 기록. human 질문, ai 도구 요청, tool 결과, ai 도구 요청, tool 결과, ai 최종 답 순서로 여섯 줄이 쌓인다. 모델을 부른 바퀴가 세 번이고 마지막 줄이 사용자에게 보여 줄 답이다."></div>
-        <p class="ag-cap">invoke 한 번 동안 쌓이는 메시지를 위에서부터 차례로 적었습니다. 메시지 내용은 예시 값입니다. 오른쪽 괄호 하나가 모델을 한 번 부른 바퀴 하나를 묶습니다.</p>
+        <p class="ag-cap">Agent를 한 번 부르는 동안 쌓이는 메시지를 위에서부터 차례로 적었습니다. 메시지 내용은 예시 값입니다. 오른쪽 괄호 하나가 모델을 한 번 부른 바퀴 하나를 묶습니다.</p>
       </div>
       <div>
         <h2>호출 한 번이 루프 전체를 돌립니다</h2>

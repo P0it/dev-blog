@@ -1,12 +1,12 @@
 ---
 title: 챗봇의 '지난 대화' 목록 뒤에는 무엇이 저장돼 있을까요?
 slug: langgraph-checkpointer-sqlite-summarization
-excerpt: 챗봇 왼쪽의 '지난 대화'를 눌러 어제 하던 이야기를 이어 갈 수 있는 건 대화방마다 상태를 저장해 두기 때문입니다. LangGraph 체크포인터가 한 번 물을 때마다 상태 사진을 몇 장 찍는지, 프로그램을 껐다 켜도 기억이 남으려면 어디에 저장해야 하는지, memory.db 안에는 무엇이 들어 있는지, 대화를 요약해도 저장소는 왜 줄지 않는지를 실제로 돌린 값과 그림으로 확인합니다.
+excerpt: 챗봇 왼쪽의 '지난 대화'를 눌러 어제 하던 이야기를 이어 갈 수 있는 건 대화방마다 상태를 저장해 두기 때문입니다. LangGraph 체크포인터가 한 번 물을 때마다 상태 사진을 몇 장 찍는지, 프로그램을 껐다 켜도 기억이 남으려면 어디에 저장해야 하는지, 저장 파일 안에는 무엇이 들어 있는지, 대화를 요약해도 저장소는 왜 줄지 않는지를 실제로 돌린 값과 그림으로 확인합니다.
 tags: [LangGraph, LangChain, 체크포인터, SQLite, 메모리, Agent, Python, AI Service Track]
 category: ai
 series: ai-service-track
 series_order: 13
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-checkpointer-sqlite-summarization-mwm4d09h.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/langgraph-checkpointer-sqlite-summarization-mwnrkli1.jpg
 ---
 <!-- page -->
 <!-- layout: 분할 히어로(제목·리드 | 지난 대화 목록이 있는 채팅 앱 창) + 그 아래 겉→안 전폭 줄 + 글|그림 2단(노선도) + 제목|글 머리 위 전폭 필름 띠 + 그림|글 뒤집은 2단(불러오기 화면) + 비교 나란히 2×3(재시작) + 실험판 전폭 띠(DB 행 목록) + 글|그림 2단(선 그래프) + 전폭 펼쳐 놓기(메시지 줄 세 장) + 그림|글 뒤집은 2단(막대 두 장) + 제목|글 머리 2곳 | 글의 성격: 화면의 '지난 대화'에서 출발해 상태 사진 → 대화방 번호 → 저장 위치 → 파일 속 → 요약과 저장소로 한 겹씩 내려가는 글 | 버린 후보: 그림 고정 스크롤리텔링(12편·10편과 같은 리듬), 지그재그 연속(12편과 같은 첫인상) -->
@@ -334,8 +334,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
     <figure class="ck-behind" data-figure>
       <p class="ttl">뒷단에서는</p>
-      <div class="ck-d"><svg class="ck-svg ck-bsvg" viewBox="0 0 760 272" role="img" aria-label="목록의 한 줄 '리뷰 분류 기준 정하기'에서 빨간 선이 memory.db 파일 속 서랍장으로 이어집니다. 서랍마다 대화방 번호가 붙어 있고, t-0412 서랍이 열려 그 안에 상태 사진 6장이 점점 커지며 서 있습니다."><rect class="pill" x="10" y="98" width="196" height="46" rx="10"/><text x="26" y="126">리뷰 분류 기준 정하기</text><text class="s" x="10" y="172">화면: 목록의 한 줄</text><path class="pen" d="M214 121 C 270 121, 300 150, 352 150"/><polygon class="penh" points="350,143 364,150 350,157"/><text class="pent" x="222" y="86">thread_id</text><text class="pent mono" x="222" y="106">"t-0412"</text><path class="fl" d="M390 14 h316 l34 34 v196 h-350 z"/><path class="fl" d="M706 14 v34 h34"/><text class="mono b" x="408" y="42">memory.db</text><rect class="dr" x="410" y="60" width="260" height="34" rx="5"/><text class="mono s" x="424" y="82">t-0398</text><rect class="dr on" x="450" y="106" width="260" height="62" rx="5"/><text class="mono s" x="464" y="126">t-0412</text><rect class="ph" x="464" y="150.2" width="16" height="9.799999999999999" rx="2"/><rect class="ph" x="488" y="146.0" width="16" height="14.0" rx="2"/><rect class="ph" x="512" y="141.8" width="16" height="18.2" rx="2"/><rect class="ph" x="536" y="139.0" width="16" height="21.0" rx="2"/><rect class="ph" x="560" y="136.2" width="16" height="23.799999999999997" rx="2"/><rect class="ph" x="584" y="132.0" width="16" height="28.0" rx="2"/><rect class="dr" x="410" y="180" width="260" height="34" rx="5"/><text class="mono s" x="424" y="202">t-0377</text><text class="s" x="476" y="266">열린 서랍: 단계마다 찍은 상태 사진 6장</text></svg></div>
-      <div class="ck-m"><svg class="ck-svg ck-bsvg" viewBox="0 0 340 360" role="img" aria-label="목록의 한 줄에서 빨간 선이 memory.db 파일 속 서랍장으로 이어지고, t-0412 서랍 안에 상태 사진 6장이 있습니다."><rect class="pill" x="10" y="8" width="196" height="44" rx="10"/><text x="26" y="35">리뷰 분류 기준 정하기</text><path class="pen" d="M108 58 C 108 84, 108 90, 108 104"/><polygon class="penh" points="101,100 108,114 115,100"/><text class="pent" x="124" y="80">thread_id = <tspan class="mono">"t-0412"</tspan></text><path class="fl" d="M14 120 h282 l34 34 v196 h-316 z"/><path class="fl" d="M296 120 v34 h34"/><text class="mono b" x="32" y="148">memory.db</text><rect class="dr" x="34" y="166" width="226" height="34" rx="5"/><text class="mono s" x="48" y="188">t-0398</text><rect class="dr on" x="74" y="212" width="226" height="62" rx="5"/><text class="mono s" x="88" y="232">t-0412</text><rect class="ph" x="88" y="256.2" width="16" height="9.799999999999999" rx="2"/><rect class="ph" x="112" y="252.0" width="16" height="14.0" rx="2"/><rect class="ph" x="136" y="247.8" width="16" height="18.2" rx="2"/><rect class="ph" x="160" y="245.0" width="16" height="21.0" rx="2"/><rect class="ph" x="184" y="242.2" width="16" height="23.799999999999997" rx="2"/><rect class="ph" x="208" y="238.0" width="16" height="28.0" rx="2"/><rect class="dr" x="34" y="286" width="226" height="34" rx="5"/><text class="mono s" x="48" y="308">t-0377</text></svg></div>
+      <div class="ck-d"><svg class="ck-svg ck-bsvg" viewBox="0 0 760 272" role="img" aria-label="목록의 한 줄 '리뷰 분류 기준 정하기'에서 빨간 선이 저장 파일 속 서랍장으로 이어집니다. 서랍마다 대화방 번호가 붙어 있고, t-0412 서랍이 열려 그 안에 상태 사진 6장이 점점 커지며 서 있습니다."><rect class="pill" x="10" y="98" width="196" height="46" rx="10"/><text x="26" y="126">리뷰 분류 기준 정하기</text><text class="s" x="10" y="172">화면: 목록의 한 줄</text><path class="pen" d="M214 121 C 270 121, 300 150, 352 150"/><polygon class="penh" points="350,143 364,150 350,157"/><text class="pent" x="222" y="86">대화방 번호</text><text class="pent mono" x="222" y="106">"t-0412"</text><path class="fl" d="M390 14 h316 l34 34 v196 h-350 z"/><path class="fl" d="M706 14 v34 h34"/><text class="b" x="408" y="42">저장 파일</text><rect class="dr" x="410" y="60" width="260" height="34" rx="5"/><text class="mono s" x="424" y="82">t-0398</text><rect class="dr on" x="450" y="106" width="260" height="62" rx="5"/><text class="mono s" x="464" y="126">t-0412</text><rect class="ph" x="464" y="150.2" width="16" height="9.799999999999999" rx="2"/><rect class="ph" x="488" y="146.0" width="16" height="14.0" rx="2"/><rect class="ph" x="512" y="141.8" width="16" height="18.2" rx="2"/><rect class="ph" x="536" y="139.0" width="16" height="21.0" rx="2"/><rect class="ph" x="560" y="136.2" width="16" height="23.799999999999997" rx="2"/><rect class="ph" x="584" y="132.0" width="16" height="28.0" rx="2"/><rect class="dr" x="410" y="180" width="260" height="34" rx="5"/><text class="mono s" x="424" y="202">t-0377</text><text class="s" x="476" y="266">열린 서랍: 단계마다 찍은 상태 사진 6장</text></svg></div>
+      <div class="ck-m"><svg class="ck-svg ck-bsvg" viewBox="0 0 340 360" role="img" aria-label="목록의 한 줄에서 빨간 선이 저장 파일 속 서랍장으로 이어지고, t-0412 서랍 안에 상태 사진 6장이 있습니다."><rect class="pill" x="10" y="8" width="196" height="44" rx="10"/><text x="26" y="35">리뷰 분류 기준 정하기</text><path class="pen" d="M108 58 C 108 84, 108 90, 108 104"/><polygon class="penh" points="101,100 108,114 115,100"/><text class="pent" x="124" y="80">대화방 번호 <tspan class="mono">"t-0412"</tspan></text><path class="fl" d="M14 120 h282 l34 34 v196 h-316 z"/><path class="fl" d="M296 120 v34 h34"/><text class="b" x="32" y="148">저장 파일</text><rect class="dr" x="34" y="166" width="226" height="34" rx="5"/><text class="mono s" x="48" y="188">t-0398</text><rect class="dr on" x="74" y="212" width="226" height="62" rx="5"/><text class="mono s" x="88" y="232">t-0412</text><rect class="ph" x="88" y="256.2" width="16" height="9.799999999999999" rx="2"/><rect class="ph" x="112" y="252.0" width="16" height="14.0" rx="2"/><rect class="ph" x="136" y="247.8" width="16" height="18.2" rx="2"/><rect class="ph" x="160" y="245.0" width="16" height="21.0" rx="2"/><rect class="ph" x="184" y="242.2" width="16" height="23.799999999999997" rx="2"/><rect class="ph" x="208" y="238.0" width="16" height="28.0" rx="2"/><rect class="dr" x="34" y="286" width="226" height="34" rx="5"/><text class="mono s" x="48" y="308">t-0377</text></svg></div>
       <p class="ck-cap">목록의 한 줄은 대화방 번호 하나와 짝입니다. 그 번호가 붙은 서랍에 질문 두 번 동안 찍은 상태 사진 6장이 들어 있고, 뒤에 찍은 사진일수록 큽니다.</p>
     </figure>
   </div>
@@ -412,7 +412,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 <section class="ck-sec">
   <div class="ck-wrap ck-two">
     <div class="ck-txt">
-      <h2>thread_id는 사람 이름표가 아니라 대화방 번호입니다</h2>
+      <h2>대화방 번호는 사람 이름표가 아닙니다</h2>
       <p>사진은 대화방마다 따로 쌓입니다. 그 대화방을 가리키는 번호가 <code>thread_id</code>입니다. 같은 번호로 물으면 그 방의 마지막 사진을 꺼내 이어 가고, 다른 번호로 물으면 빈 방에서 시작합니다.</p>
       <p>예제 코드에는 사용자 아이디를 그대로 <code>thread_id</code>로 넣는 경우가 많아 헷갈리기 쉽습니다. 그러면 한 사람에게 대화방이 하나뿐이라, 앱의 '지난 대화' 목록처럼 대화를 여러 개 열어 둘 수 없습니다.</p>
       <p>그래서 대화방마다 새 번호를 만들고, 어느 사용자의 방인지는 따로 적어 둡니다. 방을 넘어 기억할 것(이름, 말투)은 Store라는 다른 저장소에 둡니다(<a href="/posts/langchain-agent-memory-context-engineering">단기 기억과 장기 기억 글</a>).</p>
@@ -490,7 +490,7 @@ Agent: 알겠습니다. 그 기준으로 나눌게요.
 사용자: 이 리뷰 분류해 줘: "양은 많은데 너무 짜요"
 Agent: <span class="g">정한 기준대로라면 양은 칭찬, 맛은 불만이라 섞임입니다.</span></pre></div>
       <ol class="pg-code-notes">
-        <li><code>from_conn_string</code>은 파일을 열고, 처음이면 저장용 표를 만들고, <code>with</code> 블록이 끝나면 파일을 닫습니다. 파일이 없으면 새로 만듭니다. <code>"memory.db"</code> 대신 <code>":memory:"</code>를 넣으면 파일 없이 메모리에만 둡니다.</li>
+        <li><code>from_conn_string</code>은 맨 위 그림의 저장 파일(<code>memory.db</code>)을 열고, 처음이면 저장용 표를 만들고, <code>with</code> 블록이 끝나면 파일을 닫습니다. 파일이 없으면 새로 만듭니다. <code>"memory.db"</code> 대신 <code>":memory:"</code>를 넣으면 파일 없이 메모리에만 둡니다.</li>
         <li>방 번호는 실행 설정을 담는 사전인 <code>config</code>, 그 안의 <code>configurable</code> 칸에 넣습니다. 번호를 빼면 어느 방에 저장할지 몰라 오류가 납니다. 실제 앱에서는 '새 대화'를 누를 때 겹칠 일이 거의 없는 긴 무작위 번호(<code>uuid</code>)를 만들어 씁니다.</li>
         <li>앞 대화는 체크포인터가 방 번호로 찾아 붙여 주니, 보낼 때는 이번 질문 하나만 넣습니다. 앞 대화를 직접 이어 붙여 보내던 <a href="/posts/multi-turn-chat-conversation-state">2편</a>의 방식을 이제 그래프가 대신합니다. 버전은 langgraph 1.2, langgraph-checkpoint-sqlite 3.1 기준입니다.</li>
       </ol>
@@ -507,7 +507,7 @@ Agent: <span class="g">정한 기준대로라면 양은 칭찬, 맛은 불만이
 <section class="ck-sec">
   <div class="ck-wrap">
     <div class="ck-head">
-      <h2>memory.db를 열어 보면 무엇이 들어 있을까요?</h2>
+      <h2>저장 파일을 열어 보면 무엇이 들어 있을까요?</h2>
       <div>
         <p>사진 한 장이 표의 한 줄입니다. 파일 안에는 <code>checkpoints</code>와 <code>writes</code> 두 표가 있습니다. <code>checkpoints</code>의 한 줄에는 방 번호, 사진 번호, 바로 앞 사진 번호, 그리고 그 순간의 상태 전체가 압축돼 들어 있습니다.</p>
         <p><code>writes</code>는 노드가 일을 마칠 때마다 상태에 써 넣은 내용을 따로 적은 쪽지입니다. 노드 여러 개를 돌리다 프로그램이 멈추면, 다시 켰을 때 쪽지가 있는 노드는 건너뛰고 나머지만 돌립니다.</p>
@@ -644,7 +644,7 @@ with SqliteSaver.from_conn_string("memory.db") as saver:
 <section class="ck-sec">
   <div class="ck-wrap ck-two">
     <div class="ck-txt">
-      <h2>요약하면 memory.db도 가벼워질까요?</h2>
+      <h2>요약하면 저장 파일도 가벼워질까요?</h2>
       <p>아닙니다. 요약은 모델이 읽을 목록을 줄일 뿐, 이미 찍어 둔 사진을 지우지 않습니다. 사진 한 장에는 그 순간의 대화 전체가 들어 있어서, 뒤로 갈수록 한 장이 커집니다. 요약한 순간부터는 다음 장이 가벼워지지만, 쌓인 총량은 계속 늘어납니다. 이 실험에서는 요약 미들웨어도 노드 하나로 끼어들어 질문 하나에 사진이 네 장씩 생겼습니다.</p>
       <p>옛 사진도 그대로 열립니다. 위 실험에서 요약이 끝난 뒤 <code>get_state_history</code>로 첫 질문 때 사진을 꺼내 보면 '질문 1'이 원문 그대로 들어 있습니다.</p>
       <p>정말 지우려면 방 단위로 지웁니다. 사용자가 목록에서 대화를 삭제할 때 <code>saver.delete_thread("t-0412")</code>를 부르면 그 방의 사진과 쪽지가 모두 사라집니다. SqliteSaver 3.1.3에는 오래된 사진만 골라 지우는 <code>prune</code>이 아직 없습니다(부르면 <code>NotImplementedError</code>).</p>

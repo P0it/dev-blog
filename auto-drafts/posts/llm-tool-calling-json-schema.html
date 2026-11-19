@@ -1,12 +1,12 @@
 ---
 title: Tool Calling에서 함수는 누가 실행할까?
 slug: llm-tool-calling-json-schema
-excerpt: Tool Calling을 쓰면 LLM이 티켓 시스템을 직접 조회하는 것처럼 보입니다. 실제로 모델이 쓰는 건 도구 이름과 값을 적은 요청서 한 장입니다. JSON Schema 메뉴판부터 tool_calls, tool_call_id, 결과를 실어 보내는 두 번째 호출까지 그림과 Python 코드로 확인합니다.
+excerpt: Tool Calling을 쓰면 LLM이 티켓 시스템을 직접 조회하는 것처럼 보입니다. 실제로 모델이 쓰는 건 도구 이름과 값을 적은 요청서 한 장입니다. JSON Schema 메뉴판부터 요청서와 결과를 잇는 번호표, 결과를 실어 보내는 두 번째 호출까지 그림과 Python 코드로 확인합니다.
 tags: [AI Agent, Tool Calling, Function Calling, JSON Schema, OpenAI API, Python]
 category: ai
 series: ai-agent
 series_order: 2
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-tool-calling-json-schema-mvah00tb.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-tool-calling-json-schema-mwnrkpmn.jpg
 ---
 <!-- page -->
 <!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 분할 히어로 + 가로 스크롤 띠(요청서 한 장이 모델 줄과 코드 줄을 오가는 여정) | 글의 성격: 메시지 몇 장이 모델 쪽과 코드 쪽을 오가는 왕복이 중심이고, 앞뒤로 짧은 개념(메뉴판·tool_choice·번호표·확인)이 붙는다 | 버린 후보: 그림 고정 스크롤리텔링(앞 편 루프와 같은 구조), 비교 나란히(앞 편 히어로와 같은 구조) -->
@@ -433,7 +433,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           <div class="tc-wall" aria-hidden="true" style="grid-row:1 / span 6"></div>
 
           <div class="tc-w-c1" style="grid-row:2">
-            <div class="tc-mbox"><b>모델</b><span class="tc-menu">받은 도구 목록: get_ticket</span></div>
+            <div class="tc-mbox"><b>모델</b><span class="tc-menu">받은 도구 목록: 티켓 조회</span></div>
           </div>
           <div class="tc-w-c3" style="grid-row:2">
             <div class="tc-db">
@@ -445,11 +445,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </div>
 
           <div class="tc-w-c1" style="grid-row:3" data-step="1">
-            <div class="tc-slip req"><h5><span class="tc-num">1</span>요청서 (모델이 씀)</h5><span class="mono">get_ticket<br>{"ticket_id": "<span class="nw">T-1042</span>"}</span></div>
+            <div class="tc-slip req"><h5><span class="tc-num">1</span>요청서 (모델이 씀)</h5><span>티켓 조회<br>티켓 번호: <span class="nw">T-1042</span></span></div>
           </div>
           <div class="tc-arr r" style="grid-row:3" data-step="1" aria-hidden="true">→</div>
           <div class="tc-w-c3" style="grid-row:3" data-step="2">
-            <div class="tc-run"><span class="tc-num">2</span>코드가 <code>get_ticket("<span class="nw">T-1042</span>")</code>를 실행해 티켓 시스템을 조회합니다</div>
+            <div class="tc-run"><span class="tc-num">2</span>코드가 티켓 조회 함수에 <span class="nw">T-1042</span>를 넣어 실행합니다</div>
           </div>
 
           <div class="tc-w-c1" style="grid-row:4" data-step="3">
@@ -457,7 +457,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
           </div>
           <div class="tc-arr l" style="grid-row:4" data-step="3" aria-hidden="true">←</div>
           <div class="tc-w-c3" style="grid-row:4" data-step="3">
-            <div class="tc-slip res"><h5><span class="tc-num">3</span>결과 (코드가 씀)</h5><span class="mono">{"status": "부품 대기", …}</span></div>
+            <div class="tc-slip res"><h5><span class="tc-num">3</span>결과 (코드가 씀)</h5><span>상태: 부품 대기</span></div>
           </div>
 
           <div class="tc-w-c1" style="grid-row:5" data-step="4">

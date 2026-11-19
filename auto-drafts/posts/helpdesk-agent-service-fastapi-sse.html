@@ -211,15 +211,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="fn-head">
         <h2>쓰기 요청은 한 번 멈췄다가 이어집니다</h2>
         <div>
-          <p>티켓을 만드는 요청은 읽기 요청과 달리 왕복이 두 번입니다. 처음 요청은 Agent가 <code>create_ticket</code>을 부르기로 하는 데서 멈추고 서버가 승인 요청을 스트림으로 내보낸 뒤 연결을 닫습니다. 사람이 답하면 두 번째 요청이 같은 대화 번호(<code>thread_id</code>)로 이어 갑니다.</p>
+          <p>티켓을 만드는 요청은 읽기 요청과 달리 왕복이 두 번입니다. 처음 요청은 Agent가 티켓 만들기 도구를 부르기로 하는 데서 멈추고 서버가 승인 요청을 스트림으로 내보낸 뒤 연결을 닫습니다. 사람이 답하면 두 번째 요청이 같은 대화 번호(<code>thread_id</code>)로 이어 갑니다.</p>
           <p>저장소가 멈춘 자리를 기억하기 때문에 이어 갈 수 있습니다. 요청이 오가는 순서를 따라가 보세요.</p>
         </div>
       </div>
       <div class="fn-story" style="margin-top:40px" data-fn-story>
         <div class="fn-steps">
-          <div class="fn-step" data-fn-step><h3>브라우저가 질문을 보냄</h3><p><code>POST /chat</code>에 대화 번호와 질문을 보내면 웹 서버가 Agent를 실행하며 진행 상황을 스트림으로 흘려 보냅니다.</p></div>
-          <div class="fn-step" data-fn-step><h3>쓰기 도구 앞에서 멈춤</h3><p>Agent가 <code>create_ticket</code>을 부르려는 순간 승인 미들웨어가 멈춥니다. 스트림에 <code>approval_required</code> 이벤트가 나가고 응답은 끝납니다.</p></div>
-          <div class="fn-step" data-fn-step><h3>사람이 승인하거나 거절함</h3><p>화면이 보낼 내용을 보여 주면 사람이 고릅니다. 같은 대화 번호로 <code>POST /approve</code>를 보냅니다.</p></div>
+          <div class="fn-step" data-fn-step><h3>브라우저가 질문을 보냄</h3><p>웹 서버의 채팅 주소로 대화 번호와 질문을 보내면 웹 서버가 Agent를 실행하며 진행 상황을 스트림으로 흘려 보냅니다.</p></div>
+          <div class="fn-step" data-fn-step><h3>쓰기 도구 앞에서 멈춤</h3><p>Agent가 티켓 만들기 도구를 부르려는 순간 승인 미들웨어가 멈춥니다. 스트림에 "승인이 필요합니다" 이벤트가 나가고 응답은 끝납니다.</p></div>
+          <div class="fn-step" data-fn-step><h3>사람이 승인하거나 거절함</h3><p>화면이 보낼 내용을 보여 주면 사람이 고릅니다. 같은 대화 번호로 승인 주소에 답을 보냅니다.</p></div>
           <div class="fn-step" data-fn-step><h3>멈춘 자리에서 이어 감</h3><p>Agent가 저장소의 기록으로 이어서 MCP 서버에 티켓을 만들고 결과를 답으로 흘려 보냅니다. 거절하면 도구는 실행되지 않습니다.</p></div>
         </div>
         <div class="fn-sfig" data-fn-sfig data-figure>

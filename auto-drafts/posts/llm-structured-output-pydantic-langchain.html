@@ -1,12 +1,12 @@
 ---
 title: 모델 답을 프로그램이 믿고 쓰려면 어떤 양식이 필요할까요?
 slug: llm-structured-output-pydantic-langchain
-excerpt: LLM의 자유로운 글 답은 프로그램이 읽기 어렵습니다. Pydantic 클래스를 양식으로 건네 문의 분류 결과를 항상 같은 모양으로 받는 법을 다룹니다. 양식을 모델에게 넘기는 두 가지 길(ToolStrategy, ProviderStrategy), 모양은 지켜도 범위와 내용은 따로 검사해야 하는 이유, 검증에 실패하면 에러를 모델에게 돌려 다시 시키는 재시도까지 그림과 코드로 확인합니다.
+excerpt: LLM의 자유로운 글 답은 프로그램이 읽기 어렵습니다. Pydantic 클래스를 양식으로 건네 문의 분류 결과를 항상 같은 모양으로 받는 법을 다룹니다. 양식을 모델에게 넘기는 두 가지 길(도구 호출로 받기, 모델 회사의 기능으로 받기), 모양은 지켜도 범위와 내용은 따로 검사해야 하는 이유, 검증에 실패하면 에러를 모델에게 돌려 다시 시키는 재시도까지 그림과 코드로 확인합니다.
 tags: [AI Agent, Structured Output, Pydantic, LangChain, Claude, Python]
 category: ai
 series: ai-agent
 series_order: 5
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-structured-output-pydantic-langchain-mvb6b2qj.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-structured-output-pydantic-langchain-mwnrl19c.jpg
 ---
 <!-- page -->
 <!-- layout: [2026-11-14: 스크롤 연동·고정 그림 제거 — 화면 진입 시 한 번 재생] 위아래 쌓은 히어로(제목·리드 위, 전폭 분류함 장면 아래) + 글|그림 2단(종이 양식) + 그림 고정 스크롤리텔링(두 갈래 길) + 작은 그림 네 장(검문 두 겹) + 그림|글 뒤집기(탁구 재시도) | 글의 성격: 같은 서류가 투입구에 맞느냐 안 맞느냐로 양식의 필요를 보이는 글이라 모양이 제각각인 서류와 같은 서류를 분류함에 던지는 장면으로 열고 길·검문·재시도를 장면으로 이어 간다 | 버린 후보: 상자 비교 보드(앞 버전, 그림이 라벨 상자뿐) -->
@@ -183,7 +183,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <dl class="so-req" aria-label="들어온 문의">
         <dt>보낸 사람</dt><dd>사내 직원</dd>
         <dt>내용</dt><dd>"노트북 화면이 계속 깜빡여서 회의를 못 하고 있어요"</dd>
-        <dt>보낼 곳</dt><dd>분야별 담당 큐, 이번 문의는 <code>QUEUES["장비"]</code></dd>
+        <dt>보낼 곳</dt><dd>분야별 담당 큐, 이번 문의는 "장비" 큐</dd>
       </dl>
       <div class="so-stage" data-figure data-thumb data-so-hero data-thumb-act="el.dispatchEvent(new Event('so-all'))">
         <svg class="so-scene" data-so-sorter viewBox="0 0 930 312" role="img" aria-label="분류함 두 개 그림. 한쪽은 양식 없이 받은 서류 세 장이 원, 삼각형, 별로 모양이 제각각이라 네모난 투입구에 들어가지 못하고 튕겨 나온다. 다른 쪽은 양식을 준 서류 세 장이 모두 같은 네모 모양이라 투입구로 쏙 들어가 담당 큐에 쌓인다."></svg>
@@ -196,12 +196,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <div class="so-wrap so-split">
       <div data-figure>
         <svg class="so-scene so-nar" data-so-form viewBox="0 0 460 660" role="img" aria-label="종이 양식 그림. TicketInfo 양식에 분야와 긴급도와 요약 칸이 있다. 분야 칸은 Literal이라 보기 다섯 개 중 장비에 표시했고, 그 아래 점선 칸에는 str이었다면 하드웨어, 컴퓨터 고장, 장비가 제멋대로 적혔을 모습이 있다. 아래의 로봇은 칸 설명을 읽고 칸을 채운다. 점선 말풍선은 설명이 없었다면 칸의 뜻을 짐작해야 한다는 것을 보여 준다."></svg>
-        <p class="so-cap">양식 그림은 TicketInfo 클래스의 칸을 종이 양식처럼 그린 것입니다. 칸 설명은 모델이 읽는 안내문이고 사람 눈에 보이는 서류와는 다릅니다.</p>
+        <p class="so-cap">양식 그림은 이 글에서 만들 양식 클래스의 칸을 종이 양식처럼 그린 것입니다. 칸 설명은 모델이 읽는 안내문이고 사람 눈에 보이는 서류와는 다릅니다.</p>
       </div>
       <div>
         <h2>Pydantic 클래스는 빈칸이 있는 양식입니다</h2>
         <p>Pydantic은 Python 클래스로 데이터의 모양을 적어 두고 값이 그 모양에 맞는지 검사해 주는 패키지입니다. 클래스의 칸마다 이름과 종류(타입)를 적으면 양식이 됩니다. 이 글에서는 문의 하나를 분야와 긴급도와 요약 세 칸으로 나눕니다.</p>
-        <p>분야 칸의 종류를 <code>str</code>로 두면 "장비"도 "하드웨어"도 "컴퓨터 고장"도 들어갈 수 있어서 읽는 쪽이 곤란해집니다. <code>Literal</code>로 보기를 정해 두면 객관식 문제처럼 그중 하나만 고르게 됩니다. 칸에 붙인 설명(<code>description</code>)도 모델에게 전달되어 칸을 채우는 단서가 됩니다.</p>
+        <p>분야 칸을 아무 글자나 받게(<code>str</code>) 두면 "장비"도 "하드웨어"도 "컴퓨터 고장"도 들어갈 수 있어서 읽는 쪽이 곤란해집니다. 보기를 정해 두면(<code>Literal</code>) 객관식 문제처럼 그중 하나만 고르게 됩니다. 칸에 붙인 설명(<code>description</code>)도 모델에게 전달되어 칸을 채우는 단서가 됩니다.</p>
       </div>
     </div>
     <div class="so-wrap">
