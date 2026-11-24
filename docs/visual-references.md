@@ -30,6 +30,9 @@
 | [Bartosz Ciechanowski, Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/) | 실패한 결과 → 원인 → 고치는 법 순서로 같은 장면을 여러 번 보인다 | 입력 크기·해상도처럼 결과가 눈에 보이는 설정 | 2026-11-05 | gpt-vision-image-quiz-tts |
 | 실제 사진을 공식 규칙으로 줄여 세 장 나란히(직접 만듦) | 설정값마다 모델에 들어가는 실제 픽셀을 같은 자리로 잘라 비교하고, 그 위에 칸 격자를 얹어 숫자가 쓰는 칸을 칠한다 | 이미지·음성처럼 입력을 직접 보여 줄 수 있는 설정값 | 2026-11-05 | gpt-vision-image-quiz-tts |
 
+| [Designed to Scale (Dilum Sanjaya)](https://designed-to-scale.vercel.app/#/) | 그림 하나를 제자리에 두고 단계 띠로 같은 그림을 조금씩 바꾼다. 단계 제목이 실패 장면("범위는 핫스팟을 만든다")이고 다음 단계가 해결이다. 그림 위 숫자 타일이 단계마다 바뀌고, "달라진 점" 두세 줄을 따로 적는다. 아이소메트릭 사물 + 선 위를 움직이는 점 | 시스템을 단계별로 고쳐 가는 과정을 보일 때 | 2026-11-24 | iso-scene-sample |
+| [WareTrack 영상 (Dilum Sanjaya)](https://x.com/DilumSanjaya/status/2106426962738880879) | (다른 분야·물류) 화면 전체가 입체 장면이고 사물(지게차·트럭)이 실제로 움직인다. 설명은 장면 위에 뜬 카드가 맡는다. 구도와 "사물이 일하는 모습을 본다"만 가져왔고 둘레 카드는 접었다(POSTING 5-11) | 흐름을 사물의 움직임으로 보일 때 | 2026-11-24 | iso-scene-sample |
+| [MCP Explained (Runlayer)](https://mcp-explained.com/) | 왼쪽 요약 · 오른쪽 그림에 "Step 2 of 5". 선으로 그린 아이소메트릭 아이콘을 옅은 구역 면(Your machine / Model provider / Local or remote)으로 묶고 단계마다 오가는 메시지를 보인다 | 프로토콜의 주고받기를 단계로 보일 때 | 2026-11-24 | |
 | [Anthropic, Redesigning source control](https://www.anthropic.com/engineering/redesigning-source-control) | Scion 의 설계 원칙을 "클라이언트는 늘 온라인", "모든 데이터는 내용 주소이고 불변 → 어느 서버든 조율 없이 캐시" 처럼 한 줄 원칙으로 먼저 세우고 구조를 뒤에 푼다 | 시스템 설계를 원칙 → 구조 순으로 설명할 때 | 2026-10-14 | content-addressing-merkle-tree |
 | [Pro Git 10.2 Git Objects](https://raw.githubusercontent.com/progit/progit2/main/book/10-git-internals/sections/objects.asc) | `blob <크기>\0` 헤더를 붙여 SHA-1 을 손으로 계산하고 `git hash-object` 결과와 맞춰 보인다 | 이름이 내용에서 계산된다는 것을 처음 납득시킬 때 | 2026-10-14 | content-addressing-merkle-tree |
 | [IPFS docs, Merkle DAG](https://raw.githubusercontent.com/ipfs/ipfs-docs/main/docs/concepts/merkle-dag.md) | `A=Hash(B)→B=Hash(C)` 한 줄로 "잎부터만 만들 수 있다·바꾸면 조상이 다 바뀐다·고리가 없다"를 한꺼번에 보인다 | 그림 다음에 규칙을 한 줄로 요약할 때 | 2026-10-14 | |

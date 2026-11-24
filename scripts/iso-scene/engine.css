@@ -1,0 +1,51 @@
+/* 아이소메트릭 흐름 장면 (POSTING 5-11) — `npm run iso` 가 원고에 구워 넣는다 */
+.post-page .iso { --iso-blue: #2f5fe8; --iso-ok: #1f9d63; --iso-ink: #1c2540; margin: 0; font-family: var(--font-sans); word-break: keep-all; }
+[data-theme="dark"] .post-page .iso { --iso-blue: #5b86ff; --iso-ok: #45c58a; --iso-ink: #0c0f17; }
+.post-page .iso * { box-sizing: border-box; }
+.post-page .iso-req { display: inline-block; margin: 0 0 14px; padding: 8px 14px; border-radius: 12px; background: var(--bg-subtle); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-req span { margin-right: 8px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-stage { position: relative; border-radius: 24px; overflow: hidden; background: color-mix(in srgb, var(--iso-blue) 10%, var(--bg-base)); }
+.post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
+.post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
+.post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
+.post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
+.post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
+.post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+@keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+/* 단계 띠 */
+.post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
+.post-page .iso-btns { display: flex; gap: 8px; flex: none; }
+.post-page .iso-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-subtle); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+.post-page .iso-btns button.pri { min-width: 86px; background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-btns button:disabled { opacity: .4; cursor: default; }
+.post-page .iso-dots { flex: 1; display: flex; margin: 0; padding: 0; list-style: none; }
+.post-page .iso-dots li { flex: 1; margin: 0; padding: 0; position: relative; text-align: center; }
+.post-page .iso-dots li::before { content: ""; position: absolute; left: -50%; right: 50%; top: 13px; height: 3px; background: var(--line-subtle); }
+.post-page .iso-dots li:first-child::before { display: none; }
+.post-page .iso-dots li:has(button.done)::before, .post-page .iso-dots li:has(button.cur)::before { background: var(--iso-blue); }
+.post-page .iso-dots button { position: relative; z-index: 1; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--fg-neutral); cursor: pointer; }
+.post-page .iso-dots button i { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 5px; border-radius: 50%; font-style: normal; line-height: 1; background: var(--bg-subtle); border: 1px solid var(--line-subtle); }
+.post-page .iso-dots button.done, .post-page .iso-dots button.cur { color: var(--fg-strong); }
+.post-page .iso-dots button.done i, .post-page .iso-dots button.cur i { background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-dots button.cur i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--iso-blue) 25%, transparent); }
+.post-page .iso-dots button span { display: block; }
+.post-page .iso-desc { margin: 12px 0 0; min-height: 3.4em; font-size: 16px; line-height: 1.7; color: var(--fg-strong); }
+/* 스크립트가 돌면 단계 글은 설명 한 줄(.iso-desc)로 보인다. 꺼져 있으면 목록 그대로 읽힌다 */
+.post-page .iso.iso-on .iso-steps, .post-page .iso.iso-on .iso-sum { display: none; }
+.post-page .iso-steps { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.8; }
+.post-page .iso-sum { margin: 12px 0 0; font-size: 16px; line-height: 1.8; }
+/* 좁은 화면: 비유 꼬리표와 단계 이름을 줄인다 */
+.post-page .iso-narrow .iso-lab { font-size: 11px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-lab.iso-num { font-size: 10px; padding: 1px 6px; }
+.post-page .iso-narrow .iso-lab small { font-size: 10.5px; margin-left: 5px; }
+.post-page .iso-narrow .iso-lab small.meta { display: none; }
+.post-page .iso-narrow .iso-lab.iso-say { font-size: 10.5px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-bar { flex-direction: column; gap: 12px; }
+.post-page .iso-narrow .iso-dots { align-self: stretch; }
+.post-page .iso-narrow .iso-dots button span { display: none; }
+.post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }

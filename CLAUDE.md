@@ -75,7 +75,8 @@ AI·LLM 업계 용어는 영어·음차로 둔다(청크·리랭킹 — 억지 �
 | 고칠 것 | 원본 |
 |---|---|
 | `/portfolio` | `skills/portfolio/SKILL.md` (`~/.claude/skills/portfolio` 가 여기로 걸린 심볼릭 링크) |
-| `/algo` `/draft` `/insight` `/project` `/research` `/revise` `/study` | `.claude/commands/*.md` |
+| `/algo` `/draft` `/insight` `/project` `/research` `/revise` `/scene` `/study` | `.claude/commands/*.md` |
+| 아이소메트릭 흐름 장면 (`/scene`) | 엔진 `scripts/iso-scene/engine.{js,css}` · 굽기 `npm run iso -- <원고>` · 규약 `POSTING.md` 5-11 · 견본 `auto-drafts/posts/iso-scene-sample.html`(적재 ✗) |
 | 시각 설명 레퍼런스 (`/study` 가 쌓는다) | `docs/visual-references.md` |
 | 시리즈 계획 (편 목록·질문·소주제·상태) | `docs/series/<slug>.md` — `/study docs/series/ai-agent.md N편` |
 | 글 작성 규약 | `POSTING.md` · `INSIGHT.md` |
