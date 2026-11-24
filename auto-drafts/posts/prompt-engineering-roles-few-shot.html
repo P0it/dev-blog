@@ -32,34 +32,41 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps svg text { font-family: var(--font-sans); fill: var(--fg-normal); }
 
 /* 역할 배지와 메시지 칸 — 이 글의 시각 언어.
-   색 하나로만 가르지 않는다: 역할마다 아이콘(개발자=터미널, 사용자=사람, 모델=로봇)과 자리(지시=가로 전체 카드, 사용자=오른쪽 말풍선, 모델=왼쪽 말풍선)가 다르다. */
-.post-page .ps { --ic-dev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4 17 10 11 4 5'/%3E%3Cline x1='12' x2='20' y1='19' y2='19'/%3E%3C/svg%3E"); --ic-usr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E%3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E"); --ic-ast: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8V4H8'/%3E%3Crect width='16' height='12' x='4' y='8' rx='2'/%3E%3Cpath d='M2 14h2'/%3E%3Cpath d='M20 14h2'/%3E%3Cpath d='M15 13v2'/%3E%3Cpath d='M9 13v2'/%3E%3C/svg%3E"); }
+   색 하나로만 가르지 않는다. 자리: 모델은 왼쪽, 사람(개발자·사용자)은 오른쪽.
+   아이콘: 개발자 = 노트북 앞의 사람, 사용자 = 사람, 모델 = 로봇. 개발자 지시는 말풍선이 아니라 맨 위 가로 전체 카드(점선).
+   색은 아이콘·이름표에만 쓰고 칸은 흰 바탕 + 가는 테두리. 진한 색은 모델의 답 칸 하나. */
+.post-page .ps { --ic-dev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='2.8'/%3E%3Cpath d='M3.5 15.5c0-4 3.6-6.3 8.5-6.3s8.5 2.3 8.5 6.3'/%3E%3Cpath d='M7.5 18.5V12.8a.8.8 0 0 1 .8-.8h7.4a.8.8 0 0 1 .8.8v5.7'/%3E%3Cpath d='M2.5 19.5h19'/%3E%3C/svg%3E"); --ic-usr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4.5'/%3E%3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E"); --ic-ast: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8V4H8'/%3E%3Crect width='16' height='12' x='4' y='8' rx='2'/%3E%3Cpath d='M2 14h2'/%3E%3Cpath d='M20 14h2'/%3E%3Cpath d='M15 13v2'/%3E%3Cpath d='M9 13v2'/%3E%3C/svg%3E"); }
 .post-page .ps-r { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.7; color: var(--bg-base); background: var(--c, var(--fg-alternative)); vertical-align: 1px; white-space: nowrap; }
 .post-page .ps-r.dev, .post-page .ps-m.dev { --c: var(--ps-dev); --ic: var(--ic-dev); }
 .post-page .ps-r.usr, .post-page .ps-m.usr { --c: var(--ps-user); --ic: var(--ic-usr); }
 .post-page .ps-r.ast, .post-page .ps-m.ast, .post-page .ps-out { --c: var(--ps-ai); --ic: var(--ic-ast); }
-.post-page .ps-r.dev::before, .post-page .ps-r.usr::before, .post-page .ps-r.ast::before { content: ""; width: 11px; height: 11px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
-.post-page .ps-m { display: block; padding: 9px 14px; border-radius: 14px; font-size: 15px; line-height: 1.6; color: var(--fg-strong); background: color-mix(in srgb, var(--c) 9%, var(--bg-base)); }
-.post-page .ps-m.dev, .post-page .ps-m.usr, .post-page .ps-m.ast, .post-page .ps-out { position: relative; min-height: 50px; }
+.post-page .ps-r.dev::before, .post-page .ps-r.usr::before, .post-page .ps-r.ast::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.post-page .ps-m { display: block; padding: 9px 14px; border-radius: 14px; font-size: 15px; line-height: 1.6; color: var(--fg-strong); background: var(--bg-base); border: 1px solid var(--line-subtle); }
+.post-page .ps-m.dev, .post-page .ps-m.usr, .post-page .ps-m.ast, .post-page .ps-out { position: relative; min-height: 52px; }
 /* 아바타: 옅은 원 + 역할 색 아이콘 */
-.post-page .ps-m.dev::before, .post-page .ps-m.usr::before, .post-page .ps-m.ast::before, .post-page .ps-out::before { content: ""; position: absolute; top: 9px; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--c) 20%, var(--bg-base)); }
-.post-page .ps-m.dev::after, .post-page .ps-m.usr::after, .post-page .ps-m.ast::after, .post-page .ps-out::after { content: ""; position: absolute; top: 16px; width: 18px; height: 18px; background: var(--c); -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
-.post-page .ps-m.dev, .post-page .ps-m.ast, .post-page .ps-out { padding-left: 54px; }
-.post-page .ps-m.dev::before, .post-page .ps-m.ast::before, .post-page .ps-out::before { left: 11px; }
-.post-page .ps-m.dev::after, .post-page .ps-m.ast::after, .post-page .ps-out::after { left: 18px; }
-.post-page .ps-m.usr { padding-right: 54px; width: fit-content; max-width: 88%; margin-left: auto; border-bottom-right-radius: 4px; }
-.post-page .ps-m.usr::before { right: 11px; } .post-page .ps-m.usr::after { right: 18px; }
+.post-page .ps-m.dev::before, .post-page .ps-m.usr::before, .post-page .ps-m.ast::before, .post-page .ps-out::before { content: ""; position: absolute; top: 9px; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--c) 16%, var(--bg-base)); }
+.post-page .ps-m.dev::after, .post-page .ps-m.usr::after, .post-page .ps-m.ast::after, .post-page .ps-out::after { content: ""; position: absolute; top: 15px; width: 22px; height: 22px; background: var(--c); -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+/* 모델: 왼쪽 */
+.post-page .ps-m.ast, .post-page .ps-out { padding-left: 56px; }
+.post-page .ps-m.ast::before, .post-page .ps-out::before { left: 11px; }
+.post-page .ps-m.ast::after, .post-page .ps-out::after { left: 17px; }
 .post-page .ps-m.ast { width: fit-content; max-width: 88%; border-bottom-left-radius: 4px; }
-/* 지시는 말풍선이 아니라 가로 전체 카드: 흰 바탕 + 점선 테두리 */
-.post-page .ps-m.dev { background: var(--bg-base); border: 1.5px dashed color-mix(in srgb, var(--c) 55%, var(--bg-base)); border-radius: 12px; }
+/* 사람: 오른쪽 */
+.post-page .ps-m.dev, .post-page .ps-m.usr { padding-right: 56px; }
+.post-page .ps-m.dev::before, .post-page .ps-m.usr::before { right: 11px; }
+.post-page .ps-m.dev::after, .post-page .ps-m.usr::after { right: 17px; }
+.post-page .ps-m.usr { width: fit-content; max-width: 88%; margin-left: auto; border-bottom-right-radius: 4px; }
+.post-page .ps-m.dev { border: 1.5px dashed var(--line-strong); border-radius: 10px; }
 /* 칸 안의 역할 이름은 알약이 아니라 윗줄 작은 제목 */
-.post-page .ps-m > .ps-r, .post-page .ps-out > .ps-r { display: block; padding: 0; margin: 0 0 1px; background: none; color: var(--c); font-size: 12.5px; line-height: 1.5; letter-spacing: .01em; }
+.post-page .ps-m > .ps-r, .post-page .ps-out > .ps-r { display: block; padding: 0; margin: 0 0 1px; background: none; color: var(--c); font-family: var(--font-mono); font-size: 12px; font-weight: 700; line-height: 1.5; }
 .post-page .ps-m > .ps-r::before, .post-page .ps-out > .ps-r::before { content: none; }
-.post-page .ps-m.dev > .ps-r::after { content: " · 개발자의 지시"; color: var(--fg-neutral); font-weight: 600; }
-.post-page .ps-m.usr > .ps-r::after { content: " · 사용자"; color: var(--fg-neutral); font-weight: 600; }
-.post-page .ps-m.ast > .ps-r::after { content: " · 모델"; color: var(--fg-neutral); font-weight: 600; }
+.post-page .ps-m > .ps-r::after { font-family: var(--font-sans); color: var(--fg-neutral); font-weight: 600; }
+.post-page .ps-m.dev > .ps-r::after { content: " · 개발자의 지시"; }
+.post-page .ps-m.usr > .ps-r::after { content: " · 사용자"; }
+.post-page .ps-m.ast > .ps-r::after { content: " · 모델"; }
+.post-page .ps-out > .ps-r { font-family: var(--font-sans); }
 .post-page .ps-m.usr > .ps-r { text-align: right; }
-.post-page .ps-m.ex { background: color-mix(in srgb, var(--c) 5%, var(--bg-base)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 28%, var(--bg-base)); }
+.post-page .ps-m.ex { background: var(--bg-subtle); border-style: dashed; }
 
 /* 고르기 토글 / 실행 버튼 */
 .post-page .ps-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
@@ -80,12 +87,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-review::before { content: "“"; } .post-page .ps-review::after { content: "”"; }
 .post-page .ps-doc { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
 .post-page .ps-doc .ps-m { transition: opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1); }
-.post-page .ps-exrow { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .55s cubic-bezier(.2,.7,.2,1), opacity .55s; }
+.post-page .ps-exrow { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .55s cubic-bezier(.2,.7,.2,1), opacity .55s, margin-top .55s cubic-bezier(.2,.7,.2,1); }
 .post-page .ps-exrow > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
-.post-page .ps-exrow.hide { grid-template-rows: 0fr; opacity: 0; }
-.post-page .ps-exrow.hide > div { margin-top: -10px; }
+.post-page .ps-exrow.hide { grid-template-rows: 0fr; opacity: 0; margin-top: -10px; }
 .post-page .ps-exlbl { font-size: 12.5px; color: var(--fg-neutral); font-weight: 700; margin: 2px 0 -2px; }
-.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; border-bottom-left-radius: 4px; padding: 9px 14px 10px 54px; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); min-height: 3.4em; margin-top: 6px; background: color-mix(in srgb, var(--ps-ai) 6%, var(--bg-base)); }
+.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; border-bottom-left-radius: 4px; padding: 9px 14px 10px 56px; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); min-height: 3.4em; margin-top: 6px; background: var(--bg-base); }
 .post-page .ps-cands { margin-top: 18px; }
 .post-page .ps-cands h4, .post-page .ps-fig h4 { margin: 0 0 8px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
 .post-page .ps-cand { display: grid; grid-template-columns: 7.2em minmax(0, 1fr) 3em; gap: 10px; align-items: center; font-size: 14px; margin: 5px 0; }
