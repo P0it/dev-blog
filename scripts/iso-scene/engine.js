@@ -114,9 +114,9 @@
     const say = mk("iso-lab iso-say");
     let busy = null;
     function labels() {
-      for (const id of ids) { const b = busy && busy[0] === id;
+      for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
         lab[id].className = "iso-lab" + (b ? " busy" : "");
-        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+        lab[id].innerHTML = S[id].name + (b ? `<small>${hit[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
     const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
@@ -142,7 +142,10 @@
       if (a.jump) A.pos = [...a.jump];
       if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
       if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
-      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
+      if (a.wait || a.seg) { const many = Array.isArray(a.comp);
+        busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
 

@@ -182,9 +182,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     const say = mk("iso-lab iso-say");
     let busy = null;
     function labels() {
-      for (const id of ids) { const b = busy && busy[0] === id;
+      for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
         lab[id].className = "iso-lab" + (b ? " busy" : "");
-        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+        lab[id].innerHTML = S[id].name + (b ? `<small>${hit[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
     const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
@@ -210,7 +210,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       if (a.jump) A.pos = [...a.jump];
       if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
       if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
-      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
+      if (a.wait || a.seg) { const many = Array.isArray(a.comp);
+        busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
 
@@ -536,7 +539,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 <script>
 /* 맨 위 장면(POSTING 5-11): 흐름도와 같은 요청 · 같은 여섯 단계(서브에이전트 3개 · 도구 호출 10번씩 · 요약 3개 · 답 1건).
-   엔진은 움직이는 사람이 하나뿐이라 "동시에"는 조리대 이름표를 짧게 번갈아 켜서 보인다. 셰프는 티켓을 걸 때 걸어가지 않는다(지시는 한 번에 나간다) */
+   "동시에"는 세 조리대 이름표를 한꺼번에 켜서 보인다(엔진의 wait 에 정거장 배열). 셰프는 티켓을 걸 때 걸어가지 않는다(지시는 한 번에 나간다) */
 (() => {
   const home = [0, 1.8];
   const cook = (c) => [
@@ -546,7 +549,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     ["person", 0, 0, c],
     ["box", 0, 0.85, 1.7, 0.45, 0.7, "white"] ];
   const sub = (name, meta, x, c) => ({ name, meta, at: [x, -7], size: [2.6, 2.6], top: 2.5, drop: [0.35, 0.92, 0.85], parts: cook(c) });
-  const round = (t) => ["a", "b", "c"].map((id) => ["wait", 650, id, t]);
+  const ALL = ["a", "b", "c"];
+  const together = (ms, texts) => ["wait", ms, ALL, texts]; // 세 조리대가 동시에 일한다
   const fetch1 = (id, n) => [
     ["at", id, { hold: n > 0, pages: Math.max(1, n), say: n ? `요약 ${n}장` : "" }], ["go", id],
     ["wait", 800, id, "요약 한 장을 건네는 중", { say: "" }],
@@ -581,9 +585,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
        ["wait", 1500, "memory", "계획을 적어 두는 중", { hold: false, drop: true, say: "" }],
        ["back", "memory"], ["wait", 600, "pass", "티켓을 쓰는 중"]],
       [["at", home, { hold: true, pages: 3, say: "티켓 3장" }], ["wait", 1400, "pass", "티켓 3장을 한 번에 쓰는 중"],
-       ["set", { hold: false, say: "세 곳에 한 번에" }], ["wait", 500, "a", "티켓 받음"], ["wait", 500, "b", "티켓 받음"], ["wait", 500, "c", "티켓 받음"],
+       ["set", { hold: false, say: "세 곳에 한 번에" }], together(1200, "티켓 받음"),
        ["wait", 700, "pass", "기다리는 중"]],
-      [["at", home, { hold: false, say: "세 곳이 동시에 조리 중" }], ...round("검색하는 중"), ...round("페이지 읽는 중"), ...round("요약 쓰는 중"), ["set", { say: "" }]],
+      [["at", home, { hold: false, say: "세 곳이 동시에 조리 중" }], together(1900, ["pgvector 검색 중", "Qdrant 검색 중", "Pinecone 검색 중"]), together(1900, "페이지 읽는 중"), together(1900, "요약 쓰는 중"), ["set", { say: "" }]],
       [...fetch1("a", 0), ...fetch1("b", 1), ...fetch1("c", 2), ["wait", 600, "pass", "요약 3장을 받는 중"]],
       [["at", home, { hold: true, pages: 3, say: "요약 3장" }], ["wait", 1800, "pass", "요약 3장을 한 답으로 합치는 중"],
        ["set", { pages: 2, say: "비교표 + 추천" }], ["wait", 700, "pass", "더 조사할 곳이 없는지 보는 중"],
