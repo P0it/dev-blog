@@ -1,0 +1,808 @@
+---
+title: A2A로 다른 Agent에게 일을 맡길 때 무엇이 오갈까요?
+slug: a2a-agent-card-task-architecture
+excerpt: A2A는 Agent가 다른 Agent에게 일을 맡기는 규격입니다. 맡기기 전에 상대가 내건 Agent Card를 읽고 일은 Task로 넘깁니다. 상대는 자기 모델과 도구로 일하며 상태와 결과물(Artifact)을 돌려줍니다. "다음 주 도쿄 출장 준비해 줘"라는 요청 하나로 항공권·숙소 Agent에게 일을 맡기는 흐름과 MCP가 붙는 곳을 흐름도로 그렸습니다.
+tags: [AI 아키텍처, A2A, AI Agent, Multi-Agent, MCP]
+category: ai
+series: ai-architecture-cheatsheet
+series_order: 7
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/a2a-agent-card-task-architecture-mwu7hiu7.jpg
+---
+<!-- page -->
+<!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(업체 명함과 작업 의뢰서, POSTING 5-11, 썸네일도 이 장면) + 큰 흐름도 하나(왼쪽 우리 쪽 A2A Client · 가운데 Agent Card와 인증 서버 · 오른쪽 다른 회사 A2A Server 둘, 각 Agent 아래 MCP로 붙인 도구, ByteByteGo 문법) + A2A와 MCP가 붙는 곳(두 단 카드) + Task 상태와 주고받는 것(두 단 카드) + 더 읽어 보기 | 글의 성격: 출장 준비 요청 하나가 두 원격 Agent를 지나는 길을 크게 그린다. 흐름도가 화면에 다 들어오면 점이 카드 읽기 → 토큰 → Task → 상태 → 되묻기 → Artifact 순서로 지난다 | 비유 후보: 프리랜서 구인 게시판(찾기·입찰이 앞에 서서 Task 상태와 되묻기가 안 보임), 택배·퀵 의뢰(6편 계열과 겹치고 상대가 스스로 판단하며 되묻는 일이 아님), 통역사를 둔 회의(A2A가 말을 옮기는 규격으로 오해됨) → 업체 명함과 작업 의뢰서 -->
+<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10). 흐름도 노드 아이콘은 스크립트가 쓰므로 여기 적어 굽게 한다: <use href="#i-user"/><use href="#i-bot"/><use href="#i-calendar-days"/><use href="#i-id-card"/><use href="#i-key-round"/><use href="#i-plane"/><use href="#i-bed-double"/><use href="#i-eye-off"/><use href="#i-claude"/><use href="#i-gemini"/><use href="#i-openai"/><use href="#i-mcp"/> -->
+<!--ISO:begin-->
+<style>
+/* 아이소메트릭 흐름 장면 (POSTING 5-11) — `npm run iso` 가 원고에 구워 넣는다 */
+.post-page .iso { --iso-blue: #2f5fe8; --iso-ok: #1f9d63; --iso-ink: #1c2540; margin: 0; font-family: var(--font-sans); word-break: keep-all; }
+[data-theme="dark"] .post-page .iso { --iso-blue: #5b86ff; --iso-ok: #45c58a; --iso-ink: #0c0f17; }
+.post-page .iso * { box-sizing: border-box; }
+.post-page .iso-req { display: inline-block; margin: 0 0 14px; padding: 8px 14px; border-radius: 12px; background: var(--bg-subtle); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-req span { margin-right: 8px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-stage { position: relative; border-radius: 24px; overflow: hidden; background: color-mix(in srgb, var(--iso-blue) 10%, var(--bg-base)); }
+.post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
+.post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
+.post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
+.post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
+.post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
+.post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+@keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+/* 단계 띠 */
+.post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
+.post-page .iso-btns { display: flex; gap: 8px; flex: none; }
+.post-page .iso-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-subtle); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+.post-page .iso-btns button.pri { min-width: 86px; background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-btns button:disabled { opacity: .4; cursor: default; }
+.post-page .iso-dots { flex: 1; display: flex; margin: 0; padding: 0; list-style: none; }
+.post-page .iso-dots li { flex: 1; margin: 0; padding: 0; position: relative; text-align: center; }
+.post-page .iso-dots li::before { content: ""; position: absolute; left: -50%; right: 50%; top: 13px; height: 3px; background: var(--line-subtle); }
+.post-page .iso-dots li:first-child::before { display: none; }
+.post-page .iso-dots li:has(button.done)::before, .post-page .iso-dots li:has(button.cur)::before { background: var(--iso-blue); }
+.post-page .iso-dots button { position: relative; z-index: 1; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--fg-neutral); cursor: pointer; }
+.post-page .iso-dots button i { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 5px; border-radius: 50%; font-style: normal; line-height: 1; background: var(--bg-subtle); border: 1px solid var(--line-subtle); }
+.post-page .iso-dots button.done, .post-page .iso-dots button.cur { color: var(--fg-strong); }
+.post-page .iso-dots button.done i, .post-page .iso-dots button.cur i { background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-dots button.cur i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--iso-blue) 25%, transparent); }
+.post-page .iso-dots button span { display: block; }
+.post-page .iso-desc { margin: 12px 0 0; min-height: 3.4em; font-size: 16px; line-height: 1.7; color: var(--fg-strong); }
+/* 스크립트가 돌면 단계 글은 설명 한 줄(.iso-desc)로 보인다. 꺼져 있으면 목록 그대로 읽힌다 */
+.post-page .iso.iso-on .iso-steps, .post-page .iso.iso-on .iso-sum { display: none; }
+.post-page .iso-steps { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.8; }
+.post-page .iso-sum { margin: 12px 0 0; font-size: 16px; line-height: 1.8; }
+/* 좁은 화면: 비유 꼬리표와 단계 이름을 줄인다 */
+.post-page .iso-narrow .iso-lab { font-size: 11px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-lab.iso-num { font-size: 10px; padding: 1px 6px; }
+.post-page .iso-narrow .iso-lab small { font-size: 10.5px; margin-left: 5px; }
+.post-page .iso-narrow .iso-lab small.meta { display: none; }
+.post-page .iso-narrow .iso-lab.iso-say { font-size: 10.5px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-bar { flex-direction: column; gap: 12px; }
+.post-page .iso-narrow .iso-dots { align-self: stretch; }
+.post-page .iso-narrow .iso-dots button span { display: none; }
+.post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+</style>
+<script>
+// 아이소메트릭 흐름 장면 — 정거장 사이를 한 사람이 오가며 일을 맡기고 결과를 받아 오는 그림.
+// 원고가 장면(정거장·길·동작)을 적어 isoScene(figure, spec) 을 부르면 이 파일이 그린다.
+// 이 파일은 `npm run iso -- <원고>` 가 원고의 <!--ISO--> 자리에 구워 넣는다. 규약: POSTING.md 5-11.
+(function () {
+  const PAL = {
+    light: { white: "#ffffff", wall: "#eef1f9", paper: "#fffdf5", blue: "#2f5fe8", navy: "#3b4a78", yellow: "#f5b62e", teal: "#2fbf9f",
+             orange: "#ff8a3d", red: "#e5484d", grey: "#cfd5e6", dark: "#2a3352", skin: "#f3cba8", hair: "#5a4636", to: [40, 60, 130], shadow: "rgba(30,50,120,.2)" },
+    dark:  { white: "#2e3650", wall: "#3b4460", paper: "#e9e4d2", blue: "#5b86ff", navy: "#8a99cc", yellow: "#e0a526", teal: "#2aa88c",
+             orange: "#f0803a", red: "#e5605f", grey: "#4d5775", dark: "#10131c", skin: "#e8bf9b", hair: "#3c2f25", to: [0, 0, 0], shadow: "rgba(0,0,0,.5)" },
+  };
+  const FLOOR = 0.2; // 정거장 바닥 판 두께 — 부품의 y 기본값
+
+  function isoScene(fig, spec) {
+    const stage = fig && fig.querySelector(".iso-stage");
+    const lis = fig ? [...fig.querySelectorAll(".iso-steps > li")] : [];
+    if (!stage || !lis.length) return;
+    const signal = window.postPage && window.postPage.signal;
+    const N = lis.length, S = spec.stations, ids = Object.keys(S), R = spec.routes || {};
+    const uid = "iso" + Math.random().toString(36).slice(2, 7);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sum = fig.querySelector(".iso-sum");
+
+    stage.innerHTML = '<svg aria-hidden="true"></svg><div class="iso-labs" aria-hidden="true"></div>';
+    const svg = stage.firstChild, labs = stage.lastChild;
+    const bar = document.createElement("div"); bar.className = "iso-bar";
+    bar.innerHTML = '<div class="iso-btns"><button type="button" data-a="prev">이전</button><button type="button" data-a="next">다음</button>' +
+      '<button type="button" data-a="play" class="pri">재생</button></div><ol class="iso-dots">' +
+      lis.map((li, i) => `<li><button type="button" data-i="${i}"><i>${i + 1}</i><span>${li.dataset.k || ""}</span></button></li>`).join("") +
+      `<li><button type="button" data-i="${N}"><i>✓</i><span>전체 흐름</span></button></li></ol>`;
+    const desc = document.createElement("p"); desc.className = "iso-desc"; desc.setAttribute("aria-live", "polite");
+    stage.after(bar, desc); fig.classList.add("iso-on");
+
+    /* ── 좌표: 장면 크기에 맞춰 눈금(U)과 원점을 정한다 ── */
+    let U = 40, OX = 0, OY = 0, W = 0, H = 0, pal = PAL.light;
+    const P = (x, y, z, ox = OX, oy = OY) => [ox + (x - z) * U * 0.866, oy + (x + z) * U * 0.5 - y * U];
+    const pts = (a) => a.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    function layout() {
+      W = stage.clientWidth || 800;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      const add = (x, y, z) => { const a = (x - z) * 0.866, b = (x + z) * 0.5 - y; x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); };
+      for (const id of ids) { const [ax, az] = S[id].at, [w, d] = S[id].size, t = S[id].top || 2.2;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(ax + sx * w / 2, 0, az + sz * d / 2); add(ax + sx * w / 2, t, az + sz * d / 2); } }
+      for (const k in R) for (const [x, z] of R[k]) { add(x, 0, z); add(x, 2, z); }
+      const narrow = W < 560, padX = narrow ? 14 : 70, padT = narrow ? 30 : 44, padB = narrow ? 14 : 22;
+      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 70% 까지만 쓴다
+      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.7 - padT - padB) / (y1 - y0));
+      H = (y1 - y0) * U + padT + padB; OX = (W - (x1 - x0) * U) / 2 - x0 * U; OY = padT - y0 * U;
+      stage.style.height = H.toFixed(0) + "px"; svg.setAttribute("viewBox", `0 0 ${W} ${H.toFixed(0)}`);
+      fig.classList.toggle("iso-narrow", narrow);
+    }
+
+    /* ── 그리기 ── */
+    const col = (c) => pal[c] || c;
+    const shade = (c, f) => { const n = parseInt(col(c).slice(1), 16), t = pal.to, m = (v, k) => Math.round(v * f + t[k] * (1 - f)); return `rgb(${m(n >> 16, 0)},${m((n >> 8) & 255, 1)},${m(n & 255, 2)})`; };
+    function draw1(b, ox, oy) {
+      const Q = (x, y, z) => P(x, y, z, ox, oy);
+      if (b.t === "sph") { const [cx, cy] = Q(b.x, b.y, b.z); return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(b.r * U).toFixed(1)}" fill="${col(b.c)}"/>`; }
+      const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y0 = b.y, y1 = b.y + b.h;
+      return `<polygon points="${pts([Q(x0, y0, z1), Q(x1, y0, z1), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${shade(b.c, 0.9)}"/>` +
+             `<polygon points="${pts([Q(x1, y0, z0), Q(x1, y0, z1), Q(x1, y1, z1), Q(x1, y1, z0)])}" fill="${shade(b.c, 0.78)}"/>` +
+             `<polygon points="${pts([Q(x0, y1, z0), Q(x1, y1, z0), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${col(b.c)}"/>`;
+    }
+    // 부품: ["box", x, z, w, d, h, 색, y] · ["person", x, z, 색, y] · ["sph", x, y, z, r, 색] — x·z 는 정거장 중심 기준
+    function parts(st) {
+      const [ax, az] = st.at, out = [];
+      if (st.floor !== false) out.push({ t: "box", x: ax, y: 0, z: az, w: st.size[0], d: st.size[1], h: FLOOR, c: "white" });
+      for (const p of st.parts || []) {
+        if (p[0] === "box") out.push({ t: "box", x: ax + p[1], z: az + p[2], w: p[3], d: p[4], h: p[5], c: p[6], y: p[7] == null ? FLOOR : p[7] });
+        else if (p[0] === "person") { const y = p[4] == null ? FLOOR : p[4];
+          out.push({ t: "box", x: ax + p[1], z: az + p[2], w: 0.55, d: 0.55, h: 0.85, c: p[3], y }, { t: "sph", x: ax + p[1], y: y + 1.2, z: az + p[2], r: 0.33, c: "skin" }); }
+        else if (p[0] === "sph") out.push({ t: "sph", x: ax + p[1], y: p[2], z: az + p[3], r: p[4], c: p[5] });
+      }
+      return out;
+    }
+    const rect = (x0, z0, x1, z1) => pts([P(x0, 0, z0), P(x1, 0, z0), P(x1, 0, z1), P(x0, 0, z1)]);
+    function render() {
+      pal = document.documentElement.getAttribute("data-theme") === "dark" ? PAL.dark : PAL.light;
+      const k = U / 40, line = (p) => pts(p.map(([x, z]) => P(x, 0, z)));
+      let s = `<defs><filter id="${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="${(6 * k).toFixed(1)}"/></filter></defs>`;
+      for (const r in R) s += `<polyline points="${line(R[r])}" fill="none" stroke="${pal.yellow}" stroke-width="${(3 * k).toFixed(1)}" stroke-dasharray="${(10 * k).toFixed(1)} ${(8 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<polyline class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<g filter="url(#${uid})" fill="${pal.shadow}">`;
+      for (const id of ids) { const [x, z] = S[id].at, [w, d] = S[id].size; s += `<polygon points="${rect(x - w / 2, z - d / 2 + 0.3, x + w / 2 + 0.5, z + d / 2 + 0.6)}"/>`; }
+      s += "</g>";
+      // 정거장은 먼 것부터, 정거장 안 부품은 원고에 적은 순서(뒤 → 앞)대로
+      for (const id of [...ids].sort((a, b) => S[a].at[0] + S[a].at[1] - (S[b].at[0] + S[b].at[1]))) s += "<g>" + parts(S[id]).map((b) => draw1(b)).join("") + "</g>";
+      s += '<g class="iso-drop"></g><g class="iso-actor"></g>';
+      svg.innerHTML = s; drawActor(); drawDrop(); drawActive(); place();
+    }
+
+    /* ── 오가는 사람: 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
+    const A = { pos: [0, 0], dir: [1, 0], pages: 1, hold: true, say: "", drop: null };
+    const actorColor = (spec.actor && spec.actor.color) || "blue";
+    function drawActor() {
+      const [dx, dz] = A.dir, toward = dx + dz > 0, alongX = dx !== 0;
+      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: actorColor };
+      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * A.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
+      const head = [{ t: "sph", x: 0, y: 1.2, z: 0, r: 0.33, c: "skin" }];
+      if (toward) for (const e of [-1, 1]) head.push({ t: "sph", x: dx * 0.3 - dz * 0.13 * e, y: 1.2, z: dz * 0.3 + dx * 0.13 * e, r: 0.05, c: "dark" });
+      else head.push({ t: "sph", x: -dx * 0.06, y: 1.25, z: -dz * 0.06, r: 0.3, c: "hair" });
+      const list = !A.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
+      const g = svg.querySelector(".iso-actor"); g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor();
+    }
+    function moveActor() { const [a, b] = P(A.pos[0], 0, A.pos[1]); svg.querySelector(".iso-actor").setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
+    function drawDrop() {
+      const st = A.drop && S[A.drop], d = st && st.drop;
+      svg.querySelector(".iso-drop").innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * A.pages, d: 0.4, c: "paper" }) : "";
+    }
+
+    /* ── 이름표 ── */
+    const lab = {}, mk = (cls) => { const d = document.createElement("div"); d.className = cls; labs.appendChild(d); return d; };
+    for (const id of ids) lab[id] = mk("iso-lab");
+    const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
+    const say = mk("iso-lab iso-say");
+    let busy = null;
+    function labels() {
+      for (const id of ids) { const b = busy && busy[0] === id;
+        lab[id].className = "iso-lab" + (b ? " busy" : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+    }
+    // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
+    const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
+    function place() {
+      for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
+      for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
+      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+    }
+
+    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
+    function acts(i) {
+      const out = [], seg = (r) => { for (let k = 0; k < r.length - 1; k++) out.push({ seg: [r[k], r[k + 1]], dur: 300 + Math.hypot(r[k + 1][0] - r[k][0], r[k + 1][1] - r[k][1]) * 240 }); };
+      for (const a of spec.steps[i] || []) {
+        if (a[0] === "at") out.push({ dur: 0, jump: typeof a[1] === "string" ? R[a[1]][0] : a[1], ...a[2] });
+        else if (a[0] === "set") out.push({ dur: 0, ...a[1] });
+        else if (a[0] === "go") seg(R[a[1]]);
+        else if (a[0] === "back") seg([...R[a[1]]].reverse());
+        else if (a[0] === "wait") out.push({ dur: a[1], comp: a[2], text: a[3], wait: true, ...a[4] });
+      }
+      return out;
+    }
+    function apply(a) {
+      if (a.jump) A.pos = [...a.jump];
+      if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
+      if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
+      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      drawActor(); labels(); place();
+    }
+
+    let step = N, playing = false, raf = 0, timer = 0;
+    function drawActive() {
+      const one = step < N && (spec.steps[step] || []).filter((a) => a[0] === "go" || a[0] === "back");
+      const names = one ? [...new Set(one.map((a) => a[1]))] : [];
+      svg.querySelector(".iso-act").setAttribute("points", names.length === 1 ? pts(R[names[0]].map(([x, z]) => P(x, 0, z))) : "");
+    }
+    function ui() {
+      bar.querySelectorAll(".iso-dots button").forEach((b, i) => { b.className = i < step ? "done" : i === step ? "cur" : ""; if (i === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+      desc.textContent = step === N ? (sum ? sum.textContent : "") : lis[step].textContent;
+      bar.querySelector('[data-a="prev"]').disabled = step === 0; bar.querySelector('[data-a="next"]').disabled = step === N;
+      bar.querySelector('[data-a="play"]').textContent = playing ? "일시정지" : step === N ? "다시 재생" : "재생";
+      drawActive();
+    }
+    function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
+    function go(i, auto) {
+      stop(); if (!auto) playing = false;
+      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
+        playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
+        ui(); drawDrop(); drawActor(); labels(); place(); return;
+      }
+      ui();
+      const list = acts(step); let k = -1, t0 = 0;
+      const next = (now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
+        while (++k < list.length) { apply(list[k]); if (list[k].dur > 0 && !reduce) { t0 = now; return true; } if (list[k].seg) { A.pos = [...list[k].seg[1]]; moveActor(); } }
+        busy = null; labels(); place(); if (playing) timer = setTimeout(() => go(step + 1, true), 2400); return false; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
+      };
+      const tick = (now) => {
+        const a = list[k], t = Math.min(1, (now - t0) / a.dur);
+        if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (t >= 1 && !next(now)) return;
+        raf = requestAnimationFrame(tick);
+      };
+      if (next(performance.now())) raf = requestAnimationFrame(tick);
+    }
+    let io = null;
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (io) { io.disconnect(); io = null; } // 독자가 먼저 눌렀으면 자동 재생으로 덮어쓰지 않는다
+      if (b.dataset.i != null) return go(+b.dataset.i);
+      if (b.dataset.a === "prev") return go(step - 1);
+      if (b.dataset.a === "next") return go(step + 1);
+      if (playing) { playing = false; clearTimeout(timer); return ui(); }
+      playing = true; go(step === N ? 0 : step, true);
+    }, { signal });
+
+    /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
+    layout(); labels(); render(); go(N);
+    const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
+    const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (!reduce && "IntersectionObserver" in window) {
+      io = new IntersectionObserver((es) => { const e = es[0];
+        if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
+      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
+    }
+    if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
+    return { go, get step() { return step; }, get playing() { return playing; } };
+  }
+
+  // 흔한 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아 → 돌아와 적는다
+  isoScene.trip = (route, station, o) => [
+    ["at", route, { hold: true, pages: o.pages, say: o.carry }], ["go", route],
+    ["wait", o.ms || 1600, station, o.work, { hold: false, drop: true, say: "" }],
+    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, station, o.give || "결과를 건네는 중"],
+    ["back", route], ...(o.home ? [["wait", 800, o.home, o.write || "결과를 적는 중"]] : []),
+  ];
+  window.isoScene = isoScene;
+})();
+</script>
+<!--ISO:end-->
+<style>
+.post-page .ac {
+  --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
+  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139); --ac-warn: rgb(202, 138, 4);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ac {
+  --ac-user: rgb(110, 165, 255); --ac-app: rgb(60, 205, 165); --ac-model: rgb(255, 150, 80);
+  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192); --ac-warn: rgb(250, 204, 21);
+}
+.post-page .ac * { box-sizing: border-box; }
+.post-page .ac-wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+.post-page .ac h1, .post-page .ac h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
+.post-page .ac h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.25; }
+.post-page .ac p { font-size: 17px; line-height: 1.85; margin: 0; }
+.post-page .ac a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ac code { font-family: var(--font-mono); font-size: .9em; }
+.post-page .ac-hero { padding-top: clamp(40px, 6vw, 64px); }
+.post-page .ac-kicker { font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--fg-neutral); margin-bottom: 14px; }
+.post-page .ac-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: end; }
+.post-page .ac .k-user { --c: var(--ac-user); } .post-page .ac .k-app { --c: var(--ac-app); }
+.post-page .ac .k-model { --c: var(--ac-model); } .post-page .ac .k-tool { --c: var(--ac-tool); }
+.post-page .ac .k-data { --c: var(--ac-data); } .post-page .ac .k-ops { --c: var(--ac-ops); } .post-page .ac .k-warn { --c: var(--ac-warn); }
+
+/* 아이콘 타일 (POSTING 5-10) */
+.post-page .ac .ni { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 4px 12px rgba(15, 23, 42, .09); display: grid; place-items: center; }
+[data-theme="dark"] .post-page .ac .ni { background: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); box-shadow: none; }
+.post-page .ac .ni svg { width: 19px; height: 19px; color: var(--c); }
+
+/* 큰 흐름도 — 노드 + 번호 엣지 (POSTING 5-10) */
+.post-page .fl { margin: clamp(36px, 4vw, 48px) 0 0; background: var(--bg-subtle); border-radius: 30px; padding: clamp(20px, 3vw, 36px); }
+.post-page .fl-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; }
+.post-page .fl-top h2 { font-size: clamp(20px, 2.2vw, 26px); }
+.post-page .fl-req { display: flex; align-items: center; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 12px 18px; flex: 1; min-width: 280px; max-width: 640px; }
+.post-page .fl-req .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .fl-req .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
+.post-page .fl-cap { margin: 18px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 600; min-height: 1.6em; transition: opacity .3s; }
+.post-page .fl-cap.fade { opacity: 0; }
+.post-page .fl-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+/* ByteByteGo 문법: 회색 테두리 상자 · 점선 그룹 + 검은 알약 이름표 · 직각 엣지 · 검은 번호 원 + 굵은 엣지 글 */
+.post-page .fl-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .fl-svg .grp { fill: var(--bg-base); fill-opacity: .55; stroke: var(--fg-neutral); stroke-width: 1.6; stroke-dasharray: 7 6; }
+.post-page .fl-svg .grp.us { fill: color-mix(in srgb, var(--ac-app) 7%, var(--bg-base)); fill-opacity: 1; }
+.post-page .fl-svg .pill rect { fill: var(--fg-strong); }
+.post-page .fl-svg .pill text { fill: var(--bg-base); font-size: 14px; font-weight: 800; }
+.post-page .fl-svg .box { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s, stroke-width .3s; }
+.post-page .fl-svg .nd.hot .box, .post-page .fl-svg .nd.hot .ring { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .ring { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s; }
+/* 상대 Agent 안: 있는 줄은 알지만 밖에서는 보지 않는 것 — 흐린 점선 상자 */
+.post-page .fl-svg .nd.ghost { opacity: .55; }
+.post-page .fl-svg .nd.ghost .box { stroke-dasharray: 5 5; fill: transparent; }
+.post-page .fl-svg .nt { font-size: 17px; font-weight: 800; }
+.post-page .fl-svg .ns { font-size: 13px; fill: var(--fg-neutral); }
+.post-page .fl-svg .ns.st { fill: var(--ac-model); font-weight: 700; }
+.post-page .fl-svg .e { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linejoin: round; transition: stroke .3s; }
+.post-page .fl-svg .e.on { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .e.dash { stroke: var(--fg-neutral); stroke-width: 1.6; stroke-dasharray: 6 6; }
+.post-page .fl-svg .e.mc { stroke: var(--fg-neutral); stroke-width: 1.5; }
+.post-page .fl-svg .e.dash.on, .post-page .fl-svg .e.mc.on { stroke: var(--ac-model); stroke-width: 2.4; }
+.post-page .fl-svg .ah { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .fl-svg .ah.g { stroke: var(--fg-neutral); stroke-width: 1.6; }
+.post-page .fl-svg .badge circle { fill: var(--fg-strong); }
+.post-page .fl-svg .badge text { fill: var(--bg-base); font-size: 12.5px; font-weight: 800; }
+.post-page .fl-svg .el { font-size: 14px; font-weight: 700; }
+.post-page .fl-svg .dl { font-size: 13px; font-weight: 600; fill: var(--fg-neutral); }
+.post-page .fl-svg .dot { fill: var(--ac-model); stroke: var(--bg-base); stroke-width: 3; }
+.post-page .fl-legend { display: none; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: s; }
+.post-page .fl-legend li { counter-increment: s; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; margin-bottom: 6px; color: var(--fg-normal); }
+.post-page .fl-legend li::before { content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 12px; font-weight: 800; display: grid; place-items: center; margin-top: 1px; }
+.post-page .fl-src { font-size: 12.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin-top: 16px !important; }
+
+/* 흐름도 아래 짧은 섹션 */
+.post-page .ac-sec { padding: clamp(64px, 8vw, 96px) 0 0; }
+.post-page .ac .iso { margin-top: clamp(32px, 4vw, 44px); }
+.post-page .ac-bridge { max-width: 760px; margin: 0 0 28px; }
+.post-page .ac-sec h2 { font-size: clamp(20px, 2.2vw, 26px); margin-bottom: 24px; }
+.post-page .ac-two { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(20px, 4vw, 72px); align-items: start; margin-bottom: 32px; }
+.post-page .ac-two h2 { margin-bottom: 0; }
+.post-page .kp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.post-page .kp > div { background: var(--bg-subtle); border-radius: 24px; padding: 24px; }
+.post-page .kp h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--fg-strong); margin: 0 0 18px; }
+.post-page .kp h3 svg { width: 17px; height: 17px; color: var(--c); }
+.post-page .kp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.post-page .kp li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.post-page .kp li b { display: block; font-size: 15px; color: var(--fg-strong); }
+.post-page .kp li .d { display: block; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.55; margin-top: 2px; }
+.post-page .kp .note { font-size: 13px; line-height: 1.65; color: var(--fg-neutral); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-subtle); }
+.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; padding-bottom: 40px; }
+.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); margin: 0; }
+.post-page .ac-more ul { margin: 0; padding-left: 1.3em; }
+.post-page .ac-more li { font-size: 15.5px; line-height: 1.8; margin-bottom: 6px; }
+
+@media (max-width: 720px) {
+  .post-page .ac-wrap { padding: 0 16px; }
+  .post-page .ac-head, .post-page .ac-more, .post-page .kp, .post-page .ac-two { grid-template-columns: minmax(0, 1fr); }
+  .post-page .fl { border-radius: 22px; padding: 16px; }
+  .post-page .fl-req { min-width: 0; flex-basis: 100%; }
+  .post-page .fl-legend { display: block; }
+  .post-page .fl-svg .nt { font-size: 15px; }
+}
+</style>
+
+<div class="ac">
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-bed-double" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /> <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /> <path d="M12 4v6" /> <path d="M2 18h20" /></g></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></g></symbol>
+<symbol id="i-calendar-days" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" /></g></symbol>
+<symbol id="i-claude" viewBox="0 0 24 24"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></symbol>
+<symbol id="i-eye-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /> <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /> <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /> <path d="m2 2 20 20" /></g></symbol>
+<symbol id="i-file-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="m9 15 2 2 4-4" /></g></symbol>
+<symbol id="i-gemini" viewBox="0 0 24 24"><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-0-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-1-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-2-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-0-_R_0_" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-1-_R_0_" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-2-_R_0_" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></symbol>
+<symbol id="i-handshake" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17 2 2a1 1 0 1 0 3-3" /> <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" /> <path d="m21 3 1 11h-2" /> <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" /> <path d="M3 4h8" /></g></symbol>
+<symbol id="i-id-card" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 19a4 4 0 00-8 0" /> <path d="M16 10h2" /> <path d="M16 14h2" /> <circle cx="9" cy="12" r="3" /> <rect x="2" y="5" width="20" height="14" rx="2" /></g></symbol>
+<symbol id="i-key-round" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></g></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /> <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /> <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" /></g></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /></g></symbol>
+<symbol id="i-mcp" viewBox="0 0 24 24"><g fill="currentColor"><path d="M15.688 2.343a2.588 2.588 0 00-3.61 0l-9.626 9.44a.863.863 0 01-1.203 0 .823.823 0 010-1.18l9.626-9.44a4.313 4.313 0 016.016 0 4.116 4.116 0 011.204 3.54 4.3 4.3 0 013.609 1.18l.05.05a4.115 4.115 0 010 5.9l-8.706 8.537a.274.274 0 000 .393l1.788 1.754a.823.823 0 010 1.18.863.863 0 01-1.203 0l-1.788-1.753a1.92 1.92 0 010-2.754l8.706-8.538a2.47 2.47 0 000-3.54l-.05-.049a2.588 2.588 0 00-3.607-.003l-7.172 7.034-.002.002-.098.097a.863.863 0 01-1.204 0 .823.823 0 010-1.18l7.273-7.133a2.47 2.47 0 00-.003-3.537z"></path><path d="M14.485 4.703a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a4.115 4.115 0 000 5.9 4.314 4.314 0 006.016 0l7.12-6.982a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a2.588 2.588 0 01-3.61 0 2.47 2.47 0 010-3.54l7.12-6.982z"></path></g></symbol>
+<symbol id="i-message-circle-question-mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /> <path d="M9 9.5a3 2.5 0 016 0c0 2-2 2-3 3.5" /> <path d="M12 17h.01" /></g></symbol>
+<symbol id="i-message-square" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" /></g></symbol>
+<symbol id="i-openai" viewBox="0 0 24 24"><g fill="currentColor"><path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path></g></symbol>
+<symbol id="i-package" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></g></symbol>
+<symbol id="i-plane" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" /></g></symbol>
+<symbol id="i-plug" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5" /> <path d="M15 8V2" /> <path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z" /> <path d="M9 8V2" /></g></symbol>
+<symbol id="i-puzzle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z" /></g></symbol>
+<symbol id="i-radio" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.247 7.761a6 6 0 0 1 0 8.478" /> <path d="M19.075 4.933a10 10 0 0 1 0 14.134" /> <path d="M4.925 19.067a10 10 0 0 1 0-14.134" /> <path d="M7.753 16.239a6 6 0 0 1 0-8.478" /> <circle cx="12" cy="12" r="2" /></g></symbol>
+<symbol id="i-route" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h8.5a1 1 0 010 7h-11a1 1 0 000 7H15" /> <circle cx="18" cy="19" r="3" /> <circle cx="6" cy="5" r="3" /></g></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+</defs></svg>
+
+<section class="ac-hero">
+  <div class="ac-wrap">
+    <div class="ac-kicker">한 장으로 보는 AI 시스템 설계 · 7</div>
+    <div class="ac-head">
+      <h1>A2A로 다른 Agent에게<br>일을 맡길 때 무엇이 오갈까요?</h1>
+      <p>A2A(Agent2Agent)는 Agent가 다른 Agent에게 일을 맡기는 규격입니다. 맡기기 전에 상대가 내건 Agent Card를 읽고 일은 Task로 넘깁니다. 상대가 그 일을 어떤 모델과 도구로 하는지는 들여다보지 않습니다.</p>
+    </div>
+
+    <figure class="iso" data-figure data-iso="a2a" aria-label="A2A를 다른 회사에 일을 맡기는 장면에 빗댄 그림. 우리 회사 담당자가 직원의 출장 부탁을 받고 항공권 업체와 숙소 업체 앞에 걸린 명함을 읽은 뒤 방문증을 받는다. 항공권 업체 창구에 의뢰서를 넘기자 업체가 직항은 규정 한도를 넘는다며 되묻고 담당자는 직원에게 확인해 같은 의뢰서로 답한다. 업체는 전자 항공권을, 숙소 업체는 예약 확인서를 건넨다. 담당자는 두 업체 건물 안을 끝까지 보지 않는다.">
+      <p class="iso-req"><span>예시 요청</span>다음 주 화~목 도쿄 출장이에요. 항공권이랑 호텔 잡아 주세요.</p>
+      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
+      <ol class="iso-steps">
+        <li data-k="요청">직원(사용자)이 출장 준비 Agent에게 도쿄 출장 준비를 부탁합니다. 이 Agent는 항공권도 호텔도 직접 예약하지 못합니다. 각각 잘하는 다른 회사의 Agent에게 맡길 생각입니다.</li>
+        <li data-k="명함">담당자(출장 준비 Agent)는 맡기기 전에 두 업체 앞에 걸린 명함을 읽습니다. 이 명함이 Agent Card입니다. 할 줄 아는 일(skills), 연락할 주소, 인증 방식이 적혀 있습니다.</li>
+        <li data-k="방문증">명함에 적힌 인증 방식(OAuth 2.0)대로 방문증을 받습니다. 실제로는 인증 서버가 내주는 액세스 토큰이고 요청마다 HTTP 헤더에 붙여 보냅니다.</li>
+        <li data-k="의뢰">항공권 업체 창구에 의뢰서를 넘깁니다. 이 의뢰서가 Task이고 접수번호(taskId)가 붙습니다. 업체는 자기 직원과 장비로 일하고 담당자는 창구 앞에서 진행 안내(submitted → working)만 받습니다. 그러다 업체가 되묻고 상태가 input-required로 바뀝니다.</li>
+        <li data-k="되묻기">"직항은 출장 규정 한도를 넘습니다. 경유편으로 할까요?" 담당자는 이 질문을 직원에게 가져가 답을 받고 같은 접수번호로 업체에 전합니다. 업체가 일을 이어 가 completed가 되면 전자 항공권을 납품물(Artifact)로 건넵니다.</li>
+        <li data-k="숙소">숙소 업체에도 같은 방식으로 맡기고 예약 확인서를 받습니다. 실제로는 두 Task를 한꺼번에 보내도 됩니다. 장면은 오가는 사람이 하나뿐이라 차례로 그렸습니다.</li>
+        <li data-k="결과">담당자는 두 업체의 납품물을 묶어 직원에게 전합니다. 비유와 다른 점도 있습니다. 실제 Agent Card는 업체 앞에 걸린 종이가 아니라 HTTP로 받아 오는 JSON 문서라서 담당자가 책상에 앉은 채로 읽습니다.</li>
+      </ol>
+      <p class="iso-sum">맡기기 전에 명함(Agent Card)을 읽고(2) 방문증을 받습니다(3). 일은 의뢰서(Task)로 넘기고(4 · 6), 업체가 되물으면 직원에게 확인해 같은 의뢰서로 답합니다(5). 업체 건물 안은 끝까지 보지 않고 진행 안내와 납품물(Artifact)만 받습니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <p class="ac-bridge">같은 요청을 실제 구성 요소 이름으로 다시 그리면 아래 흐름도가 됩니다. 담당자는 A2A Client인 출장 준비 Agent이고 두 업체는 A2A Server입니다. 명함은 Agent Card, 방문증은 액세스 토큰, 의뢰서는 Task, 납품물은 Artifact입니다.</p>
+
+    <figure class="fl" data-figure aria-label="A2A 흐름도. 왼쪽 우리 쪽 구역에 출장 준비 Agent가 있고 그 아래에 MCP로 붙인 사내 캘린더가 있다. 출장 준비 Agent는 사용자의 요청을 받아 항공권 Agent와 숙소 Agent의 Agent Card를 읽고 인증 서버에서 액세스 토큰을 받은 뒤, 두 Agent에 SendMessage로 Task를 만든다. 오른쪽 다른 회사 구역의 두 Agent는 안에서 자기 모델과 MCP로 붙인 도구를 쓰지만 밖에서는 보이지 않는다. 두 Agent는 상태 업데이트와 Artifact를 스트리밍으로 돌려준다. 항공권 Agent가 input-required로 멈추면 출장 준비 Agent는 사용자에게 확인하고 같은 Task에 답한다. 마지막으로 두 결과물을 사용자에게 전한다.">
+      <div class="fl-top"><h2>A2A로 일을 맡기는 흐름</h2>
+        <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><div class="mt">예시 · 사내 출장 도우미에 들어온 요청</div><div class="mb">"다음 주 화~목 도쿄 출장이에요. 항공권이랑 호텔 잡아 주세요."</div></div></div>
+      </div>
+      <p class="fl-cap" data-fl-cap>Agent Card 2장 → 토큰 1개 → Task 2개 → 되묻기 1번 → Artifact 2개. 상대 Agent가 안에서 쓰는 모델과 도구는 끝까지 보지 않는다</p>
+      <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 720" role="img" aria-label="A2A 흐름도"></svg>
+      <ol class="fl-legend">
+        <li><span>직원이 출장 준비를 부탁한다</span></li>
+        <li><span>항공권·숙소 Agent가 내건 Agent Card를 읽는다</span></li>
+        <li><span>카드에 적힌 인증 방식으로 액세스 토큰을 받는다</span></li>
+        <li><span>SendMessage로 두 Agent에 Task를 만든다</span></li>
+        <li><span>상태 업데이트와 Artifact를 스트리밍으로 받는다. input-required면 사람에게 확인하고 같은 Task에 답한다</span></li>
+        <li><span>두 결과물을 묶어 직원에게 전한다</span></li>
+      </ol>
+      <p class="fl-src">출장 일정과 규정 한도, 업체 질문은 설명을 위한 예시입니다. 메서드와 상태 이름은 2026년 3월에 나온 A2A v1.0 명세를 따랐습니다. 인증 방식은 Agent Card마다 다르고 명세는 API key, HTTP 인증, OAuth 2.0, OpenID Connect, mTLS를 정의합니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>A2A와 MCP가 붙는 곳</h2>
+      <p>흐름도에는 규격이 두 개 나옵니다. MCP(Model Context Protocol)는 Agent가 도구와 데이터에 붙는 길이고 A2A는 Agent가 다른 Agent에게 일을 맡기는 길입니다. 한 Agent가 둘을 함께 씁니다. MCP의 Host·Client·Server 구조는 <a href="/posts/mcp-host-client-server-connection-architecture">이 시리즈 6편</a>에서 따로 그렸습니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-tool"><svg aria-hidden="true"><use href="#i-plug"/></svg>MCP · Agent가 도구에 붙는 길</h3>
+        <ul>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-calendar-days"/></svg></span><div><b>붙는 상대</b><span class="d">도구와 데이터를 내놓는 MCP 서버. 정해진 입력을 받아 정해진 결과를 돌려준다</span></div></li>
+          <li><span class="ni k-model"><svg aria-hidden="true"><use href="#i-bot"/></svg></span><div><b>정하는 쪽</b><span class="d">언제 어떤 도구를 부를지는 Agent의 모델이 정한다. 도구는 스스로 계획을 세우지 않는다</span></div></li>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-route"/></svg></span><div><b>이 예시에서</b><span class="d">출장 준비 Agent는 사내 캘린더를, 항공권 Agent는 항공사 예약 시스템을 MCP로 붙인다. 서로의 MCP 서버는 모른다</span></div></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-handshake"/></svg>A2A · 다른 Agent에게 맡기는 길</h3>
+        <ul>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-plane"/></svg></span><div><b>맡기는 상대</b><span class="d">자기 모델과 도구로 스스로 일하는 Agent. 다른 팀이나 다른 회사가 다른 프레임워크로 만들었을 수 있다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-eye-off"/></svg></span><div><b>보는 것</b><span class="d">상대가 내건 Agent Card와 주고받는 메시지뿐이다. 상대의 프롬프트, 계획, 도구 구현은 공유하지 않는다(opaque)</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-list-checks"/></svg></span><div><b>주고받는 단위</b><span class="d">한 번에 끝나는 호출 대신 상태를 가진 Task. 몇 시간 걸리는 일도, 중간에 사람에게 되묻는 일도 담는다</span></div></li>
+        </ul>
+        <p class="note">Google이 2025년 4월에 발표한 A2A는 2025년 6월 Linux Foundation에 기증됐고 2026년 8월에는 MCP가 있는 Agentic AI Foundation(AAIF)으로 옮겼습니다. 2026년 4월 Linux Foundation 발표 기준으로 150곳 넘는 조직이 지원합니다. Microsoft는 Azure AI Foundry와 Copilot Studio에, AWS는 Amazon Bedrock AgentCore Runtime에 A2A를 넣었습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>Task가 지나는 상태와 주고받는 것</h2>
+      <p>A2A에서 일의 단위는 Task입니다. 아래 이름은 2026년 3월에 나온 v1.0 명세 기준입니다. v1.0에서 <code>message/send</code>가 <code>SendMessage</code>로 바뀌는 등 0.3 버전과 달라진 이름이 많아서 예제 코드를 볼 때는 버전부터 확인합니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-data"><svg aria-hidden="true"><use href="#i-list-checks"/></svg>Task 상태</h3>
+        <ul>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-file-check"/></svg></span><div><b>submitted</b><span class="d">접수됨. 서버가 Task를 만들고 taskId를 돌려준다</span></div></li>
+          <li><span class="ni k-model"><svg aria-hidden="true"><use href="#i-radio"/></svg></span><div><b>working</b><span class="d">상대 Agent가 자기 모델과 도구로 일하는 중이다</span></div></li>
+          <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><b>input-required · auth-required</b><span class="d">멈추고 기다린다. 클라이언트가 같은 taskId로 답이나 인증을 보내면 이어서 일한다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-shield-check"/></svg></span><div><b>completed · failed · canceled · rejected</b><span class="d">끝난 상태다. 이어서 할 일이 있으면 같은 contextId로 새 Task를 만든다</span></div></li>
+        </ul>
+        <p class="note">v1.0 JSON에서는 <code>TASK_STATE_INPUT_REQUIRED</code>처럼 대문자 이름으로 적습니다.</p>
+      </div>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-package"/></svg>주고받는 것</h3>
+        <ul>
+          <li><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-square"/></svg></span><div><b>Message</b><span class="d">한 번 주고받는 말. role이 user(맡기는 쪽)나 agent(맡은 쪽)이고 Part 여러 개를 담는다</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-puzzle"/></svg></span><div><b>Part</b><span class="d">내용 한 조각. 글(text), 파일(raw · url), 구조화된 데이터(data) 가운데 하나다</span></div></li>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-package"/></svg></span><div><b>Artifact</b><span class="d">Task가 만든 결과물. 전자 항공권 PDF나 예약 내역 JSON처럼 Part로 이루어진다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-layers"/></svg></span><div><b>전송 방식</b><span class="d">같은 동작을 JSON-RPC 2.0, gRPC, HTTP+JSON(REST)으로 쓸 수 있다. Agent Card의 supportedInterfaces에 방식과 주소를 적는다</span></div></li>
+        </ul>
+        <p class="note">운영에서 먼저 정할 것이 세 가지 있습니다. 오래 걸리는 Task는 연결을 열어 두는 스트리밍 대신 푸시 알림(웹훅 POST)으로 받을 수 있습니다. v1.0부터 Agent Card에 서명(JWS)을 붙여 위조를 막을 수 있습니다. 인증한 클라이언트에게만 더 자세한 카드(extended Agent Card)를 보여 줄 수도 있습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap ac-more">
+    <h2>더 읽어 보기</h2>
+    <ul>
+      <li><a href="/posts/mcp-host-client-server-connection-architecture">MCP에서 모델은 왜 서버와 직접 이야기하지 않을까요?</a> · <a href="/posts/multi-agent-orchestrator-subagents-architecture">Multi-Agent는 일을 어떻게 나눠 맡기고 다시 모을까요?</a> · <a href="/posts/mcp-host-client-server-primitives">도구를 이미 부를 수 있는데 MCP는 왜 필요할까요?</a> · <a href="/posts/multi-agent-when-to-split">Agent를 하나 더 두면 정말 나아질까요?</a></li>
+      <li><a href="https://a2a-protocol.org/latest/specification/" rel="noopener">A2A 명세(v1.0)</a> · <a href="https://a2a-protocol.org/latest/whats-new-v1/" rel="noopener">What's New in v1.0</a> · <a href="https://a2a-protocol.org/latest/topics/a2a-and-mcp/" rel="noopener">A2A and MCP</a> · <a href="https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/" rel="noopener">Google, Announcing the Agent2Agent Protocol(2025)</a> · <a href="https://www.linuxfoundation.org/press/a2a-protocol-surpasses-150-organizations-lands-in-major-cloud-platforms-and-sees-enterprise-production-use-in-first-year" rel="noopener">Linux Foundation, A2A 1주년 발표(2026)</a> · <a href="https://aaif.io/blog/a2a-joins-aaif" rel="noopener">AAIF, A2A joins AAIF(2026)</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* 맨 위 장면(POSTING 5-11): 흐름도와 같은 요청 · 같은 횟수(Agent Card 2장 → 토큰 1개 → Task 2개 → 되묻기 1번 → Artifact 2개) */
+(() => {
+  /* 한 바퀴: 들고 가서 → 맡기고 창구 앞에서 진행 안내를 받고(seq) → 결과를 받아 → 돌아온다. 상태가 여러 번 바뀌어 trip() 대신 직접 적는다 */
+  const visit = (route, st, o) => [
+    ["at", route, { hold: o.hold !== false, pages: o.p0, say: o.carry }], ["go", route],
+    ...o.seq.map(([ms, text], i) => ["wait", ms, st, text, i ? { drop: o.hold !== false } : { hold: false, drop: o.hold !== false, say: "" }]),
+    ["set", { hold: true, pages: o.p1, say: o.result }], ["wait", 600, st, o.give],
+    ["back", route], ...(o.write ? [["wait", 800, "home", o.write]] : []),
+  ];
+  /* 다른 회사: 뒤에 닫힌 건물(안은 안 보인다), 앞에 창구, 창구 옆에 명함판 */
+  const firm = (wall) => [
+    ["box", -0.6, 0, 1.9, 3.0, 2.3, wall], ["box", -0.6, 0, 2.0, 3.1, 0.1, "grey", 2.5],
+    ["box", 0.37, -0.7, 0.03, 0.7, 1.3, "dark", 0.2],
+    ["box", 1.3, 0, 0.5, 2.4, 0.85, "grey"], ["box", 1.3, 0, 0.56, 2.46, 0.08, "white", 1.05],
+    ["box", 1.55, 1.55, 0.1, 0.1, 1.0, "grey"], ["box", 1.55, 1.55, 0.08, 0.9, 0.55, "yellow", 1.05],
+  ];
+  isoScene(postPage.root.querySelector('[data-iso="a2a"]'), {
+    stations: {
+      home: { name: "출장 준비 Agent", meta: "우리 회사 담당자", at: [0, 0], size: [4.6, 3.6], top: 2.1, parts: [
+        ["box", 0.1, -0.2, 2.4, 1.3, 0.85, "teal"], ["box", 0.1, -0.2, 2.5, 1.4, 0.08, "white", 1.05], ["box", 0.4, -0.2, 0.9, 0.7, 0.1, "paper", 1.13] ] },
+      user: { name: "사용자", meta: "출장 가는 직원", at: [9, 1], size: [2.4, 2.4], top: 2.5, parts: [["person", 0, 0, "navy"]] },
+      air: { name: "항공권 Agent", meta: "다른 회사 · 항공권 업체", at: [-11, -1], size: [4.0, 3.6], top: 3.2, drop: [1.3, 1.13, 0], parts: firm("navy") },
+      hotel: { name: "숙소 Agent", meta: "다른 회사 · 숙소 업체", at: [-11, 6], size: [4.0, 3.6], top: 3.2, drop: [1.3, 1.13, 0], parts: firm("teal") },
+      auth: { name: "인증 서버", meta: "방문증 창구", at: [0, -9], size: [3.0, 2.6], top: 2.4, drop: [0.4, 1.13, -0.3], parts: [
+        ["person", 0.3, -0.9, "orange"],
+        ["box", 0, -0.3, 2.0, 0.8, 0.85, "grey"], ["box", 0, -0.3, 2.06, 0.86, 0.08, "white", 1.05],
+        ["box", -0.5, -0.3, 0.4, 0.3, 0.06, "red", 1.13], ["box", -0.5, -0.3, 0.4, 0.3, 0.06, "red", 1.19] ] },
+    },
+    routes: { user: [[7.4, 1], [2.9, 1]], air: [[-2.9, -1], [-8.8, -1]], hotel: [[-2.9, 1.2], [-6.5, 1.2], [-6.5, 6], [-8.8, 6]], auth: [[0, -3.1], [0, -7.3]] },
+    actor: { color: "blue", home: [2.9, 1] },
+    badges: [[[5.2, 1], "1 · 5 · 7"], [[-6.7, -1], "2 · 4 · 5"], [[-6.5, 3.6], "2 · 6"], [[0, -5.2], "3"]],
+    steps: [
+      [["at", "user", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1200, "user", "부탁하는 중"],
+       ["set", { hold: true, say: "도쿄 출장 준비" }], ["go", "user"], ["wait", 900, "home", "부탁을 받아 적는 중"]],
+      [...visit("air", "air", { hold: false, p0: 1, p1: 1, carry: "", seq: [[1500, "명함(Agent Card) 읽는 중"]], give: "명함을 읽은 뒤", result: "항공권 검색·발권 · OAuth" }),
+       ...visit("hotel", "hotel", { hold: false, p0: 1, p1: 2, carry: "", seq: [[1500, "명함(Agent Card) 읽는 중"]], give: "명함을 읽은 뒤", result: "호텔 검색·예약 · OAuth", write: "맡길 곳을 정하는 중" })],
+      visit("auth", "auth", { p0: 1, p1: 2, carry: "명함에 적힌 인증 방식", seq: [[1500, "신원을 확인하는 중"]], give: "방문증을 건네는 중", result: "방문증(토큰)", write: "방문증을 챙기는 중" }),
+      visit("air", "air", { p0: 2, p1: 2, carry: "의뢰서 + 방문증", seq: [[900, "submitted · 접수"], [1800, "working · 항공편 찾는 중"], [1400, "input-required · 되묻는 중"]],
+        give: "되묻는 중", result: "직항은 규정 한도 초과 · 경유로 할까요?", write: "질문을 받아 든 중" }),
+      [["at", [2.9, 1], { hold: true, pages: 2, say: "경유로 할까요?" }], ["back", "user"], ["wait", 1400, "user", "답하는 중", { hold: false, say: "" }],
+       ["set", { hold: true, say: "직항으로 · 팀장 승인" }], ["go", "user"],
+       ...visit("air", "air", { p0: 2, p1: 4, carry: "같은 접수번호로 답", seq: [[1800, "working · 발권하는 중"], [900, "completed"]], give: "납품물을 건네는 중", result: "전자 항공권 (Artifact)", write: "납품물을 챙기는 중" })],
+      visit("hotel", "hotel", { p0: 2, p1: 4, carry: "의뢰서 + 방문증", seq: [[900, "submitted · 접수"], [1800, "working · 호텔 찾는 중"], [900, "completed"]],
+        give: "납품물을 건네는 중", result: "예약 확인서 (Artifact)", write: "두 결과물을 묶는 중" }),
+      [["at", [2.9, 1], { hold: true, pages: 5, say: "항공권 + 예약 확인서" }], ["back", "user"], ["wait", 1200, "user", "받는 중", { hold: false, say: "" }]],
+    ],
+  });
+})();
+</script>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  /* POSTING 5-3: 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상, 화면보다 크면 화면의 85%를 채울 때) 시작하고, 15% 미만이면 나간 것으로 본다 */
+  const IntersectionObserver = class {
+    constructor(cb) {
+      this.st = new Map();
+      this.io = new window.IntersectionObserver((es) => {
+        const out = [];
+        es.forEach((e) => {
+          const full = e.intersectionRatio >= 0.95 || e.intersectionRect.height >= innerHeight * 0.85, was = this.st.get(e.target) || false;
+          const now = was ? e.intersectionRatio >= 0.15 : full;
+          if (now !== was) { this.st.set(e.target, now); out.push({ target: e.target, isIntersecting: now, intersectionRatio: e.intersectionRatio }); }
+        });
+        if (out.length) cb(out, this);
+      }, { threshold: [0, 0.15, 0.5, 0.8, 0.9, 0.95, 1] });
+      (window.__pgIO = window.__pgIO || []).push(this);
+    }
+    observe(el) { this.io.observe(el); (window.__pgIOt = window.__pgIOt || []).push(el); }
+    unobserve(el) { this.io.unobserve(el); }
+    disconnect() { this.io.disconnect(); }
+  };
+
+  const svg = root.querySelector("[data-fl-svg]"); if (!svg) return;
+  const cap = root.querySelector("[data-fl-cap]"), CAP_DONE = cap.innerHTML;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
+  const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
+  const SLOW = 1.7; /* 독자가 따라 볼 수 있게 — 모든 대기·이동 시간을 1.7배로 (POSTING 5-10) */
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms * SLOW); signal.addEventListener("abort", () => clearTimeout(t)); });
+
+  /* 노드: 아이콘 · 이름 · 부제. ghost = 상대 Agent 안(있는 줄은 알지만 밖에서는 보지 않는다) */
+  const NODE = {
+    user: { icon: "user", c: "var(--ac-user)", t: "사용자", s: "출장 가는 직원", person: true },
+    client: { icon: "bot", c: "var(--ac-app)", t: "출장 준비 Agent", s: "A2A Client", logos: ["claude"] },
+    mcpUs: { icon: "calendar-days", c: "var(--ac-tool)", t: "사내 캘린더", s: "MCP 서버 · 우리 도구", logos: ["mcp"] },
+    card: { icon: "id-card", c: "var(--ac-data)", t: "Agent Card", s: "/.well-known/agent-card.json" },
+    auth: { icon: "key-round", c: "var(--ac-ops)", t: "인증 서버", s: "OAuth 2.0 액세스 토큰" },
+    air: { icon: "plane", c: "var(--ac-tool)", t: "항공권 Agent", s: "A2A Server", done: "completed · 전자 항공권" },
+    airIn: { icon: "eye-off", c: "var(--ac-ops)", t: "Agent 내부", s: "자기 모델 · MCP로 붙인 도구", logos: ["gemini", "mcp"], ghost: true },
+    hotel: { icon: "bed-double", c: "var(--ac-tool)", t: "숙소 Agent", s: "A2A Server", done: "completed · 예약 확인서" },
+    hotelIn: { icon: "eye-off", c: "var(--ac-ops)", t: "Agent 내부", s: "자기 모델 · MCP로 붙인 도구", logos: ["openai", "mcp"], ghost: true },
+  };
+  /* 배치 두 벌(ByteByteGo 문법: 격자 위 상자, 가로·세로로만 꺾는 엣지, 엣지 옆 번호 + 굵은 글). 노드 = [가운데 x, y, 폭, 높이]. 번호 없는 엣지는 회색(c: dash = 조건부, mc = MCP) */
+  const LAYOUT = {
+    wide: {
+      vb: [1200, 720], labels: true,
+      groups: [
+        { x: 130, y: 200, w: 360, h: 410, t: "우리 쪽 · A2A Client", us: true, px: 390 },
+        { x: 870, y: 180, w: 320, h: 240, t: "항공권 Agent · 다른 회사" },
+        { x: 870, y: 460, w: 320, h: 240, t: "숙소 Agent · 다른 회사" },
+      ],
+      nodes: { user: [70, 330], client: [310, 330, 250, 84], mcpUs: [250, 560, 210, 72], card: [700, 110, 290, 80], auth: [700, 660, 250, 76],
+        air: [1030, 250, 270, 80], airIn: [1030, 368, 270, 60], hotel: [1030, 530, 270, 80], hotelIn: [1030, 648, 270, 60] },
+      edges: {
+        e1: { p: [[100, 318], [179, 318]], n: 1, b: [118, 296], t: "요청" },
+        e2a: { p: [[232, 286], [232, 98], [549, 98]], n: 2, b: [280, 76], t: "카드 읽기 (GET)" },
+        e2b: { p: [[549, 122], [254, 122], [254, 282]], n: 2, b: [280, 144], t: "할 줄 아는 일 · 주소 · 인증 방식" },
+        e3a: { p: [[400, 374], [400, 648], [569, 648]], n: 3, b: [450, 626], t: "토큰 요청" },
+        e3b: { p: [[569, 672], [424, 672], [424, 378]], n: 3, b: [450, 694], t: "액세스 토큰" },
+        e4a: { p: [[437, 300], [600, 300], [600, 250], [889, 250]], n: 4, b: [640, 228], t: "SendMessage · Task 생성" },
+        e5a: { p: [[889, 274], [624, 274], [624, 322], [441, 322]], n: 5, b: [660, 298], t: "상태 · Artifact 스트림" },
+        e4b: { p: [[437, 344], [674, 344], [674, 520], [889, 520]], n: 4, b: [700, 498], t: "Task 생성" },
+        e5b: { p: [[889, 544], [650, 544], [650, 366], [441, 366]], n: 5, b: [700, 566], t: "상태 · Artifact" },
+        e6: { p: [[179, 344], [100, 344]], n: 6, b: [118, 368], t: "결과" },
+        ask: { p: [[200, 286], [200, 250], [70, 250], [70, 298]], c: "dash", l: [76, 238, "input-required면 확인"] },
+        mc1: { p: [[250, 374], [250, 518]], c: "mc", l: [262, 452, "MCP"] },
+        mc2: { p: [[1030, 292], [1030, 332]], c: "mc" },
+        mc3: { p: [[1030, 572], [1030, 612]], c: "mc" },
+      },
+    },
+    narrow: {
+      vb: [400, 540], labels: false,
+      groups: [
+        { x: 96, y: 290, w: 248, h: 96, t: "항공권 Agent", px: 170 },
+        { x: 96, y: 420, w: 248, h: 96, t: "숙소 Agent", px: 170 },
+      ],
+      nodes: { card: [110, 50, 190, 56], auth: [300, 50, 170, 56], user: [44, 190], client: [250, 190, 200, 70], air: [220, 340, 220, 56], hotel: [220, 470, 220, 56] },
+      edges: {
+        e1: { p: [[74, 180], [144, 180]], n: 1, b: [109, 162] },
+        e2a: { p: [[175, 154], [175, 84]], n: 2, b: [155, 119] },
+        e2b: { p: [[195, 84], [195, 148]], n: 2, b: [217, 119] },
+        e3a: { p: [[290, 154], [290, 84]], n: 3, b: [268, 119] },
+        e3b: { p: [[312, 84], [312, 148]], n: 3, b: [334, 119] },
+        e4a: { p: [[270, 226], [270, 306]], n: 4, b: [250, 266] },
+        e5a: { p: [[300, 306], [300, 232]], n: 5, b: [322, 266] },
+        e4b: { p: [[335, 226], [335, 262], [372, 262], [372, 462], [336, 462]], n: 4, b: [352, 410] },
+        e5b: { p: [[336, 486], [392, 486], [392, 212], [356, 212]], n: 5, b: [364, 508] },
+        e6: { p: [[144, 202], [74, 202]], n: 6, b: [109, 220] },
+      },
+    },
+  };
+  /* 가로·세로 꺾은선 → 모서리만 둥근 경로 */
+  const orth = (pts, r = 12) => {
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+      const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), rr = Math.min(r, l1 / 2, l2 / 2);
+      d += ` L${cx - (cx - px) / l1 * rr} ${cy - (cy - py) / l1 * rr} Q${cx} ${cy} ${cx + (nx - cx) / l2 * rr} ${cy + (ny - cy) / l2 * rr}`;
+    }
+    const z = pts[pts.length - 1]; return d + ` L${z[0]} ${z[1]}`;
+  };
+
+  let G = null, gen = 0;
+  function draw() {
+    const w = svg.getBoundingClientRect().width || 1100, L = w < 640 ? LAYOUT.narrow : LAYOUT.wide;
+    svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${L.vb[0]} ${L.vb[1]}`);
+    const defs = mk("defs");
+    for (const [id, cls] of [["fl-ah", "ah"], ["fl-ahg", "ah g"]]) {
+      const m = mk("marker", { id, viewBox: "0 0 10 10", refX: 8.5, refY: 5, markerWidth: 11, markerHeight: 11, markerUnits: "userSpaceOnUse", orient: "auto" }, defs);
+      mk("path", { d: "M1.5 1.5 L8.5 5 L1.5 8.5", class: cls }, m);
+    }
+    /* 그룹: 점선 테두리 + 위 테두리에 검은 알약 이름표 */
+    L.groups.forEach((z) => {
+      mk("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: 18, class: "grp" + (z.us ? " us" : "") });
+      const pl = mk("g", { class: "pill", transform: `translate(${z.px ?? z.x + z.w / 2} ${z.y})` }), r = mk("rect", { y: -14, height: 28, rx: 14 }, pl);
+      const tw = txt(pl, 0, 5, z.t, "").getComputedTextLength() + 32; r.setAttribute("x", -tw / 2); r.setAttribute("width", tw);
+    });
+    const E = {};
+    for (const [id, e] of Object.entries(L.edges)) {
+      E[id] = mk("path", { d: orth(e.p), class: "e" + (e.c ? " " + e.c : ""), "marker-end": `url(#${e.c ? "fl-ahg" : "fl-ah"})` });
+      if (e.c === "dash") E[id].setAttribute("marker-start", "url(#fl-ahg)");
+    }
+    const dot = mk("circle", { r: 7, class: "dot", cx: 0, cy: 0, style: "opacity:0" });
+    /* 번호: 엣지 옆 검은 원, 넓은 화면은 그 옆에 굵은 엣지 글. 번호 없는 회색 엣지는 작은 회색 글만 */
+    for (const e of Object.values(L.edges)) {
+      if (e.l && L.labels) txt(svg, e.l[0], e.l[1], e.l[2], "dl", "start");
+      if (!e.n) continue;
+      const [bx, by] = e.b, g = mk("g", { class: "badge", transform: `translate(${bx} ${by})` });
+      mk("circle", { r: 11 }, g); txt(g, 0, 4.5, String(e.n), "");
+      if (L.labels && e.t) txt(svg, bx + 17, by + 5, e.t, "el", "start");
+    }
+    const N = {};
+    for (const [id, [x, y, bw, bh]] of Object.entries(L.nodes)) {
+      const d = NODE[id], g = mk("g", { class: "nd" + (d.ghost ? " ghost" : ""), transform: `translate(${x} ${y})`, style: `--c:${d.c}` });
+      let s = null;
+      if (d.person) {
+        mk("circle", { r: 26, class: "ring" }, g);
+        mk("use", { href: `#i-${d.icon}`, x: -14, y: -14, width: 28, height: 28, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, 0, 48, d.t, "nt"); txt(g, 0, 66, d.s, "ns"); } else txt(g, 0, -36, d.t, "nt");
+      } else {
+        mk("rect", { x: -bw / 2, y: -bh / 2, width: bw, height: bh, rx: 14, class: "box" }, g);
+        const ic = L.labels ? 30 : 24, lx = -bw / 2 + 16;
+        mk("use", { href: `#i-${d.icon}`, x: lx, y: -ic / 2, width: ic, height: ic, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, lx + ic + 12, -3, d.t, "nt", "start"); s = txt(g, lx + ic + 12, 17, d.s, "ns", "start"); }
+        else txt(g, lx + ic + 10, 6, d.t, "nt", "start");
+        if (d.logos && L.labels) d.logos.forEach((lg, i) => mk("use", { href: `#i-${lg}`, x: bw / 2 - 16 - (d.logos.length - i) * 24, y: -bh / 2 + 12, width: 18, height: 18, style: "color:var(--fg-strong)" }, g));
+      }
+      N[id] = { g, s };
+    }
+    G = { E, N, dot };
+  }
+
+  const hot = (...ids) => Object.entries(G.N).forEach(([k, n]) => n.g.classList.toggle("hot", ids.includes(k)));
+  /* 원격 Agent의 지금 상태를 부제 자리에 적는다(넓은 화면만) */
+  const st = (id, s, on = true) => { const n = G.N[id]; if (n && n.s) { n.s.textContent = s; n.s.classList.toggle("st", on); } };
+  const setCap = async (html, my) => { cap.classList.add("fade"); await wait(250); if (my !== gen) return; cap.innerHTML = html; cap.classList.remove("fade"); };
+  /* 엣지 하나를 따라 점을 옮긴다(rev 면 거꾸로) */
+  const run = (id, ms, my, rev) => new Promise((res) => {
+    const p = G.E[id]; if (!p) return res();
+    const len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); G.dot.style.opacity = 1;
+    const step = (now) => {
+      if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
+      const t = Math.min(1, (now - t0) / (ms * SLOW)), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * (rev ? 1 - k : k));
+      G.dot.setAttribute("cx", q.x); G.dot.setAttribute("cy", q.y);
+      if (t < 1) requestAnimationFrame(step); else { p.classList.remove("on"); res(); }
+    };
+    requestAnimationFrame(step);
+  });
+
+  const done = () => { hot(); G.dot.style.opacity = 0; st("air", NODE.air.done); st("hotel", NODE.hotel.done); cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
+
+  /* 카드 읽기 → 토큰 → Task 둘 → 상태 → 되묻기 → Artifact 둘 → 결과 */
+  async function play() {
+    const my = ++gen, ok = () => my === gen && !signal.aborted;
+    st("air", "A2A Server", false); st("hotel", "A2A Server", false);
+    hot("user"); await setCap("직원이 출장 준비를 부탁한다 · \"다음 주 화~목 도쿄 출장, 항공권이랑 호텔\"", my); await wait(500); if (!ok()) return;
+    await run("e1", 900, my); if (!ok()) return; hot("client"); await wait(500);
+    setCap("맡기기 전에 항공권·숙소 Agent가 내건 Agent Card를 읽는다 · 할 줄 아는 일, 주소, 인증 방식", my);
+    await run("e2a", 1300, my); if (!ok()) return; hot("card"); await wait(700);
+    await run("e2b", 1300, my); if (!ok()) return; hot("client"); await wait(500);
+    setCap("카드에 적힌 인증 방식(OAuth 2.0)대로 액세스 토큰을 받는다", my);
+    await run("e3a", 1300, my); if (!ok()) return; hot("auth"); await wait(600);
+    await run("e3b", 1300, my); if (!ok()) return; hot("client"); await wait(500);
+    setCap("SendMessage로 두 Agent에 Task를 만든다 · submitted", my);
+    await run("e4a", 1300, my); if (!ok()) return; hot("air"); st("air", "submitted"); await wait(400);
+    await run("e4b", 1300, my); if (!ok()) return; hot("air", "hotel"); st("hotel", "submitted"); await wait(700); if (!ok()) return;
+    st("air", "working"); st("hotel", "working");
+    await setCap("두 Agent는 자기 모델과 도구로 일하며 상태를 스트리밍으로 알린다 · working. 안에서 무엇을 쓰는지는 보이지 않는다", my); await wait(1400); if (!ok()) return;
+    st("air", "input-required");
+    setCap("항공권 Agent가 input-required로 멈추고 되묻는다 · \"직항은 출장 규정 한도를 넘습니다. 경유편으로 할까요?\"", my);
+    await run("e5a", 1400, my); if (!ok()) return; hot("client", "hotel"); await wait(600);
+    if (G.E.ask) {
+      setCap("출장 준비 Agent가 사람에게 확인한다 · \"직항으로, 팀장 승인 받았어요\"", my);
+      await run("ask", 1300, my); if (!ok()) return; hot("user", "hotel"); await wait(900);
+      await run("ask", 1300, my, true); if (!ok()) return; hot("client", "hotel");
+    }
+    setCap("답은 새 Task가 아니라 같은 taskId로 보낸다 · 항공권 Agent가 다시 working", my);
+    await run("e4a", 1300, my); if (!ok()) return; hot("air", "hotel"); st("air", "working"); await wait(1000); if (!ok()) return;
+    st("air", NODE.air.done);
+    setCap("항공권 Agent가 completed · 전자 항공권을 Artifact로 돌려준다", my);
+    await run("e5a", 1300, my); if (!ok()) return; hot("client", "hotel"); await wait(600); if (!ok()) return;
+    st("hotel", NODE.hotel.done);
+    setCap("숙소 Agent도 completed · 예약 확인서를 Artifact로 돌려준다", my);
+    await run("e5b", 1500, my); if (!ok()) return; hot("client"); await wait(600);
+    setCap("두 결과물을 묶어 직원에게 전한다", my);
+    await run("e6", 1000, my); if (!ok()) return; hot("user"); await wait(2500); if (!ok()) return;
+    done();
+  }
+
+  draw(); done();
+  let lastW = svg.getBoundingClientRect().width;
+  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; const was = (lastW < 640) !== (w < 640); lastW = w; if (was) { gen++; draw(); done(); } });
+  ro.observe(svg);
+  if (!reduce) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; done(); } }));
+    io.observe(svg);
+    signal.addEventListener("abort", () => io.disconnect());
+  }
+  signal.addEventListener("abort", () => ro.disconnect());
+})();
+</script>

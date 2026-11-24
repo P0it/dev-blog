@@ -5,7 +5,7 @@ ByteByteGo 처럼 **노드·번호 엣지로 그린 큰 흐름도로 구조와 �
 
 - **series 슬러그:** `ai-architecture-cheatsheet`. frontmatter 에 `series: ai-architecture-cheatsheet`, `series_order: N`. 슬러그 접두어는 두지 않는다.
 - **형식:** `POSTING.md` 5-10 — 큰 흐름도(노드 + 번호 엣지 + 구역 면, 순환은 점이 돈다) + 짧은 섹션 + 공통 예시 하나. 견본은 1·2·3편(2026-11-19 셋 다 새 형식으로 다시 만듦).
-- **맨 위 장면 (2026-11-24):** 머리 바로 아래에 아이소메트릭 흐름 장면(`POSTING.md` 5-11, `/scene`), 그다음 섹션에 흐름도. 편마다 비유가 다르다 — 1편 편집실 · 2편 순서표 작업 줄과 안내 데스크 · 3편 비서와 자문실 · 4편 도서관 사서와 카드함 · 5편 식당 주방(헤드 셰프와 조리대) · 6편 건물 관리인과 콘센트에 꽂은 기기. 새 편은 앞 편과 겹치지 않는 비유를 고른다.
+- **맨 위 장면 (2026-11-24):** 머리 바로 아래에 아이소메트릭 흐름 장면(`POSTING.md` 5-11, `/scene`), 그다음 섹션에 흐름도. 편마다 비유가 다르다 — 1편 편집실 · 2편 순서표 작업 줄과 안내 데스크 · 3편 비서와 자문실 · 4편 도서관 사서와 카드함 · 5편 식당 주방(헤드 셰프와 조리대) · 6편 건물 관리인과 콘센트에 꽂은 기기 · 7편 업체 명함과 작업 의뢰서. 새 편은 앞 편과 겹치지 않는 비유를 고른다.
 - **독자:** AI 앱을 처음 설계해 보는 개발자. `/study` 의 중학생 눈높이보다 한 단계 위라 비유를 늘어놓지 않고 용어를 한 줄로 푼다.
   깊은 설명은 `ai-agent` 시리즈 해당 편으로 링크한다(그 시리즈와 겹치는 주제는 "한눈에 보기"만 맡는다).
 - **근거:** 공식 문서·스펙·원저자 글. 편마다 쓰기 직전에 버전과 현재 권장 방식을 다시 확인한다.
@@ -42,7 +42,7 @@ Daily Dose of DS 577개, Chip Huyen "AI Engineering" 목차, Anthropic·OpenAI·
 | 4 | RAG 시스템 (`rag-ingestion-query-pipeline-architecture`) | 적재 파이프라인(청킹·임베딩·색인)과 질의 파이프라인(검색·리랭킹·생성), Agentic·Graph 변형 | 출처 전체에서 가장 많이 반복 | 발행 |
 | 5 | Multi-Agent 시스템 (`multi-agent-orchestrator-subagents-architecture`) | 오케스트레이터·서브에이전트·공유 상태, 결과 종합 | Anthropic multi-agent research system | 발행 |
 | 6 | MCP 연결 구조 (`mcp-host-client-server-connection-architecture`) | Host·Client·Server, 전송 방식, 인증, Tasks(2026-07-28 규격에서 확장으로 이관, initialize 제거 → server/discover) | MCP가 반복 빈도 2위 | 발행 |
-| 7 | Agent 간 연결 (A2A) | Agent Card로 찾기 → Task 주고받기, MCP와 놓이는 자리 | 6과 합칠지 미정 | 계획 |
+| 7 | Agent 간 연결 (A2A) (`a2a-agent-card-task-architecture`) | Agent Card로 찾기 → Task 주고받기, MCP와 놓이는 자리 | 6편과 따로 발행(A2A 1.0.0 기준) | 발행 |
 | 8 | 메모리·컨텍스트 | 컨텍스트 창 구성과 단기·장기 저장소 | Anthropic context engineering·agent memory | 계획 |
 | 9 | LLM 서빙 | 라우터·스케줄러·prefill/decode·KV cache·GPU | Chip 9장, ByteByteGo Inference Engineering | 계획 |
 | 10 | LLM Gateway | 인증·한도·라우팅·폴백·캐시·비용 집계가 놓이는 자리 | 비용(라우팅·캐싱) 주제를 여기서 | 계획 |
