@@ -1,0 +1,774 @@
+---
+title: RAG는 질문이 오기 전에 무엇을 준비해 둘까요?
+slug: rag-ingestion-query-pipeline-architecture
+excerpt: RAG는 질문이 오기 전에 문서를 청크로 나누고 임베딩해 색인해 둡니다. 질문이 오면 그 색인에서 후보를 찾고 리랭킹으로 추린 청크 몇 개만 모델에 건넵니다. "건조기에 E5가 떠요"라는 질문 하나로 적재 파이프라인과 질의 파이프라인이 벡터 저장소에서 만나는 구조를 흐름도로 그렸습니다.
+tags: [AI 아키텍처, RAG, 벡터 DB, 임베딩, 리랭킹]
+category: ai
+series: ai-architecture-cheatsheet
+series_order: 4
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/rag-ingestion-query-pipeline-architecture-mwu3fra3.jpg
+---
+<!-- page -->
+<!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(도서관 사서와 카드함, POSTING 5-11, 썸네일도 이 장면) + 큰 흐름도 하나(위 줄 적재 파이프라인 · 아래 줄 질의 파이프라인이 벡터 저장소에서 만난다, ByteByteGo 문법) + 검색이 빗나갈 때 고치는 곳(적재 쪽 | 질의 쪽 두 단 카드) + Agentic RAG · Graph RAG 에서 달라지는 곳(두 단 카드) + 더 읽어 보기 | 글의 성격: 질문 하나가 RAG 시스템을 지나는 길을 크게 그린다. 흐름도가 화면에 다 들어오면 점이 적재 줄을 먼저 지나고 이어서 질의 줄을 지난다 | 비유 후보: 식당 주방의 재료 손질(요리는 재료를 섞어 바꾸므로 "근거를 펴 놓고 답한다"가 안 보임), 오픈북 시험(수험생이 직접 책을 뒤져 검색과 생성이 갈리지 않고 적재가 없음) → 도서관 사서와 카드함 -->
+<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10). 흐름도 노드 아이콘은 스크립트가 쓰므로 여기 적어 굽게 한다: <use href="#i-user"/><use href="#i-file-text"/><use href="#i-scissors"/><use href="#i-binary"/><use href="#i-database"/><use href="#i-search"/><use href="#i-arrow-down-wide-narrow"/><use href="#i-brain"/><use href="#i-claude"/><use href="#i-openai"/><use href="#i-gemini"/><use href="#i-meta"/><use href="#i-huggingface"/><use href="#i-qdrant"/><use href="#i-postgresql"/><use href="#i-elasticsearch"/> -->
+<!--ISO:begin-->
+<style>
+/* 아이소메트릭 흐름 장면 (POSTING 5-11) — `npm run iso` 가 원고에 구워 넣는다 */
+.post-page .iso { --iso-blue: #2f5fe8; --iso-ok: #1f9d63; --iso-ink: #1c2540; margin: 0; font-family: var(--font-sans); word-break: keep-all; }
+[data-theme="dark"] .post-page .iso { --iso-blue: #5b86ff; --iso-ok: #45c58a; --iso-ink: #0c0f17; }
+.post-page .iso * { box-sizing: border-box; }
+.post-page .iso-req { display: inline-block; margin: 0 0 14px; padding: 8px 14px; border-radius: 12px; background: var(--bg-subtle); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-req span { margin-right: 8px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-stage { position: relative; border-radius: 24px; overflow: hidden; background: color-mix(in srgb, var(--iso-blue) 10%, var(--bg-base)); }
+.post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
+.post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
+.post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
+.post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
+.post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
+.post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+@keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+/* 단계 띠 */
+.post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
+.post-page .iso-btns { display: flex; gap: 8px; flex: none; }
+.post-page .iso-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-subtle); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+.post-page .iso-btns button.pri { min-width: 86px; background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-btns button:disabled { opacity: .4; cursor: default; }
+.post-page .iso-dots { flex: 1; display: flex; margin: 0; padding: 0; list-style: none; }
+.post-page .iso-dots li { flex: 1; margin: 0; padding: 0; position: relative; text-align: center; }
+.post-page .iso-dots li::before { content: ""; position: absolute; left: -50%; right: 50%; top: 13px; height: 3px; background: var(--line-subtle); }
+.post-page .iso-dots li:first-child::before { display: none; }
+.post-page .iso-dots li:has(button.done)::before, .post-page .iso-dots li:has(button.cur)::before { background: var(--iso-blue); }
+.post-page .iso-dots button { position: relative; z-index: 1; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--fg-neutral); cursor: pointer; }
+.post-page .iso-dots button i { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 5px; border-radius: 50%; font-style: normal; line-height: 1; background: var(--bg-subtle); border: 1px solid var(--line-subtle); }
+.post-page .iso-dots button.done, .post-page .iso-dots button.cur { color: var(--fg-strong); }
+.post-page .iso-dots button.done i, .post-page .iso-dots button.cur i { background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-dots button.cur i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--iso-blue) 25%, transparent); }
+.post-page .iso-dots button span { display: block; }
+.post-page .iso-desc { margin: 12px 0 0; min-height: 3.4em; font-size: 16px; line-height: 1.7; color: var(--fg-strong); }
+/* 스크립트가 돌면 단계 글은 설명 한 줄(.iso-desc)로 보인다. 꺼져 있으면 목록 그대로 읽힌다 */
+.post-page .iso.iso-on .iso-steps, .post-page .iso.iso-on .iso-sum { display: none; }
+.post-page .iso-steps { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.8; }
+.post-page .iso-sum { margin: 12px 0 0; font-size: 16px; line-height: 1.8; }
+/* 좁은 화면: 비유 꼬리표와 단계 이름을 줄인다 */
+.post-page .iso-narrow .iso-lab { font-size: 11px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-lab.iso-num { font-size: 10px; padding: 1px 6px; }
+.post-page .iso-narrow .iso-lab small { font-size: 10.5px; margin-left: 5px; }
+.post-page .iso-narrow .iso-lab small.meta { display: none; }
+.post-page .iso-narrow .iso-lab.iso-say { font-size: 10.5px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-bar { flex-direction: column; gap: 12px; }
+.post-page .iso-narrow .iso-dots { align-self: stretch; }
+.post-page .iso-narrow .iso-dots button span { display: none; }
+.post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+</style>
+<script>
+// 아이소메트릭 흐름 장면 — 정거장 사이를 한 사람이 오가며 일을 맡기고 결과를 받아 오는 그림.
+// 원고가 장면(정거장·길·동작)을 적어 isoScene(figure, spec) 을 부르면 이 파일이 그린다.
+// 이 파일은 `npm run iso -- <원고>` 가 원고의 <!--ISO--> 자리에 구워 넣는다. 규약: POSTING.md 5-11.
+(function () {
+  const PAL = {
+    light: { white: "#ffffff", wall: "#eef1f9", paper: "#fffdf5", blue: "#2f5fe8", navy: "#3b4a78", yellow: "#f5b62e", teal: "#2fbf9f",
+             orange: "#ff8a3d", red: "#e5484d", grey: "#cfd5e6", dark: "#2a3352", skin: "#f3cba8", hair: "#5a4636", to: [40, 60, 130], shadow: "rgba(30,50,120,.2)" },
+    dark:  { white: "#2e3650", wall: "#3b4460", paper: "#e9e4d2", blue: "#5b86ff", navy: "#8a99cc", yellow: "#e0a526", teal: "#2aa88c",
+             orange: "#f0803a", red: "#e5605f", grey: "#4d5775", dark: "#10131c", skin: "#e8bf9b", hair: "#3c2f25", to: [0, 0, 0], shadow: "rgba(0,0,0,.5)" },
+  };
+  const FLOOR = 0.2; // 정거장 바닥 판 두께 — 부품의 y 기본값
+
+  function isoScene(fig, spec) {
+    const stage = fig && fig.querySelector(".iso-stage");
+    const lis = fig ? [...fig.querySelectorAll(".iso-steps > li")] : [];
+    if (!stage || !lis.length) return;
+    const signal = window.postPage && window.postPage.signal;
+    const N = lis.length, S = spec.stations, ids = Object.keys(S), R = spec.routes || {};
+    const uid = "iso" + Math.random().toString(36).slice(2, 7);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sum = fig.querySelector(".iso-sum");
+
+    stage.innerHTML = '<svg aria-hidden="true"></svg><div class="iso-labs" aria-hidden="true"></div>';
+    const svg = stage.firstChild, labs = stage.lastChild;
+    const bar = document.createElement("div"); bar.className = "iso-bar";
+    bar.innerHTML = '<div class="iso-btns"><button type="button" data-a="prev">이전</button><button type="button" data-a="next">다음</button>' +
+      '<button type="button" data-a="play" class="pri">재생</button></div><ol class="iso-dots">' +
+      lis.map((li, i) => `<li><button type="button" data-i="${i}"><i>${i + 1}</i><span>${li.dataset.k || ""}</span></button></li>`).join("") +
+      `<li><button type="button" data-i="${N}"><i>✓</i><span>전체 흐름</span></button></li></ol>`;
+    const desc = document.createElement("p"); desc.className = "iso-desc"; desc.setAttribute("aria-live", "polite");
+    stage.after(bar, desc); fig.classList.add("iso-on");
+
+    /* ── 좌표: 장면 크기에 맞춰 눈금(U)과 원점을 정한다 ── */
+    let U = 40, OX = 0, OY = 0, W = 0, H = 0, pal = PAL.light;
+    const P = (x, y, z, ox = OX, oy = OY) => [ox + (x - z) * U * 0.866, oy + (x + z) * U * 0.5 - y * U];
+    const pts = (a) => a.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    function layout() {
+      W = stage.clientWidth || 800;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      const add = (x, y, z) => { const a = (x - z) * 0.866, b = (x + z) * 0.5 - y; x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); };
+      for (const id of ids) { const [ax, az] = S[id].at, [w, d] = S[id].size, t = S[id].top || 2.2;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(ax + sx * w / 2, 0, az + sz * d / 2); add(ax + sx * w / 2, t, az + sz * d / 2); } }
+      for (const k in R) for (const [x, z] of R[k]) { add(x, 0, z); add(x, 2, z); }
+      const narrow = W < 560, padX = narrow ? 14 : 70, padT = narrow ? 30 : 44, padB = narrow ? 14 : 22;
+      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 70% 까지만 쓴다
+      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.7 - padT - padB) / (y1 - y0));
+      H = (y1 - y0) * U + padT + padB; OX = (W - (x1 - x0) * U) / 2 - x0 * U; OY = padT - y0 * U;
+      stage.style.height = H.toFixed(0) + "px"; svg.setAttribute("viewBox", `0 0 ${W} ${H.toFixed(0)}`);
+      fig.classList.toggle("iso-narrow", narrow);
+    }
+
+    /* ── 그리기 ── */
+    const col = (c) => pal[c] || c;
+    const shade = (c, f) => { const n = parseInt(col(c).slice(1), 16), t = pal.to, m = (v, k) => Math.round(v * f + t[k] * (1 - f)); return `rgb(${m(n >> 16, 0)},${m((n >> 8) & 255, 1)},${m(n & 255, 2)})`; };
+    function draw1(b, ox, oy) {
+      const Q = (x, y, z) => P(x, y, z, ox, oy);
+      if (b.t === "sph") { const [cx, cy] = Q(b.x, b.y, b.z); return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(b.r * U).toFixed(1)}" fill="${col(b.c)}"/>`; }
+      const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y0 = b.y, y1 = b.y + b.h;
+      return `<polygon points="${pts([Q(x0, y0, z1), Q(x1, y0, z1), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${shade(b.c, 0.9)}"/>` +
+             `<polygon points="${pts([Q(x1, y0, z0), Q(x1, y0, z1), Q(x1, y1, z1), Q(x1, y1, z0)])}" fill="${shade(b.c, 0.78)}"/>` +
+             `<polygon points="${pts([Q(x0, y1, z0), Q(x1, y1, z0), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${col(b.c)}"/>`;
+    }
+    // 부품: ["box", x, z, w, d, h, 색, y] · ["person", x, z, 색, y] · ["sph", x, y, z, r, 색] — x·z 는 정거장 중심 기준
+    function parts(st) {
+      const [ax, az] = st.at, out = [];
+      if (st.floor !== false) out.push({ t: "box", x: ax, y: 0, z: az, w: st.size[0], d: st.size[1], h: FLOOR, c: "white" });
+      for (const p of st.parts || []) {
+        if (p[0] === "box") out.push({ t: "box", x: ax + p[1], z: az + p[2], w: p[3], d: p[4], h: p[5], c: p[6], y: p[7] == null ? FLOOR : p[7] });
+        else if (p[0] === "person") { const y = p[4] == null ? FLOOR : p[4];
+          out.push({ t: "box", x: ax + p[1], z: az + p[2], w: 0.55, d: 0.55, h: 0.85, c: p[3], y }, { t: "sph", x: ax + p[1], y: y + 1.2, z: az + p[2], r: 0.33, c: "skin" }); }
+        else if (p[0] === "sph") out.push({ t: "sph", x: ax + p[1], y: p[2], z: az + p[3], r: p[4], c: p[5] });
+      }
+      return out;
+    }
+    const rect = (x0, z0, x1, z1) => pts([P(x0, 0, z0), P(x1, 0, z0), P(x1, 0, z1), P(x0, 0, z1)]);
+    function render() {
+      pal = document.documentElement.getAttribute("data-theme") === "dark" ? PAL.dark : PAL.light;
+      const k = U / 40, line = (p) => pts(p.map(([x, z]) => P(x, 0, z)));
+      let s = `<defs><filter id="${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="${(6 * k).toFixed(1)}"/></filter></defs>`;
+      for (const r in R) s += `<polyline points="${line(R[r])}" fill="none" stroke="${pal.yellow}" stroke-width="${(3 * k).toFixed(1)}" stroke-dasharray="${(10 * k).toFixed(1)} ${(8 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<polyline class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<g filter="url(#${uid})" fill="${pal.shadow}">`;
+      for (const id of ids) { const [x, z] = S[id].at, [w, d] = S[id].size; s += `<polygon points="${rect(x - w / 2, z - d / 2 + 0.3, x + w / 2 + 0.5, z + d / 2 + 0.6)}"/>`; }
+      s += "</g>";
+      // 정거장은 먼 것부터, 정거장 안 부품은 원고에 적은 순서(뒤 → 앞)대로
+      for (const id of [...ids].sort((a, b) => S[a].at[0] + S[a].at[1] - (S[b].at[0] + S[b].at[1]))) s += "<g>" + parts(S[id]).map((b) => draw1(b)).join("") + "</g>";
+      s += '<g class="iso-drop"></g><g class="iso-actor"></g>';
+      svg.innerHTML = s; drawActor(); drawDrop(); drawActive(); place();
+    }
+
+    /* ── 오가는 사람: 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
+    const A = { pos: [0, 0], dir: [1, 0], pages: 1, hold: true, say: "", drop: null };
+    const actorColor = (spec.actor && spec.actor.color) || "blue";
+    function drawActor() {
+      const [dx, dz] = A.dir, toward = dx + dz > 0, alongX = dx !== 0;
+      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: actorColor };
+      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * A.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
+      const head = [{ t: "sph", x: 0, y: 1.2, z: 0, r: 0.33, c: "skin" }];
+      if (toward) for (const e of [-1, 1]) head.push({ t: "sph", x: dx * 0.3 - dz * 0.13 * e, y: 1.2, z: dz * 0.3 + dx * 0.13 * e, r: 0.05, c: "dark" });
+      else head.push({ t: "sph", x: -dx * 0.06, y: 1.25, z: -dz * 0.06, r: 0.3, c: "hair" });
+      const list = !A.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
+      const g = svg.querySelector(".iso-actor"); g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor();
+    }
+    function moveActor() { const [a, b] = P(A.pos[0], 0, A.pos[1]); svg.querySelector(".iso-actor").setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
+    function drawDrop() {
+      const st = A.drop && S[A.drop], d = st && st.drop;
+      svg.querySelector(".iso-drop").innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * A.pages, d: 0.4, c: "paper" }) : "";
+    }
+
+    /* ── 이름표 ── */
+    const lab = {}, mk = (cls) => { const d = document.createElement("div"); d.className = cls; labs.appendChild(d); return d; };
+    for (const id of ids) lab[id] = mk("iso-lab");
+    const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
+    const say = mk("iso-lab iso-say");
+    let busy = null;
+    function labels() {
+      for (const id of ids) { const b = busy && busy[0] === id;
+        lab[id].className = "iso-lab" + (b ? " busy" : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+    }
+    // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
+    const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
+    function place() {
+      for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
+      for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
+      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+    }
+
+    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
+    function acts(i) {
+      const out = [], seg = (r) => { for (let k = 0; k < r.length - 1; k++) out.push({ seg: [r[k], r[k + 1]], dur: 300 + Math.hypot(r[k + 1][0] - r[k][0], r[k + 1][1] - r[k][1]) * 240 }); };
+      for (const a of spec.steps[i] || []) {
+        if (a[0] === "at") out.push({ dur: 0, jump: typeof a[1] === "string" ? R[a[1]][0] : a[1], ...a[2] });
+        else if (a[0] === "set") out.push({ dur: 0, ...a[1] });
+        else if (a[0] === "go") seg(R[a[1]]);
+        else if (a[0] === "back") seg([...R[a[1]]].reverse());
+        else if (a[0] === "wait") out.push({ dur: a[1], comp: a[2], text: a[3], wait: true, ...a[4] });
+      }
+      return out;
+    }
+    function apply(a) {
+      if (a.jump) A.pos = [...a.jump];
+      if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
+      if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
+      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      drawActor(); labels(); place();
+    }
+
+    let step = N, playing = false, raf = 0, timer = 0;
+    function drawActive() {
+      const one = step < N && (spec.steps[step] || []).filter((a) => a[0] === "go" || a[0] === "back");
+      const names = one ? [...new Set(one.map((a) => a[1]))] : [];
+      svg.querySelector(".iso-act").setAttribute("points", names.length === 1 ? pts(R[names[0]].map(([x, z]) => P(x, 0, z))) : "");
+    }
+    function ui() {
+      bar.querySelectorAll(".iso-dots button").forEach((b, i) => { b.className = i < step ? "done" : i === step ? "cur" : ""; if (i === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+      desc.textContent = step === N ? (sum ? sum.textContent : "") : lis[step].textContent;
+      bar.querySelector('[data-a="prev"]').disabled = step === 0; bar.querySelector('[data-a="next"]').disabled = step === N;
+      bar.querySelector('[data-a="play"]').textContent = playing ? "일시정지" : step === N ? "다시 재생" : "재생";
+      drawActive();
+    }
+    function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
+    function go(i, auto) {
+      stop(); if (!auto) playing = false;
+      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
+        playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
+        ui(); drawDrop(); drawActor(); labels(); place(); return;
+      }
+      ui();
+      const list = acts(step); let k = -1, t0 = 0;
+      const next = (now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
+        while (++k < list.length) { apply(list[k]); if (list[k].dur > 0 && !reduce) { t0 = now; return true; } if (list[k].seg) { A.pos = [...list[k].seg[1]]; moveActor(); } }
+        busy = null; labels(); place(); if (playing) timer = setTimeout(() => go(step + 1, true), 2400); return false; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
+      };
+      const tick = (now) => {
+        const a = list[k], t = Math.min(1, (now - t0) / a.dur);
+        if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (t >= 1 && !next(now)) return;
+        raf = requestAnimationFrame(tick);
+      };
+      if (next(performance.now())) raf = requestAnimationFrame(tick);
+    }
+    let io = null;
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (io) { io.disconnect(); io = null; } // 독자가 먼저 눌렀으면 자동 재생으로 덮어쓰지 않는다
+      if (b.dataset.i != null) return go(+b.dataset.i);
+      if (b.dataset.a === "prev") return go(step - 1);
+      if (b.dataset.a === "next") return go(step + 1);
+      if (playing) { playing = false; clearTimeout(timer); return ui(); }
+      playing = true; go(step === N ? 0 : step, true);
+    }, { signal });
+
+    /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
+    layout(); labels(); render(); go(N);
+    const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
+    const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (!reduce && "IntersectionObserver" in window) {
+      io = new IntersectionObserver((es) => { const e = es[0];
+        if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
+      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
+    }
+    if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
+    return { go, get step() { return step; }, get playing() { return playing; } };
+  }
+
+  // 흔한 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아 → 돌아와 적는다
+  isoScene.trip = (route, station, o) => [
+    ["at", route, { hold: true, pages: o.pages, say: o.carry }], ["go", route],
+    ["wait", o.ms || 1600, station, o.work, { hold: false, drop: true, say: "" }],
+    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, station, o.give || "결과를 건네는 중"],
+    ["back", route], ...(o.home ? [["wait", 800, o.home, o.write || "결과를 적는 중"]] : []),
+  ];
+  window.isoScene = isoScene;
+})();
+</script>
+<!--ISO:end-->
+<style>
+.post-page .ac {
+  --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
+  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139); --ac-warn: rgb(202, 138, 4);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ac {
+  --ac-user: rgb(110, 165, 255); --ac-app: rgb(60, 205, 165); --ac-model: rgb(255, 150, 80);
+  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192); --ac-warn: rgb(250, 204, 21);
+}
+.post-page .ac * { box-sizing: border-box; }
+.post-page .ac-wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+.post-page .ac h1, .post-page .ac h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
+.post-page .ac h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.25; }
+.post-page .ac p { font-size: 17px; line-height: 1.85; margin: 0; }
+.post-page .ac a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ac code { font-family: var(--font-mono); font-size: .9em; }
+.post-page .ac-hero { padding-top: clamp(40px, 6vw, 64px); }
+.post-page .ac-kicker { font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--fg-neutral); margin-bottom: 14px; }
+.post-page .ac-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: end; }
+.post-page .ac .k-user { --c: var(--ac-user); } .post-page .ac .k-app { --c: var(--ac-app); }
+.post-page .ac .k-model { --c: var(--ac-model); } .post-page .ac .k-tool { --c: var(--ac-tool); }
+.post-page .ac .k-data { --c: var(--ac-data); } .post-page .ac .k-ops { --c: var(--ac-ops); } .post-page .ac .k-warn { --c: var(--ac-warn); }
+
+/* 아이콘 타일 (POSTING 5-10) */
+.post-page .ac .ni { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 4px 12px rgba(15, 23, 42, .09); display: grid; place-items: center; }
+[data-theme="dark"] .post-page .ac .ni { background: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); box-shadow: none; }
+.post-page .ac .ni svg { width: 19px; height: 19px; color: var(--c); }
+
+/* 큰 흐름도 — 노드 + 번호 엣지 (POSTING 5-10) */
+.post-page .fl { margin: clamp(36px, 4vw, 48px) 0 0; background: var(--bg-subtle); border-radius: 30px; padding: clamp(20px, 3vw, 36px); }
+.post-page .fl-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; }
+.post-page .fl-top h2 { font-size: clamp(20px, 2.2vw, 26px); }
+.post-page .fl-req { display: flex; align-items: center; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 12px 18px; flex: 1; min-width: 280px; max-width: 640px; }
+.post-page .fl-req .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .fl-req .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
+.post-page .fl-cap { margin: 18px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 600; min-height: 1.6em; transition: opacity .3s; }
+.post-page .fl-cap.fade { opacity: 0; }
+.post-page .fl-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+/* ByteByteGo 문법: 회색 테두리 상자 · 점선 그룹 + 검은 알약 이름표 · 직각 엣지 · 검은 번호 원 + 굵은 엣지 글 */
+.post-page .fl-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .fl-svg .grp { fill: var(--bg-base); fill-opacity: .55; stroke: var(--fg-neutral); stroke-width: 1.6; stroke-dasharray: 7 6; }
+.post-page .fl-svg .grp.us { fill: color-mix(in srgb, var(--ac-app) 7%, var(--bg-base)); fill-opacity: 1; }
+.post-page .fl-svg .pill rect { fill: var(--fg-strong); }
+.post-page .fl-svg .pill text { fill: var(--bg-base); font-size: 14px; font-weight: 800; }
+.post-page .fl-svg .box { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s, stroke-width .3s; }
+.post-page .fl-svg .nd.hot .box, .post-page .fl-svg .nd.hot .ring { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .ring { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s; }
+.post-page .fl-svg .nt { font-size: 17px; font-weight: 800; }
+.post-page .fl-svg .ns { font-size: 13px; fill: var(--fg-neutral); }
+.post-page .fl-svg .e { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linejoin: round; transition: stroke .3s; }
+.post-page .fl-svg .e.on { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .ah { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .fl-svg .badge circle { fill: var(--fg-strong); }
+.post-page .fl-svg .badge text { fill: var(--bg-base); font-size: 12.5px; font-weight: 800; }
+.post-page .fl-svg .el { font-size: 14px; font-weight: 700; }
+.post-page .fl-svg .chip { font-size: 14px; font-weight: 800; fill: var(--ac-data); }
+.post-page .fl-svg .dot { fill: var(--ac-model); stroke: var(--bg-base); stroke-width: 3; }
+.post-page .fl-legend { display: none; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: s; }
+.post-page .fl-legend li { counter-increment: s; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; margin-bottom: 6px; color: var(--fg-normal); }
+.post-page .fl-legend li::before { content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 12px; font-weight: 800; display: grid; place-items: center; margin-top: 1px; }
+.post-page .fl-src { font-size: 12.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin-top: 16px !important; }
+
+/* 흐름도 아래 짧은 섹션 */
+.post-page .ac-sec { padding: clamp(64px, 8vw, 96px) 0 0; }
+.post-page .ac .iso { margin-top: clamp(32px, 4vw, 44px); }
+.post-page .ac-bridge { max-width: 760px; margin: 0 0 28px; }
+.post-page .ac-sec h2 { font-size: clamp(20px, 2.2vw, 26px); margin-bottom: 24px; }
+.post-page .ac-two { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(20px, 4vw, 72px); align-items: start; margin-bottom: 32px; }
+.post-page .ac-two h2 { margin-bottom: 0; }
+.post-page .kp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.post-page .kp > div { background: var(--bg-subtle); border-radius: 24px; padding: 24px; }
+.post-page .kp h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--fg-strong); margin: 0 0 18px; }
+.post-page .kp h3 svg { width: 17px; height: 17px; color: var(--c); }
+.post-page .kp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.post-page .kp li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.post-page .kp li b { display: block; font-size: 15px; color: var(--fg-strong); }
+.post-page .kp li .d { display: block; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.55; margin-top: 2px; }
+.post-page .kp .note { font-size: 13px; line-height: 1.65; color: var(--fg-neutral); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-subtle); }
+.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; padding-bottom: 40px; }
+.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); margin: 0; }
+.post-page .ac-more ul { margin: 0; padding-left: 1.3em; }
+.post-page .ac-more li { font-size: 15.5px; line-height: 1.8; margin-bottom: 6px; }
+
+@media (max-width: 720px) {
+  .post-page .ac-wrap { padding: 0 16px; }
+  .post-page .ac-head, .post-page .ac-more, .post-page .kp, .post-page .ac-two { grid-template-columns: minmax(0, 1fr); }
+  .post-page .fl { border-radius: 22px; padding: 16px; }
+  .post-page .fl-req { min-width: 0; flex-basis: 100%; }
+  .post-page .fl-legend { display: block; }
+  .post-page .fl-svg .nt { font-size: 15px; }
+}
+</style>
+
+<div class="ac">
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-arrow-down-wide-narrow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4" /> <path d="M7 20V4" /> <path d="M11 4h10" /> <path d="M11 8h7" /> <path d="M11 12h4" /></g></symbol>
+<symbol id="i-binary" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2" /> <rect x="6" y="4" width="4" height="6" rx="2" /> <path d="M6 20h4" /> <path d="M14 10h4" /> <path d="M6 14h2v6" /> <path d="M14 4h2v6" /></g></symbol>
+<symbol id="i-boxes" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z" /> <path d="m7 16.5-4.74-2.85" /> <path d="m7 16.5 5-3" /> <path d="M7 16.5v5.17" /> <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z" /> <path d="m17 16.5-5-3" /> <path d="m17 16.5 4.74-2.85" /> <path d="M17 16.5v5.17" /> <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z" /> <path d="M12 8 7.26 5.15" /> <path d="m12 8 4.74-2.85" /> <path d="M12 13.5V8" /></g></symbol>
+<symbol id="i-brain" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5" /> <path d="M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4" /> <path d="M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294" /> <path d="M17.996 5.125a4 4 0 012.526 5.77" /> <path d="M18 18a4 4 0 002-7.465" /> <path d="M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517" /> <path d="M6 18a4 4 0 01-2-7.465" /> <path d="M6.004 5.125a4 4 0 00-2.526 5.77" /></g></symbol>
+<symbol id="i-claude" viewBox="0 0 24 24"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></symbol>
+<symbol id="i-coins" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.744 17.736a6 6 0 1 1-7.48-7.48" /> <path d="M15 6h1v4" /> <path d="m6.134 14.768.866-.5 2 3.464" /> <circle cx="16" cy="8" r="6" /></g></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" /></g></symbol>
+<symbol id="i-elasticsearch" viewBox="0 0 128 128"><path fill="#343741" d="M4 64c0 5.535.777 10.879 2.098 16H84c8.836 0 16-7.164 16-16s-7.164-16-16-16H6.098A63.738 63.738 0 0 0 4 64"/> <path fill="#fec514" d="M111.695 30.648A61.485 61.485 0 0 0 117.922 24C106.188 9.379 88.199 0 68 0 42.715 0 20.957 14.71 10.574 36H98.04a20.123 20.123 0 0 0 13.652-5.352"/> <path fill="#00bfb3" d="M98.04 92H10.577C20.961 113.29 42.715 128 68 128c20.2 0 38.188-9.383 49.922-24a61.1 61.1 0 0 0-6.227-6.648A20.133 20.133 0 0 0 98.04 92"/></symbol>
+<symbol id="i-file-plus-2" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.35 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5.35" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M14 19h6" /> <path d="M17 16v6" /></g></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></g></symbol>
+<symbol id="i-gemini" viewBox="0 0 24 24"><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-0-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-1-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-2-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-0-_R_0_" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-1-_R_0_" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-2-_R_0_" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></symbol>
+<symbol id="i-huggingface" viewBox="0 0 24 24"><path d="M2.25 11.535c0-3.407 1.847-6.554 4.844-8.258a9.822 9.822 0 019.687 0c2.997 1.704 4.844 4.851 4.844 8.258 0 5.266-4.337 9.535-9.687 9.535S2.25 16.8 2.25 11.535z" fill="#FF9D0B"></path><path d="M11.938 20.086c4.797 0 8.687-3.829 8.687-8.551 0-4.722-3.89-8.55-8.687-8.55-4.798 0-8.688 3.828-8.688 8.55 0 4.722 3.89 8.55 8.688 8.55z" fill="#FFD21E"></path><path d="M11.875 15.113c2.457 0 3.25-2.156 3.25-3.263 0-.576-.393-.394-1.023-.089-.582.283-1.365.675-2.224.675-1.798 0-3.25-1.693-3.25-.586 0 1.107.79 3.263 3.25 3.263h-.003z" fill="#FF323D"></path><path d="M14.76 9.21c.32.108.445.753.767.585.447-.233.707-.708.659-1.204a1.235 1.235 0 00-.879-1.059 1.262 1.262 0 00-1.33.394c-.322.384-.377.92-.14 1.36.153.283.638-.177.925-.079l-.002.003zm-5.887 0c-.32.108-.448.753-.768.585a1.226 1.226 0 01-.658-1.204c.048-.495.395-.913.878-1.059a1.262 1.262 0 011.33.394c.322.384.377.92.14 1.36-.152.283-.64-.177-.925-.079l.003.003zm1.12 5.34a2.166 2.166 0 011.325-1.106c.07-.02.144.06.219.171l.192.306c.069.1.139.175.209.175.074 0 .15-.074.223-.172l.205-.302c.08-.11.157-.188.234-.165.537.168.986.536 1.25 1.026.932-.724 1.275-1.905 1.275-2.633 0-.508-.306-.426-.81-.19l-.616.296c-.52.24-1.148.48-1.824.48-.676 0-1.302-.24-1.823-.48l-.589-.283c-.52-.248-.838-.342-.838.177 0 .703.32 1.831 1.187 2.56l.18.14z" fill="#3A3B45"></path><path d="M17.812 10.366a.806.806 0 00.813-.8c0-.441-.364-.8-.813-.8a.806.806 0 00-.812.8c0 .442.364.8.812.8zm-11.624 0a.806.806 0 00.812-.8c0-.441-.364-.8-.812-.8a.806.806 0 00-.813.8c0 .442.364.8.813.8zM4.515 13.073c-.405 0-.765.162-1.017.46a1.455 1.455 0 00-.333.925 1.801 1.801 0 00-.485-.074c-.387 0-.737.146-.985.409a1.41 1.41 0 00-.2 1.722 1.302 1.302 0 00-.447.694c-.06.222-.12.69.2 1.166a1.267 1.267 0 00-.093 1.236c.238.533.81.958 1.89 1.405l.24.096c.768.3 1.473.492 1.478.494.89.243 1.808.375 2.732.394 1.465 0 2.513-.443 3.115-1.314.93-1.342.842-2.575-.274-3.763l-.151-.154c-.692-.684-1.155-1.69-1.25-1.912-.195-.655-.71-1.383-1.562-1.383-.46.007-.889.233-1.15.605-.25-.31-.495-.553-.715-.694a1.87 1.87 0 00-.993-.312zm14.97 0c.405 0 .767.162 1.017.46.216.262.333.588.333.925.158-.047.322-.071.487-.074.388 0 .738.146.985.409a1.41 1.41 0 01.2 1.722c.22.178.377.422.445.694.06.222.12.69-.2 1.166.244.37.279.836.093 1.236-.238.533-.81.958-1.889 1.405l-.239.096c-.77.3-1.475.492-1.48.494-.89.243-1.808.375-2.732.394-1.465 0-2.513-.443-3.115-1.314-.93-1.342-.842-2.575.274-3.763l.151-.154c.695-.684 1.157-1.69 1.252-1.912.195-.655.708-1.383 1.56-1.383.46.007.889.233 1.15.605.25-.31.495-.553.718-.694.244-.162.523-.265.814-.3l.176-.012z" fill="#FF9D0B"></path><path d="M9.785 20.132c.688-.994.638-1.74-.305-2.667-.945-.928-1.495-2.288-1.495-2.288s-.205-.788-.672-.714c-.468.074-.81 1.25.17 1.971.977.721-.195 1.21-.573.534-.375-.677-1.405-2.416-1.94-2.751-.532-.332-.907-.148-.782.541.125.687 2.357 2.35 2.14 2.707-.218.362-.983-.42-.983-.42S2.953 14.9 2.43 15.46c-.52.558.398 1.026 1.7 1.803 1.308.778 1.41.985 1.225 1.28-.187.295-3.07-2.1-3.34-1.083-.27 1.011 2.943 1.304 2.745 2.006-.2.7-2.265-1.324-2.685-.537-.425.79 2.913 1.718 2.94 1.725 1.075.276 3.813.859 4.77-.522zm4.432 0c-.687-.994-.64-1.74.305-2.667.943-.928 1.493-2.288 1.493-2.288s.205-.788.675-.714c.465.074.807 1.25-.17 1.971-.98.721.195 1.21.57.534.377-.677 1.407-2.416 1.94-2.751.532-.332.91-.148.782.541-.125.687-2.355 2.35-2.137 2.707.215.362.98-.42.98-.42S21.05 14.9 21.57 15.46c.52.558-.395 1.026-1.7 1.803-1.308.778-1.408.985-1.225 1.28.187.295 3.07-2.1 3.34-1.083.27 1.011-2.94 1.304-2.743 2.006.2.7 2.263-1.324 2.685-.537.423.79-2.912 1.718-2.94 1.725-1.077.276-3.815.859-4.77-.522z" fill="#FFD21E"></path></symbol>
+<symbol id="i-message-circle-question-mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /> <path d="M9 9.5a3 2.5 0 016 0c0 2-2 2-3 3.5" /> <path d="M12 17h.01" /></g></symbol>
+<symbol id="i-meta" viewBox="0 0 24 24"><path d="M6.897 4h-.024l-.031 2.615h.022c1.715 0 3.046 1.357 5.94 6.246l.175.297.012.02 1.62-2.438-.012-.019a48.763 48.763 0 00-1.098-1.716 28.01 28.01 0 00-1.175-1.629C10.413 4.932 8.812 4 6.896 4z" fill="url(#meta-lobe-icons-meta-0-_R_0_)"></path><path d="M6.873 4C4.95 4.01 3.247 5.258 2.02 7.17a4.352 4.352 0 00-.01.017l2.254 1.231.011-.017c.718-1.083 1.61-1.774 2.568-1.785h.021L6.896 4h-.023z" fill="url(#meta-lobe-icons-meta-1-_R_0_)"></path><path d="M2.019 7.17l-.011.017C1.2 8.447.598 9.995.274 11.664l-.005.022 2.534.6.004-.022c.27-1.467.786-2.828 1.456-3.845l.011-.017L2.02 7.17z" fill="url(#meta-lobe-icons-meta-2-_R_0_)"></path><path d="M2.807 12.264l-2.533-.6-.005.022c-.177.918-.267 1.851-.269 2.786v.023l2.598.233v-.023a12.591 12.591 0 01.21-2.44z" fill="url(#meta-lobe-icons-meta-3-_R_0_)"></path><path d="M2.677 15.537a5.462 5.462 0 01-.079-.813v-.022L0 14.468v.024a8.89 8.89 0 00.146 1.652l2.535-.585a4.106 4.106 0 01-.004-.022z" fill="url(#meta-lobe-icons-meta-4-_R_0_)"></path><path d="M3.27 16.89c-.284-.31-.484-.756-.589-1.328l-.004-.021-2.535.585.004.021c.192 1.01.568 1.85 1.106 2.487l.014.017 2.018-1.745a2.106 2.106 0 01-.015-.016z" fill="url(#meta-lobe-icons-meta-5-_R_0_)"></path><path d="M10.78 9.654c-1.528 2.35-2.454 3.825-2.454 3.825-2.035 3.2-2.739 3.917-3.871 3.917a1.545 1.545 0 01-1.186-.508l-2.017 1.744.014.017C2.01 19.518 3.058 20 4.356 20c1.963 0 3.374-.928 5.884-5.33l1.766-3.13a41.283 41.283 0 00-1.227-1.886z" fill="#0082FB"></path><path d="M13.502 5.946l-.016.016c-.4.43-.786.908-1.16 1.416.378.483.768 1.024 1.175 1.63.48-.743.928-1.345 1.367-1.807l.016-.016-1.382-1.24z" fill="url(#meta-lobe-icons-meta-6-_R_0_)"></path><path d="M20.918 5.713C19.853 4.633 18.583 4 17.225 4c-1.432 0-2.637.787-3.723 1.944l-.016.016 1.382 1.24.016-.017c.715-.747 1.408-1.12 2.176-1.12.826 0 1.6.39 2.27 1.075l.015.016 1.589-1.425-.016-.016z" fill="#0082FB"></path><path d="M23.998 14.125c-.06-3.467-1.27-6.566-3.064-8.396l-.016-.016-1.588 1.424.015.016c1.35 1.392 2.277 3.98 2.361 6.971v.023h2.292v-.022z" fill="url(#meta-lobe-icons-meta-7-_R_0_)"></path><path d="M23.998 14.15v-.023h-2.292v.022c.004.14.006.282.006.424 0 .815-.121 1.474-.368 1.95l-.011.022 1.708 1.782.013-.02c.62-.96.946-2.293.946-3.91 0-.083 0-.165-.002-.247z" fill="url(#meta-lobe-icons-meta-8-_R_0_)"></path><path d="M21.344 16.52l-.011.02c-.214.402-.519.67-.917.787l.778 2.462a3.493 3.493 0 00.438-.182 3.558 3.558 0 001.366-1.218l.044-.065.012-.02-1.71-1.784z" fill="url(#meta-lobe-icons-meta-9-_R_0_)"></path><path d="M19.92 17.393c-.262 0-.492-.039-.718-.14l-.798 2.522c.449.153.927.222 1.46.222.492 0 .943-.073 1.352-.215l-.78-2.462c-.167.05-.341.075-.517.073z" fill="url(#meta-lobe-icons-meta-10-_R_0_)"></path><path d="M18.323 16.534l-.014-.017-1.836 1.914.016.017c.637.682 1.246 1.105 1.937 1.337l.797-2.52c-.291-.125-.573-.353-.9-.731z" fill="url(#meta-lobe-icons-meta-11-_R_0_)"></path><path d="M18.309 16.515c-.55-.642-1.232-1.712-2.303-3.44l-1.396-2.336-.011-.02-1.62 2.438.012.02.989 1.668c.959 1.61 1.74 2.774 2.493 3.585l.016.016 1.834-1.914a2.353 2.353 0 01-.014-.017z" fill="url(#meta-lobe-icons-meta-12-_R_0_)"></path><defs><linearGradient id="meta-lobe-icons-meta-0-_R_0_" x1="75.897%" x2="26.312%" y1="89.199%" y2="12.194%"><stop offset=".06%" stop-color="#0867DF"></stop><stop offset="45.39%" stop-color="#0668E1"></stop><stop offset="85.91%" stop-color="#0064E0"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-1-_R_0_" x1="21.67%" x2="97.068%" y1="75.874%" y2="23.985%"><stop offset="13.23%" stop-color="#0064DF"></stop><stop offset="99.88%" stop-color="#0064E0"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-2-_R_0_" x1="38.263%" x2="60.895%" y1="89.127%" y2="16.131%"><stop offset="1.47%" stop-color="#0072EC"></stop><stop offset="68.81%" stop-color="#0064DF"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-3-_R_0_" x1="47.032%" x2="52.15%" y1="90.19%" y2="15.745%"><stop offset="7.31%" stop-color="#007CF6"></stop><stop offset="99.43%" stop-color="#0072EC"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-4-_R_0_" x1="52.155%" x2="47.591%" y1="58.301%" y2="37.004%"><stop offset="7.31%" stop-color="#007FF9"></stop><stop offset="100%" stop-color="#007CF6"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-5-_R_0_" x1="37.689%" x2="61.961%" y1="12.502%" y2="63.624%"><stop offset="7.31%" stop-color="#007FF9"></stop><stop offset="100%" stop-color="#0082FB"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-6-_R_0_" x1="34.808%" x2="62.313%" y1="68.859%" y2="23.174%"><stop offset="27.99%" stop-color="#007FF8"></stop><stop offset="91.41%" stop-color="#0082FB"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-7-_R_0_" x1="43.762%" x2="57.602%" y1="6.235%" y2="98.514%"><stop offset="0%" stop-color="#0082FB"></stop><stop offset="99.95%" stop-color="#0081FA"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-8-_R_0_" x1="60.055%" x2="39.88%" y1="4.661%" y2="69.077%"><stop offset="6.19%" stop-color="#0081FA"></stop><stop offset="100%" stop-color="#0080F9"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-9-_R_0_" x1="30.282%" x2="61.081%" y1="59.32%" y2="33.244%"><stop offset="0%" stop-color="#027AF3"></stop><stop offset="100%" stop-color="#0080F9"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-10-_R_0_" x1="20.433%" x2="82.112%" y1="50.001%" y2="50.001%"><stop offset="0%" stop-color="#0377EF"></stop><stop offset="99.94%" stop-color="#0279F1"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-11-_R_0_" x1="40.303%" x2="72.394%" y1="35.298%" y2="57.811%"><stop offset=".19%" stop-color="#0471E9"></stop><stop offset="100%" stop-color="#0377EF"></stop></linearGradient><linearGradient id="meta-lobe-icons-meta-12-_R_0_" x1="32.254%" x2="68.003%" y1="19.719%" y2="84.908%"><stop offset="27.65%" stop-color="#0867DF"></stop><stop offset="100%" stop-color="#0471E9"></stop></linearGradient></defs></symbol>
+<symbol id="i-openai" viewBox="0 0 24 24"><g fill="currentColor"><path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path></g></symbol>
+<symbol id="i-postgresql" viewBox="0 0 128 128"><path d="M93.809 92.112c.785-6.533.55-7.492 5.416-6.433l1.235.108c3.742.17 8.637-.602 11.513-1.938 6.191-2.873 9.861-7.668 3.758-6.409-13.924 2.873-14.881-1.842-14.881-1.842 14.703-21.815 20.849-49.508 15.543-56.287-14.47-18.489-39.517-9.746-39.936-9.52l-.134.025c-2.751-.571-5.83-.912-9.289-.968-6.301-.104-11.082 1.652-14.709 4.402 0 0-44.683-18.409-42.604 23.151.442 8.841 12.672 66.898 27.26 49.362 5.332-6.412 10.484-11.834 10.484-11.834 2.558 1.699 5.622 2.567 8.834 2.255l.249-.212c-.078.796-.044 1.575.099 2.497-3.757 4.199-2.653 4.936-10.166 6.482-7.602 1.566-3.136 4.355-.221 5.084 3.535.884 11.712 2.136 17.238-5.598l-.22.882c1.474 1.18 1.375 8.477 1.583 13.69.209 5.214.558 10.079 1.621 12.948 1.063 2.868 2.317 10.256 12.191 8.14 8.252-1.764 14.561-4.309 15.136-27.985"/><path d="M75.458 125.256c-4.367 0-7.211-1.689-8.938-3.32-2.607-2.46-3.641-5.629-4.259-7.522l-.267-.79c-1.244-3.358-1.666-8.193-1.916-14.419-.038-.935-.064-1.898-.093-2.919-.021-.747-.047-1.684-.085-2.664a18.8 18.8 0 01-4.962 1.568c-3.079.526-6.389.356-9.84-.507-2.435-.609-4.965-1.871-6.407-3.82-4.203 3.681-8.212 3.182-10.396 2.453-3.853-1.285-7.301-4.896-10.542-11.037-2.309-4.375-4.542-10.075-6.638-16.943-3.65-11.96-5.969-24.557-6.175-28.693C4.292 23.698 7.777 14.44 15.296 9.129 27.157.751 45.128 5.678 51.68 7.915c4.402-2.653 9.581-3.944 15.433-3.851 3.143.051 6.136.327 8.916.823 2.9-.912 8.628-2.221 15.185-2.139 12.081.144 22.092 4.852 28.949 13.615 4.894 6.252 2.474 19.381.597 26.651-2.642 10.226-7.271 21.102-12.957 30.57 1.544.011 3.781-.174 6.961-.831 6.274-1.295 8.109 2.069 8.607 3.575 1.995 6.042-6.677 10.608-9.382 11.864-3.466 1.609-9.117 2.589-13.745 2.377l-.202-.013-1.216-.107-.12 1.014-.116.991c-.311 11.999-2.025 19.598-5.552 24.619-3.697 5.264-8.835 6.739-13.361 7.709-1.544.33-2.947.474-4.219.474zm-9.19-43.671c2.819 2.256 3.066 6.501 3.287 14.434.028.99.054 1.927.089 2.802.106 2.65.355 8.855 1.327 11.477.137.371.26.747.39 1.146 1.083 3.316 1.626 4.979 6.309 3.978 3.931-.843 5.952-1.599 7.534-3.851 2.299-3.274 3.585-9.86 3.821-19.575l4.783.116-4.75-.57.14-1.186c.455-3.91.783-6.734 3.396-8.602 2.097-1.498 4.486-1.353 6.389-1.01-2.091-1.58-2.669-3.433-2.823-4.193l-.399-1.965 1.121-1.663c6.457-9.58 11.781-21.354 14.609-32.304 2.906-11.251 2.02-17.226 1.134-18.356-11.729-14.987-32.068-8.799-34.192-8.097l-.359.194-1.8.335-.922-.191c-2.542-.528-5.366-.82-8.393-.869-4.756-.08-8.593 1.044-11.739 3.431l-2.183 1.655-2.533-1.043c-5.412-2.213-21.308-6.662-29.696-.721-4.656 3.298-6.777 9.76-6.305 19.207.156 3.119 2.275 14.926 5.771 26.377 4.831 15.825 9.221 21.082 11.054 21.693.32.108 1.15-.537 1.976-1.529a270.708 270.708 0 0110.694-12.07l2.77-2.915 3.349 2.225c1.35.897 2.839 1.406 4.368 1.502l7.987-6.812-1.157 11.808c-.026.265-.039.626.065 1.296l.348 2.238-1.51 1.688-.174.196 4.388 2.025 1.836-2.301z"/><path fill="#336791" d="M115.731 77.44c-13.925 2.873-14.882-1.842-14.882-1.842 14.703-21.816 20.849-49.51 15.545-56.287C101.924.823 76.875 9.566 76.457 9.793l-.135.024c-2.751-.571-5.83-.911-9.291-.967-6.301-.103-11.08 1.652-14.707 4.402 0 0-44.684-18.408-42.606 23.151.442 8.842 12.672 66.899 27.26 49.363 5.332-6.412 10.483-11.834 10.483-11.834 2.559 1.699 5.622 2.567 8.833 2.255l.25-.212c-.078.796-.042 1.575.1 2.497-3.758 4.199-2.654 4.936-10.167 6.482-7.602 1.566-3.136 4.355-.22 5.084 3.534.884 11.712 2.136 17.237-5.598l-.221.882c1.473 1.18 2.507 7.672 2.334 13.557-.174 5.885-.29 9.926.871 13.082 1.16 3.156 2.316 10.256 12.192 8.14 8.252-1.768 12.528-6.351 13.124-13.995.422-5.435 1.377-4.631 1.438-9.49l.767-2.3c.884-7.367.14-9.743 5.225-8.638l1.235.108c3.742.17 8.639-.602 11.514-1.938 6.19-2.871 9.861-7.667 3.758-6.408z"/><path fill="#fff" d="M75.957 122.307c-8.232 0-10.84-6.519-11.907-9.185-1.562-3.907-1.899-19.069-1.551-31.503a1.59 1.59 0 011.64-1.55 1.594 1.594 0 011.55 1.639c-.401 14.341.168 27.337 1.324 30.229 1.804 4.509 4.54 8.453 12.275 6.796 7.343-1.575 10.093-4.359 11.318-11.46.94-5.449 2.799-20.951 3.028-24.01a1.593 1.593 0 011.71-1.472 1.597 1.597 0 011.472 1.71c-.239 3.185-2.089 18.657-3.065 24.315-1.446 8.387-5.185 12.191-13.794 14.037-1.463.313-2.792.453-4 .454zM31.321 90.466a6.71 6.71 0 01-2.116-.35c-5.347-1.784-10.44-10.492-15.138-25.885-3.576-11.717-5.842-23.947-6.041-27.922-.589-11.784 2.445-20.121 9.02-24.778 13.007-9.216 34.888-.44 35.813-.062a1.596 1.596 0 01-1.207 2.955c-.211-.086-21.193-8.492-32.768-.285-5.622 3.986-8.203 11.392-7.672 22.011.167 3.349 2.284 15.285 5.906 27.149 4.194 13.742 8.967 22.413 13.096 23.79.648.216 2.62.873 5.439-2.517A245.272 245.272 0 0145.88 73.046a1.596 1.596 0 012.304 2.208c-.048.05-4.847 5.067-10.077 11.359-2.477 2.979-4.851 3.853-6.786 3.853zm69.429-13.445a1.596 1.596 0 01-1.322-2.487c14.863-22.055 20.08-48.704 15.612-54.414-5.624-7.186-13.565-10.939-23.604-11.156-7.433-.16-13.341 1.738-14.307 2.069l-.243.099c-.971.305-1.716-.227-1.997-.849a1.6 1.6 0 01.631-2.025c.046-.027.192-.089.429-.176l-.021.006.021-.007c1.641-.601 7.639-2.4 15.068-2.315 11.108.118 20.284 4.401 26.534 12.388 2.957 3.779 2.964 12.485.019 23.887-3.002 11.625-8.651 24.118-15.497 34.277-.306.457-.81.703-1.323.703zm.76 10.21c-2.538 0-4.813-.358-6.175-1.174-1.4-.839-1.667-1.979-1.702-2.584-.382-6.71 3.32-7.878 5.208-8.411-.263-.398-.637-.866-1.024-1.349-1.101-1.376-2.609-3.26-3.771-6.078-.182-.44-.752-1.463-1.412-2.648-3.579-6.418-11.026-19.773-6.242-26.612 2.214-3.165 6.623-4.411 13.119-3.716C97.6 28.837 88.5 10.625 66.907 10.271c-6.494-.108-11.82 1.889-15.822 5.93-8.96 9.049-8.636 25.422-8.631 25.586a1.595 1.595 0 11-3.19.084c-.02-.727-.354-17.909 9.554-27.916C53.455 9.272 59.559 6.96 66.96 7.081c13.814.227 22.706 7.25 27.732 13.101 5.479 6.377 8.165 13.411 8.386 15.759.165 1.746-1.088 2.095-1.341 2.147l-.576.013c-6.375-1.021-10.465-.312-12.156 2.104-3.639 5.201 3.406 17.834 6.414 23.229.768 1.376 1.322 2.371 1.576 2.985.988 2.396 2.277 4.006 3.312 5.3.911 1.138 1.7 2.125 1.982 3.283.131.23 1.99 2.98 13.021.703 2.765-.57 4.423-.083 4.93 1.45.997 3.015-4.597 6.532-7.694 7.97-2.775 1.29-7.204 2.106-11.036 2.106zm-4.696-4.021c.35.353 2.101.962 5.727.806 3.224-.138 6.624-.839 8.664-1.786 2.609-1.212 4.351-2.567 5.253-3.492l-.5.092c-7.053 1.456-12.042 1.262-14.828-.577a6.162 6.162 0 01-.54-.401c-.302.119-.581.197-.78.253-1.58.443-3.214.902-2.996 5.105zm-45.562 8.915c-1.752 0-3.596-.239-5.479-.71-1.951-.488-5.24-1.957-5.19-4.37.057-2.707 3.994-3.519 5.476-3.824 5.354-1.103 5.703-1.545 7.376-3.67.488-.619 1.095-1.39 1.923-2.314 1.229-1.376 2.572-2.073 3.992-2.073.989 0 1.8.335 2.336.558 1.708.708 3.133 2.42 3.719 4.467.529 1.847.276 3.625-.71 5.006-3.237 4.533-7.886 6.93-13.443 6.93zm-7.222-4.943c.481.372 1.445.869 2.518 1.137 1.631.408 3.213.615 4.705.615 4.546 0 8.196-1.882 10.847-5.594.553-.774.387-1.757.239-2.274-.31-1.083-1.08-2.068-1.873-2.397-.43-.178-.787-.314-1.115-.314-.176 0-.712 0-1.614 1.009a41.146 41.146 0 00-1.794 2.162c-2.084 2.646-3.039 3.544-9.239 4.821-1.513.31-2.289.626-2.674.835zm12.269-7.36a1.596 1.596 0 01-1.575-1.354 8.218 8.218 0 01-.08-.799c-4.064-.076-7.985-1.82-10.962-4.926-3.764-3.927-5.477-9.368-4.699-14.927.845-6.037.529-11.366.359-14.229-.047-.796-.081-1.371-.079-1.769.003-.505.013-1.844 4.489-4.113 1.592-.807 4.784-2.215 8.271-2.576 5.777-.597 9.585 1.976 10.725 7.246 3.077 14.228.244 20.521-1.825 25.117-.385.856-.749 1.664-1.04 2.447l-.257.69c-1.093 2.931-2.038 5.463-1.748 7.354a1.595 1.595 0 01-1.335 1.819l-.244.02zM42.464 42.26l.062 1.139c.176 2.974.504 8.508-.384 14.86-.641 4.585.759 9.06 3.843 12.276 2.437 2.542 5.644 3.945 8.94 3.945h.068c.369-1.555.982-3.197 1.642-4.966l.255-.686c.329-.884.714-1.74 1.122-2.646 1.991-4.424 4.47-9.931 1.615-23.132-.565-2.615-1.936-4.128-4.189-4.627-4.628-1.022-11.525 2.459-12.974 3.837zm9.63-.677c-.08.564 1.033 2.07 2.485 2.271 1.449.203 2.689-.975 2.768-1.539.079-.564-1.033-1.186-2.485-1.388-1.451-.202-2.691.092-2.768.656zm2.818 2.826l-.407-.028c-.9-.125-1.81-.692-2.433-1.518-.219-.29-.576-.852-.505-1.354.101-.736.999-1.177 2.4-1.177.313 0 .639.023.967.069.766.106 1.477.327 2.002.62.91.508.977 1.075.936 1.368-.112.813-1.405 2.02-2.96 2.02zm-2.289-2.732c.045.348.907 1.496 2.029 1.651l.261.018c1.036 0 1.81-.815 1.901-1.082-.096-.182-.762-.634-2.025-.81a5.823 5.823 0 00-.821-.059c-.812 0-1.243.183-1.345.282zm43.605-1.245c.079.564-1.033 2.07-2.484 2.272-1.45.202-2.691-.975-2.771-1.539-.076-.564 1.036-1.187 2.486-1.388 1.45-.203 2.689.092 2.769.655zm-2.819 2.56c-1.396 0-2.601-1.086-2.7-1.791-.115-.846 1.278-1.489 2.712-1.688.316-.044.629-.066.93-.066 1.238 0 2.058.363 2.14.949.053.379-.238.964-.739 1.492-.331.347-1.026.948-1.973 1.079l-.37.025zm.943-3.013c-.276 0-.564.021-.856.061-1.441.201-2.301.779-2.259 1.089.048.341.968 1.332 2.173 1.332l.297-.021c.787-.109 1.378-.623 1.66-.919.443-.465.619-.903.598-1.052-.028-.198-.56-.49-1.613-.49zm3.965 32.843a1.594 1.594 0 01-1.324-2.483c3.398-5.075 2.776-10.25 2.175-15.255-.257-2.132-.521-4.337-.453-6.453.07-2.177.347-3.973.614-5.71.317-2.058.617-4.002.493-6.31a1.595 1.595 0 113.186-.172c.142 2.638-.197 4.838-.525 6.967-.253 1.643-.515 3.342-.578 5.327-.061 1.874.178 3.864.431 5.97.64 5.322 1.365 11.354-2.691 17.411a1.596 1.596 0 01-1.328.708z"/></symbol>
+<symbol id="i-qdrant" viewBox="0 0 24 24"><g fill="currentColor"><path d="m12 16.5 3.897-2.25v-4.5L12 7.5 8.103 9.75v4.5zM1.607 18 12 24l3.897-2.25v-4.5L12 19.5l-6.495-3.75v-7.5L12 4.5l6.495 3.75v15L22.393 21V6L12 0 1.607 6Z"/></g></symbol>
+<symbol id="i-quote" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" /> <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" /></g></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" /></g></symbol>
+<symbol id="i-ruler" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" /> <path d="m14.5 12.5 2-2" /> <path d="m11.5 9.5 2-2" /> <path d="m8.5 6.5 2-2" /> <path d="m17.5 15.5 2-2" /></g></symbol>
+<symbol id="i-scissors" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3" /> <path d="M8.12 8.12 12 12" /> <path d="M20 4 8.12 15.88" /> <circle cx="6" cy="18" r="3" /> <path d="M14.8 14.8 20 20" /></g></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></g></symbol>
+<symbol id="i-tags" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1z" /> <path d="M2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193" /> <circle cx="10.5" cy="6.5" r=".5" fill="currentColor" /></g></symbol>
+<symbol id="i-text-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H3" /> <path d="M10 12H3" /> <path d="M10 19H3" /> <circle cx="17" cy="15" r="3" /> <path d="m21 19-1.9-1.9" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-waypoints" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.586 5.414-5.172 5.172" /> <path d="m18.586 13.414-5.172 5.172" /> <path d="M6 12h12" /> <circle cx="12" cy="20" r="2" /> <circle cx="12" cy="4" r="2" /> <circle cx="20" cy="12" r="2" /> <circle cx="4" cy="12" r="2" /></g></symbol>
+</defs></svg>
+
+<section class="ac-hero">
+  <div class="ac-wrap">
+    <div class="ac-kicker">한 장으로 보는 AI 시스템 설계 · 4</div>
+    <div class="ac-head">
+      <h1>RAG는 질문이 오기 전에<br>무엇을 준비해 둘까요?</h1>
+      <p>RAG(Retrieval-Augmented Generation)는 모델이 학습한 적 없는 문서로 답하게 하는 구조입니다. 문서를 나누고 색인하는 일은 질문이 오기 전에 끝나 있습니다. 질문이 오면 그 색인에서 몇 개만 찾아 모델에 건넵니다.</p>
+    </div>
+
+    <figure class="iso" data-figure data-iso="rag" aria-label="RAG 시스템을 도서관 사서에 빗댄 장면. 사서가 손님이 오기 전에 설명서를 정리대에서 카드로 나누고 위치 번호를 매겨 카드함에 꽂아 둔다. 질문이 오면 카드함에서 후보 카드 20장을 찾고 검토석에서 3장으로 줄인 뒤 필자의 책상에 펴 놓는다. 필자는 그 카드를 보고 답을 쓴다.">
+      <p class="iso-req"><span>예시 질문</span>건조기에 E5가 떠요. 어떻게 해야 하나요?</p>
+      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
+      <ol class="iso-steps">
+        <li data-k="청킹">사서(RAG 앱)는 손님이 오기 전에 새로 들어온 설명서를 정리대로 가져가 문단 크기의 카드로 나눕니다. 이 카드가 청크(chunk)입니다. 책을 통째로 두면 필요한 문단 하나를 찾아낼 수 없어서입니다.</li>
+        <li data-k="색인">카드마다 내용에 따라 위치 번호를 매겨 카드함에 꽂습니다. 이 번호가 임베딩(embedding)이고 카드함이 벡터 저장소(vector store)입니다. 내용이 비슷한 카드는 번호도 가깝습니다. 여기까지가 질문이 오기 전에 해 두는 일입니다.</li>
+        <li data-k="질문">손님이 건조기 오류를 묻습니다. 답은 설명서에 적혀 있지만 모델은 이 설명서를 학습한 적이 없습니다.</li>
+        <li data-k="검색">사서는 질문에도 같은 방식으로 번호를 매겨 카드함에서 번호가 가까운 카드를 찾습니다. "E5"처럼 글자가 똑같이 적힌 카드도 함께 찾아 후보 20장을 받아 옵니다.</li>
+        <li data-k="리랭킹">후보 20장을 그대로 넘기지 않고 검토석에 들릅니다. 카드함은 빨리 찾지만 순위는 정확하지 않습니다. 검토석에서는 질문과 카드를 한 장씩 맞대어 읽고 3장만 남깁니다. 이 단계가 리랭킹(reranking)입니다.</li>
+        <li data-k="생성">질문과 카드 3장을 필자(모델)의 책상에 펴 놓습니다. 필자는 자리를 뜨지 않고 펴 놓은 카드에 적힌 내용으로 답을 씁니다.</li>
+        <li data-k="답">사서는 답이 어느 설명서 몇 쪽에서 나왔는지 출처를 붙여 손님에게 전합니다. 비유와 다른 점도 있습니다. 실제 임베딩은 사람이 정한 분류 번호가 아니고 임베딩 모델이 계산한 숫자 수백~수천 개입니다.</li>
+      </ol>
+      <p class="iso-sum">문서를 나누고 색인하는 일(1 · 2)은 질문이 오기 전에 끝나 있습니다. 질문이 오면 카드함에서 후보를 찾고(4) 검토석에서 추려(5) 모델 앞에 펴 놓습니다(6). 모델은 그 카드에 적힌 내용으로 답을 씁니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <p class="ac-bridge">같은 질문을 실제 구성 요소 이름으로 다시 그리면 아래 흐름도가 됩니다. 사서가 손님이 오기 전에 하던 일이 적재 파이프라인이고 질문을 받은 뒤에 하던 일이 질의 파이프라인입니다. 카드에 매긴 위치 번호는 임베딩 벡터입니다.</p>
+
+    <figure class="fl" data-figure aria-label="RAG 시스템 흐름도. 위 줄은 적재 파이프라인으로 문서를 청킹해 청크로 나누고 임베딩 모델로 벡터를 만들어 벡터 저장소에 색인한다. 아래 줄은 질의 파이프라인으로 사용자의 질문이 들어오면 검색 단계가 벡터 저장소에서 후보 청크 20개를 받아 오고 리랭커가 3개로 줄인 뒤 모델이 그 청크를 읽고 답을 써서 사용자에게 돌려준다. 두 파이프라인은 벡터 저장소에서 만난다.">
+      <div class="fl-top"><h2>RAG 시스템의 흐름</h2>
+        <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><div class="mt">예시 · 가전 고객 지원 채팅에 들어온 질문</div><div class="mb">"건조기에 E5가 떠요. 어떻게 해야 하나요?"</div></div></div>
+      </div>
+      <p class="fl-cap" data-fl-cap>설명서 120권 → 청크 9,600개 → 후보 20개 → 청크 3개 → 모델 호출 1번. 위 줄은 질문이 오기 전에 끝나 있고 질문마다 도는 것은 아래 줄뿐이다</p>
+      <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 730" role="img" aria-label="RAG 시스템 흐름도"></svg>
+      <ol class="fl-legend">
+        <li><span>문서를 문단 크기의 청크로 나눈다</span></li>
+        <li><span>청크마다 임베딩해 벡터와 원문을 저장소에 넣는다</span></li>
+        <li><span>질문이 들어온다</span></li>
+        <li><span>질문을 같은 모델로 임베딩해 벡터 검색과 키워드 검색으로 후보 20개를 받는다</span></li>
+        <li><span>리랭커가 후보를 다시 채점해 3개만 남긴다</span></li>
+        <li><span>질문과 청크 3개를 프롬프트에 넣어 모델에 보낸다</span></li>
+        <li><span>모델이 청크에 적힌 내용으로 답을 쓰고 출처를 붙인다</span></li>
+      </ol>
+      <p class="fl-src">질문과 제품, 숫자(120권 · 9,600개 · 20개 · 3개)는 설명을 위한 예시 값입니다. 후보를 넉넉히 뽑은 뒤 리랭킹으로 줄이는 구성은 Anthropic의 Contextual Retrieval 글을 따랐습니다. 그 글의 실험에서는 150개를 뽑아 20개로 줄였습니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>검색이 빗나갈 때 고치는 곳</h2>
+      <p>답이 틀렸다면 모델보다 검색을 먼저 봅니다. 맞는 청크가 모델 앞에 놓이지 않으면 모델은 답할 근거가 없습니다. 고칠 곳은 두 파이프라인에 나뉘어 있습니다. 아래 기본값과 수치는 2026년 11월에 확인한 문서 기준입니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-data"><svg aria-hidden="true"><use href="#i-file-text"/></svg>적재 파이프라인에서 정하는 것</h3>
+        <ul>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-ruler"/></svg></span><div><b>청크 크기와 겹침</b><span class="d">너무 작으면 문맥이 끊기고 너무 크면 엉뚱한 내용이 섞인다. OpenAI 벡터 저장소의 기본값은 800토큰에 겹침 400토큰</span></div></li>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-file-plus-2"/></svg></span><div><b>청크에 문맥 붙이기</b><span class="d">Contextual Retrieval. "건조기 DR-900 오류 코드 표의 일부"처럼 50~100토큰짜리 설명을 청크 앞에 붙이고 나서 임베딩한다</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-tags"/></svg></span><div><b>메타데이터</b><span class="d">제품 이름, 문서 종류, 개정 날짜를 청크와 함께 저장해 검색 범위를 좁힌다</span></div></li>
+          <li><span class="ni k-model"><svg aria-hidden="true"><use href="#i-binary"/></svg></span><div><b>임베딩 모델 고정</b><span class="d">문서와 질문에 같은 모델을 쓴다. 모델을 바꾸면 청크 전부를 다시 임베딩한다</span></div></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-search"/></svg>질의 파이프라인에서 정하는 것</h3>
+        <ul>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-text-search"/></svg></span><div><b>하이브리드 검색</b><span class="d">hybrid search. 벡터 검색은 뜻이 가까운 청크를, 키워드 검색(BM25)은 "E5"처럼 글자가 같은 청크를 찾는다. 두 순위는 RRF(Reciprocal Rank Fusion) 같은 방법으로 합친다</span></div></li>
+          <li><span class="ni k-model"><svg aria-hidden="true"><use href="#i-arrow-down-wide-narrow"/></svg></span><div><b>리랭킹</b><span class="d">후보를 넉넉히 뽑고 질문과 한 쌍씩 다시 채점해 줄인다. Cohere Rerank, Voyage rerank, 오픈 모델 bge-reranker가 이 일을 한다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-coins"/></svg></span><div><b>모델에 넘기는 청크 수</b><span class="d">많이 넘길수록 모델이 읽을 토큰이 늘어 비용과 지연이 커진다</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-quote"/></svg></span><div><b>출처 표시</b><span class="d">청크마다 문서 이름과 쪽 번호를 함께 넘겨 답에 붙이게 한다</span></div></li>
+        </ul>
+        <p class="note">Anthropic이 2024년 9월에 공개한 실험에서는 문맥 붙이기와 하이브리드 검색을 함께 썼을 때 상위 20개 검색 실패율이 5.7%에서 2.9%로 내려갔고 리랭킹까지 더하자 1.9%가 됐습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>Agentic RAG와 Graph RAG에서 달라지는 곳</h2>
+      <p>두 변형은 위 흐름도를 버리지 않고 한쪽 파이프라인을 바꿉니다. Agentic RAG는 질의 쪽을 바꾸고 Graph RAG는 적재 쪽을 바꿉니다. 문서가 적다면 둘 다 필요 없습니다. Anthropic은 지식 베이스가 20만 토큰(약 500쪽)보다 작으면 검색 없이 전부 프롬프트에 넣으라고 권합니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-repeat"/></svg>Agentic RAG · 질의 파이프라인이 루프가 된다</h3>
+        <ul>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-search"/></svg></span><div><b>바뀌는 것</b><span class="d">검색이 항상 한 번 실행되는 단계에서 모델이 필요할 때 부르는 도구로 바뀐다</span></div></li>
+          <li><span class="ni k-model"><svg aria-hidden="true"><use href="#i-brain"/></svg></span><div><b>모델이 정하는 것</b><span class="d">검색을 할지, 어떤 검색어로 할지, 결과가 모자라면 다시 할지</span></div></li>
+          <li><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><b>맞는 질문</b><span class="d">"E5를 지웠더니 E7이 떠요"처럼 검색 한 번으로 끝나지 않는 질문</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-coins"/></svg></span><div><b>늘어나는 비용</b><span class="d">모델 호출 횟수가 질문마다 달라져 지연과 비용을 미리 알기 어렵다</span></div></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="k-data"><svg aria-hidden="true"><use href="#i-waypoints"/></svg>Graph RAG · 적재 파이프라인에 그래프가 더해진다</h3>
+        <ul>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-waypoints"/></svg></span><div><b>바뀌는 것</b><span class="d">청크에서 LLM으로 엔티티(entity)와 관계를 뽑아 그래프를 만든다</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-boxes"/></svg></span><div><b>미리 만들어 두는 것</b><span class="d">가까운 엔티티를 커뮤니티로 묶고 커뮤니티마다 요약 보고서를 써 둔다</span></div></li>
+          <li><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><b>맞는 질문</b><span class="d">"설명서 전체에서 가장 자주 나오는 고장 원인은?"처럼 청크 몇 개로는 답할 수 없고 문서 전체를 종합해야 하는 질문</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-coins"/></svg></span><div><b>늘어나는 비용</b><span class="d">적재 단계에서 청크마다 LLM을 불러 색인을 만드는 데 시간과 비용이 더 든다</span></div></li>
+        </ul>
+        <p class="note">Microsoft GraphRAG는 질문 종류에 따라 커뮤니티 보고서 전체를 읽어 종합하는 global search와 엔티티 주변을 읽는 local search를 나눠 씁니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap ac-more">
+    <h2>더 읽어 보기</h2>
+    <ul>
+      <li><a href="/posts/rag-retrieval-pipeline">RAG는 AI가 모르는 우리 회사 규정을 어떻게 답할까요</a> · <a href="/posts/rag-embedding-vector-db">벡터 DB가 100만 개 문서에서 쓰는 지름길</a> · <a href="/posts/agentic-rag-search-as-tool-langchain">검색을 도구로 바꾸면 달라지는 것, Agentic RAG</a></li>
+      <li><a href="https://www.anthropic.com/engineering/contextual-retrieval" rel="noopener">Anthropic, Contextual Retrieval</a> · <a href="https://developers.openai.com/api/docs/guides/retrieval" rel="noopener">OpenAI 문서, Retrieval</a> · <a href="https://ai.google.dev/gemini-api/docs/file-search" rel="noopener">Gemini API 문서, File Search</a> · <a href="https://qdrant.tech/documentation/concepts/hybrid-queries/" rel="noopener">Qdrant 문서, Hybrid Queries</a> · <a href="https://docs.langchain.com/oss/python/langchain/retrieval" rel="noopener">LangChain 문서, Retrieval</a> · <a href="https://microsoft.github.io/graphrag/" rel="noopener">Microsoft GraphRAG</a> · <a href="https://arxiv.org/abs/2005.11401" rel="noopener">Lewis 외, Retrieval-Augmented Generation(2020)</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* 맨 위 장면(POSTING 5-11): 흐름도와 같은 질문 · 같은 문서 · 같은 일곱 단계(설명서 120권 → 청크 9,600개 → 후보 20개 → 청크 3개 → 모델 호출 1번) */
+(() => {
+  /* 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아(p1 장) → 돌아온다. 리랭킹은 종이가 얇아져야 해서 trip() 대신 장수를 직접 적는다 */
+  const trip = (route, st, o) => [
+    ["at", route, { hold: true, pages: o.p0, say: o.carry }], ["go", route],
+    ["wait", o.ms || 1700, st, o.work, { hold: false, drop: true, say: "" }],
+    ["set", { hold: true, pages: o.p1, say: o.result }], ["wait", 500, st, o.give],
+    ["back", route], ["wait", 800, "app", o.write],
+  ];
+  const drawers = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    if (r === 1 && c === 1) continue; // 가운데 서랍은 아래에서 열린 채로 그린다
+    drawers.push(["box", -0.8 + c * 0.8, 0.27, 0.62, 0.04, 0.42, "wall", 0.4 + r * 0.58], ["box", -0.8 + c * 0.8, 0.3, 0.18, 0.03, 0.07, "yellow", 0.58 + r * 0.58]);
+  }
+  isoScene(postPage.root.querySelector('[data-iso="rag"]'), {
+    stations: {
+      app: { name: "RAG 앱", meta: "사서", at: [0, 0], size: [4.6, 3.6], top: 2.1, parts: [
+        ["box", 0.1, -0.2, 2.4, 1.3, 0.85, "teal"], ["box", 0.1, -0.2, 2.5, 1.4, 0.08, "white", 1.05], ["box", 0.4, -0.2, 0.9, 0.7, 0.1, "paper", 1.13] ] },
+      user: { name: "사용자", meta: "손님", at: [-9, 1], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, 0, "navy"]] },
+      store: { name: "벡터 저장소", meta: "카드함", at: [0, -9], size: [3.4, 2.8], top: 3.0, drop: [0, 0.2, 1.05], parts: [
+        ["box", 0, -0.3, 2.6, 1.1, 2.0, "navy"], ...drawers,
+        ["box", 0, 0.5, 0.62, 0.5, 0.42, "wall", 0.98], ["box", 0, 0.5, 0.5, 0.4, 0.05, "paper", 1.4], ["box", 0, 0.77, 0.18, 0.03, 0.07, "yellow", 1.16] ] },
+      rerank: { name: "리랭커", meta: "검토석", at: [11, -1], size: [3.4, 3.2], top: 2.6, drop: [-1.4, 1.13, 0], parts: [
+        ["box", -1.4, 0, 0.5, 2.4, 0.85, "grey"], ["box", -1.4, 0, 0.56, 2.46, 0.08, "white", 1.05],
+        ["person", 0.1, -0.2, "teal"],
+        ["box", 0.5, 1.0, 1.1, 0.7, 0.55, "grey"], ["box", 0.25, 1.0, 0.36, 0.46, 0.34, "paper", 0.75], ["box", 0.78, 1.0, 0.36, 0.46, 0.07, "yellow", 0.75] ] },
+      model: { name: "모델", meta: "답을 쓰는 필자", at: [8.5, 5], size: [2.8, 2.8], top: 2.5, drop: [0.45, 1.02, -0.8], parts: [
+        ["box", 0, -0.8, 2.1, 0.8, 0.8, "grey"], ["box", -0.5, -0.8, 0.5, 0.5, 0.05, "paper", 1.0],
+        ["person", 0, 0.3, "orange"] ] },
+      prep: { name: "청킹", meta: "정리대", at: [0, 9], size: [2.8, 2.6], top: 2.1, drop: [0.55, 0.92, -0.5], parts: [
+        ["box", 0, 0, 2.2, 1.6, 0.7, "grey"],
+        ["box", -0.6, -0.15, 0.7, 0.9, 0.16, "orange", 0.9], ["box", -0.6, -0.15, 0.7, 0.9, 0.16, "navy", 1.06], ["box", -0.6, -0.15, 0.7, 0.9, 0.16, "orange", 1.22],
+        ["box", 0.3, 0.4, 0.4, 0.3, 0.05, "paper", 0.9], ["box", 0.8, 0.45, 0.4, 0.3, 0.05, "paper", 0.9], ["box", 0.55, 0.05, 0.4, 0.3, 0.05, "paper", 0.9] ] },
+    },
+    routes: { user: [[-7.4, 1], [-2.9, 1]], store: [[0, -3.1], [0, -7.2]], rerank: [[2.9, -1], [8.3, -1]], model: [[2.9, 1.2], [8.5, 1.2], [8.5, 3.3]], prep: [[0, 2.5], [0, 7.4]] },
+    actor: { color: "blue", home: [-2.9, 1] },
+    badges: [[[0, 5], "1"], [[0, -5.2], "2 · 4"], [[-5.2, 1], "3 · 7"], [[5.9, -1], "5"], [[8.5, 2.3], "6"]],
+    steps: [
+      trip("prep", "prep", { p0: 5, p1: 6, carry: "설명서 120권", work: "문단 크기로 나누는 중", give: "청크를 건네는 중", result: "청크 9,600개", write: "청크를 챙기는 중" }),
+      [["at", "store", { hold: true, pages: 6, say: "청크 9,600개" }], ["go", "store"],
+       ["wait", 2000, "store", "임베딩해서 색인에 넣는 중", { hold: false, drop: true, say: "" }],
+       ["set", { say: "색인 완료" }], ["wait", 600, "store", "색인 완료"], ["back", "store"], ["wait", 800, "app", "질문을 기다리는 중", { say: "" }]],
+      [["at", "user", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1200, "user", "질문하는 중"],
+       ["set", { hold: true, say: "질문" }], ["go", "user"], ["wait", 900, "app", "질문을 받는 중"]],
+      trip("store", "store", { p0: 1, p1: 5, carry: "질문", work: "가까운 벡터와 같은 낱말을 찾는 중", give: "후보를 건네는 중", result: "후보 청크 20개", write: "후보를 챙기는 중" }),
+      trip("rerank", "rerank", { p0: 5, p1: 2, carry: "질문 + 후보 20개", work: "질문과 하나씩 대조하는 중", give: "남긴 청크를 건네는 중", result: "상위 3개", write: "프롬프트에 넣는 중" }),
+      trip("model", "model", { p0: 2, p1: 3, carry: "질문 + 청크 3개", work: "청크를 읽고 답을 쓰는 중", give: "답을 건네는 중", result: "답 + 출처", write: "답을 받아 든 중" }),
+      [["at", [-2.9, 1], { hold: true, pages: 3, say: "답 + 출처" }], ["back", "user"], ["wait", 1200, "user", "답을 받는 중", { hold: false, say: "" }]],
+    ],
+  });
+})();
+</script>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  /* POSTING 5-3: 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상, 화면보다 크면 화면의 85%를 채울 때) 시작하고, 15% 미만이면 나간 것으로 본다 */
+  const IntersectionObserver = class {
+    constructor(cb) {
+      this.st = new Map();
+      this.io = new window.IntersectionObserver((es) => {
+        const out = [];
+        es.forEach((e) => {
+          const full = e.intersectionRatio >= 0.95 || e.intersectionRect.height >= innerHeight * 0.85, was = this.st.get(e.target) || false;
+          const now = was ? e.intersectionRatio >= 0.15 : full;
+          if (now !== was) { this.st.set(e.target, now); out.push({ target: e.target, isIntersecting: now, intersectionRatio: e.intersectionRatio }); }
+        });
+        if (out.length) cb(out, this);
+      }, { threshold: [0, 0.15, 0.5, 0.8, 0.9, 0.95, 1] });
+      (window.__pgIO = window.__pgIO || []).push(this);
+    }
+    observe(el) { this.io.observe(el); (window.__pgIOt = window.__pgIOt || []).push(el); }
+    unobserve(el) { this.io.unobserve(el); }
+    disconnect() { this.io.disconnect(); }
+  };
+
+  const svg = root.querySelector("[data-fl-svg]"); if (!svg) return;
+  const cap = root.querySelector("[data-fl-cap]"), CAP_DONE = cap.innerHTML;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
+  const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
+  const SLOW = 1.7; /* 독자가 따라 볼 수 있게 — 모든 대기·이동 시간을 1.7배로 (POSTING 5-10) */
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms * SLOW); signal.addEventListener("abort", () => clearTimeout(t)); });
+
+  /* 노드: 아이콘 · 이름 · 부제 */
+  const NODE = {
+    docs: { icon: "file-text", c: "var(--ac-data)", t: "문서", s: "설명서 PDF 120권" },
+    chunk: { icon: "scissors", c: "var(--ac-app)", t: "청킹", s: "문단 크기로 나눈다" },
+    embed: { icon: "binary", c: "var(--ac-model)", t: "임베딩 모델", s: "문서와 질문에 같은 모델", logos: ["openai", "gemini", "huggingface"] },
+    store: { icon: "database", c: "var(--ac-data)", t: "벡터 저장소", s: "벡터 색인 + 키워드 색인", logos: ["qdrant", "postgresql", "elasticsearch"] },
+    user: { icon: "user", c: "var(--ac-user)", t: "사용자", s: "고객 지원 채팅", person: true },
+    retr: { icon: "search", c: "var(--ac-app)", t: "검색", s: "하이브리드 검색" },
+    rerank: { icon: "arrow-down-wide-narrow", c: "var(--ac-model)", t: "리랭커", s: "20개 → 3개" },
+    model: { icon: "brain", c: "var(--ac-model)", t: "모델", s: "청크를 읽고 답을 쓴다", logos: ["claude", "openai", "gemini", "meta"] },
+  };
+  /* 배치 두 벌(ByteByteGo 문법: 격자 위 상자, 가로·세로로만 꺾는 엣지, 엣지 옆 번호 + 굵은 글). 노드 = [가운데 x, y, 폭, 높이] */
+  const LAYOUT = {
+    wide: {
+      vb: [1200, 730], labels: true, chip: [1010, 428, "middle"],
+      groups: [
+        { x: 20, y: 36, w: 1160, h: 152, t: "적재 파이프라인 · 질문이 오기 전에", us: true },
+        { x: 250, y: 508, w: 570, h: 158, t: "질의 파이프라인 · 질문이 올 때마다", us: true, px: 570 },
+        { x: 892, y: 508, w: 288, h: 158, t: "모델 API" },
+      ],
+      nodes: { docs: [140, 112, 200, 80], chunk: [560, 112, 200, 80], embed: [1010, 112, 260, 80], store: [1010, 350, 260, 84], user: [80, 590], retr: [380, 590, 200, 80], rerank: [690, 590, 200, 80], model: [1030, 590, 240, 84] },
+      edges: {
+        e1: { p: [[242, 112], [457, 112]], n: 1, b: [272, 90], t: "청크 9,600개" },
+        e2a: { p: [[662, 112], [877, 112]], n: 2, b: [692, 90], t: "청크마다 임베딩" },
+        e2b: { p: [[1010, 154], [1010, 305]], n: 2, b: [1030, 230], t: "벡터 + 원문 색인" },
+        e3: { p: [[110, 578], [277, 578]], n: 3, b: [140, 556], t: "질문" },
+        e4a: { p: [[365, 548], [365, 338], [877, 338]], n: 4, b: [420, 316], t: "질문 벡터 + 키워드로 검색" },
+        e4b: { p: [[877, 362], [395, 362], [395, 547]], n: 4, b: [420, 386], t: "후보 청크 20개" },
+        e5: { p: [[482, 590], [587, 590]], n: 5, b: [497, 566], t: "다시 채점" },
+        e6: { p: [[792, 590], [907, 590]], n: 6, b: [806, 566], t: "3개" },
+        e7: { p: [[1030, 634], [1030, 704], [190, 704], [190, 602], [113, 602]], n: 7, b: [300, 684], t: "답 + 출처" },
+      },
+    },
+    narrow: {
+      vb: [400, 790], labels: false, chip: [24, 336],
+      groups: [
+        { x: 10, y: 18, w: 380, h: 214, t: "적재 파이프라인", us: true },
+        { x: 130, y: 440, w: 260, h: 212, t: "질의 파이프라인", us: true, px: 198 },
+      ],
+      nodes: { docs: [92, 84, 150, 56], chunk: [300, 84, 160, 56], embed: [300, 184, 160, 56], store: [290, 330, 180, 56], user: [56, 490], retr: [290, 490, 180, 56], rerank: [290, 600, 180, 56], model: [290, 740, 180, 56] },
+      edges: {
+        e1: { p: [[169, 84], [217, 84]], n: 1, b: [193, 62] },
+        e2a: { p: [[300, 113], [300, 153]], n: 2, b: [322, 133] },
+        e2b: { p: [[300, 213], [300, 299]], n: 2, b: [322, 262] },
+        e3: { p: [[84, 490], [197, 490]], n: 3, b: [112, 470] },
+        e4a: { p: [[275, 461], [275, 361]], n: 4, b: [255, 404] },
+        e4b: { p: [[305, 359], [305, 459]], n: 4, b: [325, 404] },
+        e5: { p: [[290, 519], [290, 569]], n: 5, b: [312, 544] },
+        e6: { p: [[290, 629], [290, 709]], n: 6, b: [312, 680] },
+        e7: { p: [[199, 740], [56, 740], [56, 519]], n: 7, b: [76, 640] },
+      },
+    },
+  };
+  /* 가로·세로 꺾은선 → 모서리만 둥근 경로 */
+  const orth = (pts, r = 12) => {
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+      const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), rr = Math.min(r, l1 / 2, l2 / 2);
+      d += ` L${cx - (cx - px) / l1 * rr} ${cy - (cy - py) / l1 * rr} Q${cx} ${cy} ${cx + (nx - cx) / l2 * rr} ${cy + (ny - cy) / l2 * rr}`;
+    }
+    const z = pts[pts.length - 1]; return d + ` L${z[0]} ${z[1]}`;
+  };
+
+  let G = null, gen = 0;
+  function draw() {
+    const w = svg.getBoundingClientRect().width || 1100, L = w < 640 ? LAYOUT.narrow : LAYOUT.wide;
+    svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${L.vb[0]} ${L.vb[1]}`);
+    const defs = mk("defs"), mkr = mk("marker", { id: "fl-ah", viewBox: "0 0 10 10", refX: 8.5, refY: 5, markerWidth: 11, markerHeight: 11, markerUnits: "userSpaceOnUse", orient: "auto" }, defs);
+    mk("path", { d: "M1.5 1.5 L8.5 5 L1.5 8.5", class: "ah" }, mkr);
+    /* 그룹: 점선 테두리 + 위 테두리에 검은 알약 이름표 */
+    L.groups.forEach((z) => {
+      mk("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: 18, class: "grp" + (z.us ? " us" : "") });
+      const pl = mk("g", { class: "pill", transform: `translate(${z.px ?? z.x + z.w / 2} ${z.y})` }), r = mk("rect", { y: -14, height: 28, rx: 14 }, pl);
+      const tw = txt(pl, 0, 5, z.t, "").getComputedTextLength() + 32; r.setAttribute("x", -tw / 2); r.setAttribute("width", tw);
+    });
+    const E = {};
+    for (const [id, e] of Object.entries(L.edges)) E[id] = mk("path", { d: orth(e.p), class: "e", "marker-end": "url(#fl-ah)" });
+    const dot = mk("circle", { r: 7, class: "dot", cx: 0, cy: 0, style: "opacity:0" });
+    /* 번호: 엣지 옆 검은 원, 넓은 화면은 그 옆에 굵은 엣지 글 */
+    for (const e of Object.values(L.edges)) {
+      const [bx, by] = e.b, g = mk("g", { class: "badge", transform: `translate(${bx} ${by})` });
+      mk("circle", { r: 11 }, g); txt(g, 0, 4.5, String(e.n), "");
+      if (L.labels && e.t) txt(svg, bx + (e.a === "end" ? -17 : 17), by + 5, e.t, "el", e.a || "start");
+    }
+    const N = {};
+    for (const [id, [x, y, bw, bh]] of Object.entries(L.nodes)) {
+      const d = NODE[id], g = mk("g", { class: "nd", transform: `translate(${x} ${y})`, style: `--c:${d.c}` });
+      if (d.person) {
+        mk("circle", { r: 26, class: "ring" }, g);
+        mk("use", { href: `#i-${d.icon}`, x: -14, y: -14, width: 28, height: 28, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, 0, 48, d.t, "nt"); txt(g, 0, 66, d.s, "ns"); } else txt(g, 0, -36, d.t, "nt"); /* 좁은 화면은 이름을 위에 — 아래로는 답 엣지가 들어온다 */
+      } else {
+        mk("rect", { x: -bw / 2, y: -bh / 2, width: bw, height: bh, rx: 14, class: "box" }, g);
+        const ic = L.labels ? 30 : 24, lx = -bw / 2 + 16;
+        mk("use", { href: `#i-${d.icon}`, x: lx, y: -ic / 2, width: ic, height: ic, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, lx + ic + 12, -3, d.t, "nt", "start"); txt(g, lx + ic + 12, 17, d.s, "ns", "start"); }
+        else txt(g, lx + ic + 10, 6, d.t, "nt", "start");
+        if (d.logos && L.labels) d.logos.forEach((lg, i) => mk("use", { href: `#i-${lg}`, x: bw / 2 - 16 - (d.logos.length - i) * 24, y: -bh / 2 + 12, width: 18, height: 18, style: "color:var(--fg-strong)" }, g));
+      }
+      N[id] = { g };
+    }
+    const chip = txt(svg, L.chip[0], L.chip[1], "", "chip", L.chip[2] || "start");
+    G = { E, N, dot, chip };
+  }
+
+  const hot = (...ids) => Object.entries(G.N).forEach(([k, n]) => n.g.classList.toggle("hot", ids.includes(k)));
+  const setCap = async (html, my) => { cap.classList.add("fade"); await wait(250); if (my !== gen) return; cap.innerHTML = html; cap.classList.remove("fade"); };
+  /* 엣지 하나를 따라 점을 옮긴다 */
+  const run = (id, ms, my) => new Promise((res) => {
+    const p = G.E[id], len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); G.dot.style.opacity = 1;
+    const st = (now) => {
+      if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
+      const t = Math.min(1, (now - t0) / (ms * SLOW)), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * k);
+      G.dot.setAttribute("cx", q.x); G.dot.setAttribute("cy", q.y);
+      if (t < 1) requestAnimationFrame(st); else { p.classList.remove("on"); res(); }
+    };
+    requestAnimationFrame(st);
+  });
+
+  const CHIP_DONE = "색인된 청크 9,600개";
+  const done = () => { hot(); G.dot.style.opacity = 0; G.chip.textContent = CHIP_DONE; cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
+
+  /* 적재 줄(1 · 2)을 먼저 지나고, 잠깐 멈춘 뒤 질의 줄(3~7)을 지난다 */
+  async function play() {
+    const my = ++gen, ok = () => my === gen && !signal.aborted;
+    G.chip.textContent = "";
+    hot("docs"); await setCap("질문이 오기 전 · 설명서 120권을 문단 크기의 청크 9,600개로 나눈다", my); await wait(500); if (!ok()) return;
+    await run("e1", 1000, my); if (!ok()) return; hot("chunk"); await wait(500);
+    setCap("질문이 오기 전 · 청크마다 임베딩해 벡터와 원문을 저장소에 넣는다", my);
+    await run("e2a", 1000, my); if (!ok()) return; hot("embed"); await wait(500);
+    await run("e2b", 900, my); if (!ok()) return; hot("store"); G.chip.textContent = CHIP_DONE; G.dot.style.opacity = 0; await wait(1400); if (!ok()) return;
+    hot("user"); await setCap("질문이 들어온다 · \"건조기에 E5가 떠요\"", my); await wait(500); if (!ok()) return;
+    await run("e3", 900, my); if (!ok()) return; hot("retr"); await wait(400);
+    setCap("질문을 같은 모델로 임베딩해 벡터 검색과 키워드 검색으로 후보 20개를 받는다", my);
+    await run("e4a", 1300, my); if (!ok()) return; hot("store"); await wait(600);
+    await run("e4b", 1300, my); if (!ok()) return; hot("retr"); await wait(400);
+    setCap("리랭커가 질문과 후보를 한 쌍씩 다시 채점해 3개만 남긴다", my);
+    await run("e5", 800, my); if (!ok()) return; hot("rerank"); await wait(700);
+    setCap("질문과 청크 3개를 프롬프트에 넣어 모델에 보낸다", my);
+    await run("e6", 800, my); if (!ok()) return; hot("model"); await wait(700);
+    setCap("모델이 청크에 적힌 내용으로 답을 쓰고 출처를 붙인다", my);
+    await run("e7", 1700, my); if (!ok()) return; hot("user"); await wait(2500); if (!ok()) return;
+    done();
+  }
+
+  draw(); done();
+  let lastW = svg.getBoundingClientRect().width;
+  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; const was = (lastW < 640) !== (w < 640); lastW = w; if (was) { gen++; draw(); done(); } });
+  ro.observe(svg);
+  if (!reduce) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; done(); } }));
+    io.observe(svg);
+    signal.addEventListener("abort", () => io.disconnect());
+  }
+  signal.addEventListener("abort", () => ro.disconnect());
+})();
+</script>
