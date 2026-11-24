@@ -6,7 +6,7 @@ tags: [AI 아키텍처, AI Agent, 워크플로, Anthropic, LangGraph]
 category: ai
 series: ai-architecture-cheatsheet
 series_order: 2
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwu3c47d.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwu64i0c.jpg
 ---
 <!-- page -->
 <!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(순서표가 붙은 작업 줄과 안내 데스크, POSTING 5-11 — 2026-11-24 사용자 지시로 흐름도 앞에 둠, 썸네일도 이 장면. 여섯 패턴 중 양 끝인 프롬프트 체이닝과 Agent 만 같은 메일로 견준다) + 큰 흐름도 판(예시 메일 + 패턴 여섯 줄 — 줄마다 왼쪽 이름 카드 · 오른쪽 직각 엣지 흐름도) + 가장 단순한 것부터 고르는 순서 + 더 읽어 보기 | 글의 성격: 같은 고객 문의 메일 한 통이 여섯 방식에서 지나는 길. 줄이 화면에 다 들어오면 점이 그 줄의 흐름을 따라가고, 평가자-최적화와 Agent 는 고리를 돈다 | 레퍼런스: ByteByteGo "Top AI Agentic Workflow Patterns"(줄 구성·직각 엣지), Anthropic "Building effective agents"(패턴별 In → LLM Call → Out, 동적 분기는 점선) | 접은 안: 여섯 칸 보드 한 장(2026-11-14, 2026-11-19 접음) -->
@@ -502,7 +502,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 <script>
 /* 맨 위 장면(POSTING 5-11): 아래 흐름도의 첫 줄(프롬프트 체이닝: 요약 → 가리기 → 답장 작성)과 끝 줄(Agent: 모델 3번, 도구 2번)을 같은 메일로 */
 (() => {
-  const HUB = [0, 2.9], back = [0, -1];
+  const HUB = [0, 0], back = [0, -1];
   // 모델 앞에 서서 묻기: 메일을 올려놓고 기다렸다가 답을 받는다
   const ask = (pages, work, result) => [["wait", 1700, "model", work, { hold: false, drop: true, say: "", face: back }],
     ["set", { hold: true, pages: pages + 1, say: result }], ["wait", 600, "model", "답을 건네는 중"]];
@@ -513,28 +513,29 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   const counter = (x) => [["box", x, 0.85, 1.9, 0.45, 0.75, "grey"], ["box", x, 0.85, 1.96, 0.51, 0.07, "white", 0.95]];
   isoScene(postPage.root.querySelector('[data-iso="patterns"]'), {
     stations: {
-      mail: { name: "문의 메일", meta: "고객", at: [-11, 0], size: [2.4, 2.4], top: 1.9, parts: [["person", -0.2, 0, "navy"]] },
-      line: { name: "워크플로", meta: "순서표가 붙은 작업 줄", at: [2, -6.6], size: [11, 2.8], top: 3.6, parts: [
+      mail: { name: "문의 메일", meta: "고객", at: [-12.5, 0], size: [2.4, 2.4], top: 1.9, parts: [["person", -0.2, 0, "navy"]] },
+      line: { name: "워크플로", meta: "순서표가 붙은 작업 줄", at: [-1.2, -8.8], size: [11, 2.8], top: 3.6, parts: [
         ["box", -4.5, 0.75, 1.5, 0.14, 1.6, "wall"], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "orange", 1.3], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "teal", 0.93], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "orange", 0.56],
         ["person", -1.8, -0.3, "orange"], ...counter(-1.8),
         ["box", 1.2, -0.25, 1.2, 0.9, 1.25, "teal"], ["box", 1.2, 0.21, 0.8, 0.03, 0.12, "dark", 1.05], ...counter(1.2),
         ["person", 4.2, -0.3, "orange"], ...counter(4.2) ] },
-      model: { name: "Agent의 모델", meta: "안내 데스크", at: [0, 0], size: [3.4, 3.4], top: 2.1, drop: [0, 1.18, 1.45], parts: [
+      model: { name: "Agent의 모델", meta: "안내 데스크", at: [0, -2.9], size: [3.4, 3.4], top: 2.1, drop: [0, 1.18, 1.45], parts: [
         ["person", 0, -0.1, "orange"], ["box", 0, 1.45, 2.6, 0.3, 0.9, "navy"], ["box", 0, 1.45, 2.66, 0.36, 0.08, "white", 1.1] ] },
-      order: { name: "주문 조회", meta: "주문 서류함", at: [-4.8, 6.8], size: [2.4, 2.4], top: 2.3, drop: [0, 0.2, 0.95], parts: [
+      order: { name: "주문 조회", meta: "주문 서류함", at: [-5.6, -2.2], size: [2.4, 2.4], top: 2.3, drop: [0, 0.2, 0.95], parts: [
         ["box", 0, 0.1, 1.4, 1.0, 1.5, "navy"], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 0.42], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 0.85], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 1.28] ] },
-      refund: { name: "환불 처리", meta: "환불 계산대", at: [4.8, 6.8], size: [2.4, 2.4], top: 1.9, drop: [0, 0.2, 0.95], parts: [
+      refund: { name: "환불 처리", meta: "환불 계산대", at: [5.6, -2.2], size: [2.4, 2.4], top: 1.9, drop: [0, 0.2, 0.95], parts: [
         ["box", 0, 0.1, 1.5, 1.0, 0.8, "blue"], ["box", -0.3, -0.15, 0.6, 0.4, 0.5, "dark", 1.0], ["box", 0, 0.62, 1.1, 0.03, 0.22, "grey", 0.5], ["sph", 0.4, 1.2, 0.35, 0.2, "yellow"] ] },
-      reply: { name: "답장", meta: "우체통", at: [11, 0], size: [2.4, 2.4], top: 2.4, drop: [-0.95, 0.2, 0], parts: [
+      reply: { name: "답장", meta: "우체통", at: [12.5, 0], size: [2.4, 2.4], top: 2.4, drop: [-0.95, 0.2, 0], parts: [
         ["box", 0, 0, 0.22, 0.22, 0.9, "grey"], ["box", 0, 0, 1.4, 1.0, 0.85, "red", 1.1], ["box", 0.71, 0, 0.03, 0.62, 0.13, "dark", 1.55] ] },
     },
-    // 길: 메일에서 위로 갈라지면 워크플로 줄, 아래로 갈라지면 모델 앞. 축을 따라 긋는다
+    // 길은 두 갈래다. 워크플로는 뒤쪽 한 줄로 돌아가고, Agent 는 메일과 우체통을 곧게 잇는 앞줄 위에서
+    // 서류함 · 안내 데스크 · 계산대 앞을 오간다(도구는 데스크 바로 양옆이라 왕복이 짧다). 축을 따라 긋는다
     routes: {
-      wf0: [[-8.8, 0], [-8.8, -4.2], [0.2, -4.2]], wf1: [[0.2, -4.2], [3.2, -4.2]], wf2: [[3.2, -4.2], [6.2, -4.2]], wf3: [[6.2, -4.2], [8.8, -4.2], [8.8, 0]],
-      in: [[-8.8, 0], [-8.8, 2.9], HUB], order: [HUB, [0, 9], [-4.8, 9]], refund: [HUB, [0, 9], [4.8, 9]], out: [HUB, [8.8, 2.9], [8.8, 0]],
+      wf0: [[-10.15, 0], [-10.15, -6.4], [-3, -6.4]], wf1: [[-3, -6.4], [0, -6.4]], wf2: [[0, -6.4], [3, -6.4]], wf3: [[3, -6.4], [10.15, -6.4], [10.15, 0]],
+      in: [[-10.15, 0], HUB], order: [HUB, [-5.6, 0]], refund: [HUB, [5.6, 0]], out: [HUB, [10.15, 0]],
     },
-    actor: { color: "teal", home: [-8.8, 0] },
-    badges: [[[-4.4, -4.2], "2"], [[-4.4, 2.9], "3"], [[0, 2.9], "3 · 4 · 5"], [[-2.4, 9], "3"], [[2.4, 9], "4"], [[4.6, 2.9], "5"]],
+    actor: { color: "teal", home: [-10.15, 0] },
+    badges: [[[-10.15, -2.4], "2"], [[-7.7, 0], "3"], [[2.8, 0], "4"], [[7.75, 0], "5"]],
     steps: [
       [["at", "wf0", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1400, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "메일" }], ["wait", 900, "mail", "메일을 건네는 중"]],
       [["at", "wf0", { hold: true, pages: 1, say: "메일" }], ["go", "wf0"],
