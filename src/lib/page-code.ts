@@ -57,16 +57,19 @@ const STYLE = `<style data-pg-code>
   .post-page .pg-code .line::before { position: absolute; left: 0; top: 0; text-indent: 0; }
 }
 /* 해설 표지 ①② — 코드 안 배지와 해설 목록(ol.pg-code-notes)이 같은 모양 */
+/* 진한 채움 원은 본문보다 튀어 보였다(2026-11-24 지적) — 옅은 민트 바탕 + 민트 숫자로 */
 .post-page .pg-code .pg-code-mark, .post-page ol.pg-code-notes > li::before {
-  display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; border-radius: 50%;
-  background: var(--mint-600); color: #fff !important; font-family: var(--font-sans); font-size: 0.75em; font-weight: 700;
-  vertical-align: 0.1em;
+  display: inline-grid; place-items: center; border-radius: 50%;
+  background: var(--bg-primary-tint); font-family: var(--font-sans); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
   /* 좁은 화면의 .line 음수 text-indent 를 물려받으면 숫자가 줄번호 칸으로 밀려난다 */
   text-indent: 0;
 }
+.post-page .pg-code .pg-code-mark { width: 1.5em; height: 1.5em; font-size: 0.72em; vertical-align: 0.12em; color: var(--mint-500) !important; }
 .post-page ol.pg-code-notes { list-style: none; counter-reset: pgc; padding: 0; margin: 4px 0 28px; }
-.post-page ol.pg-code-notes > li { counter-increment: pgc; position: relative; padding-left: 2.1em; margin: 10px 0; line-height: 1.7; }
-.post-page ol.pg-code-notes > li::before { content: counter(pgc); position: absolute; left: 0; top: 0.2em; font-size: 0.8em; }
+.post-page ol.pg-code-notes > li { counter-increment: pgc; position: relative; padding-left: 2.2em; margin: 12px 0; line-height: 1.7; }
+/* 배지를 첫 줄 가운데에 맞춘다: 줄 높이 1.7em(li 기준)을 배지 글자 크기(0.72배) 기준으로 바꿔 남는 높이의 절반만큼 내린다 */
+.post-page ol.pg-code-notes > li::before { content: counter(pgc); position: absolute; left: 0; width: 1.9em; height: 1.9em; font-size: 0.72em; top: calc((1.7em / 0.72 - 1.9em) / 2); color: var(--fg-primary-strong); }
 /* 코드 | 해설을 좌우로 두지 않는다 — 코드 아래에 해설(POSTING 5-7, 2026-11-14). 글마다 짠 grid 를 이기려고 !important.
    폭은 끝없이 넓히지 않는다: 코드 860px(한 줄 80칸 남짓), 해설은 한 단 760px — 넓으면 줄이 길어 읽기 힘들다(사용자 지적).
    폭 제한은 안쪽 칸에만 건다. 묶음 자체의 폭·여백은 그대로 둔다 — 묶음이 가운데 정렬된 바깥 틀(vd-wrap 등)인 글에서
