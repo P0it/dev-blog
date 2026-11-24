@@ -1316,10 +1316,15 @@ category: ...
   윗줄 작은 제목(`user · 사용자`, 역할 이름은 고정폭 글꼴)으로 둔다. 색은 아이콘·이름표에만 쓰고, 칸은 흰 바탕에 가는 테두리를 둔다.
   진한 색 테두리는 강조할 칸 하나(모델의 답)에만 쓴다(ngrok 블로그 prompt-caching·quantization 처럼 강조색 하나로 절제).
   접은 안: 개발자 아바타를 왼쪽에 둔 카드는 모델 자리처럼 읽혀 오해를 샀다. 터미널 아이콘(`>_`)은 "사람"으로 읽히지 않았다. 손으로 그린 SVG 아이콘도 접었다.
-  아이콘은 직접 그리지 않고 **공개 아이콘 세트에서 찾아 내려받는다**(2026-11-24 사용자 지시). `https://api.iconify.design/search?query=<낱말>` 로
-  후보를 찾고, 작은 크기(22px)로 나란히 찍어 비교한 뒤 한 세트에서 고른다. 라이선스(MIT 등)를 확인하고 `public/icons/<세트>/` 에 SVG 와
-  `LICENSE.md` 를 함께 둔다. 고르기 전에 후보 세트를 실제 메시지 칸에 넣어 비교한 화면을 사용자에게 보여 주고 고르게 한다. 이 글은 선 아이콘 Reicon `user-laptop`·`user`(MIT)와 Lucide `bot`(ISC)을 `public/icons/line-roles/` 에 두고 CSS `mask` 로 역할 색을 입혀 쓴다. 비교한 안 가운데 Fluent Emoji High Contrast(이모지 얼굴)는 분위기가 블로그보다 튀어서 접었다.
-  견본: `auto-drafts/posts/prompt-engineering-roles-few-shot.html` 의 `.ps-m`.
+  **역할 아바타는 승인된 세트를 그대로 쓴다:** `public/icons/line-roles/` 의 `developer.svg`(Reicon user-laptop)·`user.svg`(Reicon user)·`assistant.svg`(Lucide bot)를
+  CSS `mask` 로 역할 색을 입혀 쓴다(2026-11-24 사용자가 비교 화면을 보고 고름). 견본: `auto-drafts/posts/prompt-engineering-roles-few-shot.html` 의 `.ps-m`(`--ic-dev`·`--ic-usr`·`--ic-ast`).
+  접은 안: Fluent Emoji High Contrast(이모지 얼굴)는 블로그 분위기보다 튀었다.
+- **아이콘은 직접 그리지 않는다 (2026-11-24 사용자 지시).** 손으로 그린 SVG 아이콘은 작게 줄이면 엉뚱한 사물(노트북 사람 → 자물쇠)로 읽혔다. 찾는 순서는 다음과 같다.
+  1. 승인된 세트(위 `line-roles`), 아니면 이미 있는 스프라이트 `npm run icons`(Lucide·제품 로고, 5-10)에서 고른다. 자동 실행은 여기까지만 쓴다.
+  2. 거기에 없으면 `https://api.iconify.design/search?query=<낱말>` 로 공개 세트를 찾는다. API 는 연달아 부르면 막히니(Cloudflare 1015)
+     `/{prefix}.json?icons=a,b` 로 세트당 한 번씩 부른다. 라이선스(MIT·ISC·Apache 등)를 확인하고 `public/icons/<이름>/` 에 SVG 와 `LICENSE.md` 를 둔다.
+  3. **새 세트는 적용 전에 사용자에게 고르게 한다.** 후보 몇 세트를 실제 글 화면에 CSS 만 입혀 나란히 찍어 보여 준다(파일은 아직 고치지 않는다).
+     사람이 없는 자동 실행(`/study` 루틴 등)은 새 세트를 들이지 않고 1단계 안에서 해결한다.
 - 360px 폭에서도 가로 스크롤이 생기지 않아야 한다. 글자 크기는 `clamp()` 로 준다.
 - 움직임은 `@media (prefers-reduced-motion: reduce)` 에서 끈다.
 
