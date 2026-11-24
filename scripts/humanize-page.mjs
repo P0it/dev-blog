@@ -20,7 +20,9 @@ const slug = basename(src).replace(/\.html?$/, "");
 const mdf = join(work, `${slug}.md`), mapf = join(work, `${slug}.json`), finf = join(work, `${slug}.final.md`);
 
 const split = (s) => {
-  const styleEnd = s.indexOf("</style>"), scriptAt = s.indexOf("<script>", styleEnd);
+  // 구워 넣은 장면 엔진(<!--ISO:begin-->…<!--ISO:end-->, POSTING 5-11)은 본문 스타일 앞에 있다 — 그 안의 style·script 는 건너뛴다
+  const iso = s.indexOf("<!--ISO:end-->");
+  const styleEnd = s.indexOf("</style>", iso < 0 ? 0 : iso), scriptAt = s.indexOf("<script>", styleEnd);
   const at = scriptAt < 0 ? s.length : scriptAt;
   return [s.slice(0, styleEnd), s.slice(styleEnd, at), s.slice(at)];
 };
