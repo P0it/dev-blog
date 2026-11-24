@@ -181,8 +181,10 @@
       };
       if (next(performance.now())) raf = requestAnimationFrame(tick);
     }
+    let io = null;
     bar.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
+      if (io) { io.disconnect(); io = null; } // 독자가 먼저 눌렀으면 자동 재생으로 덮어쓰지 않는다
       if (b.dataset.i != null) return go(+b.dataset.i);
       if (b.dataset.a === "prev") return go(step - 1);
       if (b.dataset.a === "next") return go(step + 1);
@@ -194,10 +196,9 @@
     layout(); labels(); render(); go(N);
     const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
     const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    let io = null;
     if (!reduce && "IntersectionObserver" in window) {
       io = new IntersectionObserver((es) => { const e = es[0];
-        if (e.intersectionRatio >= 0.9) { io.disconnect(); playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
+        if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
       io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
     }
     if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });

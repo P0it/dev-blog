@@ -6,11 +6,284 @@ tags: [AI 아키텍처, AI Agent, RAG, MCP, LLM Gateway]
 category: ai
 series: ai-architecture-cheatsheet
 series_order: 1
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-app-architecture-map-mwnq2cip.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/ai-app-architecture-map-mwu3br42.jpg
 ---
 <!-- page -->
-<!-- layout: 짧은 머리 + 큰 흐름도 하나(ByteByteGo 문법 — 점선 그룹 + 알약 이름표, 진한 테두리 상자, 직각 번호 엣지) + 처음부터 다 둘 필요는 없다(추가 순서) + 더 읽어 보기 | 글의 성격: 요청 하나가 AI 서비스의 구성 요소를 번호 순서로 지나는 길. 흐름도가 화면에 다 들어오면 점이 ①→⑧ 을 한 번 따라간다 | 레퍼런스: ByteByteGo "The Complete Path of an LLM Request"(How to Deal With Errors and Failures in LLM-Powered Applications), EP218 | 접은 안: 보드 한 장(2026-11-14, 2026-11-19 접음) -->
+<!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(작은 편집실 — 진행 담당이 접수 창구·서랍·자료실·작가·게시판을 한 번씩 돈다, POSTING 5-11 — 2026-11-24 사용자 지시로 흐름도 앞에 둠, 썸네일도 이 장면) + 큰 흐름도 하나(ByteByteGo 문법 — 점선 그룹 + 알약 이름표, 진한 테두리 상자, 직각 번호 엣지) + 처음부터 다 둘 필요는 없다(추가 순서) + 더 읽어 보기 | 글의 성격: 요청 하나가 AI 서비스의 구성 요소를 번호 순서로 지나는 길. 흐름도가 화면에 다 들어오면 점이 ①→⑧ 을 한 번 따라간다 | 레퍼런스: ByteByteGo "The Complete Path of an LLM Request"(How to Deal With Errors and Failures in LLM-Powered Applications), EP218 | 접은 안: 보드 한 장(2026-11-14, 2026-11-19 접음) -->
 <!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10). 흐름도 노드 아이콘은 스크립트가 쓰므로 여기 적어 굽게 한다: <use href="#i-user"/><use href="#i-monitor-smartphone"/><use href="#i-server"/><use href="#i-workflow"/><use href="#i-database"/><use href="#i-brain"/><use href="#i-file-search"/><use href="#i-plug"/><use href="#i-activity"/><use href="#i-badge-check"/><use href="#i-shield-check"/><use href="#i-coins"/><use href="#i-slack"/><use href="#i-nextjs"/><use href="#i-fastapi"/><use href="#i-langgraph"/><use href="#i-langchain"/><use href="#i-redis"/><use href="#i-postgresql"/><use href="#i-claude"/><use href="#i-openai"/><use href="#i-gemini"/><use href="#i-vllm"/><use href="#i-qdrant"/><use href="#i-elasticsearch"/><use href="#i-jira"/><use href="#i-github"/><use href="#i-opentelemetry"/><use href="#i-langsmith"/><use href="#i-langfuse"/><use href="#i-grafana"/> -->
+<!--ISO:begin-->
+<style>
+/* 아이소메트릭 흐름 장면 (POSTING 5-11) — `npm run iso` 가 원고에 구워 넣는다 */
+.post-page .iso { --iso-blue: #2f5fe8; --iso-ok: #1f9d63; --iso-ink: #1c2540; margin: 0; font-family: var(--font-sans); word-break: keep-all; }
+[data-theme="dark"] .post-page .iso { --iso-blue: #5b86ff; --iso-ok: #45c58a; --iso-ink: #0c0f17; }
+.post-page .iso * { box-sizing: border-box; }
+.post-page .iso-req { display: inline-block; margin: 0 0 14px; padding: 8px 14px; border-radius: 12px; background: var(--bg-subtle); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-req span { margin-right: 8px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-stage { position: relative; border-radius: 24px; overflow: hidden; background: color-mix(in srgb, var(--iso-blue) 10%, var(--bg-base)); }
+.post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
+.post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
+.post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
+.post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
+.post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
+.post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+@keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+/* 단계 띠 */
+.post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
+.post-page .iso-btns { display: flex; gap: 8px; flex: none; }
+.post-page .iso-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-subtle); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+.post-page .iso-btns button.pri { min-width: 86px; background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-btns button:disabled { opacity: .4; cursor: default; }
+.post-page .iso-dots { flex: 1; display: flex; margin: 0; padding: 0; list-style: none; }
+.post-page .iso-dots li { flex: 1; margin: 0; padding: 0; position: relative; text-align: center; }
+.post-page .iso-dots li::before { content: ""; position: absolute; left: -50%; right: 50%; top: 13px; height: 3px; background: var(--line-subtle); }
+.post-page .iso-dots li:first-child::before { display: none; }
+.post-page .iso-dots li:has(button.done)::before, .post-page .iso-dots li:has(button.cur)::before { background: var(--iso-blue); }
+.post-page .iso-dots button { position: relative; z-index: 1; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--fg-neutral); cursor: pointer; }
+.post-page .iso-dots button i { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 5px; border-radius: 50%; font-style: normal; line-height: 1; background: var(--bg-subtle); border: 1px solid var(--line-subtle); }
+.post-page .iso-dots button.done, .post-page .iso-dots button.cur { color: var(--fg-strong); }
+.post-page .iso-dots button.done i, .post-page .iso-dots button.cur i { background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-dots button.cur i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--iso-blue) 25%, transparent); }
+.post-page .iso-dots button span { display: block; }
+.post-page .iso-desc { margin: 12px 0 0; min-height: 3.4em; font-size: 16px; line-height: 1.7; color: var(--fg-strong); }
+/* 스크립트가 돌면 단계 글은 설명 한 줄(.iso-desc)로 보인다. 꺼져 있으면 목록 그대로 읽힌다 */
+.post-page .iso.iso-on .iso-steps, .post-page .iso.iso-on .iso-sum { display: none; }
+.post-page .iso-steps { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.8; }
+.post-page .iso-sum { margin: 12px 0 0; font-size: 16px; line-height: 1.8; }
+/* 좁은 화면: 비유 꼬리표와 단계 이름을 줄인다 */
+.post-page .iso-narrow .iso-lab { font-size: 11px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-lab.iso-num { font-size: 10px; padding: 1px 6px; }
+.post-page .iso-narrow .iso-lab small { font-size: 10.5px; margin-left: 5px; }
+.post-page .iso-narrow .iso-lab small.meta { display: none; }
+.post-page .iso-narrow .iso-lab.iso-say { font-size: 10.5px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-bar { flex-direction: column; gap: 12px; }
+.post-page .iso-narrow .iso-dots { align-self: stretch; }
+.post-page .iso-narrow .iso-dots button span { display: none; }
+.post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+</style>
+<script>
+// 아이소메트릭 흐름 장면 — 정거장 사이를 한 사람이 오가며 일을 맡기고 결과를 받아 오는 그림.
+// 원고가 장면(정거장·길·동작)을 적어 isoScene(figure, spec) 을 부르면 이 파일이 그린다.
+// 이 파일은 `npm run iso -- <원고>` 가 원고의 <!--ISO--> 자리에 구워 넣는다. 규약: POSTING.md 5-11.
+(function () {
+  const PAL = {
+    light: { white: "#ffffff", wall: "#eef1f9", paper: "#fffdf5", blue: "#2f5fe8", navy: "#3b4a78", yellow: "#f5b62e", teal: "#2fbf9f",
+             orange: "#ff8a3d", red: "#e5484d", grey: "#cfd5e6", dark: "#2a3352", skin: "#f3cba8", hair: "#5a4636", to: [40, 60, 130], shadow: "rgba(30,50,120,.2)" },
+    dark:  { white: "#2e3650", wall: "#3b4460", paper: "#e9e4d2", blue: "#5b86ff", navy: "#8a99cc", yellow: "#e0a526", teal: "#2aa88c",
+             orange: "#f0803a", red: "#e5605f", grey: "#4d5775", dark: "#10131c", skin: "#e8bf9b", hair: "#3c2f25", to: [0, 0, 0], shadow: "rgba(0,0,0,.5)" },
+  };
+  const FLOOR = 0.2; // 정거장 바닥 판 두께 — 부품의 y 기본값
+
+  function isoScene(fig, spec) {
+    const stage = fig && fig.querySelector(".iso-stage");
+    const lis = fig ? [...fig.querySelectorAll(".iso-steps > li")] : [];
+    if (!stage || !lis.length) return;
+    const signal = window.postPage && window.postPage.signal;
+    const N = lis.length, S = spec.stations, ids = Object.keys(S), R = spec.routes || {};
+    const uid = "iso" + Math.random().toString(36).slice(2, 7);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sum = fig.querySelector(".iso-sum");
+
+    stage.innerHTML = '<svg aria-hidden="true"></svg><div class="iso-labs" aria-hidden="true"></div>';
+    const svg = stage.firstChild, labs = stage.lastChild;
+    const bar = document.createElement("div"); bar.className = "iso-bar";
+    bar.innerHTML = '<div class="iso-btns"><button type="button" data-a="prev">이전</button><button type="button" data-a="next">다음</button>' +
+      '<button type="button" data-a="play" class="pri">재생</button></div><ol class="iso-dots">' +
+      lis.map((li, i) => `<li><button type="button" data-i="${i}"><i>${i + 1}</i><span>${li.dataset.k || ""}</span></button></li>`).join("") +
+      `<li><button type="button" data-i="${N}"><i>✓</i><span>전체 흐름</span></button></li></ol>`;
+    const desc = document.createElement("p"); desc.className = "iso-desc"; desc.setAttribute("aria-live", "polite");
+    stage.after(bar, desc); fig.classList.add("iso-on");
+
+    /* ── 좌표: 장면 크기에 맞춰 눈금(U)과 원점을 정한다 ── */
+    let U = 40, OX = 0, OY = 0, W = 0, H = 0, pal = PAL.light;
+    const P = (x, y, z, ox = OX, oy = OY) => [ox + (x - z) * U * 0.866, oy + (x + z) * U * 0.5 - y * U];
+    const pts = (a) => a.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    function layout() {
+      W = stage.clientWidth || 800;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      const add = (x, y, z) => { const a = (x - z) * 0.866, b = (x + z) * 0.5 - y; x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); };
+      for (const id of ids) { const [ax, az] = S[id].at, [w, d] = S[id].size, t = S[id].top || 2.2;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(ax + sx * w / 2, 0, az + sz * d / 2); add(ax + sx * w / 2, t, az + sz * d / 2); } }
+      for (const k in R) for (const [x, z] of R[k]) { add(x, 0, z); add(x, 2, z); }
+      const narrow = W < 560, padX = narrow ? 14 : 70, padT = narrow ? 30 : 44, padB = narrow ? 14 : 22;
+      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 70% 까지만 쓴다
+      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.7 - padT - padB) / (y1 - y0));
+      H = (y1 - y0) * U + padT + padB; OX = (W - (x1 - x0) * U) / 2 - x0 * U; OY = padT - y0 * U;
+      stage.style.height = H.toFixed(0) + "px"; svg.setAttribute("viewBox", `0 0 ${W} ${H.toFixed(0)}`);
+      fig.classList.toggle("iso-narrow", narrow);
+    }
+
+    /* ── 그리기 ── */
+    const col = (c) => pal[c] || c;
+    const shade = (c, f) => { const n = parseInt(col(c).slice(1), 16), t = pal.to, m = (v, k) => Math.round(v * f + t[k] * (1 - f)); return `rgb(${m(n >> 16, 0)},${m((n >> 8) & 255, 1)},${m(n & 255, 2)})`; };
+    function draw1(b, ox, oy) {
+      const Q = (x, y, z) => P(x, y, z, ox, oy);
+      if (b.t === "sph") { const [cx, cy] = Q(b.x, b.y, b.z); return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(b.r * U).toFixed(1)}" fill="${col(b.c)}"/>`; }
+      const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y0 = b.y, y1 = b.y + b.h;
+      return `<polygon points="${pts([Q(x0, y0, z1), Q(x1, y0, z1), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${shade(b.c, 0.9)}"/>` +
+             `<polygon points="${pts([Q(x1, y0, z0), Q(x1, y0, z1), Q(x1, y1, z1), Q(x1, y1, z0)])}" fill="${shade(b.c, 0.78)}"/>` +
+             `<polygon points="${pts([Q(x0, y1, z0), Q(x1, y1, z0), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${col(b.c)}"/>`;
+    }
+    // 부품: ["box", x, z, w, d, h, 색, y] · ["person", x, z, 색, y] · ["sph", x, y, z, r, 색] — x·z 는 정거장 중심 기준
+    function parts(st) {
+      const [ax, az] = st.at, out = [];
+      if (st.floor !== false) out.push({ t: "box", x: ax, y: 0, z: az, w: st.size[0], d: st.size[1], h: FLOOR, c: "white" });
+      for (const p of st.parts || []) {
+        if (p[0] === "box") out.push({ t: "box", x: ax + p[1], z: az + p[2], w: p[3], d: p[4], h: p[5], c: p[6], y: p[7] == null ? FLOOR : p[7] });
+        else if (p[0] === "person") { const y = p[4] == null ? FLOOR : p[4];
+          out.push({ t: "box", x: ax + p[1], z: az + p[2], w: 0.55, d: 0.55, h: 0.85, c: p[3], y }, { t: "sph", x: ax + p[1], y: y + 1.2, z: az + p[2], r: 0.33, c: "skin" }); }
+        else if (p[0] === "sph") out.push({ t: "sph", x: ax + p[1], y: p[2], z: az + p[3], r: p[4], c: p[5] });
+      }
+      return out;
+    }
+    const rect = (x0, z0, x1, z1) => pts([P(x0, 0, z0), P(x1, 0, z0), P(x1, 0, z1), P(x0, 0, z1)]);
+    function render() {
+      pal = document.documentElement.getAttribute("data-theme") === "dark" ? PAL.dark : PAL.light;
+      const k = U / 40, line = (p) => pts(p.map(([x, z]) => P(x, 0, z)));
+      let s = `<defs><filter id="${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="${(6 * k).toFixed(1)}"/></filter></defs>`;
+      for (const r in R) s += `<polyline points="${line(R[r])}" fill="none" stroke="${pal.yellow}" stroke-width="${(3 * k).toFixed(1)}" stroke-dasharray="${(10 * k).toFixed(1)} ${(8 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<polyline class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<g filter="url(#${uid})" fill="${pal.shadow}">`;
+      for (const id of ids) { const [x, z] = S[id].at, [w, d] = S[id].size; s += `<polygon points="${rect(x - w / 2, z - d / 2 + 0.3, x + w / 2 + 0.5, z + d / 2 + 0.6)}"/>`; }
+      s += "</g>";
+      // 정거장은 먼 것부터, 정거장 안 부품은 원고에 적은 순서(뒤 → 앞)대로
+      for (const id of [...ids].sort((a, b) => S[a].at[0] + S[a].at[1] - (S[b].at[0] + S[b].at[1]))) s += "<g>" + parts(S[id]).map((b) => draw1(b)).join("") + "</g>";
+      s += '<g class="iso-drop"></g><g class="iso-actor"></g>';
+      svg.innerHTML = s; drawActor(); drawDrop(); drawActive(); place();
+    }
+
+    /* ── 오가는 사람: 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
+    const A = { pos: [0, 0], dir: [1, 0], pages: 1, hold: true, say: "", drop: null };
+    const actorColor = (spec.actor && spec.actor.color) || "blue";
+    function drawActor() {
+      const [dx, dz] = A.dir, toward = dx + dz > 0, alongX = dx !== 0;
+      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: actorColor };
+      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * A.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
+      const head = [{ t: "sph", x: 0, y: 1.2, z: 0, r: 0.33, c: "skin" }];
+      if (toward) for (const e of [-1, 1]) head.push({ t: "sph", x: dx * 0.3 - dz * 0.13 * e, y: 1.2, z: dz * 0.3 + dx * 0.13 * e, r: 0.05, c: "dark" });
+      else head.push({ t: "sph", x: -dx * 0.06, y: 1.25, z: -dz * 0.06, r: 0.3, c: "hair" });
+      const list = !A.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
+      const g = svg.querySelector(".iso-actor"); g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor();
+    }
+    function moveActor() { const [a, b] = P(A.pos[0], 0, A.pos[1]); svg.querySelector(".iso-actor").setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
+    function drawDrop() {
+      const st = A.drop && S[A.drop], d = st && st.drop;
+      svg.querySelector(".iso-drop").innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * A.pages, d: 0.4, c: "paper" }) : "";
+    }
+
+    /* ── 이름표 ── */
+    const lab = {}, mk = (cls) => { const d = document.createElement("div"); d.className = cls; labs.appendChild(d); return d; };
+    for (const id of ids) lab[id] = mk("iso-lab");
+    const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
+    const say = mk("iso-lab iso-say");
+    let busy = null;
+    function labels() {
+      for (const id of ids) { const b = busy && busy[0] === id;
+        lab[id].className = "iso-lab" + (b ? " busy" : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+    }
+    // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
+    const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
+    function place() {
+      for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
+      for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
+      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+    }
+
+    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
+    function acts(i) {
+      const out = [], seg = (r) => { for (let k = 0; k < r.length - 1; k++) out.push({ seg: [r[k], r[k + 1]], dur: 300 + Math.hypot(r[k + 1][0] - r[k][0], r[k + 1][1] - r[k][1]) * 240 }); };
+      for (const a of spec.steps[i] || []) {
+        if (a[0] === "at") out.push({ dur: 0, jump: typeof a[1] === "string" ? R[a[1]][0] : a[1], ...a[2] });
+        else if (a[0] === "set") out.push({ dur: 0, ...a[1] });
+        else if (a[0] === "go") seg(R[a[1]]);
+        else if (a[0] === "back") seg([...R[a[1]]].reverse());
+        else if (a[0] === "wait") out.push({ dur: a[1], comp: a[2], text: a[3], wait: true, ...a[4] });
+      }
+      return out;
+    }
+    function apply(a) {
+      if (a.jump) A.pos = [...a.jump];
+      if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
+      if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
+      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      drawActor(); labels(); place();
+    }
+
+    let step = N, playing = false, raf = 0, timer = 0;
+    function drawActive() {
+      const one = step < N && (spec.steps[step] || []).filter((a) => a[0] === "go" || a[0] === "back");
+      const names = one ? [...new Set(one.map((a) => a[1]))] : [];
+      svg.querySelector(".iso-act").setAttribute("points", names.length === 1 ? pts(R[names[0]].map(([x, z]) => P(x, 0, z))) : "");
+    }
+    function ui() {
+      bar.querySelectorAll(".iso-dots button").forEach((b, i) => { b.className = i < step ? "done" : i === step ? "cur" : ""; if (i === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+      desc.textContent = step === N ? (sum ? sum.textContent : "") : lis[step].textContent;
+      bar.querySelector('[data-a="prev"]').disabled = step === 0; bar.querySelector('[data-a="next"]').disabled = step === N;
+      bar.querySelector('[data-a="play"]').textContent = playing ? "일시정지" : step === N ? "다시 재생" : "재생";
+      drawActive();
+    }
+    function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
+    function go(i, auto) {
+      stop(); if (!auto) playing = false;
+      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
+        playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
+        ui(); drawDrop(); drawActor(); labels(); place(); return;
+      }
+      ui();
+      const list = acts(step); let k = -1, t0 = 0;
+      const next = (now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
+        while (++k < list.length) { apply(list[k]); if (list[k].dur > 0 && !reduce) { t0 = now; return true; } if (list[k].seg) { A.pos = [...list[k].seg[1]]; moveActor(); } }
+        busy = null; labels(); place(); if (playing) timer = setTimeout(() => go(step + 1, true), 2400); return false; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
+      };
+      const tick = (now) => {
+        const a = list[k], t = Math.min(1, (now - t0) / a.dur);
+        if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (t >= 1 && !next(now)) return;
+        raf = requestAnimationFrame(tick);
+      };
+      if (next(performance.now())) raf = requestAnimationFrame(tick);
+    }
+    let io = null;
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (io) { io.disconnect(); io = null; } // 독자가 먼저 눌렀으면 자동 재생으로 덮어쓰지 않는다
+      if (b.dataset.i != null) return go(+b.dataset.i);
+      if (b.dataset.a === "prev") return go(step - 1);
+      if (b.dataset.a === "next") return go(step + 1);
+      if (playing) { playing = false; clearTimeout(timer); return ui(); }
+      playing = true; go(step === N ? 0 : step, true);
+    }, { signal });
+
+    /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
+    layout(); labels(); render(); go(N);
+    const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
+    const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (!reduce && "IntersectionObserver" in window) {
+      io = new IntersectionObserver((es) => { const e = es[0];
+        if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
+      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
+    }
+    if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
+    return { go, get step() { return step; }, get playing() { return playing; } };
+  }
+
+  // 흔한 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아 → 돌아와 적는다
+  isoScene.trip = (route, station, o) => [
+    ["at", route, { hold: true, pages: o.pages, say: o.carry }], ["go", route],
+    ["wait", o.ms || 1600, station, o.work, { hold: false, drop: true, say: "" }],
+    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, station, o.give || "결과를 건네는 중"],
+    ["back", route], ...(o.home ? [["wait", 800, o.home, o.write || "결과를 적는 중"]] : []),
+  ];
+  window.isoScene = isoScene;
+})();
+</script>
+<!--ISO:end-->
 <style>
 .post-page .ac {
   --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
@@ -78,6 +351,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 /* 런타임이 따로 챙기는 것 */
 .post-page .ac-sec { padding: clamp(64px, 8vw, 96px) 0 0; }
+.post-page .ac .iso { margin-top: clamp(32px, 4vw, 44px); }
+.post-page .ac-bridge { max-width: 760px; margin: 0 0 28px; }
 .post-page .ac-sec h2 { font-size: clamp(20px, 2.2vw, 26px); margin-bottom: 24px; }
 .post-page .kp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .post-page .kp > div { background: var(--bg-subtle); border-radius: 24px; padding: 24px; }
@@ -154,12 +429,32 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <p>AI 서비스를 이루는 구성 요소는 크게 여덟 가지이고 모델은 그중 하나입니다. 요청 하나가 그 사이를 지나가는 길을 따라가 봤습니다.</p>
     </div>
 
+    <figure class="iso" data-figure data-iso="service" aria-label="AI 서비스를 작은 편집실에 빗댄 장면. 사용자의 요청이 접수 창구(API 서버)를 거쳐 진행 담당(오케스트레이션)에게 오면, 진행 담당이 서랍(메모리), 자료실(지식), 작가(모델), 게시판(도구)을 한 번씩 차례로 다녀온 뒤 답을 창구로 돌려보낸다. 글을 쓰는 작가는 여러 자리 중 하나다.">
+      <p class="iso-req"><span>예시 요청</span>지난주 VPN 장애를 정리해서 팀 채널에 올려 줘</p>
+      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
+      <ol class="iso-steps">
+        <li data-k="요청">요청은 메신저(클라이언트)를 떠나 접수 창구(API 서버)에 먼저 닿습니다. 창구가 보낸 사람을 확인하면 진행 담당(오케스트레이션)이 요청을 받아 검색 → 요약 → 게시 순서를 정합니다.</li>
+        <li data-k="메모리">요청에는 "팀 채널"이라고만 적혀 있습니다. 어느 채널인지 알아야 해서 진행 담당이 서랍(메모리)에서 이 사람의 팀 채널부터 찾습니다. 다녀온 곳은 그때마다 장부(운영 계층)에 남깁니다.</li>
+        <li data-k="지식">모델은 지난주 사내 장애를 배운 적이 없습니다. 그래서 글을 맡기기 전에 자료실(지식, RAG)에서 VPN 장애 보고서를 찾아옵니다.</li>
+        <li data-k="모델">이제야 작가(모델)에게 갑니다. 요청과 보고서를 받은 모델은 요약을 쓰고 다음에 쓸 도구로 "채널에 게시"를 고릅니다. 직접 올리지는 않습니다.</li>
+        <li data-k="도구">요약을 채널에 올리는 일은 게시판(도구, MCP)이 맡습니다. 진행 담당이 요약과 채널 이름을 들고 가서 맡깁니다.</li>
+        <li data-k="답">다 됐다는 답은 왔던 길로 돌아갑니다. API 서버를 거쳐 메신저에 닿습니다.</li>
+      </ol>
+      <p class="iso-sum">글을 쓰는 모델에는 한 번만 들릅니다(4). 나머지 걸음은 그 한 번을 준비하거나(1 · 2 · 3) 마무리하는(5 · 6) 일이고 이 자리들이 모델 말고 더 필요한 구성 요소입니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <p class="ac-bridge">같은 요청을 실제 구성 요소 이름으로 다시 그리면 아래 흐름도가 됩니다. 진행 담당이 걸어 다닌 길은 오케스트레이션이 보내는 호출이고, 다녀올 때마다 장부에 적던 일은 맨 아래 운영 계층이 맡습니다.</p>
+
     <figure class="fl" data-figure aria-label="AI 서비스 흐름도. 사용자가 메신저로 보낸 요청이 API 서버를 거쳐 오케스트레이션에 들어오고, 오케스트레이션이 메모리에서 팀 채널을 찾고, 지식(RAG)에서 장애 보고서를 검색하고, 모델에 요약을 맡기고, 도구(MCP)로 팀 채널에 게시한 뒤 답을 메신저로 돌려준다. 아래 운영 계층이 모든 호출을 기록하고 검사한다.">
       <div class="fl-top"><h2>요청 하나가 지나가는 길</h2>
         <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-slack"/></svg></span><div><div class="mt">예시 · 사내 메신저로 온 요청</div><div class="mb">"지난주 VPN 장애를 정리해서 팀 채널에 올려 줘"</div></div></div>
       </div>
       <p class="fl-cap" data-fl-cap>구성 요소 여덟 가지 중 모델은 하나다. 운영 계층은 이 모든 호출을 기록하고 검사한다</p>
-      <svg class="fl-svg" data-fl-svg data-thumb viewBox="0 0 1200 740" role="img" aria-label="AI 서비스 흐름도"></svg>
+      <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 740" role="img" aria-label="AI 서비스 흐름도"></svg>
       <ol class="fl-legend">
         <li><span>사내 메신저로 요청이 들어온다</span></li>
         <li><span>API 서버가 보낸 사람을 확인한다</span></li>
@@ -200,6 +495,49 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
 </div>
 
+<script>
+/* 맨 위 장면(POSTING 5-11): 흐름도와 같은 요청·같은 횟수(메모리·지식·모델·도구를 한 번씩). 장면 단계 1 = 흐름도 ①②③, 2~5 = ④~⑦, 6 = ⑧ */
+(() => {
+  const T = isoScene.trip, H = { home: "orch", write: "다녀온 곳을 장부에 적는 중" };
+  const books = [];
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 5; c++) books.push(["box", -0.73, -0.75 + c * 0.44, 0.03, 0.3, 0.6, ["yellow", "teal", "paper", "orange", "red"][(c + r * 2) % 5], 1.35 - r * 0.85]);
+  isoScene(postPage.root.querySelector('[data-iso="service"]'), {
+    stations: {
+      orch: { name: "오케스트레이션", meta: "진행 담당", at: [0, 0], size: [4.6, 3.6], top: 3.25, parts: [
+        ["box", -1.8, -0.5, 0.14, 2.0, 1.8, "wall"], ["box", -1.71, -1.1, 0.03, 0.45, 0.45, "navy", 1.25], ["box", -1.71, -0.5, 0.03, 0.45, 0.45, "orange", 1.25], ["box", -1.71, 0.1, 0.03, 0.45, 0.45, "blue", 1.25],
+        ["box", 0.4, 0.1, 2.2, 1.3, 0.85, "teal"], ["box", 0.5, 0.1, 0.9, 0.7, 0.14, "paper", 1.05] ] },
+      user: { name: "사용자 · 클라이언트", meta: "의뢰인", at: [-14.3, 1], size: [2.4, 2.4], top: 1.9, parts: [
+        ["person", -0.3, 0, "navy"], ["box", 0.7, 0, 0.4, 0.9, 0.55, "grey"], ["box", 0.7, 0, 0.08, 0.8, 0.55, "dark", 0.75] ] },
+      api: { name: "API 서버", meta: "접수 창구", at: [-8, 1], size: [2.6, 3.0], top: 2.8, drop: [0.2, 1.18, 0.4], parts: [
+        ["box", 0.2, -1.2, 0.3, 0.2, 1.9, "teal"], ["box", 0.2, 0, 0.7, 2.2, 0.9, "teal"], ["box", 0.2, 0, 0.8, 2.3, 0.08, "white", 1.1],
+        ["box", 0.2, -0.6, 0.5, 0.5, 0.3, "yellow", 1.18], ["box", 0.2, 1.2, 0.3, 0.2, 1.9, "teal"], ["box", 0.2, 0, 0.3, 2.6, 0.3, "teal", 2.1] ] },
+      mem: { name: "메모리 · 상태", meta: "서랍", at: [0, 7.5], size: [2.4, 2.4], top: 2.3, drop: [0, 1.7, 0.2], parts: [
+        ["box", 0, 0.2, 1.5, 1.1, 1.5, "navy"], ["box", 0.77, 0.2, 0.03, 0.5, 0.1, "yellow", 0.55], ["box", 0.77, 0.2, 0.03, 0.5, 0.1, "yellow", 1.0], ["box", 0.77, 0.2, 0.03, 0.5, 0.1, "yellow", 1.45] ] },
+      rag: { name: "지식 (RAG)", meta: "자료실", at: [7.5, 6.5], size: [3.0, 3.0], top: 2.9, drop: [0.5, 0.95, -0.9], parts: [
+        ["box", -1.0, 0.1, 0.5, 2.4, 2.1, "navy"], ...books, ["box", 0.5, -0.9, 1.2, 0.6, 0.75, "grey"] ] },
+      model: { name: "모델", meta: "글 쓰는 작가", at: [10.5, -1], size: [3.0, 3.0], top: 2.2, drop: [-0.8, 1.0, -0.5], parts: [
+        ["box", -0.8, 0, 0.9, 2.2, 0.8, "grey"], ["box", -0.8, 0.5, 0.5, 0.6, 0.3, "dark", 1.0], ["box", -0.95, 0.5, 0.04, 0.4, 0.35, "paper", 1.3], ["person", 0.35, 0.3, "orange"] ] },
+      mcp: { name: "도구 (MCP)", meta: "게시판", at: [0, -8], size: [3.0, 2.6], top: 2.7, drop: [0.8, 0.2, 0.4], parts: [
+        ["box", 0, -0.7, 2.4, 0.14, 1.9, "wall"], ["box", 0, -0.62, 2.4, 0.03, 0.35, "blue", 1.75],
+        ["box", -0.7, -0.62, 0.5, 0.03, 0.6, "paper", 0.9], ["box", 0, -0.62, 0.5, 0.03, 0.6, "yellow", 0.9], ["box", 0.7, -0.62, 0.5, 0.03, 0.6, "paper", 0.9] ] },
+    },
+    routes: { req: [[-9.7, 1], [-12.7, 1]], in: [[-2.9, 1], [-6.3, 1]], mem: [[0, 2.5], [0, 5.9]], rag: [[2.9, 1.2], [7.5, 1.2], [7.5, 4.6]],
+              model: [[2.9, -1], [8.6, -1]], mcp: [[0, -2.5], [0, -6.3]] },
+    actor: { color: "teal", home: [-2.9, 1] },
+    badges: [[[-11.2, 1], "1 · 6"], [[-5.1, 1], "1 · 6"], [[0, 4.2], "2"], [[7.5, 2.9], "3"], [[5.8, -1], "4"], [[0, -4.4], "5"]],
+    steps: [
+      [["at", [-6.3, 1], { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1200, "user", "요청을 보내는 중"],
+       ["wait", 1400, "api", "보낸 사람을 확인하는 중", { drop: true }], ["set", { hold: true, say: "요청" }], ["back", "in"], ["wait", 1100, "orch", "부를 순서를 정하는 중"]],
+      T("mem", "mem", { pages: 1, carry: "이 사람의 팀 채널은?", work: "팀 채널을 찾는 중", result: "팀 채널 이름", give: "찾은 것을 건네는 중", ...H }),
+      T("rag", "rag", { pages: 2, carry: "지난주 VPN 장애", work: "장애 보고서를 찾는 중", result: "장애 보고서", give: "찾은 것을 건네는 중", ...H }),
+      T("model", "model", { pages: 3, carry: "요청 + 보고서", work: "보고서를 요약하는 중", result: "요약 + 다음은 '채널에 게시'", give: "요약을 건네는 중", ...H }),
+      T("mcp", "mcp", { pages: 4, carry: "요약 + 채널 이름", work: "팀 채널에 올리는 중", result: "게시 완료", ...H }),
+      [["at", "in", { hold: true, pages: 5, say: "다 됐다는 답" }], ["go", "in"], ["wait", 1400, "api", "답을 메신저로 돌려보내는 중", { hold: false, drop: true, say: "" }],
+       ["wait", 1200, "user", "답을 받는 중"]],
+    ],
+  });
+})();
+</script>
 <script>
 (() => {
   const { root, signal } = window.postPage;
