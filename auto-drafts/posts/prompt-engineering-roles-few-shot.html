@@ -31,14 +31,35 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps ol.pg-code-notes > li { margin: 14px 0; }
 .post-page .ps svg text { font-family: var(--font-sans); fill: var(--fg-normal); }
 
-/* 역할 배지와 메시지 칸 — 이 글의 시각 언어 */
-.post-page .ps-r { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.7; color: var(--bg-base); background: var(--c, var(--fg-alternative)); vertical-align: 1px; white-space: nowrap; }
-.post-page .ps-r.dev, .post-page .ps-m.dev { --c: var(--ps-dev); }
-.post-page .ps-r.usr, .post-page .ps-m.usr { --c: var(--ps-user); }
-.post-page .ps-r.ast, .post-page .ps-m.ast { --c: var(--ps-ai); }
-.post-page .ps-m { display: block; padding: 8px 12px; border-radius: 12px; font-size: 15px; line-height: 1.55; background: color-mix(in srgb, var(--c) 10%, var(--bg-base)); }
-.post-page .ps-m > .ps-r { margin-right: 6px; }
-.post-page .ps-m.ex { background: color-mix(in srgb, var(--c) 6%, var(--bg-base)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 30%, var(--bg-base)); }
+/* 역할 배지와 메시지 칸 — 이 글의 시각 언어.
+   색 하나로만 가르지 않는다: 역할마다 아이콘(개발자=터미널, 사용자=사람, 모델=로봇)과 자리(지시=가로 전체 카드, 사용자=오른쪽 말풍선, 모델=왼쪽 말풍선)가 다르다. */
+.post-page .ps { --ic-dev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4 17 10 11 4 5'/%3E%3Cline x1='12' x2='20' y1='19' y2='19'/%3E%3C/svg%3E"); --ic-usr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E%3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E"); --ic-ast: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8V4H8'/%3E%3Crect width='16' height='12' x='4' y='8' rx='2'/%3E%3Cpath d='M2 14h2'/%3E%3Cpath d='M20 14h2'/%3E%3Cpath d='M15 13v2'/%3E%3Cpath d='M9 13v2'/%3E%3C/svg%3E"); }
+.post-page .ps-r { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.7; color: var(--bg-base); background: var(--c, var(--fg-alternative)); vertical-align: 1px; white-space: nowrap; }
+.post-page .ps-r.dev, .post-page .ps-m.dev { --c: var(--ps-dev); --ic: var(--ic-dev); }
+.post-page .ps-r.usr, .post-page .ps-m.usr { --c: var(--ps-user); --ic: var(--ic-usr); }
+.post-page .ps-r.ast, .post-page .ps-m.ast, .post-page .ps-out { --c: var(--ps-ai); --ic: var(--ic-ast); }
+.post-page .ps-r.dev::before, .post-page .ps-r.usr::before, .post-page .ps-r.ast::before { content: ""; width: 11px; height: 11px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.post-page .ps-m { display: block; padding: 9px 14px; border-radius: 14px; font-size: 15px; line-height: 1.6; color: var(--fg-strong); background: color-mix(in srgb, var(--c) 9%, var(--bg-base)); }
+.post-page .ps-m.dev, .post-page .ps-m.usr, .post-page .ps-m.ast, .post-page .ps-out { position: relative; min-height: 50px; }
+/* 아바타: 옅은 원 + 역할 색 아이콘 */
+.post-page .ps-m.dev::before, .post-page .ps-m.usr::before, .post-page .ps-m.ast::before, .post-page .ps-out::before { content: ""; position: absolute; top: 9px; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--c) 20%, var(--bg-base)); }
+.post-page .ps-m.dev::after, .post-page .ps-m.usr::after, .post-page .ps-m.ast::after, .post-page .ps-out::after { content: ""; position: absolute; top: 16px; width: 18px; height: 18px; background: var(--c); -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.post-page .ps-m.dev, .post-page .ps-m.ast, .post-page .ps-out { padding-left: 54px; }
+.post-page .ps-m.dev::before, .post-page .ps-m.ast::before, .post-page .ps-out::before { left: 11px; }
+.post-page .ps-m.dev::after, .post-page .ps-m.ast::after, .post-page .ps-out::after { left: 18px; }
+.post-page .ps-m.usr { padding-right: 54px; width: fit-content; max-width: 88%; margin-left: auto; border-bottom-right-radius: 4px; }
+.post-page .ps-m.usr::before { right: 11px; } .post-page .ps-m.usr::after { right: 18px; }
+.post-page .ps-m.ast { width: fit-content; max-width: 88%; border-bottom-left-radius: 4px; }
+/* 지시는 말풍선이 아니라 가로 전체 카드: 흰 바탕 + 점선 테두리 */
+.post-page .ps-m.dev { background: var(--bg-base); border: 1.5px dashed color-mix(in srgb, var(--c) 55%, var(--bg-base)); border-radius: 12px; }
+/* 칸 안의 역할 이름은 알약이 아니라 윗줄 작은 제목 */
+.post-page .ps-m > .ps-r, .post-page .ps-out > .ps-r { display: block; padding: 0; margin: 0 0 1px; background: none; color: var(--c); font-size: 12.5px; line-height: 1.5; letter-spacing: .01em; }
+.post-page .ps-m > .ps-r::before, .post-page .ps-out > .ps-r::before { content: none; }
+.post-page .ps-m.dev > .ps-r::after { content: " · 개발자의 지시"; color: var(--fg-neutral); font-weight: 600; }
+.post-page .ps-m.usr > .ps-r::after { content: " · 사용자"; color: var(--fg-neutral); font-weight: 600; }
+.post-page .ps-m.ast > .ps-r::after { content: " · 모델"; color: var(--fg-neutral); font-weight: 600; }
+.post-page .ps-m.usr > .ps-r { text-align: right; }
+.post-page .ps-m.ex { background: color-mix(in srgb, var(--c) 5%, var(--bg-base)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 28%, var(--bg-base)); }
 
 /* 고르기 토글 / 실행 버튼 */
 .post-page .ps-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg-muted); }
@@ -57,15 +78,14 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .ps-lede { font-size: 18px !important; color: var(--fg-neutral); margin-top: 32px !important; }
 .post-page .ps-review { font-family: var(--font-display); font-size: clamp(19px, 2vw, 22px); color: var(--fg-strong); line-height: 1.5; margin: 8px 0 0; }
 .post-page .ps-review::before { content: "“"; } .post-page .ps-review::after { content: "”"; }
-.post-page .ps-doc { display: flex; flex-direction: column; gap: 6px; margin-top: 22px; }
+.post-page .ps-doc { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
 .post-page .ps-doc .ps-m { transition: opacity .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1); }
 .post-page .ps-exrow { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .55s cubic-bezier(.2,.7,.2,1), opacity .55s; }
-.post-page .ps-exrow > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+.post-page .ps-exrow > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
 .post-page .ps-exrow.hide { grid-template-rows: 0fr; opacity: 0; }
-.post-page .ps-exrow.hide > div { margin-top: -6px; }
+.post-page .ps-exrow.hide > div { margin-top: -10px; }
 .post-page .ps-exlbl { font-size: 12.5px; color: var(--fg-neutral); font-weight: 700; margin: 2px 0 -2px; }
-.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; padding: 10px 14px; font-size: 15.5px; line-height: 1.6; min-height: 3.4em; margin-top: 4px; }
-.post-page .ps-out .ps-r { margin-right: 6px; }
+.post-page .ps-out { border: 2px solid var(--ps-ai); border-radius: 14px; border-bottom-left-radius: 4px; padding: 9px 14px 10px 54px; font-size: 15.5px; line-height: 1.6; color: var(--fg-strong); min-height: 3.4em; margin-top: 6px; background: color-mix(in srgb, var(--ps-ai) 6%, var(--bg-base)); }
 .post-page .ps-cands { margin-top: 18px; }
 .post-page .ps-cands h4, .post-page .ps-fig h4 { margin: 0 0 8px; font-size: 13.5px; color: var(--fg-neutral); font-weight: 700; }
 .post-page .ps-cand { display: grid; grid-template-columns: 7.2em minmax(0, 1fr) 3em; gap: 10px; align-items: center; font-size: 14px; margin: 5px 0; }
@@ -286,7 +306,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   .post-page .ps-stick .ps-stcap { display: none; }
   .post-page .ps-flat { min-height: 340px; }
   .post-page .ps-strip { font-size: 14px; line-height: 1.95; padding: 12px 14px; }
-  .post-page .ps-cards { gap: 8px; } .post-page .ps-cards .ps-m { font-size: 13.5px; padding: 6px 10px; }
+  .post-page .ps-cards { gap: 8px; } .post-page .ps-cards .ps-m { font-size: 13.5px; padding-top: 6px; padding-bottom: 6px; }
   .post-page .ps-steps { padding: 4vh 0 30vh; }
   .post-page .ps-steps li { min-height: 52vh; align-items: flex-start; padding-top: 4vh; font-size: 16px; }
   .post-page .ps-pull { text-align: left; }
@@ -349,7 +369,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
             <span class="ps-m ast ex"><span class="ps-r ast">assistant</span>섞임</span>
           </div></div>
           <span class="ps-m usr"><span class="ps-r usr">user</span>맛은 최고인데 배달이 한 시간 걸렸어요</span>
-          <div class="ps-out" aria-live="polite"><span class="ps-r ast">답</span><span data-ps-ans>이 리뷰는 음식 맛은 칭찬하지만 배달 시간에는 불만이 있어, 긍정과 부정이 섞인 의견으로 볼 수 있습니다.</span></div>
+          <div class="ps-out" aria-live="polite"><span class="ps-r ast">모델의 답</span><span data-ps-ans>이 리뷰는 음식 맛은 칭찬하지만 배달 시간에는 불만이 있어, 긍정과 부정이 섞인 의견으로 볼 수 있습니다.</span></div>
         </div>
         <div class="ps-cands" data-ps-cands>
           <h4>답의 첫 토큰 후보와 그 확률</h4>
