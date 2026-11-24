@@ -113,8 +113,8 @@ category: ai
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(ax + sx * w / 2, 0, az + sz * d / 2); add(ax + sx * w / 2, t, az + sz * d / 2); } }
       for (const k in R) for (const [x, z] of R[k]) { add(x, 0, z); add(x, 2, z); }
       const narrow = W < 560, padX = narrow ? 14 : 70, padT = narrow ? 30 : 44, padB = narrow ? 14 : 22;
-      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 70% 까지만 쓴다
-      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.7 - padT - padB) / (y1 - y0));
+      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 55% 까지만 쓴다(예시 요청·단계 띠·설명까지 한 화면, 2026-11-24 사용자 지적)
+      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.55 - padT - padB) / (y1 - y0));
       H = (y1 - y0) * U + padT + padB; OX = (W - (x1 - x0) * U) / 2 - x0 * U; OY = padT - y0 * U;
       stage.style.height = H.toFixed(0) + "px"; svg.setAttribute("viewBox", `0 0 ${W} ${H.toFixed(0)}`);
       fig.classList.toggle("iso-narrow", narrow);
@@ -270,7 +270,7 @@ category: ai
     if (!reduce && "IntersectionObserver" in window) {
       io = new IntersectionObserver((es) => { const e = es[0];
         if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
-      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
+      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 55% 로 묶어 두어 어느 화면에서든 닿는다
     }
     if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
     return { go, get step() { return step; }, get playing() { return playing; } };
