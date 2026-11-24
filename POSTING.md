@@ -1303,7 +1303,10 @@ category: ...
   개발자 지시는 말풍선이 아니라 맨 위 가로 전체 점선 카드로 두고, 아바타는 오른쪽(사람 쪽)에 단다. 칸 안의 역할 이름은 알약 배지 대신
   윗줄 작은 제목(`user · 사용자`, 역할 이름은 고정폭 글꼴)으로 둔다. 색은 아이콘·이름표에만 쓰고, 칸은 흰 바탕에 가는 테두리를 둔다.
   진한 색 테두리는 강조할 칸 하나(모델의 답)에만 쓴다(ngrok 블로그 prompt-caching·quantization 처럼 강조색 하나로 절제).
-  접은 안: 개발자 아바타를 왼쪽에 둔 카드는 모델 자리처럼 읽혀 오해를 샀다. 터미널 아이콘(`>_`)은 "사람"으로 읽히지 않았다.
+  접은 안: 개발자 아바타를 왼쪽에 둔 카드는 모델 자리처럼 읽혀 오해를 샀다. 터미널 아이콘(`>_`)은 "사람"으로 읽히지 않았다. 손으로 그린 SVG 아이콘도 접었다.
+  아이콘은 직접 그리지 않고 **공개 아이콘 세트에서 찾아 내려받는다**(2026-11-24 사용자 지시). `https://api.iconify.design/search?query=<낱말>` 로
+  후보를 찾고, 작은 크기(22px)로 나란히 찍어 비교한 뒤 한 세트에서 고른다. 라이선스(MIT 등)를 확인하고 `public/icons/<세트>/` 에 SVG 와
+  `LICENSE.md` 를 함께 둔다. 이 글은 Fluent Emoji High Contrast(Microsoft, MIT)의 technologist·person·robot 을 CSS `mask` 로 역할 색을 입혀 쓴다.
   견본: `auto-drafts/posts/prompt-engineering-roles-few-shot.html` 의 `.ps-m`.
 - 360px 폭에서도 가로 스크롤이 생기지 않아야 한다. 글자 크기는 `clamp()` 로 준다.
 - 움직임은 `@media (prefers-reduced-motion: reduce)` 에서 끈다.
