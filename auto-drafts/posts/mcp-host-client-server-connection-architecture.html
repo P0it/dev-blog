@@ -1,0 +1,798 @@
+---
+title: MCP에서 모델은 왜 서버와 직접 이야기하지 않을까요?
+slug: mcp-host-client-server-connection-architecture
+excerpt: MCP에서는 Host 앱 안의 Client 하나가 Server 하나와 따로 이어집니다. Host는 Server가 내놓은 도구 목록을 모델에 보여 줍니다. 모델이 고르면 Client가 그 Server를 부릅니다. "이번 주 마감 이슈 중에 아직 커밋이 없는 게 있을까요?"라는 질문 하나로 로컬 stdio 서버와 원격 HTTP 서버, OAuth 인증이 놓이는 곳을 2026-07-28 규격 기준 흐름도로 그렸습니다.
+tags: [AI 아키텍처, MCP, Agent, OAuth, 도구 호출]
+category: ai
+series: ai-architecture-cheatsheet
+series_order: 6
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/mcp-host-client-server-connection-architecture-mwu6wlez.jpg
+---
+<!-- page -->
+<!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(건물 관리인과 콘센트에 꽂은 기기: 관리인(Host)이 기기마다 따로 이어진 전선(Client)을 따라 가서 명판과 버튼 목록을 받고, 바깥 건물 기기는 출입 관리소에서 받은 출입증을 보여야 열린다. 기사(모델)는 책상에서 목록만 보고 고른다, POSTING 5-11, 썸네일도 이 장면) + 큰 흐름도 하나(왼쪽 사용자 → Host · Client A/B, 위 모델 API, 오른쪽 내 컴퓨터의 stdio 서버와 인터넷의 HTTP 서버 · 인증 서버, ByteByteGo 문법) + Server와 Client가 내놓는 것(두 단 카드) + 서버를 원격으로 옮길 때(전송 | 인증 · Tasks 두 단 카드) + 더 읽어 보기 | 비유 후보: 우편 수발실과 표준 양식(수발실 하나가 모든 업체를 맡아 1:1 연결이 안 보이고, 양식이 A2A 편의 의뢰서와 겹친다), 통역 부스(통역사가 서버마다 말을 바꿔 주는 그림이라 "규격이 같다"는 요점과 반대) → 콘센트와 기기(전선 한 가닥 = Client 하나, 같은 플러그 = 같은 규격, 꽂을 때 명판 확인 = discover) -->
+<!-- 아이콘: npm run icons 가 본문 맨 앞 자리표시에 굽는다(POSTING 5-10). 흐름도 노드 아이콘은 스크립트가 쓰므로 여기 적어 굽게 한다: <use href="#i-user"/><use href="#i-app-window"/><use href="#i-brain"/><use href="#i-cable"/><use href="#i-git-branch"/><use href="#i-ticket"/><use href="#i-key-round"/><use href="#i-claude"/><use href="#i-openai"/><use href="#i-gemini"/><use href="#i-qwen"/><use href="#i-mcp"/><use href="#i-github"/><use href="#i-jira"/> -->
+<!--ISO:begin-->
+<style>
+/* 아이소메트릭 흐름 장면 (POSTING 5-11) — `npm run iso` 가 원고에 구워 넣는다 */
+.post-page .iso { --iso-blue: #2f5fe8; --iso-ok: #1f9d63; --iso-ink: #1c2540; margin: 0; font-family: var(--font-sans); word-break: keep-all; }
+[data-theme="dark"] .post-page .iso { --iso-blue: #5b86ff; --iso-ok: #45c58a; --iso-ink: #0c0f17; }
+.post-page .iso * { box-sizing: border-box; }
+.post-page .iso-req { display: inline-block; margin: 0 0 14px; padding: 8px 14px; border-radius: 12px; background: var(--bg-subtle); font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-req span { margin-right: 8px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-stage { position: relative; border-radius: 24px; overflow: hidden; background: color-mix(in srgb, var(--iso-blue) 10%, var(--bg-base)); }
+.post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
+.post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
+.post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
+.post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
+.post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
+.post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+@keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+/* 단계 띠 */
+.post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
+.post-page .iso-btns { display: flex; gap: 8px; flex: none; }
+.post-page .iso-btns button { font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-subtle); background: var(--bg-base); color: var(--fg-strong); cursor: pointer; }
+.post-page .iso-btns button.pri { min-width: 86px; background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-btns button:disabled { opacity: .4; cursor: default; }
+.post-page .iso-dots { flex: 1; display: flex; margin: 0; padding: 0; list-style: none; }
+.post-page .iso-dots li { flex: 1; margin: 0; padding: 0; position: relative; text-align: center; }
+.post-page .iso-dots li::before { content: ""; position: absolute; left: -50%; right: 50%; top: 13px; height: 3px; background: var(--line-subtle); }
+.post-page .iso-dots li:first-child::before { display: none; }
+.post-page .iso-dots li:has(button.done)::before, .post-page .iso-dots li:has(button.cur)::before { background: var(--iso-blue); }
+.post-page .iso-dots button { position: relative; z-index: 1; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--fg-neutral); cursor: pointer; }
+.post-page .iso-dots button i { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 5px; border-radius: 50%; font-style: normal; line-height: 1; background: var(--bg-subtle); border: 1px solid var(--line-subtle); }
+.post-page .iso-dots button.done, .post-page .iso-dots button.cur { color: var(--fg-strong); }
+.post-page .iso-dots button.done i, .post-page .iso-dots button.cur i { background: var(--iso-blue); border-color: var(--iso-blue); color: #fff; }
+.post-page .iso-dots button.cur i { box-shadow: 0 0 0 4px color-mix(in srgb, var(--iso-blue) 25%, transparent); }
+.post-page .iso-dots button span { display: block; }
+.post-page .iso-desc { margin: 12px 0 0; min-height: 3.4em; font-size: 16px; line-height: 1.7; color: var(--fg-strong); }
+/* 스크립트가 돌면 단계 글은 설명 한 줄(.iso-desc)로 보인다. 꺼져 있으면 목록 그대로 읽힌다 */
+.post-page .iso.iso-on .iso-steps, .post-page .iso.iso-on .iso-sum { display: none; }
+.post-page .iso-steps { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.8; }
+.post-page .iso-sum { margin: 12px 0 0; font-size: 16px; line-height: 1.8; }
+/* 좁은 화면: 비유 꼬리표와 단계 이름을 줄인다 */
+.post-page .iso-narrow .iso-lab { font-size: 11px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-lab.iso-num { font-size: 10px; padding: 1px 6px; }
+.post-page .iso-narrow .iso-lab small { font-size: 10.5px; margin-left: 5px; }
+.post-page .iso-narrow .iso-lab small.meta { display: none; }
+.post-page .iso-narrow .iso-lab.iso-say { font-size: 10.5px; padding: 2px 7px; }
+.post-page .iso-narrow .iso-bar { flex-direction: column; gap: 12px; }
+.post-page .iso-narrow .iso-dots { align-self: stretch; }
+.post-page .iso-narrow .iso-dots button span { display: none; }
+.post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+</style>
+<script>
+// 아이소메트릭 흐름 장면 — 정거장 사이를 한 사람이 오가며 일을 맡기고 결과를 받아 오는 그림.
+// 원고가 장면(정거장·길·동작)을 적어 isoScene(figure, spec) 을 부르면 이 파일이 그린다.
+// 이 파일은 `npm run iso -- <원고>` 가 원고의 <!--ISO--> 자리에 구워 넣는다. 규약: POSTING.md 5-11.
+(function () {
+  const PAL = {
+    light: { white: "#ffffff", wall: "#eef1f9", paper: "#fffdf5", blue: "#2f5fe8", navy: "#3b4a78", yellow: "#f5b62e", teal: "#2fbf9f",
+             orange: "#ff8a3d", red: "#e5484d", grey: "#cfd5e6", dark: "#2a3352", skin: "#f3cba8", hair: "#5a4636", to: [40, 60, 130], shadow: "rgba(30,50,120,.2)" },
+    dark:  { white: "#2e3650", wall: "#3b4460", paper: "#e9e4d2", blue: "#5b86ff", navy: "#8a99cc", yellow: "#e0a526", teal: "#2aa88c",
+             orange: "#f0803a", red: "#e5605f", grey: "#4d5775", dark: "#10131c", skin: "#e8bf9b", hair: "#3c2f25", to: [0, 0, 0], shadow: "rgba(0,0,0,.5)" },
+  };
+  const FLOOR = 0.2; // 정거장 바닥 판 두께 — 부품의 y 기본값
+
+  function isoScene(fig, spec) {
+    const stage = fig && fig.querySelector(".iso-stage");
+    const lis = fig ? [...fig.querySelectorAll(".iso-steps > li")] : [];
+    if (!stage || !lis.length) return;
+    const signal = window.postPage && window.postPage.signal;
+    const N = lis.length, S = spec.stations, ids = Object.keys(S), R = spec.routes || {};
+    const uid = "iso" + Math.random().toString(36).slice(2, 7);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sum = fig.querySelector(".iso-sum");
+
+    stage.innerHTML = '<svg aria-hidden="true"></svg><div class="iso-labs" aria-hidden="true"></div>';
+    const svg = stage.firstChild, labs = stage.lastChild;
+    const bar = document.createElement("div"); bar.className = "iso-bar";
+    bar.innerHTML = '<div class="iso-btns"><button type="button" data-a="prev">이전</button><button type="button" data-a="next">다음</button>' +
+      '<button type="button" data-a="play" class="pri">재생</button></div><ol class="iso-dots">' +
+      lis.map((li, i) => `<li><button type="button" data-i="${i}"><i>${i + 1}</i><span>${li.dataset.k || ""}</span></button></li>`).join("") +
+      `<li><button type="button" data-i="${N}"><i>✓</i><span>전체 흐름</span></button></li></ol>`;
+    const desc = document.createElement("p"); desc.className = "iso-desc"; desc.setAttribute("aria-live", "polite");
+    stage.after(bar, desc); fig.classList.add("iso-on");
+
+    /* ── 좌표: 장면 크기에 맞춰 눈금(U)과 원점을 정한다 ── */
+    let U = 40, OX = 0, OY = 0, W = 0, H = 0, pal = PAL.light;
+    const P = (x, y, z, ox = OX, oy = OY) => [ox + (x - z) * U * 0.866, oy + (x + z) * U * 0.5 - y * U];
+    const pts = (a) => a.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    function layout() {
+      W = stage.clientWidth || 800;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      const add = (x, y, z) => { const a = (x - z) * 0.866, b = (x + z) * 0.5 - y; x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); };
+      for (const id of ids) { const [ax, az] = S[id].at, [w, d] = S[id].size, t = S[id].top || 2.2;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(ax + sx * w / 2, 0, az + sz * d / 2); add(ax + sx * w / 2, t, az + sz * d / 2); } }
+      for (const k in R) for (const [x, z] of R[k]) { add(x, 0, z); add(x, 2, z); }
+      const narrow = W < 560, padX = narrow ? 14 : 70, padT = narrow ? 30 : 44, padB = narrow ? 14 : 22;
+      // 한 화면에 그림과 단계 띠가 같이 들어오게 높이는 화면의 70% 까지만 쓴다
+      U = Math.min(44, (W - padX * 2) / (x1 - x0), (innerHeight * 0.7 - padT - padB) / (y1 - y0));
+      H = (y1 - y0) * U + padT + padB; OX = (W - (x1 - x0) * U) / 2 - x0 * U; OY = padT - y0 * U;
+      stage.style.height = H.toFixed(0) + "px"; svg.setAttribute("viewBox", `0 0 ${W} ${H.toFixed(0)}`);
+      fig.classList.toggle("iso-narrow", narrow);
+    }
+
+    /* ── 그리기 ── */
+    const col = (c) => pal[c] || c;
+    const shade = (c, f) => { const n = parseInt(col(c).slice(1), 16), t = pal.to, m = (v, k) => Math.round(v * f + t[k] * (1 - f)); return `rgb(${m(n >> 16, 0)},${m((n >> 8) & 255, 1)},${m(n & 255, 2)})`; };
+    function draw1(b, ox, oy) {
+      const Q = (x, y, z) => P(x, y, z, ox, oy);
+      if (b.t === "sph") { const [cx, cy] = Q(b.x, b.y, b.z); return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(b.r * U).toFixed(1)}" fill="${col(b.c)}"/>`; }
+      const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y0 = b.y, y1 = b.y + b.h;
+      return `<polygon points="${pts([Q(x0, y0, z1), Q(x1, y0, z1), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${shade(b.c, 0.9)}"/>` +
+             `<polygon points="${pts([Q(x1, y0, z0), Q(x1, y0, z1), Q(x1, y1, z1), Q(x1, y1, z0)])}" fill="${shade(b.c, 0.78)}"/>` +
+             `<polygon points="${pts([Q(x0, y1, z0), Q(x1, y1, z0), Q(x1, y1, z1), Q(x0, y1, z1)])}" fill="${col(b.c)}"/>`;
+    }
+    // 부품: ["box", x, z, w, d, h, 색, y] · ["person", x, z, 색, y] · ["sph", x, y, z, r, 색] — x·z 는 정거장 중심 기준
+    function parts(st) {
+      const [ax, az] = st.at, out = [];
+      if (st.floor !== false) out.push({ t: "box", x: ax, y: 0, z: az, w: st.size[0], d: st.size[1], h: FLOOR, c: "white" });
+      for (const p of st.parts || []) {
+        if (p[0] === "box") out.push({ t: "box", x: ax + p[1], z: az + p[2], w: p[3], d: p[4], h: p[5], c: p[6], y: p[7] == null ? FLOOR : p[7] });
+        else if (p[0] === "person") { const y = p[4] == null ? FLOOR : p[4];
+          out.push({ t: "box", x: ax + p[1], z: az + p[2], w: 0.55, d: 0.55, h: 0.85, c: p[3], y }, { t: "sph", x: ax + p[1], y: y + 1.2, z: az + p[2], r: 0.33, c: "skin" }); }
+        else if (p[0] === "sph") out.push({ t: "sph", x: ax + p[1], y: p[2], z: az + p[3], r: p[4], c: p[5] });
+      }
+      return out;
+    }
+    const rect = (x0, z0, x1, z1) => pts([P(x0, 0, z0), P(x1, 0, z0), P(x1, 0, z1), P(x0, 0, z1)]);
+    function render() {
+      pal = document.documentElement.getAttribute("data-theme") === "dark" ? PAL.dark : PAL.light;
+      const k = U / 40, line = (p) => pts(p.map(([x, z]) => P(x, 0, z)));
+      let s = `<defs><filter id="${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="${(6 * k).toFixed(1)}"/></filter></defs>`;
+      for (const r in R) s += `<polyline points="${line(R[r])}" fill="none" stroke="${pal.yellow}" stroke-width="${(3 * k).toFixed(1)}" stroke-dasharray="${(10 * k).toFixed(1)} ${(8 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<polyline class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<g filter="url(#${uid})" fill="${pal.shadow}">`;
+      for (const id of ids) { const [x, z] = S[id].at, [w, d] = S[id].size; s += `<polygon points="${rect(x - w / 2, z - d / 2 + 0.3, x + w / 2 + 0.5, z + d / 2 + 0.6)}"/>`; }
+      s += "</g>";
+      // 정거장은 먼 것부터, 정거장 안 부품은 원고에 적은 순서(뒤 → 앞)대로
+      for (const id of [...ids].sort((a, b) => S[a].at[0] + S[a].at[1] - (S[b].at[0] + S[b].at[1]))) s += "<g>" + parts(S[id]).map((b) => draw1(b)).join("") + "</g>";
+      s += '<g class="iso-drop"></g><g class="iso-actor"></g>';
+      svg.innerHTML = s; drawActor(); drawDrop(); drawActive(); place();
+    }
+
+    /* ── 오가는 사람: 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
+    const A = { pos: [0, 0], dir: [1, 0], pages: 1, hold: true, say: "", drop: null };
+    const actorColor = (spec.actor && spec.actor.color) || "blue";
+    function drawActor() {
+      const [dx, dz] = A.dir, toward = dx + dz > 0, alongX = dx !== 0;
+      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: actorColor };
+      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * A.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
+      const head = [{ t: "sph", x: 0, y: 1.2, z: 0, r: 0.33, c: "skin" }];
+      if (toward) for (const e of [-1, 1]) head.push({ t: "sph", x: dx * 0.3 - dz * 0.13 * e, y: 1.2, z: dz * 0.3 + dx * 0.13 * e, r: 0.05, c: "dark" });
+      else head.push({ t: "sph", x: -dx * 0.06, y: 1.25, z: -dz * 0.06, r: 0.3, c: "hair" });
+      const list = !A.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
+      const g = svg.querySelector(".iso-actor"); g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor();
+    }
+    function moveActor() { const [a, b] = P(A.pos[0], 0, A.pos[1]); svg.querySelector(".iso-actor").setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
+    function drawDrop() {
+      const st = A.drop && S[A.drop], d = st && st.drop;
+      svg.querySelector(".iso-drop").innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * A.pages, d: 0.4, c: "paper" }) : "";
+    }
+
+    /* ── 이름표 ── */
+    const lab = {}, mk = (cls) => { const d = document.createElement("div"); d.className = cls; labs.appendChild(d); return d; };
+    for (const id of ids) lab[id] = mk("iso-lab");
+    const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
+    const say = mk("iso-lab iso-say");
+    let busy = null;
+    function labels() {
+      for (const id of ids) { const b = busy && busy[0] === id;
+        lab[id].className = "iso-lab" + (b ? " busy" : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+    }
+    // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
+    const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
+    function place() {
+      for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
+      for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
+      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+    }
+
+    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
+    function acts(i) {
+      const out = [], seg = (r) => { for (let k = 0; k < r.length - 1; k++) out.push({ seg: [r[k], r[k + 1]], dur: 300 + Math.hypot(r[k + 1][0] - r[k][0], r[k + 1][1] - r[k][1]) * 240 }); };
+      for (const a of spec.steps[i] || []) {
+        if (a[0] === "at") out.push({ dur: 0, jump: typeof a[1] === "string" ? R[a[1]][0] : a[1], ...a[2] });
+        else if (a[0] === "set") out.push({ dur: 0, ...a[1] });
+        else if (a[0] === "go") seg(R[a[1]]);
+        else if (a[0] === "back") seg([...R[a[1]]].reverse());
+        else if (a[0] === "wait") out.push({ dur: a[1], comp: a[2], text: a[3], wait: true, ...a[4] });
+      }
+      return out;
+    }
+    function apply(a) {
+      if (a.jump) A.pos = [...a.jump];
+      if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
+      if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
+      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      drawActor(); labels(); place();
+    }
+
+    let step = N, playing = false, raf = 0, timer = 0;
+    function drawActive() {
+      const one = step < N && (spec.steps[step] || []).filter((a) => a[0] === "go" || a[0] === "back");
+      const names = one ? [...new Set(one.map((a) => a[1]))] : [];
+      svg.querySelector(".iso-act").setAttribute("points", names.length === 1 ? pts(R[names[0]].map(([x, z]) => P(x, 0, z))) : "");
+    }
+    function ui() {
+      bar.querySelectorAll(".iso-dots button").forEach((b, i) => { b.className = i < step ? "done" : i === step ? "cur" : ""; if (i === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+      desc.textContent = step === N ? (sum ? sum.textContent : "") : lis[step].textContent;
+      bar.querySelector('[data-a="prev"]').disabled = step === 0; bar.querySelector('[data-a="next"]').disabled = step === N;
+      bar.querySelector('[data-a="play"]').textContent = playing ? "일시정지" : step === N ? "다시 재생" : "재생";
+      drawActive();
+    }
+    function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
+    function go(i, auto) {
+      stop(); if (!auto) playing = false;
+      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
+        playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
+        ui(); drawDrop(); drawActor(); labels(); place(); return;
+      }
+      ui();
+      const list = acts(step); let k = -1, t0 = 0;
+      const next = (now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
+        while (++k < list.length) { apply(list[k]); if (list[k].dur > 0 && !reduce) { t0 = now; return true; } if (list[k].seg) { A.pos = [...list[k].seg[1]]; moveActor(); } }
+        busy = null; labels(); place(); if (playing) timer = setTimeout(() => go(step + 1, true), 2400); return false; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
+      };
+      const tick = (now) => {
+        const a = list[k], t = Math.min(1, (now - t0) / a.dur);
+        if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (t >= 1 && !next(now)) return;
+        raf = requestAnimationFrame(tick);
+      };
+      if (next(performance.now())) raf = requestAnimationFrame(tick);
+    }
+    let io = null;
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (io) { io.disconnect(); io = null; } // 독자가 먼저 눌렀으면 자동 재생으로 덮어쓰지 않는다
+      if (b.dataset.i != null) return go(+b.dataset.i);
+      if (b.dataset.a === "prev") return go(step - 1);
+      if (b.dataset.a === "next") return go(step + 1);
+      if (playing) { playing = false; clearTimeout(timer); return ui(); }
+      playing = true; go(step === N ? 0 : step, true);
+    }, { signal });
+
+    /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
+    layout(); labels(); render(); go(N);
+    const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
+    const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (!reduce && "IntersectionObserver" in window) {
+      io = new IntersectionObserver((es) => { const e = es[0];
+        if (e.intersectionRatio >= 0.9 && io) { io.disconnect(); io = null; playing = true; go(0, true); } }, { threshold: [0.9, 0.95, 1] });
+      io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 70% 로 묶어 두어 어느 화면에서든 닿는다
+    }
+    if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
+    return { go, get step() { return step; }, get playing() { return playing; } };
+  }
+
+  // 흔한 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아 → 돌아와 적는다
+  isoScene.trip = (route, station, o) => [
+    ["at", route, { hold: true, pages: o.pages, say: o.carry }], ["go", route],
+    ["wait", o.ms || 1600, station, o.work, { hold: false, drop: true, say: "" }],
+    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, station, o.give || "결과를 건네는 중"],
+    ["back", route], ...(o.home ? [["wait", 800, o.home, o.write || "결과를 적는 중"]] : []),
+  ];
+  window.isoScene = isoScene;
+})();
+</script>
+<!--ISO:end-->
+<style>
+.post-page .ac {
+  --ac-user: rgb(37, 112, 235); --ac-app: rgb(16, 150, 120); --ac-model: rgb(226, 106, 28);
+  --ac-data: rgb(132, 84, 220); --ac-tool: rgb(8, 145, 178); --ac-ops: rgb(100, 116, 139); --ac-warn: rgb(202, 138, 4);
+  color: var(--fg-normal); font-family: var(--font-sans); word-break: keep-all;
+}
+[data-theme="dark"] .post-page .ac {
+  --ac-user: rgb(110, 165, 255); --ac-app: rgb(60, 205, 165); --ac-model: rgb(255, 150, 80);
+  --ac-data: rgb(180, 145, 255); --ac-tool: rgb(70, 200, 230); --ac-ops: rgb(160, 174, 192); --ac-warn: rgb(250, 204, 21);
+}
+.post-page .ac * { box-sizing: border-box; }
+.post-page .ac-wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+.post-page .ac h1, .post-page .ac h2 { font-family: var(--font-display); color: var(--fg-strong); letter-spacing: -0.02em; margin: 0; }
+.post-page .ac h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.25; }
+.post-page .ac p { font-size: 17px; line-height: 1.85; margin: 0; }
+.post-page .ac a { color: var(--fg-strong); text-underline-offset: 3px; }
+.post-page .ac code { font-family: var(--font-mono); font-size: .9em; }
+.post-page .ac-hero { padding-top: clamp(40px, 6vw, 64px); }
+.post-page .ac-kicker { font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--fg-neutral); margin-bottom: 14px; }
+.post-page .ac-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: end; }
+.post-page .ac .k-user { --c: var(--ac-user); } .post-page .ac .k-app { --c: var(--ac-app); }
+.post-page .ac .k-model { --c: var(--ac-model); } .post-page .ac .k-tool { --c: var(--ac-tool); }
+.post-page .ac .k-data { --c: var(--ac-data); } .post-page .ac .k-ops { --c: var(--ac-ops); } .post-page .ac .k-warn { --c: var(--ac-warn); }
+
+/* 아이콘 타일 (POSTING 5-10) */
+.post-page .ac .ni { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--bg-base); box-shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 4px 12px rgba(15, 23, 42, .09); display: grid; place-items: center; }
+[data-theme="dark"] .post-page .ac .ni { background: color-mix(in srgb, var(--fg-strong) 10%, var(--bg-base)); box-shadow: none; }
+.post-page .ac .ni svg { width: 19px; height: 19px; color: var(--c); }
+
+/* 큰 흐름도 — 노드 + 번호 엣지 (POSTING 5-10) */
+.post-page .fl { margin: clamp(36px, 4vw, 48px) 0 0; background: var(--bg-subtle); border-radius: 30px; padding: clamp(20px, 3vw, 36px); }
+.post-page .fl-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; }
+.post-page .fl-top h2 { font-size: clamp(20px, 2.2vw, 26px); }
+.post-page .fl-req { display: flex; align-items: center; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 12px 18px; flex: 1; min-width: 280px; max-width: 640px; }
+.post-page .fl-req .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 2px; }
+.post-page .fl-req .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
+.post-page .fl-cap { margin: 18px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 600; min-height: 1.6em; transition: opacity .3s; }
+.post-page .fl-cap.fade { opacity: 0; }
+.post-page .fl-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+/* ByteByteGo 문법: 회색 테두리 상자 · 점선 그룹 + 검은 알약 이름표 · 직각 엣지 · 검은 번호 원 + 굵은 엣지 글 */
+.post-page .fl-svg text { font-family: var(--font-sans); fill: var(--fg-strong); }
+.post-page .fl-svg .grp { fill: var(--bg-base); fill-opacity: .55; stroke: var(--fg-neutral); stroke-width: 1.6; stroke-dasharray: 7 6; }
+.post-page .fl-svg .grp.us { fill: color-mix(in srgb, var(--ac-app) 7%, var(--bg-base)); fill-opacity: 1; }
+.post-page .fl-svg .pill rect { fill: var(--fg-strong); }
+.post-page .fl-svg .pill text { fill: var(--bg-base); font-size: 14px; font-weight: 800; }
+.post-page .fl-svg .box { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s, stroke-width .3s; }
+.post-page .fl-svg .nd.hot .box, .post-page .fl-svg .nd.hot .ring { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .ring { fill: var(--bg-base); stroke: color-mix(in srgb, var(--fg-strong) 40%, var(--bg-base)); stroke-width: 1.5; transition: stroke .3s; }
+.post-page .fl-svg .nt { font-size: 17px; font-weight: 800; }
+.post-page .fl-svg .ns { font-size: 13px; fill: var(--fg-neutral); }
+.post-page .fl-svg .e { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linejoin: round; transition: stroke .3s; }
+.post-page .fl-svg .e.on { stroke: var(--ac-model); stroke-width: 3; }
+.post-page .fl-svg .ah { fill: none; stroke: var(--fg-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.post-page .fl-svg .badge circle { fill: var(--fg-strong); }
+.post-page .fl-svg .badge text { fill: var(--bg-base); font-size: 12.5px; font-weight: 800; }
+.post-page .fl-svg .el { font-size: 14px; font-weight: 700; }
+.post-page .fl-svg .el.mono { font-family: var(--font-mono); font-size: 13px; }
+.post-page .fl-svg .chip { font-size: 14px; font-weight: 800; fill: var(--ac-data); }
+.post-page .fl-svg .dot { fill: var(--ac-model); stroke: var(--bg-base); stroke-width: 3; }
+.post-page .fl-legend { display: none; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: s; }
+.post-page .fl-legend li { counter-increment: s; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; margin-bottom: 6px; color: var(--fg-normal); }
+.post-page .fl-legend li::before { content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--fg-strong); color: var(--bg-base); font-size: 12px; font-weight: 800; display: grid; place-items: center; margin-top: 1px; }
+.post-page .fl-src { font-size: 12.5px !important; line-height: 1.6 !important; color: var(--fg-neutral); margin-top: 16px !important; }
+
+/* 흐름도 아래 짧은 섹션 */
+.post-page .ac-sec { padding: clamp(64px, 8vw, 96px) 0 0; }
+.post-page .ac .iso { margin-top: clamp(32px, 4vw, 44px); }
+.post-page .ac-bridge { max-width: 760px; margin: 0 0 28px; }
+.post-page .ac-sec h2 { font-size: clamp(20px, 2.2vw, 26px); margin-bottom: 24px; }
+.post-page .ac-two { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(20px, 4vw, 72px); align-items: start; margin-bottom: 32px; }
+.post-page .ac-two h2 { margin-bottom: 0; }
+.post-page .kp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.post-page .kp > div { background: var(--bg-subtle); border-radius: 24px; padding: 24px; }
+.post-page .kp h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--fg-strong); margin: 0 0 18px; }
+.post-page .kp h3 svg { width: 17px; height: 17px; color: var(--c); }
+.post-page .kp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.post-page .kp li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; }
+.post-page .kp li b { display: block; font-size: 15px; color: var(--fg-strong); }
+.post-page .kp li .d { display: block; font-size: 13.5px; color: var(--fg-neutral); line-height: 1.55; margin-top: 2px; }
+.post-page .kp .note { font-size: 13px; line-height: 1.65; color: var(--fg-neutral); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-subtle); }
+.post-page .ac-more { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 72px); align-items: start; padding-bottom: 40px; }
+.post-page .ac-more h2 { font-size: clamp(20px, 2.2vw, 24px); margin: 0; }
+.post-page .ac-more ul { margin: 0; padding-left: 1.3em; }
+.post-page .ac-more li { font-size: 15.5px; line-height: 1.8; margin-bottom: 6px; }
+
+@media (max-width: 720px) {
+  .post-page .ac-wrap { padding: 0 16px; }
+  .post-page .ac-head, .post-page .ac-more, .post-page .kp, .post-page .ac-two { grid-template-columns: minmax(0, 1fr); }
+  .post-page .fl { border-radius: 22px; padding: 16px; }
+  .post-page .fl-req { min-width: 0; flex-basis: 100%; }
+  .post-page .fl-legend { display: block; }
+  .post-page .fl-svg .nt { font-size: 15px; }
+}
+</style>
+
+<div class="ac">
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-app-window" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /> <path d="M10 4v4" /> <path d="M2 8h20" /> <path d="M6 4v4" /></g></symbol>
+<symbol id="i-brain" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5" /> <path d="M15 13a4.17 4.17 0 01-3-4 4.17 4.17 0 01-3 4" /> <path d="M17.707 6.294A3 3 0 1012 5a3 3 0 10-5.707 1.294" /> <path d="M17.996 5.125a4 4 0 012.526 5.77" /> <path d="M18 18a4 4 0 002-7.465" /> <path d="M19.967 17.482a4 4 0 11-7.967.517 4 4 0 11-7.967-.517" /> <path d="M6 18a4 4 0 01-2-7.465" /> <path d="M6.004 5.125a4 4 0 00-2.526 5.77" /></g></symbol>
+<symbol id="i-cable" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 19a1 1 0 0 1-1-1v-2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a1 1 0 0 1-1 1z" /> <path d="M17 21v-2" /> <path d="M19 14V6.5a1 1 0 0 0-7 0v11a1 1 0 0 1-7 0V10" /> <path d="M21 21v-2" /> <path d="M3 5V3" /> <path d="M4 10a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2z" /> <path d="M7 5V3" /></g></symbol>
+<symbol id="i-claude" viewBox="0 0 24 24"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></g></symbol>
+<symbol id="i-gemini" viewBox="0 0 24 24"><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-0-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-1-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#gemini-lobe-icons-gemini-2-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-0-_R_0_" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-1-_R_0_" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="gemini-lobe-icons-gemini-2-_R_0_" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></symbol>
+<symbol id="i-git-branch" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3" /> <circle cx="18" cy="6" r="3" /> <circle cx="6" cy="18" r="3" /></g></symbol>
+<symbol id="i-github" viewBox="0 0 24 24"><g fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></g></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /> <path d="M2 12h20" /></g></symbol>
+<symbol id="i-hourglass" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></g></symbol>
+<symbol id="i-jira" viewBox="0 0 128 128"><defs><linearGradient id="jira-jira-original-a" gradientUnits="userSpaceOnUse" x1="22.034" y1="9.773" x2="17.118" y2="14.842" gradientTransform="scale(4)"><stop offset=".176" stop-color="#0052cc"/><stop offset="1" stop-color="#2684ff"/></linearGradient><linearGradient id="jira-jira-original-b" gradientUnits="userSpaceOnUse" x1="16.641" y1="15.564" x2="10.957" y2="21.094" gradientTransform="scale(4)"><stop offset=".176" stop-color="#0052cc"/><stop offset="1" stop-color="#2684ff"/></linearGradient></defs><path d="M108.023 16H61.805c0 11.52 9.324 20.848 20.847 20.848h8.5v8.226c0 11.52 9.328 20.848 20.848 20.848V19.977A3.98 3.98 0 00108.023 16zm0 0" fill="#2684ff"/><path d="M85.121 39.04H38.902c0 11.519 9.325 20.847 20.844 20.847h8.504v8.226c0 11.52 9.328 20.848 20.848 20.848V43.016a3.983 3.983 0 00-3.977-3.977zm0 0" fill="url(#jira-jira-original-a)"/><path d="M62.219 62.078H16c0 11.524 9.324 20.848 20.848 20.848h8.5v8.23c0 11.52 9.328 20.844 20.847 20.844V66.059a3.984 3.984 0 00-3.976-3.98zm0 0" fill="url(#jira-jira-original-b)"/></symbol>
+<symbol id="i-key-round" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></g></symbol>
+<symbol id="i-laptop" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" /> <path d="M20.054 15.987H3.946" /></g></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /></g></symbol>
+<symbol id="i-lock-keyhole" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1" /> <rect x="3" y="10" width="18" height="12" rx="2" /> <path d="M7 10V7a5 5 0 0 1 10 0v3" /></g></symbol>
+<symbol id="i-mcp" viewBox="0 0 24 24"><g fill="currentColor"><path d="M15.688 2.343a2.588 2.588 0 00-3.61 0l-9.626 9.44a.863.863 0 01-1.203 0 .823.823 0 010-1.18l9.626-9.44a4.313 4.313 0 016.016 0 4.116 4.116 0 011.204 3.54 4.3 4.3 0 013.609 1.18l.05.05a4.115 4.115 0 010 5.9l-8.706 8.537a.274.274 0 000 .393l1.788 1.754a.823.823 0 010 1.18.863.863 0 01-1.203 0l-1.788-1.753a1.92 1.92 0 010-2.754l8.706-8.538a2.47 2.47 0 000-3.54l-.05-.049a2.588 2.588 0 00-3.607-.003l-7.172 7.034-.002.002-.098.097a.863.863 0 01-1.204 0 .823.823 0 010-1.18l7.273-7.133a2.47 2.47 0 00-.003-3.537z"></path><path d="M14.485 4.703a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a4.115 4.115 0 000 5.9 4.314 4.314 0 006.016 0l7.12-6.982a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a2.588 2.588 0 01-3.61 0 2.47 2.47 0 010-3.54l7.12-6.982z"></path></g></symbol>
+<symbol id="i-message-circle-question-mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /> <path d="M9 9.5a3 2.5 0 016 0c0 2-2 2-3 3.5" /> <path d="M12 17h.01" /></g></symbol>
+<symbol id="i-network" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1" /> <rect x="2" y="16" width="6" height="6" rx="1" /> <rect x="9" y="2" width="6" height="6" rx="1" /> <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" /> <path d="M12 12V8" /></g></symbol>
+<symbol id="i-openai" viewBox="0 0 24 24"><g fill="currentColor"><path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path></g></symbol>
+<symbol id="i-qwen" viewBox="0 0 24 24"><path d="M19.713 2.825h-5.907c0-.251-.066-.503-.196-.728L12.819.728A1.46 1.46 0 0 0 11.559 0h-1.58c-.52 0-1 .275-1.26.728l-2.42 4.19a1.45 1.45 0 0 0 0 1.453l.791 1.37c.26.448.74.727 1.26.727h11.36c.52 0 1-.275 1.26-.728l.79-1.37a1.45 1.45 0 0 0 0-1.451l-.79-1.37a1.46 1.46 0 0 0-1.26-.728zM.195 9.905l2.951 5.115a1.46 1.46 0 0 0-.531.531l-.791 1.37a1.45 1.45 0 0 0 0 1.452l.79 1.37c.26.448.74.727 1.26.727h4.84c.52 0 1-.275 1.26-.728l.79-1.37a1.45 1.45 0 0 0 0-1.451L5.086 7.083a1.46 1.46 0 0 0-1.26-.728h-1.58c-.52 0-1 .276-1.26.728l-.79 1.37a1.45 1.45 0 0 0 0 1.452m15.888 13.367 2.951-5.115c.217.125.469.196.728.196h1.582c.52 0 1-.275 1.26-.728l.79-1.37a1.45 1.45 0 0 0 0-1.451l-2.42-4.191a1.46 1.46 0 0 0-1.259-.728h-1.582c-.52 0-1 .276-1.259.728l-5.678 9.838a1.45 1.45 0 0 0 0 1.452l.79 1.37c.26.448.74.727 1.26.727h1.582c.52 0 1-.275 1.26-.728z" fill="#082dff"></path></symbol>
+<symbol id="i-scroll-text" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5" /> <path d="M15 8h-5" /> <path d="M19 17V5a2 2 0 0 0-2-2H4" /> <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" /></g></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /> <rect width="20" height="8" x="2" y="14" rx="2" ry="2" /> <line x1="6" x2="6.01" y1="6" y2="6" /> <line x1="6" x2="6.01" y1="18" y2="18" /></g></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></g></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /> <path d="M13 5v2" /> <path d="M13 17v2" /> <path d="M13 11v2" /></g></symbol>
+<symbol id="i-timer-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4" /> <path d="M12 14v-4" /> <path d="M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6" /> <path d="M9 17H4v5" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></g></symbol>
+</defs></svg>
+
+<section class="ac-hero">
+  <div class="ac-wrap">
+    <div class="ac-kicker">한 장으로 보는 AI 시스템 설계 · 6</div>
+    <div class="ac-head">
+      <h1>MCP에서 모델은 왜<br>서버와 직접 이야기하지 않을까요?</h1>
+      <p>MCP(Model Context Protocol)는 AI 앱이 바깥 도구와 데이터에 붙는 공통 규격입니다. 서버와 메시지를 주고받는 쪽은 앱 안의 Client입니다. 모델은 앱이 건넨 도구 목록에서 고르기만 합니다. 서버마다 Client가 하나씩 따로 붙습니다.</p>
+    </div>
+
+    <figure class="iso" data-figure data-iso="mcp" aria-label="MCP 연결 구조를 건물 관리인과 콘센트에 꽂은 기기에 빗댄 장면. 관리인이 분전반에서 기기마다 따로 이어진 전선을 따라 책상 옆 Git 기기와 바깥 건물의 이슈 기기에 가서 명판과 버튼 목록을 받는다. 바깥 기기는 출입증이 없으면 돌려보내서 관리인이 출입 관리소에서 사용자 로그인을 기다려 출입증을 받아 온다. 질문이 오면 관리인이 질문과 버튼 목록을 기사의 책상에 놓으면 기사가 고른 버튼을 관리인이 각 기기에 가서 누르고 결과를 가져온다. 기사는 책상을 떠나지 않는다.">
+      <p class="iso-req"><span>예시 질문</span>이번 주 마감 이슈 중에 아직 커밋이 없는 게 있을까요?</p>
+      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
+      <ol class="iso-steps">
+        <li data-k="로컬 연결">관리인(Host 앱)은 질문이 오기 전에 기기부터 연결합니다. 책상 옆 Git 기기는 관리인이 직접 켜는 프로그램이라 전선 한 가닥(stdio)으로 바로 이어집니다. 명판을 읽어 무엇을 지원하는지 보고(server/discover) 버튼 목록을 받습니다(tools/list). 버튼, 곧 도구는 3개입니다.</li>
+        <li data-k="인증">바깥 건물의 이슈 기기는 출입증 없이 온 요청을 401로 돌려보냅니다. 관리인은 출입 관리소(인증 서버)에 들러 사용자가 브라우저에서 로그인하고 허락하기를 기다린 뒤 출입증을 받습니다. 이 출입증이 OAuth 액세스 토큰(access token)입니다.</li>
+        <li data-k="원격 연결">출입증을 보여 주고 이슈 기기의 버튼 목록을 받습니다. 도구는 4개입니다. 이 기기와는 인터넷 너머 HTTP 주소 하나(Streamable HTTP)로 이어집니다. 출입증은 요청할 때마다 다시 보여 줍니다.</li>
+        <li data-k="질문">사용자가 질문합니다. 관리인 손에는 두 기기에서 받은 도구 7개의 목록이 있습니다.</li>
+        <li data-k="고르기">관리인은 질문과 도구 7개의 이름과 설명을 기사(모델)의 책상에 놓습니다. 기사는 책상을 떠나지 않고 목록만 보고 <code>git_log</code>와 <code>search_issues</code>를 고릅니다. 버튼이 어느 기기에 달렸는지는 기사가 몰라도 됩니다.</li>
+        <li data-k="실행">관리인은 고른 버튼이 달린 기기로 각각 갑니다. Git 기기에서는 이번 주 커밋 12개를 받습니다. 이슈 기기에서는 출입증을 보여 준 뒤 마감 이슈 4건을 받아 옵니다. 버튼을 누르는 이 요청이 tools/call입니다.</li>
+        <li data-k="답">두 결과를 기사에게 건네면 기사가 커밋 메시지와 이슈 번호를 맞대어 답을 씁니다. 관리인이 그 답을 사용자에게 전합니다. 비유와 다른 점도 있습니다. 실제 서버는 전기를 받아 쓰는 기기가 아니라 요청을 받으면 데이터를 돌려주는 프로그램입니다.</li>
+      </ol>
+      <p class="iso-sum">기기마다 전선이 한 가닥씩 따로 이어집니다(1 · 3). 기사(모델)는 책상을 떠나지 않고 관리인이 가져온 목록에서 고르기만 합니다(5). 기기에 가서 버튼을 누르는 일은 관리인이 맡고(6), 출입증은 바깥 건물의 기기에만 필요합니다(2).</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <p class="ac-bridge">같은 질문을 실제 구성 요소 이름으로 다시 그리면 아래 흐름도가 됩니다. 관리인은 Host 앱입니다. 기기마다 따로 이어진 전선이 Client입니다. 명판과 버튼 목록은 <code>server/discover</code>와 <code>tools/list</code>의 응답이고 출입증은 OAuth 토큰입니다.</p>
+
+    <figure class="fl" data-figure aria-label="MCP 연결 구조 흐름도. 가운데 Host 앱 안에 Client A와 Client B가 있다. Client A는 내 컴퓨터에서 stdio로 띄운 Git MCP 서버에, Client B는 인터넷의 이슈 트래커 MCP 서버에 Streamable HTTP로 이어진다. 먼저 두 서버에서 도구 목록을 받는데, 원격 서버는 토큰이 없는 요청을 401로 돌려보내므로 Client B가 인증 서버에서 사용자 로그인을 거쳐 토큰을 받은 뒤 다시 요청한다. 사용자의 질문이 들어오면 Host가 질문과 도구 7개를 위쪽 모델 API에 보내고 모델이 도구 두 개를 고르면 Host가 각 Client에 넘겨 서버에 tools/call을 보낸다. 결과 두 건을 받아 모델을 한 번 더 부르고 답을 사용자에게 돌려준다. 모델은 서버와 직접 연결되지 않는다.">
+      <div class="fl-top"><h2>MCP 연결 구조의 흐름</h2>
+        <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><div class="mt">예시 · 코딩 Agent 앱에 들어온 질문</div><div class="mb">"이번 주 마감 이슈 중에 아직 커밋이 없는 게 있을까요?"</div></div></div>
+      </div>
+      <p class="fl-cap" data-fl-cap>서버 2개 · 도구 7개 · 모델 호출 2번 · tools/call 2번. 모델이 말을 주고받는 상대는 Host 하나뿐이다</p>
+      <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 800" role="img" aria-label="MCP 연결 구조 흐름도"></svg>
+      <ol class="fl-legend">
+        <li><span>Host가 Git 서버를 하위 프로세스로 띄우고 stdio로 도구 목록을 받는다</span></li>
+        <li><span>원격 서버가 토큰 없는 요청을 401로 돌려보내면 Client B가 인증 서버에서 사용자 로그인을 거쳐 토큰을 받는다</span></li>
+        <li><span>토큰을 붙여 원격 서버의 도구 목록을 받는다</span></li>
+        <li><span>질문이 들어온다</span></li>
+        <li><span>Host가 질문과 도구 7개의 설명을 모델에 보낸다. 결과가 오면 같은 길로 한 번 더 보낸다</span></li>
+        <li><span>모델이 도구 두 개를 고른다(tool_use). 두 번째 호출에서는 답을 돌려준다</span></li>
+        <li><span>Host가 도구마다 맡은 Client에 넘기고 Client가 서버에 tools/call을 보낸다</span></li>
+        <li><span>Client가 결과를 Host에 돌려준다</span></li>
+        <li><span>Host가 답을 사용자에게 전한다</span></li>
+      </ol>
+      <p class="fl-src">질문과 도구 이름, 숫자(도구 7개 · 커밋 12개 · 이슈 4건)는 설명을 위한 예시 값입니다. 메시지 이름과 순서는 MCP 2026-07-28 규격의 Architecture · Transports · Authorization 문서를 따랐습니다. 이 판에는 initialize 핸드셰이크가 없고 Client가 요청마다 규격 버전과 자기 능력을 <code>_meta</code>에 실어 보냅니다. 처음의 <code>server/discover</code>는 건너뛰어도 됩니다.</p>
+    </figure>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>Server와 Client가 서로 내놓는 것</h2>
+      <p>도구는 Server가 내놓는 것 가운데 하나일 뿐입니다. 규격은 Server 쪽 기능 세 가지와 Client 쪽 기능을 나눠 정합니다. 무엇을 지원하는지는 Server가 <code>server/discover</code> 응답에 적고 Client는 요청마다 적어 보냅니다. 아래는 2026-07-28 판 기준입니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-tool"><svg aria-hidden="true"><use href="#i-server"/></svg>Server가 내놓는 것</h3>
+        <ul>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-wrench"/></svg></span><div><b>Tools</b><span class="d">모델이 고르는 함수. 이름과 설명, 입력 스키마를 <code>tools/list</code>로 받고 <code>tools/call</code>로 실행한다</span></div></li>
+          <li><span class="ni k-data"><svg aria-hidden="true"><use href="#i-file-text"/></svg></span><div><b>Resources</b><span class="d">파일 내용이나 DB 스키마처럼 읽어 쓰는 데이터. 앱이나 사용자가 골라 문맥에 넣는다</span></div></li>
+          <li><span class="ni k-user"><svg aria-hidden="true"><use href="#i-scroll-text"/></svg></span><div><b>Prompts</b><span class="d">사용자가 고르는 프롬프트 틀. 앱에서는 슬래시 명령처럼 보이는 경우가 많다</span></div></li>
+        </ul>
+        <p class="note">규격은 <code>tools/list</code> 결과를 늘 같은 순서로 돌려주라고 권합니다. 모델에 보내는 도구 목록이 그대로여야 프롬프트 캐시가 잘 맞기 때문입니다.</p>
+      </div>
+      <div>
+        <h3 class="k-app"><svg aria-hidden="true"><use href="#i-cable"/></svg>Client가 내놓는 것</h3>
+        <ul>
+          <li><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><b>Elicitation</b><span class="d">처리 도중 사용자에게 물을 것이 생기면 Server가 결과 대신 <code>input_required</code>를 돌려준다. Client가 답을 모아 같은 요청을 다시 보낸다(MRTR, Multi Round-Trip Requests)</span></div></li>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-list-checks"/></svg></span><div><b>능력 선언</b><span class="d">Client는 지원하는 기능과 확장을 요청마다 <code>_meta</code>에 싣는다. 양쪽 모두 상대가 선언한 기능 안에서만 주고받는다</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-hourglass"/></svg></span><div><b>Sampling · Roots</b><span class="d">2026-07-28 판에서 폐지 예고(deprecated). 모델이 필요하면 Server가 모델 API를 직접 부르고 작업 폴더는 도구 인자나 서버 설정으로 넘기라고 권한다</span></div></li>
+        </ul>
+        <p class="note">Logging도 같은 판에서 폐지 예고됐습니다. stdio 서버는 로그를 stderr에 쓰고 그 밖에는 OpenTelemetry를 쓰라고 합니다. 폐지 예고된 기능도 최소 12개월은 동작합니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap">
+    <div class="ac-two">
+      <h2>서버를 원격으로 옮길 때 달라지는 것</h2>
+      <p>같은 서버라도 내 컴퓨터에서 띄우는지 인터넷 너머에 두는지에 따라 전송 방식과 인증이 바뀝니다. 메시지 내용은 두 전송에서 같은 JSON-RPC입니다. 그래서 흐름도에서도 Client B 쪽에만 인증 서버가 붙어 있습니다.</p>
+    </div>
+    <div class="kp" data-figure>
+      <div>
+        <h3 class="k-tool"><svg aria-hidden="true"><use href="#i-cable"/></svg>전송 방식</h3>
+        <ul>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-laptop"/></svg></span><div><b>stdio</b><span class="d">Host가 서버를 하위 프로세스로 띄우고 stdin과 stdout으로 한 줄에 메시지 하나씩 주고받는다. stdout에는 MCP 메시지만 써야 해서 로그는 stderr로 보낸다</span></div></li>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-globe"/></svg></span><div><b>Streamable HTTP</b><span class="d">서버가 MCP 주소 하나(예: <code>https://example.com/mcp</code>)를 열고 메시지마다 POST를 한 번 받는다. 응답은 JSON 하나이거나 그 요청에만 쓰는 SSE 스트림</span></div></li>
+          <li><span class="ni k-ops"><svg aria-hidden="true"><use href="#i-network"/></svg></span><div><b>세션 없는 요청</b><span class="d">2026-07-28 판에서 <code>Mcp-Session-Id</code> 세션이 빠졌다. 요청마다 <code>Mcp-Method</code>·<code>Mcp-Name</code> 헤더를 함께 보내 게이트웨이가 본문을 열지 않고도 요청을 나눌 수 있다</span></div></li>
+        </ul>
+        <p class="note">로컬에서 HTTP로 띄울 때는 127.0.0.1에만 묶고 <code>Origin</code> 헤더를 검사하라고 규격에 적혀 있습니다. 다른 웹사이트가 DNS rebinding으로 내 컴퓨터의 서버를 부르는 것을 막기 위해서입니다.</p>
+      </div>
+      <div>
+        <h3 class="k-warn"><svg aria-hidden="true"><use href="#i-key-round"/></svg>인증과 오래 걸리는 작업</h3>
+        <ul>
+          <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-lock-keyhole"/></svg></span><div><b>OAuth 2.1</b><span class="d">원격 서버는 리소스 서버이고 Client는 OAuth 클라이언트다. 토큰 없는 요청에 서버가 401과 메타데이터 주소를 돌려주면 Client가 인증 서버를 찾아 PKCE로 로그인 흐름을 연다</span></div></li>
+          <li><span class="ni k-warn"><svg aria-hidden="true"><use href="#i-shield-check"/></svg></span><div><b>토큰을 받는 대상</b><span class="d">토큰을 요청할 때 <code>resource</code> 매개변수에 그 서버 주소를 적는다. 서버는 자기 앞으로 발급된 토큰만 받고 받은 토큰을 다른 API에 넘기지 않는다</span></div></li>
+          <li><span class="ni k-tool"><svg aria-hidden="true"><use href="#i-laptop"/></svg></span><div><b>stdio 서버의 자격 증명</b><span class="d">이 흐름을 쓰지 않고 환경 변수처럼 실행 환경에서 받는다</span></div></li>
+          <li><span class="ni k-app"><svg aria-hidden="true"><use href="#i-timer-reset"/></svg></span><div><b>Tasks</b><span class="d">공식 확장 <code>io.modelcontextprotocol/tasks</code>. 오래 걸리는 <code>tools/call</code>에 서버가 결과 대신 <code>taskId</code>를 돌려주면 Client가 <code>tasks/get</code>으로 상태(working · input_required · completed …)를 확인한다. 양쪽이 모두 선언해야 쓴다</span></div></li>
+        </ul>
+        <p class="note">Claude Code와 Gemini CLI는 stdio 서버와 HTTP 서버를 모두 붙이고 원격 서버의 OAuth 로그인을 지원합니다. OpenAI Responses API는 원격 서버만 붙이고 토큰을 <code>authorization</code> 필드로 요청마다 넘깁니다. 2026년 11월에 확인한 각 문서 기준입니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ac-sec">
+  <div class="ac-wrap ac-more">
+    <h2>더 읽어 보기</h2>
+    <ul>
+      <li><a href="/posts/mcp-host-client-server-primitives">도구를 이미 부를 수 있는데 MCP는 왜 필요할까요?</a> · <a href="/posts/python-mcp-server-ticket-desk">사내 티켓 시스템을 어떤 Agent든 쓰게 하려면 어떻게 만들까요?</a> · <a href="/posts/mcp-client-agent-adapters-security">남이 만든 도구를 내 Agent에 꽂으면 무엇을 조심해야 할까요?</a></li>
+      <li><a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture" rel="noopener">MCP 2026-07-28, Architecture</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/transports" rel="noopener">Transports</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization" rel="noopener">Authorization</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog" rel="noopener">Key Changes</a> · <a href="https://modelcontextprotocol.io/extensions/tasks/overview" rel="noopener">Tasks</a> · <a href="https://code.claude.com/docs/en/mcp" rel="noopener">Claude Code 문서, MCP</a> · <a href="https://geminicli.com/docs/tools/mcp-server/" rel="noopener">Gemini CLI 문서, MCP servers</a> · <a href="https://developers.openai.com/api/docs/guides/tools-connectors-mcp" rel="noopener">OpenAI 문서, MCP and Connectors</a></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* 맨 위 장면(POSTING 5-11): 흐름도와 같은 질문 · 같은 횟수(서버 2개 · 도구 7개 · 모델 호출 2번 · tools/call 2번 · 토큰 1번) */
+(() => {
+  const T = isoScene.trip;
+  isoScene(postPage.root.querySelector('[data-iso="mcp"]'), {
+    stations: {
+      host: { name: "Host 앱", meta: "관리인과 분전반", at: [0, 0], size: [4.4, 3.4], top: 2.6, parts: [
+        ["box", 0, -1.0, 2.4, 0.5, 1.9, "navy"],
+        ["box", -0.5, -0.72, 0.4, 0.06, 0.55, "yellow", 1.0], ["box", 0.5, -0.72, 0.4, 0.06, 0.55, "yellow", 1.0],
+        ["box", 0.9, 0.6, 1.2, 0.8, 0.7, "grey"], ["box", 0.9, 0.6, 0.6, 0.5, 0.05, "paper", 0.9] ] },
+      user: { name: "사용자", meta: "개발자", at: [-9, 1], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, 0, "navy"]] },
+      model: { name: "모델", meta: "책상의 기사", at: [0, -9], size: [2.8, 2.8], top: 2.4, drop: [0.45, 1.02, 0.5], parts: [
+        ["person", 0, -0.6, "orange"], ["box", 0, 0.5, 2.1, 0.8, 0.8, "grey"], ["box", -0.5, 0.5, 0.5, 0.5, 0.05, "paper", 1.0] ] },
+      git: { name: "Git 서버 · stdio", meta: "책상 옆 콘센트의 기기", at: [10, -1], size: [3, 2.6], top: 2.3, drop: [0.3, 1.22, -0.2], parts: [
+        ["box", -0.9, -0.2, 0.7, 0.12, 0.12, "dark", 0.3],
+        ["box", 0.3, -0.2, 1.7, 1.2, 1.0, "grey"], ["box", 0.3, 0.42, 1.3, 0.04, 0.55, "teal", 0.4] ] },
+      remote: { name: "이슈 서버 · HTTP", meta: "바깥 건물의 기기", at: [0, 11], size: [3.2, 3], top: 3.2, drop: [0.9, 0.82, -1.0], parts: [
+        ["box", 0.9, -1.0, 0.7, 0.5, 0.6, "grey"],
+        ["box", 0, 0.1, 1.8, 1.4, 2.4, "navy"],
+        ["box", 0, 0.82, 1.4, 0.04, 0.12, "teal", 0.7], ["box", 0, 0.82, 1.4, 0.04, 0.12, "teal", 1.3], ["box", 0, 0.82, 1.4, 0.04, 0.12, "yellow", 1.9] ] },
+      auth: { name: "인증 서버", meta: "출입 관리소", at: [8.5, 6], size: [3, 2.8], top: 2.5, drop: [-0.4, 1.02, -0.7], parts: [
+        ["box", 0, -0.7, 1.8, 0.5, 0.8, "grey"], ["box", 0.5, -0.7, 0.35, 0.25, 0.04, "yellow", 1.0],
+        ["person", 0, 0.3, "teal"] ] },
+    },
+    routes: { user: [[-2.6, 1], [-7.6, 1]], model: [[0, -2.1], [0, -7.4]], git: [[2.6, -1], [8.2, -1]], auth: [[2.6, 1.2], [8.5, 1.2], [8.5, 4.3]], remote: [[0, 2.1], [0, 9.2]] },
+    actor: { color: "blue", home: [-2.6, 1] },
+    badges: [[[5.4, -1], "1 · 6"], [[4.2, 1.2], "2"], [[0, 5.6], "2 · 3 · 6"], [[-5.1, 1], "4 · 7"], [[0, -4.8], "5 · 7"]],
+    steps: [
+      T("git", "git", { pages: 1, carry: "server/discover · tools/list", work: "명판과 버튼 목록을 적는 중", give: "목록을 건네는 중", result: "도구 3개", home: "host", write: "목록에 적는 중" }),
+      [["at", "remote", { hold: true, pages: 2, say: "tools/list" }], ["go", "remote"],
+       ["wait", 1100, "remote", "출입증을 확인하는 중", { hold: false, drop: true, say: "" }],
+       ["set", { hold: true, say: "401 · 출입증 없음" }], ["wait", 500, "remote", "돌려보내는 중"], ["back", "remote"],
+       ["at", "auth", { hold: true, pages: 2, say: "출입증 신청" }], ["go", "auth"],
+       ["wait", 2200, "auth", "사용자 로그인을 기다리는 중", { hold: false, drop: true, say: "" }],
+       ["set", { hold: true, pages: 3, say: "출입증(토큰)" }], ["wait", 500, "auth", "출입증을 건네는 중"], ["back", "auth"],
+       ["wait", 700, "host", "출입증을 챙기는 중"]],
+      T("remote", "remote", { pages: 3, carry: "출입증 + tools/list", work: "버튼 목록을 적는 중", give: "목록을 건네는 중", result: "도구 4개", home: "host", write: "목록에 더하는 중" }),
+      [["at", "user", { hold: false, pages: 4, say: "" }], ["go", "user"], ["wait", 1300, "user", "질문하는 중"],
+       ["set", { hold: true, say: "질문" }], ["back", "user"], ["wait", 700, "host", "도구 목록을 펴는 중"]],
+      T("model", "model", { pages: 4, carry: "질문 + 도구 7개", work: "도구를 고르는 중", give: "고른 도구를 건네는 중", result: "git_log · search_issues", home: "host", write: "맡은 전선을 찾는 중" }),
+      [...T("git", "git", { pages: 5, carry: "tools/call git_log", work: "커밋을 찾는 중", give: "결과를 건네는 중", result: "커밋 12개" }),
+       ...T("remote", "remote", { pages: 6, carry: "출입증 + tools/call", work: "마감 이슈를 찾는 중", give: "결과를 건네는 중", result: "이슈 4건", home: "host", write: "결과를 모으는 중" })],
+      [...T("model", "model", { pages: 7, carry: "결과 2건", work: "커밋과 이슈를 맞대어 보는 중", give: "답을 건네는 중", result: "답" }),
+       ["at", "user", { hold: true, pages: 8, say: "답" }], ["go", "user"], ["wait", 1300, "user", "답을 받는 중", { hold: false, say: "" }]],
+    ],
+  });
+})();
+</script>
+<script>
+(() => {
+  const { root, signal } = window.postPage;
+  /* POSTING 5-3: 움직임은 그림 전체가 화면에 들어왔을 때(95% 이상, 화면보다 크면 화면의 85%를 채울 때) 시작하고, 15% 미만이면 나간 것으로 본다 */
+  const IntersectionObserver = class {
+    constructor(cb) {
+      this.st = new Map();
+      this.io = new window.IntersectionObserver((es) => {
+        const out = [];
+        es.forEach((e) => {
+          const full = e.intersectionRatio >= 0.95 || e.intersectionRect.height >= innerHeight * 0.85, was = this.st.get(e.target) || false;
+          const now = was ? e.intersectionRatio >= 0.15 : full;
+          if (now !== was) { this.st.set(e.target, now); out.push({ target: e.target, isIntersecting: now, intersectionRatio: e.intersectionRatio }); }
+        });
+        if (out.length) cb(out, this);
+      }, { threshold: [0, 0.15, 0.5, 0.8, 0.9, 0.95, 1] });
+      (window.__pgIO = window.__pgIO || []).push(this);
+    }
+    observe(el) { this.io.observe(el); (window.__pgIOt = window.__pgIOt || []).push(el); }
+    unobserve(el) { this.io.unobserve(el); }
+    disconnect() { this.io.disconnect(); }
+  };
+
+  const svg = root.querySelector("[data-fl-svg]"); if (!svg) return;
+  const cap = root.querySelector("[data-fl-cap]"), CAP_DONE = cap.innerHTML;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, a = {}, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.append(e); return e; };
+  const txt = (p, x, y, s, cls, anchor = "middle") => { const e = mk("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
+  const SLOW = 1.7; /* 독자가 따라 볼 수 있게 — 모든 대기·이동 시간을 1.7배로 (POSTING 5-10) */
+  const wait = (ms) => new Promise((r) => { const t = setTimeout(r, ms * SLOW); signal.addEventListener("abort", () => clearTimeout(t)); });
+
+  /* 노드: 아이콘 · 이름 · 부제 (n = 좁은 화면 이름) */
+  const NODE = {
+    user: { icon: "user", c: "var(--ac-user)", t: "사용자", s: "개발자", person: true },
+    host: { icon: "app-window", c: "var(--ac-app)", t: "Host · Agent 앱", n: "Host 앱", s: "대화 기록 · 도구 목록", logos: ["claude", "openai", "gemini"] },
+    model: { icon: "brain", c: "var(--ac-model)", t: "모델", s: "도구를 고르고 답을 쓴다", logos: ["claude", "openai", "gemini", "qwen"] },
+    ca: { icon: "cable", c: "var(--ac-app)", t: "Client A", s: "Git 서버 전용", logos: ["mcp"] },
+    cb: { icon: "cable", c: "var(--ac-app)", t: "Client B", s: "이슈 서버 전용", logos: ["mcp"] },
+    git: { icon: "git-branch", c: "var(--ac-tool)", t: "Git MCP 서버", n: "Git 서버", s: "Host가 띄운 하위 프로세스" },
+    issue: { icon: "ticket", c: "var(--ac-tool)", t: "이슈 트래커 MCP 서버", n: "이슈 서버", s: "원격 · https://…/mcp", logos: ["github", "jira"] },
+    auth: { icon: "key-round", c: "var(--ac-warn)", t: "인증 서버", s: "OAuth 2.1 토큰 발급" },
+  };
+  /* 배치 두 벌(ByteByteGo 문법: 격자 위 상자, 가로·세로로만 꺾는 엣지, 엣지 옆 번호 + 굵은 글). 노드 = [가운데 x, y, 폭, 높이] */
+  const LAYOUT = {
+    wide: {
+      vb: [1200, 800], labels: true, chip: [170, 664],
+      groups: [
+        { x: 225, y: 30, w: 300, h: 130, t: "모델 API" },
+        { x: 150, y: 210, w: 460, h: 470, t: "Host · Agent 앱", us: true, px: 530 },
+        { x: 700, y: 392, w: 480, h: 118, t: "내 컴퓨터 · stdio" },
+        { x: 700, y: 548, w: 480, h: 242, t: "인터넷 · Streamable HTTP" },
+      ],
+      nodes: { user: [70, 300], host: [375, 300, 270, 84], model: [375, 96, 250, 80], ca: [480, 450, 200, 72], cb: [480, 610, 200, 72], git: [940, 450, 320, 80], issue: [940, 610, 320, 84], auth: [940, 730, 320, 76] },
+      edges: {
+        e1: { p: [[582, 438], [774, 438]], n: 1, b: [612, 418], t: "요청 · stdio" },
+        e1r: { p: [[778, 462], [586, 462]], n: 1, b: [612, 484], t: "도구 3개 · 결과" },
+        e2: { p: [[560, 650], [560, 718], [774, 718]], n: 2, b: [640, 698], t: "OAuth 로그인" },
+        e2r: { p: [[778, 742], [530, 742], [530, 652]], n: 2, b: [640, 764], t: "access token", mono: true },
+        e3: { p: [[582, 598], [774, 598]], n: 3, b: [612, 578], t: "요청 + Bearer 토큰" },
+        e3r: { p: [[778, 622], [586, 622]], n: 3, b: [612, 644], t: "도구 4개 · 결과" },
+        e4: { p: [[100, 288], [234, 288]], n: 4, b: [130, 268], t: "질문" },
+        e5: { p: [[350, 254], [350, 142]], n: 5, b: [332, 180], t: "질문 + 도구 7개", a: "end" },
+        e6: { p: [[400, 140], [400, 252]], n: 6, b: [418, 180], t: "tool_use", mono: true },
+        e7a: { p: [[440, 346], [440, 408]], n: 7, b: [422, 378], t: "tools/call", a: "end", mono: true },
+        e8a: { p: [[470, 410], [470, 348]], n: 8, b: [488, 378], t: "결과" },
+        e7b: { p: [[290, 346], [290, 594], [374, 594]], n: 7, b: [308, 520] },
+        e8b: { p: [[376, 630], [260, 630], [260, 348]], n: 8, b: [242, 520] },
+        e9: { p: [[234, 312], [104, 312]], n: 9, b: [130, 334], t: "답" },
+      },
+    },
+    narrow: {
+      vb: [400, 770], labels: false, chip: [200, 752, "middle"],
+      groups: [
+        { x: 160, y: 28, w: 225, h: 84, t: "모델 API" },
+        { x: 15, y: 146, w: 370, h: 260, t: "Host", us: true, px: 175 },
+        { x: 18, y: 470, w: 194, h: 102, t: "로컬", px: 176 },
+        { x: 218, y: 470, w: 178, h: 260, t: "원격", px: 336 },
+      ],
+      nodes: { user: [84, 70], host: [200, 200, 300, 52], model: [272, 70, 200, 52], ca: [115, 360, 150, 52], cb: [285, 360, 140, 52], git: [115, 520, 150, 52], issue: [285, 520, 140, 52], auth: [285, 680, 140, 52] },
+      edges: {
+        e1: { p: [[100, 390], [100, 488]], n: 1, b: [82, 440] },
+        e1r: { p: [[130, 488], [130, 392]], n: 1, b: [148, 440] },
+        e2: { p: [[357, 370], [372, 370], [372, 668], [361, 668]], n: 2, b: [354, 610] },
+        e2r: { p: [[357, 692], [390, 692], [390, 348], [361, 348]], n: 2, b: [374, 716] },
+        e3: { p: [[270, 390], [270, 488]], n: 3, b: [252, 440] },
+        e3r: { p: [[300, 488], [300, 392]], n: 3, b: [318, 440] },
+        e4: { p: [[72, 100], [72, 168]], n: 4, b: [54, 134] },
+        e5: { p: [[250, 170], [250, 102]], n: 5, b: [232, 136] },
+        e6: { p: [[290, 100], [290, 168]], n: 6, b: [308, 136] },
+        e7a: { p: [[100, 230], [100, 328]], n: 7, b: [82, 280] },
+        e8a: { p: [[130, 328], [130, 232]], n: 8, b: [148, 280] },
+        e7b: { p: [[270, 230], [270, 328]], n: 7, b: [252, 280] },
+        e8b: { p: [[300, 328], [300, 232]], n: 8, b: [318, 280] },
+        e9: { p: [[96, 168], [96, 102]], n: 9, b: [114, 134] },
+      },
+    },
+  };
+  /* 가로·세로 꺾은선 → 모서리만 둥근 경로 */
+  const orth = (pts, r = 12) => {
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+      const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), rr = Math.min(r, l1 / 2, l2 / 2);
+      d += ` L${cx - (cx - px) / l1 * rr} ${cy - (cy - py) / l1 * rr} Q${cx} ${cy} ${cx + (nx - cx) / l2 * rr} ${cy + (ny - cy) / l2 * rr}`;
+    }
+    const z = pts[pts.length - 1]; return d + ` L${z[0]} ${z[1]}`;
+  };
+
+  let G = null, gen = 0;
+  function draw() {
+    const w = svg.getBoundingClientRect().width || 1100, L = w < 640 ? LAYOUT.narrow : LAYOUT.wide;
+    svg.innerHTML = ""; svg.setAttribute("viewBox", `0 0 ${L.vb[0]} ${L.vb[1]}`);
+    const defs = mk("defs"), mkr = mk("marker", { id: "fl-ah", viewBox: "0 0 10 10", refX: 8.5, refY: 5, markerWidth: 11, markerHeight: 11, markerUnits: "userSpaceOnUse", orient: "auto" }, defs);
+    mk("path", { d: "M1.5 1.5 L8.5 5 L1.5 8.5", class: "ah" }, mkr);
+    /* 그룹: 점선 테두리 + 위 테두리에 검은 알약 이름표 */
+    L.groups.forEach((z) => {
+      mk("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: 18, class: "grp" + (z.us ? " us" : "") });
+      const pl = mk("g", { class: "pill", transform: `translate(${z.px ?? z.x + z.w / 2} ${z.y})` }), r = mk("rect", { y: -14, height: 28, rx: 14 }, pl);
+      const tw = txt(pl, 0, 5, z.t, "").getComputedTextLength() + 32; r.setAttribute("x", -tw / 2); r.setAttribute("width", tw);
+    });
+    const E = {};
+    for (const [id, e] of Object.entries(L.edges)) E[id] = mk("path", { d: orth(e.p), class: "e", "marker-end": "url(#fl-ah)" });
+    const dot = mk("circle", { r: 7, class: "dot", cx: 0, cy: 0, style: "opacity:0" });
+    /* 번호: 엣지 옆 검은 원, 넓은 화면은 그 옆에 굵은 엣지 글 */
+    for (const e of Object.values(L.edges)) {
+      const [bx, by] = e.b, g = mk("g", { class: "badge", transform: `translate(${bx} ${by})` });
+      mk("circle", { r: 11 }, g); txt(g, 0, 4.5, String(e.n), "");
+      if (L.labels && e.t) txt(svg, bx + (e.a === "end" ? -17 : 17), by + 5, e.t, "el" + (e.mono ? " mono" : ""), e.a || "start");
+    }
+    const N = {};
+    for (const [id, [x, y, bw, bh]] of Object.entries(L.nodes)) {
+      const d = NODE[id], g = mk("g", { class: "nd", transform: `translate(${x} ${y})`, style: `--c:${d.c}` });
+      if (d.person) {
+        mk("circle", { r: 26, class: "ring" }, g);
+        mk("use", { href: `#i-${d.icon}`, x: -14, y: -14, width: 28, height: 28, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, 0, 48, d.t, "nt"); txt(g, 0, 66, d.s, "ns"); } else txt(g, 0, -36, d.t, "nt");
+      } else {
+        mk("rect", { x: -bw / 2, y: -bh / 2, width: bw, height: bh, rx: 14, class: "box" }, g);
+        const ic = L.labels ? 30 : 24, lx = -bw / 2 + 16;
+        mk("use", { href: `#i-${d.icon}`, x: lx, y: -ic / 2, width: ic, height: ic, style: `color:${d.c}` }, g);
+        if (L.labels) { txt(g, lx + ic + 12, -3, d.t, "nt", "start"); txt(g, lx + ic + 12, 17, d.s, "ns", "start"); }
+        else txt(g, lx + ic + 10, 6, d.n || d.t, "nt", "start");
+        if (d.logos && L.labels) d.logos.forEach((lg, i) => mk("use", { href: `#i-${lg}`, x: bw / 2 - 16 - (d.logos.length - i) * 24, y: -bh / 2 + 12, width: 18, height: 18, style: "color:var(--fg-strong)" }, g));
+      }
+      N[id] = { g };
+    }
+    const chip = txt(svg, L.chip[0], L.chip[1], "", "chip", L.chip[2] || "start");
+    G = { E, N, dot, chip };
+  }
+
+  const hot = (...ids) => Object.entries(G.N).forEach(([k, n]) => n.g.classList.toggle("hot", ids.includes(k)));
+  const setCap = async (html, my) => { cap.classList.add("fade"); await wait(250); if (my !== gen) return; cap.innerHTML = html; cap.classList.remove("fade"); };
+  /* 엣지 하나를 따라 점을 옮긴다 */
+  const run = (id, ms, my) => new Promise((res) => {
+    const p = G.E[id], len = p.getTotalLength(), t0 = performance.now(); p.classList.add("on"); G.dot.style.opacity = 1;
+    const st = (now) => {
+      if (signal.aborted || my !== gen) { p.classList.remove("on"); return res(); }
+      const t = Math.min(1, (now - t0) / (ms * SLOW)), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = p.getPointAtLength(len * k);
+      G.dot.setAttribute("cx", q.x); G.dot.setAttribute("cy", q.y);
+      if (t < 1) requestAnimationFrame(st); else { p.classList.remove("on"); res(); }
+    };
+    requestAnimationFrame(st);
+  });
+
+  const CHIP_DONE = "연결 2개 · 도구 7개";
+  const done = () => { hot(); G.dot.style.opacity = 0; G.chip.textContent = CHIP_DONE; cap.classList.remove("fade"); cap.innerHTML = CAP_DONE; };
+
+  /* 연결(1~3)을 먼저 지나고, 질문이 오면 모델 → Client → 서버 → 모델 → 사용자 순으로 지난다 */
+  async function play() {
+    const my = ++gen, ok = () => my === gen && !signal.aborted;
+    G.chip.textContent = "";
+    hot("ca"); await setCap("질문이 오기 전 · Host가 Git 서버를 하위 프로세스로 띄우고 stdio로 server/discover와 tools/list를 보낸다", my); await wait(500); if (!ok()) return;
+    await run("e1", 900, my); if (!ok()) return; hot("git"); await wait(500);
+    await run("e1r", 900, my); if (!ok()) return; hot("ca"); G.chip.textContent = "도구 3개"; await wait(500); if (!ok()) return;
+    hot("cb"); await setCap("원격 서버가 토큰 없는 요청을 401로 돌려보낸다 · Client B가 인증 서버에서 사용자 로그인을 거쳐 토큰을 받는다", my); await wait(400); if (!ok()) return;
+    await run("e2", 1000, my); if (!ok()) return; hot("auth"); await wait(1800); if (!ok()) return;
+    await run("e2r", 1000, my); if (!ok()) return; hot("cb"); await wait(400);
+    setCap("토큰을 붙여 다시 tools/list를 보내 이슈 서버의 도구 4개를 받는다", my);
+    await run("e3", 900, my); if (!ok()) return; hot("issue"); await wait(500);
+    await run("e3r", 900, my); if (!ok()) return; hot("cb"); G.chip.textContent = "도구 7개"; G.dot.style.opacity = 0; await wait(1200); if (!ok()) return;
+    hot("user"); await setCap("질문이 들어온다 · \"이번 주 마감 이슈 중에 아직 커밋이 없는 게 있을까요?\"", my); await wait(500); if (!ok()) return;
+    await run("e4", 900, my); if (!ok()) return; hot("host"); await wait(400);
+    setCap("Host가 질문과 도구 7개의 이름 · 설명 · 입력 스키마를 모델에 보낸다. 서버 주소는 보내지 않는다", my);
+    await run("e5", 900, my); if (!ok()) return; hot("model"); await wait(800); if (!ok()) return;
+    setCap("모델이 git_log와 search_issues를 고른다. 어느 서버의 도구인지는 Host가 안다", my);
+    await run("e6", 900, my); if (!ok()) return; hot("host"); G.chip.textContent = "tool_use 2개"; await wait(500); if (!ok()) return;
+    setCap("Host가 도구마다 맡은 Client에 넘기고 Client가 자기 서버에 tools/call을 보낸다", my);
+    await run("e7a", 600, my); if (!ok()) return; hot("ca");
+    await run("e1", 800, my); if (!ok()) return; hot("git"); await wait(400);
+    await run("e1r", 800, my); if (!ok()) return; hot("ca");
+    await run("e8a", 600, my); if (!ok()) return; hot("host");
+    await run("e7b", 1000, my); if (!ok()) return; hot("cb");
+    await run("e3", 800, my); if (!ok()) return; hot("issue"); await wait(400);
+    await run("e3r", 800, my); if (!ok()) return; hot("cb");
+    await run("e8b", 1000, my); if (!ok()) return; hot("host"); G.chip.textContent = "결과 2건"; await wait(400); if (!ok()) return;
+    setCap("결과 2건을 대화 기록에 붙여 모델을 다시 부른다 · 모델이 커밋과 이슈 번호를 맞대어 답을 쓴다", my);
+    await run("e5", 900, my); if (!ok()) return; hot("model"); await wait(900); if (!ok()) return;
+    await run("e6", 900, my); if (!ok()) return; hot("host"); await wait(300);
+    setCap("Host가 답을 사용자에게 전한다 · \"마감 이슈 4건 중 PAY-212는 이번 주 커밋에 보이지 않습니다\"", my);
+    await run("e9", 900, my); if (!ok()) return; hot("user"); await wait(2500); if (!ok()) return;
+    done();
+  }
+
+  draw(); done();
+  let lastW = svg.getBoundingClientRect().width;
+  const ro = new ResizeObserver(() => { const w = svg.getBoundingClientRect().width; if (Math.abs(w - lastW) < 1) return; const was = (lastW < 640) !== (w < 640); lastW = w; if (was) { gen++; draw(); done(); } });
+  ro.observe(svg);
+  if (!reduce) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) play(); else { gen++; done(); } }));
+    io.observe(svg);
+    signal.addEventListener("abort", () => io.disconnect());
+  }
+  signal.addEventListener("abort", () => ro.disconnect());
+})();
+</script>
