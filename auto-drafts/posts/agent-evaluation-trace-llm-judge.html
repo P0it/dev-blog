@@ -1,0 +1,341 @@
+---
+title: Agent가 일을 잘하는지 어떻게 숫자로 확인할까요?
+slug: agent-evaluation-trace-llm-judge
+excerpt: Agent는 같은 질문에도 매번 다른 길로 가고, 답이 맞아도 길이 틀렸을 수 있습니다. 단계별 기록 trace와 span, 답·길·비용을 따로 재는 질문 묶음, LLM-as-judge 채점, 바꿀 때마다 돌리는 회귀 평가까지 봅니다.
+tags: [AI Agent, 평가, LLM-as-judge, LangSmith, Python]
+category: ai
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-evaluation-trace-llm-judge-mwvvglkl.jpg
+series: agent-basics
+series_order: 15
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 15편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 8px 0 48px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 30px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 18px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 10px 14px 11px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 30px; padding: 36px 0 22px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
+.post-page .rw mark code { background: none; padding: 0; }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row > span { min-width: 0; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.free { background: none; border: 1.5px dashed var(--line-normal); color: var(--fg-alternative); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 그래프 그림 */
+.post-page .gr { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; }
+.post-page .gr .gr-node { fill: var(--bg-base); stroke: var(--line-normal); stroke-width: 1.5; }
+.post-page .gr .gr-node.on { stroke: var(--fg-primary-strong); stroke-width: 2; fill: var(--bg-primary-tint); }
+.post-page .gr .gr-node.warn { stroke: #d4553f; stroke-width: 2; }
+.post-page .gr .gr-term { fill: var(--bg-subtle); stroke: var(--line-normal); }
+.post-page .gr .gr-e { fill: none; stroke: var(--fg-neutral); stroke-width: 1.6; }
+.post-page .gr .gr-e.dash { stroke-dasharray: 5 4; stroke: var(--fg-primary-strong); }
+.post-page .gr .gr-head { fill: var(--fg-neutral); }
+.post-page .gr .gr-t { font-family: var(--font-sans); font-size: 14px; fill: var(--fg-strong); text-anchor: middle; }
+.post-page .gr .gr-t.b { font-weight: 700; font-size: 15px; }
+.post-page .gr .gr-t.s { font-size: 12.5px; fill: var(--fg-neutral); }
+.post-page .gr .gr-t.l { text-anchor: start; }
+@media (max-width: 480px) {
+  .post-page .gr .gr-t { font-size: 20px; } .post-page .gr .gr-t.b { font-size: 21px; } .post-page .gr .gr-t.s { font-size: 17px; }
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 8px 10px 9px; font-size: 13px; }
+  .post-page .sq, .post-page .sq-round { row-gap: 22px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-scale" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" /> <path d="m19 8 3 8a5 5 0 0 1-6 0zV7" /> <path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1" /> <path d="m5 8 3 8a5 5 0 0 1-6 0zV7" /> <path d="M7 21h10" /></g></symbol>
+<symbol id="i-user-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15H6a4 4 0 0 0-4 4v2" /> <path d="m14.305 16.53.923-.382" /> <path d="m15.228 13.852-.923-.383" /> <path d="m16.852 12.228-.383-.923" /> <path d="m16.852 17.772-.383.924" /> <path d="m19.148 12.228.383-.923" /> <path d="m19.53 18.696-.382-.924" /> <path d="m20.772 13.852.924-.383" /> <path d="m20.772 16.148.924.383" /> <circle cx="18" cy="15" r="3" /> <circle cx="9" cy="7" r="4" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>Agent가 일을 잘하는지 어떻게 숫자로 확인할까요?</h1>
+  <p class="rw-lead">도구 설명 한 줄을 고쳤더니 어떤 질문은 좋아지고 어떤 질문은 나빠졌습니다. 몇 개를 직접 물어보고 "괜찮은 것 같다"며 배포했는데, 다음 날 환불 질문에서 엉뚱한 도구를 부른다는 제보가 옵니다. Agent는 같은 질문에도 매번 다르게 움직입니다. 그렇다면 잘하고 있는지를 어떻게 숫자로 확인할까요?</p>
+
+  <section>
+    <h2>Agent는 왜 확인하기 어렵나요?</h2>
+    <p class="rw-ans">같은 질문에도 가는 길이 매번 다르고 답이 맞아도 길이 틀렸을 수 있습니다.</p>
+    <figure data-figure data-thumb>
+      <div class="ml">
+        <div class="ml-call" data-label="같은 질문 · 첫 번째 실행">
+          <div class="ml-row"><b class="ck-t ck-brown">도구</b>search_orders("A-1042") → 주문 확인</div>
+          <div class="ml-row"><b class="ck-t ck-brown">도구</b>refund("A-1042", 4,000원)</div>
+          <div class="ml-out"><i>답</i>4,000원 환불했습니다.</div>
+        </div>
+        <div class="ml-call" data-label="같은 질문 · 두 번째 실행">
+          <div class="ml-row miss"><b>도구</b>(주문 확인 없이)</div>
+          <div class="ml-row"><b class="ck-t ck-brown">도구</b>refund("A-1042", 4,000원)</div>
+          <div class="ml-out"><i>답</i>4,000원 환불했습니다.</div>
+        </div>
+      </div>
+      <figcaption>두 실행 모두 답은 같습니다. 그런데 두 번째는 주문을 확인하지 않고 환불했습니다. 답만 보면 이 차이를 놓칩니다.</figcaption>
+    </figure>
+    <p>일반 프로그램은 같은 입력에 같은 출력을 내서 테스트가 쉽습니다. Agent는 LLM이 매번 조금씩 다르게 판단해서 같은 질문에도 부르는 도구와 순서가 달라집니다. 몇 번 물어보고 잘 되면 괜찮다고 여기기 어렵습니다.</p>
+    <p>답이 맞아도 안심할 수 없습니다. 위 두 번째 실행은 주문을 확인하지 않고 환불했는데 운 좋게 금액이 맞았습니다. <strong class="hl">Agent는 최종 답과 함께 거기까지 간 길도 확인해야 합니다.</strong></p>
+  </section>
+
+  <section>
+    <h2>Agent가 지나간 길은 어떻게 보나요?</h2>
+    <p class="rw-ans">실행마다 단계별 기록(trace)을 남깁니다. 어떤 LLM 호출과 도구 실행이 얼마나 걸렸는지가 남습니다.</p>
+    <figure data-figure>
+      <div class="bk">
+        <div class="bk-row"><span>전체 6.2초</span><div class="bk-bar"><i class="c" style="--f: 100">환불 요청 처리 · 토큰 8,400 · 41원</i></div></div>
+        <div class="bk-row"><span>단계</span><div class="bk-bar"><i style="--f: 22">LLM 1.4초</i><i class="n" style="--f: 12">조회 0.8초</i><i style="--f: 26">LLM 1.6초</i><i class="n" style="--f: 20">환불 1.2초</i><i style="--f: 20">LLM 1.2초</i></div></div>
+      </div>
+      <figcaption>trace 하나가 요청 한 건입니다. 그 아래 칸 하나하나가 span으로, LLM 호출과 도구 실행이 시간 순서대로 들어 있습니다.</figcaption>
+    </figure>
+    <p><strong>trace</strong>는 요청 하나를 처리하는 동안 일어난 일을 모두 적은 기록입니다. 그 안의 단계 하나하나를 <strong>span</strong>이라고 합니다. LLM에 무엇을 보냈고 무엇이 돌아왔는지, 어떤 도구를 어떤 값으로 불렀는지, 각각 몇 초와 몇 토큰이 들었는지가 남습니다.</p>
+    <p>Agent가 이상하게 움직였다는 제보가 오면 그 요청의 trace를 열어 어느 단계에서 길을 잘못 들었는지 봅니다. LangSmith·Langfuse 같은 서비스가 trace를 모아 보여 줍니다. OpenTelemetry에는 LLM 호출을 기록하는 공통 규칙(GenAI semantic conventions)이 있어서 여러 도구가 같은 형식으로 기록합니다.</p>
+  </section>
+
+  <section>
+    <h2>무엇을 기준으로 잘했다고 하나요?</h2>
+    <p class="rw-ans">질문 묶음과 기대 결과를 정해 두고 답·길·비용을 각각 잽니다.</p>
+    <table>
+      <thead><tr><th>잴 것</th><th>예</th><th>누가 채점</th></tr></thead>
+      <tbody>
+        <tr><td>최종 답</td><td>환불 금액이 맞나, 규정을 지켰나</td><td>코드(정답 비교) 또는 LLM</td></tr>
+        <tr><td>지나간 길</td><td>환불 전에 주문 조회를 했나</td><td>코드(도구 순서 확인)</td></tr>
+        <tr><td>말투·충실도</td><td>근거 문서에 없는 말을 했나</td><td>LLM 채점</td></tr>
+        <tr><td>비용·시간</td><td>토큰 수, 걸린 초, 반복 횟수</td><td>trace에서 그대로</td></tr>
+      </tbody>
+    </table>
+    <p>먼저 질문 묶음(데이터셋)을 만듭니다. 실제로 자주 오는 질문, 실패했던 질문, 까다로운 경계 사례를 수십 개쯤 모으고 각각 기대하는 결과를 적습니다. 처음부터 많을 필요는 없습니다. Anthropic은 조사 Agent를 만들 때 실제 사용을 닮은 질문 20개쯤으로 시작해도 변화가 잘 보였다고 밝혔습니다.</p>
+    <p>최종 답만 보는 평가와 지나간 길까지 보는 평가를 함께 둡니다. 길은 대개 코드로 확인할 수 있습니다. "refund를 부르기 전에 search_orders를 불렀나"는 trace의 도구 목록만 보면 됩니다. <mark>정답이 하나가 아닌 일은 코드로 채점하기 어렵습니다.</mark> 그때 LLM에게 채점을 맡깁니다.</p>
+  </section>
+
+  <section>
+    <h2>LLM에게 채점을 맡겨도 되나요?</h2>
+    <p class="rw-ans">기준을 분명히 적어 주면 쓸 만합니다. 사람 채점과 가끔 맞춰 봐야 합니다.</p>
+    <figure data-figure>
+      <div class="sq two">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>평가 코드</b></div>
+        <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-scale"/></svg><b>채점 LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">질문 + Agent의 답 + 근거 문서 + 채점 기준<small>근거에 없는 숫자를 말했으면 0점</small></span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans"><i>채점 결과</i>{"grounded": false, "reason": "숙박비 15만 원은 문서에 없음"}</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>채점 LLM은 정해진 형식으로 점수와 이유를 돌려줍니다. 이유를 함께 받아야 틀린 채점을 찾아낼 수 있습니다.</figcaption>
+    </figure>
+    <p>답을 다른 LLM에게 읽혀 채점하게 하는 방법을 <strong>LLM-as-judge</strong>라고 합니다. "근거 문서에 없는 내용을 말했나", "질문에 답했나"처럼 사람이 읽어야 판단할 수 있는 기준을 빠르게 잽니다.</p>
+    <p>채점 LLM도 틀립니다. 기준을 "좋은 답인가"처럼 모호하게 쓰면 점수가 들쭉날쭉합니다. 기준 하나에 질문 하나로 쪼개고 예/아니오처럼 단순한 답을 받으면서 이유를 함께 적게 합니다. 채점 결과 일부를 사람이 직접 보고 맞는지 확인하는 일도 빼지 않습니다.</p>
+  </section>
+
+  <section>
+    <h2>평가는 언제 돌리나요?</h2>
+    <p class="rw-ans">프롬프트·도구 설명·모델을 바꿀 때마다 돌려서 전보다 나빠진 곳이 없는지 봅니다.</p>
+    <figure data-figure>
+      <div class="pb">
+        <p class="pb-in">도구 설명을 고친 뒤 질문 묶음 40개 결과</p>
+        <div class="pb-r"><span>고치기 전</span><i style="--w: 78%"></i><em>31/40</em></div>
+        <div class="pb-r on"><span>고친 뒤</span><i style="--w: 90%"></i><em>36/40</em></div>
+        <div class="pb-r"><span>새로 틀림</span><i style="--w: 5%"></i><em>2개</em></div>
+      </div>
+      <figcaption>전체 점수는 올랐지만 전에는 맞던 질문 두 개가 새로 틀렸습니다. 이 두 개를 열어 보는 것이 다음 할 일입니다. 숫자는 예시입니다.</figcaption>
+    </figure>
+    <p>Agent는 지시 한 줄, 도구 설명 한 줄, 모델 버전 하나만 바뀌어도 움직임이 달라집니다. 그래서 무언가를 바꿀 때마다 같은 질문 묶음을 돌려 전후를 비교합니다. 전체 점수보다 새로 틀린 질문을 찾는 것이 더 중요합니다.</p>
+    <p>LLM은 매번 다르게 답하므로 질문 하나를 여러 번 돌려 성공 비율로 보는 편이 정확합니다. 배포한 뒤에는 실제 trace에서 실패 사례를 골라 질문 묶음에 계속 더합니다. 질문 묶음이 자랄수록 평가가 실제 사용에 가까워집니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">질문 묶음을 돌리며 길은 코드로, 답은 채점 LLM으로 잽니다.</p>
+    <div class="cd">
+<pre data-title="eval.py" data-hl="7,19,33,38"><code class="language-python">from pydantic import BaseModel
+import anthropic
+
+client = anthropic.Anthropic()
+
+# ① 질문 묶음: 질문, 꼭 거쳐야 할 도구 순서, 정답 근거
+cases = [
+    {"q": "A-1042 환불해 줘", "must_call": ["search_orders", "refund"],
+     "facts": "A-1042 는 4,000원, 배달 완료"},
+    # … 실제 질문과 실패 사례를 계속 더한다
+]
+
+class Grade(BaseModel):
+    grounded: bool      # 근거에 없는 내용을 말하지 않았나
+    reason: str
+
+def judge(q, answer, facts) -> Grade:
+    # ② 기준 하나, 예/아니오, 이유 함께
+    r = client.messages.create(
+        model="claude-sonnet-5-5", max_tokens=300,
+        system="Agent의 답이 사실 목록에 없는 내용을 말했으면 grounded=false.",
+        messages=[{"role": "user",
+                   "content": f"질문: {q}\n사실: {facts}\n답: {answer}"}],
+        output_config={"format": {"type": "json_schema",
+                                  "schema": Grade.model_json_schema()}})
+    return Grade.model_validate_json(r.content[0].text)
+
+results = []
+for c in cases:
+    run = run_agent(c["q"])                  # 답과 trace 를 함께 돌려준다
+    called = [s.tool for s in run.trace if s.tool]
+    # ③ 길은 코드로: 꼭 거칠 도구가 순서대로 있었나
+    path_ok = is_subsequence(c["must_call"], called)
+    g = judge(c["q"], run.answer, c["facts"])
+    results.append({"q": c["q"], "path_ok": path_ok, "grounded": g.grounded,
+                    "reason": g.reason, "tokens": run.tokens})
+# ④ 전체 비율과 실패 목록을 남겨 다음 실행과 비교한다
+print(sum(r["path_ok"] and r["grounded"] for r in results), "/", len(results))</code></pre>
+<ol class="pg-code-notes">
+  <li>질문마다 꼭 거쳐야 할 도구 순서와 정답 근거를 적어 둡니다. 실패했던 실제 질문을 계속 더합니다.</li>
+  <li>채점 기준은 하나만, 답은 예/아니오와 이유로 받습니다. structured output으로 형식을 고정했습니다.</li>
+  <li>도구 순서는 LLM 없이 코드로 확인합니다. <code>is_subsequence</code>는 꼭 거칠 도구가 순서대로 들어 있는지 보는 짧은 함수입니다.</li>
+  <li>점수 하나보다 실패한 질문 목록이 중요합니다. 바꾸기 전 결과와 나란히 비교해 새로 틀린 질문을 찾습니다.</li>
+</ol>
+    </div>
+    <p class="after"><code>run_agent</code>는 Agent를 실행하고 답과 단계 기록을 함께 돌려주는 함수로, 예시라 줄였습니다. LangSmith를 쓰면 trace 수집, 질문 묶음 관리, 채점, 전후 비교 화면을 한곳에서 씁니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic Engineering, Demystifying evals for AI agents</a></li>
+      <li><a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">Claude 공식 문서, Define success criteria and build evaluations</a></li>
+      <li><a href="https://www.anthropic.com/engineering/built-multi-agent-research-system">Anthropic Engineering, How we built our multi-agent research system</a></li>
+      <li><a href="https://docs.langchain.com/langsmith/evaluation">LangSmith 공식 문서, Evaluation</a></li>
+      <li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/">OpenTelemetry, Semantic conventions for generative AI</a></li>
+    </ul>
+  </section>
+</div>

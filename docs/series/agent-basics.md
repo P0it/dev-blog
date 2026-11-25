@@ -49,7 +49,7 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 `<pre>` 코드 블록은 서버가 Shiki 로 칠하므로 색을 넣지 않는다 — 대신 블록 아래 해설 목록의 칩에 색을 준다.
 
 섹션 골격: 작은 회색 질문(`h2`) → 큰 답 한 줄 → 그림 → 짧은 문단. 섹션 첫 문장이 답이다.
-그림 문법·CSS 는 1편 원고(`auto-drafts/posts/llm-tool-agent-first-step.html`)의 `.sq`(세로 줄 그림), `.tl`(도구 카드), `.rs`(응답 모양), `.pb`(토큰 후보 막대)를 가져다 쓴다.
+그림 문법·CSS 는 1편 원고(세로 줄 그림 `.sq`)와 10편 원고(그래프 그림 `.gr`, 모바일 글자 크기 포함)(`auto-drafts/posts/llm-tool-agent-first-step.html`)의 `.sq`(세로 줄 그림), `.tl`(도구 카드), `.rs`(응답 모양), `.pb`(토큰 후보 막대)를 가져다 쓴다.
 `POSTING.md` 5-2 의 "가운데 한 열 섹션은 절반 이하"는 이 트랙에 적용하지 않는다. `check:page` 가 프런트매터 `series: agent-basics` 를 보고 그 검사를 건너뛴다(`ONE_COLUMN_SERIES`). 다른 글에 한 열을 넓힐지는 사용자가 정한다(2026-11-25 미정).
 파일: 원고는 `auto-drafts/posts/<slug>.html`. 2~5편도 1편의 `<style>` 을 그대로 쓴다 — 고치면 다섯 편을 함께 고친다.
 
@@ -94,10 +94,10 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 편 | 상태 |
 |---|---|---|---|---|---|
-| 14 | Agent를 하나 더 두면 나아지나요? | 여러 프로그램 | 워크플로 vs Agent, 공식 패턴 다섯 가지, 비용·지연 | 13·14·17·18 | 계획 |
-| 15 | Agent가 잘하는지 어떻게 숫자로 보나요? | 기록(trace) | 추적, 궤적 평가, LLM-as-judge | 23 | 계획 |
-| 16 | 문서 한 장이 Agent를 조종할 수 있나요? | 위험 표시 | prompt injection, lethal trifecta, 최소 권한·샌드박스 | 24 | 계획 |
-| 17 | 서비스로 내보내려면 무엇이 더 필요한가요? | 사용자 앞단 | FastAPI 스트리밍, 배포, 평가 리포트 | 25·26 | 계획 |
+| 14 | Agent를 하나 더 두면 정말 나아질까요? (`multi-agent-orchestrator-when-to-split`) | 여러 프로그램 | 워크플로 vs Agent, 공식 패턴 다섯 가지, 비용·지연 | 13·14·17·18 | 발행 |
+| 15 | Agent가 일을 잘하는지 어떻게 숫자로 확인할까요? (`agent-evaluation-trace-llm-judge`) | 기록(trace) | 추적, 궤적 평가, LLM-as-judge | 23 | 발행 |
+| 16 | 문서 한 장이 Agent를 조종할 수 있을까요? (`agent-prompt-injection-lethal-trifecta`) | 위험 표시 | prompt injection, lethal trifecta, 최소 권한·샌드박스 | 24 | 발행 |
+| 17 | 노트북에서 돌던 Agent를 서비스로 내보내려면 무엇이 더 필요할까요? (`agent-service-fastapi-sse-production`) | 사용자 앞단 | FastAPI 스트리밍, 배포, 평가 리포트 | 25·26 | 발행 |
 
 ## 편을 만들 때
 

@@ -1,0 +1,311 @@
+---
+title: Agent를 하나 더 두면 정말 나아질까요?
+slug: multi-agent-orchestrator-when-to-split
+excerpt: Agent 하나에 큰 일을 맡기면 중간 결과가 한 대화에 쌓여 앞의 내용을 놓칩니다. 총괄 Agent가 일을 나눠 하위 Agent에게 맡기는 구조와 컨텍스트 격리, 15배까지 늘어나는 비용, 그 전에 따져 볼 워크플로 패턴 다섯 가지까지 봅니다.
+tags: [Multi-Agent, AI Agent, 워크플로, LangChain]
+category: ai
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/multi-agent-orchestrator-when-to-split-mwvvga2s.jpg
+series: agent-basics
+series_order: 14
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 14편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 8px 0 48px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 30px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 18px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 10px 14px 11px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 30px; padding: 36px 0 22px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
+.post-page .rw mark code { background: none; padding: 0; }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row > span { min-width: 0; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.free { background: none; border: 1.5px dashed var(--line-normal); color: var(--fg-alternative); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 그래프 그림 */
+.post-page .gr { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; }
+.post-page .gr .gr-node { fill: var(--bg-base); stroke: var(--line-normal); stroke-width: 1.5; }
+.post-page .gr .gr-node.on { stroke: var(--fg-primary-strong); stroke-width: 2; fill: var(--bg-primary-tint); }
+.post-page .gr .gr-node.warn { stroke: #d4553f; stroke-width: 2; }
+.post-page .gr .gr-term { fill: var(--bg-subtle); stroke: var(--line-normal); }
+.post-page .gr .gr-e { fill: none; stroke: var(--fg-neutral); stroke-width: 1.6; }
+.post-page .gr .gr-e.dash { stroke-dasharray: 5 4; stroke: var(--fg-primary-strong); }
+.post-page .gr .gr-head { fill: var(--fg-neutral); }
+.post-page .gr .gr-t { font-family: var(--font-sans); font-size: 14px; fill: var(--fg-strong); text-anchor: middle; }
+.post-page .gr .gr-t.b { font-weight: 700; font-size: 15px; }
+.post-page .gr .gr-t.s { font-size: 12.5px; fill: var(--fg-neutral); }
+.post-page .gr .gr-t.l { text-anchor: start; }
+@media (max-width: 480px) {
+  .post-page .gr .gr-t { font-size: 20px; } .post-page .gr .gr-t.b { font-size: 21px; } .post-page .gr .gr-t.s { font-size: 17px; }
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 8px 10px 9px; font-size: 13px; }
+  .post-page .sq, .post-page .sq-round { row-gap: 22px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-git-branch" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3" /> <circle cx="18" cy="6" r="3" /> <circle cx="6" cy="18" r="3" /></g></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>Agent를 하나 더 두면 정말 나아질까요?</h1>
+  <p class="rw-lead">Agent에게 "경쟁사 다섯 곳의 요금제를 조사해서 비교표로 만들어 줘"라고 맡겼더니, 세 번째 회사를 조사할 즈음 대화가 검색 결과로 가득 차서 첫 회사 내용을 놓치기 시작합니다. 회사마다 조사 Agent를 따로 두면 나아질까요? 여러 Agent가 함께 일하는 구조와, 그 전에 먼저 따져 볼 단순한 방법들을 봅니다.</p>
+
+  <section>
+    <h2>Agent 하나로 큰 일을 맡기면 무엇이 문제인가요?</h2>
+    <p class="rw-ans">모든 중간 결과가 한 대화에 쌓여 context window를 채우고 LLM이 앞의 내용을 놓칩니다.</p>
+    <figure data-figure data-thumb>
+      <div class="bk">
+        <div class="bk-row"><span>Agent 하나</span><div class="bk-bar"><i class="c" style="--f: 8">지시</i><i class="n" style="--f: 18">A사 검색</i><i class="n" style="--f: 18">B사 검색</i><i class="n" style="--f: 18">C사 검색</i><i class="n" style="--f: 18">D사 검색</i><i class="n" style="--f: 20">E사 검색</i></div></div>
+        <div class="bk-row"><span>조사 Agent</span><div class="bk-bar"><i class="c" style="--f: 8">지시</i><i class="n" style="--f: 18">A사 검색</i><i class="free" style="--f: 74">남은 자리</i></div></div>
+        <div class="bk-row"><span>총괄 Agent</span><div class="bk-bar"><i class="c" style="--f: 8">지시</i><i style="--f: 5">A 요약</i><i style="--f: 5">B 요약</i><i style="--f: 5">C 요약</i><i style="--f: 5">D 요약</i><i style="--f: 5">E 요약</i><i class="free" style="--f: 67">남은 자리</i></div></div>
+      </div>
+      <figcaption>Agent 하나는 다섯 회사의 검색 결과를 모두 들고 있습니다. 나누면 조사 Agent는 자기 회사만, 총괄 Agent는 요약 다섯 개만 봅니다.</figcaption>
+    </figure>
+    <p>Agent 하나에 큰 일을 맡기면 검색 결과와 읽은 문서가 전부 한 대화에 쌓입니다. 대화가 길어질수록 비용이 늘고 LLM이 앞의 내용을 놓치기 쉽습니다. 다섯 회사를 조사하는 동안 쌓인 수만 토큰 가운데 비교표에 실제로 필요한 것은 회사마다 몇 줄뿐입니다.</p>
+    <p>일을 나눠 다른 Agent에게 맡기면 각자 자기 몫의 자료만 봅니다. 조사를 마친 Agent는 요약만 돌려주고 총괄 Agent는 요약 다섯 개로 비교표를 만듭니다. 이렇게 Agent마다 대화를 따로 두는 것을 <strong>컨텍스트 격리</strong>라고 합니다.</p>
+  </section>
+
+  <section>
+    <h2>여러 Agent는 어떻게 함께 일하나요?</h2>
+    <p class="rw-ans">총괄 Agent가 일을 나눠 맡기고 하위 Agent가 각자 일한 뒤 요약만 돌려줍니다.</p>
+    <figure data-figure>
+      <div class="sq">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-git-branch"/></svg><b>총괄 Agent</b><small>나누고 합침</small></div>
+        <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-users"/></svg><b>조사 Agent ×5</b><small>회사마다 하나</small></div>
+        <div class="sq-m c12 r"><span class="rw-msg">경쟁사 다섯 곳 요금제 비교표 만들어 줘.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg ask"><i>맡김 (동시에 5개)</i>research("A사 요금제") … research("E사 요금제")</span><span class="sq-arr"></span></div>
+        <span class="sq-act"><svg aria-hidden="true"><use href="#i-search"/></svg>조사 Agent마다 검색 10번쯤 · 각자의 대화에서</span>
+        <div class="sq-m c23 l"><span class="rw-msg"><i>요약 5개</i>A사: 3개 요금제, 월 9,900원부터 …</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans"><i>답</i>| 회사 | 최저 요금 | … (비교표)</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>하위 Agent가 읽은 검색 결과는 총괄 Agent에게 오지 않습니다. 총괄 Agent가 받는 것은 요약 다섯 개뿐입니다.</figcaption>
+    </figure>
+    <p>가장 흔한 구조는 <strong>총괄(orchestrator)과 하위 Agent(subagent)</strong>입니다. 총괄 Agent는 일을 나누고 하위 Agent에게 맡긴 뒤 결과를 합칩니다. 하위 Agent는 맡은 일만 하고 요약을 돌려줍니다. 총괄 Agent 입장에서 하위 Agent는 도구 하나와 같습니다. 부탁을 보내면 결과가 돌아옵니다.</p>
+    <p>서로 기다릴 필요가 없는 일이면 하위 Agent를 동시에 돌려 시간도 줄입니다. Anthropic의 조사 시스템은 이 구조로 Agent 하나일 때보다 조사 품질이 크게 올랐다고 밝혔습니다. <mark>대신 토큰은 일반 채팅의 15배쯤 썼다고 합니다.</mark></p>
+  </section>
+
+  <section>
+    <h2>그럼 항상 여러 Agent로 나누는 게 좋은가요?</h2>
+    <p class="rw-ans">아닙니다. 비용과 지연이 크게 늘어서 나눠야 할 이유가 분명할 때만 씁니다.</p>
+    <figure data-figure>
+      <div class="pb">
+        <p class="pb-in">같은 일을 할 때 쓰는 토큰 (일반 채팅 = 1)</p>
+        <div class="pb-r"><span>채팅</span><i style="--w: 7%"></i><em>1배</em></div>
+        <div class="pb-r"><span>Agent</span><i style="--w: 27%"></i><em>약 4배</em></div>
+        <div class="pb-r on"><span>여러 Agent</span><i style="--w: 100%"></i><em>약 15배</em></div>
+      </div>
+      <figcaption>Anthropic이 조사 시스템에서 잰 값입니다. 일의 종류에 따라 다르지만 여러 Agent가 훨씬 많이 쓴다는 점은 같습니다.</figcaption>
+    </figure>
+    <p>여러 Agent는 비쌉니다. 하위 Agent마다 지시와 도구 목록을 따로 보내고 각자 여러 번 반복합니다. 총괄 Agent도 계획과 합치기에 LLM을 부릅니다. 하위 Agent끼리 서로의 결과를 모르니 같은 자료를 두 번 찾기도 하고 서로 다른 결론을 내기도 합니다.</p>
+    <p>나누기 좋은 일은 이런 일입니다. 서로 독립적으로 할 수 있는 일, 자료가 많아 한 대화에 담기 어려운 일, 결과의 가치가 비용보다 큰 일입니다. <strong class="hl">작업 순서가 정해져 있거나 서로 긴밀히 맞춰야 하는 일은 Agent 하나가 낫습니다.</strong> 코드 수정처럼 파일 하나를 여럿이 함께 고쳐야 하는 일이 그렇습니다.</p>
+  </section>
+
+  <section>
+    <h2>Agent를 늘리기 전에 따져 볼 방법은 없나요?</h2>
+    <p class="rw-ans">순서가 정해진 일은 워크플로로 충분할 때가 많습니다. Anthropic은 다섯 가지 패턴을 먼저 권합니다.</p>
+    <table>
+      <thead><tr><th>패턴</th><th>하는 일</th><th>예</th></tr></thead>
+      <tbody>
+        <tr><td>이어 붙이기</td><td>한 단계의 출력을 다음 단계의 입력으로</td><td>초안 → 번역 → 말투 검사</td></tr>
+        <tr><td>길 나누기</td><td>입력을 분류해 알맞은 처리로 보냄</td><td>문의를 환불·배송·기타로</td></tr>
+        <tr><td>동시에 하기</td><td>나눈 일을 함께 돌리고 합침</td><td>문서 다섯 개 동시 요약</td></tr>
+        <tr><td>총괄과 일꾼</td><td>LLM이 일을 나누고 맡김</td><td>여러 파일 고치기, 조사</td></tr>
+        <tr><td>쓰고 고치기</td><td>한 LLM이 쓰고 다른 LLM이 평가해 다시</td><td>번역 다듬기</td></tr>
+      </tbody>
+    </table>
+    <p>Anthropic은 "가장 단순한 방법으로 시작하고 필요할 때만 복잡하게" 하라고 권합니다. 위 다섯 가지 가운데 앞의 세 가지는 순서를 코드가 정하는 워크플로이고 네 번째가 여러 Agent에 가장 가깝습니다. 길을 정할 수 있는 일은 LangGraph 같은 그래프로 코드가 정하게 하고, 나눌 방법을 미리 알 수 없을 때만 LLM에게 나누기를 맡깁니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">하위 Agent를 도구 함수 하나로 감싸서 총괄 Agent에게 줍니다.</p>
+    <div class="cd">
+<pre data-title="multi_agent.py" data-hl="5,13,21"><code class="language-python">from langchain.agents import create_agent
+from langchain.tools import tool
+
+# ① 하위 Agent: 검색 도구만 가진 조사 담당
+researcher = create_agent(
+    model="anthropic:claude-haiku-5-5",
+    tools=[web_search, read_page],
+    system_prompt="맡은 회사의 요금제를 조사해 10줄 이내로 요약한다. "
+                  "출처 주소를 함께 적는다.",
+)
+
+# ② 하위 Agent 를 도구로 감싼다. 요약만 돌려준다
+@tool
+def research(company: str) -> str:
+    """회사 하나의 요금제를 조사해 요약을 돌려준다. 회사마다 따로 부른다."""
+    out = researcher.invoke(
+        {"messages": [{"role": "user", "content": f"{company} 요금제 조사"}]})
+    return out["messages"][-1].content       # 검색 결과는 버리고 요약만
+
+# ③ 총괄 Agent: 조사 도구 하나로 나누고 합친다
+lead = create_agent(
+    model="anthropic:claude-sonnet-5-5",
+    tools=[research],
+    system_prompt="조사가 필요한 회사마다 research 를 부르고, "
+                  "결과를 모아 비교표를 만든다.",
+)</code></pre>
+<ol class="pg-code-notes">
+  <li>하위 Agent는 맡은 일에 필요한 도구만 받습니다. 일이 단순하면 값싼 모델을 써서 비용을 줄입니다.</li>
+  <li>하위 Agent의 대화 전체 대신 마지막 답(요약)만 돌려줍니다. 컨텍스트 격리가 일어나는 곳이 이 한 줄입니다.</li>
+  <li>총괄 Agent는 하위 Agent를 도구로 봅니다. LLM이 한 응답에 <code>research</code> 부탁을 여러 개 담으면 LangChain이 동시에 실행합니다.</li>
+</ol>
+    </div>
+    <p class="after"><code>web_search</code>·<code>read_page</code>는 예시라 줄였습니다. 하위 Agent에게 넘기는 지시가 가장 중요합니다. 무엇을, 어디까지, 어떤 형식으로 돌려줄지 적지 않으면 하위 Agent끼리 같은 일을 하거나 총괄 Agent가 합치기 어려운 결과를 돌려줍니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://www.anthropic.com/engineering/built-multi-agent-research-system">Anthropic Engineering, How we built our multi-agent research system</a></li>
+      <li><a href="https://www.anthropic.com/research/building-effective-agents">Anthropic, Building effective agents (2024-12-19)</a></li>
+      <li><a href="https://docs.langchain.com/oss/python/langchain/multi-agent">LangChain 공식 문서, Multi-agent</a></li>
+    </ul>
+  </section>
+</div>

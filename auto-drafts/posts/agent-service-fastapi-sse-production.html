@@ -1,0 +1,322 @@
+---
+title: 노트북에서 돌던 Agent를 서비스로 내보내려면 무엇이 더 필요할까요?
+slug: agent-service-fastapi-sse-production
+excerpt: 혼자 쓰던 Agent를 여러 사람이 쓰는 서비스로 내보내면 긴 대기, 섞이는 대화, 사라지는 상태, 튀는 비용이 한꺼번에 찾아옵니다. FastAPI와 SSE로 진행 상황을 흘려보내는 법, 사용자별 상태와 저장소, 장애 대비와 배포 뒤 지표까지 봅니다.
+tags: [AI Agent, FastAPI, SSE, 배포, Python]
+category: ai
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-service-fastapi-sse-production-mwvvh8kj.jpg
+series: agent-basics
+series_order: 17
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 17편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 8px 0 48px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 30px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 18px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 10px 14px 11px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 30px; padding: 36px 0 22px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
+.post-page .rw mark code { background: none; padding: 0; }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row > span { min-width: 0; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.free { background: none; border: 1.5px dashed var(--line-normal); color: var(--fg-alternative); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 그래프 그림 */
+.post-page .gr { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; }
+.post-page .gr .gr-node { fill: var(--bg-base); stroke: var(--line-normal); stroke-width: 1.5; }
+.post-page .gr .gr-node.on { stroke: var(--fg-primary-strong); stroke-width: 2; fill: var(--bg-primary-tint); }
+.post-page .gr .gr-node.warn { stroke: #d4553f; stroke-width: 2; }
+.post-page .gr .gr-term { fill: var(--bg-subtle); stroke: var(--line-normal); }
+.post-page .gr .gr-e { fill: none; stroke: var(--fg-neutral); stroke-width: 1.6; }
+.post-page .gr .gr-e.dash { stroke-dasharray: 5 4; stroke: var(--fg-primary-strong); }
+.post-page .gr .gr-head { fill: var(--fg-neutral); }
+.post-page .gr .gr-t { font-family: var(--font-sans); font-size: 14px; fill: var(--fg-strong); text-anchor: middle; }
+.post-page .gr .gr-t.b { font-weight: 700; font-size: 15px; }
+.post-page .gr .gr-t.s { font-size: 12.5px; fill: var(--fg-neutral); }
+.post-page .gr .gr-t.l { text-anchor: start; }
+@media (max-width: 480px) {
+  .post-page .gr .gr-t { font-size: 20px; } .post-page .gr .gr-t.b { font-size: 21px; } .post-page .gr .gr-t.s { font-size: 17px; }
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 8px 10px 9px; font-size: 13px; }
+  .post-page .sq, .post-page .sq-round { row-gap: 22px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-layers" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /> <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /> <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" /></g></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2" /> <line x1="8" x2="16" y1="21" y2="21" /> <line x1="12" x2="12" y1="17" y2="21" /></g></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /> <rect width="20" height="8" x="2" y="14" rx="2" ry="2" /> <line x1="6" x2="6.01" y1="6" y2="6" /> <line x1="6" x2="6.01" y1="18" y2="18" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>노트북에서 돌던 Agent를 서비스로 내보내려면 무엇이 더 필요할까요?</h1>
+  <p class="rw-lead">터미널에서 잘 돌던 Agent를 사내에 공개했더니 첫날부터 일이 터집니다. 답이 나오기까지 20초 동안 화면이 멈춰 있고 두 사람의 대화가 섞이고, 서버가 재시작되자 승인을 기다리던 주문이 사라졌습니다. 월말에는 예상의 세 배인 요금이 청구됩니다. Agent를 여러 사람이 쓰는 서비스로 만들 때 더해야 할 것들을 봅니다.</p>
+
+  <section>
+    <h2>사용자 앞에는 무엇을 두나요?</h2>
+    <p class="rw-ans">Agent를 감싼 API 서버를 두고 진행 상황을 조각으로 흘려보냅니다.</p>
+    <figure data-figure data-thumb>
+      <div class="sq">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-monitor"/></svg><b>화면</b><small>웹·메신저</small></div>
+        <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-server"/></svg><b>API 서버</b><small>FastAPI</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-layers"/></svg><b>Agent</b><small>LLM · 도구</small></div>
+        <div class="sq-m c12 r"><span class="rw-msg">POST /chat · 로그인 토큰 · 대화방 번호</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg">이 사용자의 대화방에서 실행</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg"><i>0.4초</i>event: status · 주문 내역 확인 중</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg"><i>2.1초</i>event: status · 환불 규정 찾는 중</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans"><i>3.5초~</i>event: token · 4,000원 환불이…</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>답이 다 나올 때까지 기다리지 않고 Agent가 지금 무엇을 하는지와 답의 글자를 나오는 대로 흘려보냅니다.</figcaption>
+    </figure>
+    <p>Agent는 여러 번 반복하느라 답이 나오기까지 수십 초가 걸리기도 합니다. 그동안 빈 화면을 보여 주면 사용자는 고장 난 줄 압니다. 그래서 API 서버는 결과를 한 번에 돌려주지 않고 진행 상황과 답의 글자를 나오는 대로 흘려보냅니다. LLM 답을 받을 때와 같은 스트리밍 방식인 <strong>SSE</strong>(Server-Sent Events)를 씁니다.</p>
+    <p>흘려보낼 것은 두 종류입니다. "주문 내역 확인 중"처럼 Agent가 어떤 도구를 쓰는지 알려 주는 상태 조각과, LLM이 쓰는 답의 글자 조각입니다. <strong class="hl">사용자는 Agent가 일하는 모습을 보면 오래 걸려도 기다립니다.</strong></p>
+  </section>
+
+  <section>
+    <h2>여러 사람이 쓰면 무엇이 달라지나요?</h2>
+    <p class="rw-ans">사람마다, 대화방마다 상태를 나누고 그 상태를 서버 밖 저장소에 둡니다.</p>
+    <figure data-figure>
+      <div class="bk">
+        <div class="bk-row"><span>민지 · 방 1</span><div class="bk-bar"><i class="c" style="--f: 60">대화 · 승인 대기 중인 주문</i><i class="free" style="--f: 40"></i></div></div>
+        <div class="bk-row"><span>민지 · 방 2</span><div class="bk-bar"><i class="c" style="--f: 30">다른 대화</i><i class="free" style="--f: 70"></i></div></div>
+        <div class="bk-row"><span>지훈 · 방 1</span><div class="bk-bar"><i class="n" style="--f: 45">지훈의 대화</i><i class="free" style="--f: 55"></i></div></div>
+        <div class="bk-key"><span>상태는 (사용자, 대화방) 마다 Postgres 에 따로 저장 · 서버를 몇 대로 늘려도 같은 곳을 봄</span></div>
+      </div>
+      <figcaption>대화방 번호를 사용자와 묶어 두면 남의 대화를 불러올 수 없습니다. 상태가 서버 밖에 있어서 재시작해도 남습니다.</figcaption>
+    </figure>
+    <p>혼자 쓸 때는 대화 기록을 프로그램 안에 들고 있으면 됐습니다. 여러 사람이 쓰면 사람마다, 대화방마다 상태를 나눠야 합니다. 대화방 번호를 그대로 믿으면 남의 번호를 넣어 남의 대화를 볼 수 있으니, <mark>대화방 번호는 로그인한 사용자와 묶어서 확인합니다.</mark></p>
+    <p>상태는 서버 메모리 대신 Postgres 같은 저장소에 둡니다. 서버가 재시작돼도 승인을 기다리던 Agent가 사라지지 않고 서버를 여러 대로 늘려도 어느 서버든 같은 상태를 불러옵니다. 장기 기억도 사용자별로 나눠 저장합니다.</p>
+  </section>
+
+  <section>
+    <h2>LLM API가 느리거나 멈추면요?</h2>
+    <p class="rw-ans">시간 제한과 재시도를 두고 계속 실패하면 다른 모델로 넘깁니다.</p>
+    <table>
+      <thead><tr><th>상황</th><th>대비</th></tr></thead>
+      <tbody>
+        <tr><td>잠깐의 과부하 (429·529)</td><td>간격을 늘려 가며 재시도. 공식 SDK에 기본으로 들어 있음</td></tr>
+        <tr><td>답이 너무 오래 걸림</td><td>호출마다 시간 제한, 요청 전체에도 제한</td></tr>
+        <tr><td>한 회사 API 장애</td><td>다른 회사 모델로 넘기기 (fallback)</td></tr>
+        <tr><td>도구 서버 장애</td><td>오류를 결과로 돌려 LLM이 다른 길을 고르게</td></tr>
+        <tr><td>사용자 한 명이 과하게 씀</td><td>사용자별 호출·토큰 한도</td></tr>
+      </tbody>
+    </table>
+    <p>LLM API도 바깥 서비스라 느려지거나 멈춥니다. 공식 SDK는 과부하 오류에 몇 번 자동으로 재시도하지만 요청 전체에 시간 제한을 두는 것은 우리 몫입니다. LangChain middleware에는 다른 모델로 넘기는 것도 있어서 한 회사 API가 장애일 때 다른 회사 모델로 이어 갈 수 있습니다.</p>
+    <p>사용자별 한도도 필요합니다. 반복 한도가 Agent 하나의 폭주를 막는다면, 사용자별 한도는 한 사람이 서비스 전체 비용을 다 쓰는 일을 막습니다.</p>
+  </section>
+
+  <section>
+    <h2>배포하고 나서는 무엇을 보나요?</h2>
+    <p class="rw-ans">비용·시간·실패율을 대시보드로 보고 실패한 대화를 평가 질문 묶음에 더합니다.</p>
+    <figure data-figure>
+      <div class="pb">
+        <p class="pb-in">한 주 동안의 요청 하나당 평균</p>
+        <div class="pb-r"><span>토큰</span><i style="--w: 70%"></i><em>9,800</em></div>
+        <div class="pb-r"><span>LLM 호출</span><i style="--w: 40%"></i><em>3.2번</em></div>
+        <div class="pb-r on"><span>실패율</span><i style="--w: 12%"></i><em>2.1%</em></div>
+      </div>
+      <figcaption>요청 하나당 숫자를 날마다 보면 프롬프트나 모델을 바꾼 뒤 비용이 튀는 것을 바로 알아챕니다. 숫자는 예시입니다.</figcaption>
+    </figure>
+    <p>배포하면 trace가 실제 사용자 요청에서 쌓입니다. 요청 하나당 토큰·LLM 호출 수·걸린 시간·실패율을 날마다 보고 비용이 튀거나 실패가 늘면 trace를 열어 원인을 찾습니다.</p>
+    <p>사용자가 싫어요를 누른 대화나 실패한 대화는 평가 질문 묶음에 더합니다. 프롬프트·도구·모델을 바꾸는 변경은 그 질문 묶음을 통과해야 배포하게 CI에 넣습니다. Agent는 한 번 만들고 끝나는 기능이 아닙니다. 기록을 보고 고치기를 되풀이하며 나아지는 서비스입니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">로그인 확인, 대화방 묶기, 진행 상황 흘려보내기를 하는 엔드포인트 하나입니다.</p>
+    <div class="cd">
+<pre data-title="server.py" data-hl="8,14,20,34"><code class="language-python">import json
+from fastapi import Depends, FastAPI
+from fastapi.responses import StreamingResponse
+from langgraph.checkpoint.postgres import PostgresSaver
+
+app = FastAPI()
+# ① 상태는 서버 밖 저장소에. 재시작·여러 대에서도 이어진다
+saver = PostgresSaver.from_conn_string(DB_URL)
+agent = build_agent(checkpointer=saver)       # create_agent(...) 로 만든 Agent
+
+@app.post("/chat")
+async def chat(body: dict, user=Depends(current_user)):
+    # ② 대화방 번호를 로그인한 사용자와 묶는다
+    thread = f"{user.id}:{body['thread_id']}"
+    config = {"configurable": {"thread_id": thread}}
+    msg = {"messages": [{"role": "user", "content": body["text"]}]}
+
+    async def events():
+        # ③ 도구 진행 상황과 답의 글자를 나오는 대로 흘려보낸다
+        async for kind, data in agent.astream(
+                msg, config, stream_mode=["updates", "messages"]):
+            if kind == "updates":
+                yield sse("status", describe(data))       # "주문 내역 확인 중"
+            elif kind == "messages":
+                chunk, _ = data
+                if chunk.content:
+                    yield sse("token", chunk.content)
+        yield sse("done", "")
+
+    return StreamingResponse(events(), media_type="text/event-stream")
+
+def sse(event, data):
+    # ④ SSE 형식: event 줄, data 줄, 빈 줄
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"</code></pre>
+<ol class="pg-code-notes">
+  <li>개발 때 쓰던 메모리 저장 대신 Postgres에 상태를 저장합니다. 승인을 기다리던 Agent도 재시작 뒤에 그대로 이어집니다.</li>
+  <li>사용자가 보낸 대화방 번호 앞에 로그인한 사용자 id를 붙여, 남의 대화방을 불러올 수 없게 합니다.</li>
+  <li><code>stream_mode</code>로 단계가 끝날 때마다 오는 소식(<code>updates</code>)과 LLM의 글자 조각(<code>messages</code>)을 함께 받습니다. <code>describe</code>는 도구 이름을 사용자가 읽을 문장으로 바꾸는 함수입니다.</li>
+  <li>SSE는 <code>event:</code>와 <code>data:</code> 줄 뒤에 빈 줄을 두는 단순한 글 형식입니다. 브라우저의 <code>EventSource</code>나 fetch 스트림으로 받습니다.</li>
+</ol>
+    </div>
+    <p class="after"><code>current_user</code>·<code>build_agent</code>·<code>DB_URL</code>은 예시라 줄였습니다. 실제로는 여기에 사용자별 한도, 요청 전체 시간 제한, 오류를 <code>event: error</code>로 알리는 처리를 더하고 Docker 이미지로 묶어 배포합니다. 시리즈는 여기까지입니다. LLM이 글만 쓰는 프로그램이라는 데서 출발해, 그 글을 실행하는 프로그램과 도구, 기억과 검색, 흐름과 승인, 연결과 보안, 평가와 배포까지 하나씩 얹었습니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://docs.langchain.com/oss/python/langgraph/streaming">LangGraph 공식 문서, Streaming</a></li>
+      <li><a href="https://fastapi.tiangolo.com/advanced/custom-response/#streamingresponse">FastAPI 공식 문서, StreamingResponse</a></li>
+      <li><a href="https://platform.claude.com/docs/en/api/errors">Claude 공식 문서, Errors</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN, Using server-sent events</a></li>
+    </ul>
+  </section>
+</div>
