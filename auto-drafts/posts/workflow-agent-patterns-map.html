@@ -6,7 +6,7 @@ tags: [AI 아키텍처, AI Agent, 워크플로, Anthropic, LangGraph]
 category: ai
 series: ai-architecture-cheatsheet
 series_order: 2
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwvv374s.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwvvp7qc.jpg
 ---
 <!-- page -->
 <!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(순서표가 붙은 작업 줄과 안내 데스크, POSTING 5-11 — 2026-11-24 사용자 지시로 흐름도 앞에 둠, 썸네일도 이 장면. 여섯 패턴 중 양 끝인 프롬프트 체이닝과 Agent 만 같은 메일로 견준다) + 큰 흐름도 판(예시 메일 + 패턴 여섯 줄 — 줄마다 왼쪽 이름 카드 · 오른쪽 직각 엣지 흐름도) + 가장 단순한 것부터 고르는 순서 + 더 읽어 보기 | 글의 성격: 같은 고객 문의 메일 한 통이 여섯 방식에서 지나는 길. 줄이 화면에 다 들어오면 점이 그 줄의 흐름을 따라가고, 평가자-최적화와 Agent 는 고리를 돈다 | 레퍼런스: ByteByteGo "Top AI Agentic Workflow Patterns"(줄 구성·직각 엣지), Anthropic "Building effective agents"(패턴별 In → LLM Call → Out, 동적 분기는 점선) | 접은 안: 여섯 칸 보드 한 장(2026-11-14, 2026-11-19 접음) -->
@@ -75,12 +75,6 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
-/* 견주는 글: 장면 둘을 나란히(2026-11-24). 같은 요청으로 동시에 재생된다 */
-.post-page .iso-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; align-items: start; }
-.post-page .iso-pair .iso-desc { min-height: 5.1em; }
-.post-page .iso-pair-h { margin: 0 0 10px; font-size: 15px; color: var(--fg-neutral); }
-.post-page .iso-pair-h b { margin-right: 8px; font-size: 18px; font-weight: 800; color: var(--fg-strong); }
-@media (max-width: 900px) { .post-page .iso-pair { grid-template-columns: 1fr; gap: 48px; } }
 /* 이 글의 용어: 장면의 비유와 실제 용어를 짝지어 흐름도 앞에 둔다(2026-11-24). 카드·색 띠 없이 줄 목록으로 */
 .post-page .iso-terms { margin: 0 0 clamp(32px, 4vw, 48px); }
 .post-page .iso-terms-h { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--fg-strong); }
@@ -174,48 +168,52 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       const k = U / 40, line = (p) => pts(p.map(([x, z]) => P(x, 0, z)));
       let s = `<defs><filter id="${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="${(6 * k).toFixed(1)}"/></filter></defs>`;
       for (const r in R) s += `<polyline points="${line(R[r])}" fill="none" stroke="${pal.yellow}" stroke-width="${(3 * k).toFixed(1)}" stroke-dasharray="${(10 * k).toFixed(1)} ${(8 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
-      s += `<polyline class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s += `<g class="iso-act" fill="none" stroke="${pal.blue}" stroke-width="${(4 * k).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"></g>`;
       s += `<g filter="url(#${uid})" fill="${pal.shadow}">`;
       for (const id of ids) { const [x, z] = S[id].at, [w, d] = S[id].size; s += `<polygon points="${rect(x - w / 2, z - d / 2 + 0.3, x + w / 2 + 0.5, z + d / 2 + 0.6)}"/>`; }
       s += "</g>";
       // 정거장은 먼 것부터, 정거장 안 부품은 원고에 적은 순서(뒤 → 앞)대로
       for (const id of [...ids].sort((a, b) => S[a].at[0] + S[a].at[1] - (S[b].at[0] + S[b].at[1]))) s += "<g>" + parts(S[id]).map((b) => draw1(b)).join("") + "</g>";
-      s += '<g class="iso-drop"></g><g class="iso-actor"></g>';
-      svg.innerHTML = s; drawActor(); drawDrop(); drawActive(); place();
+      s += AS.map((X) => `<g class="iso-drop" data-a="${X.id}"></g>`).join("") + AS.map((X) => `<g class="iso-actor" data-a="${X.id}"></g>`).join("");
+      svg.innerHTML = s; for (const X of AS) { X.g = svg.querySelector(`.iso-actor[data-a="${X.id}"]`); X.dg = svg.querySelector(`.iso-drop[data-a="${X.id}"]`); drawActor(X); drawDrop(X); } drawActive(); place();
     }
 
-    /* ── 오가는 사람: 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
-    const A = { pos: [0, 0], dir: [1, 0], pages: 1, hold: true, say: "", drop: null };
-    const actorColor = (spec.actor && spec.actor.color) || "blue";
-    function drawActor() {
-      const [dx, dz] = A.dir, toward = dx + dz > 0, alongX = dx !== 0;
-      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: actorColor };
-      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * A.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
+    /* ── 오가는 사람(여럿일 수 있다): 가는 쪽을 보고, 든 종이는 pages 만큼 두껍다 ── */
+    const AS = (spec.actors || [{ id: "a", ...(spec.actor || {}) }]).map((o) => ({ id: o.id, color: o.color || "blue", home: o.home || [0, 0],
+      pos: [...(o.home || [0, 0])], dir: [1, 0], pages: 1, hold: true, say: "", drop: null, busy: null, stay: false, n: null }));
+    const many = AS.length > 1;
+    const stepOf = (i) => { const st = spec.steps[i] || []; return Array.isArray(st) ? { [AS[0].id]: st } : st; };
+    function drawActor(X) {
+      const [dx, dz] = X.dir, toward = dx + dz > 0, alongX = dx !== 0;
+      const body = { t: "box", x: 0, y: 0, z: 0, w: 0.55, h: 0.85, d: 0.55, c: X.color };
+      const paper = { t: "box", x: dx * 0.45, y: 0.4, z: dz * 0.45, w: alongX ? 0.4 : 0.5, h: 0.07 * X.pages, d: alongX ? 0.5 : 0.4, c: "paper" };
       const head = [{ t: "sph", x: 0, y: 1.2, z: 0, r: 0.33, c: "skin" }];
       if (toward) for (const e of [-1, 1]) head.push({ t: "sph", x: dx * 0.3 - dz * 0.13 * e, y: 1.2, z: dz * 0.3 + dx * 0.13 * e, r: 0.05, c: "dark" });
       else head.push({ t: "sph", x: -dx * 0.06, y: 1.25, z: -dz * 0.06, r: 0.3, c: "hair" });
-      const list = !A.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
-      const g = svg.querySelector(".iso-actor"); g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor();
+      const list = !X.hold ? [body, ...head] : toward ? [body, paper, ...head] : [paper, body, ...head];
+      if (X.g) { X.g.innerHTML = list.map((b) => draw1(b, 0, 0)).join(""); moveActor(X); }
     }
-    function moveActor() { const [a, b] = P(A.pos[0], 0, A.pos[1]); svg.querySelector(".iso-actor").setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
-    function drawDrop() {
-      const st = A.drop && S[A.drop], d = st && st.drop;
-      svg.querySelector(".iso-drop").innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * A.pages, d: 0.4, c: "paper" }) : "";
+    function moveActor(X) { if (!X.g) return; const [a, b] = P(X.pos[0], 0, X.pos[1]); X.g.setAttribute("transform", `translate(${a.toFixed(1)} ${b.toFixed(1)})`); }
+    function drawDrop(X) {
+      const st = X.drop && S[X.drop], d = st && st.drop;
+      if (X.dg) X.dg.innerHTML = d ? draw1({ t: "box", x: st.at[0] + d[0], y: d[1], z: st.at[1] + d[2], w: 0.5, h: 0.07 * X.pages, d: 0.4, c: "paper" }) : "";
     }
 
     /* ── 이름표 ── */
     const lab = {}, mk = (cls) => { const d = document.createElement("div"); d.className = cls; labs.appendChild(d); return d; };
     for (const id of ids) lab[id] = mk("iso-lab");
     const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
-    const say = mk("iso-lab iso-say");
-    let busy = null, busyN = null, busyStay = false;
+    for (const X of AS) X.sayEl = mk("iso-lab iso-say");
+    // 사람마다 지금 일을 시킨 정거장들. 여럿이면 합쳐서 보인다
+    const busyAll = () => AS.flatMap((X) => (X.busy || []).map(([c, t]) => [c, t, X.n]));
     // 글자가 바뀐 요소만 다시 그리고, 바뀔 때는 옅게 사라졌다 떠오르게(교차) 한다. 같은 글자면 건드리지 않는다
     const swap = (el) => { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); };
-    const fill = (t) => (busyN == null ? t : t.replace(/\{n\}/g, busyN));
+    const fill = (t, n) => (n == null ? t : t.replace(/\{n\}/g, n));
     function labels() {
-      for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
+      const busy = busyAll();
+      for (const id of ids) { const hit = busy.find((x) => x[0] === id), b = !!hit;
         // 글자가 ✓ 로 시작하면 끝난 상태: 테두리는 두되 "일하는 중" 점은 빼고 회색으로
-        const done = b && hit[1].startsWith("✓"), cls = "iso-lab" + (b ? " busy" : "") + (done ? " done" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
+        const done = b && hit[1].startsWith("✓"), cls = "iso-lab" + (b ? " busy" : "") + (done ? " done" : ""), body = b ? fill(hit[1], hit[2]) : S[id].meta || "";
         if (lab[id].className !== cls) lab[id].className = cls;
         if (lab[id].dataset.body === body && lab[id].dataset.b === String(b)) continue;
         const small = lab[id].querySelector("small"), onlyCount = small && lab[id].dataset.b === "true" && b && lab[id].dataset.tpl === hit[1];
@@ -229,15 +227,15 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     function place() {
       for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
       for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
-      const hide = step === N || !A.say;
-      if (!hide && say.dataset.t !== A.say) { say.textContent = A.say; say.dataset.t = A.say; swap(say); }
-      say.classList.toggle("hide", hide); put(say, P(A.pos[0], 1.75, A.pos[1]));
+      for (const X of AS) { const say = X.sayEl, hide = step === N || !X.say;
+        if (!hide && say.dataset.t !== X.say) { say.textContent = X.say; say.dataset.t = X.say; swap(say); }
+        say.classList.toggle("hide", hide); put(say, P(X.pos[0], 1.75, X.pos[1])); }
     }
 
-    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
-    function acts(i) {
+    /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로. 사람이 여럿이면 사람마다 따로, 동시에 ── */
+    function acts(list0) {
       const out = [], seg = (r) => { for (let k = 0; k < r.length - 1; k++) out.push({ seg: [r[k], r[k + 1]], dur: 300 + Math.hypot(r[k + 1][0] - r[k][0], r[k + 1][1] - r[k][1]) * 240 }); };
-      for (const a of spec.steps[i] || []) {
+      for (const a of list0 || []) {
         if (a[0] === "at") out.push({ dur: 0, jump: typeof a[1] === "string" ? R[a[1]][0] : a[1], ...a[2] });
         else if (a[0] === "set") out.push({ dur: 0, ...a[1] });
         else if (a[0] === "go") seg(R[a[1]]);
@@ -246,25 +244,26 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       }
       return out;
     }
-    function apply(a) {
-      if (a.jump) A.pos = [...a.jump];
-      if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
-      if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
+    function apply(X, a) {
+      if (a.jump) X.pos = [...a.jump];
+      if (a.seg) X.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
+      if (a.face) X.dir = a.face; if (a.pages != null) X.pages = a.pages; if (a.hold != null) X.hold = a.hold; if (a.say != null) X.say = a.say;
       // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
-      if (a.wait || a.seg) { const many = Array.isArray(a.comp);
-        // stay: true 인 wait 의 상태는 오가는 사람이 걷는 동안에도 켜 둔다(정거장이 그사이에도 일하고 있을 때)
-        busy = !a.wait ? (busyStay ? busy : null) : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
-        if (a.wait) busyStay = !!a.stay;
-        busyN = a.wait && a.count ? a.count[0] : (a.wait ? null : busyN);
-        A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
-      drawActor(); labels(); place();
+      if (a.wait || a.seg) { const arr = Array.isArray(a.comp);
+        // stay: true 인 wait 의 상태는 그 사람이 걷는 동안에도 켜 둔다(정거장이 그사이에도 일하고 있을 때)
+        X.busy = !a.wait ? (X.stay ? X.busy : null) : arr ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        if (a.wait) X.stay = !!a.stay;
+        X.n = a.wait && a.count ? a.count[0] : (a.wait ? null : X.n);
+        X.drop = a.wait && a.drop && !arr ? a.comp : null; drawDrop(X); }
+      drawActor(X); labels(); place();
     }
 
     let step = N, playing = false, raf = 0, timer = 0;
     function drawActive() {
-      const one = step < N && (spec.steps[step] || []).filter((a) => a[0] === "go" || a[0] === "back");
-      const names = one ? [...new Set(one.map((a) => a[1]))] : [];
-      svg.querySelector(".iso-act").setAttribute("points", names.length === 1 ? pts(R[names[0]].map(([x, z]) => P(x, 0, z))) : "");
+      const g = svg.querySelector(".iso-act"); if (!g) return;
+      const st = step < N ? stepOf(step) : {};
+      g.innerHTML = Object.values(st).map((l) => { const names = [...new Set(l.filter((a) => a[0] === "go" || a[0] === "back").map((a) => a[1]))];
+        return names.length === 1 ? `<polyline points="${pts(R[names[0]].map(([x, z]) => P(x, 0, z)))}"/>` : ""; }).join("");
     }
     function ui() {
       bar.querySelectorAll(".iso-dots button").forEach((b, i) => { b.className = i < step ? "done" : i === step ? "cur" : ""; if (i === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
@@ -276,25 +275,31 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
     function go(i, auto) {
       stop(); if (!auto) playing = false;
-      step = Math.max(0, Math.min(N, i)); busy = null; busyStay = false; A.drop = null;
+      step = Math.max(0, Math.min(N, i));
+      for (const X of AS) Object.assign(X, { busy: null, stay: false, drop: null, n: null });
       if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
-        playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
-        ui(); drawDrop(); drawActor(); labels(); place(); return;
+        playing = false; for (const X of AS) Object.assign(X, { pos: [...X.home], dir: [1, 0], pages: N, hold: true, say: "" });
+        ui(); for (const X of AS) { drawDrop(X); drawActor(X); } labels(); place(); return;
       }
       ui();
-      const list = acts(step); let k = -1, t0 = 0;
-      const next = (now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
-        while (++k < list.length) { apply(list[k]); if (list[k].dur > 0 && !reduce) { t0 = now; return true; } if (list[k].seg) { A.pos = [...list[k].seg[1]]; moveActor(); } }
-        busy = null; labels(); place(); if (playing) timer = setTimeout(() => go(step + 1, true), 2400); return false; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
+      const st = stepOf(step);
+      const runs = AS.filter((X) => st[X.id]).map((X) => ({ X, list: acts(st[X.id]), k: -1, t0: 0, done: false }));
+      const next = (r, now) => { // 길이가 0 인 동작은 바로 적용하고 넘어간다
+        while (++r.k < r.list.length) { const a = r.list[r.k]; apply(r.X, a); if (a.dur > 0 && !reduce) { r.t0 = now; return true; } if (a.seg) { r.X.pos = [...a.seg[1]]; moveActor(r.X); } }
+        r.X.busy = null; r.done = true; labels(); place(); return false;
       };
+      const finish = () => { if (playing) timer = setTimeout(() => go(step + 1, true), 2400); }; // 설명 읽을 시간 (POSTING 5-3 단계 간격)
       const tick = (now) => {
-        const a = list[k], t = Math.min(1, (now - t0) / a.dur);
-        if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
-        if (a.count) { const [lo, hi] = a.count, n = Math.min(hi, lo + Math.floor((hi - lo + 1) * t)); if (n !== busyN) { busyN = n; labels(); place(); } }
-        if (t >= 1 && !next(now)) return;
+        for (const r of runs) { if (r.done) continue;
+          const a = r.list[r.k], t = Math.min(1, (now - r.t0) / a.dur);
+          if (a.seg) { r.X.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(r.X); place(); }
+          if (a.count) { const [lo, hi] = a.count, n = Math.min(hi, lo + Math.floor((hi - lo + 1) * t)); if (n !== r.X.n) { r.X.n = n; labels(); place(); } }
+          if (t >= 1) next(r, now); }
+        if (runs.every((r) => r.done)) return finish();
         raf = requestAnimationFrame(tick);
       };
-      if (next(performance.now())) raf = requestAnimationFrame(tick);
+      const t = performance.now(); for (const r of runs) next(r, t);
+      if (runs.every((r) => r.done)) finish(); else raf = requestAnimationFrame(tick);
     }
     let io = null;
     bar.addEventListener("click", (e) => {
@@ -317,7 +322,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       io.observe(stage); // 그림 칸이 거의 다 보일 때 — 높이를 화면의 55% 로 묶어 두어 어느 화면에서든 닿는다
     }
     if (signal) signal.addEventListener("abort", () => { stop(); ro.disconnect(); mo.disconnect(); if (io) io.disconnect(); });
-    return { go, get step() { return step; }, get playing() { return playing; } };
+    return { go, get step() { return step; }, get playing() { return playing; }, actors: AS };
   }
 
   // 흔한 한 바퀴: 들고 가서 → 맡기고 기다리고 → 결과를 받아 → 돌아와 적는다
@@ -495,31 +500,17 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <p>실행 순서를 코드가 정하면 워크플로, 모델이 정하면 Agent입니다. 같은 고객 문의 메일 한 통을 여섯 가지 방식으로 처리해 봤습니다.</p>
     </div>
 
-    <p class="iso-req"><span>예시 메일 · 두 방식에 같은 메일</span>주문한 키보드가 고장 났어요. 환불되나요? 배송비도 제가 내나요?</p>
-    <div class="iso-pair" data-figure data-thumb data-thumb-act="el.querySelectorAll('.iso-dots li:last-child button').forEach((b) => b.click())">
-      <figure class="iso" data-iso="wf" aria-label="워크플로 장면. 직원이 메일을 들고 순서표에 적힌 대로 요약, 개인정보 가리기, 답장 작성 자리를 한 줄로 지나 우체통에 답장을 넣는다. 아무에게도 다음 갈 곳을 묻지 않는다.">
-        <p class="iso-pair-h"><b>워크플로</b>순서를 코드가 미리 정한다</p>
-        <div class="iso-stage"></div>
-        <ol class="iso-steps">
-          <li data-k="메일">직원(우리 앱)이 고객의 문의 메일을 받습니다. 갈 곳은 뒤쪽 순서표(코드)에 이미 적혀 있습니다.</li>
-          <li data-k="요약">첫 자리에서 모델이 문의를 요약합니다. 모델은 요약만 하고 다음에 어디로 갈지는 정하지 않습니다.</li>
-          <li data-k="가리기">둘째 자리는 모델이 아니라 코드입니다. 요약에 든 주소와 전화번호를 가립니다.</li>
-          <li data-k="답장">셋째 자리에서 모델이 답장을 쓰고 직원은 순서표대로 우체통에 넣습니다. 몇 자리를 거칠지는 처음부터 정해져 있었습니다.</li>
-        </ol>
-        <p class="iso-sum">순서표가 순서를 정합니다(2 → 3 → 4). 모델은 두 번 불리지만 자기 자리의 일만 합니다.</p>
-      </figure>
-      <figure class="iso" data-iso="ag" aria-label="Agent 장면. 순서표가 없어 직원이 같은 메일을 들고 안내 데스크의 모델에게 무엇부터 할지 묻는다. 모델의 답에 따라 주문 서류함과 환불 계산대에 다녀오고, 다녀올 때마다 데스크에 돌아와 다시 묻는다.">
-        <p class="iso-pair-h"><b>Agent</b>순서를 모델이 그때그때 정한다</p>
-        <div class="iso-stage"></div>
-        <ol class="iso-steps">
-          <li data-k="묻기">순서표가 없습니다. 직원은 메일을 들고 안내 데스크(모델)에 가서 무엇부터 할지 묻습니다. 모델은 주문부터 확인하라고 답합니다.</li>
-          <li data-k="주문 조회">직원이 주문 서류함(주문 조회 도구)에서 결과를 받아 와 다시 묻습니다. 다음 일은 결과를 봐야 정할 수 있어서입니다.</li>
-          <li data-k="환불">사흘 전에 배송된 주문이라는 결과를 본 모델이 환불을 고릅니다. 직원이 환불 계산대(환불 처리 도구)에 접수하고 돌아옵니다. 메일이 달랐다면 다른 곳으로 보냈을 겁니다.</li>
-          <li data-k="답장">모델이 더 할 일이 없다고 보고 답장을 써 줍니다. 몇 번 오갈지도 모델이 정했고, 오간 만큼 모델 호출이 늘었습니다(3번).</li>
-        </ol>
-        <p class="iso-sum">다음 갈 곳을 매번 모델에게 묻습니다(1 · 2 · 3). 그래서 데스크를 가운데 두고 오가고, 순서와 횟수가 메일마다 달라집니다.</p>
-      </figure>
-    </div>
+    <figure class="iso" data-figure data-iso="patterns" aria-label="같은 고객 문의 메일을 두 직원이 동시에 처리하는 장면. 위쪽 직원은 워크플로로, 뒤쪽 순서표에 적힌 대로 요약, 개인정보 가리기, 답장 작성 자리를 한 줄로 지나 우체통에 넣는다. 아래쪽 직원은 Agent로, 안내 데스크의 모델에게 물을 때마다 주문 조회와 환불 처리에 다녀오고 세 번째로 물은 뒤 답장을 받아 우체통에 넣는다.">
+      <p class="iso-req"><span>예시 메일 · 두 직원에게 같은 메일</span>주문한 키보드가 고장 났어요. 환불되나요? 배송비도 제가 내나요?</p>
+      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
+      <ol class="iso-steps">
+        <li data-k="메일">같은 문의 메일이 두 직원(우리 앱)에게 동시에 들어갑니다. 위쪽 직원은 워크플로로, 아래쪽 직원은 Agent로 처리합니다.</li>
+        <li data-k="첫 일">워크플로 직원은 순서표(코드)대로 첫 자리에서 모델에게 요약을 맡깁니다. Agent 직원에게는 순서표가 없어 안내 데스크(모델)에 무엇부터 할지 묻고 "주문부터 조회하라"는 답을 받습니다.</li>
+        <li data-k="둘째 일">워크플로 직원은 다음 자리에서 코드로 개인정보를 가립니다. 누구에게도 묻지 않습니다. Agent 직원은 주문 서류함(주문 조회 도구)에 다녀와 결과를 들고 다시 묻습니다. 이번 답은 환불입니다.</li>
+        <li data-k="답장">워크플로 직원은 마지막 자리에서 답장을 받아 우체통에 넣고 먼저 끝냅니다. Agent 직원은 환불 계산대(환불 처리 도구)에 다녀와 한 번 더 물은 뒤에야 답장을 받습니다. 모델 호출은 워크플로 2번, Agent 3번입니다.</li>
+      </ol>
+      <p class="iso-sum">위쪽은 코드에 적힌 순서대로 한 줄로 지나갑니다(워크플로). 아래쪽은 데스크를 가운데 두고 물을 때마다 갈 곳이 정해집니다(Agent). 그래서 Agent 쪽 길과 횟수는 메일마다 달라집니다.</p>
+    </figure>
   </div>
 </section>
 
@@ -578,65 +569,55 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 </div>
 
 <script>
-/* 맨 위 장면(POSTING 5-11): 견주는 글이라 두 장면을 나란히 두고 같은 메일로 동시에 재생한다(2026-11-24 사용자 지적 — "비교 글인데 왜 한 줄 과정처럼 이어 놓았나").
-   왼쪽은 흐름도 첫 줄(프롬프트 체이닝: 요약 → 가리기 → 답장 작성), 오른쪽은 끝 줄(Agent: 모델 3번, 도구 2번) */
+/* 맨 위 장면(POSTING 5-11): 한 장면에 직원 둘이 같은 메일을 동시에 처리한다(2026-11-24 사용자 지시 — "한 화면 안에서 2명이 나와서 각각 다른 일을 하면 된다").
+   위쪽(워크플로) = 흐름도 첫 줄(프롬프트 체이닝: 요약 → 가리기 → 답장 작성), 아래쪽(Agent) = 끝 줄(모델 3번, 도구 2번) */
 (() => {
-  const back = [0, -1];
-  const counter = [["box", 0, 0.85, 1.9, 0.45, 0.75, "grey"], ["box", 0, 0.85, 1.96, 0.51, 0.07, "white", 0.95]];
-  const seat = (name, c) => ({ name, at: null, size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [["person", 0, -0.3, c], ...counter] });
-  const wf = {
-    mail: { name: "문의 메일", at: [-10.8, 0], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, -0.2, "navy"]] },
-    plan: { name: "순서표 (코드)", at: [0, -4.6], size: [4.2, 1.4], top: 2.4, parts: [
-      ["box", 0, 0, 3.4, 0.14, 1.7, "wall"], ["box", 0, 0.09, 3.0, 0.03, 0.26, "orange", 1.3], ["box", 0, 0.09, 3.0, 0.03, 0.26, "teal", 0.92], ["box", 0, 0.09, 3.0, 0.03, 0.26, "orange", 0.54] ] },
-    s1: { ...seat("요약 · 모델", "orange"), at: [-5.4, 0] },
-    s2: { name: "가리기 · 코드", at: [0, 0], size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [
-      ["box", 0, -0.25, 1.2, 0.9, 1.25, "teal"], ["box", 0, 0.21, 0.8, 0.03, 0.12, "dark", 1.05], ...counter] },
-    s3: { ...seat("답장 작성 · 모델", "orange"), at: [5.4, 0] },
-    reply: { name: "우체통", at: [10.8, 0], size: [2.4, 2.4], top: 2.4, drop: [0, 0.2, 0.95], parts: [
-      ["box", 0, 0, 0.22, 0.22, 0.9, "grey"], ["box", 0, 0, 1.4, 1.0, 0.85, "red", 1.1], ["box", 0, 0.51, 0.62, 0.03, 0.13, "dark", 1.55] ] },
-  };
-  const at = (st, work, o = {}) => ["wait", 1700, st, work, { face: back, say: "", ...o }];
-  isoScene(postPage.root.querySelector('[data-iso="wf"]'), {
-    stations: wf,
-    routes: { r0: [[-10.8, 2.1], [-5.4, 2.1]], r1: [[-5.4, 2.1], [0, 2.1]], r2: [[0, 2.1], [5.4, 2.1]], r3: [[5.4, 2.1], [10.8, 2.1]] },
-    actor: { color: "teal", home: [-10.8, 2.1] },
-    badges: [[[-8.1, 2.1], "2"], [[-2.7, 2.1], "3"], [[2.7, 2.1], "4"]],
+  const back = [0, -1], front = [0, 1];
+  const counter = (z) => [["box", 0, z, 1.9, 0.45, 0.75, "grey"], ["box", 0, z, 1.96, 0.51, 0.07, "white", 0.95]];
+  const seat = (name, x, c) => ({ name, at: [x, -5.4], size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [["person", 0, -0.3, c], ...counter(0.85)] });
+  const H = [0, 4.4];
+  isoScene(postPage.root.querySelector('[data-iso="patterns"]'), {
+    stations: {
+      mail: { name: "문의 메일", meta: "고객", at: [-12.6, 0.6], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, 0, "navy"]] },
+      plan: { name: "순서표", meta: "워크플로의 코드", at: [0, -9.2], size: [5.2, 1.4], top: 2.4, parts: [
+        ["box", 0, 0, 4.4, 0.14, 1.7, "wall"], ["box", 0, 0.09, 4.0, 0.03, 0.26, "orange", 1.3], ["box", 0, 0.09, 4.0, 0.03, 0.26, "teal", 0.92], ["box", 0, 0.09, 4.0, 0.03, 0.26, "orange", 0.54] ] },
+      s1: seat("요약 · 모델", -5.2, "orange"),
+      s2: { name: "가리기 · 코드", at: [0, -5.4], size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [
+        ["box", 0, -0.25, 1.2, 0.9, 1.25, "teal"], ["box", 0, 0.21, 0.8, 0.03, 0.12, "dark", 1.05], ...counter(0.85)] },
+      s3: seat("답장 작성 · 모델", 5.2, "orange"),
+      model: { name: "안내 데스크", meta: "Agent의 모델", at: [0, 7.8], size: [3.4, 3.0], top: 2.3, drop: [0, 1.18, -1.3], parts: [
+        ["box", 0, -1.3, 2.6, 0.3, 0.9, "navy"], ["box", 0, -1.3, 2.66, 0.36, 0.08, "white", 1.1], ["person", 0, 0.1, "orange"] ] },
+      order: { name: "주문 조회", meta: "도구", at: [-5.4, 7.8], size: [2.4, 2.4], top: 2.3, drop: [0, 0.2, -0.95], parts: [
+        ["box", 0, 0.1, 1.4, 1.0, 1.5, "navy"], ["box", 0, -0.42, 1.1, 0.03, 0.3, "grey", 0.42], ["box", 0, -0.42, 1.1, 0.03, 0.3, "grey", 0.85], ["box", 0, -0.42, 1.1, 0.03, 0.3, "grey", 1.28] ] },
+      refund: { name: "환불 처리", meta: "도구", at: [5.4, 7.8], size: [2.4, 2.4], top: 2.0, drop: [0, 0.2, -0.95], parts: [
+        ["box", 0, 0.1, 1.5, 1.0, 0.8, "blue"], ["box", -0.3, 0.3, 0.6, 0.4, 0.5, "dark", 1.0], ["sph", 0.4, 1.2, 0.35, 0.2, "yellow"] ] },
+      reply: { name: "우체통", meta: "답장", at: [12.6, 0.6], size: [2.4, 2.4], top: 2.4, drop: [-0.95, 0.2, 0], parts: [
+        ["box", 0, 0, 0.22, 0.22, 0.9, "grey"], ["box", 0, 0, 1.4, 1.0, 0.85, "red", 1.1], ["box", 0, 0.51, 0.62, 0.03, 0.13, "dark", 1.55] ] },
+    },
+    // 위: 워크플로 길(z = -3)은 한 줄로 곧게. 아래: Agent 길(z = 4.4)은 데스크 앞을 가운데 두고 도구로 가지가 난다
+    routes: {
+      w0: [[-10.6, -0.4], [-10.6, -3], [-5.2, -3]], w1: [[-5.2, -3], [0, -3]], w2: [[0, -3], [5.2, -3]], w3: [[5.2, -3], [10.6, -3], [10.6, -0.4]],
+      a0: [[-10.6, 1.6], [-10.6, 4.4], H], order: [H, [-5.4, 4.4], [-5.4, 5.9]], refund: [H, [5.4, 4.4], [5.4, 5.9]], a3: [H, [10.6, 4.4], [10.6, 1.6]],
+    },
+    actors: [{ id: "wf", color: "teal", home: [-10.6, -0.4] }, { id: "ag", color: "blue", home: [-10.6, 1.6] }],
+    badges: [[[-8.6, -1.8], "워크플로"], [[-8.6, 3.2], "Agent"]],
     steps: [
-      [["at", "r0", { face: back, hold: false, pages: 1, say: "" }], ["wait", 1300, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "메일" }], ["wait", 700, "plan", "1 요약 → 2 가리기 → 3 답장"]],
-      [["at", "r0", { hold: true, pages: 1, say: "메일" }], ["go", "r0"], at("s1", "문의를 요약하는 중"), ["set", { pages: 2, say: "요약" }]],
-      [["at", "r1", { hold: true, pages: 2, say: "요약" }], ["go", "r1"], at("s2", "개인정보 가리는 중"), ["set", { say: "가린 요약" }]],
-      [["at", "r2", { hold: true, pages: 2, say: "가린 요약" }], ["go", "r2"], at("s3", "답장을 쓰는 중"), ["set", { pages: 3, say: "답장" }],
-       ["go", "r3"], ["wait", 1200, "reply", "답장을 보내는 중", { face: back, hold: false, drop: true, say: "" }]],
-    ],
-  });
-
-  const ag = {
-    cust: { name: "문의 메일", at: [0, 5.6], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, 0.2, "navy"]] },
-    model: { name: "안내 데스크 · 모델", at: [0, -3], size: [3.4, 3.4], top: 2.3, drop: [0, 1.18, 1.45], parts: [
-      ["person", 0, -0.1, "orange"], ["box", 0, 1.45, 2.6, 0.3, 0.9, "navy"], ["box", 0, 1.45, 2.66, 0.36, 0.08, "white", 1.1] ] },
-    order: { name: "주문 조회 · 도구", at: [-5.6, 0], size: [2.4, 2.4], top: 2.3, drop: [0.95, 0.2, 0], parts: [
-      ["box", -0.1, 0, 1.0, 1.4, 1.5, "navy"], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 0.42], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 0.85], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 1.28] ] },
-    refund: { name: "환불 처리 · 도구", at: [5.6, 0], size: [2.4, 2.4], top: 2.0, drop: [0, 0.2, 0.95], parts: [
-      ["box", 0, 0.1, 1.5, 1.0, 0.8, "blue"], ["box", -0.3, -0.15, 0.6, 0.4, 0.5, "dark", 1.0], ["box", 0, 0.62, 1.1, 0.03, 0.22, "grey", 0.5], ["sph", 0.4, 1.2, 0.35, 0.2, "yellow"] ] },
-  };
-  const ask = (pages, work, result) => [["wait", 1700, "model", work, { hold: false, drop: true, say: "", face: back }],
-    ["set", { hold: true, pages: pages + 1, say: result }], ["wait", 600, "model", "답을 건네는 중"]];
-  const tool = (route, st, face, o) => [["at", [0, 0], { hold: true, pages: o.pages, say: o.carry }], ["go", route],
-    ["wait", 1600, st, o.work, { hold: false, drop: true, say: "", face }],
-    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, st, "결과를 건네는 중"], ["back", route], ["set", { face: back }]];
-  isoScene(postPage.root.querySelector('[data-iso="ag"]'), {
-    stations: ag,
-    routes: { cust: [[0, 4.1], [0, 0]], order: [[0, 0], [-4, 0]], refund: [[0, 0], [4, 0]] },
-    actor: { color: "teal", home: [0, 0] },
-    badges: [[[0, 2.2], "1"], [[-2, 0], "2"], [[2, 0], "3"]],
-    steps: [
-      [["at", "cust", { face: [0, 1], hold: false, pages: 1, say: "" }], ["wait", 1300, "cust", "문의를 보내는 중"],
-       ["set", { hold: true, say: "메일 + 도구 목록" }], ["go", "cust"], ...ask(1, "무엇부터 할지 정하는 중", "주문부터 조회하라는 답")],
-      [...tool("order", "order", [-1, 0], { pages: 2, carry: "주문 조회", work: "주문을 찾는 중", result: "결과: 사흘 전 배송 완료" }),
-       ...ask(3, "결과를 읽고 다음 일을 정하는 중", "환불 처리하라는 답")],
-      [...tool("refund", "refund", [1, 0], { pages: 4, carry: "환불 처리", work: "환불을 접수하는 중", result: "결과: 환불 접수됨" }),
-       ...ask(5, "더 할 일이 있는지 보는 중", "더 할 일 없음 · 답장")],
-      [["at", [0, 0], { hold: true, pages: 6, say: "답장" }], ["back", "cust"], ["wait", 1200, "cust", "답장을 받는 중", { face: [0, 1], hold: false, say: "" }]],
+      { wf: [["at", "w0", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1300, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "워크플로 · 메일" }]],
+        ag: [["at", "a0", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1300, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "Agent · 메일" }]] },
+      { wf: [["at", "w0", { hold: true, pages: 1, say: "워크플로 · 메일" }], ["go", "w0"], ["wait", 1800, "s1", "문의를 요약하는 중", { face: back, say: "" }], ["set", { pages: 2, say: "요약" }]],
+        ag: [["at", "a0", { hold: true, pages: 1, say: "Agent · 메일" }], ["go", "a0"], ["wait", 1800, "model", "무엇부터 할지 정하는 중", { face: front, hold: false, drop: true, say: "" }],
+             ["set", { hold: true, pages: 2, say: "주문부터 조회하라는 답" }], ["wait", 500, "model", "답을 건네는 중"]] },
+      { wf: [["at", "w1", { hold: true, pages: 2, say: "요약" }], ["go", "w1"], ["wait", 1800, "s2", "개인정보 가리는 중", { face: back, say: "" }], ["set", { say: "가린 요약" }]],
+        ag: [["at", H, { hold: true, pages: 2, say: "주문부터 조회하라는 답" }], ["go", "order"], ["wait", 1500, "order", "주문을 찾는 중", { face: front, hold: false, drop: true, say: "" }],
+             ["set", { hold: true, pages: 3, say: "사흘 전 배송 완료" }], ["back", "order"],
+             ["wait", 1800, "model", "결과를 읽고 다음 일을 정하는 중", { face: front, hold: false, drop: true, say: "" }],
+             ["set", { hold: true, pages: 4, say: "환불 처리하라는 답" }], ["wait", 500, "model", "답을 건네는 중"]] },
+      { wf: [["at", "w2", { hold: true, pages: 2, say: "가린 요약" }], ["go", "w2"], ["wait", 1800, "s3", "답장을 쓰는 중", { face: back, say: "" }], ["set", { pages: 3, say: "답장" }],
+             ["go", "w3"], ["wait", 1200, "reply", "✓ 워크플로 답장 도착", { face: [1, 0], hold: false, drop: true, say: "" }]],
+        ag: [["at", H, { hold: true, pages: 4, say: "환불 처리하라는 답" }], ["go", "refund"], ["wait", 1500, "refund", "환불을 접수하는 중", { face: front, hold: false, drop: true, say: "" }],
+             ["set", { hold: true, pages: 5, say: "환불 접수됨" }], ["back", "refund"],
+             ["wait", 1800, "model", "더 할 일이 있는지 보는 중", { face: front, hold: false, drop: true, say: "" }],
+             ["set", { hold: true, pages: 6, say: "답장" }], ["go", "a3"], ["wait", 1200, "reply", "✓ Agent 답장 도착", { face: [1, 0], hold: false, drop: true, say: "" }]] },
     ],
   });
 })();
