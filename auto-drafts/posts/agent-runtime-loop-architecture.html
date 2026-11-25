@@ -23,13 +23,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
 .post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
 .post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
-.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab { transition: box-shadow .35s ease, background-color .35s ease, color .35s ease, opacity .3s ease; }
+.post-page .iso-lab small { display: inline-block; margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
 .post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
 .post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
 .post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
 .post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
 .post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
 .post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+/* 글자가 바뀔 때: 옅게 떠오르며 나타난다. 말풍선은 비면 옅게 사라진다 */
+.post-page .iso-lab small.swap { animation: pg-iso-in .4s cubic-bezier(.2, .7, .2, 1); }
+.post-page .iso-lab.iso-say.swap { animation: pg-iso-say .4s cubic-bezier(.2, .7, .2, 1); }
+.post-page .iso-lab.iso-say.hide { opacity: 0; }
+@keyframes pg-iso-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes pg-iso-say { from { opacity: 0; transform: translate(-50%, -100%) translateY(5px); } to { opacity: 1; transform: translate(-50%, -100%); } }
 @keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
 /* 단계 띠 */
 .post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
@@ -63,7 +70,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
-@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } .post-page .iso-lab, .post-page .iso-lab small.swap, .post-page .iso-lab.iso-say.swap { animation: none; transition: none; } }
 </style>
 <script>
 // 아이소메트릭 흐름 장면 — 정거장 사이를 한 사람이 오가며 일을 맡기고 결과를 받아 오는 그림.
@@ -180,18 +187,29 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     for (const id of ids) lab[id] = mk("iso-lab");
     const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
     const say = mk("iso-lab iso-say");
-    let busy = null;
+    let busy = null, busyN = null;
+    // 글자가 바뀐 요소만 다시 그리고, 바뀔 때는 옅게 사라졌다 떠오르게(교차) 한다. 같은 글자면 건드리지 않는다
+    const swap = (el) => { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); };
+    const fill = (t) => (busyN == null ? t : t.replace(/\{n\}/g, busyN));
     function labels() {
-      for (const id of ids) { const b = busy && busy[0] === id;
-        lab[id].className = "iso-lab" + (b ? " busy" : "");
-        lab[id].innerHTML = S[id].name + (b ? `<small>${busy[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+      for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
+        const cls = "iso-lab" + (b ? " busy" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
+        if (lab[id].className !== cls) lab[id].className = cls;
+        if (lab[id].dataset.body === body && lab[id].dataset.b === String(b)) continue;
+        const small = lab[id].querySelector("small"), onlyCount = small && lab[id].dataset.b === "true" && b && lab[id].dataset.tpl === hit[1];
+        lab[id].dataset.body = body; lab[id].dataset.b = String(b); lab[id].dataset.tpl = b ? hit[1] : "";
+        if (onlyCount) { small.firstChild.textContent = body; continue; } // 숫자만 올라갈 때는 깜빡이지 않게 글자만 바꾼다
+        lab[id].innerHTML = S[id].name + (b ? `<small>${body}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : body ? `<small class="meta">${body}</small>` : "");
+        const sm = lab[id].querySelector("small"); if (sm && !labels.first) swap(sm); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
     const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
     function place() {
       for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
       for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
-      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+      const hide = step === N || !A.say;
+      if (!hide && say.dataset.t !== A.say) { say.textContent = A.say; say.dataset.t = A.say; swap(say); }
+      say.classList.toggle("hide", hide); put(say, P(A.pos[0], 1.75, A.pos[1]));
     }
 
     /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
@@ -210,7 +228,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       if (a.jump) A.pos = [...a.jump];
       if (a.seg) A.dir = [Math.sign(a.seg[1][0] - a.seg[0][0]), Math.sign(a.seg[1][1] - a.seg[0][1])];
       if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
-      if (a.wait || a.seg) { busy = a.wait ? [a.comp, a.text] : null; A.drop = a.wait && a.drop ? a.comp : null; drawDrop(); }
+      // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
+      if (a.wait || a.seg) { const many = Array.isArray(a.comp);
+        busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        busyN = a.wait && a.count ? a.count[0] : null;
+        A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
 
@@ -244,6 +266,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       const tick = (now) => {
         const a = list[k], t = Math.min(1, (now - t0) / a.dur);
         if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (a.count) { const [lo, hi] = a.count, n = Math.min(hi, lo + Math.floor((hi - lo + 1) * t)); if (n !== busyN) { busyN = n; labels(); place(); } }
         if (t >= 1 && !next(now)) return;
         raf = requestAnimationFrame(tick);
       };
@@ -261,7 +284,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     }, { signal });
 
     /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
-    layout(); labels(); render(); go(N);
+    labels.first = true; layout(); labels(); labels.first = false; render(); go(N);
     const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
     const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (!reduce && "IntersectionObserver" in window) {

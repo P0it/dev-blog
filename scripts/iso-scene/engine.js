@@ -112,18 +112,29 @@
     for (const id of ids) lab[id] = mk("iso-lab");
     const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
     const say = mk("iso-lab iso-say");
-    let busy = null;
+    let busy = null, busyN = null;
+    // 글자가 바뀐 요소만 다시 그리고, 바뀔 때는 옅게 사라졌다 떠오르게(교차) 한다. 같은 글자면 건드리지 않는다
+    const swap = (el) => { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); };
+    const fill = (t) => (busyN == null ? t : t.replace(/\{n\}/g, busyN));
     function labels() {
       for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
-        lab[id].className = "iso-lab" + (b ? " busy" : "");
-        lab[id].innerHTML = S[id].name + (b ? `<small>${hit[1]}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : S[id].meta ? `<small class="meta">${S[id].meta}</small>` : ""); }
+        const cls = "iso-lab" + (b ? " busy" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
+        if (lab[id].className !== cls) lab[id].className = cls;
+        if (lab[id].dataset.body === body && lab[id].dataset.b === String(b)) continue;
+        const small = lab[id].querySelector("small"), onlyCount = small && lab[id].dataset.b === "true" && b && lab[id].dataset.tpl === hit[1];
+        lab[id].dataset.body = body; lab[id].dataset.b = String(b); lab[id].dataset.tpl = b ? hit[1] : "";
+        if (onlyCount) { small.firstChild.textContent = body; continue; } // 숫자만 올라갈 때는 깜빡이지 않게 글자만 바꾼다
+        lab[id].innerHTML = S[id].name + (b ? `<small>${body}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : body ? `<small class="meta">${body}</small>` : "");
+        const sm = lab[id].querySelector("small"); if (sm && !labels.first) swap(sm); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
     const put = (el, p) => { const h = el.offsetWidth / 2 + 4, x = h * 2 < W ? Math.max(h, Math.min(W - h, p[0])) : p[0]; el.style.left = x.toFixed(1) + "px"; el.style.top = p[1].toFixed(1) + "px"; };
     function place() {
       for (const id of ids) put(lab[id], P(S[id].at[0], S[id].top || 2.2, S[id].at[1]));
       for (const d of nums) { put(d, P(d.at[0], 0, d.at[1])); d.style.display = step === N ? "" : "none"; }
-      say.textContent = A.say; say.style.display = step === N || !A.say ? "none" : ""; put(say, P(A.pos[0], 1.75, A.pos[1]));
+      const hide = step === N || !A.say;
+      if (!hide && say.dataset.t !== A.say) { say.textContent = A.say; say.dataset.t = A.say; swap(say); }
+      say.classList.toggle("hide", hide); put(say, P(A.pos[0], 1.75, A.pos[1]));
     }
 
     /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로 ── */
@@ -145,6 +156,7 @@
       // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
       if (a.wait || a.seg) { const many = Array.isArray(a.comp);
         busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        busyN = a.wait && a.count ? a.count[0] : null;
         A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
@@ -179,6 +191,7 @@
       const tick = (now) => {
         const a = list[k], t = Math.min(1, (now - t0) / a.dur);
         if (a.seg) { A.pos = [a.seg[0][0] + (a.seg[1][0] - a.seg[0][0]) * t, a.seg[0][1] + (a.seg[1][1] - a.seg[0][1]) * t]; moveActor(); place(); }
+        if (a.count) { const [lo, hi] = a.count, n = Math.min(hi, lo + Math.floor((hi - lo + 1) * t)); if (n !== busyN) { busyN = n; labels(); place(); } }
         if (t >= 1 && !next(now)) return;
         raf = requestAnimationFrame(tick);
       };
@@ -196,7 +209,7 @@
     }, { signal });
 
     /* ── 시작: 전체 흐름을 먼저 보이고, 그림이 화면에 다 들어오면 한 번 저절로 재생한다 ── */
-    layout(); labels(); render(); go(N);
+    labels.first = true; layout(); labels(); labels.first = false; render(); go(N);
     const ro = new ResizeObserver(() => { const w = stage.clientWidth; if (w && Math.abs(w - W) > 1) { layout(); render(); } }); ro.observe(stage);
     const mo = new MutationObserver(render); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (!reduce && "IntersectionObserver" in window) {

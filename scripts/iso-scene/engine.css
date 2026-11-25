@@ -8,13 +8,20 @@
 .post-page .iso-stage svg { display: block; width: 100%; height: 100%; }
 .post-page .iso-labs { position: absolute; inset: 0; pointer-events: none; }
 .post-page .iso-lab { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; padding: 4px 12px; border-radius: 999px; background: var(--bg-base); color: var(--fg-strong); font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: 0 4px 14px rgba(30, 50, 120, .16); }
-.post-page .iso-lab small { margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-lab { transition: box-shadow .35s ease, background-color .35s ease, color .35s ease, opacity .3s ease; }
+.post-page .iso-lab small { display: inline-block; margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
 .post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
 .post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
 .post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
 .post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
 .post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
 .post-page .iso-dotdot i:nth-child(2) { animation-delay: .2s; } .post-page .iso-dotdot i:nth-child(3) { animation-delay: .4s; }
+/* 글자가 바뀔 때: 옅게 떠오르며 나타난다. 말풍선은 비면 옅게 사라진다 */
+.post-page .iso-lab small.swap { animation: pg-iso-in .4s cubic-bezier(.2, .7, .2, 1); }
+.post-page .iso-lab.iso-say.swap { animation: pg-iso-say .4s cubic-bezier(.2, .7, .2, 1); }
+.post-page .iso-lab.iso-say.hide { opacity: 0; }
+@keyframes pg-iso-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes pg-iso-say { from { opacity: 0; transform: translate(-50%, -100%) translateY(5px); } to { opacity: 1; transform: translate(-50%, -100%); } }
 @keyframes pg-iso-dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
 /* 단계 띠 */
 .post-page .iso-bar { display: flex; align-items: flex-start; gap: 18px; margin-top: 16px; }
@@ -48,4 +55,4 @@
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
-@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } .post-page .iso-lab, .post-page .iso-lab small.swap, .post-page .iso-lab.iso-say.swap { animation: none; transition: none; } }
