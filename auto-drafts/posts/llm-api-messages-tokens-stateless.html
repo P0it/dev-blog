@@ -4,9 +4,9 @@ slug: llm-api-messages-tokens-stateless
 excerpt: 채팅 앱은 앞에서 한 말을 기억하는 것처럼 보이지만 LLM API는 요청 하나에 답 하나를 돌려주고 잊습니다. 메시지 목록과 role, 토큰과 요금, max_tokens, context window, 스트리밍까지 LLM API를 한 번 부를 때 실제로 오가는 것을 봅니다.
 tags: [LLM, API, 토큰, 스트리밍, Python]
 category: ai
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-api-messages-tokens-stateless-mwvj4q6m.jpg
 series: agent-basics
 series_order: 2
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-api-messages-tokens-stateless-mwvj4q6m.jpg
 ---
 <!-- page -->
 <!-- AI Agent, 기초부터 하나씩 2편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
@@ -102,6 +102,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .rw-msg.err { border-color: #d4553f; }
 .post-page .rw-msg.err i { color: #d4553f; }
 .post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
 /* 메시지 목록 — 호출마다 실려 가는 칸 */
 .post-page .ml { display: grid; gap: 22px; }
 .post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
@@ -163,21 +167,35 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 
   <section>
     <h2>채팅 앱과 LLM 사이에는 무엇이 오가나요?</h2>
-    <p class="rw-ans">앱이 대화를 요청 하나에 담아 보내고, LLM은 답 하나를 돌려줍니다.</p>
+    <p class="rw-ans">앱이 내 말을 요청에 담아 보내고, LLM은 답 하나를 돌려줍니다.</p>
     <figure data-figure data-thumb>
       <div class="sq">
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
         <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>앱</b><small>개발자가 짠 코드</small></div>
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
-        <div class="sq-m c12 r"><span class="rw-msg">내 이름이 뭐였지?</span><span class="sq-arr"></span></div>
-        <div class="sq-m c23 r"><span class="rw-msg"><i>요청</i>지금까지의 대화 3칸 + 새 질문</span><span class="sq-arr"></span></div>
-        <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
-        <div class="sq-m c12 l"><span class="rw-msg ans">민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 r"><span class="rw-msg">내 이름은 민지야.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 1칸</i><span class="mr new"><b>user</b>내 이름은 민지야.</span></span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>반가워요, 민지님!</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans">반가워요, 민지님!</span><span class="sq-arr"></span></div>
       </div>
-      <figcaption>나는 앱에 질문 하나만 보냈지만 앱은 지금까지의 대화를 모두 담아 LLM에 보냈습니다.</figcaption>
+      <figcaption>첫 번째 말입니다. 앱은 내가 쓴 한 줄을 메시지 한 칸에 담아 LLM에 보냅니다.</figcaption>
     </figure>
     <p>ChatGPT나 Claude 앱에 글을 쓰면 앱이 그 글을 LLM API로 보냅니다. <strong>API</strong>는 다른 프로그램에 일을 시킬 때 쓰는 정해진 요청 형식입니다. LLM은 요청을 읽고 답을 만들어 돌려줍니다. 앱은 그 답을 화면에 보여 줍니다.</p>
     <p>그림 가운데의 앱은 개발자가 짠 프로그램입니다. 이 글은 도구를 쓰지 않는 가장 단순한 경우, 곧 챗봇을 다룹니다. 도구를 붙여 Agent를 만들어도 앱과 LLM이 주고받는 요청의 모양은 같습니다.</p>
+    <p>그럼 두 번째 말을 보낼 때는 어떨까요? 이번에도 새로 쓴 한 줄만 보낼 것 같지만 앱은 앞의 대화를 함께 묶어서 보냅니다.</p>
+    <figure data-figure>
+      <div class="sq">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>앱</b><small>대화 기록을 들고 있음</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">내 이름이 뭐였지?</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 3칸</i><span class="mr"><b>user</b>내 이름은 민지야.</span><span class="mr"><b>assistant</b>반가워요, 민지님!</span><span class="mr new"><b>user</b>내 이름이 뭐였지?</span></span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans">민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>두 번째 말입니다. 나는 한 줄만 썼지만 앱은 첫 번째 말과 그 답, 새 질문까지 세 칸을 묶어 보냈습니다. 굵은 테두리가 이번에 새로 붙인 칸입니다.</figcaption>
+    </figure>
+    <p>LLM이 "민지님"이라고 답할 수 있었던 것은 요청 안에 첫 번째 말이 다시 들어 있었기 때문입니다. 앱이 왜 이렇게 묶어 보내는지는 아래에서 요청 하나를 열어 보면서 봅니다.</p>
   </section>
 
   <section>
@@ -189,9 +207,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
   "max_tokens": 1024,
   "system": "너는 친절한 비서다.",
   "messages": [
-    { "role": "user", "content": "내 이름은 민지야." },
-    { "role": "assistant", "content": "반가워요, 민지님!" },
-    { "role": "user", "content": "내 이름이 뭐였지?" }
+    { "role": "user",
+      "content": "내 이름은 민지야." },
+    { "role": "assistant",
+      "content": "반가워요, 민지님!" },
+    { "role": "user",
+      "content": "내 이름이 뭐였지?" }
   ]
 }</div></div>
     </div>
@@ -238,7 +259,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     <p><strong>토큰</strong>(token)은 단어와 비슷하거나 조금 작은 글 조각입니다. 같은 글이라도 모델마다 나누는 방식이 달라서 토큰 수가 다릅니다. 같은 뜻이라도 한국어는 영어보다 토큰을 더 쓰는 편입니다.</p>
     <div class="rs">
       <div class="rs-c"><b>돌아온 응답 (줄임)</b><div class="rs-j">{
-  "content": [{ "type": "text", "text": "민지님이라고 하셨어요." }],
+  "content": [{ "type": "text",
+                "text": "민지님이라고 하셨어요." }],
   "stop_reason": "end_turn",
   <span class="rs-hl">"usage": { "input_tokens": 47, "output_tokens": 10 }</span>
 }</div></div>
