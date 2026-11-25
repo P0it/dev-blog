@@ -73,6 +73,16 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+/* 이 글의 용어: 장면의 비유와 실제 용어를 짝지어 흐름도 앞에 둔다(2026-11-24). 카드·색 띠 없이 줄 목록으로 */
+.post-page .iso-terms { margin: 0 0 clamp(32px, 4vw, 48px); }
+.post-page .iso-terms-h { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--fg-strong); }
+.post-page .iso-terms-h span { font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-terms dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; }
+.post-page .iso-terms dl > div { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 0 16px; padding: 11px 0; border-top: 1px solid var(--line-subtle); }
+.post-page .iso-terms dt { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.5; color: var(--fg-strong); }
+.post-page .iso-terms dt span { display: block; margin-top: 1px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
+.post-page .iso-terms dd { margin: 0; font-size: 15px; line-height: 1.65; color: var(--fg-normal); }
+@media (max-width: 760px) { .post-page .iso-terms dl { grid-template-columns: 1fr; } .post-page .iso-terms dl > div { grid-template-columns: 8em minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .post-page .iso-dotdot i { animation: none; opacity: .7; } .post-page .iso-lab, .post-page .iso-lab small.swap, .post-page .iso-lab.iso-say.swap { animation: none; transition: none; } }
 </style>
 <script>
@@ -476,6 +486,18 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 <section class="ac-sec">
   <div class="ac-wrap">
     <p class="ac-bridge">같은 요청을 실제 구성 요소 이름으로 다시 그리면 아래 흐름도가 됩니다. 담당자는 A2A Client인 출장 준비 Agent이고 두 업체는 A2A Server입니다. 명함은 Agent Card, 방문증은 액세스 토큰, 의뢰서는 Task, 납품물은 Artifact입니다.</p>
+    <div class="iso-terms">
+      <p class="iso-terms-h">이 글의 용어 <span>· 위 장면에서 부른 이름</span></p>
+      <dl>
+        <div><dt>A2A<span>업체끼리 일 맡기기</span></dt><dd>Agent가 다른 회사나 팀의 Agent에게 일을 맡길 때 쓰는 연결 규칙</dd></div>
+        <div><dt>Agent Card<span>명함</span></dt><dd>할 줄 아는 일, 연락할 주소, 인증 방법을 적어 누구나 볼 수 있게 올려 둔 JSON 파일</dd></div>
+        <div><dt>Task<span>의뢰서</span></dt><dd>맡긴 일 하나. 접수번호가 붙고 진행 상태가 바뀐다</dd></div>
+        <div><dt>상태<span>진행 안내</span></dt><dd>접수(submitted) → 작업 중(working) → 확인 필요(input-required) → 완료(completed)</dd></div>
+        <div><dt>Artifact<span>납품물</span></dt><dd>일이 끝나고 돌려받는 결과물. 전자 항공권이나 예약 확인서 같은 것</dd></div>
+        <div><dt>액세스 토큰<span>방문증</span></dt><dd>상대 Agent에게 일을 맡길 권한이 있다는 것을 보여 주는 값</dd></div>
+        <div><dt>MCP와 다른 점<span>도구에 붙기 · 남에게 맡기기</span></dt><dd>MCP는 Agent가 자기 도구에 붙는 길이고, A2A는 다른 Agent에게 일을 맡기는 길이다</dd></div>
+      </dl>
+    </div>
 
     <figure class="fl" data-figure aria-label="A2A 흐름도. 왼쪽 우리 쪽 구역에 출장 준비 Agent가 있고 그 아래에 MCP로 붙인 사내 캘린더가 있다. 출장 준비 Agent는 사용자의 요청을 받아 항공권 Agent와 숙소 Agent의 Agent Card를 읽고 인증 서버에서 액세스 토큰을 받은 뒤, 두 Agent에 SendMessage로 Task를 만든다. 오른쪽 다른 회사 구역의 두 Agent는 안에서 자기 모델과 MCP로 붙인 도구를 쓰지만 밖에서는 보이지 않는다. 두 Agent는 상태 업데이트와 Artifact를 스트리밍으로 돌려준다. 항공권 Agent가 input-required로 멈추면 출장 준비 Agent는 사용자에게 확인하고 같은 Task에 답한다. 마지막으로 두 결과물을 사용자에게 전한다.">
       <div class="fl-top"><h2>A2A로 일을 맡기는 흐름</h2>
