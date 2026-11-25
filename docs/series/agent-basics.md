@@ -22,6 +22,8 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 | Agent 안에도 LLM 이 있지 않나 | 가운데 줄은 "프로그램(개발자가 짠 코드)", 프로그램 + LLM + 도구를 감싼 옅은 초록 바탕이 Agent. 판단은 LLM, 실행은 코드 |
 | 너무 짧고 추상 개념에서 겉돈다 | 쉬운 도입 뒤에 실제 형식·분기 값·실패·비용·보안을 같은 그림 위에 얹는다. 편 끝 무렵에 그림의 칸이 코드의 어느 줄인지 잇는 짧은 코드 한 블록 |
 | (2026-11-24) 그림에 빌드업이 없다 — 3칸을 묶어 보내는 그림이 처음부터 나온다 | 한 번(1칸)을 먼저 그리고, 다음 그림에서 같은 장면에 한 가지만 더해 묶음으로 보인다(`POSTING.md` 5-6 "빌드업"). 2편 첫 섹션이 견본 |
+| (2026-11-25) "바퀴가 아니라 반복 아닌가?" | Agent 반복문의 한 회차는 "반복"으로 쓴다(첫 번째 반복, 반복할 때마다, 반복 횟수 한도). "바퀴"는 쓰지 않는다 |
+| (2026-11-25) 형광펜 안에 코드 칩이 겹쳐 보인다 | 형광펜(`mark`) 안에 `code` 를 넣지 않는다. 코드 낱말은 형광펜 밖에 두고 뒤의 사실 구절만 칠한다 |
 | 부자연스러운 문장 | `POSTING.md` 2-4 점검표 21~24 와 `npm run lint:draft` |
 | 강조 | 굵게 = 용어 첫 등장, 민트(`strong.hl`) = 섹션 결론 한 문장, 노란 형광펜(`mark`) = 놓치기 쉬운 사실 구절(`POSTING.md` 2-1 필기 문법) |
 
@@ -61,7 +63,7 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 | 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? (`llm-tool-agent-first-step`) | 프로그램 · 도구 · Agent 바탕 | 토큰과 확률, Tool Calling, 도구 목록(이름·설명·입력 형식), `stop_reason` 값, 병렬 호출과 id, `is_error`, `tool_choice`, 반복문 40줄, prompt injection, server/client tool, 워크플로와 비교 | 1·2·3 | 발행 |
 | 2 | ChatGPT는 방금 한 말을 어떻게 기억할까요? (`llm-api-messages-tokens-stateless`) | 메시지 목록 | `messages`·role·system, 토큰과 요금, `max_tokens`, 대화를 기억 못 하는 이유(stateless), 스트리밍 | 1·4 | 발행 |
 | 3 | LLM은 어떤 도구를 쓸지 무엇을 보고 고를까요? (`tool-description-json-schema-design`) | 도구 목록 카드 | JSON Schema, 설명 쓰는 법, 반환 크기, 오류 메시지, 사용자 정보 넘기기 | 6 | 발행 |
-| 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) | 한 바퀴 상자 | 멈춤 신호 전부, 바퀴 한도, 비용 누적 계산, prompt caching | 3 | 발행 |
+| 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) | 반복 상자 | 멈춤 신호 전부, 반복 횟수 한도, 비용 누적 계산, prompt caching | 3 | 발행 |
 | 5 | LLM의 답을 프로그램이 그대로 믿고 써도 될까요? (`llm-structured-output-schema-validation`) | 응답 형식 | Pydantic·JSON 스키마, 도구 강제와 structured output, 검증 실패 재시도 | 5 | 발행 |
 
 ### Part 2. 기억과 지식
