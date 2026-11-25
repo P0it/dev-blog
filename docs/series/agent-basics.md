@@ -87,8 +87,8 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 편 | 상태 |
 |---|---|---|---|---|---|
-| 12 | 도구를 Agent마다 다시 연결해야 하나요? | 프로그램 ↔ 도구 사이 | MCP Host·Client·Server, stdio·HTTP, Tools·Resources·Prompts | 20 | 계획 |
-| 13 | 내 시스템을 MCP 서버로 열려면? | MCP 서버 | FastMCP, Inspector 테스트, 인증·권한 | 21·22 | 계획 |
+| 12 | 같은 도구를 Agent마다 다시 연결해야 할까요? (`mcp-host-client-server-basics`) | 프로그램 ↔ 도구 사이 | MCP Host·Client·Server, stdio·HTTP, Tools·Resources·Prompts | 20 | 발행 |
+| 13 | 우리 회사 시스템을 MCP 서버로 열려면 무엇을 해야 할까요? (`mcp-server-python-sdk-auth-basics`) | MCP 서버 | FastMCP, Inspector 테스트, 인증·권한 | 21·22 | 발행 |
 
 ### Part 5. 여러 Agent 와 운영
 
