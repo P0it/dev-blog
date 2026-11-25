@@ -346,8 +346,11 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .fl-req { display: flex; align-items: center; gap: 14px; background: var(--bg-base); border-radius: 18px; padding: 12px 18px; flex: 1; min-width: 280px; max-width: 640px; }
 .post-page .fl-req .mt { font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-bottom: 2px; }
 .post-page .fl-req .mb { font-size: 15px; font-weight: 600; color: var(--fg-strong); line-height: 1.6; }
-.post-page .fl-cap { margin: 18px 0 0 !important; font-size: 15px !important; line-height: 1.6 !important; color: var(--fg-strong); font-weight: 600; min-height: 1.6em; transition: opacity .3s; }
-.post-page .fl-cap.fade { opacity: 0; }
+/* 단계 자막 — 그림 아래 가운데에 진한 알약으로. 글줄처럼 보여 눈에 안 띈다는 지적(2026-11-25)으로 바꿨다 */
+.post-page .fl-cap { display: block; width: fit-content; max-width: min(100%, 820px); min-height: 0; margin: 18px auto 0 !important; padding: 11px 20px 12px; border-radius: 14px; background: #1c2540; color: #fff !important; font-size: 15.5px !important; font-weight: 600; line-height: 1.55 !important; text-align: center; box-shadow: 0 10px 24px rgba(20, 30, 70, .18); transition: opacity .3s, transform .3s; }
+.post-page .fl-cap.fade { opacity: 0; transform: translateY(6px); }
+[data-theme="dark"] .post-page .fl-cap { background: #eef1f8; color: #11141c !important; box-shadow: none; }
+@media (max-width: 640px) { .post-page .fl-cap { font-size: 14px !important; padding: 9px 14px 10px; } }
 .post-page .fl-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
 /* 넓은 화면에서는 판 머리·설명과 함께 한 화면에 들어오게 높이를 묶는다(2026-11-24 사용자 지적). 좁은 화면은 글자가 작아져서 묶지 않는다 */
 @media (min-width: 641px) { .post-page .fl-svg { max-height: max(460px, calc(100vh - 340px)); } }
@@ -471,8 +474,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <div class="fl-top"><h2>MCP 연결 구조의 흐름</h2>
         <div class="fl-req"><span class="ni k-user"><svg aria-hidden="true"><use href="#i-message-circle-question-mark"/></svg></span><div><div class="mt">예시 · 코딩 Agent 앱에 들어온 질문</div><div class="mb">"이번 주 마감 이슈 중에 아직 커밋이 없는 게 있을까요?"</div></div></div>
       </div>
-      <p class="fl-cap" data-fl-cap>서버 2개 · 도구 7개 · 모델 호출 2번 · tools/call 2번. 모델이 말을 주고받는 상대는 Host 하나뿐이다</p>
       <svg class="fl-svg" data-fl-svg viewBox="0 0 1200 800" role="img" aria-label="MCP 연결 구조 흐름도"></svg>
+      <p class="fl-cap" data-fl-cap>서버 2개 · 도구 7개 · 모델 호출 2번 · tools/call 2번. 모델이 말을 주고받는 상대는 Host 하나뿐이다</p>
       <ol class="fl-legend">
         <li><span>Host가 Git 서버를 하위 프로세스로 띄우고 stdio로 도구 목록을 받는다</span></li>
         <li><span>원격 서버가 토큰 없는 요청을 401로 돌려보내면 Client B가 인증 서버에서 사용자 로그인을 거쳐 토큰을 받는다</span></li>
