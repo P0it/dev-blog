@@ -37,11 +37,11 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 `ai-agent` 편 | 상태 |
 |---|---|---|---|---|---|
-| 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? (`llm-tool-agent-first-step`) | 프로그램 · 도구 · Agent 바탕 | 토큰과 확률, Tool Calling, 도구 목록(이름·설명·입력 형식), `stop_reason` 값, 병렬 호출과 id, `is_error`, `tool_choice`, 반복문 40줄, prompt injection, server/client tool, 워크플로와 비교 | 1·2·3 | 초안 |
-| 2 | ChatGPT는 방금 한 말을 어떻게 기억할까요? (`llm-api-messages-tokens-stateless`) | 메시지 목록 | `messages`·role·system, 토큰과 요금, `max_tokens`, 대화를 기억 못 하는 이유(stateless), 스트리밍 | 1·4 | 초안 |
-| 3 | LLM은 어떤 도구를 쓸지 무엇을 보고 고를까요? (`tool-description-json-schema-design`) | 도구 목록 카드 | JSON Schema, 설명 쓰는 법, 반환 크기, 오류 메시지, 사용자 정보 넘기기 | 6 | 초안 |
-| 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) | 한 바퀴 상자 | 멈춤 신호 전부, 바퀴 한도, 비용 누적 계산, prompt caching | 3 | 초안 |
-| 5 | LLM의 답을 프로그램이 그대로 믿고 써도 될까요? (`llm-structured-output-schema-validation`) | 응답 형식 | Pydantic·JSON 스키마, 도구 강제와 structured output, 검증 실패 재시도 | 5 | 초안 |
+| 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? (`llm-tool-agent-first-step`) | 프로그램 · 도구 · Agent 바탕 | 토큰과 확률, Tool Calling, 도구 목록(이름·설명·입력 형식), `stop_reason` 값, 병렬 호출과 id, `is_error`, `tool_choice`, 반복문 40줄, prompt injection, server/client tool, 워크플로와 비교 | 1·2·3 | 발행 |
+| 2 | ChatGPT는 방금 한 말을 어떻게 기억할까요? (`llm-api-messages-tokens-stateless`) | 메시지 목록 | `messages`·role·system, 토큰과 요금, `max_tokens`, 대화를 기억 못 하는 이유(stateless), 스트리밍 | 1·4 | 발행 |
+| 3 | LLM은 어떤 도구를 쓸지 무엇을 보고 고를까요? (`tool-description-json-schema-design`) | 도구 목록 카드 | JSON Schema, 설명 쓰는 법, 반환 크기, 오류 메시지, 사용자 정보 넘기기 | 6 | 발행 |
+| 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) | 한 바퀴 상자 | 멈춤 신호 전부, 바퀴 한도, 비용 누적 계산, prompt caching | 3 | 발행 |
+| 5 | LLM의 답을 프로그램이 그대로 믿고 써도 될까요? (`llm-structured-output-schema-validation`) | 응답 형식 | Pydantic·JSON 스키마, 도구 강제와 structured output, 검증 실패 재시도 | 5 | 발행 |
 
 ### Part 2. 기억과 지식
 
