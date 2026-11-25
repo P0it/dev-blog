@@ -1,7 +1,7 @@
-# AI Agent, 기초부터 하나씩 — 시리즈 계획
+| 초안 || 초안 || 초안 || 초안 || 5 | LLM의 답을 프로그램이 그대로 믿고 써도 될까요? (`llm-structured-output-schema-validation`) || 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) || 3 | LLM은 어떤 도구를 쓸지 무엇을 보고 고를까요? (`tool-description-json-schema-design`) || 2 | ChatGPT는 방금 한 말을 어떻게 기억할까요? (`llm-api-messages-tokens-stateless`) || 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? (`llm-tool-agent-first-step`) |# AI Agent, 기초부터 하나씩 — 시리즈 계획
 
 LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 있는 데까지 가는 입문 트랙이다. 사용자가 2026-11-24 에
-"기존 시리즈는 잘 안 읽힌다"고 해서 시안(`auto-drafts/posts/sample-agent-room-reading-first.html`, 적재 ✗)을 만들었고,
+"기존 시리즈는 잘 안 읽힌다"고 해서 시안을 만들었고,
 2026-11-25 에 기존 26편(`ai-agent`)을 고치지 않고 **새 트랙으로** 쓰기로 했다. 이 문서가 시리즈의 원본이다. 편을 만들 때마다 상태 칸을 고친다.
 
 - **series 슬러그:** `agent-basics`. frontmatter 에 `series: agent-basics`, `series_order: N`.
@@ -25,8 +25,9 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 | 강조 | 굵게 = 용어 첫 등장, 민트(`strong.hl`) = 섹션 결론 한 문장, 노란 형광펜(`mark`) = 놓치기 쉬운 사실 구절(`POSTING.md` 2-1 필기 문법) |
 
 섹션 골격: 작은 회색 질문(`h2`) → 큰 답 한 줄 → 그림 → 짧은 문단. 섹션 첫 문장이 답이다.
-그림 문법·CSS 는 시안의 `.sq`(세로 줄 그림), `.tl`(도구 카드), `.rs`(응답 모양), `.pb`(토큰 후보 막대)를 가져다 쓴다.
-`POSTING.md` 5-2 의 "가운데 한 열 섹션은 절반 이하"와 부딪히면 이 트랙은 한 열을 따른다 — 규약 쪽은 사용자가 확정하면 고친다(2026-11-25 미정).
+그림 문법·CSS 는 1편 원고(`auto-drafts/posts/llm-tool-agent-first-step.html`)의 `.sq`(세로 줄 그림), `.tl`(도구 카드), `.rs`(응답 모양), `.pb`(토큰 후보 막대)를 가져다 쓴다.
+`POSTING.md` 5-2 의 "가운데 한 열 섹션은 절반 이하"는 이 트랙에 적용하지 않는다. `check:page` 가 프런트매터 `series: agent-basics` 를 보고 그 검사를 건너뛴다(`ONE_COLUMN_SERIES`). 다른 글에 한 열을 넓힐지는 사용자가 정한다(2026-11-25 미정).
+파일: 원고는 `auto-drafts/posts/<slug>.html`. 2~5편도 1편의 `<style>` 을 그대로 쓴다 — 고치면 다섯 편을 함께 고친다.
 
 ## 편 목록
 
@@ -36,11 +37,11 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 `ai-agent` 편 | 상태 |
 |---|---|---|---|---|---|
-| 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? | 프로그램 · 도구 · Agent 바탕 | 토큰과 확률, Tool Calling, 도구 목록(이름·설명·입력 형식), `stop_reason` 값, 병렬 호출과 id, `is_error`, `tool_choice`, 반복문 40줄, prompt injection, server/client tool, 워크플로와 비교 | 1·2·3 | 계획(시안 있음) |
-| 2 | LLM API를 한 번 부르면 무엇이 오가나요? | 메시지 목록 | `messages`·role·system, 토큰과 요금, `max_tokens`, 대화를 기억 못 하는 이유(stateless), 스트리밍 | 1·4 | 계획 |
-| 3 | 도구 설명은 어떻게 써야 LLM이 잘 고를까요? | 도구 목록 카드 | JSON Schema, 설명 쓰는 법, 반환 크기, 오류 메시지, 사용자 정보 넘기기 | 6 | 계획 |
-| 4 | Agent는 언제 멈추고 얼마나 드나요? | 한 바퀴 상자 | 멈춤 신호 전부, 바퀴 한도, 비용 누적 계산, prompt caching | 3 | 계획 |
-| 5 | 자유로운 답을 프로그램이 믿고 쓰려면? | 응답 형식 | Pydantic·JSON 스키마, 도구 강제와 structured output, 검증 실패 재시도 | 5 | 계획 |
+| 1 | 말만 하는 AI는 어떻게 떡볶이를 주문할까요? (`llm-tool-agent-first-step`) | 프로그램 · 도구 · Agent 바탕 | 토큰과 확률, Tool Calling, 도구 목록(이름·설명·입력 형식), `stop_reason` 값, 병렬 호출과 id, `is_error`, `tool_choice`, 반복문 40줄, prompt injection, server/client tool, 워크플로와 비교 | 1·2·3 | 초안 |
+| 2 | ChatGPT는 방금 한 말을 어떻게 기억할까요? (`llm-api-messages-tokens-stateless`) | 메시지 목록 | `messages`·role·system, 토큰과 요금, `max_tokens`, 대화를 기억 못 하는 이유(stateless), 스트리밍 | 1·4 | 초안 |
+| 3 | LLM은 어떤 도구를 쓸지 무엇을 보고 고를까요? (`tool-description-json-schema-design`) | 도구 목록 카드 | JSON Schema, 설명 쓰는 법, 반환 크기, 오류 메시지, 사용자 정보 넘기기 | 6 | 초안 |
+| 4 | Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요? (`agent-loop-stop-reason-cost-caching`) | 한 바퀴 상자 | 멈춤 신호 전부, 바퀴 한도, 비용 누적 계산, prompt caching | 3 | 초안 |
+| 5 | LLM의 답을 프로그램이 그대로 믿고 써도 될까요? (`llm-structured-output-schema-validation`) | 응답 형식 | Pydantic·JSON 스키마, 도구 강제와 structured output, 검증 실패 재시도 | 5 | 초안 |
 
 ### Part 2. 기억과 지식
 

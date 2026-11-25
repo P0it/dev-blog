@@ -1,0 +1,336 @@
+---
+title: Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요?
+slug: agent-loop-stop-reason-cost-caching
+excerpt: Agent는 LLM이 답을 쓰면 멈추지만, 실제 코드는 잘린 답과 거절, 끝없는 반복, 바퀴마다 쌓이는 비용까지 챙겨야 합니다. stop_reason 일곱 가지와 바퀴 한도, 계단처럼 불어나는 토큰, prompt caching으로 비용을 줄이는 법을 봅니다.
+tags: [AI Agent, 토큰, Prompt Caching, Python]
+category: ai
+series: agent-basics
+series_order: 4
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-loop-stop-reason-cost-caching-mwvj50g9.jpg
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 4편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 0 0 40px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 6px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 7px 11px 8px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 14px; padding: 28px 0 14px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+@media (max-width: 480px) {
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 6px 9px 7px; font-size: 13px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></g></symbol>
+<symbol id="i-octagon-x" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 9-6 6" /> <path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z" /> <path d="m9 9 6 6" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-user-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15H6a4 4 0 0 0-4 4v2" /> <path d="m14.305 16.53.923-.382" /> <path d="m15.228 13.852-.923-.383" /> <path d="m16.852 12.228-.383-.923" /> <path d="m16.852 17.772-.383.924" /> <path d="m19.148 12.228.383-.923" /> <path d="m19.53 18.696-.382-.924" /> <path d="m20.772 13.852.924-.383" /> <path d="m20.772 16.148.924.383" /> <circle cx="18" cy="15" r="3" /> <circle cx="9" cy="7" r="4" /></g></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>Agent는 언제 멈추고 한 번 일하는 데 얼마나 들까요?</h1>
+  <p class="rw-lead">코딩 Agent에게 일을 맡기면 "파일 읽는 중", "테스트 실행 중" 같은 줄이 몇십 번씩 지나가기도 합니다. 그동안 요금은 얼마나 나갈까요? 그리고 Agent는 언제 일을 그만둘까요? Agent의 반복문 안에서 일어나는 일을 바퀴 단위로 세어 보겠습니다.</p>
+
+  <section>
+    <h2>Agent는 언제 멈추나요?</h2>
+    <p class="rw-ans">LLM이 부탁 대신 답을 쓰면 멈춥니다. 그 신호가 stop_reason입니다.</p>
+    <figure data-figure data-thumb>
+      <div class="sq agent">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>프로그램</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">떡볶이 1인분 시켜 줘.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg">내 말 + 도구 목록</span><span class="sq-arr"></span></div>
+        <div class="sq-round" data-label="한 바퀴">
+          <div class="sq-m c23 l"><span class="rw-msg ask"><i>stop_reason: tool_use</i>"떡볶이"를 검색해 줘</span><span class="sq-arr"></span></div>
+          <span class="sq-act"><svg aria-hidden="true"><use href="#i-wrench"/></svg>프로그램이 검색</span>
+          <div class="sq-m c23 r"><span class="rw-msg"><i>결과</i>순한집 · 불맛집</span><span class="sq-arr"></span></div>
+        </div>
+        <div class="sq-round" data-label="두 바퀴">
+          <div class="sq-m c23 l"><span class="rw-msg ask"><i>stop_reason: tool_use</i>순한집에 주문해 줘</span><span class="sq-arr"></span></div>
+          <span class="sq-act"><svg aria-hidden="true"><use href="#i-wrench"/></svg>프로그램이 주문</span>
+          <div class="sq-m c23 r"><span class="rw-msg"><i>결과</i>주문 완료</span><span class="sq-arr"></span></div>
+        </div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>stop_reason: end_turn</i>순한집에 주문했어요.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans">순한집에 주문했어요.</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>응답마다 붙어 오는 stop_reason이 갈림길입니다. tool_use면 한 바퀴 더 돌고, end_turn이면 답을 전하고 끝냅니다.</figcaption>
+    </figure>
+    <p>프로그램은 LLM을 부를 때마다 응답의 <code>stop_reason</code>을 봅니다. <code>tool_use</code>면 도구를 실행하고 결과를 붙여 다시 부르고, <code>end_turn</code>이면 답을 사용자에게 전하고 반복을 끝냅니다.</p>
+    <p>몇 바퀴를 돌지는 LLM이 정합니다. 같은 요청이라도 검색 결과에 따라 한 바퀴에 끝나기도 하고 다섯 바퀴를 돌기도 합니다. 그래서 프로그램은 횟수를 정해 두지 않고 멈춤 신호가 올 때까지 도는 반복문을 씁니다.</p>
+  </section>
+
+  <section>
+    <h2>stop_reason에는 어떤 값이 오나요?</h2>
+    <p class="rw-ans">Claude API 기준으로 일곱 가지입니다. 값마다 프로그램이 할 일이 다릅니다.</p>
+    <table>
+      <thead><tr><th>stop_reason</th><th>뜻</th><th>프로그램이 할 일</th></tr></thead>
+      <tbody>
+        <tr><td><code>end_turn</code></td><td>답을 다 썼습니다</td><td>사용자에게 전하고 끝냅니다</td></tr>
+        <tr><td><code>tool_use</code></td><td>도구를 부탁했습니다</td><td>실행하고 결과를 붙여 다시 부릅니다</td></tr>
+        <tr><td><code>max_tokens</code></td><td>답 길이 한도에서 잘렸습니다</td><td>한도를 늘리거나 이어서 쓰게 합니다</td></tr>
+        <tr><td><code>stop_sequence</code></td><td>미리 정한 멈춤 문자열을 썼습니다</td><td>정해 둔 대로 처리합니다</td></tr>
+        <tr><td><code>pause_turn</code></td><td>서버에서 실행되는 도구가 반복 한도에 닿아 잠시 멈췄습니다</td><td>응답을 그대로 붙여 다시 보내면 이어서 합니다</td></tr>
+        <tr><td><code>refusal</code></td><td>안전 문제로 답을 거절했습니다</td><td>사용자에게 알리거나 다른 모델로 다시 시도합니다</td></tr>
+        <tr><td><code>model_context_window_exceeded</code></td><td>context window를 꽉 채워 잘렸습니다</td><td>대화를 줄이고 다시 보냅니다</td></tr>
+      </tbody>
+    </table>
+    <p>반복문을 <code>tool_use</code>인지 아닌지로만 나누면 잘린 답과 거절이 멀쩡한 답처럼 사용자에게 갑니다. 또 <mark><code>pause_turn</code>을 놓치면</mark> 웹 검색 같은 server tool을 쓰는 Agent가 일을 하다 만 채로 끝납니다. server tool은 내 프로그램 대신 API 서버가 직접 실행하는 도구입니다.</p>
+    <p>OpenAI Chat Completions는 <code>finish_reason</code>에 <code>stop</code>·<code>tool_calls</code>·<code>length</code>·<code>content_filter</code> 같은 값을 줍니다. 이름은 달라도 같은 갈림길을 만듭니다.</p>
+  </section>
+
+  <section>
+    <h2>LLM이 끝내지 않으면 어떻게 되나요?</h2>
+    <p class="rw-ans">프로그램이 대신 끊어야 합니다. 바퀴 수와 비용, 시간에 한도를 둡니다.</p>
+    <figure data-figure>
+      <div class="sq agent">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>프로그램</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-round" data-label="1~9바퀴">
+          <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁</i>"떡볶이 순한맛"을 검색해 줘</span><span class="sq-arr"></span></div>
+          <div class="sq-m c23 r"><span class="rw-msg"><i>결과</i>검색 결과 없음</span><span class="sq-arr"></span></div>
+        </div>
+        <span class="sq-act off"><svg aria-hidden="true"><use href="#i-octagon-x"/></svg>바퀴 한도 10에 닿아 중단</span>
+        <div class="sq-m c12 l"><span class="rw-msg err"><i>알림</i>주문을 마치지 못했어요. "떡볶이 순한맛" 검색 결과가 계속 없었어요.</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>LLM이 같은 검색을 계속 부탁했습니다. 프로그램은 한도에서 멈춘 뒤 어디서 막혔는지를 사용자에게 알렸습니다.</figcaption>
+    </figure>
+    <p>LLM이 같은 도구를 같은 값으로 계속 부탁하는 일이 생깁니다. 결과가 마음에 들지 않아 다시 검색하거나, 오류를 고치지 못하고 같은 시도를 되풀이하는 경우입니다.</p>
+    <p>그래서 반복문에는 보통 세 가지 한도를 둡니다. 바퀴 수(예: 10바퀴), 이번 일에 쓸 토큰이나 금액, 걸린 시간입니다. <strong class="hl">한도에 닿으면 어디서 막혔는지 사용자에게 알려야 합니다.</strong></p>
+    <p>같은 부탁이 연달아 오는지 세어 두었다가 두 번째부터 "같은 검색을 이미 했고 결과가 없었다"는 결과를 돌려주는 방법도 있습니다. LLM이 그 글을 읽고 검색어를 바꾸는 등 다른 길을 찾습니다.</p>
+  </section>
+
+  <section>
+    <h2>한 번 일하는 데 토큰은 얼마나 드나요?</h2>
+    <p class="rw-ans">바퀴마다 대화 전체를 다시 보내므로 보내는 토큰이 계단처럼 쌓입니다.</p>
+    <figure data-figure>
+      <div class="pb">
+        <p class="pb-in">바퀴마다 보낸 토큰</p>
+        <div class="pb-r"><span>1바퀴</span><i style="--w: 50%"></i><em>2,100</em></div>
+        <div class="pb-r"><span>2바퀴</span><i style="--w: 62%"></i><em>2,600</em></div>
+        <div class="pb-r"><span>3바퀴</span><i style="--w: 79%"></i><em>3,300</em></div>
+        <div class="pb-r"><span>4바퀴</span><i style="--w: 100%"></i><em>4,200</em></div>
+        <div class="pb-r on"><span>합계</span><i style="--w: 100%"></i><em>12,200</em></div>
+      </div>
+      <figcaption>도구 목록과 system 지시 2,000토큰에서 시작해 바퀴마다 부탁과 결과가 붙는 예시입니다. 요금은 맨 아래 합계로 냅니다(합계 막대는 줄여 그렸습니다).</figcaption>
+    </figure>
+    <p>도구 목록과 system 지시가 2,000토큰이라면 첫 요청부터 2,000토큰 넘게 보냅니다. 바퀴마다 LLM의 부탁과 도구 결과가 대화에 붙고 다음 요청은 그것까지 다 실어 보냅니다.</p>
+    <p>위 예처럼 네 바퀴를 돌면 마지막 요청의 크기는 4,200토큰이지만 <mark>요금은 네 요청을 모두 더한 12,200토큰으로 냅니다.</mark> 도구 결과가 길수록 계단은 가팔라집니다.</p>
+    <p>응답마다 오는 <code>usage</code>를 바퀴마다 더해 두면 이번 일에 쓴 토큰을 알 수 있습니다. 앞에서 말한 비용 한도도 이 합계로 검사합니다.</p>
+  </section>
+
+  <section>
+    <h2>매번 같은 앞부분을 보내는 비용은 줄일 수 없나요?</h2>
+    <p class="rw-ans">prompt caching을 씁니다. 앞에서 보낸 부분을 서버가 저장해 두고 다시 계산하지 않습니다.</p>
+    <figure data-figure>
+      <div class="bk">
+        <div class="bk-row"><span>1바퀴</span><div class="bk-bar"><i class="n" style="--f: 12">도구 목록</i><i class="n" style="--f: 8">system</i><i class="n" style="--f: 1">질문</i></div></div>
+        <div class="bk-row"><span>2바퀴</span><div class="bk-bar"><i class="c" style="--f: 12">도구 목록</i><i class="c" style="--f: 8">system</i><i class="c" style="--f: 1">질문</i><i style="--f: 5">부탁·결과</i></div></div>
+        <div class="bk-row"><span>3바퀴</span><div class="bk-bar"><i class="c" style="--f: 12">도구 목록</i><i class="c" style="--f: 8">system</i><i class="c" style="--f: 1">질문</i><i style="--f: 5">부탁·결과</i><i style="--f: 7">부탁·결과</i></div></div>
+        <div class="bk-key"><span><b style="background: color-mix(in srgb, #ffcc00 30%, transparent)"></b>계산해서 캐시에 씀 (입력 단가 1.25배)</span><span><b style="background: var(--bg-primary-tint)"></b>캐시에서 읽음 (0.1배)</span><span><b style="background: var(--bg-subtle)"></b>보통 입력 (1배)</span></div>
+      </div>
+      <figcaption>도구 목록과 system 지시까지 캐시 표시를 붙인 경우입니다. 두 번째 바퀴부터 앞부분을 0.1배로 읽습니다.</figcaption>
+    </figure>
+    <p>Agent의 요청은 앞부분이 매번 같습니다. 도구 목록과 system 지시는 그대로이고 지난 대화도 끝에 새 칸이 붙을 뿐 앞은 바뀌지 않습니다. <strong>prompt caching</strong>은 이렇게 같은 앞부분을 서버가 잠시 저장해 두었다가 다음 요청에서 다시 쓰는 기능입니다.</p>
+    <p>Claude API에서는 요청의 한 곳에 <code>cache_control</code> 표시를 붙이면 그 앞까지가 저장됩니다. 저장할 때는 입력 단가의 1.25배를 냅니다. 다음 요청에서 저장된 부분을 읽을 때는 0.1배만 냅니다. 기본 보관 시간은 5분이고, 1시간으로 늘리면 저장 단가가 2배가 됩니다.</p>
+    <p>저장된 부분은 앞에서부터 글자 하나까지 같아야 쓰입니다. 순서는 도구 목록, system, 대화 순입니다. <strong class="hl">도구 목록이나 system 지시를 중간에 바꾸면 그 뒤가 전부 다시 계산됩니다.</strong> 그래서 오늘 날짜처럼 자주 바뀌는 값은 system 맨 앞에 두지 않고 대화 쪽에 넣습니다. 너무 짧은 앞부분은 저장되지 않으니(모델마다 최소 길이가 있습니다) 짧은 챗봇보다 Agent에서 효과가 큽니다.</p>
+    <p>OpenAI는 일정 길이를 넘는 같은 앞부분을 별도 표시 없이 자동으로 저장하고 할인해 줍니다. 자동이어도 앞부분이 같아야 쓰인다는 점은 같습니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">멈춤 신호를 값마다 나누고 한도와 합계를 더한 반복문입니다.</p>
+    <div class="cd">
+<pre data-title="agent.py" data-hl="5,15,20,25,39" data-start="1"><code class="language-python">import anthropic
+
+client = anthropic.Anthropic()
+# ① 바퀴 한도 · 입력 토큰 한도
+MAX_TURNS, MAX_INPUT = 10, 200_000
+
+def run_agent(question, tools, system_prompt):
+    messages = [{"role": "user", "content": question}]
+    sent = 0
+    for _ in range(MAX_TURNS):
+        reply = client.messages.create(
+            model="claude-sonnet-5-5", max_tokens=2048,
+            tools=tools,
+            # ② 도구 목록과 system 지시까지 캐시한다
+            system=[{"type": "text", "text": system_prompt,
+                     "cache_control": {"type": "ephemeral"}}],
+            messages=messages,
+        )
+        # ③ 바퀴마다 보낸 토큰을 더한다(캐시 읽기·쓰기 포함)
+        u = reply.usage
+        sent += (u.input_tokens + (u.cache_read_input_tokens or 0)
+                 + (u.cache_creation_input_tokens or 0))
+
+        # ④ 멈춤 신호마다 할 일을 나눈다
+        stop = reply.stop_reason
+        if stop == "refusal":
+            return "이 요청은 처리할 수 없습니다."
+        if stop in ("max_tokens", "model_context_window_exceeded"):
+            return text_of(reply) + "\n(답이 길이 한도에서 잘렸습니다)"
+        if stop not in ("tool_use", "pause_turn"):
+            return text_of(reply)          # end_turn, stop_sequence
+        messages.append({"role": "assistant", "content": reply.content})
+        if stop == "tool_use":
+            messages.append({"role": "user",
+                             "content": run_tools(reply.content)})
+        if sent > MAX_INPUT:
+            break
+    # ⑤ 한도에 닿으면 어디서 멈췄는지 알린다
+    return f"한도에 닿아 멈췄습니다(보낸 토큰 {sent:,}). 마지막 단계: {last_step(messages)}"</code></pre>
+<ol class="pg-code-notes">
+  <li>끝없이 도는 것을 막는 두 한도입니다. 바퀴 수와, 이번 일에 보낼 입력 토큰의 합계입니다.</li>
+  <li><code>system</code>을 글 칸 목록으로 쓰고 마지막 칸에 <code>cache_control</code>을 붙였습니다. 순서상 그 앞에 오는 도구 목록까지 함께 저장됩니다.</li>
+  <li>캐시를 쓰면 보낸 토큰이 세 칸으로 나뉘어 옵니다. 보통 입력, 캐시에서 읽은 것, 캐시에 쓴 것입니다. 셋을 더해야 이번에 보낸 양이 됩니다.</li>
+  <li>표의 일곱 값을 다 나눴습니다. <code>pause_turn</code>은 응답만 붙이고 도구 결과 없이 다시 부르면 서버가 하던 일을 이어서 합니다.</li>
+  <li>한도에 닿으면 마지막으로 하던 일을 적어 돌려줍니다. 사용자는 무엇이 막혔는지 알고 다시 요청할 수 있습니다.</li>
+</ol>
+    </div>
+    <p class="after"><code>text_of</code>·<code>run_tools</code>·<code>last_step</code>은 응답에서 글을 모으고 도구를 실행해 결과 칸을 만들고 마지막 단계를 요약하는 짧은 도우미 함수라 줄였습니다. 코드는 <code>anthropic</code> 2.14 기준입니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">Claude 공식 문서, Stop reasons and fallback</a></li>
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Claude 공식 문서, Prompt caching</a></li>
+      <li><a href="https://developers.openai.com/api/docs/guides/prompt-caching">OpenAI 공식 문서, Prompt caching</a></li>
+      <li><a href="https://www.anthropic.com/research/building-effective-agents">Anthropic, Building effective agents (2024-12-19)</a></li>
+    </ul>
+  </section>
+</div>

@@ -1,0 +1,342 @@
+---
+title: ChatGPT는 방금 한 말을 어떻게 기억할까요?
+slug: llm-api-messages-tokens-stateless
+excerpt: 채팅 앱은 앞에서 한 말을 기억하는 것처럼 보이지만 LLM API는 요청 하나에 답 하나를 돌려주고 잊습니다. 메시지 목록과 role, 토큰과 요금, max_tokens, context window, 스트리밍까지 LLM API를 한 번 부를 때 실제로 오가는 것을 봅니다.
+tags: [LLM, API, 토큰, 스트리밍, Python]
+category: ai
+series: agent-basics
+series_order: 2
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/llm-api-messages-tokens-stateless-mwvj4q6m.jpg
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 2편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 0 0 40px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 6px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 7px 11px 8px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 14px; padding: 28px 0 14px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+@media (max-width: 480px) {
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 6px 9px 7px; font-size: 13px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-user-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15H6a4 4 0 0 0-4 4v2" /> <path d="m14.305 16.53.923-.382" /> <path d="m15.228 13.852-.923-.383" /> <path d="m16.852 12.228-.383-.923" /> <path d="m16.852 17.772-.383.924" /> <path d="m19.148 12.228.383-.923" /> <path d="m19.53 18.696-.382-.924" /> <path d="m20.772 13.852.924-.383" /> <path d="m20.772 16.148.924.383" /> <circle cx="18" cy="15" r="3" /> <circle cx="9" cy="7" r="4" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>ChatGPT는 방금 한 말을 어떻게 기억할까요?</h1>
+  <p class="rw-lead">채팅 앱에 "내 이름은 민지야"라고 쓰고 조금 뒤에 "내 이름이 뭐였지?"라고 물으면 "민지님이요"라는 답이 옵니다. 앞에서 한 말을 기억하는 것처럼 보입니다. 그런데 LLM은 대화를 기억하지 못합니다. 그렇다면 이 답은 어떻게 나왔을까요? 앱이 LLM에 보내는 요청을 하나 열어 보겠습니다.</p>
+
+  <section>
+    <h2>채팅 앱과 LLM 사이에는 무엇이 오가나요?</h2>
+    <p class="rw-ans">앱이 대화를 요청 하나에 담아 보내고, LLM은 답 하나를 돌려줍니다.</p>
+    <figure data-figure data-thumb>
+      <div class="sq">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>앱</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">내 이름이 뭐였지?</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>요청</i>지금까지의 대화 3칸 + 새 질문</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans">민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>나는 앱에 질문 하나만 보냈지만 앱은 지금까지의 대화를 모두 담아 LLM에 보냈습니다.</figcaption>
+    </figure>
+    <p>ChatGPT나 Claude 앱에 글을 쓰면 앱이 그 글을 LLM API로 보냅니다. <strong>API</strong>는 다른 프로그램에 일을 시킬 때 쓰는 정해진 요청 형식입니다. LLM은 요청을 읽고 답을 만들어 돌려줍니다. 앱은 그 답을 화면에 보여 줍니다.</p>
+    <p>그림 가운데의 앱은 개발자가 짠 프로그램입니다. 이 글은 도구를 쓰지 않는 가장 단순한 경우, 곧 챗봇을 다룹니다. 도구를 붙여 Agent를 만들어도 앱과 LLM이 주고받는 요청의 모양은 같습니다.</p>
+  </section>
+
+  <section>
+    <h2>요청에는 무엇이 들어가나요?</h2>
+    <p class="rw-ans">모델 이름, 답 길이 한도, 그리고 지금까지의 대화를 담은 메시지 목록입니다.</p>
+    <div class="rs">
+      <div class="rs-c ask"><b>앱이 보내는 요청 (Claude API)</b><div class="rs-j">{
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 1024,
+  "system": "너는 친절한 비서다.",
+  "messages": [
+    { "role": "user", "content": "내 이름은 민지야." },
+    { "role": "assistant", "content": "반가워요, 민지님!" },
+    { "role": "user", "content": "내 이름이 뭐였지?" }
+  ]
+}</div></div>
+    </div>
+    <p class="after"><code>messages</code>는 대화를 순서대로 담은 <strong>메시지 목록</strong>입니다. 칸마다 누가 한 말인지 적는 <strong>role</strong>이 붙습니다. <code>user</code>는 사용자의 말이고 <code>assistant</code>는 LLM이 앞서 한 답입니다.</p>
+    <p><code>system</code>은 개발자가 LLM에게 주는 지시입니다. 말투와 역할, 지켜야 할 규칙을 여기에 적습니다. Claude API는 <code>system</code>을 메시지 목록 밖의 칸으로 받습니다. OpenAI API는 목록 맨 앞에 role이 <code>system</code>(최신 모델은 <code>developer</code>)인 칸으로 받습니다.</p>
+    <p><code>max_tokens</code>는 답 길이의 한도입니다. Claude API에서는 꼭 넣어야 하는 값이고, <mark>한도에 닿으면 답이 문장 중간에서 잘립니다.</mark> <strong class="hl">LLM이 이번 요청에서 볼 수 있는 것은 이 요청에 담긴 글이 전부입니다.</strong></p>
+  </section>
+
+  <section>
+    <h2>그럼 LLM은 앞에서 한 말을 어떻게 기억하나요?</h2>
+    <p class="rw-ans">기억하지 않습니다. 앱이 지난 대화를 매번 다시 보냅니다.</p>
+    <figure data-figure>
+      <div class="ml">
+        <div class="ml-call" data-label="대화 전체를 보낼 때 · 두 번째 요청">
+          <div class="ml-row"><b>user</b>내 이름은 민지야.</div>
+          <div class="ml-row"><b>assistant</b>반가워요, 민지님!</div>
+          <div class="ml-row new"><b>user</b>내 이름이 뭐였지?</div>
+          <div class="ml-out"><i>응답</i>민지님이라고 하셨어요.</div>
+        </div>
+        <div class="ml-call" data-label="이번 질문만 보낼 때 · 두 번째 요청">
+          <div class="ml-row miss"><b>user</b>(보내지 않음)</div>
+          <div class="ml-row miss"><b>assistant</b>(보내지 않음)</div>
+          <div class="ml-row new"><b>user</b>내 이름이 뭐였지?</div>
+          <div class="ml-out err"><i>응답</i>죄송하지만 이름을 알려 주신 적이 없어요.</div>
+        </div>
+      </div>
+      <figcaption>굵은 테두리가 이번에 새로 붙인 칸입니다. 아래쪽은 지난 대화를 빼고 보낸 경우라 LLM이 이름을 모릅니다.</figcaption>
+    </figure>
+    <p>LLM API는 요청 하나를 받아 답 하나를 돌려주면 그 요청을 잊습니다. 이렇게 앞선 요청을 기억하지 않는 성질을 <strong>stateless</strong>라고 합니다. 대화를 기억하는 것은 앱입니다.</p>
+    <p>앱은 대화 기록을 들고 있다가 새 말이 오면 기록 끝에 붙여 전체를 보냅니다. LLM의 답이 오면 그 답도 기록에 붙입니다. <mark>답을 기록에 붙이는 일을 빠뜨리면</mark> LLM은 다음 요청에서 자기가 앞에서 무슨 말을 했는지 모릅니다.</p>
+    <p>OpenAI의 Responses API처럼 서버가 대화를 저장해 주는 방식도 있습니다. 앱은 이전 응답 번호만 보내면 됩니다. 이때도 서버가 지난 대화를 다시 모델 입력에 넣는 것은 같아서 그만큼의 토큰은 똑같이 계산됩니다.</p>
+  </section>
+
+  <section>
+    <h2>토큰은 무엇이고 왜 세나요?</h2>
+    <p class="rw-ans">LLM이 글을 읽고 쓰는 단위입니다. 요금과 길이 한도가 모두 토큰으로 정해집니다.</p>
+    <figure data-figure>
+      <div class="st">
+        <div class="st-row"><span>보낸 글</span><div><u>내</u><u> 이름</u><u>이</u><u> 뭐</u><u>였</u><u>지</u><u>?</u></div></div>
+        <div class="st-row"><span>받은 글</span><div><u class="on">민</u><u class="on">지</u><u class="on">님</u><u class="on">이라고</u><u class="on"> 하</u><u class="on">셨</u><u class="on">어요</u><u class="on">.</u></div></div>
+      </div>
+      <figcaption>칸 하나가 토큰 하나입니다. 실제로 글을 나누는 방식은 모델마다 달라서 그림은 설명을 위해 단순하게 나눴습니다.</figcaption>
+    </figure>
+    <p><strong>토큰</strong>(token)은 단어와 비슷하거나 조금 작은 글 조각입니다. 같은 글이라도 모델마다 나누는 방식이 달라서 토큰 수가 다릅니다. 같은 뜻이라도 한국어는 영어보다 토큰을 더 쓰는 편입니다.</p>
+    <div class="rs">
+      <div class="rs-c"><b>돌아온 응답 (줄임)</b><div class="rs-j">{
+  "content": [{ "type": "text", "text": "민지님이라고 하셨어요." }],
+  "stop_reason": "end_turn",
+  <span class="rs-hl">"usage": { "input_tokens": 47, "output_tokens": 10 }</span>
+}</div></div>
+    </div>
+    <p class="after">응답에는 이번 요청에 쓴 토큰 수가 함께 옵니다. Claude API는 <code>usage</code>의 <code>input_tokens</code>(보낸 토큰)와 <code>output_tokens</code>(받은 토큰)로 알려 줍니다. 요금은 두 값에 각각 단가를 곱해서 매깁니다. 받은 토큰의 단가가 보통 몇 배 비쌉니다.</p>
+    <p>보내기 전에 미리 세어 보고 싶으면 토큰 세기 API를 씁니다. Claude API에는 <code>count_tokens</code>가 있고, OpenAI는 <code>tiktoken</code> 라이브러리로 셀 수 있습니다.</p>
+  </section>
+
+  <section>
+    <h2>대화가 길어지면 무엇이 달라지나요?</h2>
+    <p class="rw-ans">보내는 토큰이 매번 늘어서 비용과 대기 시간이 함께 늘어납니다.</p>
+    <figure data-figure>
+      <div class="pb">
+        <p class="pb-in">요청마다 보낸 토큰</p>
+        <div class="pb-r"><span>1번째</span><i style="--w: 5%"></i><em>21</em></div>
+        <div class="pb-r"><span>2번째</span><i style="--w: 11%"></i><em>47</em></div>
+        <div class="pb-r"><span>3번째</span><i style="--w: 19%"></i><em>80</em></div>
+        <div class="pb-r on"><span>10번째</span><i style="--w: 100%"></i><em>430</em></div>
+      </div>
+      <figcaption>한 번 주고받을 때마다 질문과 답이 기록에 붙어 다음 요청이 그만큼 커집니다. 숫자는 예시입니다.</figcaption>
+    </figure>
+    <p>앱은 대화 전체를 매번 보내기 때문에, 세 번째 질문을 할 때는 첫 질문과 답까지 다시 보내고 그 토큰값을 또 냅니다. 열 번 주고받으면 첫 질문을 열 번 보내게 됩니다. <strong class="hl">대화가 길수록 비싸고 느려지는 이유는 매번 처음부터 다시 보내기 때문입니다.</strong></p>
+    <p>모델이 한 번에 받을 수 있는 양에도 한도가 있습니다. 이 한도를 <strong>context window</strong>라고 합니다. 보낸 토큰과 받을 토큰을 합쳐 이 안에 들어와야 합니다. 넘치면 요청이 거절되므로 긴 대화는 오래된 부분을 덜어 내거나 요약해서 보냅니다.</p>
+    <p>매번 같은 앞부분을 다시 보내는 비용은 prompt caching으로 줄일 수 있습니다. 앞에서 보낸 부분을 서버가 잠시 저장해 두고 다시 계산하지 않는 기능입니다. 요청을 여러 번 이어서 보내는 Agent에서 특히 효과가 큽니다.</p>
+  </section>
+
+  <section>
+    <h2>답이 한 글자씩 나오는 건 왜 그런가요?</h2>
+    <p class="rw-ans">LLM이 토큰을 만들 때마다 앱이 받아서 바로 보여 주기 때문입니다. 이것을 스트리밍이라고 합니다.</p>
+    <figure data-figure>
+      <div class="st">
+        <div class="st-row"><span>0.4초</span><div><u class="on">민</u><u>지</u></div></div>
+        <div class="st-row"><span>0.5초</span><div><u>민</u><u>지</u><u class="on">님</u><u class="on">이라고</u></div></div>
+        <div class="st-row"><span>0.6초</span><div><u>민</u><u>지</u><u>님</u><u>이라고</u><u class="on"> 하</u><u class="on">셨</u><u class="on">어요</u><u class="on">.</u></div></div>
+      </div>
+      <figcaption>초록 칸이 그 순간에 새로 도착한 조각입니다. 스트리밍을 끄면 0.6초까지 빈 화면을 보다가 답을 한 번에 받습니다.</figcaption>
+    </figure>
+    <p>LLM은 답을 토큰 하나씩 만듭니다. 스트리밍을 켜지 않으면 앱은 답이 다 만들어질 때까지 기다렸다가 한 번에 받습니다. 답이 길면 몇 초 동안 빈 화면이 이어집니다.</p>
+    <p>스트리밍을 켜면 API가 토큰이 만들어지는 대로 조각을 이어서 보내 줍니다. 조각은 <strong>SSE</strong>(Server-Sent Events)로 옵니다. 서버가 연결을 열어 둔 채 작은 이벤트를 차례로 흘려보내는 웹 표준입니다. 첫 글자가 보이는 시간은 크게 줄지만 <mark>답 전체가 끝나는 시간은 그대로입니다.</mark></p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">대화 기록 목록 하나와 반복문 하나면 됩니다.</p>
+    <div class="cd">
+<pre data-title="chat.py" data-hl="6,13,15,26,28"><code class="language-python">import anthropic
+
+client = anthropic.Anthropic()  # ANTHROPIC_API_KEY 환경 변수를 읽는다
+
+# ① 대화 기록
+history = []
+
+while True:
+    question = input("나: ")
+    if not question:
+        break
+    # ② 내 말을 기록에 붙인다
+    history.append({"role": "user", "content": question})
+    # ③ 기록 전체를 보내고 답을 조각으로 받는다
+    with client.messages.stream(
+        model="claude-sonnet-5-5",
+        max_tokens=1024,
+        system="너는 친절한 비서다.",
+        messages=history,
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+        reply = stream.get_final_message()
+
+    # ④ LLM의 답도 기록에 붙인다
+    history.append({"role": "assistant", "content": reply.content})
+    # ⑤ 이번 요청에 쓴 토큰
+    print(f"\n[보냄 {reply.usage.input_tokens} · 받음 {reply.usage.output_tokens}]")</code></pre>
+<pre data-title="터미널"><code class="language-text">$ python chat.py
+나: 내 이름은 민지야.
+반가워요, 민지님! 무엇을 도와드릴까요?
+[보냄 21 · 받음 14]
+나: 내 이름이 뭐였지?
+민지님이라고 하셨어요.
+[보냄 47 · 받음 10]</code></pre>
+<ol class="pg-code-notes">
+  <li>앱이 들고 있는 대화 기록입니다. 이 목록이 위 그림의 메시지 목록이고, LLM 대신 대화를 기억합니다.</li>
+  <li>사용자의 말을 기록 끝에 붙입니다. 이 줄 대신 새 질문만 담은 목록을 보내면 그림 아래쪽처럼 LLM이 앞의 대화를 모릅니다.</li>
+  <li><code>stream</code>으로 부르면 토큰이 만들어지는 대로 <code>text_stream</code>에서 조각이 나옵니다. 다 받은 뒤 <code>get_final_message</code>로 전체 응답을 얻습니다.</li>
+  <li>LLM의 답도 기록에 붙입니다. 빠뜨리면 다음 질문에서 LLM은 자기가 한 말을 모릅니다.</li>
+  <li>두 번째 요청에서 보낸 토큰이 21에서 47로 늘었습니다. 첫 질문과 답을 다시 실어 보냈기 때문입니다. 실제 코드에서는 <code>stop_reason</code>이 <code>max_tokens</code>인지도 확인해 잘린 답을 알려 줍니다.</li>
+</ol>
+    </div>
+    <p class="after">코드는 <code>anthropic</code> 2.14 기준이고 출력은 예시입니다. OpenAI SDK로 쓰면 <code>client.chat.completions.create(..., stream=True)</code>로 부르고 system 지시는 메시지 목록 맨 앞 칸에 넣습니다. OpenAI는 새 프로젝트에 Responses API를 권합니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">Claude 공식 문서, Using the Messages API</a></li>
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/streaming">Claude 공식 문서, Streaming Messages</a></li>
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/token-counting">Claude 공식 문서, Token counting</a></li>
+      <li><a href="https://developers.openai.com/api/docs/guides/conversation-state">OpenAI 공식 문서, Conversation state</a></li>
+    </ul>
+  </section>
+</div>

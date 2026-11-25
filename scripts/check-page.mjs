@@ -130,11 +130,14 @@ const dark = process.argv.includes("--dark");
 const ai = process.argv.indexOf("--act"); const act = ai > 0 ? process.argv[ai + 1] : null;
 // 조작 요소를 두지 않는 시리즈(POSTING 5-3) — 원고 프런트매터의 series 로 가린다
 const NO_CONTROL_SERIES = ["ai-agent"];
+// 한 열로 읽는 시리즈(docs/series/agent-basics.md, 2026-11-25) — 좌우 배치가 시선을 흔든다는 지적으로 만든 입문 트랙이라 "가운데 한 열 ≤ 절반"을 재지 않는다
+const ONE_COLUMN_SERIES = ["agent-basics"];
 try {
   const { readFileSync } = await import("node:fs");
   const fm = readFileSync(`auto-drafts/posts/${slug}.html`, "utf8").match(/^---[\s\S]*?\n---/)?.[0] || "";
   const series = fm.match(/^series:\s*(\S+)/m)?.[1];
   if (NO_CONTROL_SERIES.includes(series)) LIMITS.noControls = true;
+  if (ONE_COLUMN_SERIES.includes(series)) LIMITS.singleMax = 1;
 } catch {}
 let bad = false;
 // 같은 시리즈는 스크롤에 묶인 움직임도 두지 않는다(POSTING 5-3, 2026-11-14) — 스크롤 리스너·고정(sticky) 그림이 있으면 실패
