@@ -102,14 +102,16 @@ series_order: 1
 .post-page .rw-msg.err { border-color: #d4553f; }
 .post-page .rw-msg.err i { color: #d4553f; }
 .post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
-/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1) */
-.post-page .rw { --ck-user: #2f6fdb; --ck-asst: #12805c; --ck-sys: #7a4fd6; --ck-max: #c0641b; --ck-msg: #b03a6f; }
-[data-theme="dark"] .post-page .rw { --ck-user: #7aa7ff; --ck-asst: #4fd1a1; --ck-sys: #b79bff; --ck-max: #f0a35e; --ck-msg: #f08bbb; }
-.post-page .ck-user { --ck: var(--ck-user); } .post-page .ck-asst { --ck: var(--ck-asst); } .post-page .ck-sys { --ck: var(--ck-sys); }
-.post-page .ck-max { --ck: var(--ck-max); } .post-page .ck-msg { --ck: var(--ck-msg); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
 .post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
 .post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
-.post-page b.ck-t { color: var(--ck) !important; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
 /* 요청 칸 안의 메시지 줄 */
 .post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
 .post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
@@ -275,26 +277,26 @@ series_order: 1
     "type": "text",
     "text": "떡볶이는 한국 음식입니다."
   }],
-  <span class="rs-hl">"stop_reason": "end_turn"</span>
+  <span class="ck ck-cyan">"stop_reason"</span>: <span class="ck ck-olive">"end_turn"</span>
 }</div></div>
       <div class="rs-c ask"><b>부탁일 때</b><div class="rs-j">{
   "content": [{
-    "type": "tool_use",
-    "name": "search_menu",
-    "input": { "query": "떡볶이" }
+    "type": <span class="ck ck-brown">"tool_use"</span>,
+    <span class="ck ck-blue">"name"</span>: "search_menu",
+    <span class="ck ck-violet">"input"</span>: { "query": "떡볶이" }
   }],
-  <span class="rs-hl">"stop_reason": "tool_use"</span>
+  <span class="ck ck-cyan">"stop_reason"</span>: <span class="ck ck-brown">"tool_use"</span>
 }</div></div>
     </div>
-    <p class="after">LLM의 응답은 사람이 읽는 문장 그대로 오지 않고 정해진 형식의 데이터로 옵니다. 위는 Claude API가 돌려주는 모양을 줄인 것입니다. 맨 아래 <code>stop_reason</code>이 <code>tool_use</code>면 부탁이고 <code>end_turn</code>이면 답입니다.</p>
-    <p>부탁일 때는 어떤 도구를 어떤 값으로 실행할지도 함께 옵니다. 프로그램은 <code>name</code>을 보고 실제 함수를 찾고 <code>input</code>을 그대로 넣어 실행합니다. OpenAI API는 이름이 조금 다르지만(<code>tool_calls</code>, <code>finish_reason</code>) 구조는 같습니다.</p>
-    <p><code>stop_reason</code>에는 다른 값도 옵니다. 실제 코드에서는 아래 값을 모두 확인합니다.</p>
+    <p class="after">LLM의 응답은 사람이 읽는 문장 그대로 오지 않고 정해진 형식의 데이터로 옵니다. 위는 Claude API가 돌려주는 모양을 줄인 것입니다. 맨 아래 <code class="ck ck-cyan">stop_reason</code>이 <code class="ck ck-brown">tool_use</code>면 부탁이고 <code class="ck ck-olive">end_turn</code>이면 답입니다.</p>
+    <p>부탁일 때는 어떤 도구를 어떤 값으로 실행할지도 함께 옵니다. 프로그램은 <code class="ck ck-blue">name</code>을 보고 실제 함수를 찾고 <code class="ck ck-violet">input</code>을 그대로 넣어 실행합니다. OpenAI API는 이름이 조금 다르지만(<code class="ck ck-brown">tool_calls</code>, <code class="ck ck-cyan">finish_reason</code>) 구조는 같습니다.</p>
+    <p><code class="ck ck-cyan">stop_reason</code>에는 다른 값도 옵니다. 실제 코드에서는 아래 값을 모두 확인합니다.</p>
     <table>
       <thead><tr><th>stop_reason</th><th>뜻</th><th>프로그램이 할 일</th></tr></thead>
       <tbody>
-        <tr><td><code>end_turn</code></td><td>답을 다 썼습니다</td><td>사용자에게 전달합니다</td></tr>
-        <tr><td><code>tool_use</code></td><td>도구를 부탁했습니다</td><td>도구를 실행하고 결과를 돌려줍니다</td></tr>
-        <tr><td><code>max_tokens</code></td><td>정해 둔 길이에서 잘렸습니다</td><td>길이 한도를 늘리거나 이어서 쓰게 합니다</td></tr>
+        <tr><td><code class="ck ck-olive">end_turn</code></td><td>답을 다 썼습니다</td><td>사용자에게 전달합니다</td></tr>
+        <tr><td><code class="ck ck-brown">tool_use</code></td><td>도구를 부탁했습니다</td><td>도구를 실행하고 결과를 돌려줍니다</td></tr>
+        <tr><td><code class="ck ck-orange">max_tokens</code></td><td>정해 둔 길이에서 잘렸습니다</td><td>길이 한도를 늘리거나 이어서 쓰게 합니다</td></tr>
         <tr><td><code>refusal</code></td><td>안전 문제로 답을 거절했습니다</td><td>사용자에게 알립니다</td></tr>
       </tbody>
     </table>
@@ -344,14 +346,14 @@ series_order: 1
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
         <div class="sq-m c12 r"><span class="rw-msg">떡볶이랑 순대 같이 시켜 줘. 제일 싼 곳으로.</span><span class="sq-arr"></span></div>
         <div class="sq-m c23 r"><span class="rw-msg">내 말 + 도구 목록</span><span class="sq-arr"></span></div>
-        <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁 두 개 (응답 하나)</i><u>toolu_01</u> search_menu("떡볶이")<br><u>toolu_02</u> search_menu("순대")</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁 두 개 (응답 하나)</i><u class="ck-t ck-brown">toolu_01</u> search_menu("떡볶이")<br><u class="ck-t ck-brown">toolu_02</u> search_menu("순대")</span><span class="sq-arr"></span></div>
         <span class="sq-act"><svg aria-hidden="true"><use href="#i-smartphone"/></svg>프로그램이 검색 두 번</span>
-        <div class="sq-m c23 r"><span class="rw-msg"><i>결과 두 개 (메시지 하나)</i><u>toolu_01</u> 순한집 4,000원 · 불맛집 4,500원<br><u>toolu_02</u> 순대왕 3,500원</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>결과 두 개 (메시지 하나)</i><u class="ck-t ck-brown">toolu_01</u> 순한집 4,000원 · 불맛집 4,500원<br><u class="ck-t ck-brown">toolu_02</u> 순대왕 3,500원</span><span class="sq-arr"></span></div>
       </div>
       <figcaption>부탁마다 붙은 번호(toolu_01, toolu_02)로 결과의 짝을 맞춥니다.</figcaption>
     </figure>
     <p>떡볶이와 순대를 같이 시키면 LLM은 두 검색을 한 응답에 담아 보냅니다. 서로 기다릴 필요가 없는 일이라 한 번에 부탁하는 편이 빠릅니다. 이것을 parallel tool use라고 부릅니다(OpenAI는 parallel function calling).</p>
-    <p>부탁마다 <code>toolu_01</code> 같은 번호가 붙습니다. 프로그램은 결과를 돌려줄 때 같은 번호를 적어 어느 부탁의 결과인지 알려 줍니다. Claude API에서는 <mark>부탁이 담긴 응답 바로 다음 메시지에 모든 결과를 넣어야 하고</mark>, <strong class="hl">결과가 하나라도 빠지면 요청이 오류로 거절됩니다.</strong></p>
+    <p>부탁마다 <code class="ck ck-brown">toolu_01</code> 같은 번호가 붙습니다. 프로그램은 결과를 돌려줄 때 같은 번호를 적어 어느 부탁의 결과인지 알려 줍니다. Claude API에서는 <mark>부탁이 담긴 응답 바로 다음 메시지에 모든 결과를 넣어야 하고</mark>, <strong class="hl">결과가 하나라도 빠지면 요청이 오류로 거절됩니다.</strong></p>
   </section>
 
   <section>
@@ -364,13 +366,13 @@ series_order: 1
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
         <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁</i>순한집 떡볶이 1인분을 주문해 줘</span><span class="sq-arr"></span></div>
         <span class="sq-act off"><svg aria-hidden="true"><use href="#i-smartphone"/></svg>주문 실패: 영업 종료</span>
-        <div class="sq-m c23 r"><span class="rw-msg err"><i>결과 · is_error: true</i>순한집은 오늘 영업이 끝났습니다.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg err"><i>결과 · <span class="ck-t ck-red">is_error: true</span></i>순한집은 오늘 영업이 끝났습니다.</span><span class="sq-arr"></span></div>
         <div class="sq-m c23 l"><span class="rw-msg ans"><i>답</i>순한집이 문을 닫았어요. 불맛집은 아주 매운데 그래도 시킬까요?</span><span class="sq-arr"></span></div>
         <div class="sq-m c12 l"><span class="rw-msg ans"><i>답</i>순한집이 문을 닫았어요. 불맛집은 아주 매운데 그래도 시킬까요?</span><span class="sq-arr"></span></div>
       </div>
       <figcaption>빨간 테두리가 실패를 알리는 결과입니다. LLM은 이를 읽고 다시 주문하는 대신 사용자에게 물었습니다.</figcaption>
     </figure>
-    <p>도구가 실패했다고 프로그램이 그 자리에서 멈추면 사용자는 이유도 모른 채 기다리게 됩니다. 그래서 오류 내용을 결과 칸에 적고 <code>is_error</code> 표시를 붙여 LLM에 보냅니다. LLM은 이 내용을 읽고 다른 가게를 찾거나 사용자에게 물어봅니다.</p>
+    <p>도구가 실패했다고 프로그램이 그 자리에서 멈추면 사용자는 이유도 모른 채 기다리게 됩니다. 그래서 오류 내용을 결과 칸에 적고 <code class="ck ck-red">is_error</code> 표시를 붙여 LLM에 보냅니다. LLM은 이 내용을 읽고 다른 가게를 찾거나 사용자에게 물어봅니다.</p>
     <p><strong class="hl">오류 메시지도 LLM이 읽는 글이라는 점을 기억해 두면 좋습니다.</strong> "Error 503"만 보내면 LLM은 무엇을 해야 할지 모릅니다. "순한집은 오늘 영업이 끝났습니다"처럼 원인을 적어 주면 다음 행동을 훨씬 잘 고릅니다.</p>
   </section>
 
@@ -438,11 +440,11 @@ for _ in range(10):
                         "content": content, "is_error": failed})
     messages.append({"role": "user", "content": results})</code></pre>
 <ol class="pg-code-notes">
-  <li>위 카드의 도구 목록을 코드로 적은 것입니다. <code>description</code>이 LLM이 읽는 설명이고 <code>input_schema</code>가 넣을 값의 형식입니다. 이 목록이 호출마다 그대로 실려 갑니다.</li>
+  <li>위 카드의 도구 목록을 코드로 적은 것입니다. <code class="ck ck-violet">description</code>이 LLM이 읽는 설명이고 <code class="ck ck-pink">input_schema</code>가 넣을 값의 형식입니다. 이 목록이 호출마다 그대로 실려 갑니다.</li>
   <li>끝없이 도는 것을 막는 한도입니다. 열 바퀴를 돌아도 답이 안 나오면 반복문이 끝납니다.</li>
-  <li>프로그램의 갈림길은 여기 하나입니다. <code>stop_reason</code>이 <code>tool_use</code>가 아니면 출력하고 멈춥니다. 잘린 답은 따로 알립니다. 응답에는 글 칸이 여러 개 섞일 수 있어서 <code>text</code> 칸만 모아 출력합니다.</li>
-  <li>부탁이면 LLM의 응답과 실행 결과를 둘 다 대화에 덧붙입니다. <code>run_tool</code>은 이름을 보고 실제 함수를 부르는 개발자의 함수입니다. <code>tool_use_id</code>로 어느 부탁의 결과인지 짝을 맞춥니다. 부탁이 여러 개면 결과도 모두 한 메시지에 담습니다.</li>
-  <li>도구가 예외를 던지면 반복문을 멈추지 않고 오류 내용을 <code>is_error: True</code>로 돌려줍니다. 위 "도구가 실패하면" 그림의 빨간 칸이 이것입니다.</li>
+  <li>프로그램의 갈림길은 여기 하나입니다. <code class="ck ck-cyan">stop_reason</code>이 <code class="ck ck-brown">tool_use</code>가 아니면 출력하고 멈춥니다. 잘린 답은 따로 알립니다. 응답에는 글 칸이 여러 개 섞일 수 있어서 <code>text</code> 칸만 모아 출력합니다.</li>
+  <li>부탁이면 LLM의 응답과 실행 결과를 둘 다 대화에 덧붙입니다. <code>run_tool</code>은 이름을 보고 실제 함수를 부르는 개발자의 함수입니다. <code class="ck ck-brown">tool_use_id</code>로 어느 부탁의 결과인지 짝을 맞춥니다. 부탁이 여러 개면 결과도 모두 한 메시지에 담습니다.</li>
+  <li>도구가 예외를 던지면 반복문을 멈추지 않고 오류 내용을 <code class="ck ck-red">is_error: True</code>로 돌려줍니다. 위 "도구가 실패하면" 그림의 빨간 칸이 이것입니다.</li>
 </ol>
     </div>
     <p class="after"><strong class="hl">판단하는 줄은 <code>client.messages.create</code> 한 줄뿐입니다.</strong> 나머지는 목록을 싣고 결과를 덧붙이고 멈출지 확인하는 평범한 코드입니다. LangChain 같은 프레임워크를 쓰면 이 반복문을 대신 돌려 주지만 안에서 하는 일은 같습니다.</p>

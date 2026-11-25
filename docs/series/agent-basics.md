@@ -25,6 +25,26 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 | 부자연스러운 문장 | `POSTING.md` 2-4 점검표 21~24 와 `npm run lint:draft` |
 | 강조 | 굵게 = 용어 첫 등장, 민트(`strong.hl`) = 섹션 결론 한 문장, 노란 형광펜(`mark`) = 놓치기 쉬운 사실 구절(`POSTING.md` 2-1 필기 문법) |
 
+### 코드 ↔ 설명 색표 (2026-11-24 사용자 지시 — 시리즈 전체에 적용)
+
+예시 코드·JSON 의 키와 값, 그림의 이름표, 아래 설명 칩에서 같은 낱말은 같은 색이다(`POSTING.md` 2-1). 아래 낱말은 **모든 편에서** 이 색으로 고정한다.
+새 편에서 처음 나오는 낱말은 남는 색을 골라 그 편 안에서만 짝을 맞추고, 시리즈 전체에 다시 나올 낱말이면 이 표에 더한다.
+
+| 색 | 클래스 | 시리즈 고정 낱말 | 편마다 쓴 낱말 |
+|---|---|---|---|
+| 파랑 | `ck-blue` | `user` | 1편 `name` · 3편 `type` · 4편 `usage` · 5편 `model_json_schema` |
+| 초록 | `ck-green` | `assistant` | 3편 `enum` · 5편 `Literal`·`enum` |
+| 보라 | `ck-violet` | `system` · `developer` · `description` | 1편 `input` · 5편 `Field` |
+| 주황 | `ck-orange` | `max_tokens` · `required` | |
+| 분홍 | `ck-pink` | `messages` | 1편 `input_schema` · 3편 `properties` · 4편 `cache_control` · 5편 `model_validate_json` |
+| 청록 | `ck-cyan` | `stop_reason` · `finish_reason` | |
+| 갈색 | `ck-brown` | `tool_use` · `tool_calls` · `tool_use_id` · `toolu_…` | 2편 `input_tokens` · 3·5편 `additionalProperties` · 5편 `extra="forbid"` |
+| 빨강 | `ck-red` | `is_error` | 2편 `output_tokens` |
+| 올리브 | `ck-olive` | `end_turn` | 3편 `strict` · 5편 `output_config`·`format`·`response_format` |
+
+쓰는 법: 설명 칩은 `<code class="ck ck-cyan">stop_reason</code>`, 코드 카드 안은 `<span class="ck ck-cyan">"stop_reason"</span>`, 그림 이름표는 `<b class="ck-t ck-blue">user</b>`.
+`<pre>` 코드 블록은 서버가 Shiki 로 칠하므로 색을 넣지 않는다 — 대신 블록 아래 해설 목록의 칩에 색을 준다.
+
 섹션 골격: 작은 회색 질문(`h2`) → 큰 답 한 줄 → 그림 → 짧은 문단. 섹션 첫 문장이 답이다.
 그림 문법·CSS 는 1편 원고(`auto-drafts/posts/llm-tool-agent-first-step.html`)의 `.sq`(세로 줄 그림), `.tl`(도구 카드), `.rs`(응답 모양), `.pb`(토큰 후보 막대)를 가져다 쓴다.
 `POSTING.md` 5-2 의 "가운데 한 열 섹션은 절반 이하"는 이 트랙에 적용하지 않는다. `check:page` 가 프런트매터 `series: agent-basics` 를 보고 그 검사를 건너뛴다(`ONE_COLUMN_SERIES`). 다른 글에 한 열을 넓힐지는 사용자가 정한다(2026-11-25 미정).
