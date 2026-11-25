@@ -6,7 +6,7 @@ tags: [AI 아키텍처, AI Agent, 워크플로, Anthropic, LangGraph]
 category: ai
 series: ai-architecture-cheatsheet
 series_order: 2
-cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwu64i0c.jpg
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/workflow-agent-patterns-map-mwvv374s.jpg
 ---
 <!-- page -->
 <!-- layout: 짧은 머리 + 맨 위 아이소메트릭 장면(순서표가 붙은 작업 줄과 안내 데스크, POSTING 5-11 — 2026-11-24 사용자 지시로 흐름도 앞에 둠, 썸네일도 이 장면. 여섯 패턴 중 양 끝인 프롬프트 체이닝과 Agent 만 같은 메일로 견준다) + 큰 흐름도 판(예시 메일 + 패턴 여섯 줄 — 줄마다 왼쪽 이름 카드 · 오른쪽 직각 엣지 흐름도) + 가장 단순한 것부터 고르는 순서 + 더 읽어 보기 | 글의 성격: 같은 고객 문의 메일 한 통이 여섯 방식에서 지나는 길. 줄이 화면에 다 들어오면 점이 그 줄의 흐름을 따라가고, 평가자-최적화와 Agent 는 고리를 돈다 | 레퍼런스: ByteByteGo "Top AI Agentic Workflow Patterns"(줄 구성·직각 엣지), Anthropic "Building effective agents"(패턴별 In → LLM Call → Out, 동적 분기는 점선) | 접은 안: 여섯 칸 보드 한 장(2026-11-14, 2026-11-19 접음) -->
@@ -73,6 +73,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+/* 견주는 글: 장면 둘을 나란히(2026-11-24). 같은 요청으로 동시에 재생된다 */
+.post-page .iso-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; align-items: start; }
+.post-page .iso-pair .iso-desc { min-height: 5.1em; }
+.post-page .iso-pair-h { margin: 0 0 10px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .iso-pair-h b { margin-right: 8px; font-size: 18px; font-weight: 800; color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .iso-pair { grid-template-columns: 1fr; gap: 48px; } }
 /* 이 글의 용어: 장면의 비유와 실제 용어를 짝지어 흐름도 앞에 둔다(2026-11-24). 카드·색 띠 없이 줄 목록으로 */
 .post-page .iso-terms { margin: 0 0 clamp(32px, 4vw, 48px); }
 .post-page .iso-terms-h { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--fg-strong); }
@@ -484,18 +490,31 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       <p>실행 순서를 코드가 정하면 워크플로, 모델이 정하면 Agent입니다. 같은 고객 문의 메일 한 통을 여섯 가지 방식으로 처리해 봤습니다.</p>
     </div>
 
-    <figure class="iso" data-figure data-iso="patterns" aria-label="같은 고객 문의 메일을 두 가지 방식으로 처리하는 장면. 워크플로에서는 직원이 벽에 붙은 순서표대로 요약, 개인정보 가리기, 답장 작성 자리를 차례로 지나 답장을 보낸다. Agent에서는 순서표가 없어 직원이 안내 데스크의 모델에게 다음에 갈 곳을 매번 묻고, 주문 조회와 환불 처리 도구에 다녀온 뒤 답장을 보낸다.">
-      <p class="iso-req"><span>예시 메일</span>주문한 키보드가 고장 났어요. 환불되나요? 배송비도 제가 내나요?</p>
-      <div class="iso-stage" data-thumb data-thumb-act="el.closest('.iso').querySelector('.iso-dots li:last-child button').click()"></div>
-      <ol class="iso-steps">
-        <li data-k="메일">직원(우리 앱)이 고객의 문의 메일을 받습니다. 같은 메일을 두 가지 방식으로 처리해 봅니다. 순서표를 따르는 길과 안내 데스크에 묻는 길입니다.</li>
-        <li data-k="워크플로">워크플로에서는 갈 곳이 벽의 순서표(코드)에 이미 적혀 있습니다. 직원은 누구에게도 묻지 않고 요약, 개인정보 가리기, 답장 작성 자리를 차례로 지납니다. 모델은 자기 자리에 온 일만 처리하고 다음에 어디로 갈지는 정하지 않습니다.</li>
-        <li data-k="Agent 1">Agent에는 순서표가 없습니다. 직원은 메일을 들고 안내 데스크(모델)에 가서 무엇부터 할지 묻습니다. 모델이 주문부터 조회하라고 답하면 그때 주문 서류함(주문 조회 도구)으로 갑니다.</li>
-        <li data-k="Agent 2">조회 결과를 들고 다시 모델 앞에 섭니다. 다음 일은 결과를 봐야 정할 수 있기 때문입니다. 이번 답은 환불 처리입니다. 메일이 달랐다면 다른 도구로 보냈을 겁니다.</li>
-        <li data-k="Agent 3">모델이 더 할 일이 없다고 판단하면 답장을 써 주고 직원은 그 답장을 보냅니다. 몇 번을 오갈지도 모델이 정했습니다. 오간 만큼 모델 호출이 늘어 비용과 시간이 더 듭니다.</li>
-      </ol>
-      <p class="iso-sum">워크플로는 코드에 적힌 순서대로 한 번에 지나갑니다(2). Agent는 다음에 갈 곳을 모델이 그때그때 정합니다. 그래서 모델 앞에 매번 다시 섭니다(3 · 4 · 5).</p>
-    </figure>
+    <p class="iso-req"><span>예시 메일 · 두 방식에 같은 메일</span>주문한 키보드가 고장 났어요. 환불되나요? 배송비도 제가 내나요?</p>
+    <div class="iso-pair" data-figure data-thumb data-thumb-act="el.querySelectorAll('.iso-dots li:last-child button').forEach((b) => b.click())">
+      <figure class="iso" data-iso="wf" aria-label="워크플로 장면. 직원이 메일을 들고 순서표에 적힌 대로 요약, 개인정보 가리기, 답장 작성 자리를 한 줄로 지나 우체통에 답장을 넣는다. 아무에게도 다음 갈 곳을 묻지 않는다.">
+        <p class="iso-pair-h"><b>워크플로</b>순서를 코드가 미리 정한다</p>
+        <div class="iso-stage"></div>
+        <ol class="iso-steps">
+          <li data-k="메일">직원(우리 앱)이 고객의 문의 메일을 받습니다. 갈 곳은 뒤쪽 순서표(코드)에 이미 적혀 있습니다.</li>
+          <li data-k="요약">첫 자리에서 모델이 문의를 요약합니다. 모델은 요약만 하고 다음에 어디로 갈지는 정하지 않습니다.</li>
+          <li data-k="가리기">둘째 자리는 모델이 아니라 코드입니다. 요약에 든 주소와 전화번호를 가립니다.</li>
+          <li data-k="답장">셋째 자리에서 모델이 답장을 쓰고 직원은 순서표대로 우체통에 넣습니다. 몇 자리를 거칠지는 처음부터 정해져 있었습니다.</li>
+        </ol>
+        <p class="iso-sum">순서표가 순서를 정합니다(2 → 3 → 4). 모델은 두 번 불리지만 자기 자리의 일만 합니다.</p>
+      </figure>
+      <figure class="iso" data-iso="ag" aria-label="Agent 장면. 순서표가 없어 직원이 같은 메일을 들고 안내 데스크의 모델에게 무엇부터 할지 묻는다. 모델의 답에 따라 주문 서류함과 환불 계산대에 다녀오고, 다녀올 때마다 데스크에 돌아와 다시 묻는다.">
+        <p class="iso-pair-h"><b>Agent</b>순서를 모델이 그때그때 정한다</p>
+        <div class="iso-stage"></div>
+        <ol class="iso-steps">
+          <li data-k="묻기">순서표가 없습니다. 직원은 메일을 들고 안내 데스크(모델)에 가서 무엇부터 할지 묻습니다. 모델은 주문부터 확인하라고 답합니다.</li>
+          <li data-k="주문 조회">직원이 주문 서류함(주문 조회 도구)에서 결과를 받아 와 다시 묻습니다. 다음 일은 결과를 봐야 정할 수 있어서입니다.</li>
+          <li data-k="환불">사흘 전에 배송된 주문이라는 결과를 본 모델이 환불을 고릅니다. 직원이 환불 계산대(환불 처리 도구)에 접수하고 돌아옵니다. 메일이 달랐다면 다른 곳으로 보냈을 겁니다.</li>
+          <li data-k="답장">모델이 더 할 일이 없다고 보고 답장을 써 줍니다. 몇 번 오갈지도 모델이 정했고, 오간 만큼 모델 호출이 늘었습니다(3번).</li>
+        </ol>
+        <p class="iso-sum">다음 갈 곳을 매번 모델에게 묻습니다(1 · 2 · 3). 그래서 데스크를 가운데 두고 오가고, 순서와 횟수가 메일마다 달라집니다.</p>
+      </figure>
+    </div>
   </div>
 </section>
 
@@ -554,55 +573,65 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 </div>
 
 <script>
-/* 맨 위 장면(POSTING 5-11): 아래 흐름도의 첫 줄(프롬프트 체이닝: 요약 → 가리기 → 답장 작성)과 끝 줄(Agent: 모델 3번, 도구 2번)을 같은 메일로 */
+/* 맨 위 장면(POSTING 5-11): 견주는 글이라 두 장면을 나란히 두고 같은 메일로 동시에 재생한다(2026-11-24 사용자 지적 — "비교 글인데 왜 한 줄 과정처럼 이어 놓았나").
+   왼쪽은 흐름도 첫 줄(프롬프트 체이닝: 요약 → 가리기 → 답장 작성), 오른쪽은 끝 줄(Agent: 모델 3번, 도구 2번) */
 (() => {
-  const HUB = [0, 0], back = [0, -1];
-  // 모델 앞에 서서 묻기: 메일을 올려놓고 기다렸다가 답을 받는다
+  const back = [0, -1];
+  const counter = [["box", 0, 0.85, 1.9, 0.45, 0.75, "grey"], ["box", 0, 0.85, 1.96, 0.51, 0.07, "white", 0.95]];
+  const seat = (name, c) => ({ name, at: null, size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [["person", 0, -0.3, c], ...counter] });
+  const wf = {
+    mail: { name: "문의 메일", at: [-10.8, 0], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, -0.2, "navy"]] },
+    plan: { name: "순서표 (코드)", at: [0, -4.6], size: [4.2, 1.4], top: 2.4, parts: [
+      ["box", 0, 0, 3.4, 0.14, 1.7, "wall"], ["box", 0, 0.09, 3.0, 0.03, 0.26, "orange", 1.3], ["box", 0, 0.09, 3.0, 0.03, 0.26, "teal", 0.92], ["box", 0, 0.09, 3.0, 0.03, 0.26, "orange", 0.54] ] },
+    s1: { ...seat("요약 · 모델", "orange"), at: [-5.4, 0] },
+    s2: { name: "가리기 · 코드", at: [0, 0], size: [2.6, 2.6], top: 2.3, drop: [0, 0.95, 0.85], parts: [
+      ["box", 0, -0.25, 1.2, 0.9, 1.25, "teal"], ["box", 0, 0.21, 0.8, 0.03, 0.12, "dark", 1.05], ...counter] },
+    s3: { ...seat("답장 작성 · 모델", "orange"), at: [5.4, 0] },
+    reply: { name: "우체통", at: [10.8, 0], size: [2.4, 2.4], top: 2.4, drop: [0, 0.2, 0.95], parts: [
+      ["box", 0, 0, 0.22, 0.22, 0.9, "grey"], ["box", 0, 0, 1.4, 1.0, 0.85, "red", 1.1], ["box", 0, 0.51, 0.62, 0.03, 0.13, "dark", 1.55] ] },
+  };
+  const at = (st, work, o = {}) => ["wait", 1700, st, work, { face: back, say: "", ...o }];
+  isoScene(postPage.root.querySelector('[data-iso="wf"]'), {
+    stations: wf,
+    routes: { r0: [[-10.8, 2.1], [-5.4, 2.1]], r1: [[-5.4, 2.1], [0, 2.1]], r2: [[0, 2.1], [5.4, 2.1]], r3: [[5.4, 2.1], [10.8, 2.1]] },
+    actor: { color: "teal", home: [-10.8, 2.1] },
+    badges: [[[-8.1, 2.1], "2"], [[-2.7, 2.1], "3"], [[2.7, 2.1], "4"]],
+    steps: [
+      [["at", "r0", { face: back, hold: false, pages: 1, say: "" }], ["wait", 1300, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "메일" }], ["wait", 700, "plan", "1 요약 → 2 가리기 → 3 답장"]],
+      [["at", "r0", { hold: true, pages: 1, say: "메일" }], ["go", "r0"], at("s1", "문의를 요약하는 중"), ["set", { pages: 2, say: "요약" }]],
+      [["at", "r1", { hold: true, pages: 2, say: "요약" }], ["go", "r1"], at("s2", "개인정보 가리는 중"), ["set", { say: "가린 요약" }]],
+      [["at", "r2", { hold: true, pages: 2, say: "가린 요약" }], ["go", "r2"], at("s3", "답장을 쓰는 중"), ["set", { pages: 3, say: "답장" }],
+       ["go", "r3"], ["wait", 1200, "reply", "답장을 보내는 중", { face: back, hold: false, drop: true, say: "" }]],
+    ],
+  });
+
+  const ag = {
+    cust: { name: "문의 메일", at: [0, 5.6], size: [2.4, 2.4], top: 1.9, parts: [["person", 0, 0.2, "navy"]] },
+    model: { name: "안내 데스크 · 모델", at: [0, -3], size: [3.4, 3.4], top: 2.3, drop: [0, 1.18, 1.45], parts: [
+      ["person", 0, -0.1, "orange"], ["box", 0, 1.45, 2.6, 0.3, 0.9, "navy"], ["box", 0, 1.45, 2.66, 0.36, 0.08, "white", 1.1] ] },
+    order: { name: "주문 조회 · 도구", at: [-5.6, 0], size: [2.4, 2.4], top: 2.3, drop: [0.95, 0.2, 0], parts: [
+      ["box", -0.1, 0, 1.0, 1.4, 1.5, "navy"], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 0.42], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 0.85], ["box", 0.41, 0, 0.03, 1.1, 0.3, "grey", 1.28] ] },
+    refund: { name: "환불 처리 · 도구", at: [5.6, 0], size: [2.4, 2.4], top: 2.0, drop: [0, 0.2, 0.95], parts: [
+      ["box", 0, 0.1, 1.5, 1.0, 0.8, "blue"], ["box", -0.3, -0.15, 0.6, 0.4, 0.5, "dark", 1.0], ["box", 0, 0.62, 1.1, 0.03, 0.22, "grey", 0.5], ["sph", 0.4, 1.2, 0.35, 0.2, "yellow"] ] },
+  };
   const ask = (pages, work, result) => [["wait", 1700, "model", work, { hold: false, drop: true, say: "", face: back }],
     ["set", { hold: true, pages: pages + 1, say: result }], ["wait", 600, "model", "답을 건네는 중"]];
-  // 도구에 다녀오기: isoScene.trip 과 같은 한 바퀴에 도구 쪽을 보는 방향만 더했다. 도구 앞쪽(보는 사람 쪽)에 서야 이름표가 머리를 가리지 않는다
-  const tool = (route, st, o) => [["at", route, { hold: true, pages: o.pages, say: o.carry }], ["go", route],
-    ["wait", 1600, st, o.work, { hold: false, drop: true, say: "", face: back }],
-    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, st, "결과를 건네는 중"], ["back", route]];
-  const counter = (x) => [["box", x, 0.85, 1.9, 0.45, 0.75, "grey"], ["box", x, 0.85, 1.96, 0.51, 0.07, "white", 0.95]];
-  isoScene(postPage.root.querySelector('[data-iso="patterns"]'), {
-    stations: {
-      mail: { name: "문의 메일", meta: "고객", at: [-12.5, 0], size: [2.4, 2.4], top: 1.9, parts: [["person", -0.2, 0, "navy"]] },
-      line: { name: "워크플로", meta: "순서표가 붙은 작업 줄", at: [-1.2, -8.8], size: [11, 2.8], top: 3.6, parts: [
-        ["box", -4.5, 0.75, 1.5, 0.14, 1.6, "wall"], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "orange", 1.3], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "teal", 0.93], ["box", -4.5, 0.84, 1.1, 0.03, 0.24, "orange", 0.56],
-        ["person", -1.8, -0.3, "orange"], ...counter(-1.8),
-        ["box", 1.2, -0.25, 1.2, 0.9, 1.25, "teal"], ["box", 1.2, 0.21, 0.8, 0.03, 0.12, "dark", 1.05], ...counter(1.2),
-        ["person", 4.2, -0.3, "orange"], ...counter(4.2) ] },
-      model: { name: "Agent의 모델", meta: "안내 데스크", at: [0, -2.9], size: [3.4, 3.4], top: 2.1, drop: [0, 1.18, 1.45], parts: [
-        ["person", 0, -0.1, "orange"], ["box", 0, 1.45, 2.6, 0.3, 0.9, "navy"], ["box", 0, 1.45, 2.66, 0.36, 0.08, "white", 1.1] ] },
-      order: { name: "주문 조회", meta: "주문 서류함", at: [-5.6, -2.2], size: [2.4, 2.4], top: 2.3, drop: [0, 0.2, 0.95], parts: [
-        ["box", 0, 0.1, 1.4, 1.0, 1.5, "navy"], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 0.42], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 0.85], ["box", 0, 0.62, 1.1, 0.03, 0.3, "grey", 1.28] ] },
-      refund: { name: "환불 처리", meta: "환불 계산대", at: [5.6, -2.2], size: [2.4, 2.4], top: 1.9, drop: [0, 0.2, 0.95], parts: [
-        ["box", 0, 0.1, 1.5, 1.0, 0.8, "blue"], ["box", -0.3, -0.15, 0.6, 0.4, 0.5, "dark", 1.0], ["box", 0, 0.62, 1.1, 0.03, 0.22, "grey", 0.5], ["sph", 0.4, 1.2, 0.35, 0.2, "yellow"] ] },
-      reply: { name: "답장", meta: "우체통", at: [12.5, 0], size: [2.4, 2.4], top: 2.4, drop: [-0.95, 0.2, 0], parts: [
-        ["box", 0, 0, 0.22, 0.22, 0.9, "grey"], ["box", 0, 0, 1.4, 1.0, 0.85, "red", 1.1], ["box", 0.71, 0, 0.03, 0.62, 0.13, "dark", 1.55] ] },
-    },
-    // 길은 두 갈래다. 워크플로는 뒤쪽 한 줄로 돌아가고, Agent 는 메일과 우체통을 곧게 잇는 앞줄 위에서
-    // 서류함 · 안내 데스크 · 계산대 앞을 오간다(도구는 데스크 바로 양옆이라 왕복이 짧다). 축을 따라 긋는다
-    routes: {
-      wf0: [[-10.15, 0], [-10.15, -6.4], [-3, -6.4]], wf1: [[-3, -6.4], [0, -6.4]], wf2: [[0, -6.4], [3, -6.4]], wf3: [[3, -6.4], [10.15, -6.4], [10.15, 0]],
-      in: [[-10.15, 0], HUB], order: [HUB, [-5.6, 0]], refund: [HUB, [5.6, 0]], out: [HUB, [10.15, 0]],
-    },
-    actor: { color: "teal", home: [-10.15, 0] },
-    badges: [[[-10.15, -2.4], "2"], [[-7.7, 0], "3"], [[2.8, 0], "4"], [[7.75, 0], "5"]],
+  const tool = (route, st, face, o) => [["at", [0, 0], { hold: true, pages: o.pages, say: o.carry }], ["go", route],
+    ["wait", 1600, st, o.work, { hold: false, drop: true, say: "", face }],
+    ["set", { hold: true, pages: o.pages + 1, say: o.result }], ["wait", 500, st, "결과를 건네는 중"], ["back", route], ["set", { face: back }]];
+  isoScene(postPage.root.querySelector('[data-iso="ag"]'), {
+    stations: ag,
+    routes: { cust: [[0, 4.1], [0, 0]], order: [[0, 0], [-4, 0]], refund: [[0, 0], [4, 0]] },
+    actor: { color: "teal", home: [0, 0] },
+    badges: [[[0, 2.2], "1"], [[-2, 0], "2"], [[2, 0], "3"]],
     steps: [
-      [["at", "wf0", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1400, "mail", "문의를 보내는 중"], ["set", { hold: true, say: "메일" }], ["wait", 900, "mail", "메일을 건네는 중"]],
-      [["at", "wf0", { hold: true, pages: 1, say: "메일" }], ["go", "wf0"],
-       ["wait", 1500, "line", "1번 자리 · 모델이 문의를 요약하는 중", { face: back, say: "" }], ["set", { pages: 2, say: "요약" }], ["go", "wf1"],
-       ["wait", 1500, "line", "2번 자리 · 코드가 개인정보를 가리는 중", { face: back, say: "" }], ["set", { say: "가린 요약" }], ["go", "wf2"],
-       ["wait", 1500, "line", "3번 자리 · 모델이 답장을 쓰는 중", { face: back, say: "" }], ["set", { pages: 3, say: "답장" }], ["go", "wf3"],
-       ["wait", 1200, "reply", "답장을 보내는 중", { face: [1, 0], hold: false, drop: true, say: "" }]],
-      [["at", "in", { hold: true, pages: 1, say: "메일 + 도구 목록" }], ["go", "in"], ...ask(1, "메일을 읽고 다음 일을 정하는 중", "주문부터 조회하라는 답"),
-       ...tool("order", "order", { pages: 2, carry: "주문 조회", work: "주문을 찾는 중", result: "결과: 사흘 전 배송 완료" })],
-      [["at", HUB, { hold: true, pages: 3, say: "메일 + 조회 결과", face: back }], ...ask(3, "결과를 읽고 다음 일을 정하는 중", "환불 처리하라는 답"),
-       ...tool("refund", "refund", { pages: 4, carry: "환불 처리", work: "환불을 접수하는 중", result: "결과: 환불 접수됨" })],
-      [["at", HUB, { hold: true, pages: 5, say: "메일 + 환불 결과", face: back }], ...ask(5, "더 할 일이 있는지 보는 중", "더 할 일 없음 · 답장"),
-       ["go", "out"], ["wait", 1200, "reply", "답장을 보내는 중", { face: [1, 0], hold: false, drop: true, say: "" }]],
+      [["at", "cust", { face: [0, 1], hold: false, pages: 1, say: "" }], ["wait", 1300, "cust", "문의를 보내는 중"],
+       ["set", { hold: true, say: "메일 + 도구 목록" }], ["go", "cust"], ...ask(1, "무엇부터 할지 정하는 중", "주문부터 조회하라는 답")],
+      [...tool("order", "order", [-1, 0], { pages: 2, carry: "주문 조회", work: "주문을 찾는 중", result: "결과: 사흘 전 배송 완료" }),
+       ...ask(3, "결과를 읽고 다음 일을 정하는 중", "환불 처리하라는 답")],
+      [...tool("refund", "refund", [1, 0], { pages: 4, carry: "환불 처리", work: "환불을 접수하는 중", result: "결과: 환불 접수됨" }),
+       ...ask(5, "더 할 일이 있는지 보는 중", "더 할 일 없음 · 답장")],
+      [["at", [0, 0], { hold: true, pages: 6, say: "답장" }], ["back", "cust"], ["wait", 1200, "cust", "답장을 받는 중", { face: [0, 1], hold: false, say: "" }]],
     ],
   });
 })();
