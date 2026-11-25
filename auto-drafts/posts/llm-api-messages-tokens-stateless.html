@@ -102,6 +102,14 @@ series_order: 2
 .post-page .rw-msg.err { border-color: #d4553f; }
 .post-page .rw-msg.err i { color: #d4553f; }
 .post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1) */
+.post-page .rw { --ck-user: #2f6fdb; --ck-asst: #12805c; --ck-sys: #7a4fd6; --ck-max: #c0641b; --ck-msg: #b03a6f; }
+[data-theme="dark"] .post-page .rw { --ck-user: #7aa7ff; --ck-asst: #4fd1a1; --ck-sys: #b79bff; --ck-max: #f0a35e; --ck-msg: #f08bbb; }
+.post-page .ck-user { --ck: var(--ck-user); } .post-page .ck-asst { --ck: var(--ck-asst); } .post-page .ck-sys { --ck: var(--ck-sys); }
+.post-page .ck-max { --ck: var(--ck-max); } .post-page .ck-msg { --ck: var(--ck-msg); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page b.ck-t { color: var(--ck) !important; }
 /* 요청 칸 안의 메시지 줄 */
 .post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
 .post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
@@ -174,7 +182,7 @@ series_order: 2
         <div class="rw-actor new"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>앱</b><small>개발자가 짠 코드</small></div>
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
         <div class="sq-m c12 r"><span class="rw-msg">내 이름은 민지야.</span><span class="sq-arr"></span></div>
-        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 1칸</i><span class="mr new"><b>user</b>내 이름은 민지야.</span></span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 1칸</i><span class="mr new"><b class="ck-t ck-user">user</b>내 이름은 민지야.</span></span><span class="sq-arr"></span></div>
         <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>반가워요, 민지님!</span><span class="sq-arr"></span></div>
         <div class="sq-m c12 l"><span class="rw-msg ans">반가워요, 민지님!</span><span class="sq-arr"></span></div>
       </div>
@@ -189,7 +197,7 @@ series_order: 2
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>앱</b><small>대화 기록을 들고 있음</small></div>
         <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
         <div class="sq-m c12 r"><span class="rw-msg">내 이름이 뭐였지?</span><span class="sq-arr"></span></div>
-        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 3칸</i><span class="mr"><b>user</b>내 이름은 민지야.</span><span class="mr"><b>assistant</b>반가워요, 민지님!</span><span class="mr new"><b>user</b>내 이름이 뭐였지?</span></span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>요청 · 메시지 3칸</i><span class="mr"><b class="ck-t ck-user">user</b>내 이름은 민지야.</span><span class="mr"><b class="ck-t ck-asst">assistant</b>반가워요, 민지님!</span><span class="mr new"><b class="ck-t ck-user">user</b>내 이름이 뭐였지?</span></span><span class="sq-arr"></span></div>
         <div class="sq-m c23 l"><span class="rw-msg ans"><i>응답</i>민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
         <div class="sq-m c12 l"><span class="rw-msg ans">민지님이라고 하셨어요.</span><span class="sq-arr"></span></div>
       </div>
@@ -204,21 +212,22 @@ series_order: 2
     <div class="rs">
       <div class="rs-c ask"><b>앱이 보내는 요청 (Claude API)</b><div class="rs-j">{
   "model": "claude-sonnet-5-5",
-  "max_tokens": 1024,
-  "system": "너는 친절한 비서다.",
-  "messages": [
-    { "role": "user",
+  <span class="ck ck-max">"max_tokens"</span>: 1024,
+  <span class="ck ck-sys">"system"</span>: "너는 친절한 비서다.",
+  <span class="ck ck-msg">"messages"</span>: [
+    { "role": <span class="ck ck-user">"user"</span>,
       "content": "내 이름은 민지야." },
-    { "role": "assistant",
+    { "role": <span class="ck ck-asst">"assistant"</span>,
       "content": "반가워요, 민지님!" },
-    { "role": "user",
+    { "role": <span class="ck ck-user">"user"</span>,
       "content": "내 이름이 뭐였지?" }
   ]
 }</div></div>
     </div>
-    <p class="after"><code>messages</code>는 대화를 순서대로 담은 <strong>메시지 목록</strong>입니다. 칸마다 누가 한 말인지 적는 <strong>role</strong>이 붙습니다. <code>user</code>는 사용자의 말이고 <code>assistant</code>는 LLM이 앞서 한 답입니다.</p>
-    <p><code>system</code>은 개발자가 LLM에게 주는 지시입니다. 말투와 역할, 지켜야 할 규칙을 여기에 적습니다. Claude API는 <code>system</code>을 메시지 목록 밖의 칸으로 받습니다. OpenAI API는 목록 맨 앞에 role이 <code>system</code>(최신 모델은 <code>developer</code>)인 칸으로 받습니다.</p>
-    <p><code>max_tokens</code>는 답 길이의 한도입니다. Claude API에서는 꼭 넣어야 하는 값이고, <mark>한도에 닿으면 답이 문장 중간에서 잘립니다.</mark> <strong class="hl">LLM이 이번 요청에서 볼 수 있는 것은 이 요청에 담긴 글이 전부입니다.</strong></p>
+    <p class="after"><code class="ck ck-msg">messages</code>는 대화를 순서대로 담은 <strong>메시지 목록</strong>입니다. 칸마다 누가 한 말인지 적는 <strong>role</strong>이 붙습니다. <code class="ck ck-user">user</code>는 사용자의 말이고 <code class="ck ck-asst">assistant</code>는 LLM이 앞서 한 답입니다.</p>
+    <p><code class="ck ck-sys">system</code>은 개발자가 LLM에게 주는 지시입니다. 말투와 역할, 지켜야 할 규칙을 여기에 적습니다. Claude API는 <code class="ck ck-sys">system</code>을 메시지 목록 밖의 칸으로 받습니다. OpenAI API는 목록 맨 앞에 role이 <code class="ck ck-sys">system</code>(최신 모델은 <code class="ck ck-sys">developer</code>)인 칸으로 받습니다.</p>
+    <p><code class="ck ck-max">max_tokens</code>는 답 길이의 한도입니다. Claude API에서는 꼭 넣어야 하는 값이고, <mark>한도에 닿으면 답이 문장 중간에서 잘립니다.</mark></p>
+    <p><strong class="hl">LLM이 이번 요청에서 볼 수 있는 것은 이 요청에 담긴 글이 전부입니다.</strong></p>
   </section>
 
   <section>
@@ -227,15 +236,15 @@ series_order: 2
     <figure data-figure>
       <div class="ml">
         <div class="ml-call" data-label="대화 전체를 보낼 때 · 두 번째 요청">
-          <div class="ml-row"><b>user</b>내 이름은 민지야.</div>
-          <div class="ml-row"><b>assistant</b>반가워요, 민지님!</div>
-          <div class="ml-row new"><b>user</b>내 이름이 뭐였지?</div>
+          <div class="ml-row"><b class="ck-t ck-user">user</b>내 이름은 민지야.</div>
+          <div class="ml-row"><b class="ck-t ck-asst">assistant</b>반가워요, 민지님!</div>
+          <div class="ml-row new"><b class="ck-t ck-user">user</b>내 이름이 뭐였지?</div>
           <div class="ml-out"><i>응답</i>민지님이라고 하셨어요.</div>
         </div>
         <div class="ml-call" data-label="이번 질문만 보낼 때 · 두 번째 요청">
-          <div class="ml-row miss"><b>user</b>(보내지 않음)</div>
-          <div class="ml-row miss"><b>assistant</b>(보내지 않음)</div>
-          <div class="ml-row new"><b>user</b>내 이름이 뭐였지?</div>
+          <div class="ml-row miss"><b class="ck-t ck-user">user</b>(보내지 않음)</div>
+          <div class="ml-row miss"><b class="ck-t ck-asst">assistant</b>(보내지 않음)</div>
+          <div class="ml-row new"><b class="ck-t ck-user">user</b>내 이름이 뭐였지?</div>
           <div class="ml-out err"><i>응답</i>죄송하지만 이름을 알려 주신 적이 없어요.</div>
         </div>
       </div>
