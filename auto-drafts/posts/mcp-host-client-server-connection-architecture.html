@@ -30,6 +30,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-lab small { display: inline-block; margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
 .post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
 .post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.done { box-shadow: 0 0 0 2px var(--line-normal, #c9cfdf), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.done small { color: var(--fg-neutral); }
 .post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
 .post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
 .post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
@@ -73,6 +75,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+/* 견주는 글: 장면 둘을 나란히(2026-11-24). 같은 요청으로 동시에 재생된다 */
+.post-page .iso-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; align-items: start; }
+.post-page .iso-pair .iso-desc { min-height: 5.1em; }
+.post-page .iso-pair-h { margin: 0 0 10px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .iso-pair-h b { margin-right: 8px; font-size: 18px; font-weight: 800; color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .iso-pair { grid-template-columns: 1fr; gap: 48px; } }
 /* 이 글의 용어: 장면의 비유와 실제 용어를 짝지어 흐름도 앞에 둔다(2026-11-24). 카드·색 띠 없이 줄 목록으로 */
 .post-page .iso-terms { margin: 0 0 clamp(32px, 4vw, 48px); }
 .post-page .iso-terms-h { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--fg-strong); }
@@ -200,19 +208,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     for (const id of ids) lab[id] = mk("iso-lab");
     const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
     const say = mk("iso-lab iso-say");
-    let busy = null, busyN = null;
+    let busy = null, busyN = null, busyStay = false;
     // 글자가 바뀐 요소만 다시 그리고, 바뀔 때는 옅게 사라졌다 떠오르게(교차) 한다. 같은 글자면 건드리지 않는다
     const swap = (el) => { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); };
     const fill = (t) => (busyN == null ? t : t.replace(/\{n\}/g, busyN));
     function labels() {
       for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
-        const cls = "iso-lab" + (b ? " busy" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
+        // 글자가 ✓ 로 시작하면 끝난 상태: 테두리는 두되 "일하는 중" 점은 빼고 회색으로
+        const done = b && hit[1].startsWith("✓"), cls = "iso-lab" + (b ? " busy" : "") + (done ? " done" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
         if (lab[id].className !== cls) lab[id].className = cls;
         if (lab[id].dataset.body === body && lab[id].dataset.b === String(b)) continue;
         const small = lab[id].querySelector("small"), onlyCount = small && lab[id].dataset.b === "true" && b && lab[id].dataset.tpl === hit[1];
         lab[id].dataset.body = body; lab[id].dataset.b = String(b); lab[id].dataset.tpl = b ? hit[1] : "";
         if (onlyCount) { small.firstChild.textContent = body; continue; } // 숫자만 올라갈 때는 깜빡이지 않게 글자만 바꾼다
-        lab[id].innerHTML = S[id].name + (b ? `<small>${body}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : body ? `<small class="meta">${body}</small>` : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${body}${done ? "" : "<span class=\"iso-dotdot\"><i></i><i></i><i></i></span>"}</small>` : body ? `<small class="meta">${body}</small>` : "");
         const sm = lab[id].querySelector("small"); if (sm && !labels.first) swap(sm); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
@@ -243,8 +252,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
       // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
       if (a.wait || a.seg) { const many = Array.isArray(a.comp);
-        busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
-        busyN = a.wait && a.count ? a.count[0] : null;
+        // stay: true 인 wait 의 상태는 오가는 사람이 걷는 동안에도 켜 둔다(정거장이 그사이에도 일하고 있을 때)
+        busy = !a.wait ? (busyStay ? busy : null) : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        if (a.wait) busyStay = !!a.stay;
+        busyN = a.wait && a.count ? a.count[0] : (a.wait ? null : busyN);
         A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
@@ -265,7 +276,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
     function go(i, auto) {
       stop(); if (!auto) playing = false;
-      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      step = Math.max(0, Math.min(N, i)); busy = null; busyStay = false; A.drop = null;
       if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
         playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
         ui(); drawDrop(); drawActor(); labels(); place(); return;

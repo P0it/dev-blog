@@ -30,6 +30,8 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-lab small { display: inline-block; margin-left: 7px; font-size: 13px; font-weight: 500; color: var(--fg-neutral); }
 .post-page .iso-lab.busy { box-shadow: 0 0 0 2px var(--iso-ok), 0 4px 14px rgba(30, 50, 120, .16); }
 .post-page .iso-lab.busy small { color: var(--iso-ok); font-weight: 700; }
+.post-page .iso-lab.done { box-shadow: 0 0 0 2px var(--line-normal, #c9cfdf), 0 4px 14px rgba(30, 50, 120, .16); }
+.post-page .iso-lab.done small { color: var(--fg-neutral); }
 .post-page .iso-lab.iso-say { background: var(--iso-ink); color: #fff; font-size: 13px; padding: 3px 10px; }
 .post-page .iso-lab.iso-num { transform: translate(-50%, -50%); background: var(--iso-ink); color: #fff; font-size: 12px; padding: 2px 9px; letter-spacing: .02em; }
 .post-page .iso-dotdot i { display: inline-block; width: 4px; height: 4px; margin-left: 3px; border-radius: 50%; background: currentColor; vertical-align: 2px; animation: pg-iso-dot 1s infinite; }
@@ -73,6 +75,12 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
 .post-page .iso-narrow .iso-dots { align-self: stretch; }
 .post-page .iso-narrow .iso-dots button span { display: none; }
 .post-page .iso-narrow .iso-desc { font-size: 15px; min-height: 5.1em; }
+/* 견주는 글: 장면 둘을 나란히(2026-11-24). 같은 요청으로 동시에 재생된다 */
+.post-page .iso-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; align-items: start; }
+.post-page .iso-pair .iso-desc { min-height: 5.1em; }
+.post-page .iso-pair-h { margin: 0 0 10px; font-size: 15px; color: var(--fg-neutral); }
+.post-page .iso-pair-h b { margin-right: 8px; font-size: 18px; font-weight: 800; color: var(--fg-strong); }
+@media (max-width: 900px) { .post-page .iso-pair { grid-template-columns: 1fr; gap: 48px; } }
 /* 이 글의 용어: 장면의 비유와 실제 용어를 짝지어 흐름도 앞에 둔다(2026-11-24). 카드·색 띠 없이 줄 목록으로 */
 .post-page .iso-terms { margin: 0 0 clamp(32px, 4vw, 48px); }
 .post-page .iso-terms-h { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; color: var(--fg-strong); }
@@ -200,19 +208,20 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     for (const id of ids) lab[id] = mk("iso-lab");
     const nums = (spec.badges || []).map(([at, text]) => { const d = mk("iso-lab iso-num"); d.textContent = text; d.at = at; return d; });
     const say = mk("iso-lab iso-say");
-    let busy = null, busyN = null;
+    let busy = null, busyN = null, busyStay = false;
     // 글자가 바뀐 요소만 다시 그리고, 바뀔 때는 옅게 사라졌다 떠오르게(교차) 한다. 같은 글자면 건드리지 않는다
     const swap = (el) => { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); };
     const fill = (t) => (busyN == null ? t : t.replace(/\{n\}/g, busyN));
     function labels() {
       for (const id of ids) { const hit = busy && busy.find((x) => x[0] === id), b = !!hit;
-        const cls = "iso-lab" + (b ? " busy" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
+        // 글자가 ✓ 로 시작하면 끝난 상태: 테두리는 두되 "일하는 중" 점은 빼고 회색으로
+        const done = b && hit[1].startsWith("✓"), cls = "iso-lab" + (b ? " busy" : "") + (done ? " done" : ""), body = b ? fill(hit[1]) : S[id].meta || "";
         if (lab[id].className !== cls) lab[id].className = cls;
         if (lab[id].dataset.body === body && lab[id].dataset.b === String(b)) continue;
         const small = lab[id].querySelector("small"), onlyCount = small && lab[id].dataset.b === "true" && b && lab[id].dataset.tpl === hit[1];
         lab[id].dataset.body = body; lab[id].dataset.b = String(b); lab[id].dataset.tpl = b ? hit[1] : "";
         if (onlyCount) { small.firstChild.textContent = body; continue; } // 숫자만 올라갈 때는 깜빡이지 않게 글자만 바꾼다
-        lab[id].innerHTML = S[id].name + (b ? `<small>${body}<span class="iso-dotdot"><i></i><i></i><i></i></span></small>` : body ? `<small class="meta">${body}</small>` : "");
+        lab[id].innerHTML = S[id].name + (b ? `<small>${body}${done ? "" : "<span class=\"iso-dotdot\"><i></i><i></i><i></i></span>"}</small>` : body ? `<small class="meta">${body}</small>` : "");
         const sm = lab[id].querySelector("small"); if (sm && !labels.first) swap(sm); }
     }
     // 이름표가 그림 밖으로 나가지 않게 가로 위치를 안쪽으로 당긴다
@@ -243,8 +252,10 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       if (a.face) A.dir = a.face; if (a.pages != null) A.pages = a.pages; if (a.hold != null) A.hold = a.hold; if (a.say != null) A.say = a.say;
       // wait 의 정거장을 배열로 주면 그 정거장들이 동시에 일한다(글자도 배열이면 정거장마다 다르게)
       if (a.wait || a.seg) { const many = Array.isArray(a.comp);
-        busy = !a.wait ? null : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
-        busyN = a.wait && a.count ? a.count[0] : null;
+        // stay: true 인 wait 의 상태는 오가는 사람이 걷는 동안에도 켜 둔다(정거장이 그사이에도 일하고 있을 때)
+        busy = !a.wait ? (busyStay ? busy : null) : many ? a.comp.map((c, i) => [c, Array.isArray(a.text) ? a.text[i] : a.text]) : [[a.comp, a.text]];
+        if (a.wait) busyStay = !!a.stay;
+        busyN = a.wait && a.count ? a.count[0] : (a.wait ? null : busyN);
         A.drop = a.wait && a.drop && !many ? a.comp : null; drawDrop(); }
       drawActor(); labels(); place();
     }
@@ -265,7 +276,7 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
     function stop() { cancelAnimationFrame(raf); clearTimeout(timer); }
     function go(i, auto) {
       stop(); if (!auto) playing = false;
-      step = Math.max(0, Math.min(N, i)); busy = null; A.drop = null;
+      step = Math.max(0, Math.min(N, i)); busy = null; busyStay = false; A.drop = null;
       if (step === N) { // 전체 흐름: 길마다 순서 번호가 붙은 정지 그림
         playing = false; Object.assign(A, { pos: [...((spec.actor && spec.actor.home) || [0, 0])], dir: [1, 0], pages: N, hold: true, say: "" });
         ui(); drawDrop(); drawActor(); labels(); place(); return;
@@ -473,9 +484,9 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         <li data-k="요청">직원(사용자)이 출장 준비 Agent에게 도쿄 출장 준비를 부탁합니다. 이 Agent는 항공권도 호텔도 직접 예약하지 못합니다. 각각 잘하는 다른 회사의 Agent에게 맡길 생각입니다.</li>
         <li data-k="명함">담당자(출장 준비 Agent)는 맡기기 전에 두 업체 앞에 걸린 명함을 읽습니다. 이 명함이 Agent Card입니다. 할 줄 아는 일(skills), 연락할 주소, 인증 방식이 적혀 있습니다.</li>
         <li data-k="방문증">명함에 적힌 인증 방식(OAuth 2.0)대로 방문증을 받습니다. 실제로는 인증 서버가 내주는 액세스 토큰이고 요청마다 HTTP 헤더에 붙여 보냅니다.</li>
-        <li data-k="의뢰">항공권 업체 창구에 의뢰서를 넘깁니다. 이 의뢰서가 Task이고 접수번호(taskId)가 붙습니다. 업체는 자기 직원과 장비로 일하고 담당자는 창구 앞에서 진행 안내(submitted → working)만 받습니다. 그러다 업체가 되묻고 상태가 input-required로 바뀝니다.</li>
-        <li data-k="되묻기">"직항은 출장 규정 한도를 넘습니다. 경유편으로 할까요?" 담당자는 이 질문을 직원에게 가져가 답을 받고 같은 접수번호로 업체에 전합니다. 업체가 일을 이어 가 completed가 되면 전자 항공권을 납품물(Artifact)로 건넵니다.</li>
-        <li data-k="숙소">숙소 업체에도 같은 방식으로 맡기고 예약 확인서를 받습니다. 실제로는 두 Task를 한꺼번에 보내도 됩니다. 장면은 오가는 사람이 하나뿐이라 차례로 그렸습니다.</li>
+        <li data-k="의뢰">두 업체 창구에 의뢰서를 한 장씩 넘깁니다. 이 의뢰서가 Task이고 접수번호(taskId)가 붙습니다. 두 업체는 동시에, 각자 자기 직원과 장비로 일합니다. 담당자는 진행 안내(submitted → working)만 받습니다. 그러다 항공권 업체가 되묻고 상태가 input-required로 바뀝니다.</li>
+        <li data-k="되묻기">"직항은 출장 규정 한도를 넘습니다. 경유편으로 할까요?" 담당자는 이 질문을 직원에게 가져가 답을 받고 같은 접수번호로 항공권 업체에 전합니다. 그사이 숙소 업체는 기다리지 않고 일을 끝냅니다(completed).</li>
+        <li data-k="납품">항공권 업체도 일을 이어 가 completed가 됩니다. 담당자는 두 업체에서 결과물을 받아 옵니다. 항공권 업체는 전자 항공권을, 숙소 업체는 예약 확인서를 납품물(Artifact)로 건넵니다.</li>
         <li data-k="결과">담당자는 두 업체의 납품물을 묶어 직원에게 전합니다. 비유와 다른 점도 있습니다. 실제 Agent Card는 업체 앞에 걸린 종이가 아니라 HTTP로 받아 오는 JSON 문서라서 담당자가 책상에 앉은 채로 읽습니다.</li>
       </ol>
       <p class="iso-sum">맡기기 전에 명함(Agent Card)을 읽고(2) 방문증을 받습니다(3). 일은 의뢰서(Task)로 넘기고(4 · 6), 업체가 되물으면 직원에게 확인해 같은 의뢰서로 답합니다(5). 업체 건물 안은 끝까지 보지 않고 진행 안내와 납품물(Artifact)만 받습니다.</p>
@@ -618,22 +629,33 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
         ["box", 0, -0.3, 2.0, 0.8, 0.85, "grey"], ["box", 0, -0.3, 2.06, 0.86, 0.08, "white", 1.05],
         ["box", -0.5, -0.3, 0.4, 0.3, 0.06, "red", 1.13], ["box", -0.5, -0.3, 0.4, 0.3, 0.06, "red", 1.19] ] },
     },
-    routes: { user: [[7.4, 1], [2.9, 1]], air: [[-2.9, -1], [-8.8, -1]], hotel: [[-2.9, 1.2], [-6.5, 1.2], [-6.5, 6], [-8.8, 6]], auth: [[0, -3.1], [0, -7.3]] },
+    routes: { user: [[7.4, 1], [2.9, 1]], mid: [[-2.9, -1], [-2.9, 1.2]], air: [[-2.9, -1], [-8.8, -1]], hotel: [[-2.9, 1.2], [-6.5, 1.2], [-6.5, 6], [-8.8, 6]], auth: [[0, -3.1], [0, -7.3]] },
     actor: { color: "blue", home: [2.9, 1] },
-    badges: [[[5.2, 1], "1 · 5 · 7"], [[-6.7, -1], "2 · 4 · 5"], [[-6.5, 3.6], "2 · 6"], [[0, -5.2], "3"]],
+    badges: [[[5.2, 1], "1 · 5 · 7"], [[-6.7, -1], "2 · 4 · 5 · 6"], [[-6.5, 3.6], "2 · 4 · 6"], [[0, -5.2], "3"]],
     steps: [
       [["at", "user", { face: [-1, 0], hold: false, pages: 1, say: "" }], ["wait", 1200, "user", "부탁하는 중"],
        ["set", { hold: true, say: "도쿄 출장 준비" }], ["go", "user"], ["wait", 900, "home", "부탁을 받아 적는 중"]],
       [...visit("air", "air", { hold: false, p0: 1, p1: 1, carry: "", seq: [[1500, "명함(Agent Card) 읽는 중"]], give: "명함을 읽은 뒤", result: "항공권 검색·발권 · OAuth" }),
        ...visit("hotel", "hotel", { hold: false, p0: 1, p1: 2, carry: "", seq: [[1500, "명함(Agent Card) 읽는 중"]], give: "명함을 읽은 뒤", result: "호텔 검색·예약 · OAuth", write: "맡길 곳을 정하는 중" })],
       visit("auth", "auth", { p0: 1, p1: 2, carry: "명함에 적힌 인증 방식", seq: [[1500, "신원을 확인하는 중"]], give: "방문증을 건네는 중", result: "방문증(토큰)", write: "방문증을 챙기는 중" }),
-      visit("air", "air", { p0: 2, p1: 2, carry: "의뢰서 + 방문증", seq: [[900, "submitted · 접수"], [1800, "working · 항공편 찾는 중"], [1400, "input-required · 되묻는 중"]],
-        give: "되묻는 중", result: "직항은 규정 한도 초과 · 경유로 할까요?", write: "질문을 받아 든 중" }),
-      [["at", [2.9, 1], { hold: true, pages: 2, say: "경유로 할까요?" }], ["back", "user"], ["wait", 1400, "user", "답하는 중", { hold: false, say: "" }],
-       ["set", { hold: true, say: "직항으로 · 팀장 승인" }], ["go", "user"],
-       ...visit("air", "air", { p0: 2, p1: 4, carry: "같은 접수번호로 답", seq: [[1800, "working · 발권하는 중"], [900, "completed"]], give: "납품물을 건네는 중", result: "전자 항공권 (Artifact)", write: "납품물을 챙기는 중" })],
-      visit("hotel", "hotel", { p0: 2, p1: 4, carry: "의뢰서 + 방문증", seq: [[900, "submitted · 접수"], [1800, "working · 호텔 찾는 중"], [900, "completed"]],
-        give: "납품물을 건네는 중", result: "예약 확인서 (Artifact)", write: "두 결과물을 묶는 중" }),
+      // 4 의뢰: 두 곳에 한 장씩 넘기고 돌아오면 두 업체가 동시에 일한다
+      [["at", "air", { hold: true, pages: 2, say: "의뢰서 2장 + 방문증" }], ["go", "air"],
+       ["set", { pages: 1 }], ["wait", 900, "air", "submitted · 접수", { drop: true, say: "의뢰서 1장 남음", stay: true }], ["back", "air"], ["go", "mid"],
+       ["go", "hotel"], ["wait", 900, ["air", "hotel"], ["working · 항공편 찾는 중", "submitted · 접수"], { hold: false, say: "", stay: true }], ["back", "hotel"],
+       ["wait", 1800, ["air", "hotel"], ["working · 항공편 찾는 중", "working · 호텔 찾는 중"]],
+       ["wait", 1400, ["air", "hotel"], ["input-required · 되묻는 중", "working · 호텔 찾는 중"]]],
+      // 5 되묻기: 직원에게 묻고 같은 접수번호로 답하는 사이 숙소는 끝난다
+      [["at", [2.9, 1], { hold: true, pages: 1, say: "경유로 할까요?" }],
+       ["wait", 900, ["air", "hotel"], ["input-required · 답을 기다리는 중", "working · 호텔 찾는 중"], { stay: true }],
+       ["back", "user"], ["wait", 1400, ["user", "air", "hotel"], ["답하는 중", "input-required · 답을 기다리는 중", "✓ completed · 예약 완료"], { hold: false, say: "", stay: true }],
+       ["set", { hold: true, say: "직항으로 · 팀장 승인" }], ["wait", 1, ["air", "hotel"], ["input-required · 답을 기다리는 중", "✓ completed · 예약 완료"], { stay: true }], ["go", "user"],
+       ["at", "air", { hold: true, say: "같은 접수번호로 답" }], ["go", "air"],
+       ["wait", 1200, ["air", "hotel"], ["working · 발권하는 중", "✓ completed · 예약 완료"], { hold: false, say: "", stay: true }], ["back", "air"]],
+      // 6 납품: 두 곳 다 끝났다. 결과물을 받아 온다
+      [["at", [-2.9, -1], { hold: false, pages: 2, say: "" }], ["wait", 1000, ["air", "hotel"], ["✓ completed · 발권 완료", "✓ completed · 예약 완료"]],
+       ["go", "air"], ["wait", 700, "air", "납품물을 건네는 중"], ["set", { hold: true, pages: 3, say: "전자 항공권 (Artifact)" }], ["back", "air"], ["go", "mid"],
+       ["go", "hotel"], ["wait", 700, "hotel", "납품물을 건네는 중"], ["set", { pages: 4, say: "+ 예약 확인서 (Artifact)" }], ["back", "hotel"],
+       ["wait", 800, "home", "두 결과물을 묶는 중"]],
       [["at", [2.9, 1], { hold: true, pages: 5, say: "항공권 + 예약 확인서" }], ["back", "user"], ["wait", 1200, "user", "받는 중", { hold: false, say: "" }]],
     ],
   });
