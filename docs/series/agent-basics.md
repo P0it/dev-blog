@@ -79,9 +79,9 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 편 | 상태 |
 |---|---|---|---|---|---|
-| 9 | 직접 짠 40줄은 LangChain 어디에 있나요? | 프로그램 → 프레임워크 | `create_agent`, middleware, `init_chat_model` 로 provider 교체 | 4·7·8 | 계획 |
-| 10 | 흐름을 직접 그리고 싶으면? | 그래프 | LangGraph 상태·노드·엣지, 조건 분기, checkpointer | 11·12 | 계획 |
-| 11 | 결제 전에 사람 확인을 어떻게 끼우나요? | 승인 칸 | interrupt·재개, 승인 기록 | 15 | 계획 |
+| 9 | 직접 짠 Agent 반복문은 LangChain 어디에 들어 있을까요? (`langchain-create-agent-vs-hand-loop`) | 프로그램 → 프레임워크 | `create_agent`, middleware, `init_chat_model` 로 provider 교체 | 4·7·8 | 발행 |
+| 10 | Agent의 흐름을 내가 직접 정하고 싶으면 어떻게 할까요? (`langgraph-state-node-edge-basics`) | 그래프 | LangGraph 상태·노드·엣지, 조건 분기, checkpointer | 11·12 | 발행 |
+| 11 | Agent가 결제하기 전에 사람이 확인하게 하려면 어떻게 할까요? (`agent-human-approval-interrupt`) | 승인 칸 | interrupt·재개, 승인 기록 | 15 | 발행 |
 
 ### Part 4. 바깥 세상과 연결
 

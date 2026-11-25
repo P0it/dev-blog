@@ -1,0 +1,325 @@
+---
+title: Agent가 결제하기 전에 사람이 확인하게 하려면 어떻게 할까요?
+slug: agent-human-approval-interrupt
+excerpt: LLM의 판단은 틀릴 수 있고 결제는 되돌리기 어렵습니다. 위험한 도구 앞에서만 Agent를 멈추고 사람의 승인·수정·거절을 받아 이어 가는 Human-in-the-loop, 멈춘 동안 상태를 저장하는 법, 어떤 도구에 확인을 걸지까지 봅니다.
+tags: [AI Agent, Human-in-the-loop, LangGraph, Python]
+category: ai
+series: agent-basics
+series_order: 11
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-human-approval-interrupt-mwvuulkn.jpg
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 11편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 8px 0 48px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 30px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 18px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 10px 14px 11px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 30px; padding: 36px 0 22px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
+.post-page .rw mark code { background: none; padding: 0; }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row > span { min-width: 0; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.free { background: none; border: 1.5px dashed var(--line-normal); color: var(--fg-alternative); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 그래프 그림 */
+.post-page .gr { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; }
+.post-page .gr .gr-node { fill: var(--bg-base); stroke: var(--line-normal); stroke-width: 1.5; }
+.post-page .gr .gr-node.on { stroke: var(--fg-primary-strong); stroke-width: 2; fill: var(--bg-primary-tint); }
+.post-page .gr .gr-node.warn { stroke: #d4553f; stroke-width: 2; }
+.post-page .gr .gr-term { fill: var(--bg-subtle); stroke: var(--line-normal); }
+.post-page .gr .gr-e { fill: none; stroke: var(--fg-neutral); stroke-width: 1.6; }
+.post-page .gr .gr-e.dash { stroke-dasharray: 5 4; stroke: var(--fg-primary-strong); }
+.post-page .gr .gr-head { fill: var(--fg-neutral); }
+.post-page .gr .gr-t { font-family: var(--font-sans); font-size: 14px; fill: var(--fg-strong); text-anchor: middle; }
+.post-page .gr .gr-t.b { font-weight: 700; font-size: 15px; }
+.post-page .gr .gr-t.s { font-size: 12.5px; fill: var(--fg-neutral); }
+.post-page .gr .gr-t.l { text-anchor: start; }
+@media (max-width: 480px) {
+  .post-page .gr .gr-t { font-size: 20px; } .post-page .gr .gr-t.b { font-size: 21px; } .post-page .gr .gr-t.s { font-size: 17px; }
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 8px 10px 9px; font-size: 13px; }
+  .post-page .sq, .post-page .sq-round { row-gap: 22px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<svg class="pg-icons" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-bot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></g></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></g></symbol>
+<symbol id="i-hand" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="i-user-cog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15H6a4 4 0 0 0-4 4v2" /> <path d="m14.305 16.53.923-.382" /> <path d="m15.228 13.852-.923-.383" /> <path d="m16.852 12.228-.383-.923" /> <path d="m16.852 17.772-.383.924" /> <path d="m19.148 12.228.383-.923" /> <path d="m19.53 18.696-.382-.924" /> <path d="m20.772 13.852.924-.383" /> <path d="m20.772 16.148.924.383" /> <circle cx="18" cy="15" r="3" /> <circle cx="9" cy="7" r="4" /></g></symbol>
+</defs></svg>
+
+<div class="rw">
+  <h1>Agent가 결제하기 전에 사람이 확인하게 하려면 어떻게 할까요?</h1>
+  <p class="rw-lead">회사 비품을 주문하는 Agent에게 "모니터 두 대 사 줘"라고 했더니 27인치 대신 49인치 두 대가 결제됐다고 해 보겠습니다. LLM은 판단이 틀릴 수 있고 결제는 되돌리기 어렵습니다. 그렇다고 모든 단계를 사람이 확인하면 Agent를 쓰는 의미가 없습니다. 위험한 순간에만 멈추고 사람의 답을 기다리게 하는 방법을 봅니다.</p>
+
+  <section>
+    <h2>확인 없이 실행하면 무엇이 문제인가요?</h2>
+    <p class="rw-ans">LLM이 틀린 판단을 그대로 실행합니다. 되돌릴 수 없는 일이면 그대로 손해입니다.</p>
+    <figure data-figure data-thumb>
+      <div class="sq agent">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>프로그램</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">모니터 두 대 사 줘.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 r"><span class="rw-msg">내 말 + 도구 목록</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁</i>place_order(49인치 모니터, 2대)</span><span class="sq-arr"></span></div>
+        <span class="sq-act off"><svg aria-hidden="true"><use href="#i-credit-card"/></svg>프로그램이 바로 결제 · 312만 원</span>
+      </div>
+      <figcaption>LLM이 검색 결과 맨 위 상품을 골랐습니다. 프로그램은 부탁을 받는 즉시 실행했고 누구도 확인하지 않았습니다.</figcaption>
+    </figure>
+    <p>지금까지의 Agent는 LLM이 도구를 부탁하면 프로그램이 곧바로 실행했습니다. 검색이나 조회라면 틀려도 다시 하면 되지만 결제·삭제·메일 발송처럼 되돌리기 어려운 일은 한 번 틀리면 끝입니다.</p>
+    <p>사람이 확인한 뒤에 실행하게 하는 구조를 <strong>Human-in-the-loop</strong>라고 합니다. Agent의 반복 안에 사람이 들어가 있다는 뜻입니다. <strong class="hl">위험한 도구 앞에만 멈추는 곳을 두고 나머지는 그대로 Agent에게 맡기는 것이 핵심입니다.</strong></p>
+  </section>
+
+  <section>
+    <h2>확인을 넣으면 어떻게 움직이나요?</h2>
+    <p class="rw-ans">결제 부탁이 오면 실행 직전에 멈추고 사람의 답을 받은 뒤에 이어 갑니다.</p>
+    <figure data-figure>
+      <div class="sq agent">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b><small>요청·승인</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>프로그램</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">모니터 두 대 사 줘.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ask"><i>부탁</i>place_order(49인치 모니터, 2대)</span><span class="sq-arr"></span></div>
+        <span class="sq-act"><svg aria-hidden="true"><use href="#i-hand"/></svg>결제 도구라 실행하지 않고 멈춤 · 상태 저장</span>
+        <div class="sq-m c12 l"><span class="rw-msg ask"><i>승인 요청</i>49인치 모니터 2대, 312만 원. 진행할까요?</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 r"><span class="rw-msg"><i>수정해서 승인</i>27인치로, 2대</span><span class="sq-arr"></span></div>
+        <span class="sq-act"><svg aria-hidden="true"><use href="#i-credit-card"/></svg>저장한 상태에서 이어서 · 27인치 2대 결제 · 64만 원</span>
+        <div class="sq-m c23 r"><span class="rw-msg"><i>결과</i>27인치 모니터 2대 주문 완료</span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>답</i>27인치 모니터 두 대를 주문했어요.</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>LLM의 부탁과 실행 사이에 사람이 들어갔습니다. 사람은 부탁을 고쳐서 승인했고 프로그램은 고친 값으로 실행했습니다.</figcaption>
+    </figure>
+    <p>LLM이 결제 도구를 부탁하면 프로그램은 바로 실행하지 않고 반복을 멈춥니다. 무엇을 하려는지(도구 이름과 값)를 사람에게 보여 주고 답을 기다립니다. 이렇게 실행을 멈추는 일을 <strong>interrupt</strong>라고 합니다.</p>
+    <p>사람의 답은 보통 네 가지입니다. 그대로 승인, 값을 고쳐서 승인, 거절, 그리고 거절하면서 이유를 LLM에게 전하기입니다. 거절 이유를 전하면 LLM은 그것을 읽고 다른 상품을 찾는 등 다음 행동을 다시 고릅니다.</p>
+  </section>
+
+  <section>
+    <h2>사람이 내일 답하면 그동안 Agent는 어디에 있나요?</h2>
+    <p class="rw-ans">상태가 저장소에 저장되어 있고 프로그램은 다른 일을 합니다. 답이 오면 그 상태를 불러와 이어 갑니다.</p>
+    <figure data-figure>
+      <div class="bk">
+        <div class="bk-row"><span>월 10:02</span><div class="bk-bar"><i class="c" style="--f: 40">요청 · 검색 · 부탁</i><i class="n" style="--f: 60">멈춤 · 상태를 저장하고 요청 끝냄</i></div></div>
+        <div class="bk-row"><span>(밤사이)</span><div class="bk-bar"><i class="free" style="--f: 100">서버가 재시작돼도 저장소에 남아 있음</i></div></div>
+        <div class="bk-row"><span>화 09:15</span><div class="bk-bar"><i class="n" style="--f: 30">승인 도착</i><i class="c" style="--f: 70">저장한 상태 불러와 결제부터 이어서</i></div></div>
+      </div>
+      <figcaption>멈춘 Agent는 서버 안에서 기다리지 않습니다. 상태는 저장소에 있고 승인이 오면 그때 다시 깨어납니다.</figcaption>
+    </figure>
+    <p>사람의 답은 몇 분 뒤에 도착할 수도 있고 다음 날 올 수도 있습니다. 그동안 프로그램이 반복문 안에서 기다리면 서버 자원을 붙잡게 되고 서버가 재시작되면 진행하던 일이 사라집니다.</p>
+    <p>그래서 멈출 때 지금까지의 메시지 목록과 상태를 저장소에 저장하고 요청을 끝냅니다. 앞 글에서 본 checkpointer가 이 일을 합니다. 승인이 오면 같은 대화방 번호로 저장한 상태를 불러와 멈춘 곳부터 이어 갑니다. <mark>메모리에 저장하는 checkpointer는 서버가 꺼지면 사라지므로 서비스에서는 데이터베이스에 저장합니다.</mark></p>
+  </section>
+
+  <section>
+    <h2>어떤 도구에 확인을 걸어야 하나요?</h2>
+    <p class="rw-ans">되돌리기 어렵거나, 돈이 나가거나, 바깥에 보이는 일입니다.</p>
+    <table>
+      <thead><tr><th>도구</th><th>확인</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>상품 검색, 주문 조회</td><td>없음</td><td>읽기만 함. 틀리면 다시 하면 됨</td></tr>
+        <tr><td>장바구니 담기</td><td>없음</td><td>되돌릴 수 있음</td></tr>
+        <tr><td>결제</td><td>승인 · 수정 · 거절</td><td>돈이 나감</td></tr>
+        <tr><td>메일·메시지 발송</td><td>승인 · 수정</td><td>보낸 뒤 취소 불가, 바깥에 보임</td></tr>
+        <tr><td>데이터 삭제</td><td>승인 · 거절 (수정 불가)</td><td>되돌릴 수 없음</td></tr>
+      </tbody>
+    </table>
+    <p>모든 도구에 확인을 걸면 사람이 버튼만 누르는 일이 되고 결국 내용을 읽지 않고 승인하게 됩니다. 확인은 꼭 필요한 곳에만 겁니다. 금액이 일정 이상일 때만 확인하는 식으로 조건을 붙이기도 합니다.</p>
+    <p>확인 화면에는 사람이 판단할 수 있는 정보를 보여 줘야 합니다. "place_order 실행할까요?"보다 "49인치 모니터 2대, 312만 원, 배송지 본사"가 낫습니다. 누가 언제 무엇을 승인했는지는 따로 기록해 둡니다. 문제가 생겼을 때 그 기록으로 확인합니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">확인할 도구를 middleware에 적고 멈춘 실행을 사람의 답으로 이어 갑니다.</p>
+    <div class="cd">
+<pre data-title="approval.py" data-hl="10,13,20,27"><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import HumanInTheLoopMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
+
+agent = create_agent(
+    model="anthropic:claude-sonnet-5-5",
+    tools=[search_products, place_order],
+    # ① 멈췄다 이어 가려면 상태를 저장할 곳이 있어야 한다
+    checkpointer=InMemorySaver(),
+    middleware=[HumanInTheLoopMiddleware(interrupt_on={
+        # ② 결제만 확인. 검색은 그대로 실행
+        "place_order": {"allowed_decisions": ["approve", "edit", "reject"]},
+        "search_products": False,
+    })],
+)
+config = {"configurable": {"thread_id": "order-301"}}
+
+# ③ 결제 부탁이 나오면 실행하지 않고 멈춘다
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "모니터 두 대 사 줘."}]},
+    config=config, version="v2")
+for intr in result.interrupts:
+    print(intr.value["action_requests"])   # 무엇을 하려는지 사람에게 보여 준다
+
+# ④ (다음 날) 사람이 값을 고쳐 승인하면 같은 thread_id 로 이어 간다
+agent.invoke(Command(resume={"decisions": [{
+    "type": "edit",
+    "edited_action": {"name": "place_order",
+                      "args": {"product": "27인치 모니터", "count": 2}},
+}]}), config=config, version="v2")</code></pre>
+<ol class="pg-code-notes">
+  <li>멈춘 상태를 저장할 checkpointer입니다. 예제라 메모리에 저장했습니다. 서비스에서는 Postgres 같은 저장소를 씁니다.</li>
+  <li>도구마다 확인을 걸지, 어떤 답을 허용할지 적습니다. <code>False</code>는 확인 없이 실행입니다.</li>
+  <li><code>version="v2"</code>로 부르면 결과의 <code>interrupts</code>에 멈춘 이유와 실행하려던 도구·값이 들어 있습니다. 이것으로 확인 화면을 만듭니다.</li>
+  <li><code>Command(resume=...)</code>에 사람의 답을 담아 같은 <code>thread_id</code>로 부릅니다. 승인은 <code>{"type": "approve"}</code>, 거절은 <code>{"type": "reject"}</code>입니다.</li>
+</ol>
+    </div>
+    <p class="after">코드는 <code>langchain</code> 1.5·<code>langgraph</code> 1.2 기준입니다. 확인 화면은 웹 페이지든 메신저 버튼이든 서비스에 맞게 만듭니다. 그래프를 직접 그렸다면 노드 안에서 <code>interrupt()</code>를 부르면 같은 방식으로 멈추고 <code>Command(resume=...)</code>로 이어 갑니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://docs.langchain.com/oss/python/langchain/human-in-the-loop">LangChain 공식 문서, Human-in-the-loop</a></li>
+      <li><a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph 공식 문서, Interrupts</a></li>
+      <li><a href="https://docs.langchain.com/oss/python/langgraph/persistence">LangGraph 공식 문서, Persistence</a></li>
+    </ul>
+  </section>
+</div>
