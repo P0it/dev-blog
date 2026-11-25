@@ -1,0 +1,331 @@
+---
+title: 대화가 길어지면 Agent는 무엇을 버려야 할까요?
+slug: agent-context-window-memory-summarize
+excerpt: Agent의 대화는 도구 결과까지 붙어 context window를 금방 채웁니다. 잘라 내기와 요약, 도구 결과 지우기, 대화 밖에 적어 두는 장기 기억까지, 무엇을 남기고 무엇을 버릴지 정하는 context engineering을 봅니다.
+tags: [AI Agent, Context Window, 메모리, Context Engineering]
+category: ai
+cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/post-images/thumbs/agent-context-window-memory-summarize-mwvufzfa.jpg
+series: agent-basics
+series_order: 6
+---
+<!-- page -->
+<!-- AI Agent, 기초부터 하나씩 6편 — 계획 docs/series/agent-basics.md, 형식은 그 문서의 "형식" 표 -->
+<style>
+/* ── 틀: 모든 블록이 같은 왼쪽 선·같은 폭. 시선은 위에서 아래로만 간다 ── */
+.post-page .rw { max-width: 680px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 20px 120px; font-family: var(--font-sans); font-size: clamp(17px, 1.6vw, 18px); line-height: 1.85; color: var(--fg-normal); word-break: keep-all; }
+.post-page .rw *, .post-page .rw *::before, .post-page .rw *::after { box-sizing: border-box; }
+.post-page .rw p { margin: 0 0 1.5em; }
+.post-page .rw strong { color: var(--fg-strong); font-weight: 700; }
+.post-page .rw h1 { margin: 0 0 28px; font-family: var(--font-display); font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; line-height: 1.28; letter-spacing: -0.02em; color: var(--fg-strong); }
+.post-page .rw .rw-lead { font-size: clamp(18px, 2vw, 20px); line-height: 1.8; margin-bottom: 0; }
+
+/* ── 섹션: 작은 질문 → 큰 답 한 줄 ── */
+.post-page .rw section { margin-top: clamp(104px, 13vw, 144px); }
+.post-page .rw h2 { margin: 0 0 16px; font-family: var(--font-sans); font-size: clamp(18px, 2vw, 20px); font-weight: 600; line-height: 1.5; letter-spacing: 0; color: var(--fg-neutral); }
+.post-page .rw .rw-ans { margin: 0 0 40px; font-family: var(--font-display); font-size: clamp(25px, 3.9vw, 33px); font-weight: 700; line-height: 1.38; letter-spacing: -0.02em; color: var(--fg-strong); }
+
+/* ── 그림: 세로 줄(나 · Agent · LLM)마다 한 사람. 글은 보낸 줄에서 받는 줄로 간다 ── */
+.post-page .rw figure { margin: 8px 0 48px; }
+.post-page .rw figcaption { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: var(--fg-neutral); }
+.post-page .sq { --life: color-mix(in srgb, var(--fg-alternative) 45%, transparent); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 30px;
+  background: linear-gradient(var(--life), var(--life)) calc(100% / 6) 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 50% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) calc(500% / 6) 0 / 1.5px 100% no-repeat; }
+.post-page .sq.agent { position: relative; isolation: isolate; padding-top: 30px; }
+.post-page .sq.agent::before { content: ""; position: absolute; z-index: -1; inset: 0 -6px -10px calc(100% / 3 - 6px); border-radius: 18px; background: color-mix(in srgb, var(--fg-primary-strong) 7%, transparent); }
+.post-page .sq.agent::after { content: "Agent"; position: absolute; top: 4px; left: calc(100% / 3 + 6px); font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--fg-primary-strong); }
+.post-page .sq.agent .rw-actor { background: transparent; }
+.post-page .sq.two { grid-template-columns: repeat(2, minmax(0, 1fr)); background: linear-gradient(var(--life), var(--life)) 25% 0 / 1.5px 100% no-repeat, linear-gradient(var(--life), var(--life)) 75% 0 / 1.5px 100% no-repeat; }
+.post-page .rw-actor { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 18px; background: var(--bg-base); text-align: center; font-size: 14px; line-height: 1.4; color: var(--fg-strong); }
+.post-page .rw-actor svg { width: 44px; height: 44px; padding: 9px; border: 1.5px solid var(--line-normal); border-radius: 50%; background: var(--bg-base); color: var(--fg-strong); }
+.post-page .rw-actor b { font-weight: 700; }
+.post-page .rw-actor small { font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .rw-actor.new svg { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+/* 글 한 장 = 상자 + 그 아래 화살표(보낸 줄 → 받는 줄) */
+.post-page .sq-m { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; padding: 0 4px; }
+.post-page .sq-m.c12 { grid-column: 1 / 3; }
+.post-page .sq-m.c23 { grid-column: 2 / 4; }
+.post-page .rw-msg { max-width: 100%; padding: 10px 14px 11px; border: 1px solid var(--line-normal); border-radius: 10px; background: var(--bg-base); color: var(--fg-strong); font-size: 13.5px; line-height: 1.5; }
+.post-page .rw-msg i { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw-msg small { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line-normal); font-size: 12px; color: var(--fg-neutral); }
+.post-page .rw-msg.ask { border-color: var(--fg-primary-strong); }
+.post-page .rw-msg.ask i { color: var(--fg-primary-strong); }
+.post-page .rw-msg.ans { border: 1.5px solid var(--fg-strong); }
+.post-page .rw-msg.ans i { color: var(--fg-strong); }
+.post-page .sq-arr { position: relative; align-self: stretch; margin: 0 25%; height: 0; border-top: 1.5px solid var(--fg-neutral); }
+.post-page .sq-arr::after { content: ""; position: absolute; top: -5.5px; border: 4.75px solid transparent; }
+.post-page .sq-m.r .sq-arr::after { right: -1px; border-right-width: 0; border-left-color: var(--fg-neutral); }
+.post-page .sq-m.l .sq-arr::after { left: -1px; border-left-width: 0; border-right-color: var(--fg-neutral); }
+/* Agent 줄 위에서 일어나는 일(도구 실행) */
+.post-page .sq-act { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 999px; background: var(--bg-primary-tint); font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--fg-strong); }
+.post-page .sq-act svg { flex: none; width: 15px; height: 15px; color: var(--fg-primary-strong); }
+.post-page .sq-act.off { background: var(--bg-subtle); color: var(--fg-neutral); }
+.post-page .sq-act.off svg { color: var(--fg-alternative); }
+/* 한 바퀴 묶음 — 세로 줄을 그대로 물려받는다 */
+.post-page .sq-round { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: subgrid; row-gap: 30px; padding: 36px 0 22px; }
+.post-page .sq-round::before { content: ""; position: absolute; inset: 0 calc(100% / 6 - 26px) 0 calc(100% / 3 - 4px); border: 1.5px dashed var(--line-normal); border-radius: 14px; pointer-events: none; }
+.post-page .sq-round::after { content: attr(data-label); position: absolute; top: -10px; left: calc(100% / 3 + 8px); padding: 0 7px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+
+.post-page .rw blockquote { margin: 0 0 1.5em; padding: 0; border: 0; font-family: var(--font-display); font-size: clamp(19px, 2.4vw, 22px); font-weight: 600; line-height: 1.6; color: var(--fg-strong); }
+.post-page .rw blockquote cite { display: block; margin-top: 8px; font-family: var(--font-sans); font-size: 14px; font-style: normal; font-weight: 400; color: var(--fg-neutral); }
+.post-page .rw .rw-refs { margin: 0; padding-left: 1.2em; font-size: 15.5px; line-height: 1.8; }
+.post-page .rw .rw-refs li { margin: 0 0 6px; }
+/* 다음 토큰 후보 막대 */
+.post-page .pb { display: grid; gap: 10px; max-width: 520px; }
+.post-page .pb-in { margin: 0 0 6px; font-size: 15px; color: var(--fg-strong); }
+.post-page .pb-in b { padding: 1px 8px; border: 1.5px dashed var(--fg-primary-strong); border-radius: 6px; color: var(--fg-primary-strong); }
+.post-page .pb-r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 14.5px; }
+.post-page .pb-r span:first-child { font-weight: 600; color: var(--fg-strong); }
+.post-page .pb-r i { display: block; height: 14px; width: var(--w); border-radius: 4px; background: var(--line-normal); }
+.post-page .pb-r.on i { background: var(--fg-primary-strong); }
+.post-page .pb-r em { font-style: normal; font-family: var(--font-mono); font-size: 13px; color: var(--fg-neutral); text-align: right; }
+/* 도구 목록 카드 */
+.post-page .tl { display: grid; gap: 14px; }
+.post-page .tl-c { position: relative; padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; background: var(--bg-base); font-size: 14.5px; line-height: 1.65; }
+.post-page .tl-c.on { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .tl-c.on::after { content: "LLM이 고른 도구"; position: absolute; top: -11px; right: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12px; font-weight: 700; line-height: 20px; color: var(--fg-primary-strong); }
+.post-page .tl-c dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.post-page .tl-c dt { font-size: 12.5px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .tl-c dd { margin: 0; color: var(--fg-strong); }
+/* 응답 두 가지 */
+.post-page .rs { display: grid; gap: 14px; }
+.post-page .rs-c { padding: 14px 16px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.post-page .rs-c.ask { border-color: var(--fg-primary-strong); }
+.post-page .rs-c > b { display: block; margin-bottom: 6px; font-size: 13px; color: var(--fg-neutral); }
+.post-page .rs-c.ask > b { color: var(--fg-primary-strong); }
+.post-page .rs-c .rs-j { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.75; color: var(--fg-strong); white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.post-page .rs-c .rs-hl { padding: 1px 3px; border-radius: 4px; background: var(--bg-primary-tint); color: inherit; font-weight: 700; }
+.post-page .rw .after { margin-top: 40px; }
+.post-page .rw table { width: 100%; margin: 8px 0 40px; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.post-page .rw th, .post-page .rw td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line-normal); text-align: left; vertical-align: top; }
+.post-page .rw th { font-size: 13px; font-weight: 700; color: var(--fg-neutral); }
+.post-page .rw td:first-child { color: var(--fg-strong); }
+.post-page .rw td code { overflow-wrap: anywhere; }
+.post-page .rw-msg.err { border-color: #d4553f; }
+.post-page .rw-msg.err i { color: #d4553f; }
+.post-page .rw-msg u { text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-neutral); }
+/* 코드 ↔ 설명 색 짝 — 예시 코드의 키와 아래 설명의 같은 낱말을 같은 색으로(POSTING 2-1, 색표는 docs/series/agent-basics.md) */
+.post-page .rw { --ck-blue: #2f6fdb; --ck-green: #12805c; --ck-violet: #7a4fd6; --ck-orange: #c0641b; --ck-pink: #b03a6f; --ck-cyan: #0e7490; --ck-brown: #946200; --ck-red: #c62828; --ck-olive: #637000; }
+[data-theme="dark"] .post-page .rw { --ck-blue: #7aa7ff; --ck-green: #4fd1a1; --ck-violet: #b79bff; --ck-orange: #f0a35e; --ck-pink: #f08bbb; --ck-cyan: #5fd0e6; --ck-brown: #e2b65c; --ck-red: #ff8a80; --ck-olive: #c3d36a; }
+.post-page .ck-blue, .post-page .ck-user { --ck: var(--ck-blue); } .post-page .ck-green, .post-page .ck-asst { --ck: var(--ck-green); }
+.post-page .ck-violet, .post-page .ck-sys { --ck: var(--ck-violet); } .post-page .ck-orange, .post-page .ck-max { --ck: var(--ck-orange); }
+.post-page .ck-pink, .post-page .ck-msg { --ck: var(--ck-pink); } .post-page .ck-cyan { --ck: var(--ck-cyan); } .post-page .ck-brown { --ck: var(--ck-brown); }
+.post-page .ck-red { --ck: var(--ck-red); } .post-page .ck-olive { --ck: var(--ck-olive); }
+.post-page .rs-j .ck { color: var(--ck); font-weight: 700; }
+.post-page .rw code.ck { padding: 0.12em 0.42em; border-radius: 5px; background: color-mix(in srgb, var(--ck) 12%, transparent); color: var(--ck); font-family: var(--font-mono); font-size: 0.86em; font-weight: 600; }
+.post-page .rw .ck-t { color: var(--ck) !important; font-weight: 700; }
+.post-page .rw mark code { background: none; padding: 0; }
+/* 요청 칸 안의 메시지 줄 */
+.post-page .rw-msg .mr { display: block; margin-top: 4px; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 12.5px; }
+.post-page .rw-msg .mr b { margin-right: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .rw-msg .mr.new { border: 1.5px solid var(--fg-strong); }
+/* 메시지 목록 — 호출마다 실려 가는 칸 */
+.post-page .ml { display: grid; gap: 22px; }
+.post-page .ml-call { position: relative; padding: 26px 14px 14px; border: 1.5px dashed var(--line-normal); border-radius: 14px; }
+.post-page .ml-call::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .ml-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--line-normal); border-radius: 9px; background: var(--bg-base); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-row + .ml-row { margin-top: 6px; }
+.post-page .ml-row > span { min-width: 0; }
+.post-page .ml-row b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--fg-neutral); }
+.post-page .ml-row.new { border: 1.5px solid var(--fg-strong); }
+.post-page .ml-row.miss { border-style: dashed; color: var(--fg-alternative); }
+.post-page .ml-out { margin-top: 10px; padding: 7px 10px; border-radius: 9px; background: var(--bg-primary-tint); font-size: 14px; line-height: 1.55; color: var(--fg-strong); }
+.post-page .ml-out.err { background: color-mix(in srgb, #d4553f 14%, transparent); }
+.post-page .ml-out i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg-neutral); margin-right: 8px; }
+/* 이름표 단 카드(좋은 예·나쁜 예 등) */
+.post-page .cx { display: grid; gap: 22px; }
+.post-page .cx-c { position: relative; padding: 22px 16px 14px; border: 1px solid var(--line-normal); border-radius: 12px; font-size: 14.5px; line-height: 1.7; color: var(--fg-strong); }
+.post-page .cx-c::before { content: attr(data-label); position: absolute; top: -11px; left: 14px; padding: 0 8px; border-radius: 6px; background: var(--bg-base); font-size: 12.5px; font-weight: 700; line-height: 20px; color: var(--fg-neutral); }
+.post-page .cx-c.good { border: 1.5px solid var(--fg-primary-strong); }
+.post-page .cx-c.good::before { color: var(--fg-primary-strong); }
+.post-page .cx-c.bad { border: 1.5px dashed #d4553f; }
+.post-page .cx-c.bad::before { color: #d4553f; }
+.post-page .cx-c p { margin: 0 0 6px; }
+.post-page .cx-c small { display: block; margin-top: 8px; font-size: 13px; color: var(--fg-neutral); }
+/* 가로 블록 띠(프롬프트 앞부분·캐시) */
+.post-page .bk { display: grid; gap: 14px; }
+.post-page .bk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .bk-row > span { font-weight: 700; color: var(--fg-neutral); }
+.post-page .bk-bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.post-page .bk-bar i { display: grid; place-items: center; flex: var(--f) 1 0; min-width: 0; padding: 0 4px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--fg-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg-subtle); border-right: 2px solid var(--bg-base); }
+.post-page .bk-bar i.c { background: var(--bg-primary-tint); }
+.post-page .bk-bar i.free { background: none; border: 1.5px dashed var(--line-normal); color: var(--fg-alternative); }
+.post-page .bk-bar i.n { background: color-mix(in srgb, #ffcc00 30%, transparent); }
+.post-page .bk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; font-size: 12.5px; color: var(--fg-neutral); }
+.post-page .bk-key b { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+/* 스트리밍 조각 */
+.post-page .st { display: grid; gap: 10px; }
+.post-page .st-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.post-page .st-row > span { font-family: var(--font-mono); color: var(--fg-neutral); }
+.post-page .st-row div { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-page .st-row u { text-decoration: none; padding: 3px 7px; border: 1px solid var(--line-normal); border-radius: 6px; font-size: 13.5px; color: var(--fg-strong); }
+.post-page .st-row u.on { border-color: var(--fg-primary-strong); background: var(--bg-primary-tint); }
+@media (max-width: 480px) {
+  .post-page .rw table { font-size: 13.5px; }
+  .post-page .rw th, .post-page .rw td { padding-right: 8px; }
+  .post-page .ml-row { grid-template-columns: 1fr; gap: 2px; }
+  .post-page .bk-row { grid-template-columns: 1fr; gap: 4px; }
+  .post-page .rw-msg { padding: 8px 10px 9px; font-size: 13px; }
+  .post-page .sq, .post-page .sq-round { row-gap: 22px; }
+  .post-page .rw-actor svg { width: 40px; height: 40px; }
+  .post-page .sq-round::before { inset: 0 0 0 calc(100% / 3 - 10px); }
+}
+</style>
+<!--ICONS-->
+
+<div class="rw">
+  <h1>대화가 길어지면 Agent는 무엇을 버려야 할까요?</h1>
+  <p class="rw-lead">Agent에게 사내 문서 정리를 맡겨 두고 한 시간쯤 지나면 답이 점점 느려지고 처음에 말한 조건을 잊은 듯한 답이 나오기도 합니다. 어느 순간에는 요청이 아예 거절됩니다. 대화가 길어질 때 Agent 안에서는 무슨 일이 일어나고 무엇을 남기고 무엇을 버려야 할까요?</p>
+
+  <section>
+    <h2>대화가 길어지면 무엇이 문제인가요?</h2>
+    <p class="rw-ans">보내는 글이 context window를 채워 갑니다. 다 차면 요청이 거절됩니다.</p>
+    <figure data-figure data-thumb>
+      <div class="bk">
+        <div class="bk-row"><span>3번째 요청</span><div class="bk-bar"><i class="c" style="--f: 10">지시</i><i style="--f: 8">대화</i><i class="free" style="--f: 82">남은 자리</i></div></div>
+        <div class="bk-row"><span>20번째 요청</span><div class="bk-bar"><i class="c" style="--f: 10">지시</i><i style="--f: 28">대화</i><i class="n" style="--f: 34">도구 결과</i><i class="free" style="--f: 28">남은 자리</i></div></div>
+        <div class="bk-row"><span>45번째 요청</span><div class="bk-bar"><i class="c" style="--f: 10">지시</i><i style="--f: 38">대화</i><i class="n" style="--f: 52">도구 결과</i></div></div>
+        <div class="bk-key"><span><b style="background: var(--bg-primary-tint)"></b>지시·도구 목록</span><span><b style="background: var(--bg-subtle)"></b>대화</span><span><b style="background: color-mix(in srgb, #ffcc00 30%, transparent)"></b>도구 결과</span></div>
+      </div>
+      <figcaption>막대 전체가 context window 한 칸입니다. 반복할 때마다 대화와 도구 결과가 붙어 45번째 요청에서는 자리가 남지 않습니다. 비율은 예시입니다.</figcaption>
+    </figure>
+    <p>LLM은 대화를 기억하지 못해서 프로그램이 매번 대화 전체를 다시 보냅니다. 모델이 한 번에 받을 수 있는 양에는 한도가 있습니다. 이 한도를 <strong>context window</strong>라고 합니다. 보낸 토큰과 받을 토큰을 합쳐 이 안에 들어와야 합니다.</p>
+    <p>Agent는 도구를 부를 때마다 결과가 대화에 붙어서 챗봇보다 훨씬 빨리 찹니다. 파일 하나를 읽은 결과만으로 수천 토큰이 들어오기도 합니다. 다 차면 API는 요청을 거절하거나 <code class="ck ck-cyan">stop_reason</code>을 <code class="ck ck-red">model_context_window_exceeded</code>로 돌려줍니다.</p>
+    <p>다 차기 전에도 문제가 생깁니다. <strong class="hl">글이 길어질수록 LLM은 중간에 있는 내용을 놓치기 쉽습니다.</strong> 비용과 대기 시간도 보내는 토큰에 비례해 늘어납니다. 그래서 자리가 남아 있어도 필요 없는 글은 일찍 덜어 내는 편이 낫습니다.</p>
+  </section>
+
+  <section>
+    <h2>가장 단순한 방법은 무엇인가요?</h2>
+    <p class="rw-ans">오래된 대화부터 잘라 냅니다. 대신 잘린 내용은 LLM이 영영 모릅니다.</p>
+    <figure data-figure>
+      <div class="ml">
+        <div class="ml-call" data-label="잘라 내기 전 · 메시지 7칸">
+          <div class="ml-row"><b class="ck-t ck-blue">user</b>보고서는 꼭 표로 정리해 줘.</div>
+          <div class="ml-row"><b class="ck-t ck-green">assistant</b>네, 표로 정리하겠습니다.</div>
+          <div class="ml-row"><b class="ck-t ck-blue">user</b>1분기 매출 파일 읽어 줘.</div>
+          <div class="ml-row"><b class="ck-t ck-green">assistant</b>(읽은 결과 요약)</div>
+          <div class="ml-row"><b class="ck-t ck-blue">user</b>2분기도.</div>
+          <div class="ml-row"><b class="ck-t ck-green">assistant</b>(읽은 결과 요약)</div>
+          <div class="ml-row new"><b class="ck-t ck-blue">user</b>이제 보고서 써 줘.</div>
+        </div>
+        <div class="ml-call" data-label="최근 3칸만 남겼을 때">
+          <div class="ml-row miss"><b>user</b>(잘림) 보고서는 꼭 표로 정리해 줘.</div>
+          <div class="ml-row miss"><b>…</b>(잘림)</div>
+          <div class="ml-row"><b class="ck-t ck-blue">user</b>2분기도.</div>
+          <div class="ml-row"><b class="ck-t ck-green">assistant</b>(읽은 결과 요약)</div>
+          <div class="ml-row new"><b class="ck-t ck-blue">user</b>이제 보고서 써 줘.</div>
+          <div class="ml-out err"><i>응답</i>2분기 매출은… (문단으로 씀, 1분기 빠짐)</div>
+        </div>
+      </div>
+      <figcaption>최근 대화만 남기자 맨 처음에 말한 "표로 정리"와 1분기 내용이 함께 사라졌습니다.</figcaption>
+    </figure>
+    <p>잘라 내기는 코드 몇 줄로 끝나고 비용도 들지 않습니다. 짧은 상담처럼 앞의 대화가 금방 쓸모없어지는 서비스에는 이것으로 충분합니다.</p>
+    <p>하지만 처음에 정한 조건이나 앞에서 읽은 자료처럼 끝까지 필요한 내용도 같이 사라집니다. 그래서 오래 지켜야 할 규칙은 대화에 두지 않고 system 지시에 넣습니다. system은 잘라 내는 대상이 아니어서 매번 그대로 실려 갑니다.</p>
+    <p>잘라 낼 때 짝을 깨지 않도록 조심해야 합니다. <mark>도구 부탁(<code>tool_use</code>)을 지우고 그 결과(<code>tool_result</code>)만 남기면 API가 오류를 냅니다.</mark> 부탁과 결과는 항상 함께 지우거나 함께 남깁니다.</p>
+  </section>
+
+  <section>
+    <h2>내용을 잃지 않고 줄일 수는 없나요?</h2>
+    <p class="rw-ans">오래된 대화를 요약 한 칸으로 바꿉니다.</p>
+    <figure data-figure>
+      <div class="ml">
+        <div class="ml-call" data-label="요약으로 바꾼 뒤 · 메시지 3칸">
+          <div class="ml-row new"><b class="ck-t ck-blue">user</b><span><span class="ck-t ck-violet">[지난 대화 요약]</span> 보고서는 표로 정리하기로 함. 1분기 매출 12억, 2분기 15억을 읽음.</span></div>
+          <div class="ml-row"><b class="ck-t ck-green">assistant</b>확인했습니다.</div>
+          <div class="ml-row new"><b class="ck-t ck-blue">user</b>이제 보고서 써 줘.</div>
+          <div class="ml-out"><i>응답</i>| 분기 | 매출 | … (표로, 1·2분기 모두)</div>
+        </div>
+      </div>
+      <figcaption>앞의 여섯 칸이 요약 한 칸이 됐습니다. 조건과 숫자는 남고 토큰은 크게 줄었습니다.</figcaption>
+    </figure>
+    <p>요약은 LLM에게 맡깁니다. 대화가 일정 길이를 넘으면 프로그램이 오래된 부분을 LLM에 보내 "앞으로 필요한 결정과 사실만 남겨 요약해 줘"라고 부탁합니다. 돌려받은 요약을 대화 맨 앞에 넣고 원래 칸은 지웁니다.</p>
+    <p>요약도 공짜는 아닙니다. 요약을 만드는 데 LLM을 한 번 더 불러야 하고 요약하면서 세부가 빠질 수 있습니다. 그래서 <strong class="hl">최근 몇 번의 대화는 원문 그대로 두고 그보다 오래된 부분만 요약하는 방식</strong>을 많이 씁니다.</p>
+    <p>Agent에서는 도구 결과가 가장 큰 덩어리입니다. 오래된 도구 결과만 "(결과 지움)"으로 바꾸고 부탁은 남기는 방법도 있습니다. LLM은 어떤 도구를 불렀는지는 알고 있어서 필요하면 다시 부릅니다. Claude API의 context editing은 이 일을 API 쪽에서 대신 해 줍니다.</p>
+  </section>
+
+  <section>
+    <h2>다음 대화에서도 기억하게 하려면요?</h2>
+    <p class="rw-ans">대화 밖 저장소에 적어 두고 필요할 때 꺼내 옵니다. 이것을 장기 기억이라고 부릅니다.</p>
+    <figure data-figure>
+      <div class="sq agent">
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user"/></svg><b>나</b></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-user-cog"/></svg><b>프로그램</b><small>개발자가 짠 코드</small></div>
+        <div class="rw-actor"><svg aria-hidden="true"><use href="#i-bot"/></svg><b>LLM</b></div>
+        <div class="sq-m c12 r"><span class="rw-msg">다음 주 보고서도 지난번처럼 써 줘.</span><span class="sq-arr"></span></div>
+        <span class="sq-act"><svg aria-hidden="true"><use href="#i-database"/></svg>프로그램이 기억 저장소에서 이 사용자 메모를 읽음</span>
+        <div class="sq-m c23 r"><span class="rw-msg">내 말 + 기억 메모<small>보고서는 표로 · 금액은 억 단위</small></span><span class="sq-arr"></span></div>
+        <div class="sq-m c23 l"><span class="rw-msg ans"><i>답</i>표로 정리했습니다. 금액은 억 단위입니다.</span><span class="sq-arr"></span></div>
+        <div class="sq-m c12 l"><span class="rw-msg ans">표로 정리했습니다…</span><span class="sq-arr"></span></div>
+      </div>
+      <figcaption>새 대화라 메시지 목록은 비어 있지만 프로그램이 저장소에서 메모를 꺼내 함께 보냈습니다.</figcaption>
+    </figure>
+    <p>지금까지 본 것은 대화 하나 안에서의 기억, 곧 <strong>단기 기억</strong>입니다. 대화가 끝나면 메시지 목록은 사라집니다. 다음 대화에서도 사용자의 취향이나 지난 결정을 알게 하려면 대화 밖 저장소에 따로 적어 둬야 합니다. 이것을 <strong>장기 기억</strong>이라고 합니다.</p>
+    <p>저장소는 데이터베이스여도 되고 파일이어도 됩니다. 무엇을 적을지는 두 방식이 있습니다. 대화가 끝날 때 프로그램이 LLM에게 "기억할 만한 것"을 뽑게 해서 적거나, 기억 쓰기 도구를 LLM에 주고 LLM이 필요할 때 적게 합니다. Claude API의 memory tool이 뒤쪽 방식입니다.</p>
+    <p>꺼낼 때가 더 중요합니다. 메모가 쌓이면 전부 넣을 수 없으니 이번 요청과 관련 있는 것만 골라 넣어야 합니다. <mark>사용자마다 저장소를 나누지 않으면 남의 메모가 섞여 들어갑니다.</mark></p>
+  </section>
+
+  <section>
+    <h2>결국 무엇을 남기고 무엇을 버리나요?</h2>
+    <p class="rw-ans">이번 일에 필요한 글만 보내도록 고르는 일, 그것을 context engineering이라고 합니다.</p>
+    <table>
+      <thead><tr><th>방법</th><th>하는 일</th><th>이 시리즈에서</th></tr></thead>
+      <tbody>
+        <tr><td>적어 두기</td><td>대화 밖 저장소에 메모로 남긴다</td><td>장기 기억, 할 일 목록 파일</td></tr>
+        <tr><td>골라 넣기</td><td>이번 요청과 관련 있는 것만 꺼내 넣는다</td><td>기억 검색, RAG</td></tr>
+        <tr><td>줄이기</td><td>오래된 대화를 요약하거나 지운다</td><td>잘라 내기, 요약, 도구 결과 지우기</td></tr>
+        <tr><td>나누기</td><td>일을 다른 Agent에 맡겨 따로 처리하게 한다</td><td>여러 Agent에 일 나누기</td></tr>
+      </tbody>
+    </table>
+    <p><strong>context engineering</strong>은 LLM에 보낼 글을 설계하는 일입니다. 프롬프트 한 줄을 잘 쓰는 것을 넘어, 지시·대화·도구 목록·도구 결과·기억 가운데 무엇을 어떤 순서로 얼마나 넣을지 정합니다. Anthropic은 이를 "원하는 결과를 낼 가능성이 가장 높은, 가장 작은 고신호 토큰 묶음을 찾는 일"이라고 설명합니다.</p>
+    <p>정답은 서비스마다 다릅니다. 짧은 상담은 잘라 내기로 충분하지만 몇 시간씩 일하는 Agent는 요약과 도구 결과 지우기, 장기 기억을 함께 씁니다. 실제 대화 기록을 보면서 무엇이 자리를 차지하는지부터 재는 것이 출발점입니다.</p>
+  </section>
+
+  <section>
+    <h2>코드로 쓰면 어떻게 되나요?</h2>
+    <p class="rw-ans">길이를 재고 넘으면 오래된 부분을 요약해 바꾸는 함수 하나입니다.</p>
+    <div class="cd">
+<pre data-title="memory.py" data-hl=""><code class="language-python">import anthropic
+
+client = anthropic.Anthropic()
+MODEL = "claude-sonnet-5-5"
+# ① 이 길이를 넘으면 줄인다
+LIMIT, KEEP_RECENT = 60_000, 6
+
+def compact(messages, system):
+    # ② 보내기 전에 토큰 수를 잰다
+    n = client.messages.count_tokens(
+        model=MODEL, system=system, messages=messages).input_tokens
+    if n &lt; LIMIT:
+        return messages
+    # ③ 최근 대화는 원문 그대로, 짝이 깨지지 않는 자리에서 자른다
+    cut = safe_cut(messages, keep=KEEP_RECENT)
+    old, recent = messages[:cut], messages[cut:]
+    # ④ 오래된 부분은 LLM에게 요약을 맡긴다
+    summary = client.messages.create(
+        model=MODEL, max_tokens=800,
+        system="앞으로의 작업에 필요한 결정·조건·숫자만 남겨 요약하라.",
+        messages=[{"role": "user", "content": to_text(old)}],
+    ).content[0].text
+    # ⑤ 요약 한 칸을 맨 앞에 넣는다
+    head = [{"role": "user", "content": f"[지난 대화 요약]\n{summary}"},
+            {"role": "assistant", "content": "확인했습니다."}]
+    return head + recent</code></pre>
+<ol class="pg-code-notes">
+  <li>context window보다 넉넉히 작게 잡습니다. 다 찬 뒤에 줄이면 이번 답을 쓸 자리가 없습니다.</li>
+  <li><code>count_tokens</code>는 실제로 보내지 않고 토큰 수만 셉니다. 요금이 들지 않습니다.</li>
+  <li><code>safe_cut</code>은 자를 자리가 도구 부탁과 결과 사이에 걸리면 앞으로 당기는 도우미 함수입니다. 짝이 깨지면 API가 요청을 거절합니다.</li>
+  <li>요약에도 LLM 호출이 한 번 듭니다. 요약 지시에 무엇을 남길지 분명히 적어야 세부가 덜 빠집니다.</li>
+  <li><code class="ck ck-blue">user</code>와 <code class="ck ck-green">assistant</code>가 번갈아 와야 해서 요약 칸 뒤에 짧은 답 칸을 붙였습니다.</li>
+</ol>
+    </div>
+    <p class="after">반복문에서 LLM을 부르기 직전에 <code>messages = compact(messages, system)</code> 한 줄을 넣으면 됩니다. LangChain에서는 SummarizationMiddleware가 같은 일을 합니다. Claude API의 context editing을 켜면 오래된 도구 결과 지우기를 API가 대신 합니다.</p>
+  </section>
+
+  <section>
+    <h2>참고 자료</h2>
+    <ul class="rw-refs">
+      <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Anthropic Engineering, Effective context engineering for AI agents</a></li>
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/context-editing">Claude 공식 문서, Context editing</a></li>
+      <li><a href="https://platform.claude.com/docs/en/build-with-claude/token-counting">Claude 공식 문서, Token counting</a></li>
+      <li><a href="https://docs.langchain.com/oss/python/langchain/middleware">LangChain 공식 문서, Middleware</a></li>
+    </ul>
+  </section>
+</div>

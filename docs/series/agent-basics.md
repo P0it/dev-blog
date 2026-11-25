@@ -71,9 +71,9 @@ LLM·Agent·RAG 를 처음 접하는 사람이 개발자로서 직접 짤 수 �
 
 | # | 이 편의 질문 | 그림에 얹는 칸 | 개발자 핵심 | 이어 볼 편 | 상태 |
 |---|---|---|---|---|---|
-| 6 | 대화가 길어지면 무엇을 버려야 하나요? | 대화 기록 | context window, 요약·잘라내기, 장기 기억 저장소, context engineering | 9 | 계획 |
-| 7 | 회사 문서를 LLM이 읽게 하려면? | 검색 저장소 | 임베딩, 벡터 DB, 청킹, 검색 결과를 넣는 자리 | 10 | 계획 |
-| 8 | 검색을 도구로 주면 무엇이 달라지나요? | 검색 도구 | Agentic RAG, 다시 검색하기, 출처 표시 | 10 | 계획 |
+| 6 | 대화가 길어지면 Agent는 무엇을 버려야 할까요? (`agent-context-window-memory-summarize`) | 대화 기록 | context window, 요약·잘라내기, 장기 기억 저장소, context engineering | 9 | 발행 |
+| 7 | LLM은 우리 회사 규정을 어떻게 알고 답할까요? (`rag-chunk-embedding-vector-db-basics`) | 검색 저장소 | 임베딩, 벡터 DB, 청킹, 검색 결과를 넣는 자리 | 10 | 발행 |
+| 8 | 검색을 LLM에게 맡기면 무엇이 달라질까요? (`agentic-rag-search-tool-basics`) | 검색 도구 | Agentic RAG, 다시 검색하기, 출처 표시 | 10 | 발행 |
 
 ### Part 3. 프레임워크로 옮기기
 
