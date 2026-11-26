@@ -230,6 +230,26 @@ cover_image: https://wzaqtubtqwpddouevwbk.supabase.co/storage/v1/object/public/p
       for (const X of AS) { const say = X.sayEl, hide = step === N || !X.say;
         if (!hide && say.dataset.t !== X.say) { say.textContent = X.say; say.dataset.t = X.say; swap(say); }
         say.classList.toggle("hide", hide); put(say, P(X.pos[0], 1.75, X.pos[1])); }
+      unclutter();
+    }
+    // 좁은 화면에서는 이름표와 길 번호가 서로 덮는다(2026-11-26 지적) — 먼저 놓인 것을 피해 조금씩 옮긴다.
+    // 정거장 이름표는 위로, 길 번호는 아래·위·옆 순서로 빈 자리를 찾고, 못 찾으면 제자리에 둔다.
+    function unclutter() {
+      const placed = [], gap = 3;
+      const box = (e) => e.getBoundingClientRect();
+      const clash = (r) => placed.some((q) => r.left < q.right + gap && r.right > q.left - gap && r.top < q.bottom + gap && r.bottom > q.top - gap);
+      const settle = (el, tries) => {
+        const x0 = parseFloat(el.style.left), y0 = parseFloat(el.style.top);
+        for (const [dx, dy] of tries) {
+          el.style.left = (x0 + dx).toFixed(1) + "px"; el.style.top = (y0 + dy).toFixed(1) + "px";
+          if (!clash(box(el))) { placed.push(box(el)); return; }
+        }
+        el.style.left = x0.toFixed(1) + "px"; el.style.top = y0.toFixed(1) + "px"; placed.push(box(el));
+      };
+      for (const id of ids) { const el = lab[id]; if (!el.offsetWidth) continue; const h = el.offsetHeight + gap;
+        settle(el, [[0, 0], [0, -h], [0, -2 * h], [0, h]]); }
+      for (const d of nums) { if (d.style.display === "none" || !d.offsetWidth) continue; const h = d.offsetHeight + gap, w = d.offsetWidth / 2 + gap;
+        settle(d, [[0, 0], [0, h], [0, -h], [w, 0], [-w, 0], [w, h], [-w, h], [0, 2 * h], [0, -2 * h]]); }
     }
 
     /* ── 동작: ["at"|"set"|"go"|"back"|"wait", …] 을 순서대로. 사람이 여럿이면 사람마다 따로, 동시에 ── */
